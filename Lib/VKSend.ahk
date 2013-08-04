@@ -23,9 +23,9 @@ VKSend(Sequence)
 			ReleaseModifiers .= "{ VK" GetKeyVK("Alt") " up}"
 
 		}
-		if (char = "{")
-		{
-			if (Position := instr(Sequence, "}", False, C_Index, 1)) ; lets find the closing bracket)
+		else if (char = "{") 							; send {}} will fail with this test but cant use that
+		{ 												; hotkey anyway in pro would be ]
+			if (Position := instr(Sequence, "}", False, C_Index, 1)) ; lets find the closing bracket) n
 			{
 				key := trim(substr(Sequence, C_Index+1, Position -  C_Index - 1))
 				C_Index := Position ;PositionOfClosingBracket
