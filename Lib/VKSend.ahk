@@ -24,7 +24,7 @@ VKSend(Sequence)
 
 		}
 		else if (char = "{") 							; send {}} will fail with this test but cant use that
-		{ 												; hotkey anyway in pro would be ]
+		{ 												; hotkey anyway in program would be ]
 			if (Position := instr(Sequence, "}", False, C_Index, 1)) ; lets find the closing bracket) n
 			{
 				key := trim(substr(Sequence, C_Index+1, Position -  C_Index - 1))

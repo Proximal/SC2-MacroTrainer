@@ -3542,7 +3542,7 @@ loop, parse, optionsMenuTitles, |
 		Gui, Font, s10
 		GUIButtonPosition := guiMenuHeight + 13
 		Gui, Add, Button, x415 y%GUIButtonPosition% w50 h25 gIni_settings_write, Save
-		Gui, Add, Button, x+20 w50 h25 gOptionsGuiClose, Canel
+		Gui, Add, Button, x+20 w50 h25 gOptionsGuiClose, Cancel
 		Gui, Add, Button, x+20 w50 h25 gIni_settings_write, Apply
 		Gui, Font, 
 
@@ -3714,7 +3714,7 @@ Gui, Add, Tab2,w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vKeys_TAB, SC2 Key
 			Gui, Add, Edit, Readonly yp-2 x+10 w120  center vpause_game , %pause_game%
 				Gui, Add, Button, yp-2 x+5 gEdit_SendHotkey v#pause_game,  Edit
 
-		Gui, Add, Text, X%XTabX% yp+35 w90, Escape/Canel:
+		Gui, Add, Text, X%XTabX% yp+35 w90, Escape/Cancel:
 			Gui, Add, Edit, Readonly yp-2 x+10 w120  center vescape , %escape%
 				Gui, Add, Button, yp-2 x+5 gEdit_SendHotkey v#escape,  Edit
 
@@ -4654,7 +4654,7 @@ You will hear a beep indicating that the new positions have been saved.
 		Gui, Font, s10
 ;		GUIButtonPosition := guiMenuHeight - 30
 ;		Gui, Add, Button, x+249 y+%GUIButtonPosition% w50 h25 gIni_settings_write, Save
-;		Gui, Add, Button, x+20 w50 h25 gOptionsGuiClose, Canel
+;		Gui, Add, Button, x+20 w50 h25 gOptionsGuiClose, Cancel
 ;		Gui, Add, Button, x+20 w50 h25 gIni_settings_write, Apply
 ;		Gui, Font, 
 
@@ -5208,7 +5208,7 @@ OptionsTree:
 	; This is a workaround for this bug
 ;	if (OptionTreeEvent = "D" && !GetKeyState("LButton", "P")) ; the gui event says its a drag when the error occurs (but its not really)
 ;		send {click 2}
-	WinSet, Redraw,, Macro Trainer V%ProgramVersion% Settings 				; redrawing whole thing as i noticed very very rarely (when a twitch stream open?) the save/canel/apply buttons disappear
+	WinSet, Redraw,, Macro Trainer V%ProgramVersion% Settings 				; redrawing whole thing as i noticed very very rarely (when a twitch stream open?) the save/cancel/apply buttons disappear
 ; 	 GUIControl, MoveDraw, GUIListViewIdentifyingVariableForRedraw ; this is the same as redraw (but just for a control? - although it still seems to flicker the entire thing)
  	Return															; this prevents the problem where some of the icons would remain selected
  																	; so multiple categories would have the blue background
@@ -6442,7 +6442,7 @@ AG_GUI_ADD(Control_Group = "", comma=1, Race=1)
 	Gui, Options:-Disabled
 	Gui Add2AG:Destroy
 	pause off
-	Return ;this is needed to for the above if (if the canel/escape gui)
+	Return ;this is needed to for the above if (if the cancel/escape gui)
 
 }
 ; 	provides two simple arrays
@@ -9742,6 +9742,7 @@ debugData()
 	. "Script & Path: " A_ScriptFullPath "`n"
 	. "Is64bitOS: " A_Is64bitOS "`n"
 	. "PtrSize: " A_PtrSize "`n"
+	. "IsUnicode: " A_IsUnicode "`n"
 	. "OSVersion: " A_OSVersion "`n"
 	. "Language Code: " A_Language "`n"
 	. "Language: " getSystemLanguage() "`n"
