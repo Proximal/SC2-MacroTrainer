@@ -198,18 +198,18 @@ Class BufferInputFast
 				if InStr(Button.Button, "LButton") && !InStr(Button.Button, "UP") && !MouseBlocking ; so lbutton down (not up)
 				{
 					if modifiers := BufferInputFast.getModifiersFromString(Button.Button)
-						send %modifiers%{click down %x%, %y%} 
-					else send {click down %x%, %y%} 
+						send {Blind}%modifiers%{click down %x%, %y%} 
+					else send {Blind}{click down %x%, %y%} 
 				;	sleep, 5 ; some programs may require a sleep here - SC2 and many others don't.
 					continue
 				}
 				else if InStr(Button.Button, "LButton Up") && MouseBlocking ;
 					continue ; as don't need to send the lbutton up command as it was never held down
 				else if !MouseBlocking
-					send {click  %x%, %y%, 0} ;move the mouse
+					SendClick("", X, Y, 0) ;	send {click  %x%, %y%, 0} ;move the mouse
 				Button := Button.Button 
 			}
-			send % Button
+			send(Button)	;send % Button
 			; apparently sendevent should be able to trigger the scripts own hotkeys
 			; but this didn't seem to be the case when testing
 			; so not going to bother to do an if Sendevent check
@@ -217,17 +217,17 @@ Class BufferInputFast
 				gosub g_temporarilyDisableAutoWorkerProductionOriginUserInputBufferSend
 		}
 		if MouseHasMoved
-			send {click  %Xstart%, %Ystart%, 0} 
+			sendclick("", Xstart, Ystart, 0)	;send {click  %Xstart%, %Ystart%, 0} 
 		if DisableBuffering
 			BufferInputFast.disableBufferingAndBlocking()
 
 		if !GetKeyState("Lbutton", "P") && GetKeyState("Lbutton") 	; so if the button is up, but the game thinks it down
-			send {click Up}  										; send and up command to unstick it - but doesnt seem to work here
+			send {blind}{click Up}  										; send and up command to unstick it - but doesnt seem to work here
 	;	else if GetKeyState("Lbutton", "P") && !GetKeyState("Lbutton") 
 	;		send {click Down}  		
 
 		if !GetKeyState("Rbutton", "P") && GetKeyState("Rbutton")
-			send {click Up Right} 	
+			send {blind}{click Up Right} 	
 	;	else if GetKeyState("Rbutton", "P") && !GetKeyState("Rbutton") 
 	;		send {click Down Right}  			
 		return
@@ -335,7 +335,7 @@ return
 ~Lbutton Up::
 sleep(2)
 if !GetKeyState("Lbutton", "P") && GetKeyState("Lbutton") 
-	send {click left up}	
+	send {blind}{click left up}	
 return
 
 #If, (BufferInputFast.isInputBlockedOrBuffered() && WinActive(GameIdentifier))

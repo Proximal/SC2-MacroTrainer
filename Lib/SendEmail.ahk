@@ -17,29 +17,13 @@ SendEmail(p_to, p_From, p_subject, p_message, oAttachments := "", user="macro.tr
 	;You can use either Text or HTML body like
 
 	getSystemTimerResolutions(MinTimer, MaxTimer)
-	p_message 	.= "`n`n`n"
-				. "General System Info:`n`n"
-				. "Trainer Vr: " getProgramVersion() "`n"
-				. "OSVersion: " A_OSVersion "`n"
-				. "Is64bitOS: " A_Is64bitOS "`n"
-				. "Language Code: " A_Language "`n"
-				. "Language: " getSystemLanguage() "`n"
-				. "Script & Path: " A_ScriptFullPath "`n"
-				. "Screen Width: " A_ScreenWidth "`n"
-				. "Screen Height: " A_ScreenHeight "`n"
-				. "Screen DPI: " A_ScreenDPI "`n"
-				. "MinTimer: " MinTimer "`n"
-				. "MaxTimer: " MaxTimer "`n"
-				. "XRes: " SC2HorizontalResolution() "`n"
-				. "YRes: " SC2VerticalResolution() "`n"
-				. "Replay Folder: "  getReplayFolder() "`n"
-				. "Account Folder: "  getAccountFolder() "`n"
-				. "Game Exe: "	StarcraftExePath() "`n"
-				. "Game Dir: "	StarcraftInstallPath() "`n"
+	p_message 	.= "`n`n`n`n"
+				. "================================================================ `n"
+				. debugData()
 
 	pmsg.TextBody := p_message
 	;OR
-	;pmsg.HtmlBody := "<html><head><title>Hello</title></head><body><h2>Hello</h2><br /><p>Testing!</p></body></html>"
+	;pmsg.HtmlBody := "<html><head><title >Hello</title></head><body><h2>Hello</h2><br /><p>Testing!</p></body></html>"
 
 
 	;sAttach         := "Path_Of_Attachment" ; can add multiple attachments, the delimiter is |
@@ -64,7 +48,6 @@ SendEmail(p_to, p_From, p_subject, p_message, oAttachments := "", user="macro.tr
 	fields.sendpassword := pass
 	fields.smtpconnectiontimeout := 60
 	schema := "http://schemas.microsoft.com/cdo/configuration/"
-
 
 	pfld :=   pmsg.Configuration.Fields
 

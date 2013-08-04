@@ -5,7 +5,7 @@
 
 ;The new method using Numget is around 35% faster!!!
 
-;Bytes can take 1,2,3,4 or 8 or can simply pass "Char", "float", "Double" etc as needed
+;Bytes can take 1,2,3,4 or 8
 ReadMemory(MADDRESS=0,PROGRAM="",BYTES=4)
 {
    Static OLDPROC, ProcessHandle
@@ -18,16 +18,16 @@ ReadMemory(MADDRESS=0,PROGRAM="",BYTES=4)
       ,"Int",16,"Int",0,"UInt",pid) : 0)
    }
    if (BYTES = 1)
-         Tpye := "Char"
+      Type := "Char"
    else if (BYTES = 2)
       Type := "Short"
    else if (BYTES = 4)
       Type := "Int"
    else if (BYTES = 8)
       Type := "Int64"
-   else Type := BYTES
+   else Type := "Int"
    If (ProcessHandle) && DllCall("ReadProcessMemory","UInt",ProcessHandle,"UInt",MADDRESS,"Str",MVALUE,"UInt",BYTES,"UInt *",0)
-         return numget(MVALUE, 0, Type)
+      return numget(MVALUE, 0, Type)
    return !ProcessHandle ? "Handle Closed:" closed : "Fail"
 }
 
