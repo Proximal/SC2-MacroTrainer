@@ -142,7 +142,7 @@
 ;   program) to identify any changes.
 ;
 ;-------------------------------------------------------------------------------
-HotkeyGUI(p_Owner=0,p_Hotkey="",p_Limit="",p_OptionalAttrib=False,p_Title="", p_CheckModifers = 0, p_DisableModifiers = 0)
+HotkeyGUI(p_Owner=0,p_Hotkey="",p_Limit="", p_Title="", p_CheckModifers = 0, p_DisableModifiers = 0, p_CheckOptionals = 0, p_DisableOptionals = 0)
     {
 ;	Gui, Options:+Disabled
     ;[====================]
@@ -444,44 +444,59 @@ HotkeyGUI(p_Owner=0,p_Hotkey="",p_Limit="",p_OptionalAttrib=False,p_Title="", p_
        ,Alt
 
     ;-- Optional Attributes
+
+
     Static HG_OptionalAttributesGB
     gui %s_GUI%:Add
        ,GroupBox
        ,xs+160 y10 w170 h10 vHG_OptionalAttributesGB
        ,Optional Attributes
 
+    Dstate := (p_DisableOptionals & 1)
+    Cstate := (p_CheckOptionals & 1)
+
+
     Static HG_NativeOption
     gui %s_GUI%:Add
        ,CheckBox
-       ,xp+10 yp+20 Disabled Section vHG_NativeOption gHotkeyGUI_UpdateHotkey
+       ,xp+10 yp+20 Section vHG_NativeOption gHotkeyGUI_UpdateHotkey disabled%Dstate% checked%Cstate%
        ,~ (Native)
+
+    Dstate := (p_DisableOptionals & 2)
+    Cstate := (p_CheckOptionals & 2)
 
     Static HG_WildcardOption
     gui %s_GUI%:Add
        ,CheckBox
-       ,xs Disabled vHG_WildcardOption gHotkeyGUI_UpdateHotkey
+       ,xs vHG_WildcardOption gHotkeyGUI_UpdateHotkey disabled%Dstate% checked%Cstate%
        ,*  (Wildcard)
+
+    Dstate := (p_DisableOptionals & 4)
+    Cstate := (p_CheckOptionals & 4)
 
     Static HG_LeftPairOption
     gui %s_GUI%:Add                                                 ;-- Button9
        ,CheckBox
-       ,xs Disabled vHG_LeftPairOption gHotkeyGUI_LeftPair
+       ,xs vHG_LeftPairOption gHotkeyGUI_LeftPair disabled%Dstate% checked%Cstate%
        ,< (Left pair only)
+
+    Dstate := (p_DisableOptionals & 8)
+    Cstate := (p_CheckOptionals & 8)
 
     Static HG_RightPairOption
     gui %s_GUI%:Add                                                 ;-- Button10
        ,CheckBox
-       ,xs Disabled vHG_RightPairOption gHotkeyGUI_RightPair
+       ,xs vHG_RightPairOption gHotkeyGUI_RightPair disabled%Dstate% checked%Cstate%
        ,> (Right pair only)
 
     ;-- Enable "Optional Attributes"?
-    if p_OptionalAttrib
-        {
-        GUIControl %s_GUI%:Enable,HG_NativeOption
-       GUIControl %s_GUI%:Enable,HG_WildcardOption
-        GUIControl %s_GUI%:Enable,HG_LeftPairOption
-        GUIControl %s_GUI%:Enable,HG_RightPairOption
-        }
+  ;  if p_OptionalAttrib
+   ;     {
+    ;    GUIControl %s_GUI%:Enable,HG_NativeOption
+     ;  GUIControl %s_GUI%:Enable,HG_WildcardOption
+      ;  GUIControl %s_GUI%:Enable,HG_LeftPairOption
+       ; GUIControl %s_GUI%:Enable,HG_RightPairOption
+   ;     }
 		
     ;-- Resize the Modifier and Optional Attributes group boxes
     GUIControlGet $Group1Pos,%s_GUI%:Pos,HG_OptionalAttributesGB
@@ -747,6 +762,7 @@ Return
     ;-- Initialize
     HG_Hotkey:=""
     HG_HKDesc:=""
+    closingBracket := ""
 
     ;-- Options
     if HG_NativeOption
@@ -755,44 +771,54 @@ Return
     if HG_WildcardOption
         HG_Hotkey.="*"
 
-    if HG_LeftPairOption
+    if (HG_LeftPairOption && (HG_CtrlModifier || HG_ShiftModifier || HG_WinModifier || HG_AltModifier) )
     {
-        HG_Hotkey.="<"
-        HG_HKDesc.="Left "
+        HotkeySide := "<"
+        DescSide := "L."
     }
-    if HG_RightPairOption
+
+    if (HG_RightPairOption && (HG_CtrlModifier || HG_ShiftModifier || HG_WinModifier || HG_AltModifier) )
     {
-        HG_Hotkey.=">"
-        HG_HKDesc.="Right "
+        HotkeySide := ">"
+        DescSide := "R."
     }
 
     ;-- Modifiers
     if HG_CtrlModifier
         {
-        HG_Hotkey.="^"
-        HG_HKDesc.="Ctrl + "
+            HG_Hotkey .= HotkeySide "^"
+            HG_HKDesc .= DescSide "Ctrl"
         }
 
     if HG_ShiftModifier
         {
-        HG_Hotkey.="+"
-        HG_HKDesc.="Shift + "
+            HG_Hotkey.= HotkeySide "+"
+            if (HG_CtrlModifier)
+              HG_HKDesc .= " + "
+            HG_HKDesc.= DescSide "Shift"
         }
 
     if HG_WinModifier
         {
-        HG_Hotkey.="#"
-        HG_HKDesc.="Win + "
+            HG_Hotkey.= HotkeySide "#"
+            if (HG_CtrlModifier || HG_ShiftModifier)
+              HG_HKDesc .= " + "
+            HG_HKDesc.= DescSide "Win"
         }
 
     if HG_AltModifier
         {
-        HG_Hotkey.="!"
-        HG_HKDesc.="Alt + "
+            HG_Hotkey.= HotkeySide "!"
+            if (HG_CtrlModifier || HG_ShiftModifier || HG_WinModifier)
+              HG_HKDesc .= " + "
+            HG_HKDesc.= DescSide "Alt"
         }
 
-    HG_Hotkey.=HG_Key
-    HG_HKDesc.=HG_Key
+      if (HG_CtrlModifier || HG_ShiftModifier || HG_WinModifier || HG_AltModifier)
+        HG_HKDesc .= " + "
+    HG_Hotkey .= HG_Key
+    HG_HKDesc .= HG_Key
+
 
     ;-- Update Hotkey and HKDescr fields
     GUIControl %s_GUI%:,Edit1,%HG_Hotkey%

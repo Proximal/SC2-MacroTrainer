@@ -68,7 +68,6 @@ SetWorkingDir %A_ScriptDir%  ; Ensures a consistent starting directory.
 #NoEnv  ; Recommended for performance and compatibility with future AutoHotkey releases.
 #MaxThreads 20 ; don't know if this will affect anything
 SetStoreCapslockMode, off ; needed in case a user bind something to the capslock key in sc2 - other AHK always sends capslock to adjust for case.
-OnExit, ShutdownProcedure
 ListLines(False) 
 
 Menu, Tray, Icon 
@@ -79,6 +78,8 @@ if !A_IsAdmin
 	else try  Run *RunAs "%A_ScriptFullPath%"
 	ExitApp
 }
+OnExit, ShutdownProcedure ; have this after as as was causing Chinese file writing due to config file variable not being set (i think)
+
 ; Process, Priority, , H
 Process, Priority, , A
 Menu Tray, Add, &Settings && Options, options_menu
@@ -7010,8 +7011,8 @@ ReleaseAllModifiers()
 	list = LControl|RControl|LShift|RShift|LAlt|RAlt|LButton|RButton|MButton 
 	Loop Parse, list, | ;could just not bother with the getkeystate check and send UP button regardless
 	{ 
-		if (!GetKeyState(A_LoopField, "P") && GetKeyState(A_LoopField)) 	;fix sticky key problem
-			send {Blind}{%A_LoopField% up}       ; {Blind} is added.
+	;	if (!GetKeyState(A_LoopField, "P") && GetKeyState(A_LoopField)) 	;fix sticky key problem
+			send {Blind}{%A_LoopField% up}       ; {Blind} is added. Just send every key
 	} 
 	SetKeyDelay %KeyDelay%
 	SetMouseDelay %MouseDelay%   
@@ -8441,7 +8442,7 @@ CreatepBitmaps(byref a_pBitmap, a_unitID)
 	a_pBitmap["RedX16"] := Gdip_CreateBitmapFromFile(A_Temp "\RedX16.png")
 }
 
-
+/*
 
 ;	This Timer is called after a sendinput/block off 
 ; 	it will stop after 5 goes, so it doesnt have to run in the background all the time
@@ -8462,7 +8463,7 @@ CreatepBitmaps(byref a_pBitmap, a_unitID)
 		ControlShiftTimerCount := 0
 	}
 	return
-
+*/
 /*
 	This is activated when the user presses 0-9 
 	the problem is rarely the shift or ctrl (and alt but alt is used less, so occurs even less often) gets stuck down
@@ -8471,7 +8472,7 @@ CreatepBitmaps(byref a_pBitmap, a_unitID)
 	still wont address the problem when the user mouse clicks and such
 
 */
-	
+/*	
 	; this should be changed to check physcial against SC2 memory modifiers
 	; should used sendBlind aswell
   g_ControlShiftCheck:
@@ -8486,6 +8487,7 @@ CreatepBitmaps(byref a_pBitmap, a_unitID)
    ;	send % BufferInputFast.getModifierState(ControlShiftCheckHotkey) BufferInputFast.stripModifiers(ControlShiftCheckHotkey)
    	send % ControlShiftCheckHotkey 
     return
+*/
 
 ;	Some commands which can come in handy for some functions (obviously have to use within the hotkey command)
 ; 	#MaxThreadsBuffer on 		- this will buffer a hotkeys own key for 1 second, hence this is more in series - subsequent threads will begin when the previous one finishes
@@ -9105,7 +9107,7 @@ isUnitNearUnit(Queen, Hatch, MaxXYdistance) ; takes objects which must have keys
  }
  numGetIsHatchInjectedFromMemDump(ByRef MemDump, Unit)
  {	global ; 1 byte = 18h chrono for protoss structures, 48h when injected for zerg -  10h normal state
- 	return (48 = numget(MemDump, Unit * S_uStructure + O_uInjectState, "UChar")) ? 1 : 0
+ 	return (4 = numget(MemDump, Unit * S_uStructure + O_uInjectState, "UChar")) ? 1 : 0
  }
 
 
@@ -9790,6 +9792,8 @@ debugData()
 	. A_Tab "Count: " getSelectionCount() "`n"
 	. A_Tab "Owner: " getUnitOwner(getSelectedUnitIndex()) "`n"
 	. A_Tab "Timer: " getUnitTimer(getSelectedUnitIndex()) "`n"
+	. A_Tab "Injected: " isHatchInjected(getSelectedUnitIndex()) "`n"
+	. A_Tab "Chronoed: " isUnitChronoed(getSelectedUnitIndex()) "`n"
 	. A_Tab "Mmap Radius: " getMiniMapRadius(getSelectedUnitIndex()) "`n" 
 	. A_Tab "Energy: " getUnitEnergy(getSelectedUnitIndex()) "`n" 
 	. A_Tab "PosZ Round: " round(getUnitPositionZ(unit), 1) "`n"

@@ -16,13 +16,14 @@ Class BufferInputFast
 		#If
 		if (Key != EmergencyRestartKey)
 		{
-			Try Hotkey, %EmergencyRestartKey%, Off 	; disable the previous key if it exists
+			Try Hotkey, *%EmergencyRestartKey%, Off 	; disable the previous key if it exists
 													; note, this may disable some other function hotkey
 													; if the user has changed both keys 
 													; due to the where I actually call this function
 													; to ensure the emergency restart hotkey is never
 													; overwritten by another function hotkey
-			Try Hotkey, %Key%, %Label%, On, %Options%
+			; use * incase a key gets stuck down										
+			Try Hotkey, *%Key%, %Label%, On, %Options%
 		}
 		EmergencyRestartKey := Key
 		return
@@ -59,14 +60,30 @@ Class BufferInputFast
 		}
 		return			
 	}
+	; takes about 8.5 ms for modifier state to change via sendinput 
+	; ie to have readmodiferstate reflect true state
+	; takes 0.016 ms for state to change via controlsend/postmessage
+	; takes 0.006 ms to change when user physically presses/releases a button
 	releaseModifiers()
 	{
 		if GetKeyState("Shift", "P")
+		{
+			sleep := True
 			sendInput {Blind}{Shift up}
+		}
 		if GetKeyState("Ctrl", "P")
+		{
+			sleep := True
 			sendInput {Blind}{ctrl up}	
+		}
 		if GetKeyState("Alt", "P")
+		{
+			sleep := True
 			sendInput {Blind}{alt up}
+		}
+		; sleep to prevent out of order messages due to much lower latency with PostMessage
+		if (sleep && sendMethod() = "PostMessage")
+			sleep, 15
 		return
 	}	
 
@@ -102,7 +119,7 @@ Class BufferInputFast
 	disableBufferingAndBlocking()
 	{
 	;	shift = 1, ctrl = 2, alt = 4 (and add them together)
-
+		sleep 10
 		ModifierState := readModifierState() ; read from sc2 memory
 
 		, Shift := (1 & ModifierState)
@@ -209,7 +226,8 @@ Class BufferInputFast
 					SendClick("", X, Y, 0) ;	send {click  %x%, %y%, 0} ;move the mouse
 				Button := Button.Button 
 			}
-			send(Button)	;send % Button
+			;send(Button)	
+			MTsend(Button)
 			; apparently sendevent should be able to trigger the scripts own hotkeys
 			; but this didn't seem to be the case when testing
 			; so not going to bother to do an if Sendevent check
@@ -217,7 +235,8 @@ Class BufferInputFast
 				gosub g_temporarilyDisableAutoWorkerProductionOriginUserInputBufferSend
 		}
 		if MouseHasMoved
-			sendclick("", Xstart, Ystart, 0)	;send {click  %Xstart%, %Ystart%, 0} 
+			;sendclick("", Xstart, Ystart, 0)	
+			send {click  %Xstart%, %Ystart%, 0} 
 		if DisableBuffering
 			BufferInputFast.disableBufferingAndBlocking()
 
@@ -333,20 +352,46 @@ return
 ; as this hotkey will only fire when no modifers are used
 ; the other one will only fire WHEN modifiers are present due to this hotkey
 ~Lbutton Up::
-sleep(2)
-if !GetKeyState("Lbutton", "P") && GetKeyState("Lbutton") 
+;sleep(2)
+sleep, 3
+if !GetKeyState("Lbutton", "P") && (GetKeyState("Lbutton") || ( IsMouseButtonActive() & 1) )
 	send {blind}{click left up}	
 return
 
+; so the right side modifiers are free to be used for emergency restart
+; no one should accidentally press these keys anyway
 #If, (BufferInputFast.isInputBlockedOrBuffered() && WinActive(GameIdentifier))
-*Shift::return 
-*shift up::return
+*LShift::return 
+*Lshift up::return
 
-*Ctrl::return 
-*Ctrl up::return
+*LCtrl::return 
+*LCtrl up::return
 
-*Alt::return 
-*Alt up::return
+*LAlt::return 
+*LAlt up::return
+
+*Lwin::return 
+
+; Can't have lwinup here, otherwise prevents the disable 'lwin' ability. weird
+;*Lwin up::return
+
+#If, (!BufferInputFast.isInputBlockedOrBuffered() && WinActive(GameIdentifier))
+~*shift up::
+sleep, 2
+if !GetKeyState("shift", "P") && (GetKeyState("shift") || (readModifierState() & 1) )
+	send {blind}{shift up}	
+return
+~*Ctrl up::
+sleep, 2
+if !GetKeyState("Ctrl", "P") && (GetKeyState("Ctrl") || (readModifierState() & 2))
+	send {blind}{Ctrl up}	
+return
+~*Alt up::
+sleep, 2
+if !GetKeyState("Ctrl", "P") && (GetKeyState("Ctrl") || (readModifierState() & 4))
+	send {blind}{Alt up}
+return
+
 #If
 
 g_class_BufferInputFastLabelSkip>:

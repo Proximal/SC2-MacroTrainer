@@ -31,7 +31,13 @@ sleep(period := 1, Mode := "")
 		DllCall("QueryPerformanceCounter", "Int64*", Start)
 		Finish := Start + ( Frequency * (period/1000))
 		loop 
+		{
+			; Noticed a weird thing which would cause major system lag when the lwin key (and only the lwin keybind)
+			; was activated during a sleep routine
+			; sleep -1 fixed it
+			sleep, -1
 			DllCall("QueryPerformanceCounter", "Int64*", Current) 		;	eats the cpu
+		}
 		until (Current >= Finish)
 		SetBatchLines, %pBatchLines%
 ;		if PriorityAltered ; restore original priority
