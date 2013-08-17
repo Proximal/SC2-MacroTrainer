@@ -352,7 +352,6 @@ return
 ; as this hotkey will only fire when no modifers are used
 ; the other one will only fire WHEN modifiers are present due to this hotkey
 ~Lbutton Up::
-;sleep(2)
 sleep, 3
 if !GetKeyState("Lbutton", "P") && (GetKeyState("Lbutton") || ( IsMouseButtonActive() & 1) )
 	send {blind}{click left up}	

@@ -67,7 +67,6 @@ SetWorkingDir %A_ScriptDir%  ; Ensures a consistent starting directory.
 #NoEnv  ; Recommended for performance and compatibility with future AutoHotkey releases.
 #MaxThreads 20 ; don't know if this will affect anything
 SetStoreCapslockMode, off ; needed in case a user bind something to the capslock key in sc2 - other AHK always sends capslock to adjust for case.
-OnExit, ShutdownProcedure
 ListLines(False) 
 SetControlDelay -1 	; make this global so buttons dont get held down during controlclick
 Menu, Tray, Icon 
@@ -78,6 +77,7 @@ if !A_IsAdmin
 	else try  Run *RunAs "%A_ScriptFullPath%"
 	ExitApp
 }
+OnExit, ShutdownProcedure
 ; Process, Priority, , H
 Process, Priority, , A
 Menu Tray, Add, &Settings && Options, options_menu
@@ -408,7 +408,18 @@ Return
 
 g_LbuttonDown:	;Get the location of a dragbox
 	MouseGetPos, MLDownX, MLDownY
-Return	
+g_RbuttonDown:
+LastMousePress(A_TickCount)
+Return
+
+LastMousePress(newTick := 0)
+{
+	static LastPressTick
+	if !newTick
+		return A_TickCount - LastPressTick
+	LastPressTick := newTick
+	return
+}	
 
 g_GiveLocalPalyerResources:
 	SetPlayerMinerals()
@@ -480,10 +491,9 @@ ReleaseModifiersOld(Beep = 1, CheckIfUserPerformingAction = 0, AdditionalKeys = 
 }
 */
 
-ReleaseModifiers(Beep = 1, CheckIfUserPerformingAction = 0, AdditionalKeys = "", timeout := "") ;timout in ms
+ReleaseModifiers(Beep = 1, CheckIfUserPerformingAction = 0, AdditionalKeys = "", CheckAllKeys := 0, timeout := "", LastMousePress := 0) ;timout in ms
 {
-	PreviousBatchLines := A_BatchLines
-	SetBatchLines, -1
+
 	startTime := A_Tickcount
 
 	While getkeystate("Shift", "P") || getkeystate("Control", "P") || getkeystate("Alt", "P")
@@ -494,15 +504,17 @@ ReleaseModifiers(Beep = 1, CheckIfUserPerformingAction = 0, AdditionalKeys = "",
 	|| getkeystate("RButton", "P") || getkeystate("RButton", "L")
 	|| readModifierState() 
 	||  (AdditionalKeys && isaKeyPhysicallyOrLogicallyDown(AdditionalKeys))  ; ExtraKeysDown should actually return the actual key
+	||  (CheckAllKeys && checkAllKeyStates())  
 	|| (isPerformingAction := CheckIfUserPerformingAction && isUserPerformingAction()) ; have this function last as it can take the longest if lots of units selected
+	|| (LastMousePress && LastMousePress() < LastMousePress)
 	{
 		if (timeout && A_Tickcount - startTime >= timeout)
 			return 1 ; was taking too long
 		if (A_Index = 1 && Beep && !isPerformingAction)	;wont beep if casting or burrow AKA 'extra key' is down
 			SoundPlay, %A_Temp%\ModifierDown.wav	
-		sleep(5)
+		sleep, 1 ;sleep(5)
 	}
-	SetBatchLines, %PreviousBatchLines%
+
 	return
 }
 
@@ -919,118 +931,121 @@ Cast_ChronoStructure(StructureToChrono)
 	, HumanMouse, HumanMouseTimeLo, HumanMouseTimeHi, NextSubgroupKey
 
 	oStructureToChrono := [], a_gateways := [], a_gatewaysConvertingToWarpGates := [], a_WarpgatesOnCoolDown := []
-	MouseGetPos, start_x, start_y
-	HighlightedGroup := getSelectionHighlightedGroup()
-	MTsend("^" CG_control_group CG_nexus_Ctrlgroup_key)
-	sleep(5) ;needs a few ms to update the selection buffer
 
-	numGetUnitSelectionObject(oSelection)
-	for index, object in oSelection.units
+	numGetControlGroupObject(oNexusGroup, CG_nexus_Ctrlgroup_key)
+	for index, unit in oNexusGroup.units
 	{
-		if (object.type = A_unitID.Nexus && !isUnderConstruction(unit))
-			nexus_chrono_count += Floor(getUnitEnergy(object.UnitIndex)/25)
-		if !isUnitAStructure(object.unitIndex) ; as units will have higher priority and appear in group 0/top left control card - and this isnt compatible with this macro
-		{
-			dspeak("Error in Base Control Group.")
-			return 
-		}
+		if (unit.type = A_unitID.Nexus && !isUnderConstruction(unit.unitIndex))
+			nexus_chrono_count += Floor(unit.energy/25)
+;		cant really do this check with a control group
+;		if !isUnitAStructure(object.unitIndex) ; as units will have higher priority and appear in group 0/top left control card - and this isnt compatible with this macro
+;		{
+;			dspeak("Error in Base Control Group.")
+;			return 
+;		}
 	}
 
-	IF nexus_chrono_count
+	IF !nexus_chrono_count
+		return
+
+	Unitcount := DumpUnitMemory(MemDump)
+
+	if (StructureToChrono = A_UnitID.WarpGate)
 	{
-
-		Unitcount := DumpUnitMemory(MemDump)
-
-		if (StructureToChrono = A_UnitID.WarpGate)
+		while (A_Index <= Unitcount)
 		{
-			while (A_Index <= Unitcount)
+			unit := A_Index - 1
+			if isTargetDead(TargetFilter := numgetUnitTargetFilter(MemDump, unit)) || !isOwnerLocal(numgetUnitOwner(MemDump, Unit))
+			|| isTargetUnderConstruction(TargetFilter)
+		       Continue
+	    	Type := numgetUnitModelType(numgetUnitModelPointer(MemDump, Unit))
+	    	IF ( type = A_unitID["WarpGate"] && !isUnitChronoed(unit)) && (cooldown := getWarpGateCooldown(unit))
+				a_WarpgatesOnCoolDown.insert({"Unit": unit, "Cooldown": cooldown})
+			Else IF (type = A_unitID["Gateway"] && !isUnitChronoed(unit))
 			{
-				unit := A_Index - 1
-				if isTargetDead(TargetFilter := numgetUnitTargetFilter(MemDump, unit)) || !isOwnerLocal(numgetUnitOwner(MemDump, Unit))
-				|| isTargetUnderConstruction(TargetFilter)
-			       Continue
-		    	Type := numgetUnitModelType(numgetUnitModelPointer(MemDump, Unit))
-		    	IF ( type = A_unitID["WarpGate"] && !isUnitChronoed(unit)) && (cooldown := getWarpGateCooldown(unit))
-					a_WarpgatesOnCoolDown.insert({"Unit": unit, "Cooldown": cooldown})
-				Else IF (type = A_unitID["Gateway"] && !isUnitChronoed(unit))
-				{
-					if isGatewayConvertingToWarpGate(unit)
-						a_gatewaysConvertingToWarpGates.insert(unit) 
-					else 
-					{		
-						progress :=  getBuildStats(unit, QueueSize)	; need && QueueSize as if progress reports 0 when idle it will be added to the list
-						if ( (progress < .95 && QueueSize) || QueueSize > 1) ; as queue size of 1 means theres only 1 item being produced
-							a_gateways.insert({Unit: unit, QueueSize: QueueSize, progress: progress})
-					}	
-
-				}															  
-			}	
-
-				if a_WarpgatesOnCoolDown.MaxIndex()
-					Sort2DArray(a_WarpgatesOnCoolDown, "Cooldown", 0)	;so warpgates with longest cooldown get chronoed first
-				if a_gatewaysConvertingToWarpGates.MaxIndex()	
-					RandomiseSimpleArray(a_gatewaysConvertingToWarpGates)
-				if a_gateways.MaxIndex()
-				{
-					Sort2DArray(a_gateways, "progress", 1) ; so the strucutes with least progress gets chronoed (providing have same queue size)
-					Sort2DArray(a_gateways, "QueueSize", 0) ; so One with the longest queue gets chronoed first
-				}
-
-				for index, Warpgate in a_WarpgatesOnCoolDown 			; so Warpgates will get chronoed 1st
-					oStructureToChrono.insert({Unit: Warpgate.Unit})			; among warpgates longest cooldown gets done first
-
-				for index, gateway in a_gatewaysConvertingToWarpGates 	; gateways converting to warpgates get chronoed next
-					oStructureToChrono.insert({Unit:gateway}) 					; among these gateways, order is random
-
-				for index, object in a_gateways 						; gateways producing a unit come last
-					oStructureToChrono.insert({Unit: object.Unit})				; among these it goes first by queue size, then progress
-		}
-		else 
-		{
-			while (A_Index <= Unitcount)
-			{
-				unit := A_Index - 1
-				if isTargetDead(TargetFilter := numgetUnitTargetFilter(MemDump, unit)) || !isOwnerLocal(numgetUnitOwner(MemDump, Unit))
-				|| isTargetUnderConstruction(TargetFilter)
-			       Continue
-		    	Type := numgetUnitModelType(numgetUnitModelPointer(MemDump, Unit))
-		    	IF ( type = StructureToChrono && !isUnitChronoed(unit) ) 
-				{	
+				if isGatewayConvertingToWarpGate(unit)
+					a_gatewaysConvertingToWarpGates.insert(unit) 
+				else 
+				{		
 					progress :=  getBuildStats(unit, QueueSize)	; need && QueueSize as if progress reports 0 when idle it will be added to the list
 					if ( (progress < .95 && QueueSize) || QueueSize > 1) ; as queue size of 1 means theres only 1 item being produced
-						oStructureToChrono.insert({Unit: unit, QueueSize: QueueSize, progress: progress})
-				}
-			}
-			;	structures with the longest queues will be chronoed first
-			; 	if queue size is equal, chronoed by progress (least progressed chronoed 1st)
+						a_gateways.insert({Unit: unit, QueueSize: QueueSize, progress: progress})
+				}	
 
-			Sort2DArray(oStructureToChrono, "progress", 1) ; so the strucutes with least progress gets chronoed (providing have same queue size)
-			Sort2DArray(oStructureToChrono, "QueueSize", 0) ; so One with the longest queue gets chronoed first
-		}
+			}															  
+		}	
 
-		max_chronod := nexus_chrono_count - CG_chrono_remainder
-
-		for  index, oject in oStructureToChrono
+		if a_WarpgatesOnCoolDown.MaxIndex()
+			Sort2DArray(a_WarpgatesOnCoolDown, "Cooldown", 0)	;so warpgates with longest cooldown get chronoed first
+		if a_gatewaysConvertingToWarpGates.MaxIndex()	
+			RandomiseSimpleArray(a_gatewaysConvertingToWarpGates)
+		if a_gateways.MaxIndex()
 		{
-			If (A_index > max_chronod)
-				Break	
-			if ChronoBoostSleep
-				sleep(ChronoBoostSleep)
-			getUnitMiniMapMousePos(oject.unit, click_x, click_y)
-			MTsend(chrono_key)
-			If HumanMouse
-				MouseMoveHumanSC2("x" click_x "y" click_y "t" rand(HumanMouseTimeLo, HumanMouseTimeHi))
-			send {click Left %click_x%, %click_y%}
+			Sort2DArray(a_gateways, "progress", 1) ; so the strucutes with least progress gets chronoed (providing have same queue size)
+			Sort2DArray(a_gateways, "QueueSize", 0) ; so One with the longest queue gets chronoed first
 		}
-		If HumanMouse
-			MouseMoveHumanSC2("x" start_x "y" start_y "t" rand(HumanMouseTimeLo, HumanMouseTimeHi))
-		else MouseMove, start_x, start_y
+
+		for index, Warpgate in a_WarpgatesOnCoolDown 			; so Warpgates will get chronoed 1st
+			oStructureToChrono.insert({Unit: Warpgate.Unit})			; among warpgates longest cooldown gets done first
+
+		for index, gateway in a_gatewaysConvertingToWarpGates 	; gateways converting to warpgates get chronoed next
+			oStructureToChrono.insert({Unit:gateway}) 					; among these gateways, order is random
+
+		for index, object in a_gateways 						; gateways producing a unit come last
+			oStructureToChrono.insert({Unit: object.Unit})				; among these it goes first by queue size, then progress
 	}
-	MTsend(CG_control_group)
-	if HighlightedGroup
-		sleep(2) ; After restoring a control group, needs at least 1 ms so tabs will register
-	while (A_Index <= HighlightedGroup)
-		MTsend(NextSubgroupKey)
+	else 
+	{
+		while (A_Index <= Unitcount)
+		{
+			unit := A_Index - 1
+			if isTargetDead(TargetFilter := numgetUnitTargetFilter(MemDump, unit)) || !isOwnerLocal(numgetUnitOwner(MemDump, Unit))
+			|| isTargetUnderConstruction(TargetFilter)
+		       Continue
+	    	Type := numgetUnitModelType(numgetUnitModelPointer(MemDump, Unit))
+	    	IF ( type = StructureToChrono && !isUnitChronoed(unit) ) 
+			{	
+				progress :=  getBuildStats(unit, QueueSize)	; need && QueueSize as if progress reports 0 when idle it will be added to the list
+				if ( (progress < .95 && QueueSize) || QueueSize > 1) ; as queue size of 1 means theres only 1 item being produced
+					oStructureToChrono.insert({Unit: unit, QueueSize: QueueSize, progress: progress})
+			}
+		}
+		;	structures with the longest queues will be chronoed first
+		; 	if queue size is equal, chronoed by progress (least progressed chronoed 1st)
+
+		Sort2DArray(oStructureToChrono, "progress", 1) ; so the strucutes with least progress gets chronoed (providing have same queue size)
+		Sort2DArray(oStructureToChrono, "QueueSize", 0) ; so One with the longest queue gets chronoed first
+	}
+	
+	If !oStructureToChrono.maxIndex()
+		return
+	
+	MouseGetPos, start_x, start_y
+	HighlightedGroup := getSelectionHighlightedGroup()
+	max_chronod := nexus_chrono_count - CG_chrono_remainder
+	MTsend("^" CG_control_group CG_nexus_Ctrlgroup_key)
+
+	for  index, oject in oStructureToChrono
+	{
+		If (A_index > max_chronod)
+			Break	
+		
+		sleep(ChronoBoostSleep)
+		getUnitMiniMapMousePos(oject.unit, click_x, click_y)
+		MTsend(chrono_key)
+		If HumanMouse
+			MouseMoveHumanSC2("x" click_x "y" click_y "t" rand(HumanMouseTimeLo, HumanMouseTimeHi))
+		MTclick(click_x, click_y)
+	}
+	If HumanMouse
+		MouseMoveHumanSC2("x" start_x "y" start_y "t" rand(HumanMouseTimeLo, HumanMouseTimeHi))
+	else if (sendMethod() != "PostMessage")
+		MouseMove, start_x, start_y
+	
+	sendSequence := CG_control_group
+	loop % HighlightedGroup
+		sendSequence .= NextSubgroupKey
+	MTsend(sendSequence)
 	Return 
 }
 AutoGroupIdle:
@@ -1043,15 +1058,12 @@ Auto_Group:
 	AutoGroup(A_AutoGroup, AG_Delay)
 	Return
 
-AutoGroup(byref A_AutoGroup, AGDelay = 0)	;byref slightly faster...
+AutoGroup(byref A_AutoGroup, AGDelay = 0)
 { 	global GameIdentifier, aButtons
 	static PrevSelectedUnits, SelctedTime
-
-	BatchLines := A_BatchLines
 	Thread, NoTimers, true
-	SetBatchLines, -1
+
 	numGetUnitSelectionObject(oSelection)
-	selectedUnits := oSelection.Count
 	, SelectedTypes := oSelection.Types
 	for index, Unit in oSelection.Units
 	{
@@ -1091,9 +1103,9 @@ AutoGroup(byref A_AutoGroup, AGDelay = 0)	;byref slightly faster...
 		PrevSelectedUnits := CurrentlySelected
 		SelctedTime := A_Tickcount
 	}
-	if (A_Tickcount - SelctedTime >= AGDelay) && !WrongUnit  && (CtrlType_i = SelectedTypes) && (Player_Ctrl_GroupSet <> "") && WinActive(GameIdentifier) && !isGamePaused() ; note <> "" as there is group 0! cant use " Player_Ctrl_GroupSet "
-	{		;note, i use Alt as 'group 2' - so i have winactive here as i can 'alt tab out' thereby selecting a groupable unit and having the program send the command while outside sc2
-		Sort, CtrlGroupSet, D| N U			;also now needed due to possible AG_delay and user being altabbed out when sending
+	if (A_Tickcount - SelctedTime >= AGDelay) && oSelection.Count && !WrongUnit  && (CtrlType_i = SelectedTypes) && (Player_Ctrl_GroupSet <> "") && WinActive(GameIdentifier) && !isGamePaused() ; note <> "" as there is group 0! cant use " Player_Ctrl_GroupSet "
+	{		
+		Sort, CtrlGroupSet, D| N U			
 		CtrlGroupSet := RTrim(CtrlGroupSet, "|")	
 		Loop, Parse, CtrlGroupSet, |
 			AG_Temp_count := A_Index	;this counts the number of different ctrl groups ie # 1's  and 2's etc - must be only 1
@@ -1102,29 +1114,44 @@ AutoGroup(byref A_AutoGroup, AGDelay = 0)	;byref slightly faster...
 		;&& !getkeystate("LWin", "P") && !getkeystate("RWin", "P")		
 		;&& !getkeystate("Shift", "L") && !getkeystate("Control", "L") && !getkeystate("Alt", "L")
 		;&& !getkeystate("LWin", "L") && !getkeystate("RWin", "L")
+		&& !(getkeystate("Shift", "P") || getkeystate("Control", "P") || getkeystate("Alt", "P")
+		|| getkeystate("LWin", "P") || getkeystate("RWin", "P")	
+		|| getkeystate("LButton", "P") || getkeystate("RButton", "P")
+		|| readModifierState() 
+		|| checkAllKeyStates() )
 		{
-			if ReleaseModifiers(0, 0, "", 20)
-				return
 			BufferInputFast.BufferInput()
-			Sleep(2) ; give time for selection buffer to update. This along with blocking input should cover pre- and post-selection delay buffer changes
-			numGetUnitSelectionObject(oSelection)
-			for index, Unit in oSelection.Units
-				PostDelaySelected .= "," unit.UnitIndex
-			if (CurrentlySelected = PostDelaySelected)
+			
+			; if the user has a delay for grouping, this increases the risk of the unit selection changing before the
+			; sent ctrl+group command is received/processed. Therefore a small sleep here should make it more robust
+			; in theory this should not be required with a delay of 0 (for the most part), as there is the idle grouping
+			; timer which is continually running (be it with a low priority) so as soon as the units/buffer change, it
+			; will group them if required. And this should occur before anything help happens in game
+
+			if AGDelay
+			{
+				sleep 5 ; so rounds to no more than 10ms.
+				;Sleep(2) ; give time for selection buffer to update. This along with blocking input should cover pre- and post-selection delay buffer changes
+				numGetUnitSelectionObject(oSelection)
+				for index, Unit in oSelection.Units
+					PostDelaySelected .= "," unit.UnitIndex
+			}
+			if (!AGDelay || CurrentlySelected = PostDelaySelected)
 			{
 			;	send, +%Player_Ctrl_GroupSet%
 				MTsend("+" Player_Ctrl_GroupSet)
-				sleep(1) ; not sure if a sleep here would help prevent ctrl problems or cause issues notices 1 missrally after doing this, but that could have been a missclick
 				sleepOnExit := True
 				settimer, AutoGroupIdle, Off
 				settimer, Auto_Group, Off
-
+				soundplay *-1
 			}
 			BufferInputFast.Send()
 		}
 
 	}
-	SetBatchLines, %BatchLines%
+
+	; could do something like only sleep check when agdelay > 0 or when time since last check > 1ms 
+
 	Thread, NoTimers, false
 	; someone said that the autogroup would make there camera jump to the building
 	; probably due to slow computer and the program reading the unit hasn't been grouped and so 
@@ -1132,7 +1159,7 @@ AutoGroup(byref A_AutoGroup, AGDelay = 0)	;byref slightly faster...
 	if sleepOnExit  
 	{
 		sleep 50
-		settimer, AutoGroupIdle, On, -9999 ;on renables timers with previous period
+		settimer, AutoGroupIdle, On, -9999 ;on re-enables timers with previous period
 		settimer, Auto_Group, On		
 	}
 	Return
@@ -1204,8 +1231,25 @@ Cast_DisableInject:
 cast_ForceInject:
 cast_inject:
 	Inject_Label := A_ThisLabel
+	If (isMenuOpen() & !isChatOpen())
+		return ;as let the timer continue to check during auto injects
+
 	If (Inject_Label = "cast_ForceInject")
-		ReleaseModifiers(False, 1, HotkeysZergBurrow)
+	{
+	;	ReleaseModifiers(False, 1, HotkeysZergBurrow, 400, 30) return if true
+		startInjectWait := A_TickCount
+		while getkeystate("Shift", "P") || getkeystate("Control", "P") || getkeystate("Alt", "P")
+			|| getkeystate("LWin", "P") || getkeystate("RWin", "P")	
+			|| getkeystate("LButton", "P") || getkeystate("RButton", "P")
+			|| readModifierState() 
+			|| checkAllKeyStates()
+			|| (LastMousePress() < 40)
+		{
+			if (A_TickCount - startInjectWait > 600)
+				return
+			sleep 5
+		}
+	}
 	else ReleaseModifiers(1,0)	
 ;	Critical ;cant use with input buffer, as prevents hotkey threads launching and hence tracking input
 	Thread, NoTimers, true  ;cant use critical with input buffer, as prevents hotkey threads launching and hence tracking input
@@ -1213,8 +1257,7 @@ cast_inject:
 	Inject := []
 						;menu is always 1 regardless if chat is up
 						;chat is 0 when  menu is in focus
-	If (isMenuOpen() & !isChatOpen())
-		return ;as let the timer continue to check during auto injects
+
 
 	Inject := []
 	SetKeyDelay, %EventKeyDelay%	;this only affects send events - so can just have it, dont have to set delay to original as its only changed for current thread
@@ -1239,7 +1282,6 @@ cast_inject:
 	{
 		if (Inject_Label = "cast_ForceInject")
 		{
-			sleep(1)
 			numGetUnitSelectionObject(oSelection) 	; this additional check is needed in case you have a
 			for index, object in oSelection.units 	; non-self unit selected, other wise will continually
 				if (object.owner != a_LocalPlayer.slot) ; click middle screen not alloying you to type
@@ -1249,6 +1291,7 @@ cast_inject:
 		}
 
 		MTclick(A_ScreenWidth/2, A_ScreenHeight/2)
+		sleep 30 ; as there is a A_timeidle < 30 check in the cast inject larva for an auto inject
 	}
 
 
@@ -1310,18 +1353,17 @@ g_ForceInjectSuccessCheck:
 		TooManyBurrowedQueens := 1
 		SetKeyDelay, %EventKeyDelay%	;this only affects send events - so can just have it, dont have to set delay to original as its only changed for current thread
 		SetMouseDelay, %EventKeyDelay%	;again, this wont affect send click (when input/play is in use) - I think some other commands may be affected?
-		ReleaseModifiers(0, 1, HotkeysZergBurrow)
+	;	ReleaseModifiers(0, 1, HotkeysZergBurrow)
+		ReleaseModifiers(0, 1, False, True, False, 40) ; check all keys
 		Thread, NoTimers, true  ;cant use critical with input buffer, as prevents hotkey threads launching and hence tracking input
-		SetBatchLines -1		
-		MTsend("^" Inject_control_group)
-		MTsend(MI_Queen_Group)
+		SetBatchLines -1
+
+		sendSequence := "^" Inject_control_group MI_Queen_Group		
 		if UnburrowedQueenCount
-		{
-			sleep(2) ; After restoring a control group, needs at least 1 ms so tabs will register
-			MTsend(NextSubgroupKey)
-		}
-		MTsend(HotkeysZergBurrow)
-		MTsend(Inject_control_group)
+			sendSequence .= NextSubgroupKey ; sleep(2) ; After restoring a control group, needs at least 1 ms so tabs will register
+	
+		sendSequence .= HotkeysZergBurrow Inject_control_group
+		MTsend(sendSequence)
 		TooManyBurrowedQueens := 0
 		SetBatchLines %SetBatchLines%
 		Thread, NoTimers, false
@@ -4874,7 +4916,7 @@ AM_MiniMap_PixelColourAlpha_TT := AM_MiniMap_PixelColourRed_TT := AM_MiniMap_Pix
 #ResetPixelColour_TT := "Resets the pixel colour and variance to their default settings."
 #FindPixelColour_TT := "This sets the pixel colour for your exact system."
 AM_MiniMap_PixelVariance_TT := TT_AM_MiniMap_PixelVariance_TT := "A match will result if  a pixel's colour lies within the +/- variance range.`n`nThis is a percent value 0-100%"
-TT_AGDelay_TT := AG_Delay_TT := "The program will wait this period of time before adding the select units to a control group.`nUse this if you want the function to look more 'human'.`n`nNote: An additional delay of up to 15ms is always present (even when set to 0)."
+TT_AGDelay_TT := AG_Delay_TT := "The program will wait this period of time before adding the select units to a control group.`nUse this if you want the function to look more 'human'.`n`nNote: This may increase the likelihood of miss-grouping units (especially on slow computers or during large battles with high APM)."
 TempHideMiniMapKey_TT := #TempHideMiniMapKey_TT := "This will temporarily disable the minimap overlay,`nthereby allowing you to determine if you legitimately have vision of a unit or building."
 TT_UserMiniMapXScale_TT := TT_UserMiniMapYScale_TT := UserMiniMapYScale_TT := UserMiniMapXScale_TT := "Adjusts the relative size of units on the minimap."
 TT_MiniMapRefresh_TT := MiniMapRefresh_TT := "Dictates how frequently the minimap is redrawn"
@@ -6553,28 +6595,28 @@ SetupColourArrays(ByRef HexColour, Byref MatrixColour)
 ; so if you know what unit should be in this control group, then just check unit type matches, is local unit and is alive
 ; and this should work for most scenarios (or at least the chances of it causing a problem are quite low)
 
-
 numGetControlGroupObject(Byref oControlGroup, Group)
-{	GLOBAL
+{	GLOBAL B_CtrlGroupOneStructure, S_CtrlGroup, GameIdentifier, S_scStructure, O_scUnitIndex
 	oControlGroup := []
-	LOCAL GroupSize := getControlGroupCount(Group)
-	local MemDump, typeList
+	GroupSize := getControlGroupCount(Group)
 
-	ReadRawMemory(B_CtrlGroupStructure + S_CtrlGroup * (group - 1), GameIdentifier, MemDump, GroupSize * S_scStructure + O_scUnitIndex)
+	ReadRawMemory(B_CtrlGroupOneStructure + S_CtrlGroup * (group - 1), GameIdentifier, MemDump, GroupSize * S_scStructure + O_scUnitIndex)
 ;	oControlGroup["Count"]	:= numget(MemDump, 0, "Short")
 ;	oControlGroup["Types"]	:= numget(MemDump, O_scTypeCount, "Short") ;this will get whats actually in the memory
 	oControlGroup["Count"]	:= oControlGroup["Types"] := 0
 	oControlGroup.units := []
 	loop % numget(MemDump, 0, "Short")
 	{
-		Local unit := numget(MemDump,(A_Index-1) * S_scStructure + O_scUnitIndex , "Int") >> 18
+		unit := numget(MemDump,(A_Index-1) * S_scStructure + O_scUnitIndex , "Int") >> 18
 		if (!isUnitDead(unit) && isUnitLocallyOwned(unit))
 		{
-			Local Type := getUnitType(unit)
-			Local x := getUnitPositionX(unit)
-			local Y := getUnitPositionY(unit)
-			local z := getUnitPositionZ(unit)
-			oControlGroup.units.insert({ "UnitIndex": unit, "Type": Type, "x": x, "y": y, "z": z}) ;note the object is unitS not unit!!!
+
+			oControlGroup.units.insert({ "UnitIndex": unit
+										, "Type": Type := getUnitType(unit)
+										, "Energy": getUnitEnergy(unit)
+										, "x": getUnitPositionX(unit)
+										, "y": getUnitPositionY(unit)
+										, "z": getUnitPositionZ(unit)}) ;note the object is unitS not unit!!!
 			oControlGroup["Count"]++
 			if Type not in %typeList%
 			{
@@ -6784,26 +6826,21 @@ autoWorkerProductionCheck()
 
 	if (MaxWokersTobeMade >= 1) && (idleBases || almostComplete || (halfcomplete && !nearHalfComplete)  ) ; i have >= 1 in case i stuffed the math and end up with a negative number or a fraction
 	{
-
+		
 		While getkeystate("Shift", "P") || getkeystate("Control", "P") || getkeystate("Alt", "P")
-		|| getkeystate("LWin", "P") || getkeystate("RWin", "P")		
-		|| getkeystate("Shift", "L") || getkeystate("Control", "L") || getkeystate("Alt", "L")
-		|| getkeystate("LWin", "L") || getkeystate("RWin", "L")
-		|| getkeystate("LButton", "P") || getkeystate("LButton", "L")
-		|| getkeystate("RButton", "P") || getkeystate("RButton", "L")
-		|| readModifierState() 
-		|| isUserPerformingActionIgnoringCamera()
+		|| getkeystate("LWin", "P") || getkeystate("RWin", "P")	
+		|| getkeystate("LButton", "P") || getkeystate("RButton", "P")
+		|| readModifierState()
+		|| isUserPerformingActionIgnoringCamera() 
+		|| checkAllKeyStates() 
+		|| ( LastMousePress() < 40 )
 		{
-			if (A_index > 12)
-				return ; timed out after 60 ms
+			if (A_index > 24)
+				return ; timed out after 120 ms
 			sleep 1
 		;	sleep(5)
 		}
 		Thread, NoTimers, true
-		BatchLines := A_BatchLines
-		SetBatchLines, -1
-
-
 		SetKeyDelay, %EventKeyDelay%	;this only affects send events - so can just have it, dont have to set delay to original as its only changed for current thread
 		SetMouseDelay, %EventKeyDelay%	;again, this wont affect send click (when input/play is in use) - I think some other commands may be affected?
 
@@ -6814,7 +6851,6 @@ autoWorkerProductionCheck()
 		; perhaps this was the cause of the weird error in control group (ive moved its position now)
 		If (ChatStatus := isChatOpen())
 		{
-			Sleep(1) 
 			numGetUnitSelectionObject(oSelection) 	; this additional check is needed in case you have a
 			for index, object in oSelection.units 	; non-self unit selected, other wise will continually
 				if (object.owner != a_LocalPlayer.slot) ; click middle screen not alloying you to type
@@ -6826,7 +6862,6 @@ autoWorkerProductionCheck()
 			if (ExitThread || !oSelection.Count) ; needed as otherwise will still mouseclick screen if no unsits selected ie selected unit dies
 			{ 										
 				BufferInputFast.send()
-				SetBatchLines, %BatchLines%
 				Thread, NoTimers, false ; dont think is required as the thread is about to end
 				return 
 			}		
@@ -6840,9 +6875,11 @@ autoWorkerProductionCheck()
 			if !A_IsCompiled
 				soundplay *64 ; just testing that the chat offset is correct
 			MTclick(A_ScreenWidth/2, A_ScreenHeight/2)
+			sleep 12
 		}
-		else Sleep(1) ; give time for the selection buffer to update
+		; else Sleep 9 ; give time for the selection buffer to update ; dont need this now checking A_timeidle
 
+		; should probably have an additional sleep here
 		HighlightedGroup := getSelectionHighlightedGroup()
 		numGetUnitSelectionObject(oSelection)
 		If !oSelection.Count  ; = 0 as nothing is selected so cant restore this/control group it
@@ -6903,7 +6940,7 @@ autoWorkerProductionCheck()
 		
 		; other function gets spammed when user incorrectly adds a unit to the main control group (as it will take group 0) and for terran tell that unit to 'stop' when sends s
 
-		while (A_Index <= MaxWokersTobeMade)
+		loop % MaxWokersTobeMade
 			sendSequence .= makeWorkerKey
 
 		; i tried checking the selection buffer for non.structure units and this worked well for 4 days, then all of a sudden it started giving false errors
@@ -6923,17 +6960,20 @@ autoWorkerProductionCheck()
 			for index, object in oSelection.units
 				if !isUnitAStructure(object.unitIndex)	; as units will have higher priority and appear in group 0/top left control card - and this isnt compatible with this macro
 					BaseCtrlGroupError := 1					; as the macro will tell that unit e.g. probe to 'make a worker' and cause it to bug out
-		}	
+		}
+		MTsend(sendSequence)
+		sendSequence := ""			
 
 		if BaseControlGroupNotSelected
 		{												
 	;		Sleep(2) 			; I think sc2 needs a sleep as otherwise the send controlgroup storage gets ignored every now and then  (it worked well with 4)
+			sleep 1
 			sendSequence .= controlstorageGroup
 		}
 
 	;	if HighlightedGroup
 	; 		sleep(2) ; After restoring a control group, needs at least 1 ms so tabs will register (though sometimes it doesnt????)
-		while (A_Index <= HighlightedGroup)
+		loop % HighlightedGroup
 			sendSequence .= NextSubgroupKey
 
 		MTsend(sendSequence)
@@ -6950,13 +6990,13 @@ autoWorkerProductionCheck()
 		}
 		BufferInputFast.send()
 
-		SetBatchLines, %BatchLines%
 		Thread, NoTimers, false 
 
 		if BaseCtrlGroupError ; as non-structure units will have higher priority and appear in group 0/top left control card - and this isnt compatible with this macro
-		{	; as the macro will tell that unit e.g. probe to 'make a worker' and cause it to bug out
+		{	; as the macro will tell that unit e.g. probe to 'make a worker' and cause it to bug out	
 			dspeak("Error in Base Control Group. Auto Worker")
 			gosub g_UserToggleAutoWorkerState ; this will say 'off' Hence Will speak Auto worker Off	
+			UninterruptedWorkersMade := 0 ; reset the count so when user fixes group it will work
 			return 
 		}
 		if (A_ThisLabel != "autoWorkerProductionCheckExit")
@@ -7043,17 +7083,17 @@ isInControlGroup(group, unit)
 		if (unit = getCtrlGroupedUnitIndex(Group,  A_Index - 1))
 			Return 1	;the unit is in this control group
 	Return 0			
-}	;	ctrl_unit_number := ReadMemory(B_CtrlGroupStructure + S_CtrlGroup * (group - 1) + O_scUnitIndex +(A_Index - 1) * S_scStructure, GameIdentifier, 2)/4
+}	;	ctrl_unit_number := ReadMemory(B_CtrlGroupOneStructure + S_CtrlGroup * (group - 1) + O_scUnitIndex +(A_Index - 1) * S_scStructure, GameIdentifier, 2)/4
 
 getCtrlGroupedUnitIndex(group, i=0)
 {	global
-	Return ReadMemory(B_CtrlGroupStructure + S_CtrlGroup * (group - 1) + O_scUnitIndex + i * S_scStructure, GameIdentifier) >> 18
+	Return ReadMemory(B_CtrlGroupOneStructure + S_CtrlGroup * (group - 1) + O_scUnitIndex + i * S_scStructure, GameIdentifier) >> 18
 }
 
 
 getControlGroupCount(Group)
 {	global
-	Return	ReadMemory(B_CtrlGroupStructure + S_CtrlGroup * (Group - 1), GameIdentifier, 2)
+	Return	ReadMemory(B_CtrlGroupOneStructure + S_CtrlGroup * (Group - 1), GameIdentifier, 2)
 }	
 
 ReleaseAllModifiers() 
@@ -8540,7 +8580,7 @@ CreatepBitmaps(byref a_pBitmap, a_unitID)
 	; should used sendBlind aswell
   g_ControlShiftCheck:
   	ControlShiftCheckHotkey := A_ThisHotkey
-    sleep(1)
+    sleep 2
 	if !GetKeyState("ctrl", "P") && GetKeyState("ctrl") 
 		send {ctrl up}
 	if !GetKeyState("Shift", "P") && GetKeyState("Shift") 
@@ -8593,6 +8633,8 @@ CreateHotkeys()
 	Hotkey, If, WinActive(GameIdentifier) && !BufferInputFast.isInputBlockedOrBuffered() 														
 		hotkey, %warning_toggle_key%, mt_pause_resume, on		
 		hotkey, *~LButton, g_LbuttonDown, on
+		hotkey, *~RButton, g_RbuttonDown, on
+
 	
  
 ;	Loop, 10 		;this was used to test/check for problems when ctrl grouping. May implement this someother time
@@ -8767,8 +8809,12 @@ castInjectLarva(Method="Backspace", ForceInject=0, sleepTime=80)	;SendWhileBlock
 	if (Method = "MiniMap" OR ForceInject)
 	{
 		local xNew, yNew
+
+		; there could be an issue here with the selection buffer not being updated (should sleep for 10ms)
 		if ForceInject
 		{
+		;	if (MT_TimeIdleInput() < 30)
+		;		return
 			numGetUnitSelectionObject(oSelection)
 			for index, object in oSelection.units 	; non-self unit selected, other wise will continually
 				if (object.owner != a_LocalPlayer.slot)
@@ -8776,19 +8822,20 @@ castInjectLarva(Method="Backspace", ForceInject=0, sleepTime=80)	;SendWhileBlock
 			If !oSelection.Count  ; = 0 as nothing is selected so cant restore this/control group it
 				return
 		}
-		if (ForceInject || Inject_RestoreSelection)
-			MTsend("^" Inject_control_group)
 
-		MTsend(MI_Queen_Group)
-		Sleep(1) ; give time for the selection buffer to update
 		oHatcheries := [] ; Global used to check if successfuly without having to iterate again
 		local BaseCount := zergGetHatcheriesToInject(oHatcheries)
 		Local oSelection := []
 		Local SkipUsedQueen := []
 		local MissedHatcheries := []
-																			; ForceInject ie 1 or 0 so it will check move statte if a forceinject, but not if user presses button
-		If (Local QueenCount := getSelectedQueensWhichCanInject(oSelection, ForceInject)) ; this wont fetch burrowed queens!! so dont have to do a check below - as burrowed queens can make cameramove when clicking their hatch
+																		
+		; use check the ctrl group, rather than the selection buffer, then wont have to sleep for selection buffer
+		; getSelectedQueensWhichCanInject(oSelection, ForceInject)) 
+		If (Local QueenCount := getGroupedQueensWhichCanInject(oSelection, ForceInject)) ; this wont fetch burrowed queens!! so dont have to do a check below - as burrowed queens can make cameramove when clicking their hatch
 		{
+			if (ForceInject || Inject_RestoreSelection)
+				MTsend("^" Inject_control_group)
+			MTsend(MI_Queen_Group)
 			For Index, CurrentHatch in oHatcheries
 			{
 				Local := FoundQueen := 0
@@ -8870,16 +8917,11 @@ castInjectLarva(Method="Backspace", ForceInject=0, sleepTime=80)	;SendWhileBlock
 					}					
 			}
 		}
+		else return ; no queens in control group - actions were take
 	}	
 	else if ((Method = "Backspace Adv") || (Method = "Backspace CtrlGroup")) ; I.E. I have disabled this feature until i get around to finding the centred hatch better ((Method="Backspace Adv") || (Method = "Backspace CtrlGroup")) ;cos i changed the name in an update
 	{		; this is really just the minimap method made to look like the backspace
-		if  Inject_RestoreSelection
-			MTsend("^" Inject_control_group)
 
-		if Inject_RestoreScreenLocation
-			MTsend(BI_create_camera_pos_x)
-		MTsend(MI_Queen_Group)
-		Sleep(5) ; give time for the selection buffer to update (doesnt matter if take longer here)
 		oHatcheries := [] ; Global used to check if successfuly without having to iterate again
 		local BaseCount := zergGetHatcheriesToInject(oHatcheries)
 		Local oSelection := []
@@ -8890,8 +8932,13 @@ castInjectLarva(Method="Backspace", ForceInject=0, sleepTime=80)	;SendWhileBlock
 	    	CurrentHatch.Age := getUnitTimer(CurrentHatch.unit)
 	    Sort2DArray(oHatcheries, "Age", 0) ; 0 = descending
 
-		If(Local QueenCount := getSelectedQueensWhichCanInject(oSelection))  ; this wont fetch burrowed queens!! so dont have to do a check below - as burrowed queens can make cameramove when clicking their hatch
+		If(Local QueenCount := getGroupedQueensWhichCanInject(oSelection))  ; this wont fetch burrowed queens!! so dont have to do a check below - as burrowed queens can make cameramove when clicking their hatch
 		{
+			if  Inject_RestoreSelection
+				MTsend("^" Inject_control_group)
+			if Inject_RestoreScreenLocation
+				MTsend(BI_create_camera_pos_x)
+			MTsend(MI_Queen_Group)
 			For Index, CurrentHatch in oHatcheries
 			{
 				Local := FoundQueen := 0
@@ -8929,6 +8976,7 @@ castInjectLarva(Method="Backspace", ForceInject=0, sleepTime=80)	;SendWhileBlock
 				MTsend(BI_camera_pos_x) 										
 			}
 		}
+		else return ; no queens
 	}
 	else ; if (Method="Backspace")
 	{
@@ -8988,11 +9036,12 @@ castInjectLarva(Method="Backspace", ForceInject=0, sleepTime=80)	;SendWhileBlock
 	}
 	if (ForceInject || Inject_RestoreSelection)
 	{
-		MTsend(Inject_control_group)
-		if HighlightedGroup
-			sleep(2) ; After restoring a control group, needs at least 1 ms so tabs will register
-		while (A_Index <= HighlightedGroup)
-			MTsend(NextSubgroupKey)
+		sendSequence := Inject_control_group
+		;if HighlightedGroup
+		;	sleep(2) ; After restoring a control group, needs at least 1 ms so tabs will register
+		loop % HighlightedGroup
+			sendSequence .= NextSubgroupKey
+		MTsend(sendSequence)
 	}
 }
 
@@ -9082,13 +9131,13 @@ OldBackSpaceCtrlGroupInject()
 
 
  getGroupedQueensWhichCanInject(ByRef aControlGroup,  CheckMoveState := 0)
- {	GLOBAL A_unitID, O_scTypeCount, O_scTypeHighlighted, S_CtrlGroup, O_scUnitIndex, GameIdentifier, B_CtrlGroupStructure
+ {	GLOBAL A_unitID, O_scTypeCount, O_scTypeHighlighted, S_CtrlGroup, O_scUnitIndex, GameIdentifier, B_CtrlGroupOneStructure
  	, S_uStructure, GameIdentifier, MI_Queen_Group, S_scStructure, uMovementFlags
 	aControlGroup := []
 	group := MI_Queen_Group
 	groupCount := getControlGroupCount(Group)
 
-	ReadRawMemory(B_CtrlGroupStructure + S_CtrlGroup * (Group - 1), GameIdentifier, MemDump, groupCount * S_CtrlGroup + O_scUnitIndex)
+	ReadRawMemory(B_CtrlGroupOneStructure + S_CtrlGroup * (Group - 1), GameIdentifier, MemDump, groupCount * S_CtrlGroup + O_scUnitIndex)
 
 	aControlGroup["UnitCount"]	:= numget(MemDump, 0, "Short")
 	aControlGroup["Types"]	:= numget(MemDump, O_scTypeCount, "Short")
@@ -9176,7 +9225,6 @@ isUnitNearUnit(Queen, Hatch, MaxXYdistance) ; takes objects which must have keys
  	return (4 = numget(MemDump, Unit * S_uStructure + O_uInjectState, "UChar")) ? 1 : 0
  }
 
-
 numGetUnitPositionXYZFromMemDump(ByRef MemDump, Unit)
 {	
 	position := []
@@ -9185,9 +9233,6 @@ numGetUnitPositionXYZFromMemDump(ByRef MemDump, Unit)
 	, position.z := numGetUnitPositionZFromMemDump(MemDump, Unit)
 	return position
 }
-
-
-
 
 SortUnitsByAge(unitlist="", units*)
 {
@@ -9378,8 +9423,13 @@ LoadMemoryAddresses(SC2EXE)
 	O_mMiniMapSize := 0x3AC ;0x39C
 	
 	; selection and ctrl groups
-	B_SelectionStructure := SC2EXE + 0x031CAB90 ;0x0215FB50 	
-	B_CtrlGroupStructure := SC2EXE + 0x031CFDB8 
+	B_SelectionStructure := SC2EXE + 0x031CAB90 ;0x0215FB50 
+
+	; Note: This is actually the second control group in the group structure. 
+	; The structure begins with ctrl group 0, then goes to 1, But i used ctrl group 1 as base for simplicity 
+	; when getting info for group 1, the negative offset will work fine 
+
+	B_CtrlGroupOneStructure := SC2EXE + 0x031CFDB8 
 	S_CtrlGroup := 0x1B60
 	S_scStructure := 0x4	; Unit Selection & Ctrl Group Structures
 		O_scTypeCount := 0x2
@@ -9477,7 +9527,7 @@ SC2.exe+1FDF7C8 (8 bytes) contains the state of most keys eg a-z etc
 		03_CameraMovingViaMouseAtScreenEdge	:= 0x4B4				; 3 = Diagonal Right/Top 	  	6 = Diagonal Left/ Bot	
 																	; 7 = Bottom Edge 			 	8 = Diagonal Right/Bot 
 																	; Note need to do a pointer scan with max offset > 1200d!
-
+	B_NumbersState := SC2EXE + 0x304A792 	;2bytes
 
 	B_IsGamePaused := SC2EXE + 0x31F15A5 						
 
@@ -10121,11 +10171,11 @@ SplitUnits(SplitctrlgroupStorage_key, SleepSplitUnits)
 ;	clipboard .= "avg (" xavg ", " yavg ")`n"
 ;	clipboard .= "BL (" botLeftUnitX ", " botLeftUnity ")`n"
 ;	clipboard .= "Squarespots: " squareSpots "`n"
-	MTsend(SplitctrlgroupStorage_key)
-	if HighlightedGroup
-		sleep(2) ; After restoring a control group, needs at least 1 ms so tabs will register
-	while (A_Index <= HighlightedGroup)
-		MTsend(NextSubgroupKey)
+	sendSequence := SplitctrlgroupStorage_key
+	loop % HighlightedGroup
+		sendSequence .= NextSubgroupKey
+	MTsend(sendSequence)
+
 	BlockInput, MouseMoveOff
 	send {click %Xorigin%, %Yorigin%, 0}
 		return
@@ -10770,6 +10820,11 @@ readModifierState()
 	return ReadMemory(B_ModifierKeys, GameIdentifier, 1)
 }
 
+readKeyBoardNumberState()
+{	GLOBAL 
+	return ReadMemory(B_NumbersState, GameIdentifier, 2)
+}
+
 getSCModState(KeyName)
 {
 	state := readModifierState()
@@ -10834,11 +10889,6 @@ SetPlayerGas(amount=99999)
 	player := 1	
 	Return WriteMemory(B_pStructure + O_pGas + (player-1) * S_pStructure, GameIdentifier, amount,"ushort")   
 }
-
-
-return
-
-
 
 
 getBuildStatsPF(unit, byref QueueSize := "",  QueuePosition := 0) ; dirty hack until i can be bothered fixing this function
@@ -11075,8 +11125,112 @@ class SC2
             return     
           }
 
-}
+}    
 
+;	post message
+; 	After sending a ctrl group via sendinput and post message the ctrl buffer takes between 
+;	0.02 and 0.067 ms to update. Highest was 0.09. 
+;  	stopwatch was started immediately after the send command
+
+; 	testing send speed and response
+;	**stop watch started immediately prior to send command
+;	the selection count was then continually checked until it matched
+
+; 	Psend(1) - 4.5 ms
+;	controlsend - 4.2ms to 6ms 
+; 	Input - 4.7 - 8 ms  	(But Input can take twice as long as other for long strings) 
+
+; when cpu maxed buffer takes up to 18ms sometimes 40 ms to update
+; this was done using prime95 and increasing its priority
+; A better test would be to make a map with heaps of units.
+
+
+
+*f1::
+Thread, NoTimers, true
+SetControlDelay -1
+SetKeyDelay, -1
+qpx(true)
+MTsend("1")
+send := qpx(false)
+qpx(true)
+while (getSelectionCount() != 5)
+	continue ;count++
+time := qpx(false)
+msgbox % (send * 1000) "`n" (time * 1000) "`n" count++
+return 
+
+
+/* 
+*f1::
+Thread, NoTimers, true
+keywait, 1, D
+while GetKeyState("1", "P")
+	continue 
+;keywait, F1
+qpx(true)
+while readKeyBoardNumberState()
+	continue 
+time := qpx(false) * 1000
+msgbox % time "`n" result
+
+return
+
+
+
+f1::
+;	objtree(setLowLevelInputHooks(True))
+
+   settimer, tt, 50
+   return 
+
+tt:
+   tooltip, % LastMousePress() "`n`n", 900, 900
+
+Return
+
+f2::
+setLowLevelInputHooks(false)
+soundplay *-1
+return 
+ 
+ /*
+f3:: msgbox % MT_TimeIdleInput()
+
+/*
+*f1::
+settimer, tool, 100
+keywait, ctrl, d
+;currentmax := -1
+while GetKeyState("ctrl")
+	if (A_TimeIdle > currentmax)
+		currentmax := A_TimeIdle
+;msgbox % A_TimeIdle
+return 
+
+tool:
+ToolTip, %A_TimeIdle%, 900, 600
+return
+
+*f2::
+settimer, tool, off
+msgbox % currentmax
+return 
+
+/*
+f1::
+Thread, NoTimers, true
+	SetKeyDelay, -1
+	qpx(true)
+	;MTsend("^" CG_control_group CG_nexus_Ctrlgroup_key)
+;	pSend("112344634234242342342342")
+;	send ^74
+	controlsend,, % "{Blind} 1", %GameIdentifier%
+	while (getSelectionCount() != 30)
+		sleep(1)
+	time := qpx(false) * 1000
+	clipboard := time
+return
 /*
 *f1::
 sleep 500
