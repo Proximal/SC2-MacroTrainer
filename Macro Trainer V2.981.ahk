@@ -96,7 +96,10 @@ Else
 	debug_name := "Kalamity"
 	hotkey, ^+!F12, g_GiveLocalPalyerResources
 }
+setLowLevelInputHooks(True)
 
+speechThread := AhkDllThread("C:\Program Files\AutoHotkey\AutoHotkeyMini.dll")
+speechThread.ahkdll("Included Files\ThreadScripts\speechThread.ahk")
 
 start:
 config_file := "MT_Config.ini"
@@ -124,6 +127,7 @@ GameExe := "SC2.exe"
 SAPI := ComObjCreate("SAPI.SpVoice")	; ComObjCreate("SAPI.SpVoice").Speak("Please read this file")
 pToken := Gdip_Startup()
 SetupUnitIDArray(A_unitID, A_UnitName)
+
 setupTargetFilters(a_UnitTargetFilter)
 SetupColourArrays(HexColour, MatrixColour)
 
@@ -162,6 +166,7 @@ InstallSC2Files()
 #include %A_ScriptDir%\Included Files\Colour Selector.ahk
 #include %A_ScriptDir%\Included Files\Class_BufferInputFast.AHk
 #include %A_ScriptDir%\Included Files\Class_ChangeButtonNames.AHk
+#Include <xml> ; in the local lib folder
 
 CreatepBitmaps(a_pBitmap, a_unitID)
 aUnitInfo := []
@@ -408,6 +413,10 @@ Return
 
 g_LbuttonDown:	;Get the location of a dragbox
 	MouseGetPos, MLDownX, MLDownY
+return 
+
+; Not currently Used
+/*
 g_RbuttonDown:
 LastMousePress(A_TickCount)
 Return
@@ -420,6 +429,7 @@ LastMousePress(newTick := 0)
 	LastPressTick := newTick
 	return
 }	
+*/
 
 g_GiveLocalPalyerResources:
 	SetPlayerMinerals()
@@ -438,10 +448,15 @@ return
 g_DeselectUnit:
 if (getSelectionCount() > 1)
 {
-	mousegetpos, Xmouse, Ymouse
+;	MT_HookBlock := True
+;	Sleep := Input.releaseKeys()
+;	critical 1000
+;	MT_HookBlock := False
+;	if sleep
+;		DllCall("Sleep", Uint, 10)
 	ClickUnitPortrait(0, X, Y, Xpage, Ypage) ; -1 as selection index begins at 0 i.e 1st unit at pos 0 top left
-	send +{click Left %X%, %Y%} 	
-	send {click  %Xmouse%, %Ymouse%, 0}
+	MTclick(X, Y, "Left", "+")
+;	Input.revertKeyState()	
 }
 return
 
@@ -491,22 +506,22 @@ ReleaseModifiersOld(Beep = 1, CheckIfUserPerformingAction = 0, AdditionalKeys = 
 }
 */
 
-ReleaseModifiers(Beep = 1, CheckIfUserPerformingAction = 0, AdditionalKeys = "", CheckAllKeys := 0, timeout := "", LastMousePress := 0) ;timout in ms
+ReleaseModifiers(Beep = 1, CheckIfUserPerformingAction = 0, AdditionalKeys = "", CheckAllKeys := 0, timeout := "", LastButtonPress := 0) ;timout in ms
 {
 
 	startTime := A_Tickcount
 
 	While getkeystate("Shift", "P") || getkeystate("Control", "P") || getkeystate("Alt", "P")
 	|| getkeystate("LWin", "P") || getkeystate("RWin", "P")		
-	|| getkeystate("Shift", "L") || getkeystate("Control", "L") || getkeystate("Alt", "L")
-	|| getkeystate("LWin", "L") || getkeystate("RWin", "L")
-	|| getkeystate("LButton", "P") || getkeystate("LButton", "L")
-	|| getkeystate("RButton", "P") || getkeystate("RButton", "L")
+	|| getkeystate("Shift") || getkeystate("Control") || getkeystate("Alt")
+	|| getkeystate("LWin") || getkeystate("RWin")
+	|| getkeystate("LButton", "P") || getkeystate("LButton")
+	|| getkeystate("RButton", "P") || getkeystate("RButton")
 	|| readModifierState() 
-	||  (AdditionalKeys && isaKeyPhysicallyOrLogicallyDown(AdditionalKeys))  ; ExtraKeysDown should actually return the actual key
-	||  (CheckAllKeys && checkAllKeyStates())  
+	|| (AdditionalKeys && isaKeyPhysicallyOrLogicallyDown(AdditionalKeys))  ; ExtraKeysDown should actually return the actual key
+	|| (CheckAllKeys && checkAllKeyStates())  
 	|| (isPerformingAction := CheckIfUserPerformingAction && isUserPerformingAction()) ; have this function last as it can take the longest if lots of units selected
-	|| (LastMousePress && LastMousePress() < LastMousePress)
+	|| (LastButtonPress && MT_InputIdleTime() < LastButtonPress)
 	{
 		if (timeout && A_Tickcount - startTime >= timeout)
 			return 1 ; was taking too long
@@ -523,10 +538,10 @@ isaKeyPhysicallyOrLogicallyDown(Keys)
   if isobject(Keys)
   {
     for Index, Key in Keys
-      if getkeystate(Key, "P") || getkeystate(Key, "L")
+      if getkeystate(Key, "P") || getkeystate(Key)
         return key
   }
-  else if getkeystate(Keys, "P") || getkeystate(Keys, "L")
+  else if getkeystate(Keys, "P") || getkeystate(Keys)
   	return Keys ;keys!
   return 0
 }
@@ -642,10 +657,10 @@ return
 g_PrevWarning:
 	If PrevWarning
 	{
-		DSpeak(PrevWarning.speech)
+		tSpeak(PrevWarning.speech)
 		MiniMapWarning.insert({"Unit": PrevWarning.unitIndex, "Time": Time})
 	}
-	Else DSpeak("There have been no alerts")
+	Else tSpeak("There have been no alerts")
 Return
 
 Adjust_overlay:
@@ -749,12 +764,12 @@ mt_pause_resume:
 		timeroff("clock", "money", "gas", "scvidle", "supply", "worker", "inject", "unit_bank_read", "Auto_mine", "Auto_Group", "AutoGroupIdle", "MiniMap_Timer", "overlay_timer", "g_unitPanelOverlay_timer", "g_autoWorkerProductionCheck", "g_ForceInjectSuccessCheck")
 		inject_timer := 0	;ie so know inject timer is off
 		Try DestroyOverlays()
-		DSpeak("Macro Trainer Paused")
+		tSpeak("Macro Trainer Paused")
 	}	
 	Else
 	{
 		settimer, clock, 250
-		DSpeak("Macro Trainer Resumed")
+		tSpeak("Macro Trainer Resumed")
 	}
 return
 ;------------
@@ -850,7 +865,7 @@ clock:
 	;	SetTimer, g_ControlShiftTimer, 40
 
 		EnemyBaseList := GetEBases()		
-		UserSavedAppliedSettings := 0		
+		UserSavedAppliedSettings := 0	
 	}
 return
 
@@ -940,7 +955,7 @@ Cast_ChronoStructure(StructureToChrono)
 ;		cant really do this check with a control group
 ;		if !isUnitAStructure(object.unitIndex) ; as units will have higher priority and appear in group 0/top left control card - and this isnt compatible with this macro
 ;		{
-;			dspeak("Error in Base Control Group.")
+;			tSpeak("Error in Base Control Group.")
 ;			return 
 ;		}
 	}
@@ -1110,27 +1125,39 @@ AutoGroup(byref A_AutoGroup, AGDelay = 0)
 		Loop, Parse, CtrlGroupSet, |
 			AG_Temp_count := A_Index	;this counts the number of different ctrl groups ie # 1's  and 2's etc - must be only 1
 		If (AG_Temp_count = 1) && !isMenuOpen()
-		;&& !getkeystate("Shift", "P") && !getkeystate("Control", "P") && !getkeystate("Alt", "P")
-		;&& !getkeystate("LWin", "P") && !getkeystate("RWin", "P")		
-		;&& !getkeystate("Shift", "L") && !getkeystate("Control", "L") && !getkeystate("Alt", "L")
-		;&& !getkeystate("LWin", "L") && !getkeystate("RWin", "L")
-		&& !(getkeystate("Shift", "P") || getkeystate("Control", "P") || getkeystate("Alt", "P")
-		|| getkeystate("LWin", "P") || getkeystate("RWin", "P")	
-		|| getkeystate("LButton", "P") || getkeystate("RButton", "P")
+		&& !(getkeystate("Shift", "P") && getkeystate("Control", "P") && getkeystate("Alt", "P")
+		&& getkeystate("LWin", "P") && getkeystate("RWin", "P")		
+		&& getkeystate("LWin", "L") && getkeystate("RWin", "L")		
+		&& getkeystate("Shift") && getkeystate("Control") && getkeystate("Alt")
 		|| readModifierState() 
-		|| checkAllKeyStates() )
+		|| MT_InputIdleTime() <= 30)
+
+		;&& !getkeystate("LWin") && !getkeystate("RWin")
+		;&& !(getkeystate("Shift", "P") || getkeystate("Control", "P") || getkeystate("Alt", "P")
+		;|| getkeystate("LWin", "P") || getkeystate("RWin", "P")	
+		;|| getkeystate("LButton", "P") || getkeystate("RButton", "P")
+		;|| readModifierState() 
+		;|| checkAllKeyStates() 
+		;|| MT_InputIdleTime() <= 30)
 		{
-			BufferInputFast.BufferInput()
-			
+			;BufferInputFast.BufferInput()
+			Global MT_HookBlock := True
+			sleep := Input.releaseKeys()
+			critical 1000
+			MT_HookBlock := False
+			if sleep
+				DllCall("Sleep", Uint, 10) ;  sleep, 5
 			; if the user has a delay for grouping, this increases the risk of the unit selection changing before the
 			; sent ctrl+group command is received/processed. Therefore a small sleep here should make it more robust
 			; in theory this should not be required with a delay of 0 (for the most part), as there is the idle grouping
 			; timer which is continually running (be it with a low priority) so as soon as the units/buffer change, it
 			; will group them if required. And this should occur before anything help happens in game
 
-			if AGDelay
+			if AGDelay ; the MTDelay should prevent the need for a sleep
 			{
-				sleep 5 ; so rounds to no more than 10ms.
+				if !sleep 
+					DllCall("Sleep", Uint, 4)
+				;sleep 5 ; so rounds to no more than 10ms.
 				;Sleep(2) ; give time for selection buffer to update. This along with blocking input should cover pre- and post-selection delay buffer changes
 				numGetUnitSelectionObject(oSelection)
 				for index, Unit in oSelection.Units
@@ -1142,10 +1169,11 @@ AutoGroup(byref A_AutoGroup, AGDelay = 0)
 				MTsend("+" Player_Ctrl_GroupSet)
 				sleepOnExit := True
 				settimer, AutoGroupIdle, Off
-				settimer, Auto_Group, Off
-				soundplay *-1
+				settimer, Auto_Group, Off				
 			}
-			BufferInputFast.Send()
+			Input.revertKeyState()
+			critical, off
+			soundplay *-1
 		}
 
 	}
@@ -1158,7 +1186,7 @@ AutoGroup(byref A_AutoGroup, AGDelay = 0)
 	; sends the group command twice very quickly
 	if sleepOnExit  
 	{
-		sleep 50
+		sleep 60
 		settimer, AutoGroupIdle, On, -9999 ;on re-enables timers with previous period
 		settimer, Auto_Group, On		
 	}
@@ -1182,7 +1210,14 @@ LimitGroup(byref UnitList, Hotkey)
 				Return
 		}
 	}
+	Global MT_HookBlock := True
+	sleep := Input.releaseKeys()
+	critical 1000
+	MT_HookBlock := False
+	if sleep
+		DllCall("Sleep", Uint, 10) 
 	MTsend(Hotkey)
+	Input.revertKeyState()
 	Return
 }	
 
@@ -1191,14 +1226,14 @@ inject_start:
 	{
 		inject_timer := !inject_timer
 		settimer, inject, off
-		DSpeak("Inject off")
+		tSpeak("Inject off")
 	}
 	else
 	{
 		inject_set := time
 		inject_timer := !inject_timer
 		settimer, inject, 250
-		DSpeak("Inject on")
+		tSpeak("Inject on")
 	}
 	return
 
@@ -1207,64 +1242,98 @@ inject_reset:
 	settimer, inject, off
 	settimer, inject, 250
 	inject_timer := 1
-	DSpeak("Reset")
+	tSpeak("Reset")
 	return
 
 Cast_DisableInject:	
 	If (F_Inject_Enable := !F_Inject_Enable)
 	{
-		DSpeak("Injects On")
+		tSpeak("Injects On")
 		zergGetHatcheriesToInject(oHatcheries)
 		settimer, g_ForceInjectSuccessCheck, %FInjectHatchFrequency%	
 	}
 	Else
 	{
 		settimer, g_ForceInjectSuccessCheck, off
-		DSpeak("Injects Off")
+		tSpeak("Injects Off")
 	}
 	Return
 
 
 
+
+; As Im not accounting for mouse buttons (just want to see how well this works)
+; make sure to check Mousebuttons are not down before calling releaseKeys()
+; Same with Windows keys (as releasing these will cause the windows menu to appear) - although the automation
+; may still work
+
+; Note** Do not call releaseKeys() while thread is in critical! As the LL-Hooks wont process the input
+; until the thread comes out of critical, or an AHK sleep command is used
+
+class Input 
+{
+	static keys := ["LControl", "RControl", "LAlt", "RAlt", "LShift", "RShift", "LWin", "RWin"
+				, "AppsKey", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12"
+				, "Left", "Right", "Up", "Down", "Home", "End", "PgUp", "PgDn", "Del", "Ins", "BS", "Capslock", "Numlock", "PrintScreen" 
+				, "Pause", "Space", "Enter", "Tab", "Esc", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "B", "C", "D", "E", "F", "G"
+				, "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
+	static MouseButtons := ["LButton", "RButton", "MButton", "XButton1", "XButton2"]
+	static downSequence
+
+	releaseKeys()
+	{
+		Global MT_HookBlock
+		SetKeyDelay, -1
+		this.downSequence := ""
+	;	MT_HookBlock := True
+		SetFormat, IntegerFast, hex
+		for index, key in this.keys 
+			if GetKeyState(key) 	; check the logical state
+				upsequence .= "{VK" GetKeyVK(key) " Up}", this.downSequence .= "{VK" GetKeyVK(key) " Down}" 
+		SetFormat, IntegerFast, d
+		if upsequence
+		{
+			SendInput, {BLIND}%upsequence%
+			return 1 ; This will indicate that we should sleep for 5ms (after activating critical)
+		}	 	; to prevent out of order command sequence with sendinput vs. post message
+		return 
+	}
+
+	revertKeyState()
+	{
+		Global MT_HookBlock, GameIdentifier
+		SetKeyDelay, -1
+		if this.downSequence
+			controlsend,, % "{Blind}" this.downSequence, %GameIdentifier%
+	;	MT_HookBlock := False
+		return							
+	}
+	userInputModified()
+	{
+		return this.downSequence
+	}
+}
+
+
 ; due to actually blocking the mouse properly, cant restore the boxdrag but I have it checking Mouse sta7te via SC2 memory in the is casting section anyway
 
-cast_ForceInject:
+
 cast_inject:
-	Inject_Label := A_ThisLabel
 	If (isMenuOpen() & !isChatOpen())
 		return ;as let the timer continue to check during auto injects
-
-	If (Inject_Label = "cast_ForceInject")
-	{
-	;	ReleaseModifiers(False, 1, HotkeysZergBurrow, 400, 30) return if true
-		startInjectWait := A_TickCount
-		while getkeystate("Shift", "P") || getkeystate("Control", "P") || getkeystate("Alt", "P")
-			|| getkeystate("LWin", "P") || getkeystate("RWin", "P")	
-			|| getkeystate("LButton", "P") || getkeystate("RButton", "P")
-			|| readModifierState() 
-			|| checkAllKeyStates()
-			|| (LastMousePress() < 40)
-		{
-			if (A_TickCount - startInjectWait > 600)
-				return
-			sleep 5
-		}
-	}
-	else ReleaseModifiers(1,0)	
+	MT_HookBlock := True
+	if Sleep := Input.releaseKeys()
+		sleep 10
+;	ReleaseModifiers(1,0)	
 ;	Critical ;cant use with input buffer, as prevents hotkey threads launching and hence tracking input
 	Thread, NoTimers, true  ;cant use critical with input buffer, as prevents hotkey threads launching and hence tracking input
-	SetBatchLines -1
-	Inject := []
+
 						;menu is always 1 regardless if chat is up
 						;chat is 0 when  menu is in focus
-
-
-	Inject := []
+	; Inject := []
 	SetKeyDelay, %EventKeyDelay%	;this only affects send events - so can just have it, dont have to set delay to original as its only changed for current thread
 	SetMouseDelay, %EventKeyDelay%	;again, this wont affect send click (when input/play is in use) - I think some other commands may be affected?
-
-	;	BufferInput(aButtons.List, "Buffer", 0)
-	BufferInputFast.BufferInput()
+	;BufferInputFast.BufferInput()
 
 	;If (Inject.LMouseState := GetKeyState("LButton")) ; 1=down
 	;	send {click Left up}
@@ -1280,24 +1349,11 @@ cast_inject:
 	; i dont care if the selection changes for a user invoked 1-button inject
 	If (ChatStatus := isChatOpen())
 	{
-		if (Inject_Label = "cast_ForceInject")
-		{
-			numGetUnitSelectionObject(oSelection) 	; this additional check is needed in case you have a
-			for index, object in oSelection.units 	; non-self unit selected, other wise will continually
-				if (object.owner != a_LocalPlayer.slot) ; click middle screen not alloying you to type
-					goto CastInjectExitRoutine 
-			if !oSelection.Count ; needed as otherwise will still mouseclick screen if no unsits selected ie selected unit dies
-				goto CastInjectExitRoutine 	
-		}
-
+		pMouseMove(A_ScreenWidth/2, A_ScreenHeight/2) ; to allow the below click to work
 		MTclick(A_ScreenWidth/2, A_ScreenHeight/2)
-		sleep 30 ; as there is a A_timeidle < 30 check in the cast inject larva for an auto inject
+		DllCall("Sleep", Uint, 5)
 	}
-
-
-	If (Inject_Label = "cast_ForceInject")
-		castInjectLarva("MiniMap", 1, F_Sleep_Time)	; still need the 1 so that it knows its a fully auto and to re-update mouse location during macro
-	else castInjectLarva(auto_inject, 0, auto_inject_sleep) ;ie nomral injectmethod
+	castInjectLarva(auto_inject, 0, auto_inject_sleep) ;ie nomral injectmethod
 
 	;If Inject.LMouseState ; probably dont need this now as when check for autocast it checks if mouse button is down
 	;{
@@ -1310,32 +1366,76 @@ cast_inject:
 		MouseMoveHumanSC2("x" start_x "y" start_y "t" HumanMouseTimeLo)
 	Else if (sendMethod() != "PostMessage")
 		send {click  %start_x%, %start_y%, 0}
-
 	If ChatStatus
 	{
-		if (sendMethod() = "PostMessage")
-			sleep 100
+		DllCall("Sleep", Uint, 10)
 		MTsend("{Enter}")
 	}
-
-	CastInjectExitRoutine:
-	BufferInputFast.Send(1) ; 1 so mouse isn't moved for the saved mouse clicks 
-
+	;	BufferInputFast.Send(1) ; 1 so mouse isn't moved for the saved mouse clicks 
 	;if (Inject.LMouseState AND !GetKeyState("LButton", "P")) ;mouse button up
 	;	send {click Left up}
-
-	SetBatchLines %SetBatchLines%
+	
+	MT_HookBlock := False ; wont revert keys as some users will have long sleep times.
 	Thread, NoTimers, false
 	inject_set := getTime()  ;** Note: Have to use gettime, as for forced ReleaseModifiers (via the iszergcasting) puts thread into critical, and then this thread turns off timers - so can result in the time being out and then having the next inject occuring too soon!
-	if (auto_inject_alert && Inject_Label = "cast_inject")
+	if auto_inject_alert
 		settimer, auto_inject, 250
-
-
-	If F_Inject_Enable
-		settimer, g_ForceInjectSuccessCheck, %FInjectHatchFrequency%	
-	If (Inject_Label = "cast_inject" && GetKeyState(cast_inject_key, "P"))
+	If GetKeyState(cast_inject_key, "P")
 		KeyWait, %cast_inject_key%, T.25	; have to have this short, as sometimes the script sees this key as down when its NOT and so waits for the entire time for it to be let go - so if a user presses  this key multiple times to inject (as hatches arent ready) some of those presses will be ingnored
 Return
+
+
+cast_ForceInject:
+	If (isMenuOpen() & !isChatOpen())
+		return 
+	startInjectWait := A_TickCount
+	while getkeystate("LWin", "P") || getkeystate("RWin", "P")	
+	|| getkeystate("LWin") || getkeystate("RWin")	
+	|| getkeystate("LButton", "P") || getkeystate("RButton", "P")
+	|| getkeystate("LButton") || getkeystate("RButton")
+	|| isUserPerformingAction()
+	|| MT_InputIdleTime() < 40  ;probably best to leave this in, as every now and then the next command wont be shift modified
+	{
+		if (A_TickCount - startInjectWait > 650)
+			return
+		sleep 5
+	}
+	MT_HookBlock := True
+	Sleep := Input.releaseKeys()
+	critical 1000
+	MT_HookBlock := False
+	if sleep
+		DllCall("Sleep", Uint, 10) ;  sleep, 5
+	SetKeyDelay, -1
+	If (ChatStatus := isChatOpen())
+	{
+		if !isSelectionGroupable(oSelection)
+		{
+				Input.revertKeyState()	
+				return
+		}
+		pMouseMove(A_ScreenWidth/2, A_ScreenHeight/2) ; to allow the below click to work
+		MTclick(A_ScreenWidth/2, A_ScreenHeight/2)	; even if cursors in outside map-viewport
+		DllCall("Sleep", Uint, 5) ; in case click changed unit selection
+	}
+	if !isSelectionGroupable(oSelection)
+	{
+			Input.revertKeyState()	
+			if ChatStatus 
+				MTsend("{Enter}")		
+			return
+	}
+	castInjectLarva("MiniMap", 1, 0)
+	Input.revertKeyState()	
+	If ChatStatus
+	{
+		DllCall("Sleep", Uint, 10)
+		MTsend("{Enter}")
+	}
+return
+
+
+
 
 	;should probably add a blockinput for the burrow check
 
@@ -1354,7 +1454,7 @@ g_ForceInjectSuccessCheck:
 		SetKeyDelay, %EventKeyDelay%	;this only affects send events - so can just have it, dont have to set delay to original as its only changed for current thread
 		SetMouseDelay, %EventKeyDelay%	;again, this wont affect send click (when input/play is in use) - I think some other commands may be affected?
 	;	ReleaseModifiers(0, 1, HotkeysZergBurrow)
-		ReleaseModifiers(0, 1, False, True, False, 40) ; check all keys
+		ReleaseModifiers(0, 1, HotkeysZergBurrow, True, False, 40) ; check all keys
 		Thread, NoTimers, true  ;cant use critical with input buffer, as prevents hotkey threads launching and hence tracking input
 		SetBatchLines -1
 
@@ -1798,7 +1898,7 @@ Else EnemyRaces := GetEnemyRaces()
 if (race_clipboard && WinActive(GameIdentifier))
 	clipboard := EnemyRaces
 if race_speech
-	DSpeak(EnemyRaces)
+	tSpeak(EnemyRaces)
 return
 
 ;--------------------------------------------
@@ -1809,7 +1909,7 @@ money:
 	{
 			if (Mineral_i <= sec_mineral)	; sec_mineral sets how many times the alert should be read
 			{
-				DSpeak(w_mineral)
+				tSpeak(w_mineral)
 				settimer, money, % additional_delay_minerals *1000	; will give the second warning after additional seconds
 			}
 			else 	; this ensures follow up warnings are not delayed by waiting for additional seconds before running timmer
@@ -1831,7 +1931,7 @@ gas:
 	{
 			if (Gas_i <= sec_gas)	; sec_mineral sets how many times the alert should be read
 			{
-				DSpeak(w_gas)
+				tSpeak(w_gas)
 				settimer, gas, % additional_delay_gas *1000	; will give the second warning after additional seconds
 			}
 			if (Gas_i >= sec_gas )
@@ -1864,13 +1964,13 @@ worker:
 			if  (time - reset_worker_time) > workerproduction_time_if AND (Worker_i <= sec_workerprod) ; sec_workerprod sets how many times to play warning.
 			{
 				If ( a_LocalPlayer["Race"] = "Terran"  )
-					DSpeak(w_workerprod_T)
+					tSpeak(w_workerprod_T)
 				Else If ( a_LocalPlayer["Race"] = "Protoss" )
-					DSpeak(w_workerprod_P)
+					tSpeak(w_workerprod_P)
 				Else If ( a_LocalPlayer["Race"] = "Zerg" )
-					DSpeak(w_workerprod_Z)
+					tSpeak(w_workerprod_Z)
 				Else 
-					DSpeak("Build Worker")
+					tSpeak("Build Worker")
 				workerproduction_time_if := additional_delay_worker_production ; will give the second warning after 12 ingame seconds
 				reset_worker_time := time		; This allows for the additional warnings to be delayed relative to the 1st warning
 				Worker_i ++
@@ -1912,13 +2012,13 @@ WorkerInProductionWarning(a_BaseList, maxIdleTime, maxWarnings, folloupWarningDe
 		lastwarning := time
 		warningCount++
 		If ( a_LocalPlayer["Race"] = "Terran" )
-			DSpeak(w_workerprod_T)
+			tSpeak(w_workerprod_T)
 		Else If ( a_LocalPlayer["Race"] = "Protoss" )
-			DSpeak(w_workerprod_P)
+			tSpeak(w_workerprod_P)
 		Else If ( a_LocalPlayer["Race"] = "Zerg" )
-			DSpeak(w_workerprod_Z)
+			tSpeak(w_workerprod_Z)
 		Else 
-			DSpeak("Build Worker")	;dont update the idle time so it gets bigger
+			tSpeak("Build Worker")	;dont update the idle time so it gets bigger
 	}
 	return 
 }
@@ -1943,7 +2043,7 @@ supply:
 									; <= sec_supply, as this includes the 1st primary warning
 		if (Supply_i <= sec_supply )  ; sec_supply sets how many times alert will be played it should be counted.
 		{
-			DSpeak(w_supply)	;this is the supply warning
+			tSpeak(w_supply)	;this is the supply warning
 			settimer, supply, % additional_delay_supply *1000
 		}
 		Else	; this ensures follow up warnings are not delayed by waiting for additional seconds before running timmer
@@ -1969,7 +2069,7 @@ scvidle:
 	{
 		if (Idle_i <= sec_idle )
 		{
-			DSpeak(w_idle)
+			tSpeak(w_idle)
 			settimer, scvidle, % additional_idle_workers *1000
 		}
 		Else
@@ -1995,7 +2095,7 @@ inject:
 		If W_inject_ding_on
 			SoundPlay, %A_Temp%\Windows Ding.wav  ;SoundPlay *-1
 		If W_inject_speech_on
-			DSpeak(w_inject_spoken)	
+			tSpeak(w_inject_spoken)	
 	}		
 	return
 
@@ -2012,7 +2112,7 @@ auto_inject:
 				sleep 150
 			}	
 		If W_inject_speech_on
-			DSpeak(w_inject_spoken)
+			tSpeak(w_inject_spoken)
 	}
 	return
 
@@ -2045,14 +2145,14 @@ worker_count:
 	worker_origin := A_ThisHotkey ; so a_hotkey notchanged via thread interuption
 	IF 	( !time ) ; ie = 0 
 	{
-		DSpeak("The game has not started")
+		tSpeak("The game has not started")
 		return
 	}
 	If ( worker_origin = worker_count_enemy_key)
 	{
 		if ( GameType <> "1v1" )
 		{
-			DSpeak("Enemy worker count is only available in 1v1")
+			tSpeak("Enemy worker count is only available in 1v1")
 			return
 		}	
 		For slot_number in a_Player
@@ -2072,17 +2172,17 @@ worker_count:
 	}
 	if ( "Fail" = newcount := getPlayerWorkerCount(playernumber))
 	{
-		DSpeak("Try Again in a few seconds")
+		tSpeak("Try Again in a few seconds")
 		return
 	}
 	Else If ( player_race = "Terran" )
-		DSpeak(newcount "SCVs")
+		tSpeak(newcount "SCVs")
 	Else If ( player_race = "Protoss" )
-		DSpeak(newcount "Probes")
+		tSpeak(newcount "Probes")
 	Else If ( player_race = "Zerg" )
-		DSpeak(newcount "Drones")
+		tSpeak(newcount "Drones")
 	Else 
-		DSpeak(newcount "Workers")
+		tSpeak(newcount "Workers")
 return	
 
 ;--------------------
@@ -2140,7 +2240,7 @@ warpgate_warn:
 		}
 
 		if aGatewayWarnings.maxindex()
-			DSpeak(w_warpgate)	
+			tSpeak(w_warpgate)	
 	}
 
 return
@@ -2308,7 +2408,7 @@ doUnitDetection(unit, type, owner, mode = "")
 				PrevWarning := []
 				PrevWarning.speech := alert_array[GameType, A_Index, "Name"]
 				PrevWarning.unitIndex := unit
-				DSpeak(alert_array[GameType, A_Index, "Name"])
+				tSpeak(alert_array[GameType, A_Index, "Name"])
 				if (!alert_array[GameType, A_Index, "Repeat"])	; =0 these below setup a list like above, but contins the type - to prevent rewarning
 					Alerted_Buildings.insert({(owner): Alert_Index})
 					;Alerted_Buildings[Alerted_Buildings.maxindex() ? Alerted_Buildings.maxindex()+1 : 1, owner] :=  Alert_Index					
@@ -2536,10 +2636,14 @@ timer_Exit:
 return
 
 ShutdownProcedure:
+	setLowLevelInputHooks(False)
 	Closed := ReadMemory()
 	close := ReadRawMemory()
 	Closed := ReadMemory_Str()
 	Gdip_Shutdown(pToken)
+
+	if speechThread.ahkReady() 	; it exists
+		speechThread.ahkTerminate(500) ; needs 5 so thread doesn't persist
 	sleep(, "Off") ; this resets the timeEndPeriod/timeBeginPeriod (only if suspend mode was ever used)
 	Iniwrite, % round(GetProgramWaveVolume()), %config_file%, Volume, program
 
@@ -2947,22 +3051,21 @@ if FileExist(config_file) ; the file exists lets read the ini settings
 	
 	;[Overlays]
 	section := "Overlays"
+	; This function will get return  the x,y coordinates for the top left, and bottom right of the 
+	; desktop screen (the area on both monitors)
+	DesktopScreenCoordinates(XminScreen, YminScreen, XmaxScreen, YmaxScreen)
 	list := "IncomeOverlay,ResourcesOverlay,ArmySizeOverlay,WorkerOverlay,IdleWorkersOverlay,UnitOverlay,LocalPlayerColourOverlay"
 	loop, parse, list, `,
 	{
 		IniRead, Draw%A_LoopField%, %config_file%, %section%, Draw%A_LoopField%, 0
 		IniRead, %A_LoopField%Scale, %config_file%, %section%, %A_LoopField%Scale, 1
-		if (%A_LoopField%Scale < .5)	;so cant get -scales
+		if (%A_LoopField%Scale < .5)	;so cant get -scales (or invisibly small)
 			%A_LoopField%Scale := .5
-		IniRead, %A_LoopField%X, %config_file%, %section%, %A_LoopField%X, % 200 * A_index	
-		if (%A_LoopField%X = "" || < 0) ; guard against blank key
-			%A_LoopField%X := 200 * (A_Index/2)
-		Else if (%A_LoopField%X > A_ScreenWidth)
+		IniRead, %A_LoopField%X, %config_file%, %section%, %A_LoopField%X, % A_ScreenWidth/2
+		if (%A_LoopField%X = "" || %A_LoopField%X < XminScreen || %A_LoopField%X > XmaxScreen) ; guard against blank key
 			%A_LoopField%X := A_ScreenWidth/2
-		IniRead, %A_LoopField%Y, %config_file%, %section%, %A_LoopField%Y, % 200 * A_index	
-		if (%A_LoopField%Y = "" || < 0)
-			%A_LoopField%Y := 200 * (A_Index/2)
-		Else if (%A_LoopField%Y > A_ScreenHeight)
+		IniRead, %A_LoopField%Y, %config_file%, %section%, %A_LoopField%Y, % A_ScreenHeight/2	
+		if (%A_LoopField%Y = "" || %A_LoopField%Y < YminScreen || %A_LoopField%Y > YmaxScreen)
 			%A_LoopField%Y := A_ScreenHeight/2
 	}
 
@@ -5079,13 +5182,13 @@ return
 
 
 P_Protoss_Joke:	
-	DSpeak("Tosser.")
+	tSpeak("Tosser.")
 	return
 P_Terran_Joke:	
-	DSpeak("Terran")
+	tSpeak("Terran")
 	return
 P_zerg_Joke:
-	DSpeak("Easy Mode")
+	tSpeak("Easy Mode")
 	return	
 
 B_HelpFile:
@@ -5402,45 +5505,45 @@ Test_VOL:
 	;Random, Rand_joke, 1, 8
 	Rand_joke ++
 	If ( Rand_joke = 1 )
-		DSpeak("Protoss is OPee")
+		tSpeak("Protoss is OPee")
 	Else If ( Rand_joke = 2 )
-		DSpeak("A templar comes back to base with a terrified look on his face. The zealots asks - what happened? You look like you've seen a ghost")
+		tSpeak("A templar comes back to base with a terrified look on his face. The zealots asks - what happened? You look like you've seen a ghost")
 	Else If ( Rand_joke = 3 )
 	{
 
-		DSpeak("A Three Three Protoss army walks into a bar and asks")
+		tSpeak("A Three Three Protoss army walks into a bar and asks")
 		sleep 50
-		DSpeak("Where is the counter?")
+		tSpeak("Where is the counter?")
 	}
 	Else If ( Rand_joke = 4 )
 	{
-		DSpeak("What computer does IdrA use?")
+		tSpeak("What computer does IdrA use?")
 		sleep 1000
-		DSpeak("An EYE BM")
+		tSpeak("An EYE BM")
 	}
 	Else If ( Rand_joke = 5 )
 	{
-		DSpeak("Why did the Cullosus fall over ?")
+		tSpeak("Why did the Cullosus fall over ?")
 		sleep 1000
-		DSpeak("because it was imbalanced ")
+		tSpeak("because it was imbalanced ")
 	}
 	Else If ( Rand_joke = 6 )
 	{
-		DSpeak("How many Zealots does it take to change a lightbulb?")
+		tSpeak("How many Zealots does it take to change a lightbulb?")
 		sleep 1000
-		DSpeak("None, as they cannot hold")	
+		tSpeak("None, as they cannot hold")	
 	}
 	Else If ( Rand_joke = 7 )
 	{
-		DSpeak("How many Infestors does it take to change a lightbulb?")
+		tSpeak("How many Infestors does it take to change a lightbulb?")
 		sleep 1000
-		DSpeak("One, you just have to make sure he doesn't over-power it")	
+		tSpeak("One, you just have to make sure he doesn't over-power it")	
 	}
 	Else
 	{
-		DSpeak("How many members of the Starcraft 2 balance team does it take to change a lightbulb?")
+		tSpeak("How many members of the Starcraft 2 balance team does it take to change a lightbulb?")
 		sleep 1000
-		DSpeak("All three of them, and Ten patches")	
+		tSpeak("All three of them, and Ten patches")	
 		rand_joke := 0
 	}
 	programVolume := original_programVolume
@@ -6651,13 +6754,13 @@ g_UserToggleAutoWorkerState: 		; this launched via the user hotkey combination
 	{
 		AW_MaxWorkersReached := TmpDisableAutoWorker := 0 		; just incase the timers bug out and this gets stuck in enabled state
 		SetTimer, g_autoWorkerProductionCheck, -1   ; so it starts immediately - cant use gosub as that negates
-		dspeak("On")											; the sleep/timer linearity and causes double workers to be made when first turned on
+		tSpeak("On")											; the sleep/timer linearity and causes double workers to be made when first turned on
 		SetTimer, g_autoWorkerProductionCheck, 200
 	}
 	else 
 	{
 		SetTimer, g_autoWorkerProductionCheck, off
-		dspeak("Off")
+		tSpeak("Off")
 	}
 
 return 
@@ -6826,190 +6929,192 @@ autoWorkerProductionCheck()
 
 	if (MaxWokersTobeMade >= 1) && (idleBases || almostComplete || (halfcomplete && !nearHalfComplete)  ) ; i have >= 1 in case i stuffed the math and end up with a negative number or a fraction
 	{
-		
-		While getkeystate("Shift", "P") || getkeystate("Control", "P") || getkeystate("Alt", "P")
-		|| getkeystate("LWin", "P") || getkeystate("RWin", "P")	
-		|| getkeystate("LButton", "P") || getkeystate("RButton", "P")
-		|| readModifierState()
-		|| isUserPerformingActionIgnoringCamera() 
-		|| checkAllKeyStates() 
-		|| ( LastMousePress() < 40 )
+
+		While (isUserPerformingActionIgnoringCamera() || getKeyState("LButton") ||   getKeyState("LButton", "P")
+		||  getKeyState("RButton") || getKeyState("RButton", "P") ||  getKeyState("MButton") || getKeyState("MButton", "P")
+		|| getkeystate("LWin") || getkeystate("RWin"))
+	;	||  MT_InputIdleTime() < 35
 		{
 			if (A_index > 24)
 				return ; timed out after 120 ms
 			sleep 1
-		;	sleep(5)
 		}
 		Thread, NoTimers, true
 		SetKeyDelay, %EventKeyDelay%	;this only affects send events - so can just have it, dont have to set delay to original as its only changed for current thread
 		SetMouseDelay, %EventKeyDelay%	;again, this wont affect send click (when input/play is in use) - I think some other commands may be affected?
+		Global MT_HookBlock := True
+		Sleep := Input.releaseKeys()
+		critical 1000
+		MT_HookBlock := False
+		if sleep
+			DllCall("Sleep", Uint, 10) ;  sleep, 5
 
-		BufferInputFast.BufferInput()
+;		BufferInputFast.BufferInput()
+	;;	BufferInputFast.BlockInput()
 		
 		; this should come before the sleep, as clicking on the screen could easily change the units selected!
 		; this could also change the user selection without them realising!!!
 		; perhaps this was the cause of the weird error in control group (ive moved its position now)
 		If (ChatStatus := isChatOpen())
 		{
-			numGetUnitSelectionObject(oSelection) 	; this additional check is needed in case you have a
-			for index, object in oSelection.units 	; non-self unit selected, other wise will continually
-				if (object.owner != a_LocalPlayer.slot) ; click middle screen not alloying you to type
-				{
-					ExitThread := 1
-					break
-				}
-
-			if (ExitThread || !oSelection.Count) ; needed as otherwise will still mouseclick screen if no unsits selected ie selected unit dies
-			{ 										
-				BufferInputFast.send()
-				Thread, NoTimers, false ; dont think is required as the thread is about to end
-				return 
-			}		
-		;	MouseGetPos, Xmouse, Ymouse
-		;	Xscentre := A_ScreenWidth/2, Yscentre := A_ScreenHeight/2
-		;	send {click Left %Xscentre% %Yscentre%}
-		;	send {click %Xmouse% %Ymouse%, 0}
-		;	ChatString.set()
-
-		;	pClick("Left", A_ScreenWidth/2, A_ScreenHeight/2)
+			if !isSelectionGroupable(oSelection)
+			{
+					Input.revertKeyState()	
+					return
+			}
 			if !A_IsCompiled
 				soundplay *64 ; just testing that the chat offset is correct
-			MTclick(A_ScreenWidth/2, A_ScreenHeight/2)
-			sleep 12
+			pMouseMove(A_ScreenWidth/2, A_ScreenHeight/2) ; to allow the below click to work
+			MTclick(A_ScreenWidth/2, A_ScreenHeight/2)	; even if cursors in outside map-viewport
+			DllCall("Sleep", Uint, 5) ; in case click changed unit selection
 		}
 		; else Sleep 9 ; give time for the selection buffer to update ; dont need this now checking A_timeidle
 
 		; should probably have an additional sleep here
 		HighlightedGroup := getSelectionHighlightedGroup()
-		numGetUnitSelectionObject(oSelection)
-		If !oSelection.Count  ; = 0 as nothing is selected so cant restore this/control group it
-			Goto, autoWorkerProductionCheckExit
-
-		for index, object in oSelection.units
-		{
-			L_SelectionIndexes .= "," object.unitIndex
-			if (object.owner != a_LocalPlayer.slot) 	; as cant restore unit selection. Need to work out how to detect allied leaver
-				Goto, autoWorkerProductionCheckExit
-			if (!varInMatchList(object.unitIndex, L_BaseCtrlGroupIndexes) || !isUnitAStructure(object.unitIndex)) ; so if a selected unit isnt in the base control group, or is a non-structure
-				BaseControlGroupNotSelected := 1
-		}
-
-
-		; so even if the just the bases out of the base control group are selected (as other structures can be grouped with it)
-		; it wont send the base control group button as its not required
-		; Another scenario if there are 3 bases in ctrl group, and 1 is flying, if the user has the  two landed bases selected
-		; it still wont send the base control group, as its not required
-		if !BaseControlGroupNotSelected
-		{
+		If numGetUnitSelectionObject(oSelection) ; = 0 as nothing is selected so cant restore this/control group it
+		{ 
 			for index, object in oSelection.units
-				if varInMatchList(object.unitIndex, L_ActualBasesIndexesInBaseCtrlGroup)
-					SelectedBasesCount++
-			if (SelectedBasesCount < TotalCompletedBasesInCtrlGroup)
-				BaseControlGroupNotSelected := 1
+			{
+				L_SelectionIndexes .= "," object.unitIndex
+				if (object.owner != a_LocalPlayer.slot) 	; as cant restore unit selection. Need to work out how to detect allied leaver
+				{	
+					Input.revertKeyState()	
+					if ChatStatus 
+						MTsend("{Enter}")
+					return
+				}	
+				if (!varInMatchList(object.unitIndex, L_BaseCtrlGroupIndexes) || !isUnitAStructure(object.unitIndex)) ; so if a selected unit isnt in the base control group, or is a non-structure
+					BaseControlGroupNotSelected := 1
+			}
 
-		}
 
-		; one thing to remember about these (L_SelectionIndexes != L_BaseCtrlGroupIndexes) 
-		; if a unit in the base group gets killed
-		; then these can never be Equal until the user re-issues the base control group
-		; so this may control group the units even when these bases are selected
-		; better to be safe than sorry!
-		; thats why im doing it slightly different now
+			; so even if the just the bases out of the base control group are selected (as other structures can be grouped with it)
+			; it wont send the base control group button as its not required
+			; Another scenario if there are 3 bases in ctrl group, and 1 is flying, if the user has the  two landed bases selected
+			; it still wont send the base control group, as its not required
+			if !BaseControlGroupNotSelected
+			{
+				for index, object in oSelection.units
+					if varInMatchList(object.unitIndex, L_ActualBasesIndexesInBaseCtrlGroup)
+						SelectedBasesCount++
+				if (SelectedBasesCount < TotalCompletedBasesInCtrlGroup)
+					BaseControlGroupNotSelected := 1
 
-		if BaseControlGroupNotSelected ; hence if the 'main base' control group is already selected, it wont bother control grouping them (and later restoring them)
-		{
-			numGetControlGroupObject(oControlstorage, controlstorageGroup) 	; this checks if the currently selected units match those
-			for index, object in oControlstorage.units 							; already stored in the ctrl group
-				L_ControlstorageIndexes .= "," object.unitIndex 				; if they do, it wont bother sending the store control group command
+			}
 
-			if (L_SelectionIndexes != L_ControlstorageIndexes)  ; safer and easier to do it this way for the storage control group - it may do it slightly more often than requried, but it should ALWAYS do it if it IS required
-				sendSequence := "^" controlstorageGroup
-			sendSequence .= mainControlGroup
-			; safer as units in this control group are very likely to die and change often
-			; and by sending the ctrl grp command, the control buffer will get updated.
+			; one thing to remember about these (L_SelectionIndexes != L_BaseCtrlGroupIndexes) 
+			; if a unit in the base group gets killed
+			; then these can never be Equal until the user re-issues the base control group
+			; so this may control group the units even when these bases are selected
+			; better to be safe than sorry!
+			; thats why im doing it slightly different now
 
-		}
-		Else If HighlightedGroup ; != 0
-		{
-			tabrepreat := oSelection["Types"]  - HighlightedGroup
-			loop % tabrepreat ;get tab selection back to 0 ;too hard and too many things can go wrong and slow it down if i try to tab to all user possible locations
+			if BaseControlGroupNotSelected ; hence if the 'main base' control group is already selected, it wont bother control grouping them (and later restoring them)
+			{
+				numGetControlGroupObject(oControlstorage, controlstorageGroup) 	; this checks if the currently selected units match those
+				for index, object in oControlstorage.units 							; already stored in the ctrl group
+					L_ControlstorageIndexes .= "," object.unitIndex 				; if they do, it wont bother sending the store control group command
+
+				if (L_SelectionIndexes != L_ControlstorageIndexes)  ; safer and easier to do it this way for the storage control group - it may do it slightly more often than requried, but it should ALWAYS do it if it IS required
+					sendSequence := "^" controlstorageGroup
+				sendSequence .= mainControlGroup
+				; safer as units in this control group are very likely to die and change often
+				; and by sending the ctrl grp command, the control buffer will get updated.
+
+			}
+			Else If HighlightedGroup ; != 0
+			{
+				tabrepreat := oSelection["Types"]  - HighlightedGroup
+				loop % tabrepreat ;get tab selection back to 0 ;too hard and too many things can go wrong and slow it down if i try to tab to all user possible locations
+					sendSequence .= NextSubgroupKey
+					; as there are still building / priority rules i dont understand e.g. planetary fortress is last even though it has higher Unitindex than ebay
+			}		; and its much faster as dont have to double sort an array
+
+			
+			; other function gets spammed when user incorrectly adds a unit to the main control group (as it will take group 0) and for terran tell that unit to 'stop' when sends s
+
+			loop % MaxWokersTobeMade
+				sendSequence .= makeWorkerKey
+
+			; i tried checking the selection buffer for non.structure units and this worked well for 4 days, then all of a sudden it started giving false errors
+			; This may be possibly due to insufficient sleep time to update the selection buffer (3ms).....but im not convinced due to how frequently it 
+			; started giving errors ... but still very strange
+			; i cant be bothered looking into it
+			; so now im just checking if macro has ran too many times (as if worker is will/attempted  it will sleep for  800ms)
+			; this isnt perfect or fool proof, but it should work well enough, and quickly enough to prevent interrupting the user
+			; for longer than 4 or 5 seconds if they stuff up their base control group
+
+			; this slow checking allows the user to have as many bases as they want e.g. 7,8, 9 or more which could cause this function to run
+			; and make a worker 5 times in a row without any risk of falsely activating the the control group error routine
+			if (UninterruptedWorkersMade > 5) ; after 4 days this started giving an error, so now i have added an additional sleep time 
+			{
+			;	sleep 5  ; give heaps of time to update!
+				DllCall("Sleep", Uint, 5)
+				numGetUnitSelectionObject(oSelection) 	; can't use numgetControlGroup - as when nexus dies and is replaced with a local owned unit it will cause a warning
+				for index, object in oSelection.units
+					if !isUnitAStructure(object.unitIndex)	; as units will have higher priority and appear in group 0/top left control card - and this isnt compatible with this macro
+						BaseCtrlGroupError := 1					; as the macro will tell that unit e.g. probe to 'make a worker' and cause it to bug out
+			}
+
+			if BaseControlGroupNotSelected
+			{												
+		;		Sleep(2) 			; I think sc2 needs a sleep as otherwise the send controlgroup storage gets ignored every now and then  (it worked well with 4)
+			;	sleep 10
+			;	DllCall("Sleep", Uint, 10)
+				sendSequence .= controlstorageGroup
+			}
+
+		;	if HighlightedGroup
+		; 		DllCall("Sleep", Uint, 2) ; After restoring a control group, needs at least 1 ms so tabs will register (though sometimes it doesnt????)
+			loop % HighlightedGroup
 				sendSequence .= NextSubgroupKey
-				; as there are still building / priority rules i dont understand e.g. planetary fortress is last even though it has higher Unitindex than ebay
-		}		; and its much faster as dont have to double sort an array
 
-		
-		; other function gets spammed when user incorrectly adds a unit to the main control group (as it will take group 0) and for terran tell that unit to 'stop' when sends s
-
-		loop % MaxWokersTobeMade
-			sendSequence .= makeWorkerKey
-
-		; i tried checking the selection buffer for non.structure units and this worked well for 4 days, then all of a sudden it started giving false errors
-		; This may be possibly due to insufficient sleep time to update the selection buffer (3ms).....but im not convinced due to how frequently it 
-		; started giving errors ... but still very strange
-		; i cant be bothered looking into it
-		; so now im just checking if macro has ran too many times (as if worker is will/attempted  it will sleep for  800ms)
-		; this isnt perfect or fool proof, but it should work well enough, and quickly enough to prevent interrupting the user
-		; for longer than 4 or 5 seconds if they stuff up their base control group
-
-		; this slow checking allows the user to have as many bases as they want e.g. 7,8, 9 or more which could cause this function to run
-		; and make a worker 5 times in a row without any risk of falsely activating the the control group error routine
-		if (UninterruptedWorkersMade > 5) ; after 4 days this started giving an error, so now i have added an additional sleep time 
-		{
-			sleep 5  ; give heaps of time to update!
-			numGetUnitSelectionObject(oSelection) 	; can't use numgetControlGroup - as when nexus dies and is replaced with a local owned unit it will cause a warning
-			for index, object in oSelection.units
-				if !isUnitAStructure(object.unitIndex)	; as units will have higher priority and appear in group 0/top left control card - and this isnt compatible with this macro
-					BaseCtrlGroupError := 1					; as the macro will tell that unit e.g. probe to 'make a worker' and cause it to bug out
+			if sendSequence
+				MTsend(sendSequence)
+			WorkerMade := True
 		}
-		MTsend(sendSequence)
-		sendSequence := ""			
-
-		if BaseControlGroupNotSelected
-		{												
-	;		Sleep(2) 			; I think sc2 needs a sleep as otherwise the send controlgroup storage gets ignored every now and then  (it worked well with 4)
-			sleep 1
-			sendSequence .= controlstorageGroup
-		}
-
-	;	if HighlightedGroup
-	; 		sleep(2) ; After restoring a control group, needs at least 1 ms so tabs will register (though sometimes it doesnt????)
-		loop % HighlightedGroup
-			sendSequence .= NextSubgroupKey
-
-		MTsend(sendSequence)
-
-		autoWorkerProductionCheckExit: ; just a less messy way to exit out of function if it doesn't perform an action
-
+		Input.revertKeyState()
 		If ChatStatus
 		{
-			; if using post message, seems to need more then 50+ms to prevent sent characters
-			; getting into the message box
-			if (sendMethod() = "PostMessage")
-				sleep 100
+		; needs a few ms to allow its message queue to clear 
+		; otherwise sent characters will appear in chatbox
+			DllCall("Sleep", Uint, 10)
 			MTsend("{Enter}")
 		}
-		BufferInputFast.send()
-
+		critical, off
 		Thread, NoTimers, false 
 
+	;	BaseCtrlGroupError := 0
 		if BaseCtrlGroupError ; as non-structure units will have higher priority and appear in group 0/top left control card - and this isnt compatible with this macro
 		{	; as the macro will tell that unit e.g. probe to 'make a worker' and cause it to bug out	
-			dspeak("Error in Base Control Group. Auto Worker")
+			tSpeak("Error in Base Control Group. Auto Worker")
 			gosub g_UserToggleAutoWorkerState ; this will say 'off' Hence Will speak Auto worker Off	
 			UninterruptedWorkersMade := 0 ; reset the count so when user fixes group it will work
 			return 
 		}
-		if (A_ThisLabel != "autoWorkerProductionCheckExit")
+
+		if WorkerMade
 		{
 			UninterruptedWorkersMade++ ; keep track of how many workers are made in a row
 			sleep, 800 	; this will prevent the timer running again otherwise sc2 slower to update 'isin production' 
-		}		 	; this will prevent the timer running again otherwise sc2 slower to update 'isin production' 
-											; so will send another build event and queueing more workers
+		}		 	; so will send another build event and queueing more workers
 					; 400 worked find for stable connection, but on Kr sever needed more. 800 seems to work well
 	}
 	else UninterruptedWorkersMade := 0
 	return
 }
+
+isSelectionGroupable(ByRef oSelection)
+{	GLOBAl a_LocalPlayer
+	if !numGetUnitSelectionObject(oSelection) 	; No units selected
+		return 0
+	for index, object in oSelection.units 	; non-self unit selected, other wise will continually
+		if (object.owner != a_LocalPlayer.slot) ; click middle screen not alloying you to type
+			return 0
+	return 1
+}
+
 
 sendMethod()
 {	
@@ -7175,33 +7280,17 @@ GetEBases()
 	Return SubStr(list, 1, -1)	; remove last "|"	
 }
 
-dSpeak(Message, fSapi_vol="", fOverall_vol="")
-{	global programVolume, speech_volume
 
-	if !fSapi_vol
-		fSapi_vol := speech_volume
-	if !fOverall_vol
-		fOverall_vol := programVolume
-	Header := 	"programVolume := " fOverall_vol "`r`n"		; windows files require both `r`n to correctly signal end of line - but `n will work by itself....
-				. "speech_volume := " fSapi_vol  "`r`n"
-				. "Message := """ Message """`r`n"			; ***note "" double consecutive quotes resolve to a literal "  quote!!!
-	static Footer := "
-					(Join`r`n
-						#NoTrayIcon
-						SAPI := ComObjCreate(""SAPI.SpVoice"")	; Unlike above, these lines can take comments and formatting!
-						SAPI.volume := speech_volume
-						if A_OSVersion NOT in WIN_XP,WIN_2003,WIN_2000 	; below vista this sets system volume rather than
-						{										; process/program volume
-							v := programVolume*655.35
-						    DllCall(""winmm\waveOutSetVolume"", ""int"", device-1, ""uint"", v|(v<<16))
-						}						
-						Try SAPI.Speak(Message)
-						ExitApp
-					)"
+tSpeak(Message, SAPIVol := "")
+{	global speech_volume, speechThread
 
-	DynaRun(CreateScript(Header . Footer), "MT_Speech.AHK", A_Temp "\AHK.exe") ; note as this script doesnt have any #includes/formatting changes - dont need to pass it to create script eg. could just DynaRun(Header . Footer)
-	Return 
+	if !SAPIVol
+		SAPIVol := speech_volume
+	speechThread.ahkFunction("speak", Message, SAPIVol)
+	return
 }
+
+
 
 getTime()
 {	global 
@@ -8633,7 +8722,6 @@ CreateHotkeys()
 	Hotkey, If, WinActive(GameIdentifier) && !BufferInputFast.isInputBlockedOrBuffered() 														
 		hotkey, %warning_toggle_key%, mt_pause_resume, on		
 		hotkey, *~LButton, g_LbuttonDown, on
-		hotkey, *~RButton, g_RbuttonDown, on
 
 	
  
@@ -8811,17 +8899,6 @@ castInjectLarva(Method="Backspace", ForceInject=0, sleepTime=80)	;SendWhileBlock
 		local xNew, yNew
 
 		; there could be an issue here with the selection buffer not being updated (should sleep for 10ms)
-		if ForceInject
-		{
-		;	if (MT_TimeIdleInput() < 30)
-		;		return
-			numGetUnitSelectionObject(oSelection)
-			for index, object in oSelection.units 	; non-self unit selected, other wise will continually
-				if (object.owner != a_LocalPlayer.slot)
-					return
-			If !oSelection.Count  ; = 0 as nothing is selected so cant restore this/control group it
-				return
-		}
 
 		oHatcheries := [] ; Global used to check if successfuly without having to iterate again
 		local BaseCount := zergGetHatcheriesToInject(oHatcheries)
@@ -8852,17 +8929,11 @@ castInjectLarva(Method="Backspace", ForceInject=0, sleepTime=80)	;SendWhileBlock
 						click_x := CurrentHatch.MiniMapX, click_y := CurrentHatch.MiniMapY
 						If HumanMouse
 							MouseMoveHumanSC2("x" click_x "y" click_y "t" rand(HumanMouseTimeLo, HumanMouseTimeHi))
+					;	MTclick(click_x, click_y, , , , , False)
 						MTclick(click_x, click_y)
 						if sleepTime
-							if ForceInject
-								sleep(sleepTime)
-							else sleep(ceil(sleepTime * rand(1, Inject_SleepVariance))) ; eg rand(1, 1.XXXX) as the second parameter will always have a decimal point, dont have to worry about it returning just full integers eg 1 or 2 or 3
+							sleep % ceil(sleepTime * rand(1, Inject_SleepVariance)) ; eg rand(1, 1.XXXX) as the second parameter will always have a decimal point, dont have to worry about it returning just full integers eg 1 or 2 or 3
 						Queen.Energy -= 25	
-						If ForceInject 		; this will update cursos position if user moves it during a force inject
-						{
-							MouseGetPos, xNew, yNew
-							start_x += xNew - click_x , start_y += yNew - click_y
-						}
 						Break
 					}
 					else CurrentHatch.NearbyQueen := 0
@@ -8873,7 +8944,7 @@ castInjectLarva(Method="Backspace", ForceInject=0, sleepTime=80)	;SendWhileBlock
 		;	/* ; THIS Is trying to do multi injects
 			if (MissedHatcheries.maxindex() && CanQueenMultiInject)
 			{
-			local	QueenMultiInjects := []
+				local QueenMultiInjects := []
 				For Index, Queen in oSelection.Queens
 				{
 					local MaxInjects := Floor(Queen.Energery / 25)
@@ -8902,18 +8973,12 @@ castInjectLarva(Method="Backspace", ForceInject=0, sleepTime=80)	;SendWhileBlock
 						click_x := CurrentHatch.MiniMapX, click_y := CurrentHatch.MiniMapY
 						If HumanMouse
 							MouseMoveHumanSC2("x" click_x "y" click_y "t" rand(HumanMouseTimeLo, HumanMouseTimeHi))
+					;	MTclick(click_x, click_y, "Left", "+", , , False)
 						MTclick(click_x, click_y, "Left", "+")
 						if sleepTime
-							if ForceInject
-								sleep(sleepTime)
-							else sleep(ceil(sleepTime * rand(1, Inject_SleepVariance))) 
+							sleep % ceil(sleepTime * rand(1, Inject_SleepVariance))
 						if (A_Index = QueenUnit.maxIndex())
 							MTsend(MI_Queen_Group)
-						If ForceInject 		; this will update cursos position if user moves it during a force inject
-						{
-							MouseGetPos, xNew, yNew
-							start_x += xNew - click_x , start_y += yNew - click_y
-						}
 					}					
 			}
 		}
@@ -8934,7 +8999,7 @@ castInjectLarva(Method="Backspace", ForceInject=0, sleepTime=80)	;SendWhileBlock
 
 		If(Local QueenCount := getGroupedQueensWhichCanInject(oSelection))  ; this wont fetch burrowed queens!! so dont have to do a check below - as burrowed queens can make cameramove when clicking their hatch
 		{
-			if  Inject_RestoreSelection
+			if Inject_RestoreSelection
 				MTsend("^" Inject_control_group)
 			if Inject_RestoreScreenLocation
 				MTsend(BI_create_camera_pos_x)
@@ -8944,10 +9009,11 @@ castInjectLarva(Method="Backspace", ForceInject=0, sleepTime=80)	;SendWhileBlock
 				Local := FoundQueen := 0
 				click_x := CurrentHatch.MiniMapX, click_y := CurrentHatch.MiniMapY
 				if sleepTime
-					sleep(ceil( (sleepTime/2) * rand(1, Inject_SleepVariance))) 
-				send {click Left %click_x%, %click_y%}
+					sleep % ceil( (sleepTime/2) * rand(1, Inject_SleepVariance)) 
+		;		send {click Left %click_x%, %click_y%}
+				MTclick(click_x, click_y)
 				if sleepTime
-					sleep(ceil( (sleepTime/2) * rand(1, Inject_SleepVariance)))
+					sleep % ceil( (sleepTime/2) * rand(1, Inject_SleepVariance))
 				if isHatchInjected(CurrentHatch.Unit)
 					continue
 				For Index, Queen in oSelection.Queens
@@ -8961,7 +9027,8 @@ castInjectLarva(Method="Backspace", ForceInject=0, sleepTime=80)	;SendWhileBlock
 						click_x := CurrentHatch.MiniMapX, click_y := CurrentHatch.MiniMapY
 					
 					;	click_x := A_ScreenWidth/2 , click_y := A_ScreenHeight/2
-						send {click Left %click_x%, %click_y%}
+					;	send {click Left %click_x%, %click_y%}
+						MTclick(click_x, click_y)
 						Queen.Energy -= 25	
 						Break
 					}
@@ -8972,7 +9039,7 @@ castInjectLarva(Method="Backspace", ForceInject=0, sleepTime=80)	;SendWhileBlock
 			}
 			if Inject_RestoreScreenLocation
 			{
-				sleep(ceil( (sleepTime/1.5) * rand(1, Inject_SleepVariance))) ; so this will actually mean the inject will sleep longer than user specified, but make it look a bit more real
+				sleep % ceil( (sleepTime/1.5) * rand(1, Inject_SleepVariance)) ; so this will actually mean the inject will sleep longer than user specified, but make it look a bit more real
 				MTsend(BI_camera_pos_x) 										
 			}
 		}
@@ -8997,7 +9064,7 @@ castInjectLarva(Method="Backspace", ForceInject=0, sleepTime=80)	;SendWhileBlock
 		loop, % getBaseCameraCount()	
 		{
 			MTsend(base_camera)
-			sleep(ceil( (sleepTime/2) * rand(1, Inject_SleepVariance)))	;need a sleep somerwhere around here to prevent walkabouts...sc2 not registerings box drag?
+			sleep % ceil( (sleepTime/2) * rand(1, Inject_SleepVariance))	;need a sleep somerwhere around here to prevent walkabouts...sc2 not registerings box drag?
 			if isCastingReticleActive() ; i.e. cast larva
 				MTsend(Escape) ; (deselects queen larva) (useful on an already injected hatch) this is actually a variable
 			If (drag_origin = "Right" OR drag_origin = "R") And HumanMouse ;so left origin - not case sensitive
@@ -9007,14 +9074,13 @@ castInjectLarva(Method="Backspace", ForceInject=0, sleepTime=80)	;SendWhileBlock
 			If HumanMouse
 			{
 				MouseMoveHumanSC2("x" Dx1 "y" Dy1 "t" rand(HumanMouseTimeLo, HumanMouseTimeHi))
-				send {click down}
+				sendInput {click down}
 				MouseMoveHumanSC2("x" Dx2 "y" Dy2 "t" rand(HumanMouseTimeLo, HumanMouseTimeHi))
-				send {click up}
+				sendInput {click up}
 			}
 			Else 
-				send {click down %Dx1%, %Dy1%}{click up, %Dx2%, %Dy2%} 
-		;	Sleep, sleepTime/2	;sleep needs to be here (to give time to update selection buffer?)	
-			sleep(ceil( (sleepTime/2) * rand(1, Inject_SleepVariance)))
+				MTdragClick(Dx1, Dy1, Dx2, Dy2)
+			sleep % ceil( (sleepTime/2) * rand(1, Inject_SleepVariance))
 			if (QueenIndex := filterSlectionTypeByEnergy(25, A_unitID["Queen"]))
 			{																	
 				MTsend(Inject_spawn_larva)							;have to think about macro hatch though
@@ -9023,14 +9089,14 @@ castInjectLarva(Method="Backspace", ForceInject=0, sleepTime=80)	;SendWhileBlock
 				If HumanMouse
 				{	click_x += rand((-75/1920)*A_ScreenWidth,(75/1080)*A_ScreenHeight), click_y -= 100+rand((-75/1920)*A_ScreenWidth,(75/1080)*A_ScreenHeight)
 					MouseMoveHumanSC2("x" click_x  "y" click_y "t" rand(HumanMouseTimeLo, HumanMouseTimeHi))
-					send {click Left %click_x%, %click_y%}
+					sendInput {click Left %click_x%, %click_y%}
 				}
-				Else send {click Left %click_x%, %click_y%}
+				Else MTClick(click_x, click_y)
 			}
 		}	
 		if Inject_RestoreScreenLocation
 		{
-			sleep(ceil( (sleepTime/2) * rand(1, Inject_SleepVariance)))	; so this will actually mean the inject will sleep longer than user specified, but make it look a bit more real
+			sleep % ceil( (sleepTime/2) * rand(1, Inject_SleepVariance))	; so this will actually mean the inject will sleep longer than user specified, but make it look a bit more real
 			MTsend(BI_camera_pos_x)										
 		}
 	}
@@ -9731,6 +9797,9 @@ DeselectUnitsFromPanel(a_RemoveUnits, sleep=20)
 	}	
 	return
 }
+
+
+
 
 ClickSelectUnitsPortriat(unit, sleep=20, ClickModifier="")	;can put ^ to do a control click
 {
@@ -11067,6 +11136,43 @@ getCharacerInfo(byref returnName := "", byref returnID := "")
 	return OutputArray0 ; contains the number of substrings
 }
 
+; converts the unit data (extracted from SC2 MPQ files) into an AHK object
+ParseUnitData(A_UnitName)
+{
+	unitData := [], UnitName := 0
+	FileInstall, Included Files\UnitData.xml, %A_Temp%\UnitData.xml, 1
+	x := new XML(A_Temp "\UnitData.xml")
+	CUnits := x.selectNodes("//*")
+	
+	loop % CUnits.length 
+	{
+		nn := CUnits.item(A_Index-1)
+		if (nn.nodename = "CUnit")
+		{
+			if (!UnitExists && ID)
+				unitData.insert(UnitName, unit)
+
+			unit := []
+			unit.UnitName := UnitName := nn.getAttribute("id")
+			ID := A_UnitName[UnitName]
+		;	msgbox % ID " " UnitName
+			UnitExists := unitData[ID] ; adding/overwriting data
+			continue
+		}
+		; Array items are added to
+		if ID
+		{
+			if UnitExists
+				unitData[UnitName, nn.nodename] := nn.getAttribute("value")
+			else 
+				unit[nn.nodename] := nn.getAttribute("value")
+		}
+	}
+	if (!UnitExists && ID) ; for the last cUnit 
+		unitData.insert(UnitName, unit)	
+	return unitData
+}
+	
 
 class SC2
 {
@@ -11127,6 +11233,54 @@ class SC2
 
 }    
 
+; This is required for some commands to function correctly. 
+; Once example is if the chat box is open
+; if the mouse is positioned blow the map-viewport (e.g. on the control card)
+; and the a Control click is sent to the middle of the screen
+; The click will fail to minimize the chat box
+; calling pMouseMove first fixes this
+
+pMouseMove(x, y)
+{
+	Global GameIdentifier
+	static WM_MOUSEMOVE := 0x200
+	lParam := x & 0xFFFF | (y & 0xFFFF) << 16
+	PostMessage, %WM_MOUSEMOVE%, , %lParam%, , %GameIdentifier%
+
+}
+
+/*
+f1::
+Thread, NoTimers, true
+qpx(true)
+AutoGroup(A_AutoGroup, AG_Delay)
+var := qpx(false)
+msgbox % var *1000
+return
+/*
+
+*f1::
+ settimer, tt, 50
+BufferInputFast.createHotkeys(aButtons.List) 
+;keywait, shift, D
+sleep 1000
+BufferInputFast.BlockInput()
+soundplay *-1   
+sleep 5000
+soundplay *-1 
+BufferInputFast.disableBufferingAndBlocking()
+;BufferInputFast.Send()
+  return
+f3::
+objtree(BufferInputFast.retrieveBuffer())
+return
+tt:
+   tooltip, % readModifierState() "`n`n", 900, 900 
+return
+
+*f2:: msgbox % GetKeyState("Shift", "P") "`n" GetKeyState("Shift") "`n" DllCall("GetAsyncKeyState",Int, GetKeyVK("Shift"))
+return
+
 ;	post message
 ; 	After sending a ctrl group via sendinput and post message the ctrl buffer takes between 
 ;	0.02 and 0.067 ms to update. Highest was 0.09. 
@@ -11145,7 +11299,7 @@ class SC2
 ; A better test would be to make a map with heaps of units.
 
 
-
+/*
 *f1::
 Thread, NoTimers, true
 SetControlDelay -1
@@ -11177,15 +11331,14 @@ msgbox % time "`n" result
 return
 
 
-
 f1::
-;	objtree(setLowLevelInputHooks(True))
+	objtree(setLowLevelInputHooks(True))
 
    settimer, tt, 50
    return 
 
 tt:
-   tooltip, % LastMousePress() "`n`n", 900, 900
+   tooltip, % MT_InputIdleTime() "`n`n", 900, 900
 
 Return
 
@@ -11195,7 +11348,7 @@ soundplay *-1
 return 
  
  /*
-f3:: msgbox % MT_TimeIdleInput()
+f3:: msgbox % MT_InputIdleTime()
 
 /*
 *f1::
@@ -11285,11 +11438,11 @@ return
 
 f1:: 
 
-
+setLowLevelInputHooks(False)
 BufferInputFast.createHotkeys(aButtons.List) 
 BufferInputFast.BufferInput()
 soundplay *-1   
-sleep(10000, "P")
+sleep(3000, "S")
 soundplay *-1 
 BufferInputFast.Send()
   
@@ -11639,7 +11792,7 @@ getLarvaPointer(Hatch, Larva)
 /*
 
 f3::
-dspeak(clipboard := isUnitPatrolling(getSelectedUnitIndex()))
+tSpeak(clipboard := isUnitPatrolling(getSelectedUnitIndex()))
 
 	a_RemoveUnits := []
 	findUnitsToRemoveFromArmy(a_RemoveUnits, SelectArmyDeselectXelnaga, SelectArmyDeselectPatrolling, l_ActiveDeselectArmy)
@@ -11651,15 +11804,15 @@ return
 
 	state := getUnitMoveState(getSelectedUnitIndex())
 	if (state = uMovementFlags.Amove)
-		dspeak("A move")
+		tSpeak("A move")
 	else if (state = uMovementFlags.Patrol)
-		dspeak("Patrol")
+		tSpeak("Patrol")
 	else if (state = uMovementFlags.HoldPosition)
-		dspeak("Hold")
+		tSpeak("Hold")
 	else if (state = uMovementFlags.Move)
-		dspeak("move")
+		tSpeak("move")
 	else if (state = uMovementFlags.Follow)
-		dspeak("Follow")
+		tSpeak("Follow")
 		
 ; fold//
 

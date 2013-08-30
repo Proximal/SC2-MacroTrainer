@@ -6,6 +6,7 @@
 ;The new method using Numget is around 35% faster!!!
 
 ;Bytes can take 1,2,3,4 or 8
+; wont correctly handle 8 bytes (I read these with another function)
 ReadMemory(MADDRESS=0,PROGRAM="",BYTES=4)
 {
    Static OLDPROC, ProcessHandle
@@ -16,19 +17,25 @@ ReadMemory(MADDRESS=0,PROGRAM="",BYTES=4)
       ProcessHandle := ( ProcessHandle ? 0*(closed:=DllCall("CloseHandle"
       ,"UInt",ProcessHandle)) : 0 )+(pid ? DllCall("OpenProcess"
       ,"Int",16,"Int",0,"UInt",pid) : 0)
+
    }
-   if (BYTES = 1)
+   
+   If !(ProcessHandle && DllCall("ReadProcessMemory","UInt",ProcessHandle,"UInt",MADDRESS,"Str",MVALUE,"UInt",BYTES,"UInt *",0))
+      return !ProcessHandle ? "Handle Closed: " closed : "Fail"
+   else if (BYTES = 1)
       Type := "Char"
    else if (BYTES = 2)
       Type := "Short"
    else if (BYTES = 4)
       Type := "Int"
-   else if (BYTES = 8)
-      Type := "Int64"
-   else Type := "Int"
-   If (ProcessHandle) && DllCall("ReadProcessMemory","UInt",ProcessHandle,"UInt",MADDRESS,"Str",MVALUE,"UInt",BYTES,"UInt *",0)
-      return numget(MVALUE, 0, Type)
-   return !ProcessHandle ? "Handle Closed:" closed : "Fail"
+   else 
+   {
+      loop % BYTES 
+          result += numget(MVALUE, A_index-1, "Uchar") << 8 *(A_Index-1)
+      return result
+   }
+
+   return numget(MVALUE, 0, Type)
 }
 
 

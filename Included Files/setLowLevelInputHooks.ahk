@@ -14,8 +14,9 @@
 	Type: LPARAM
 	A pointer to a KBDLLHOOKSTRUCT structure.
 */
-
-
+#NoTrayIcon
+#Persistent
+SetBatchLines, -1
 
 setLowLevelInputHooks(Install, KeyboardFunction := "KeyboardHookT", MouseFunction := "MouseHookT")
 {
@@ -78,10 +79,6 @@ KeyboardHookT(nCode, wParam, lParam)
 	; Input is blocked and this is a user pressed / released button	
   	if (MT_HookBlock && !(NumGet(lParam+8) & 0x10)) ; LLKHF_INJECTED
   	{	
-  		; Track user released keys.
-  		; User pressed keys will begin auto-repeating anyway
-  		;if (wParam = WM_KEYUP)
-   		;	input.insertUserReleasedKey(NumGet(lParam+0, 0)) ;vkCode
   		return -1 
   	}	
    	Return CallNextHookEx(nCode, wParam, lParam) ; make sure other hooks in the chain receive this event if we didn't process it
@@ -99,7 +96,6 @@ MouseHookT(nCode, wParam, lParam)
 		; Input is blocked and this is a user pressed / released button	
 		if (MT_HookBlock && !(NumGet(lParam+12) & 0x10))  ; LLKHF_INJECTED
 		{
-			;removed stuff
 			return -1
 		}
 	}

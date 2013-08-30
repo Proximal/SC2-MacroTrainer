@@ -30,12 +30,22 @@ Class BufferInputFast
 	}
 	createHotkeys(aKeys)
 	{	GLOBAL GameIdentifier
+		
+	;	modifiers := "*Shift|*Control|*Alt""
 		this.aBlockedKeys := aKeys
 		
 		#If, BufferInputFast.isInputBuffered() && WinActive(GameIdentifier)
 		Hotkey, If, BufferInputFast.isInputBuffered() && WinActive(GameIdentifier)
+
 		for index, Button in aKeys
 			Try Hotkey, %Button%, g_BufferInputFastLabel, On
+	;	loop, parse, modifiers
+	;		Try Hotkey, %A_LoopField% up, g_BufferInputFastLabel, On
+		; for added safet allow modifier ups to be recorded and then sent
+		; so if the modifier is somehow down its release will be recorded then sent to game
+		try	Hotkey, *LShift up, g_BufferInputFastLabel, On
+		try Hotkey, *LCtrl up, g_BufferInputFastLabel, On
+		try Hotkey, *LAlt up, g_BufferInputFastLabel, On
 
 		#If, BufferInputFast.isInputBlocked() && WinActive(GameIdentifier)
 		Hotkey, If, BufferInputFast.isInputBlocked() && WinActive(GameIdentifier)
@@ -83,7 +93,7 @@ Class BufferInputFast
 		}
 		; sleep to prevent out of order messages due to much lower latency with PostMessage
 		if (sleep && sendMethod() = "PostMessage")
-			sleep, 15
+			sleep, 2
 		return
 	}	
 
@@ -116,15 +126,21 @@ Class BufferInputFast
 		this.releaseModifiers() ;lets release the modifiers (the hard rebinds will prevent it getting pushed down)
 		return
 	}
+	testForceDisable()
+	{
+		this.BufferedState := 0
+		this.BlockedState := 0
+		return 
+	}
 	disableBufferingAndBlocking()
 	{
 	;	shift = 1, ctrl = 2, alt = 4 (and add them together)
-		sleep 10
-		ModifierState := readModifierState() ; read from sc2 memory
+	;	sleep 2
+	;	ModifierState := readModifierState() ; read from sc2 memory
 
-		, Shift := (1 & ModifierState)
-		, Ctrl := (2 & ModifierState)
-		, Alt := (4 & ModifierState)
+	;	, Shift := (1 & ModifierState)
+	;	, Ctrl := (2 & ModifierState)
+	;	, Alt := (4 & ModifierState)
 
 ;	{Blind} Has to be used when sending modifier ups.	
 ;
@@ -169,29 +185,34 @@ Class BufferInputFast
 ;	Hence it is better to have a tool tip on a loop which reads and displays the value
 ;	When doing this, the value always corresponds to what you would expect it to be
 
-		if (GetKeyState("Shift", "P") != Shift)
-		{
-			if GetKeyState("Shift", "P")
-				sendInput {Blind}{Shift Down}
-			else 
+	;	if (GetKeyState("Shift", "P") != Shift)
+	;	{
+	;		if GetKeyState("Shift", "P")
+	;		{
+	;			sendInput {Blind}{Shift Down}
+	;			soundplay *64
+	;			sleep 5
+	;			soundplay *64
+	;		}
+	;		else 
 				sendInput {Blind}{Shift Up}
-		}
+	;	}
 
-		if (GetKeyState("Ctrl", "P") != Ctrl)
-		{
-			if GetKeyState("Ctrl", "P")
-				sendInput {Blind}{Ctrl Down}
-			else 
+	;	if (GetKeyState("Ctrl", "P") != Ctrl)
+	;	{
+	;		if GetKeyState("Ctrl", "P")
+	;			sendInput {Blind}{Ctrl Down}
+	;		else 
 				sendInput {Blind}{Ctrl Up}
-		}
+	;	}
 
-		if (GetKeyState("Alt", "P") != Alt)
-		{
-			if GetKeyState("Alt", "P")
-				sendInput {Blind}{Alt Down}
-			else 
+	;	if (GetKeyState("Alt", "P") != Alt)
+	;	{
+	;		if GetKeyState("Alt", "P")
+	;			sendInput {Blind}{Alt Down}
+	;		else 
 				sendInput {Blind}{Alt Up}
-		}
+	;	}
 		this.BufferedState := 0
 		this.BlockedState := 0
 		return
@@ -333,10 +354,9 @@ g_BufferInputFastLabel:
 	BufferInputFast.RecordInput()
 return
 g_ReturnFastLabel:
-	Thread, NoTimers, true  ; probably not required as default value makes threads un-interupterble for 15ms
 return
 
-
+/*
 #If, (!BufferInputFast.isInputBlockedOrBuffered() && WinActive(GameIdentifier))  ; need this here as AHK tree view goes crazy! it needs like 200 ms sleep or something
 ; this obviously wont account for if the user has swapped the left and right mouse buttons in windows
 
@@ -361,13 +381,13 @@ return
 ; no one should accidentally press these keys anyway
 #If, (BufferInputFast.isInputBlockedOrBuffered() && WinActive(GameIdentifier))
 *LShift::return 
-*Lshift up::return
+;*Lshift up::return
 
 *LCtrl::return 
-*LCtrl up::return
+;*LCtrl up::return
 
 *LAlt::return 
-*LAlt up::return
+;*LAlt up::return
 
 *Lwin::return 
 
@@ -390,7 +410,7 @@ sleep, 2
 if !GetKeyState("Ctrl", "P") && (GetKeyState("Ctrl") || (readModifierState() & 4))
 	send {blind}{Alt up}
 return
-
+*/
 #If
 
 g_class_BufferInputFastLabelSkip>:
