@@ -1,4 +1,4 @@
-;-----------------------
+﻿;-----------------------
 ;	For updates:
 ;	Change version number in exe and config file
 ;	Upload the changelog, file version  and new exe files to the ftp server
@@ -69,6 +69,7 @@ SetWorkingDir %A_ScriptDir%  ; Ensures a consistent starting directory.
 SetStoreCapslockMode, off ; needed in case a user bind something to the capslock key in sc2 - other AHK always sends capslock to adjust for case.
 ListLines(False) 
 SetControlDelay -1 	; make this global so buttons dont get held down during controlclick
+SendMode Input 
 Menu, Tray, Icon 
 if !A_IsAdmin 
 {
@@ -96,6 +97,10 @@ Else
 	debug_name := "Kalamity"
 	hotkey, ^+!F12, g_GiveLocalPalyerResources
 }
+RegRead, wHookTimout, HKEY_CURRENT_USER, Control Panel\Desktop, LowLevelHooksTimeout
+if (ErrorLevel || wHookTimout < 600)
+	RegWrite, REG_DWORD, HKEY_CURRENT_USER, Control Panel\Desktop, LowLevelHooksTimeout, 600
+; This will up the timeout from  300 (default). Though probably isn't required
 setLowLevelInputHooks(True)
 
 speechThread := AhkDllThread("C:\Program Files\AutoHotkey\AutoHotkeyMini.dll")
@@ -851,7 +856,8 @@ clock:
 																		; note may delay some timers from launching for a fraction of a ms while its in thread, no timers interupt mode (but it takes less than 1 ms to run anyway)
 		} 																; Hence with these two timers running autogroup will occur at least once every 30 ms, but generally much more frequently
 		CreateHotkeys()
-		if (a_LocalPlayer["Name"] == "Kalamity" || a_LocalPlayer["Name"] == "CumBackKid" )
+		;if (a_LocalPlayer["Name"] == "Kalamity" || a_LocalPlayer["Name"] == "CumBackKid" )
+		if !A_IsCompiled
 		{
 			Hotkey, If, WinActive(GameIdentifier) && time && !BufferInputFast.isInputBlockedOrBuffered()
 			hotkey, >!g, g_GLHF
@@ -1143,7 +1149,7 @@ AutoGroup(byref A_AutoGroup, AGDelay = 0)
 			;BufferInputFast.BufferInput()
 			Global MT_HookBlock := True
 			sleep := Input.releaseKeys()
-			critical 1000
+			critical, 1000
 			MT_HookBlock := False
 			if sleep
 				DllCall("Sleep", Uint, 10) ;  sleep, 5
@@ -1283,7 +1289,7 @@ class Input
 	releaseKeys()
 	{
 		Global MT_HookBlock
-		SetKeyDelay, -1
+	;	SetKeyDelay, -1
 		this.downSequence := ""
 	;	MT_HookBlock := True
 		SetFormat, IntegerFast, hex
@@ -1294,7 +1300,7 @@ class Input
 		if upsequence
 		{
 			SendInput, {BLIND}%upsequence%
-			return 1 ; This will indicate that we should sleep for 5ms (after activating critical)
+			return upsequence ; This will indicate that we should sleep for 5ms (after activating critical)
 		}	 	; to prevent out of order command sequence with sendinput vs. post message
 		return 
 	}
@@ -1393,19 +1399,21 @@ cast_ForceInject:
 	|| getkeystate("LWin") || getkeystate("RWin")	
 	|| getkeystate("LButton", "P") || getkeystate("RButton", "P")
 	|| getkeystate("LButton") || getkeystate("RButton")
+	|| getkeystate("Shift") || getkeystate("Ctrl") || getkeystate("Alt")
+	|| getkeystate("Shift", "P") || getkeystate("Ctrl", "P") || getkeystate("Alt", "P")	
 	|| isUserPerformingAction()
-	|| MT_InputIdleTime() < 40  ;probably best to leave this in, as every now and then the next command wont be shift modified
+	|| MT_InputIdleTime() < 50  ;probably best to leave this in, as every now and then the next command wont be shift modified
 	{
 		if (A_TickCount - startInjectWait > 650)
 			return
-		sleep 5
+		sleep 1
 	}
 	MT_HookBlock := True
 	Sleep := Input.releaseKeys()
 	critical 1000
 	MT_HookBlock := False
 	if sleep
-		DllCall("Sleep", Uint, 10) ;  sleep, 5
+		DllCall("Sleep", Uint, 15) ;  sleep, 5
 	SetKeyDelay, -1
 	If (ChatStatus := isChatOpen())
 	{
@@ -1429,7 +1437,7 @@ cast_ForceInject:
 	Input.revertKeyState()	
 	If ChatStatus
 	{
-		DllCall("Sleep", Uint, 10)
+		DllCall("Sleep", Uint, 20)
 		MTsend("{Enter}")
 	}
 return
@@ -1456,7 +1464,6 @@ g_ForceInjectSuccessCheck:
 	;	ReleaseModifiers(0, 1, HotkeysZergBurrow)
 		ReleaseModifiers(0, 1, HotkeysZergBurrow, True, False, 40) ; check all keys
 		Thread, NoTimers, true  ;cant use critical with input buffer, as prevents hotkey threads launching and hence tracking input
-		SetBatchLines -1
 
 		sendSequence := "^" Inject_control_group MI_Queen_Group		
 		if UnburrowedQueenCount
@@ -1465,7 +1472,6 @@ g_ForceInjectSuccessCheck:
 		sendSequence .= HotkeysZergBurrow Inject_control_group
 		MTsend(sendSequence)
 		TooManyBurrowedQueens := 0
-		SetBatchLines %SetBatchLines%
 		Thread, NoTimers, false
 	}
 	else TooManyBurrowedQueens := 0
@@ -1485,9 +1491,7 @@ g_ForceInjectSuccessCheck:
 						if (A_index > 1100) ; so its been longer then 11 seconds
 							return 
 					}			
-					AttemptCorrectInjection := 1
 					Gosub, cast_ForceInject
-					AttemptCorrectInjection := 0
 					return
 				}
 return
@@ -5957,8 +5961,8 @@ gosub, g_CheckLV_UnitPanelObject	;this ensure that LV_UnitPanelFilter exists and
 section := "UnitPanelFilter"
 if !RaceObject
 	RaceObject := new cSC2Functions()
-for index, ListType in RaceObject.ForList("FilteredCompleted", "FilteredUnderConstruction")
-	for index, LoopRace in RaceObject.races 
+for index, ListType in ["FilteredCompleted", "FilteredUnderConstruction"]
+	for index, LoopRace in ["Terran", "Protoss", "Zerg"] 
 	{
 		List := convertObjectToList(LV_UnitPanelFilter[ListType, LoopRace, "CurrentItems"], "|")
 		IniWrite, %List%, %config_file%, %section%, % LoopRace ListType
@@ -6016,13 +6020,11 @@ return
 g_CheckLV_UnitPanelObject:
 if !aUnitLists
 	Gosub, g_CreateUnitListsAndObjects ; used for some menu items, and for the custom unit filter gui remnant from unsuccessfull method of transferring ini settings during update - but no harm leaving it in.
-if !RaceObject
-	RaceObject := new cSC2Functions()
 if !IsObject(LV_UnitPanelFilter)
 {
 	LV_UnitPanelFilter := []
-	for index, ListType in RaceObject.ForList("FilteredCompleted", "FilteredUnderConstruction")
-		for index, LoopRace in RaceObject.races 	;so this object will be full of the info ready for saving - no checks needed!
+	for index, ListType in ["FilteredCompleted", "FilteredUnderConstruction"]
+		for index, LoopRace in ["Terran", "Protoss", "Zerg"] 	;so this object will be full of the info ready for saving - no checks needed!
 		{
 			LV_UnitPanelFilter[ListType, LoopRace] := new TwoPanelSelection_LV("UnitPanelAvailableUnits", "UnitPanelFilteredUnitsCurrentRace")
 			LV_UnitPanelFilter[ListType, LoopRace].removeAllitems() ; so ready for new units
@@ -6034,31 +6036,6 @@ if !IsObject(LV_UnitPanelFilter)
 		}
 }
 return
-
-class cSC2Functions
-{
-	__New()
-	{
-		this.races := []
-		this.races := ["Terran", "Protoss", "Zerg"]
-	}
-	RacesNot(Race)
-	{
-		a := []
-		for index, listedrace in this.races
-			if (listedrace != Race)
-				a.insert(listedrace)
-		return a
-	}
-	ForList(Items*)	;used to create for loops within an expression
-	{
-		a := []
-		for index, item in items
-			a.insert(item)
-		return a
-	}
-}
-
 
 class TwoPanelSelection_LV
 {
@@ -6794,17 +6771,8 @@ temporarilyDisableAutoWorkerProduction()
 
 g_autoWorkerProductionCheck:
 if (WinActive(GameIdentifier) && time && EnableAutoWorker%LocalPlayerRace% && !TmpDisableAutoWorker && !AW_MaxWorkersReached  )
-{
-	while (getPlayerCurrentAPM() > AutoWorkerAPMProtection)
-	{	
-		if (A_index > 45) ; so its been longer then 4000 ms
-			return 
-		sleep 10
-	}
 	autoWorkerProductionCheck()
-}
 return
-
 
 
 autoWorkerProductionCheck()
@@ -6932,8 +6900,11 @@ autoWorkerProductionCheck()
 
 		While (isUserPerformingActionIgnoringCamera() || getKeyState("LButton") ||   getKeyState("LButton", "P")
 		||  getKeyState("RButton") || getKeyState("RButton", "P") ||  getKeyState("MButton") || getKeyState("MButton", "P")
+		|| getkeystate("Shift") || getkeystate("Ctrl") || getkeystate("Alt")
+	;	|| getkeystate("Alt") || getkeystate("Alt", "P")
+		|| getkeystate("Shift", "P") || getkeystate("Ctrl", "P") || getkeystate("Alt", "P")
 		|| getkeystate("LWin") || getkeystate("RWin"))
-	;	||  MT_InputIdleTime() < 35
+		||  MT_InputIdleTime() < 50
 		{
 			if (A_index > 24)
 				return ; timed out after 120 ms
@@ -6942,12 +6913,18 @@ autoWorkerProductionCheck()
 		Thread, NoTimers, true
 		SetKeyDelay, %EventKeyDelay%	;this only affects send events - so can just have it, dont have to set delay to original as its only changed for current thread
 		SetMouseDelay, %EventKeyDelay%	;again, this wont affect send click (when input/play is in use) - I think some other commands may be affected?
+		pSend(, 0)
 		Global MT_HookBlock := True
-		Sleep := Input.releaseKeys()
-		critical 1000
+		upsequence := Input.releaseKeys()
+		critical, 3000
 		MT_HookBlock := False
-		if sleep
-			DllCall("Sleep", Uint, 10) ;  sleep, 5
+		if upsequence
+			DllCall("Sleep", Uint, 15) ;  sleep, 5
+		if (upsequence && IsKeyDownSC2Input())
+		{
+			SendInput, {BLIND}%upsequence%
+			DllCall("Sleep", Uint, 15)
+		}
 
 ;		BufferInputFast.BufferInput()
 	;;	BufferInputFast.BlockInput()
@@ -7019,8 +6996,28 @@ autoWorkerProductionCheck()
 				if (L_SelectionIndexes != L_ControlstorageIndexes)  ; safer and easier to do it this way for the storage control group - it may do it slightly more often than requried, but it should ALWAYS do it if it IS required
 					sendSequence := "^" controlstorageGroup
 				sendSequence .= mainControlGroup
+				MTSend(sendSequence), sendSequence := ""
 				; safer as units in this control group are very likely to die and change often
 				; and by sending the ctrl grp command, the control buffer will get updated.
+
+		;		loop
+		;		{
+		;			if (A_index = 1)
+		;				DllCall("Sleep", Uint, 2) 	; 2ms first loop, 12ms second
+		;			else DllCall("Sleep", Uint, 6) 
+		;			numGetUnitSelectionObject(oSelection)
+		;			L_PostSelectionCheck := ""
+		;			for index, object in oSelection.units
+		;				L_PostSelectionCheck .= "," object.unitIndex
+		;			; so if not equal on first loop will sleep 4 ms, and then if still not equal resend the command					
+		;			if (A_index = 2 && L_SelectionIndexes = L_PostSelectionCheck) ; SC ignored the ctrl group change command
+		;			{
+		;				Input.revertKeyState()	
+		;				if ChatStatus 
+		;					MTsend("{Enter}")
+		;				return
+		;			}
+		;		} until (L_PostSelectionCheck != L_SelectionIndexes || A_Index >= 2)			
 
 			}
 			Else If HighlightedGroup ; != 0
@@ -7057,12 +7054,35 @@ autoWorkerProductionCheck()
 						BaseCtrlGroupError := 1					; as the macro will tell that unit e.g. probe to 'make a worker' and cause it to bug out
 			}
 
+			MTsend(sendSequence), sendSequence := ""
 			if BaseControlGroupNotSelected
 			{												
 		;		Sleep(2) 			; I think sc2 needs a sleep as otherwise the send controlgroup storage gets ignored every now and then  (it worked well with 4)
 			;	sleep 10
 			;	DllCall("Sleep", Uint, 10)
-				sendSequence .= controlstorageGroup
+			;	sendSequence .= controlstorageGroup
+		;		numGetUnitSelectionObject(oSelection)
+		;		for index, object in oSelection.units
+		;			L_BaseSelectionCheck .= "," object.unitIndex		
+				MTsend(controlstorageGroup) ; pMessage command usually registers selection changes with 1ms
+
+		;		loop
+		;		{
+		;			if (A_index = 1)
+		;				DllCall("Sleep", Uint, 2) 	; 2ms first loop, 12ms second
+		;			else DllCall("Sleep", Uint, 12) 
+		;			numGetUnitSelectionObject(oSelection)
+		;			L_PostSelectionCheck := ""
+		;			for index, object in oSelection.units
+		;				L_PostSelectionCheck .= "," object.unitIndex
+		;			; so if not equal on first loop will sleep 4 ms, and then if still not equal resend the command					
+		;			if (A_index = 2 && L_BaseSelectionCheck = L_PostSelectionCheck) ; SC ignored the ctrl group change command
+		;			{
+		;				soundplay *64
+		;				sendSequence .= controlstorageGroup 			; send it again
+		;				break
+		;			}
+		;		} until (L_PostSelectionCheck != L_BaseSelectionCheck || A_Index >= 2)
 			}
 
 		;	if HighlightedGroup
@@ -7079,7 +7099,7 @@ autoWorkerProductionCheck()
 		{
 		; needs a few ms to allow its message queue to clear 
 		; otherwise sent characters will appear in chatbox
-			DllCall("Sleep", Uint, 10)
+			DllCall("Sleep", Uint, 20)
 			MTsend("{Enter}")
 		}
 		critical, off
@@ -7114,7 +7134,6 @@ isSelectionGroupable(ByRef oSelection)
 			return 0
 	return 1
 }
-
 
 sendMethod()
 {	
@@ -8696,11 +8715,12 @@ CreateHotkeys()
 	; The other sendmode is 'PostMessage'. When this is in effect, SendInput will be used
 	; for some keystrokes e.g. to release modifiers
 
-	If (input_method = "Event")
-		SendMode Event
-	Else If (input_method = "play")
-		SendMode Play	; causes problems 
-	Else SendMode Input 
+;	Is now always SendInput
+;	If (input_method = "Event")
+;		SendMode Event
+;	Else If (input_method = "play")
+;		SendMode Play	; causes problems 
+;	Else SendMode Input 
 
 	#If, WinActive(GameIdentifier) && !BufferInputFast.isInputBlockedOrBuffered()
 	#If, WinActive(GameIdentifier) && LwinDisable && getTime()	
@@ -9573,19 +9593,28 @@ SC2.exe+1FDF7D0 contains the state F-keys as well as keys like tab, backspace, I
 SC2.exe+1FDF7C8 (8 bytes) contains the state of most keys eg a-z etc
 
 */
- 		; the modifier and camera/mouse button addresses will be very close to each other (not the pointer 1 though)
 
 											; there are two of these the later 1 is actually the one that affects the game
 											; Also the 1st one, if u hold down a modifier then go out of the game (small window mode)
 											; it will remain 1 even when back in and shift isn't down as moving a unit wont be shift-commanded! so dont use that one
-	B_ModifierKeys := SC2EXE + 0x304A7A4  	;shift = 1, ctrl = 2, alt = 4 (and add them together)
+										  	;shift = 1, ctrl = 2, alt = 4 (and add them together)
 
-	B_MouseButtonState := SC2EXE + 0x304A788 				;1 byte - MouseButton state 1 for Lbutton,  2 for middle mouse, 4 for rbutton
 															; 
 	B_CameraDragScroll := SC2EXE + 0x304A478  				; 1 byte Returns 1 when user is moving camera via DragScroll i.e. mmouse button the main map But not when on the minimap (or if mbutton is held down on the unit panel)
 
-	B_DirectionalKeysCameraScroll := SC2EXE + 0x304A79C		; 1 byte, but again can read it as 4 in CE (****read a 1 byte in game, as the next byte activeates on pressing the pause button, so changing this value for a split second)
-															; 4 = left, 8 = Up, 16 = Right, 32 = Down (these are added if more than 1 key is down) - could do a bitmask on it!
+	
+	B_InputStructure := SC2EXE + 0x304A788
+		B_iMouseButtons := B_InputStructure + 0x0 	; 1 Byte 	MouseButton state 1 for Lbutton,  2 for middle mouse, 4 for rbutton
+		B_iSpace := B_iMouseButtons + 0x8 			; 1 Bytes
+		B_iNums := B_iSpace + 0x2  					; 2 Bytes
+		B_iChars := B_iNums + 0x2 					; 4 Bytes 
+		B_iTilda := B_iChars + 0x4 					; 1 Byte  (could be 2 bytes)
+		B_iNonAlphNumChars := B_iTilda + 0x2 		; 2 Bytes - keys: [];',./ Esc Entr \
+		B_iNonCharKeys := B_iNonAlphNumChars + 0x2 	; 2 Bytes - keys: BS Up Down Left Right Ins Del Hom etc scrl lock pause caps + tab
+		B_iFkeys := B_iNonCharKeys + 0x2 			; 2 bytes		
+		B_iModifiers := B_iFkeys + 0x6 				; 1 Byte
+
+
 
 	B_CameraMovingViaMouseAtScreenEdge := SC2EXE + 0x031073C0 		; Really a 1 byte value value indicates which direction screen will scroll due to mouse at edge of screen
 		01_CameraMovingViaMouseAtScreenEdge	:= 0x2C0					; 1 = Diagonal Left/Top 		4 = Left Edge
@@ -9593,7 +9622,6 @@ SC2.exe+1FDF7C8 (8 bytes) contains the state of most keys eg a-z etc
 		03_CameraMovingViaMouseAtScreenEdge	:= 0x4B4				; 3 = Diagonal Right/Top 	  	6 = Diagonal Left/ Bot	
 																	; 7 = Bottom Edge 			 	8 = Diagonal Right/Bot 
 																	; Note need to do a pointer scan with max offset > 1200d!
-	B_NumbersState := SC2EXE + 0x304A792 	;2bytes
 
 	B_IsGamePaused := SC2EXE + 0x31F15A5 						
 
@@ -9604,8 +9632,6 @@ SC2.exe+1FDF7C8 (8 bytes) contains the state of most keys eg a-z etc
 	; example: D:\My Computer\My Documents\StarCraft II\Accounts\56064144\6-S2-1-79722\Replays\
 	; this works for En, Fr, and Kr languages 
 	B_ReplayFolder :=  SC2EXE + 0x04F669C0
-
-
 
 	; Horizontal resolution ; 4 bytes
 	; vertical resolution ; The next 4 bytes immediately after the Horizontal resolution cheat and search for 8 bytes 4638564681600 (1920 1080)
@@ -9661,14 +9687,12 @@ SC2.exe+1FDF7C8 (8 bytes) contains the state of most keys eg a-z etc
 
 g_SplitUnits:
 	Thread, NoTimers, true
-	SetBatchLines, -1
 	BufferInputFast.BlockInput()
 
 	SetKeyDelay, %EventKeyDelay%	;this only affects send events - so can just have it, dont have to set delay to original as its only changed for current thread
 	SetMouseDelay, %EventKeyDelay%	;again, this wont affect send click (when input/play is in use) - I think some other commands may be affected?
 	SplitUnits(SplitctrlgroupStorage_key, SleepSplitUnits)
 	BufferInputFast.disableBufferingAndBlocking()
-	SetBatchLines, %SetBatchLines%
 	Thread, NoTimers, false ; dont think is required as the thread is about to end
 	return
 	
@@ -10850,13 +10874,13 @@ IsUserMovingCamera()
 IsCameraDirectionalKeyScrollActivated()  
 {
 	GLOBAL
-	Return ReadMemory(B_DirectionalKeysCameraScroll, GameIdentifier, 1)
+	Return ReadMemory(B_iNonCharKeys, GameIdentifier, 1)
 }
 
  	;1 byte - MouseButton state 1 for Lbutton,  2 for middle mouse, 4 for rbutton - again these can add togther eg lbutton + mbutton = 4
 IsMouseButtonActive()
 {	GLOBAL
-	Return ReadMemory(B_MouseButtonState, GameIdentifier, 1)
+	Return ReadMemory(B_iMouseButtons, GameIdentifier, 1)
 }
 
 ; Really a 1 byte value
@@ -10871,6 +10895,20 @@ IsCameraMovingViaMouseAtScreenEdge()
 	return pointer(GameIdentifier, B_CameraMovingViaMouseAtScreenEdge, 01_CameraMovingViaMouseAtScreenEdge, 02_CameraMovingViaMouseAtScreenEdge, 03_CameraMovingViaMouseAtScreenEdge)
 }
 
+IsKeyDownSC2Input(CheckMouseButtons := False)
+{	GLOBAL
+	if (CheckMouseButtons && IsMouseButtonActive())
+	|| ReadMemory(B_iSpace, GameIdentifier, 1)	
+	|| ReadMemory(B_iNums, GameIdentifier, 2)	
+	|| ReadMemory(B_iChars, GameIdentifier, 4)
+	|| ReadMemory(B_iTilda, GameIdentifier, 1)
+	|| ReadMemory(B_iNonAlphNumChars, GameIdentifier, 2)
+	|| ReadMemory(B_iNonCharKeys, GameIdentifier, 2)
+	|| ReadMemory(B_iFkeys, GameIdentifier, 2)
+	|| ReadMemory(B_iModifiers, GameIdentifier, 1)
+		return 1
+	return 0
+}
 
 ; 1 byte Returns 1 when user is moving camera via DragScroll i.e. Mmouse button the main map
 
@@ -10879,6 +10917,11 @@ IsCameraDragScrollActivated()
 	Return ReadMemory(B_CameraDragScroll, GameIdentifier, 1)
 }
 
+	; there are two of these the later 1 is actually the one that affects the game
+	; Also the 1st one, if u hold down a modifier then go out of the game (small window mode)
+	; it will remain 1 even when back in and shift isn't down as moving a unit wont be shift-commanded! so dont use that one
+  	;shift = 1, ctrl = 2, alt = 4 (and add them together)
+
 	; these will return the same as if you check logical state of the key
 	; there are two of these the later 1 is actually the one that affects the game
 	; shift = 1, ctrl = 2, alt = 4 (and add them together)
@@ -10886,12 +10929,12 @@ IsCameraDragScrollActivated()
 	; if you modify these values will actually affect in game
 readModifierState()
 {	GLOBAL 
-	return ReadMemory(B_ModifierKeys, GameIdentifier, 1)
+	return ReadMemory(B_iModifiers, GameIdentifier, 1)
 }
 
 readKeyBoardNumberState()
 {	GLOBAL 
-	return ReadMemory(B_NumbersState, GameIdentifier, 2)
+	return ReadMemory(B_iNums, GameIdentifier, 2)
 }
 
 getSCModState(KeyName)
@@ -10918,7 +10961,7 @@ WriteModifiers(shift := 0, ctrl := 0, alt := 0, ExactValue := 0){
 		value += 4
 	if ExactValue
 		value := ExactValue
-	Return WriteMemory(B_ModifierKeys, GameIdentifier, value,"Char")
+	Return WriteMemory(B_iModifiers, GameIdentifier, value,"Char")
 }
 
 ; can check if producing by checking queue size via buildstats()
@@ -11248,6 +11291,216 @@ pMouseMove(x, y)
 	PostMessage, %WM_MOUSEMOVE%, , %lParam%, , %GameIdentifier%
 
 }
+
+;Takes around 7-8ms (but up to 18) for a sendinput to release a modifier and for 
+;readmodstate() to agree with it 
+/*
+sleep 1000
+thread, NoTimers, true
+sendInput, {Shift Down}
+while !readModifierState()
+	sleep 5
+qpx(True)
+sendInput, {Shift Up}
+loop 
+	if !readModifierState()
+		break 
+msgbox % qpx(False) * 1000
+return
+*/
+
+f1::
+critical
+;qpx(true)
+;psend("+{click wd 2}", -1)
+pClick("R", 500, 500, 2, "+")
+;msgbox % qpx(false) * 1000
+
+return 
+
+
+
+
+
+
+/*
+
+f1::
+sleep 500
+setLowLevelInputHooks(False)
+SetKeyDelay, -1
+Critical, 1000
+numGetUnitSelectionObject(oSelection)
+for index, object in oSelection.units
+	L_BaseSelectionCheck .= "," object.unitIndex
+
+
+
+MTSend("11111111111111114414113")
+qpx(true)
+;controlsend,, 3, %GameIdentifier%
+;pSend(3)
+
+while 	(L_BaseSelectionCheck = L_PostSelectionCheck || A_index = 1)
+{ 	
+	L_PostSelectionCheck := "", numGetUnitSelectionObject(oSelection)
+	for index, object in oSelection.units
+		L_PostSelectionCheck .= "," object.unitIndex
+	count++
+}
+msgbox % qpx(false) * 1000 "`n" oSelection.count "`n" count
+return 
+
+
+
+
+
+/*
+f1::
+sleep 1000
+thread, NoTimers, true
+critical, 1000
+
+qpx(True)
+;InputTest.releaseKeys()
+sendinput, {Blind}abcdefghijklmnopqrst abcde
+msgbox % qpx(False) * 1000
+
+return
+
+class InputTest 
+{
+	static keys := ["LControl", "RControl", "LAlt", "RAlt", "LShift", "RShift", "LWin", "RWin"
+				, "AppsKey", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12"
+				, "Left", "Right", "Up", "Down", "Home", "End", "PgUp", "PgDn", "Del", "Ins", "BS", "Capslock", "Numlock", "PrintScreen" 
+				, "Pause", "Space", "Enter", "Tab", "Esc", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "B", "C", "D", "E", "F", "G"
+				, "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
+	static MouseButtons := ["LButton", "RButton", "MButton", "XButton1", "XButton2"]
+	static downSequence
+
+	releaseKeys()
+	{
+		Global MT_HookBlock
+		SetKeyDelay, -1
+		this.downSequence := ""
+	;	MT_HookBlock := True
+		SetFormat, IntegerFast, hex
+		for index, key in this.keys 
+			if (GetKeyState(key) || 1=1) 	; check the logical state
+				upsequence .= "{VK" GetKeyVK(key) " Up}", this.downSequence .= "{VK" GetKeyVK(key) " Down}" 
+		SetFormat, IntegerFast, d
+		if upsequence
+		{
+			SendInput, {BLIND}%upsequence%
+			return 1 ; This will indicate that we should sleep for 5ms (after activating critical)
+		}	 	; to prevent out of order command sequence with sendinput vs. post message
+		return 
+	}
+
+	revertKeyState()
+	{
+		Global MT_HookBlock, GameIdentifier
+		SetKeyDelay, -1
+		if this.downSequence
+			controlsend,, % "{Blind}" this.downSequence, %GameIdentifier%
+	;	MT_HookBlock := False
+		return							
+	}
+	userInputModified()
+	{
+		return this.downSequence
+	}
+}
+
+/*
+
+f1:: 
+;dll := "test\increase"
+dll := "aaaaa\add1"
+;val := DllCall(dll,"Int",122)
+val := DllCall(dll,"int",122, "CDecl")
+msgbox % ErrorLevel "`n| " val
+return 
+
+
+SC2exe := getProcessBaseAddress(GameIdentifier)
+msgbox % r1 := ReadMemory2(SC2exe + 0x3665140, GameIdentifier, 4)
+msgbox % r2 := ReadMemory2(SC2exe + 0x3665144, GameIdentifier, 4)
+msgbox % result := (r1 * -1 << 8) & r2
+long := 6687972995846149120
+msgbox % 0xFFFFFFFFFFFFFFFF - long
+return 
+ ;6687972995846149120
+
+DoubleToHex(d) {
+   form := A_FormatInteger
+   SetFormat Integer, HEX
+   v := DllCall("ntdll.dll\RtlLargeIntegerShiftLeft",Double,d, UChar,0, Int64)
+   SetFormat Integer, %form%
+   Return v
+}
+
+ReadMemory2(MADDRESS=0,PROGRAM="",BYTES=4)
+{
+   Static OLDPROC, ProcessHandle
+   VarSetCapacity(MVALUE, BYTES,0)
+   If PROGRAM != %OLDPROC%
+   {
+      WinGet, pid, pid, % OLDPROC := PROGRAM
+      ProcessHandle := ( ProcessHandle ? 0*(closed:=DllCall("CloseHandle"
+      ,"UInt",ProcessHandle)) : 0 )+(pid ? DllCall("OpenProcess"
+      ,"Int",16,"Int",0,"UInt",pid) : 0)
+
+   }
+   
+   If !(ProcessHandle && DllCall("ReadProcessMemory","UInt",ProcessHandle,"UInt",MADDRESS,"Str",MVALUE,"UInt",BYTES,"UInt *",0))
+      return !ProcessHandle ? "Handle Closed: " closed : "Fail"
+   else if (BYTES = 1)
+      Type := "Char"
+   else if (BYTES = 2)
+      Type := "Short"
+   else if (BYTES = 4)
+      Type := "UInt"
+   else 
+   {
+
+   		result := numget(MVALUE, 0, "Int64")
+   		msgbox % MVALUE
+   		if (result < 0)
+   			msgbox %  0xFFFFFFFFFFFFFFFF + (-1* result) "`n" 0xFFFFFFFFFFFFFFFF + (result) "`n" DoubleToHex(result)
+   		msgbox here
+   		return result
+
+      loop % BYTES 
+          result += numget(MVALUE, A_index-1, "Uchar") << 8 *(A_Index-1)
+      return result
+   }
+
+   return numget(MVALUE, 0, Type)
+}
+
+ReadMemoryTest2(MADDRESS=0,PROGRAM="",BYTES=4)
+{
+Static OLDPROC, ProcessHandle
+VarSetCapacity(MVALUE, BYTES,0)
+If PROGRAM != %OLDPROC%
+{
+WinGet, pid, pid, % OLDPROC := PROGRAM
+ProcessHandle := ( ProcessHandle ? 0*(closed:=DllCall("CloseHandle"
+,"UInt",ProcessHandle)) : 0 )+(pid ? DllCall("OpenProcess"
+,"Int",16,"Int",0,"UInt",pid) : 0)
+}
+If (ProcessHandle) && DllCall("ReadProcessMemory","UInt",ProcessHandle,"UInt",MADDRESS,"Str",MVALUE,"UInt",BYTES,"UInt *",0)
+{	Loop % BYTES
+Result += *(&MVALUE + A_Index-1) << 8*(A_Index-1)
+Return Result
+}
+return !ProcessHandle ? "Handle Closed:" closed : "Fail"
+}
+
+
+
+
 
 /*
 f1::

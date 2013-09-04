@@ -1,12 +1,6 @@
-MTsend(keys, Blind := True)
+MTsend(keys)
 {
-	GLOBAL GameIdentifier, input_method
 	if keys
-	{ 
-		if Blind
-			controlsend,, % "{Blind}" VKSend(keys), %GameIdentifier%
-		else
-			controlsend,, % Blind VKSend(keys), %GameIdentifier%
-	}
+		psend(keys, 2)
 	return
 }

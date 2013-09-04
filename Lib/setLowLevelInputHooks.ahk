@@ -83,7 +83,8 @@ KeyboardHookT(nCode, wParam, lParam)
   		;if (wParam = WM_KEYUP)
    		;	input.insertUserReleasedKey(NumGet(lParam+0, 0)) ;vkCode
   		return -1 
-  	}	
+  	}
+
    	Return CallNextHookEx(nCode, wParam, lParam) ; make sure other hooks in the chain receive this event if we didn't process it
 }
 MouseHookT(nCode, wParam, lParam)
