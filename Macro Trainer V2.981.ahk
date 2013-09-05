@@ -363,7 +363,7 @@ g_EmergencyRestart:
 			if (A_ThisLabel = "g_reload")
 				IniWrite, Icon, %config_file%, Misc Info, RestartMethod
 			SoundPlay, %A_Temp%\Windows Ding.wav
-			if time && alert_array[GameType, "Enabled"]
+			if (time && alert_array[GameType, "Enabled"])
 				doUnitDetection(unit, type, owner, "Save")	;these first 3 vars are nothing - they wont get Read
 		;	try  Run "%A_ScriptFullPath%"
 			if (A_OSVersion = "WIN_XP") ; apparently the below command wont work on XP
@@ -472,44 +472,6 @@ return
 ; 	I have added the AdditionalKeys which is mainly used for zerg burrow
 ;	and i have provided an additional 15 ms sleep time if burrow is being held down
 ; 	can't use critical inside function, as that will delay all timers too much
-
-/*
-ReleaseModifiersOld(Beep = 1, CheckIfUserPerformingAction = 0, AdditionalKeys = "", timeout := "") ;timout in ms
-{
-	GLOBAL HotkeysZergBurrow
-	PreviousBatchLines := A_BatchLines
-	SetBatchLines, -1
-	startTime := A_Tickcount
-
-	startReleaseModifiers:	
-	while getkeystate("Ctrl", "P") || getkeystate("Alt", "P") 
-	|| getkeystate("Shift", "P") || getkeystate("LWin", "P") || getkeystate("RWin", "P")
-	||  AdditionalKeys && (ExtraKeysDown := isaKeyPhysicallyOrLogicallyDown(AdditionalKeys))  ; ExtraKeysDown should actually return the actual key
-	|| (isPerformingAction := CheckIfUserPerformingAction && isUserPerformingAction()) ; have this function last as it can take the longest if lots of units selected
-	{
-		loopCount++
-		ModifierDown := 1
-		if (timeout && A_Tickcount - startTime >= timeout)
-			return 1 ; was taking too long
-		if (loopCount = 1 && Beep && !isPerformingAction && !ExtraKeysDown)	;wont beep if casting or burrow AKA 'extra key' is down
-			SoundPlay, %A_Temp%\ModifierDown.wav	
-		if ExtraKeysDown
-			LastExtraKeyHeldDown := ExtraKeysDown ; as ExtraKeysDown will get blanked in the loop preventing detection in the below if
-		else LastExtraKeyHeldDown := ""
-		sleep, 5
-	}
-	if ModifierDown
-	{
-		ModifierDown := 0
-		if (LastExtraKeyHeldDown = HotkeysZergBurrow)
-			sleep 50 ;as burrow can 'buffer' within sc2
-		else sleep, 35	;give time for sc2 to update keystate - it can be a slower than AHK (or it buffers)! 
-		Goto, startReleaseModifiers
-	}
-	SetBatchLines, %PreviousBatchLines%
-	return
-}
-*/
 
 ReleaseModifiers(Beep = 1, CheckIfUserPerformingAction = 0, AdditionalKeys = "", CheckAllKeys := 0, timeout := "", LastButtonPress := 0) ;timout in ms
 {
@@ -927,7 +889,6 @@ return
 
 Cast_ChronoStructure:
 	UserPressedHotkey := A_ThisHotkey ; as this variable can get changed very quickly
-	ReleaseModifiers()
 	Critical 		;just blocking here so can use critical, otherwise would need nothread timers if wanted to track input then re-send
 	SetKeyDelay, %EventKeyDelay%	;this only affects send events - so can just have it, dont have to set delay to original as its only changed for current thread
 	SetMouseDelay, %EventKeyDelay%	;again, this wont affect send click (when input/play is in use) - I think some other commands may be affected?
@@ -1275,6 +1236,8 @@ Cast_DisableInject:
 
 ; Note** Do not call releaseKeys() while thread is in critical! As the LL-Hooks wont process the input
 ; until the thread comes out of critical, or an AHK sleep command is used
+; Also note, any AHK command which has an internal sleep (including eg controlsend) will cause AHK to check its msg queue
+; and the hooks will then process any user pressed key which could interrupt the automation!
 
 class Input 
 {
@@ -1300,8 +1263,8 @@ class Input
 		if upsequence
 		{
 			SendInput, {BLIND}%upsequence%
-			return upsequence ; This will indicate that we should sleep for 5ms (after activating critical)
-		}	 	; to prevent out of order command sequence with sendinput vs. post message
+			return upsequence 	; This will indicate that we should sleep for 15ms (after activating critical)
+		}	 					; to prevent out of order command sequence with sendinput vs. post message
 		return 
 	}
 
@@ -1321,69 +1284,42 @@ class Input
 }
 
 
-; due to actually blocking the mouse properly, cant restore the boxdrag but I have it checking Mouse sta7te via SC2 memory in the is casting section anyway
-
+;	5/9/13
+;	Now using postMessage to send clicks. Note, not going to block or revert key states for the user invoked
+;	one-button inject. As Users may have really high internal sleep times which could cause the installed hooks to 
+; 	be removed by windows. Also, since the user is invoking this action, they shouldnt be pressing any other keys anyway.
+;	also using AHK internal sleep for this function.
 
 cast_inject:
 	If (isMenuOpen() & !isChatOpen())
 		return ;as let the timer continue to check during auto injects
-	MT_HookBlock := True
-	if Sleep := Input.releaseKeys()
-		sleep 10
-;	ReleaseModifiers(1,0)	
-;	Critical ;cant use with input buffer, as prevents hotkey threads launching and hence tracking input
 	Thread, NoTimers, true  ;cant use critical with input buffer, as prevents hotkey threads launching and hence tracking input
 
 						;menu is always 1 regardless if chat is up
 						;chat is 0 when  menu is in focus
-	; Inject := []
 	SetKeyDelay, %EventKeyDelay%	;this only affects send events - so can just have it, dont have to set delay to original as its only changed for current thread
 	SetMouseDelay, %EventKeyDelay%	;again, this wont affect send click (when input/play is in use) - I think some other commands may be affected?
-	;BufferInputFast.BufferInput()
-
-	;If (Inject.LMouseState := GetKeyState("LButton")) ; 1=down
-	;	send {click Left up}
-
 	MouseGetPos, start_x, start_y
 
-
-	; For automatic injects, this wont click the middle of the screen if a non self or no unit is selected
-	; as these units can't be regrouped
-	; this prevents the chat box constantly losing and regaining focus
-	; note this actual click can change the selected units
-	; so withing the castinjectlarva function are checks for non-self/no units
-	; i dont care if the selection changes for a user invoked 1-button inject
+	BufferInputFast.BlockInput()
 	If (ChatStatus := isChatOpen())
 	{
 		pMouseMove(A_ScreenWidth/2, A_ScreenHeight/2) ; to allow the below click to work
 		MTclick(A_ScreenWidth/2, A_ScreenHeight/2)
-		DllCall("Sleep", Uint, 5)
+		sleep 5
 	}
 	castInjectLarva(auto_inject, 0, auto_inject_sleep) ;ie nomral injectmethod
 
-	;If Inject.LMouseState ; probably dont need this now as when check for autocast it checks if mouse button is down
-	;{
-	;	If HumanMouse
-	;		MouseMoveHumanSC2("x" MLDownX "y" MLDownY "t" rand(HumanMouseTimeLo, HumanMouseTimeHi))
-	;	send {click Left down %MLDownX%, %MLDownY%}
-	;}
-
 	If HumanMouse
 		MouseMoveHumanSC2("x" start_x "y" start_y "t" HumanMouseTimeLo)
-	Else if (sendMethod() != "PostMessage")
-		send {click  %start_x%, %start_y%, 0}
 	If ChatStatus
 	{
-		DllCall("Sleep", Uint, 10)
+		sleep 60
 		MTsend("{Enter}")
 	}
-	;	BufferInputFast.Send(1) ; 1 so mouse isn't moved for the saved mouse clicks 
-	;if (Inject.LMouseState AND !GetKeyState("LButton", "P")) ;mouse button up
-	;	send {click Left up}
-	
-	MT_HookBlock := False ; wont revert keys as some users will have long sleep times.
+	BufferInputFast.disableBufferingAndBlocking()
 	Thread, NoTimers, false
-	inject_set := getTime()  ;** Note: Have to use gettime, as for forced ReleaseModifiers (via the iszergcasting) puts thread into critical, and then this thread turns off timers - so can result in the time being out and then having the next inject occuring too soon!
+	inject_set := getTime()  
 	if auto_inject_alert
 		settimer, auto_inject, 250
 	If GetKeyState(cast_inject_key, "P")
@@ -1408,6 +1344,8 @@ cast_ForceInject:
 			return
 		sleep 1
 	}
+	if !isSelectionGroupable(oSelection)
+		return
 	MT_HookBlock := True
 	Sleep := Input.releaseKeys()
 	critical 1000
@@ -1417,29 +1355,24 @@ cast_ForceInject:
 	SetKeyDelay, -1
 	If (ChatStatus := isChatOpen())
 	{
-		if !isSelectionGroupable(oSelection)
-		{
-				Input.revertKeyState()	
-				return
-		}
 		pMouseMove(A_ScreenWidth/2, A_ScreenHeight/2) ; to allow the below click to work
 		MTclick(A_ScreenWidth/2, A_ScreenHeight/2)	; even if cursors in outside map-viewport
 		DllCall("Sleep", Uint, 5) ; in case click changed unit selection
 	}
 	if !isSelectionGroupable(oSelection)
-	{
-			Input.revertKeyState()	
+	{	
 			if ChatStatus 
-				MTsend("{Enter}")		
+				MTsend("{Enter}")
+			else Input.revertKeyState()	 		
 			return
 	}
-	castInjectLarva("MiniMap", 1, 0)
-	Input.revertKeyState()	
+	castInjectLarva("MiniMap", 1, 0)	
 	If ChatStatus
 	{
-		DllCall("Sleep", Uint, 20)
+		DllCall("Sleep", Uint, 60)
 		MTsend("{Enter}")
 	}
+	else Input.revertKeyState()	
 return
 
 
@@ -6910,10 +6843,12 @@ autoWorkerProductionCheck()
 				return ; timed out after 120 ms
 			sleep 1
 		}
+		
+		if !isSelectionGroupable(oSelection)
+			return
 		Thread, NoTimers, true
 		SetKeyDelay, %EventKeyDelay%	;this only affects send events - so can just have it, dont have to set delay to original as its only changed for current thread
 		SetMouseDelay, %EventKeyDelay%	;again, this wont affect send click (when input/play is in use) - I think some other commands may be affected?
-		pSend(, 0)
 		Global MT_HookBlock := True
 		upsequence := Input.releaseKeys()
 		critical, 3000
@@ -6934,11 +6869,6 @@ autoWorkerProductionCheck()
 		; perhaps this was the cause of the weird error in control group (ive moved its position now)
 		If (ChatStatus := isChatOpen())
 		{
-			if !isSelectionGroupable(oSelection)
-			{
-					Input.revertKeyState()	
-					return
-			}
 			if !A_IsCompiled
 				soundplay *64 ; just testing that the chat offset is correct
 			pMouseMove(A_ScreenWidth/2, A_ScreenHeight/2) ; to allow the below click to work
@@ -6956,7 +6886,9 @@ autoWorkerProductionCheck()
 				L_SelectionIndexes .= "," object.unitIndex
 				if (object.owner != a_LocalPlayer.slot) 	; as cant restore unit selection. Need to work out how to detect allied leaver
 				{	
-					Input.revertKeyState()	
+				;	Do Not revert the revertKeyState()! As releaseKeys() will already have caused the users
+				; 	typing keystroke to appear in the chatbox. Hence using revertKeyState() (and then 
+				;	when the user releases the key) will cause the typed characters to double up! eg hheelllloo
 					if ChatStatus 
 						MTsend("{Enter}")
 					return
@@ -6996,28 +6928,8 @@ autoWorkerProductionCheck()
 				if (L_SelectionIndexes != L_ControlstorageIndexes)  ; safer and easier to do it this way for the storage control group - it may do it slightly more often than requried, but it should ALWAYS do it if it IS required
 					sendSequence := "^" controlstorageGroup
 				sendSequence .= mainControlGroup
-				MTSend(sendSequence), sendSequence := ""
 				; safer as units in this control group are very likely to die and change often
-				; and by sending the ctrl grp command, the control buffer will get updated.
-
-		;		loop
-		;		{
-		;			if (A_index = 1)
-		;				DllCall("Sleep", Uint, 2) 	; 2ms first loop, 12ms second
-		;			else DllCall("Sleep", Uint, 6) 
-		;			numGetUnitSelectionObject(oSelection)
-		;			L_PostSelectionCheck := ""
-		;			for index, object in oSelection.units
-		;				L_PostSelectionCheck .= "," object.unitIndex
-		;			; so if not equal on first loop will sleep 4 ms, and then if still not equal resend the command					
-		;			if (A_index = 2 && L_SelectionIndexes = L_PostSelectionCheck) ; SC ignored the ctrl group change command
-		;			{
-		;				Input.revertKeyState()	
-		;				if ChatStatus 
-		;					MTsend("{Enter}")
-		;				return
-		;			}
-		;		} until (L_PostSelectionCheck != L_SelectionIndexes || A_Index >= 2)			
+				; and by sending the ctrl grp command, the control buffer will get updated.	
 
 			}
 			Else If HighlightedGroup ; != 0
@@ -7053,37 +6965,9 @@ autoWorkerProductionCheck()
 					if !isUnitAStructure(object.unitIndex)	; as units will have higher priority and appear in group 0/top left control card - and this isnt compatible with this macro
 						BaseCtrlGroupError := 1					; as the macro will tell that unit e.g. probe to 'make a worker' and cause it to bug out
 			}
+			if BaseControlGroupNotSelected							
+				sendSequence .= controlstorageGroup ; pMessage command usually registers selection changes with 1ms
 
-			MTsend(sendSequence), sendSequence := ""
-			if BaseControlGroupNotSelected
-			{												
-		;		Sleep(2) 			; I think sc2 needs a sleep as otherwise the send controlgroup storage gets ignored every now and then  (it worked well with 4)
-			;	sleep 10
-			;	DllCall("Sleep", Uint, 10)
-			;	sendSequence .= controlstorageGroup
-		;		numGetUnitSelectionObject(oSelection)
-		;		for index, object in oSelection.units
-		;			L_BaseSelectionCheck .= "," object.unitIndex		
-				MTsend(controlstorageGroup) ; pMessage command usually registers selection changes with 1ms
-
-		;		loop
-		;		{
-		;			if (A_index = 1)
-		;				DllCall("Sleep", Uint, 2) 	; 2ms first loop, 12ms second
-		;			else DllCall("Sleep", Uint, 12) 
-		;			numGetUnitSelectionObject(oSelection)
-		;			L_PostSelectionCheck := ""
-		;			for index, object in oSelection.units
-		;				L_PostSelectionCheck .= "," object.unitIndex
-		;			; so if not equal on first loop will sleep 4 ms, and then if still not equal resend the command					
-		;			if (A_index = 2 && L_BaseSelectionCheck = L_PostSelectionCheck) ; SC ignored the ctrl group change command
-		;			{
-		;				soundplay *64
-		;				sendSequence .= controlstorageGroup 			; send it again
-		;				break
-		;			}
-		;		} until (L_PostSelectionCheck != L_BaseSelectionCheck || A_Index >= 2)
-			}
 
 		;	if HighlightedGroup
 		; 		DllCall("Sleep", Uint, 2) ; After restoring a control group, needs at least 1 ms so tabs will register (though sometimes it doesnt????)
@@ -7094,14 +6978,16 @@ autoWorkerProductionCheck()
 				MTsend(sendSequence)
 			WorkerMade := True
 		}
-		Input.revertKeyState()
+		
 		If ChatStatus
 		{
-		; needs a few ms to allow its message queue to clear 
+		; needs a quite few ms to allow its message queue to clear 
 		; otherwise sent characters will appear in chatbox
-			DllCall("Sleep", Uint, 20)
+			DllCall("Sleep", Uint, 60)
 			MTsend("{Enter}")
 		}
+		else Input.revertKeyState()
+
 		critical, off
 		Thread, NoTimers, false 
 
@@ -11308,7 +11194,7 @@ loop
 msgbox % qpx(False) * 1000
 return
 */
-
+/*
 f1::
 critical
 ;qpx(true)

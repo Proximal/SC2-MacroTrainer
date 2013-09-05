@@ -130,7 +130,7 @@
 								, "sc": modifier.sc
 								, "wParam": modifier.wParam})
 			Modifier := False
-			CurrentmodifierString := ""
+			CurrentmodifierString := "", Currentmodifiers := []
 		}
 		C_Index++
 	}

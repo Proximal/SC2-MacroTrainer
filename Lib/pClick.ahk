@@ -1,7 +1,7 @@
 ; wParam Indicates whether various virtual keys are down. This parameter can be one or more of the following values.
 ; but doesnt seem to affect sc2
 
-; Note WM_MOUSEMOVE May be required in somesituations. E.g. when the chat box is up and the cursor is not 
+; Note WM_MOUSEMOVE May be required in some situations. E.g. when the chat box is up and the cursor is not 
 ; in the viewport ie over the control cards
 
 
