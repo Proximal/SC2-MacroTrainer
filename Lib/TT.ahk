@@ -16,7 +16,7 @@
 ;	   Color - RGB color for ToolTip text color.<br>For reference see <a href=http://msdn.microsoft.com/en-us/library/bb760413.aspx>TTM_SETTIPTEXTCOLOR Message</a>.
 ;	   BackGround - RGB ToolTip background color.<br>For reference see <a href=http://msdn.microsoft.com/en-us/library/bb760411.aspx>TTM_SETTIPBKCOLOR  Message</a>.
 ;	   OnClose/OnClick - A function to be launched when a ToolTip was closed or a link was clicked. ParseLinks option will be set automatically.<br><br>Links are created using <a [action]>Text</a>.<br>Your OnClick function can accept up to two parameters ToolTip_Message(action[,Tool]).<br>When action is not specified Text will be used.<br>Tool is your ToolTip object that you can access inside your function.<br>OnClose uses same parameters but first passed parameter will be empty.
-;	   <b>Options not requiring a value<b> - <b>HWND CENTER RTL SUB TRACK ABSOLUTE TRANSPARENT PARSELINKS</b> - For reference see <a href=http://msdn.microsoft.com/en-us/library/bb760256.aspx>TOOLINFO Structure</a><br> - <b>CloseButton</b> for your ToolTip<br> - <b>ClickTrough</b> will enable clicking trough ToolTip<br> - <b>Balloon</b> ToolTip<br> - <b>Style</b> uses themed hyperlinks.<br> - <b>NoFade</b> disables fading in.<br> - <b>NoAnimate</b> disables sliding on Win2000.<br> - <b>NoPrefix</b> Prevents the system from stripping ampersand characters from a string or terminating a string at a tab character.<br> - <b>AlwaysTip</b> - Indicates that the tooltip control appears even if the tooltip control's owner window is inactive.
+;	   <b>Options not requiring a value<b> - <b>HWND CENTER RTL SUB TRACK ABSOLUTE TRANSPARENT PARSELINKS</b> - For reference see <a href=http://msdn.microsoft.com/en-us/library/bb760256.aspx>TOOLINFO Structure</a><br> - <b>CloseButton</b> for your ToolTip<br> - <b>ClickTrough</b> will enable clicking trough ToolTip<br> - <b>Balloon</b> ToolTip<br> - <b>Style</b> uses themed hyperlinks.<br> - <b>NoFade</b> disables fading in.<br> - <b>NoAnimate</b> disables sliding on Win2000.<br> - <b>NoPrefix</b> Prevents the system from stripping ampersand characters from a string or terminating a string at a tab character.<br> - <b>AlwaysTip</b> - Indicates that the tooltip control appears even if the tooltip control's owner window is inactive.<br> - <b>Theme</b> - Disable Theme for ToolTip, required to use features like Color, Background, Margins and more.
 ;	   <b>ToolTip functions</b> - <b>All function beside Add, Del, Show, Color, Remove and Text are ToolTip messages, for reference see <a href=http://msdn.microsoft.com/en-us/library/ff486069.aspx>ToolTip Messages</a>.<br>To call them use for example TTObj.TRACKACTIVATE(x,y)</b>
 ;	   ToolTip.<b>Add()</b> - ToolTip.Add(Control[,text,uFlags/options,parent])<br> - <b>Control</b> can be text like Button1 or hwnd of control.<br> - <b>Text</b> to be displayed.<br> - <b>uFlags/options</b> can be a value or list of strings <b>HWND CENTER RTL SUB TRACK ABSOLUTE TRANSPARENT PARSELINKS</b>.<br> - <b>Parent</b> can be a parent window, default is set in TT function, see above.<br>To enable ToolTip for Static controls like Text and Picture add 0x100 to Controls options.
 ;	   ToolTip.<b>Remove()</b> - Removes a ToolTip object and all control associations. Call TT_Remove() to remove all ToolTips (will be called automatically when scripts exits).
@@ -36,18 +36,20 @@
 ; Example:
 ;		file:TT_Example.ahk
 ;
-#include <_Struct>
+
+;~ #Include <Struct>
 TT_Init(){ ;initialize structures function
   global _TOOLINFO:="cbSize,uFlags,PTR hwnd,PTR uId,_RECT rect,PTR hinst,LPTSTR lpszText,PTR lParam,void *lpReserved"
-  global _RECT:="left,top,right,bottom"
-  global _CURSORINFO:="cbSize,flags,HCURSOR hCursor,x,y"
-  global _ICONINFO:="fIcon,xHotspot,yHotSpot,HBITMAP hbmMask,HBITMAP hbmColor"
-  global _BITMAP:="LONG bmType,LONG bmWidth,LONG bmHeight,LONG bmWidthBytes,WORD bmPlanes,WORD bmBitsPixel,LPVOID bmBits"
-  global _SHFILEINFO:="HICON hIcon,iIcon,DWORD dwAttributes,TCHAR szDisplayName[260],TCHAR szTypeName[80]"
-  global _TBBUTTON:="iBitmap,idCommand,BYTE fsState,BYTE fsStyle,BYTE bReserved[" (A_PtrSize=8?6:2) "],DWORD_PTR dwData,INT_PTR iString"
-  global _RECT:="left,top,right,bottom"
+  ,_RECT:="left,top,right,bottom"
+  ,_NMTVGETINFOTIP:="HWND hwndFrom,UINT_PTR idFrom,UINT code,UINT uFlags,UInt link"
+  ,_CURSORINFO:="cbSize,flags,HCURSOR hCursor,x,y"
+  ,_ICONINFO:="fIcon,xHotspot,yHotSpot,HBITMAP hbmMask,HBITMAP hbmColor"
+  ,_BITMAP:="LONG bmType,LONG bmWidth,LONG bmHeight,LONG bmWidthBytes,WORD bmPlanes,WORD bmBitsPixel,LPVOID bmBits"
+  ,_SHFILEINFO:="HICON hIcon,iIcon,DWORD dwAttributes,TCHAR szDisplayName[260],TCHAR szTypeName[80]"
+  ,_TBBUTTON:="iBitmap,idCommand,BYTE fsState,BYTE fsStyle,BYTE bReserved[" (A_PtrSize=8?6:2) "],DWORD_PTR dwData,INT_PTR iString"
 }
 TT(options="",text="",title=""){
+  global _RECT,_TOOLINFO
   static temp:=TT_Init()
   ; Options
   ;WS_POPUP=0x80000000,TTS_ALWAYSTIP=0x1,TTS_NOPREFIX=0x2,TTS_USEVISUALSTYLE=0x100,TTS_NOFADE=0x20,TTS_NOANIMATE=0x10
@@ -68,9 +70,12 @@ TT(options="",text="",title=""){
       ,UPDATETIPTEXT:"TTM_UPDATETIPTEXT",WINDOWFROMPOINT:"TTM_WINDOWFROMPOINT"
       ,__Delete:"__Delete",_Insert:"_Insert",_Remove:"_Remove",_GetCapacity:"_GetCapacity",_SetCapacity:"_SetCapacity"
       ,_GetAddress:"_GetAddress",_MaxIndex:"_MaxIndex",_MinIndex:"_MinIndex",_NewEnum:"_NewEnum",_HasKey:"_HasKey"
-      ,_Clone:"_Clone",Insert:"Insert",Remove:"Remove",GetCapacity:"GetCapacity",SetCapacity:"SetCapacity"
+      ,_Clone:"_Clone",Insert:"Insert",GetCapacity:"GetCapacity",SetCapacity:"SetCapacity"
       ,GetAddress:"GetAddress",MaxIndex:"MaxIndex",MinIndex:"MinIndex",NewEnum:"NewEnum",HasKey:"HasKey",Clone:"Clone"
       ,"base":{__Call:"TT_Set",__Delete:"TT_Delete"}}
+  Parent:="",Gui:="",ClickTrough:="",Style:="",NOFADE:="",NoAnimate:="",NOPREFIX:="",AlwaysTip:="",ParseLinks:="",CloseButton:="",Balloon:="",maxwidth:=""
+  ,INITIAL:="",AUTOPOP:="",RESHOW:="",OnClick:="",OnClose:="",OnShow:="",ClickHide:="",HWND:="",Center:="",RTL:="",SUB:="",Track:="",Absolute:=""
+  ,TRANSPARENT:="",Color:="",Background:="",icon:=""
   If (options=-0x8000000000000000) 
     Return @
   else if options is xdigit
@@ -88,6 +93,9 @@ TT(options="",text="",title=""){
         If ((Asc(option2)=39 && SubStr(A_LoopField,0)!="'") && (istext:=option1) && (string:=SubStr(option2,2)))
           Continue
         %option1%:=option2
+      } else if ( option2:=InStr(A_LoopField,"=")){
+        option1:=SubStr(A_LoopField,1,option2-1)
+        %option1%:=SubStr(A_LoopField,option2+1)
       } else if A_LoopField
         %A_LoopField% := 1
   }
@@ -116,17 +124,19 @@ TT(options="",text="",title=""){
     OnMessage(0x4e,"TT_OnMessage")
   If OnClick
     ParseLinks:=1
-  T.rc:=new _Struct("_RECT") ;for TTM_SetMargin
+  T.rc:=Struct(_RECT) ;for TTM_SetMargin
   ;Tool for Main ToolTip
-  T.P:=new _Struct("_TOOLINFO"),P:=T.P,P.cbSize:=sizeof("_TOOLINFO")
+  T.P:=Struct(_TOOLINFO),P:=T.P,P.cbSize:=sizeof(_TOOLINFO)
   P.uFlags:=(HWND?0x1:0)|(Center?0x2:0)|(RTL?0x4:0)|(SUB?0x10:0)|(Track+1?(Track?0x20:0):0x20)|(Absolute?0x80:0)|(TRANSPARENT?0x100:0)|(ParseLinks?0x1000:0)
-  P.hwnd:=Parent,P.uId:=Parent,P.lpszText[""]:=T.GetAddress("maintext")?T.GetAddress("maintext"):0,T.AddTool(P[])
+  P.hwnd:=Parent,P.uId:=Parent,P.lpszText[""]:=T.GetAddress("maintext")?T.GetAddress("maintext"):"",T.AddTool(P[])
+  If (Theme)
+    T.SETWINDOWTHEME()
   If Color
     T.SETTIPTEXTCOLOR(Color)
   If Background
     T.SETTIPBKCOLOR(BackGround)
   T.SetTitle(T.maintitle:=title,icon)
-  Sleep,100
+  ; Sleep,100
   Return T
 }
 
@@ -161,9 +171,9 @@ TT_Remove(T=""){
 }
 
 TT_OnMessage(wParam,lParam,msg,hwnd){
+  global _NMTVGETINFOTIP
   static TTN_FIRST:=0xfffffdf8, @:=TT(-0x8000000000000000) ;Get main object that holds all ToolTips
-        ,NMTVGETINFOTIP:="HWND hwndFrom,UINT_PTR idFrom,UINT code,UINT uFlags,UInt link"
-        ,HDR:=new _Struct(NMTVGETINFOTIP)
+        ,HDR:=Struct(_NMTVGETINFOTIP)
   HDR[]:=lParam
   If !InStr(".1.2.3.","." (m:= TTN_FIRST-HDR.code) ".")
     Return
@@ -176,10 +186,10 @@ TT_OnMessage(wParam,lParam,msg,hwnd){
   text:=T.fulltext
   If (m=1){ 							;Show
     If IsFunc(T.OnShow)
-      T.OnShow("",T)
+      T.OnShow(T)
   } else If (m=2){ 					;Close
     If IsFunc(T.OnClose)
-      T.OnClose("",T)
+      T.OnClose(T)
     T.TRACKACTIVATE(0,T.P[])
   } else If InStr(text,"<a"){	;Click
     If T.ClickHide
@@ -188,7 +198,7 @@ TT_OnMessage(wParam,lParam,msg,hwnd){
       action:=SubStr(text,InStr(text,">")+1,InStr(text,"</a>")-InStr(text,">")-1)
     else action:=Trim(action:=SubStr(text,1,InStr(text,">")-1))
     If IsFunc(T.OnClick)
-      T.OnClick(action,T)
+      T.OnClick(T,action)
   }
   Return true
 }
@@ -197,6 +207,7 @@ TT_ADD(T,Control,Text="",uFlags="",Parent=""){
   ;	uFlags http://msdn.microsoft.com/en-us/library/bb760256.aspx
   ; TTF_ABSOLUTE=0x80, TTF_CENTERTIP=0x0002, TTF_IDISHWND=0x1, TTF_PARSELINKS=0x1000 ,TTF_RTLREADING = 0x4
   ; TTF_SUBCLASS=0x10, TTF_TRAMsgCK=0x20, TTF_TRANSPARENT=0x100
+  global _TOOLINFO
   DetectHiddenWindows:=A_DetectHiddenWindows
   DetectHiddenWindows,On
   if (Parent){
@@ -204,12 +215,12 @@ TT_ADD(T,Control,Text="",uFlags="",Parent=""){
       Gui %Parent%:+LastFound
       Parent:=WinExist()
     }
-    T["T",Abs(Parent)]:=new _Struct("_TOOLINFO"),Tool:=T["T",Abs(Parent)]
+    T["T",Abs(Parent)]:=Struct(_TOOLINFO),Tool:=T["T",Abs(Parent)]
     Tool.uId:=Parent,Tool.hwnd:=Parent,Tool.uFlags:=(0|16)
     DllCall("GetClientRect","PTR",T.HWND,"PTR", T[Abs(Parent)].rect[])
     T.ADDTOOL(T["T",Abs(Parent)][])
   }
-  If text=
+  If (text="")
     ControlGetText,text,%Control%,% "ahk_id " (Parent?Parent:T.P.hwnd)
   If Control is not Xdigit
     If Control is not digit
@@ -222,9 +233,8 @@ TT_ADD(T,Control,Text="",uFlags="",Parent=""){
           %A_LoopField% := 1
       uFlags:=(HWND?0x1:HWND=""?0x1:0)|(Center?0x2:0)|(RTL?0x4:0)|(SUB?0x10:0)|(Track?0x20:0)|(Absolute?0x80:0)|(TRANSPARENT?0x100:0)|(ParseLinks?0x1000:0)
     }
-  T["T",Abs(Control)]:=new _Struct("_TOOLINFO")
-  Tool:=T.T[Abs(Control)]
-  Tool.cbSize:=sizeof("_TOOLINFO")
+  T["T",Abs(Control)]:=Tool:=Struct(_TOOLINFO)
+  Tool.cbSize:=sizeof(_TOOLINFO)
   T[Abs(Control),"text"]:=RegExReplace(text,"<a\K[^<]*?>",">")
   Tool.uId:=Control,Tool.hwnd:=Parent?Parent:T.P.hwnd,Tool.uFlags:=uFlags?(uFlags|16):(1|16)
   Tool.lpszText[""]:=T[Abs(Control)].GetAddress("text")
@@ -255,7 +265,7 @@ TT_Color(T,Color="",Background=""){
 
 TT_Text(T,text){
   static TTM_UPDATETIPTEXT=0x400+(A_IsUnicode?57:12),TTM_UPDATE=0x400+29
-  T.fulltext:=text,T.maintext:=RegExReplace(text,"<a\K[^<]*?>",">"),T.P.lpszText[""]:=text?T.GetAddress("maintext"):0
+  T.fulltext:=text,T.maintext:=RegExReplace(text,"<a\K[^<]*?>",">"),T.P.lpszText[""]:=text!=""?T.GetAddress("maintext"):0
   T.UPDATETIPTEXT()
 }
 TT_Icon(T,icon=0,icon#=1){
@@ -267,10 +277,11 @@ TT_Icon(T,icon=0,icon#=1){
 }
 
 TT_GetIcon(File="",Icon#=1){
-   static hIcon:=Object(),AW:=A_IsUnicode?"W":"A"
+  global _ICONINFO,_SHFILEINFO
+  static hIcon:=Object(),AW:=A_IsUnicode?"W":"A",sfi:="",pToken:=0
     ,temp1:=DllCall( "LoadLibrary", "Str","gdiplus","PTR"),temp2:=VarSetCapacity(si, 16, 0) (si := Chr(1))
   If !sfi {
-      sfi:=new _Struct("_SHFILEINFO"),sfi_size:=sizeof("_SHFILEINFO")
+      sfi:=Struct(_SHFILEINFO),sfi_size:=sizeof(_SHFILEINFO)
     SysGet, SmallIconSize, 49
     DllCall("gdiplus\GdiplusStartup", "PTR*",pToken, "PTR",&si, "PTR",0)
   }
@@ -325,7 +336,7 @@ TT_GetIcon(File="",Icon#=1){
     ,DllCall( "gdiplus\GdipCreateBitmapFromStream", "UInt",pStream, "PTR*",pBitmap )
     ,DllCall( "gdiplus\GdipCreateHBITMAPFromBitmap", "PTR",pBitmap, "PTR*",hBitmap, "UInt",0 )
     ,DllCall( "gdiplus\GdipDisposeImage", "PTR",pBitmap )
-    ,ii:=new _Struct("_ICONINFO")
+    ,ii:=Struct(_ICONINFO)
     ,ii.ficon:=1,ii.hbmMask:=hBitmap,ii.hbmColor:=hBitmap
     return hIcon[File]:=DllCall("CreateIconIndirect","PTR",ii[],"PTR")
   } else If DllCall("Shell32\SHGetFileInfo" AW, "str", File, "uint", 0, "PTR", sfi[], "uint", sfi_size, "uint", 0x101,"PTR")
@@ -337,11 +348,12 @@ TT_Close(T){
 }
 
 TT_Show(T,text="",x="",y="",title="",icon="",icon#=1){
-  global _CURSORINFO,_ICONINFO,_BITMAP,_TBBUTTON,_RECT
-  static pcursor:= new _Struct(_CURSORINFO),init:=(pcursor.cbSize:=sizeof(_CURSORINFO))
-        ,picon:=new _Struct(_ICONINFO) ,pbitmap:=new _Struct(_BITMAP)
-        ,TB:=new _Struct(_TBBUTTON) ,RC:=new _Struct(_RECT)
-  If Text!=
+  global _TBBUTTON,_BITMAP,_ICONINFO,_CURSORINFO,_RECT
+  static pcursor:= Struct(_CURSORINFO),init:=(pcursor.cbSize:=sizeof(_CURSORINFO))
+        ,picon:=Struct(_ICONINFO) ,pbitmap:=Struct(_BITMAP)
+        ,TB:=Struct(_TBBUTTON) ,RC:=Struct(_RECT)
+  xo:="",xs:="",yo:="",ys:=""
+  If (Text!="")
     T.Text(text)
   If (title!="")
     T.SETTITLE(title,icon,icon#)
@@ -589,8 +601,8 @@ TTM_SETDELAYTIME(T,whichTime=0,mSec=-1){
    static TTM_SETDELAYTIME = 0x400 + 3
    Return DllCall("SendMessage","PTR",T.HWND,"UInt",TTM_SETDELAYTIME,"PTR",whichTime,"PTR",mSec,"PTR")
 }
-TTM_SETMARGIN(T,top=0,left=0,bottom=0,right=0){
-   static TTM_SETMARGIN = 0x41a
+TTM_SETMARGIN(T,left=0,top=0,right=0,bottom=0){
+   static TTM_SETMARGIN := 0x41a
   rc:=T.rc,rc.top:=top,rc.left:=left,rc.bottom:=bottom,rc.right:=right
   Return DllCall("SendMessage","PTR",T.HWND,"UInt",TTM_SETMARGIN,"PTR",0,"PTR",rc[""],"PTR")
 }
@@ -639,7 +651,9 @@ TTM_SETTOOLINFO(T,pTOOLINFO=0){
    Return DllCall("SendMessage","PTR",T.HWND,"UInt",TTM_SETTOOLINFO,"PTR",0,"PTR",pTOOLINFO?pTOOLINFO:T.P[""],"PTR")
 }
 TTM_SETWINDOWTHEME(T,theme=""){
-   Return DllCall("SendMessage","PTR",T.HWND,"UInt",0x200b,"PTR",0,"PTR",&theme,"PTR")
+  If !theme
+    Return DllCall("UxTheme\SetWindowTheme","PTR",T.HWND,"str","","str","")
+  else Return DllCall("SendMessage","PTR",T.HWND,"UInt",0x200b,"PTR",0,"PTR",&theme,"PTR")
 }
 TTM_TRACKACTIVATE(T,activate=0,pTOOLINFO=0){
    Return DllCall("SendMessage","PTR",T.HWND,"UInt",0x411,"PTR",activate,"PTR",(pTOOLINFO)?(pTOOLINFO):(T.P[""]),"PTR")

@@ -1,4 +1,4 @@
-insertpClickObject(ByRef sendObject, button, x, y, count := 1, Modifiers := "")
+insertpClickObject(ByRef sendObject, x, y, button := "L", count := 1, Modifiers := "", MouseMove := False)
 {
 	static	  WM_MOUSEFIRST := 0x200
 			, WM_MOUSEMOVE = 0x200
@@ -34,6 +34,10 @@ insertpClickObject(ByRef sendObject, button, x, y, count := 1, Modifiers := "")
 		WParam |= MK_XBUTTON1
 	if instr(Modifiers, "x2")
 		WParam |= MK_XBUTTON2
+
+	if MouseMove
+		sendObject.insert({ "message": WM_MOUSEMOVE
+						, "lParam": lParam})
 
 	if button contains r
 		message := "WM_RBUTTON", WParam |= MK_RBUTTON

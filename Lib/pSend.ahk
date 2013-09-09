@@ -1,12 +1,11 @@
-﻿pSend(Sequence := "", newKeyDelay := "", newClickDelay := "")
+﻿pSend(Sequence := "")
 {
-	Global GameIdentifier
-	static WM_KEYDOWN := 0x100, WM_KEYUP := 0x101, WM_CHAR := 0x102, pKeyDelay := -1, pClickDelay := -1
+	Global 	GameIdentifier
+	static 	WM_KEYDOWN := 0x100,
+			WM_KEYUP := 0x101
 
-	if newKeyDelay is integer
-		pKeyDelay :=  newKeyDelay
-	if newClickDelay is integer
-		pClickDelay :=  newClickDelay
+	pKeyDelay :=  Input.pSendDelay()
+	pClickDelay :=  Input.pClickDelay()
 
 	SetFormat, IntegerFast, hex
 	aSend := []
@@ -26,20 +25,19 @@
 		if char in +,^,!
 		{		
 			if (char = "+")
-				Modifier := GetKeyVK("Shift"), ModiferSc := GetKeySC("Shift")
+				Modifier := "Shift"
 			else if (char = "^")
-				Modifier := GetKeyVK("Ctrl"), ModiferSc := GetKeySC("Ctrl")
+				Modifier := "Ctrl"
 			else if (char = "!")
-				Modifier := GetKeyVK("Alt"), ModiferSc := GetKeySC("Alt")
+				Modifier :="Alt"
 
 			CurrentmodifierString .= char
-			Currentmodifiers.insert( {"wParam": Modifier 
-							, "sc": ModiferSc})
-				
+			Currentmodifiers.insert( {"wParam": GetKeyVK(Modifier) 
+							, "sc": GetKeySC(Modifier)})			
 
 			aSend.insert({	  "message": WM_KEYDOWN
-							, "sc": ModiferSc
-							, "wParam": Modifier})
+							, "sc": GetKeySC(Modifier)
+							, "wParam": GetKeyVK(Modifier)})
 			C_Index++
 			continue
 			
@@ -60,8 +58,9 @@
 				    SetFormat, IntegerFast, d ; otherwise A_Index is 0x and doesnt work with var%A_Index%
 				    loop, % clickOutput0
 				    {
+				    
 				    	command := clickOutput%A_index% 
-				        if command is integer
+				        if command is number
 				            numbers.insert(command)    
 				    }
 				   
@@ -79,9 +78,8 @@
 				    }	 
 				    SetFormat, IntegerFast, hex
 
-			;	   msgbox % key "`n" x ", " y "`n" clickCount
-
-				    insertpClickObject(aSend, key, x, y, clickCount, CurrentmodifierString)
+			;	  	 msgbox % key "`n" x ", " y "`n" clickCount
+				    insertpClickObject(aSend, x, y, key, clickCount, CurrentmodifierString, instr(key, "MM")) ; MM - Insert MouseMove
 				}
 				else 
 				{
@@ -135,6 +133,7 @@
 		C_Index++
 	}
 	SetFormat, IntegerFast, d
+
 
 	for index, message in aSend
 	{

@@ -17,7 +17,7 @@
 
 
 
-setLowLevelInputHooks(Install, KeyboardFunction := "KeyboardHookT", MouseFunction := "MouseHookT")
+setLowLevelInputHooks(Install, KeyboardFunction := "KeyboardHook", MouseFunction := "MouseHook")
 {
 	; WH_KEYBOARD_LL := 13, WH_MOUSE_LL := 14
 
@@ -67,63 +67,32 @@ MT_InputIdleTime(NewInputTickCount := 0)
 ; ncode 0 - message contains information
 ; return a negative value to prevent other programs reading the key
 
-KeyboardHookT(nCode, wParam, lParam)
+KeyboardHook(nCode, wParam, lParam)
 {	
 	Critical 1000
 	static WM_KEYUP := 0x101
 	Global MT_HookBlock
 	If !nCode ; if this var contains some info about a keyboard event, then process it
-		MT_InputIdleTime(A_TickCount)
-
-	; Input is blocked and this is a user pressed / released button	
-  	if (MT_HookBlock && !(NumGet(lParam+8) & 0x10)) ; LLKHF_INJECTED
-  	{	
-  		; Track user released keys.
-  		; User pressed keys will begin auto-repeating anyway
-  		;if (wParam = WM_KEYUP)
-   		;	input.insertUserReleasedKey(NumGet(lParam+0, 0)) ;vkCode
-  		return -1 
-  	}
-
-   	Return CallNextHookEx(nCode, wParam, lParam) ; make sure other hooks in the chain receive this event if we didn't process it
-}
-MouseHookT(nCode, wParam, lParam)
-{
-;	static 	WM_LBUTTONUP := 0x202, , WM_RBUTTONUP := 0x205, WM_MBUTTONUP := 0x208
-;		  	, WM_XBUTTONUP := 0x020C
-
-	Global MT_HookBlock
-	Critical 1000
-	If (!nCode && wParam != 0x200)  ;WM_MOUSEMOVE := 0x200
 	{
 		MT_InputIdleTime(A_TickCount)
+
 		; Input is blocked and this is a user pressed / released button	
-		if (MT_HookBlock && !(NumGet(lParam+12) & 0x10))  ; LLKHF_INJECTED
-		{
-			;removed stuff
-			return -1
-		}
-	}
-   	Return CallNextHookEx(nCode, wParam, lParam) ; make sure other hooks in the chain receive this event if we didn't process it
-}
-
-
-KeyboardHook(nCode, wParam, lParam)
-{	
-	Critical 1000
-	If !nCode ; if this var contains some info about a keyboard event, then process it
-		MT_InputIdleTime(A_TickCount)
+  		if (input.iskeyboardBlocked() && !(NumGet(lParam+8) & 0x10)) ; LLKHF_INJECTED
+  			return -1 
+  	}
    	Return CallNextHookEx(nCode, wParam, lParam) ; make sure other hooks in the chain receive this event if we didn't process it
 }
 
 MouseHook(nCode, wParam, lParam)
 {
-;	static 	MK_CONTROL := 0x0008, MK_MBUTTON := 0x0010, MK_RBUTTON := 0x0002
-;			MK_SHIFT := 0x0004, MK_XBUTTON1 := 0x0020, MK_XBUTTON2 := 0x0040
-
 	Critical 1000
 	If (!nCode && wParam != 0x200)  ;WM_MOUSEMOVE := 0x200
+	{
 		MT_InputIdleTime(A_TickCount)
+		; Input is blocked and this is a user pressed / released button	
+		if (input.isMouseBlocked() && !(NumGet(lParam+12) & 0x10))  ; LLKHF_INJECTED
+			return -1
+	}
    	Return CallNextHookEx(nCode, wParam, lParam) ; make sure other hooks in the chain receive this event if we didn't process it
 }
 

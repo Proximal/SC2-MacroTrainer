@@ -92,8 +92,8 @@ Class BufferInputFast
 			sendInput {Blind}{alt up}
 		}
 		; sleep to prevent out of order messages due to much lower latency with PostMessage
-		if (sleep && sendMethod() = "PostMessage")
-			sleep, 2
+		if sleep
+			sleep, 12
 		return
 	}	
 

@@ -1,26 +1,16 @@
-; options to be used to specify Up/Down 
-; U or D
-MTclick(x,y, button := "Left" , Modifiers := "", options := "", count := "", Blind := True)
+MTclick(x,y, button := "Left" , Modifiers := "", count := 1, MouseMove := False)
 {
-	GLOBAL GameIdentifier
-;	setLowLevelInputHooks(False)
-	if Blind
-		Blind := "{Blind}"
-	else Blind := ""
 
 	if instr(modifiers, "+")
-		ModifersDown .= "{VK10 Down}", ModifersUp .= "{VK10 Up}"
+		ModifersDown .= "{Shift Down}", ModifersUp .= "{Shift Up}"
 	if instr(modifiers, "^")
-		ModifersDown .= "{VK11 Down}", ModifersUp .= "{VK11 Up}"
+		ModifersDown .= "{Ctrl Down}", ModifersUp .= "{Ctrl Up}"
 	if instr(modifiers, "!")
-		ModifersDown .= "{VK12 Down}", ModifersUp .= "{VK12 Up}"
+		ModifersDown .= "{Alt Down}", ModifersUp .= "{Alt Up}"
 	if ModifersDown
-		controlsend,, % Blind ModifersDown, %GameIdentifier%			
-	ControlClick, x%x% y%y%, %GameIdentifier%,, %button%, %count%, %options%
+		pSend(ModifersDown)	
+	pClick(x, y, button, count, Modifiers, MouseMove)		
 	if ModifersUp
-		controlsend,, % Blind ModifersUp, %GameIdentifier%	
-
-;	setLowLevelInputHooks(True)
-
+		pSend(ModifersUp)		
 	return
 }
