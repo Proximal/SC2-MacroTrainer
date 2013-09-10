@@ -2565,7 +2565,7 @@ return
 ShutdownProcedure:
 	setLowLevelInputHooks(False)
 	Closed := ReadMemory()
-	close := ReadRawMemory()
+	Closed := ReadRawMemory()
 	Closed := ReadMemory_Str()
 	Gdip_Shutdown(pToken)
 
@@ -6613,18 +6613,12 @@ if (WinActive(GameIdentifier) && time && EnableAutoWorker%LocalPlayerRace% && !T
 	autoWorkerProductionCheck()
 return
 
-f1:: 
-numGetUnitSelectionObject(oSelection)
-msgbox % oSelection.count "`n| " oSelection.units[1].type "`n| " oSelection.units[1].UnitIndex
-return 
-
-
 autoWorkerProductionCheck()
 {	GLOBAl A_unitID, a_LocalPlayer, Base_Control_Group_T_Key, AutoWorkerStorage_P_Key, AutoWorkerStorage_T_Key, Base_Control_Group_P_Key, NextSubgroupKey
 	, AutoWorkerMakeWorker_T_Key, AutoWorkerMakeWorker_P_Key, AutoWorkerMaxWorkerTerran, AutoWorkerMaxWorkerPerBaseTerran
 	, AutoWorkerMaxWorkerProtoss, AutoWorkerMaxWorkerPerBaseProtoss, AW_MaxWorkersReached
 	, aResourceLocations, aButtons, EventKeyDelay
-	, AutoWorkerAPMProtection, MT_CurrentGame
+	, AutoWorkerAPMProtection, MT_CurrentGame, a_UnitTargetFilter
 	
 	static TickCountRandomSet := 0, randPercent,  UninterruptedWorkersMade, waitForOribtal := 0
 
@@ -6729,7 +6723,7 @@ autoWorkerProductionCheck()
 	; this will give the player 11 in game seconds or so to convert the orbital before it makes another worker
 	; waitForOribtal will be set around halfway through the when the last worker is made
 
-	if (Basecount = 1 && a_LocalPlayer["Race"] = "Terran")
+	if (TotalCompletedBasesInCtrlGroup = 1 && a_LocalPlayer["Race"] = "Terran")
 	{
 		WorkersBuilt := getPlayerWorkersBuilt()
 		if (!waitForOribtal && WorkersBuilt = 14)
@@ -6738,13 +6732,37 @@ autoWorkerProductionCheck()
 
 		; note MaxWokersTobeMade - So this will start activating when its trying to make the next worker
 		; 28 in game seconds from when the 15th worker popped.
-		; As it takes 17s to make the 16th worker, the user is left with ~13 in game seconds where 
+		; As it takes 17s to make the 16th worker, the user is left with ~10 in game seconds where 
 		; no SCV is being made 
 
-		if (waitForOribtal && MaxWokersTobeMade 
-			&& (WorkersBuilt = 14 || WorkersBuilt = 15) 	 ; as it has to prevent making a worker while 15 have been made
-			&& GetTime() - waitForOribtal < 30)  			; as well as after the 16th pops
-			return
+		if (waitForOribtal && MaxWokersTobeMade && (WorkersBuilt = 14 || WorkersBuilt = 15) )
+		{
+			; This is so it only iterates all the units once, rather than ever 200ms
+			; The user should have started the CC by the time the 14th worker pops
+			; could had a separate timer which gets activated and slowly checks
+			; that would be more accurate but this should work
+
+			if !MT_CurrentGame.CheckedForCC
+			{
+				MT_CurrentGame.CheckedForCC := True
+				Unitcount := DumpUnitMemory(MemDump)
+				while (A_Index <= Unitcount)
+				{
+					unit := A_Index - 1
+					TargetFilter := numgetUnitTargetFilter(MemDump, unit)
+					if (TargetFilter & a_UnitTargetFilter.Dead 
+						|| numgetUnitOwner(MemDump, Unit) != a_LocalPlayer["Slot"]
+						|| numgetUnitModelType(numgetUnitModelPointer(MemDump, Unit)) != A_unitID["CommandCenter"]
+						|| !(TargetFilter & a_UnitTargetFilter.UnderConstruction))
+				    	Continue
+				    ; These units are Command Centres which are under construction
+				    MT_CurrentGame.CCFirst := True
+				}
+			}
+																			 ; as it has to prevent making a worker while 15 
+			if (!MT_CurrentGame.CCFirst && GetTime() - waitForOribtal < 27)  ; have been made as well as after the 16th pops
+				return
+		}
 		else if MaxWokersTobeMade
 			waitForOribtal := 0	
 		; so if user manually makes a worker, it wont continue the delay
