@@ -30,6 +30,7 @@ LoadMemoryAddresses(SC2EXE)
 		O_pEPM := 0x5D8
 
 		O_pWorkerCount := 0x788 ;+1c
+		O_pWorkersBuilt := 0x798 ; number of workers made (includes the 6 at the start of the game)
 		O_pBaseCount := 0x7F8 ; +18
 		O_pSupplyCap := 0x848 ;+18		
 		O_pSupply := 0x860 ;+ 12		
@@ -41,8 +42,6 @@ LoadMemoryAddresses(SC2EXE)
 		O_pGasIncome := 0x928
 		O_pArmyMineralSize := 0xC08 ;0xB68 ;+A0
 		O_pArmyGasSize := 0xC30 ;A8 
-
-
 
 	P_IdleWorker := SC2EXE + 0x031073C0		
 		O1_IdleWorker := 0x370
@@ -381,6 +380,22 @@ getPlayerWorkerCount(player="")
 	Return ReadMemory(((B_pStructure + O_pWorkerCount) + (player-1)*S_pStructure), GameIdentifier)
 }
 
+;  Number of workers made (includes the 6 at the start of the game)
+; eg have 12 workers, but 2 get killed, and then you make one more
+; this value will be 13.
+
+getPlayerWorkersBuilt(player="")
+{ global
+	If (player = "")
+		player := a_LocalPlayer["Slot"]
+	Return ReadMemory(((B_pStructure + O_pWorkersBuilt) + (player-1)*S_pStructure), GameIdentifier)
+}
+getPlayerWorkersLost(player="")
+{ 	global a_LocalPlayer
+	If (player = "")
+		player := a_LocalPlayer["Slot"]
+	return getPlayerWorkersBuilt() - getPlayerWorkerCount()
+}
 getUnitType(Unit) ;starts @ 0 i.e. first unit at 0
 { global 
 

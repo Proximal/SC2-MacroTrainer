@@ -99,8 +99,8 @@ Else
 	hotkey, ^+!F12, g_GiveLocalPalyerResources
 }
 RegRead, wHookTimout, HKEY_CURRENT_USER, Control Panel\Desktop, LowLevelHooksTimeout
-if (ErrorLevel || wHookTimout < 600)
-	RegWrite, REG_DWORD, HKEY_CURRENT_USER, Control Panel\Desktop, LowLevelHooksTimeout, 600
+if (ErrorLevel || wHookTimout < 650)
+	RegWrite, REG_DWORD, HKEY_CURRENT_USER, Control Panel\Desktop, LowLevelHooksTimeout, 650
 ; This will up the timeout from  300 (default). Though probably isn't required
 setLowLevelInputHooks(True)
 
@@ -757,6 +757,10 @@ clock:
 		AW_MaxWorkersReached := TmpDisableAutoWorker := 0
 		MiniMapWarning := [], a_BaseList := [], aGatewayWarnings := []
 		aResourceLocations := []
+		MT_CurrentGame := []	; This is a variable which from now on will store
+								; Info about the current game for other functions 
+								; An easy way to have the info cleared each match
+
 		BufferInputFast.disableHotkeys() ; disable any previously created buffered hotkeys in case user has changed the key blocking list
 		BufferInputFast.createHotkeys(aButtons.List) ; re-create the hotkeys	
 		if WinActive(GameIdentifier)
@@ -1111,7 +1115,7 @@ AutoGroup(byref A_AutoGroup, AGDelay = 0)
 			critical, 1000
 			input.hookBlock(False, False)
 			if sleep
-				DllCall("Sleep", Uint, 10) ;  sleep, 5
+				DllCall("Sleep", Uint, 15) ;  sleep, 5
 			; if the user has a delay for grouping, this increases the risk of the unit selection changing before the
 			; sent ctrl+group command is received/processed. Therefore a small sleep here should make it more robust
 			; in theory this should not be required with a delay of 0 (for the most part), as there is the idle grouping
@@ -1121,7 +1125,7 @@ AutoGroup(byref A_AutoGroup, AGDelay = 0)
 			if AGDelay ; the MTDelay should prevent the need for a sleep
 			{
 				if !sleep 
-					DllCall("Sleep", Uint, 4)
+					DllCall("Sleep", Uint, 3)
 				;sleep 5 ; so rounds to no more than 10ms.
 				;Sleep(2) ; give time for selection buffer to update. This along with blocking input should cover pre- and post-selection delay buffer changes
 				numGetUnitSelectionObject(oSelection)
@@ -1314,7 +1318,7 @@ class Input
 ;	also using AHK internal sleep for this function.
 
 cast_inject:
-	If (isMenuOpen() & !isChatOpen())
+	If (isGamePaused() || isMenuOpen())
 		return ;as let the timer continue to check during auto injects
 	Thread, NoTimers, true  ;cant use critical with input buffer, as prevents hotkey threads launching and hence tracking input
 
@@ -1325,21 +1329,11 @@ cast_inject:
 	MouseGetPos, start_x, start_y
 
 	BufferInputFast.BlockInput()
-	If (ChatStatus := isChatOpen())
-	{
-	;	pMouseMove(A_ScreenWidth/2, A_ScreenHeight/2) ; to allow the below click to work
-		MTclick(A_ScreenWidth/2, A_ScreenHeight/2, "Left", "", 1, 1) ; insert a WM_MouseMove
-		sleep 5
-	}
 	castInjectLarva(auto_inject, 0, auto_inject_sleep) ;ie nomral injectmethod
 
 	If HumanMouse
 		MouseMoveHumanSC2("x" start_x "y" start_y "t" HumanMouseTimeLo)
-	If ChatStatus
-	{
-		sleep 60
-		MTsend("{Enter}")
-	}
+
 	BufferInputFast.disableBufferingAndBlocking()
 	Thread, NoTimers, false
 	inject_set := getTime()  
@@ -1351,8 +1345,6 @@ Return
 
 
 cast_ForceInject:
-	If (isMenuOpen() & !isChatOpen())
-		return 
 	startInjectWait := A_TickCount
 	while getkeystate("LWin", "P") || getkeystate("RWin", "P")	
 	|| getkeystate("LWin") || getkeystate("RWin")	
@@ -1367,7 +1359,7 @@ cast_ForceInject:
 			return
 		sleep 1
 	}
-	if !isSelectionGroupable(oSelection)
+	if (isGamePaused() || isMenuOpen() || !isSelectionGroupable(oSelection)) 
 		return
 	input.hookBlock(True, True)
 	Sleep := Input.releaseKeys()
@@ -1375,27 +1367,11 @@ cast_ForceInject:
 	input.hookBlock(False, False)
 	if sleep
 		DllCall("Sleep", Uint, 15) ;  sleep, 5
+	else DllCall("Sleep", Uint, 2) ; give 2 ms to allow for selection buffer to fully update so we are extra safe. 
 	SetKeyDelay, -1
-	If (ChatStatus := isChatOpen())
-	{
-		; to allow the below click to work (when cursor outside map-viewport) insert a WM_MouseMove
-		MTclick(A_ScreenWidth/2, A_ScreenHeight/2, "Left", "", 1, 1) 
-		DllCall("Sleep", Uint, 100) ; in case click changed unit selection
-	}
-	if !isSelectionGroupable(oSelection)
-	{	
-			if ChatStatus 
-				MTsend("{Enter}")
-			else Input.revertKeyState()	 		
-			return
-	}
-	castInjectLarva("MiniMap", 1, 0)	
-	If ChatStatus
-	{
-		DllCall("Sleep", Uint, 100)
-		MTsend("{Enter}")
-	}
-	else Input.revertKeyState()	
+	if isSelectionGroupable(oSelection) ; in case it somehow changed/updated 
+		castInjectLarva("MiniMap", 1, 0)	
+	Input.revertKeyState()	
 return
 
 
@@ -2904,7 +2880,6 @@ if FileExist(config_file) ; the file exists lets read the ini settings
 	IniRead, input_method, %config_file%, %section%, input_method, Input
 	IniRead, EventKeyDelay, %config_file%, %section%, EventKeyDelay, -1
 	IniRead, pKeyDelay, %config_file%, %section%, pKeyDelay, 3
-	IniRead, EnableChatBoxAutomations, %config_file%, %section%, EnableChatBoxAutomations, 1
 	IniRead, auto_update, %config_file%, %section%, auto_check_updates, 1
 	IniRead, launch_settings, %config_file%, %section%, launch_settings, 0
 	IniRead, MaxWindowOnStart, %config_file%, %section%, MaxWindowOnStart, 1
@@ -3474,7 +3449,6 @@ ini_settings_write:
 	IniWrite, %input_method%, %config_file%, %section%, input_method
 	IniWrite, %EventKeyDelay%, %config_file%, %section%, EventKeyDelay
 	IniWrite, %pKeyDelay%, %config_file%, %section%, pKeyDelay
-	IniWrite, %EnableChatBoxAutomations%, %config_file%, %section%, EnableChatBoxAutomations
 	IniWrite, %auto_update%, %config_file%, %section%, auto_check_updates
 	Iniwrite, %launch_settings%, %config_file%, %section%, launch_settings
 	Iniwrite, %MaxWindowOnStart%, %config_file%, %section%, MaxWindowOnStart
@@ -4116,10 +4090,13 @@ Gui, Add, Tab2,w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vSettings_TAB, Set
 		Gui, Add, Checkbox, y+10 vBlockingMultimedia checked%BlockingMultimedia%, Mutimedia Buttons	
 		Gui, Add, Checkbox, y+10 vLwinDisable checked%LwinDisable%, Disable Left Windows Key
 
+	Gui, Add, GroupBox, xs yp+35 w161 h60, Empty
+/*
 	Gui, Add, GroupBox, xs yp+35 w161 h60, Unit Deselection
 		Gui, Add, Text, xp+10 yp+25, Sleep Time:
 		Gui, Add, Edit, Number Right x+25 yp-2 w45 vTT_DeselectSleepTime
 			Gui, Add, UpDown,  Range0-300 vDeselectSleepTime, %DeselectSleepTime%,
+*/
 
 	Gui, Add, GroupBox, Xs+171 ys w245 h110, Volume
 		Gui, Add, Text, xp+10 yp+30 w45, Speech:
@@ -6636,15 +6613,21 @@ if (WinActive(GameIdentifier) && time && EnableAutoWorker%LocalPlayerRace% && !T
 	autoWorkerProductionCheck()
 return
 
+f1:: 
+numGetUnitSelectionObject(oSelection)
+msgbox % oSelection.count "`n| " oSelection.units[1].type "`n| " oSelection.units[1].UnitIndex
+return 
+
 
 autoWorkerProductionCheck()
 {	GLOBAl A_unitID, a_LocalPlayer, Base_Control_Group_T_Key, AutoWorkerStorage_P_Key, AutoWorkerStorage_T_Key, Base_Control_Group_P_Key, NextSubgroupKey
 	, AutoWorkerMakeWorker_T_Key, AutoWorkerMakeWorker_P_Key, AutoWorkerMaxWorkerTerran, AutoWorkerMaxWorkerPerBaseTerran
 	, AutoWorkerMaxWorkerProtoss, AutoWorkerMaxWorkerPerBaseProtoss, AW_MaxWorkersReached
 	, aResourceLocations, aButtons, EventKeyDelay
-	, AutoWorkerAPMProtection
+	, AutoWorkerAPMProtection, MT_CurrentGame
+	
+	static TickCountRandomSet := 0, randPercent,  UninterruptedWorkersMade, waitForOribtal := 0
 
-	static TickCountRandomSet := 0, randPercent,  UninterruptedWorkersMade
 
 	if (a_LocalPlayer["Race"] = "Terran") 
 	{
@@ -6672,7 +6655,7 @@ autoWorkerProductionCheck()
 		UninterruptedWorkersMade := 0 
 		return 
 	}
-	if isGamePaused() || ( isMenuOpen() && !(ChatStatus := isChatOpen()) ) ;chat is 0 when  menu is in focus
+	if isGamePaused() || isMenuOpen() ;chat is 0 when  menu is in focus
 		return ;as let the timer continue to check
 
 	numGetControlGroupObject(oMainbaseControlGroup, mainControlGroup)
@@ -6684,7 +6667,7 @@ autoWorkerProductionCheck()
 	if (A_TickCount - TickCountRandomSet > 12 * 1000) 
 	{
 		TickCountRandomSet := A_TickCount
-		randPercent := rand(-0.04, .15)
+		randPercent := rand(-0.10, .20) ; rand(-0.04, .15) 
 	}
 
 	for index, object in oMainbaseControlGroup.units
@@ -6711,7 +6694,7 @@ autoWorkerProductionCheck()
 					 progress := getBuildStats(object.unitIndex, QueueSize) ; returns build percentage
 				 if (QueueSize = 1)
 				 {
-				 	if (progress >= .95)
+				 	if (progress >= .97)
 				 		almostComplete++
 				 	else if (progress - randPercent >= .65)
 				 		halfcomplete++
@@ -6730,10 +6713,7 @@ autoWorkerProductionCheck()
 	}
 
 	if (workers / Basecount >= maxWorkersPerBase)
-	{	
-		UninterruptedWorkersMade := 0
 		return
-	}
 
 	MaxWokersTobeMade := howManyUnitsCanBeProduced(50, 0, 1)
 
@@ -6745,6 +6725,41 @@ autoWorkerProductionCheck()
 
 	if (MaxWokersTobeMade + workersInProduction + workers >= maxWorkers)
 		MaxWokersTobeMade := maxWorkers - workers - workersInProduction
+
+	; this will give the player 11 in game seconds or so to convert the orbital before it makes another worker
+	; waitForOribtal will be set around halfway through the when the last worker is made
+
+	if (Basecount = 1 && a_LocalPlayer["Race"] = "Terran")
+	{
+		WorkersBuilt := getPlayerWorkersBuilt()
+		if (!waitForOribtal && WorkersBuilt = 14)
+			waitForOribtal := GetTime() 	; this is set within 1 second of the when the 15th worker pops
+
+
+		; note MaxWokersTobeMade - So this will start activating when its trying to make the next worker
+		; 28 in game seconds from when the 15th worker popped.
+		; As it takes 17s to make the 16th worker, the user is left with ~13 in game seconds where 
+		; no SCV is being made 
+
+		if (waitForOribtal && MaxWokersTobeMade 
+			&& (WorkersBuilt = 14 || WorkersBuilt = 15) 	 ; as it has to prevent making a worker while 15 have been made
+			&& GetTime() - waitForOribtal < 30)  			; as well as after the 16th pops
+			return
+		else if MaxWokersTobeMade
+			waitForOribtal := 0	
+		; so if user manually makes a worker, it wont continue the delay
+	}
+
+	; This will on occasion queue more than 1 workers, only if the player is floating a lot of extra minerals though
+	; Just to make the automation a little bit more random
+	if (MaxWokersTobeMade && rand(1, 5) = 1) 
+	{
+		pMinerals := getPlayerMinerals() 
+		if (Basecount = 1 && pMinerals >= 540 && getPlayerWorkersBuilt() > 18)
+			MaxWokersTobeMade := 2
+		else if (Basecount >= 2 && pMinerals >= 800)
+			MaxWokersTobeMade := round(MaxWokersTobeMade * 1.75)
+	}
 
 	currentWorkersPerBase := (workers + workersInProduction)  / Basecount
 	if ( (MaxWokersTobeMade / Basecount) + currentWorkersPerBase >= maxWorkersPerBase )
@@ -6773,7 +6788,7 @@ autoWorkerProductionCheck()
 			sleep 1
 		}
 		
-		if !isSelectionGroupable(oSelection)
+		if (!isSelectionGroupable(oSelection) || isGamePaused() || isMenuOpen())
 			return
 
 		Thread, NoTimers, true
@@ -6790,17 +6805,18 @@ autoWorkerProductionCheck()
 			SendInput, {BLIND}%upsequence%
 			DllCall("Sleep", Uint, 15)
 		}
+		else DllCall("Sleep", Uint, 2) ; increase safety ensure selection buffer fully updated
 		
 		; this should come before the sleep, as clicking on the screen could easily change the units selected!
 		; this could also change the user selection without them realising!!!
 		; perhaps this was the cause of the weird error in control group (ive moved its position now)
-		If (ChatStatus := isChatOpen())
-		{
-			if !A_IsCompiled
-				soundplay *64 ; just testing that the chat offset is correct
-			MTclick(A_ScreenWidth/2, A_ScreenHeight/2, "Left", "", 1, 1) 
-			DllCall("Sleep", Uint, 125) ; 5 in case click changed unit selection
-		}
+	;	If (ChatStatus := isChatOpen())
+	;	{
+	;		if !A_IsCompiled
+	;			soundplay *64 ; just testing that the chat offset is correct
+	;		MTclick(A_ScreenWidth/2, A_ScreenHeight/2, "Left", "", 1, 1) 
+	;		DllCall("Sleep", Uint, 125) ; 5 in case click changed unit selection
+	;	}
 		; else Sleep 9 ; give time for the selection buffer to update ; dont need this now checking A_timeidle
 
 		HighlightedGroup := getSelectionHighlightedGroup()
@@ -6814,14 +6830,47 @@ autoWorkerProductionCheck()
 				;	Do Not revert the revertKeyState()! As releaseKeys() will already have caused the users
 				; 	typing keystroke to appear in the chatbox. Hence using revertKeyState() (and then 
 				;	when the user releases the key) will cause the typed characters to double up! eg hheelllloo
-					if ChatStatus 
-						MTsend("{Enter}")
+				;	if ChatStatus 
+				;		MTsend("{Enter}")
 					return
 				}	
 				if (!varInMatchList(object.unitIndex, L_BaseCtrlGroupIndexes) || !isUnitAStructure(object.unitIndex)) ; so if a selected unit isnt in the base control group, or is a non-structure
 					BaseControlGroupNotSelected := 1
 			}
 
+			; This function is mainly for the auto-control group. So when a user clicks on a finished CC
+			; it will get auto-grouped, but wont immediately make an SCV (which would prevent converting
+			; it into an orbital), the user has 4 real seconds from clicking it to convert it
+			; before SCV production recommences
+			; Dont need to check if locally owned CC as the function above already 
+			; did this
+			if (TotalCompletedBasesInCtrlGroup >= 2 && oSelection.count = 1
+			&& oSelection.units[1].type = A_unitID["CommandCenter"]
+			&& isInControlGroup(mainControlGroup, oSelection.units[1].UnitIndex) )
+			{
+				if !IsObject(MT_CurrentGame.CommandCenterPauseList) ; because MT_CurrentGame gets cleared each game
+					MT_CurrentGame.CommandCenterPauseList := []
+				else 
+				{
+					for index, UnitIndex in MT_CurrentGame.CommandCenterPauseList
+					{
+						if (UnitIndex = oSelection.units[1].UnitIndex)
+							CommandCenterInList := True
+					}
+				}
+				if !CommandCenterInList
+				{
+					MT_CurrentGame.CommandCenterPauseList.insert(oSelection.units[1].UnitIndex)
+					Input.revertKeyState()
+					critical, off
+					Thread, NoTimers, false 
+					soundplay *-1
+					sleep 4500
+					soundplay *64
+					return
+				}
+
+			}
 
 			; so even if the just the bases out of the base control group are selected (as other structures can be grouped with it)
 			; it wont send the base control group button as its not required
@@ -6902,15 +6951,15 @@ autoWorkerProductionCheck()
 			WorkerMade := True
 		}
 		
-		If ChatStatus
-		{
+	;	If ChatStatus
+	;	{
 		; needs a quite few ms to allow its message queue to clear 
 		; otherwise sent characters will appear in chatbox
-			DllCall("Sleep", Uint, 200) ;40
-			MTsend("{Enter}")
-		}
-		else Input.revertKeyState()
-
+	;		DllCall("Sleep", Uint, 200) ;40
+	;		MTsend("{Enter}")
+	;	}
+	;	else Input.revertKeyState()
+		Input.revertKeyState()
 		critical, off
 		Thread, NoTimers, false 
 
@@ -8652,7 +8701,7 @@ g_SplitUnits:
 	critical, 1000
 	input.hookBlock(False, False)
 	if sleep
-		DllCall("Sleep", Uint, 10) ;
+		DllCall("Sleep", Uint, 15) ;
 	SplitUnits(SplitctrlgroupStorage_key, SleepSplitUnits)
 return
 
@@ -8699,7 +8748,7 @@ g_SelectArmy:
 	{
 		Sort2DArray(a_RemoveUnits, "Unit", 0) ;clicks highest units first, so dont have to calculate new click positions due to the units moving down one spot in the panel grid	
 		Sort2DArray(a_RemoveUnits, "Priority", 1)	; sort in ascending order so select units lower down 1st		
-		DeselectUnitsFromPanel(a_RemoveUnits, DeselectSleepTime)
+		DeselectUnitsFromPanel(a_RemoveUnits, -1)
 	;	send {click  %Xarmyselect%, %Yarmyselect%, 0}
 	}
 	if SelectArmyControlGroupEnable
@@ -8762,7 +8811,7 @@ SortSelectedUnits(byref a_Units)
 	return
 }	
 
-DeselectUnitsFromPanel(a_RemoveUnits, sleep=20)	
+DeselectUnitsFromPanel(a_RemoveUnits, sleep=-1)	
 {
 	if a_RemoveUnits.MaxIndex()
 	{
@@ -8775,9 +8824,10 @@ DeselectUnitsFromPanel(a_RemoveUnits, sleep=20)
 						MTclick(Xpage, Ypage)
 					;	send {click Left %Xpage%, %Ypage%} ;clicks on the page number				
 				;	MTclick(x, y, "Left", "+")
-					MTsend("+{click " x " " y " WW }")
+					MTsend("+{click " x " " y "}")
 					;send +{click Left %X%, %Y%} 	;shift clicks the unit
-					sleep, sleep
+					if (sleep != -1)
+						DllCall("Sleep", Uint, sleep)
 				}
 	}
 	if getUnitSelectionPage()	;ie slection page is not 0 (hence its not on 1 (1-1))
@@ -9137,7 +9187,22 @@ Suffix=_SC1 = Classic
 
 */
 
+splitByMouseLocation(SplitctrlgroupStorage_key)
+{
+	GLOBAL a_LocalPlayer, A_UnitID, NextSubgroupKey
+	MouseGetPos, mx, my
+	DllCall("Sleep", Uint, 5)
+	HighlightedGroup := getSelectionHighlightedGroup()
+	MTsend("^" SplitctrlgroupStorage_key)
+}
 
+
+/*
+	tl 	27 62
+	tR 	1883 62
+	bL 13 733
+	BR 	1894 756
+*/
 
 SplitUnits(SplitctrlgroupStorage_key, SleepSplitUnits)
 { 	GLOBAL a_LocalPlayer, A_UnitID, NextSubgroupKey
@@ -9188,10 +9253,9 @@ SplitUnits(SplitctrlgroupStorage_key, SleepSplitUnits)
 	botLeftUnitX := xAvg-sqrt(squareSpots) , botLeftUnitY := yAvg-sqrt(squareSpots) ; should /2?? but is betr without it
 	
 ;	clipboard := ""
-
-	while (getSelectionCount() > 1)
+	while (selectionCount > 0)
 	{
-		Sort2DArray(a_SelectedUnits, "absDistance", 1) 
+		
 		unit := a_SelectedUnits[1] ;grab the closest unit
 		boxSpot := A_Index
 		X_offsetbox := y_offsetbox := 0
@@ -9201,10 +9265,10 @@ SplitUnits(SplitctrlgroupStorage_key, SleepSplitUnits)
 		X_offsetbox := (boxSpot - 1) - sqrt(squareSpots) * y_offsetbox
 
 		x := X_offsetbox*uSpacing + botLeftUnitX, Y := y_offsetbox*uSpacing + botLeftUnitY
-		;x := round(x), y := round(y)	;cos mousemove ignores decimal 
+	;	x := round(x), y := round(y)	;cos mousemove ignores decimal 
 		x := round(x + rand(-.5,.5)), y := round(y + rand(-.5,.5)) 	;cos mousemove ignores decimal 
 		for index, unit in a_SelectedUnits
-			unit.absDistance := Abs(x - unit.mouseX) + Abs(y - unit.mouseY)
+			unit.absDistance := Abs(x - unit.mouseX)+ Abs(y - unit.mouseY)
 ;		clipboard .= "(" x ", " y ")`n"
 
 		Sort2DArray(a_SelectedUnits, "absDistance", 1)		
@@ -9212,10 +9276,12 @@ SplitUnits(SplitctrlgroupStorage_key, SleepSplitUnits)
 		tmpObject.insert(a_SelectedUnits[1])
 		;send {click right %X%, %Y%}
 		pClick(x, y, "Right")
-		DeselectUnitsFromPanel(tmpObject, DeselectSleepTime)		;might not have enough time to update the selections?
+		;MTsend("a{click left " x " " y "}")
+		
+		DeselectUnitsFromPanel(tmpObject, -1)		;might not have enough time to update the selections?
 		a_SelectedUnits.remove(1)
-		if (a_SelectedUnits.MaxIndex() <= 1)
-			break
+		selectionCount--
+
 	}
 ;	clipboard .= "avg (" xavg ", " yavg ")`n"
 ;	clipboard .= "BL (" botLeftUnitX ", " botLeftUnity ")`n"
