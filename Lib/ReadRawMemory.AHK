@@ -4,7 +4,7 @@ ReadRawMemory(MADDRESS=0,PROGRAM="", byref Buffer="", BYTES=4)
 
    VarSetCapacity(Buffer, BYTES)
 
-   If PROGRAM != %OLDPROC%
+   If (PROGRAM != OLDPROC || !ProcessHandle)
    {
       WinGet, pid, pid, % OLDPROC := PROGRAM
       ProcessHandle := ( ProcessHandle ? 0*(closed:=DllCall("CloseHandle"

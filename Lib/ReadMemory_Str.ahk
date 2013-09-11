@@ -8,7 +8,7 @@ ReadMemory_Str(MADDRESS=0, pOffset = 0, PROGRAM = "StarCraft II", length = 0 , t
 { 
    Static OLDPROC, ProcessHandle
    VarSetCapacity(MVALUE,4,0)
-   If PROGRAM != %OLDPROC%
+   If (PROGRAM != OLDPROC || !ProcessHandle)
    {
       WinGet, pid, pid, % OLDPROC := PROGRAM
       ProcessHandle := ( ProcessHandle ? 0*(closed:=DllCall("CloseHandle"

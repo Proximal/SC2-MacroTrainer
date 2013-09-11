@@ -122,6 +122,7 @@ url.Homepage := "http://www.users.on.net/~jb10/MTSite/overview.html"
 url.buyBeer := "http://www.users.on.net/~jb10/MTSite/buyBeer.html"
 url.PixelColour := url.homepage "Macro Trainer/PIXEL COLOUR.htm"
 
+MT_CurrentInstance := [] ; Used to store random info about the current run
 program := []
 program.info := {"IsUpdating": 0} ; program.Info.IsUpdating := 0 ;has to stay here as first instance of creating infor object
 
@@ -257,11 +258,21 @@ CreateHotkeys()			;create them before launching the game in case users want to e
 process, exist, %GameExe%
 If !errorlevel
 {
-	MT_StarCraftOpenOnLanuch := 0
+	MT_CurrentInstance.SCWasRunning := False
 	try run % StarcraftExePath()
 }
-else MT_StarCraftOpenOnLanuch := 1
-Process, wait, %GameExe%	; waits for starcraft to exist
+else MT_CurrentInstance.SCWasRunning := True
+Process, wait, %GameExe%	
+	
+	; 	waits for starcraft to exist
+	; 	give time for SC2 to fully launch. This may be required on slower or stressed computers
+	;	to give time for the  window to fully launch and activate to allow the
+	; 	WinGet("EXStyle") style checks to workto work properly
+	;  	Placed here, as it will also give extra time before trying to get 
+	;	base address (though it shouldn't be required for this)
+
+if !MT_CurrentInstance.SCWasRunning
+	sleep 2000 
 while (!(B_SC2Process := getProcessBaseAddress(GameIdentifier)) || B_SC2Process < 0)		;using just the window title could cause problems if a folder had the same name e.g. sc2 folder
 	sleep 400				; required to prevent memory read error - Handle closed: error 		
 
@@ -314,10 +325,6 @@ SC2WindowEXStyles := []
 	SC2WindowEXStyles.FullScreen := 0x00040008
 	SC2WindowEXStyles.Windowed := 0x00040100
 
-if !MT_StarCraftOpenOnLanuch
-	sleep 2000 	; 	give time for SC2 to fully launch. This may be required on slower or stressed computers
-				;	to give time for the  window to fully launch and activate to allow the below check
-				; 	to work properly
 If WinGet("EXStyle", GameIdentifier) = SC2WindowEXStyles.FullScreen
 && (DrawMiniMap || DrawAlerts || DrawSpawningRaces
 || DrawIncomeOverlay || DrawResourcesOverlay || DrawArmySizeOverlay
@@ -728,7 +735,7 @@ mt_pause_resume:
 	if (mt_on := !mt_on)	; 1st run mt_on blank so considered false and does else	
 	{
 		game_status := "lobby" ; with this clock = 0 when not in game 
-		timeroff("clock", "money", "gas", "scvidle", "supply", "worker", "inject", "unit_bank_read", "Auto_mine", "Auto_Group", "AutoGroupIdle", "MiniMap_Timer", "overlay_timer", "g_unitPanelOverlay_timer", "g_autoWorkerProductionCheck", "g_ForceInjectSuccessCheck")
+		timeroff("clock", "money", "gas", "scvidle", "supply", "worker", "inject", "unit_bank_read", "Auto_mine", "Auto_Group", "AutoGroupIdle", "MiniMap_Timer", "overlay_timer", "g_unitPanelOverlay_timer", "g_autoWorkerProductionCheck", "cast_ForceInject")
 		inject_timer := 0	;ie so know inject timer is off
 		Try DestroyOverlays()
 		tSpeak("Macro Trainer Paused")
@@ -747,7 +754,7 @@ clock:
 	if (!time AND game_status = "game") OR (UpdateTimers) ; time=0 outside game
 	{	
 		game_status := "lobby" ; with this clock = 0 when not in game (while in game at 0s clock = 44)	
-		timeroff("money", "gas", "scvidle", "supply", "worker", "inject", "unit_bank_read", "Auto_mine", "Auto_Group", "AutoGroupIdle", "MiniMap_Timer", "overlay_timer", "g_unitPanelOverlay_timer", "g_autoWorkerProductionCheck", "g_ForceInjectSuccessCheck")
+		timeroff("money", "gas", "scvidle", "supply", "worker", "inject", "unit_bank_read", "Auto_mine", "Auto_Group", "AutoGroupIdle", "MiniMap_Timer", "overlay_timer", "g_unitPanelOverlay_timer", "g_autoWorkerProductionCheck", "cast_ForceInject")
 		inject_timer := TimeReadRacesSet := UpdateTimers := Overlay_RunCount := PrevWarning := WinNotActiveAtStart := ResumeWarnings := 0 ;ie so know inject timer is off
 		Try DestroyOverlays()
 	}
@@ -781,7 +788,7 @@ clock:
 		If (F_Inject_Enable && a_LocalPlayer["Race"] = "Zerg")
 		{
 			zergGetHatcheriesToInject(oHatcheries)
-			settimer, g_ForceInjectSuccessCheck, %FInjectHatchFrequency%	
+			settimer, cast_ForceInject, %FInjectHatchFrequency%	
 		}
 		aResourceLocations := getMapInforMineralsAndGeysers()
 		if	mineralon
@@ -884,7 +891,7 @@ Loop, 16	;doing it this way allows for custom games with blank slots ;can get we
 		a_LocalPlayer :=  new c_Player(A_Index)
 }
 IF (IsInList(a_LocalPlayer.Type, "Referee", "Spectator") OR (A_IsCompiled AND getLocalPlayerNumber() = 16 )) ; dont really need this 16 check, as timer wont activate as clock label checks if local player != 16 (so this will cause issues if it really is a 16 player game as local payer number is 16, but this prevents announcements during replays)
-	timeroff("money", "gas", "scvidle", "supply", "worker", "inject", "unit_bank_read", "Auto_mine", "Auto_Group", "AutoGroupIdle", "MiniMap_Timer", "overlay_timer", "g_unitPanelOverlay_timer", "g_autoWorkerProductionCheck", "g_ForceInjectSuccessCheck") ;Pause all warnings. Clock still going so will resume next game
+	timeroff("money", "gas", "scvidle", "supply", "worker", "inject", "unit_bank_read", "Auto_mine", "Auto_Group", "AutoGroupIdle", "MiniMap_Timer", "overlay_timer", "g_unitPanelOverlay_timer", "g_autoWorkerProductionCheck", "cast_ForceInject") ;Pause all warnings. Clock still going so will resume next game
 GameType := GetGameType(a_Player)
 return
 ;-------------------------
@@ -1142,11 +1149,9 @@ AutoGroup(byref A_AutoGroup, AGDelay = 0)
 			}
 			Input.revertKeyState()
 			critical, off
-			soundplay *-1
 		}
 
 	}
-
 	; could do something like only sleep check when agdelay > 0 or when time since last check > 1ms 
 
 	Thread, NoTimers, false
@@ -1219,11 +1224,11 @@ Cast_DisableInject:
 	{
 		tSpeak("Injects On")
 		zergGetHatcheriesToInject(oHatcheries)
-		settimer, g_ForceInjectSuccessCheck, %FInjectHatchFrequency%	
+		settimer, cast_ForceInject, %FInjectHatchFrequency%	
 	}
 	Else
 	{
-		settimer, g_ForceInjectSuccessCheck, off
+		settimer, cast_ForceInject, off
 		tSpeak("Injects Off")
 	}
 	Return
@@ -1345,49 +1350,59 @@ Return
 
 
 cast_ForceInject:
-	startInjectWait := A_TickCount
-	while getkeystate("LWin", "P") || getkeystate("RWin", "P")	
-	|| getkeystate("LWin") || getkeystate("RWin")	
-	|| getkeystate("LButton", "P") || getkeystate("RButton", "P")
-	|| getkeystate("LButton") || getkeystate("RButton")
-	|| getkeystate("Shift") || getkeystate("Ctrl") || getkeystate("Alt")
-	|| getkeystate("Shift", "P") || getkeystate("Ctrl", "P") || getkeystate("Alt", "P")	
-	|| isUserPerformingAction()
-	|| MT_InputIdleTime() < 50  ;probably best to leave this in, as every now and then the next command wont be shift modified
-	{
-		if (A_TickCount - startInjectWait > 650)
-			return
-		sleep 1
-	}
-	if (isGamePaused() || isMenuOpen() || !isSelectionGroupable(oSelection)) 
-		return
-	input.hookBlock(True, True)
-	Sleep := Input.releaseKeys()
-	critical 1000
-	input.hookBlock(False, False)
-	if sleep
-		DllCall("Sleep", Uint, 15) ;  sleep, 5
-	else DllCall("Sleep", Uint, 2) ; give 2 ms to allow for selection buffer to fully update so we are extra safe. 
-	SetKeyDelay, -1
-	if isSelectionGroupable(oSelection) ; in case it somehow changed/updated 
-		castInjectLarva("MiniMap", 1, 0)	
-	Input.revertKeyState()	
-return
-
-
-
-
-	;should probably add a blockinput for the burrow check
-
-g_ForceInjectSuccessCheck:
-
-	if (isGamePaused() || !WinActive(GameIdentifier))
-		return 
 	if !F_Inject_Enable
 	{
-		settimer, g_ForceInjectSuccessCheck, off	
+		settimer, cast_ForceInject, off	
 		return 
 	}
+	;For Index, CurrentHatch in oHatcheries
+	;	if (CurrentHatch.NearbyQueen && !isHatchInjected(CurrentHatch.Unit)) ;probably should check if hatch is alive and still a hatch...
+
+	If getGroupedQueensWhichCanInject(aControlGroup, 1) ; 1 so it checks their movestate
+	{
+		For Index, CurrentHatch in oHatcheries
+			For Index, Queen in aControlGroup.Queens
+				if (isQueenNearHatch(Queen, CurrentHatch, MI_QueenDistance) && Queen.Energy >= 25  && !isHatchInjected(CurrentHatch.Unit)) 
+				{
+					sleep % rand(0, 1000)	
+					startInjectWait := A_TickCount
+					while getkeystate("LWin", "P") || getkeystate("RWin", "P")	
+					|| getkeystate("LWin") || getkeystate("RWin")	
+					|| getkeystate("LButton", "P") || getkeystate("RButton", "P")
+					|| getkeystate("LButton") || getkeystate("RButton")
+					|| getkeystate("Shift") || getkeystate("Ctrl") || getkeystate("Alt")
+					|| getkeystate("Shift", "P") || getkeystate("Ctrl", "P") || getkeystate("Alt", "P")	
+					|| getkeystate("Enter") ; required so chat box doesnt get reopened when user presses enter to close the chatbox
+					|| isUserPerformingAction()
+					|| MT_InputIdleTime() < 50  ;probably best to leave this in, as every now and then the next command wont be shift modified
+					|| getPlayerCurrentAPM() > FInjectAPMProtection
+					{
+						if (A_TickCount - startInjectWait > 650)
+							return
+						sleep 1
+					}
+					if (!WinActive(GameIdentifier) || isGamePaused() || isMenuOpen() || !isSelectionGroupable(oSelection)) 
+						return
+					input.hookBlock(True, True)
+					Sleep := Input.releaseKeys()
+					critical 1000
+					input.hookBlock(False, False)
+					if sleep
+						DllCall("Sleep", Uint, 15) ;  sleep, 5
+					else DllCall("Sleep", Uint, 2) ; give 2 ms to allow for selection buffer to fully update so we are extra safe. 
+					SetKeyDelay, -1
+					if isSelectionGroupable(oSelection) ; in case it somehow changed/updated 
+						castInjectLarva("MiniMap", 1, 0)	
+					Input.revertKeyState()						
+					return
+				}
+	}
+	return
+
+
+/* ; Shouldnt need this anymore
+	
+	;should probably add a blockinput for the burrow check
 	if (getBurrowedQueenCountInControlGroup(MI_Queen_Group, UnburrowedQueenCount) > 1)
 	{
 		TooManyBurrowedQueens := 1
@@ -1407,33 +1422,8 @@ g_ForceInjectSuccessCheck:
 		Thread, NoTimers, false
 	}
 	else TooManyBurrowedQueens := 0
-
-;For Index, CurrentHatch in oHatcheries
-;	if (CurrentHatch.NearbyQueen && !isHatchInjected(CurrentHatch.Unit)) ;probably should check if hatch is alive and still a hatch...
-
-	If getGroupedQueensWhichCanInject(aControlGroup, 1) ; 1 so it checks their movestate
-		For Index, CurrentHatch in oHatcheries
-			For Index, Queen in aControlGroup.Queens
-				if (isQueenNearHatch(Queen, CurrentHatch, MI_QueenDistance) && Queen.Energy >= 25  && !isHatchInjected(CurrentHatch.Unit)) 
-				{
-					sleep % rand(0, 1000)
-					while (getPlayerCurrentAPM() > FInjectAPMProtection)
-					{
-						sleep 10
-						if (A_index > 1100) ; so its been longer then 11 seconds
-							return 
-					}			
-					Gosub, cast_ForceInject
-					return
-				}
-return
-
+*/
  
-
-
-
-
-
 
 getBurrowedQueenCountInControlGroup(Group, ByRef UnburrowedCount="")
 {	GLOBAL A_unitID
@@ -6641,6 +6631,14 @@ autoWorkerProductionCheck()
 	}
 	else return
 
+	; This simply adds a bit more randomness.
+	; So if checking match history, you dont stop at exactly 70 workers
+	; ever game
+
+	if !MT_CurrentGame.MaxWorkers 
+		MT_CurrentGame.MaxWorkers := maxWorkers + rand(-3, 2)
+	maxWorkers :=  MT_CurrentGame.MaxWorkers
+
 	workers := getPlayerWorkerCount()
 
 	if (workers >= maxWorkers)
@@ -6798,6 +6796,7 @@ autoWorkerProductionCheck()
 	;	|| getkeystate("Alt") || getkeystate("Alt", "P")
 		|| getkeystate("Shift", "P") || getkeystate("Ctrl", "P") || getkeystate("Alt", "P")
 		|| getkeystate("LWin") || getkeystate("RWin")
+		|| getkeystate("Enter") ; required so chat box doesnt get repoened when user presses enter to close the chotbox
 		||  MT_InputIdleTime() < 50
 		|| getPlayerCurrentAPM() > AutoWorkerAPMProtection) ; probably dont need this anymore
 		{
@@ -6882,9 +6881,7 @@ autoWorkerProductionCheck()
 					Input.revertKeyState()
 					critical, off
 					Thread, NoTimers, false 
-					soundplay *-1
 					sleep 4500
-					soundplay *64
 					return
 				}
 
