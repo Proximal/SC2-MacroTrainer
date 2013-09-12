@@ -4541,7 +4541,7 @@ Gui, Tab, Emergency
 	Gui, Font, s10 norm 
 	Gui, Add, Text, xp y+30 w405, This program blocks user input and simulates keystrokes.`nOn RARE occasions it is possible that you will lose keyboard and mouse input OR a key e.g. ctrl, shift, or alt becomes 'stuck' down.`n`nIn this event, use the EMERGENCY HOTKEY!`nWhen pressed it should release any 'stuck' key and restore user input.`n`nIf this fails, press the hotkey THREE times in quick succession to have the program restart.`nIf you're still having a problem, then the key is likely physically stuck down.
 	Gui, Font, S18 CDefault bold, Verdana
-	Gui, Add, Text,xp+10 y+25 cRed, Windows Key && Spacebar`n        (Left)
+	Gui, Add, Text,xp+10 y+25 cRed, Windows Key && Spacebar`n        (Right)
 	Gui, Font, norm 
 	Gui, Font,
 	Gui, Add, Text, xp y+25 w405, The deult key can be changed via the 'settings' Tab on the left.
@@ -6718,52 +6718,67 @@ autoWorkerProductionCheck()
 	if (MaxWokersTobeMade + workersInProduction + workers >= maxWorkers)
 		MaxWokersTobeMade := maxWorkers - workers - workersInProduction
 
-	; this will give the player 11 in game seconds or so to convert the orbital before it makes another worker
-	; waitForOribtal will be set around halfway through the when the last worker is made
+	; this will give the player a few seconds or so to convert the orbital before it makes another worker
 
-	if (TotalCompletedBasesInCtrlGroup = 1 && a_LocalPlayer["Race"] = "Terran")
+	; Rax takes 65s to build - has 1000 hp  so 15.3866 hp/s
+	; worker takes 17s to build
+
+	; lowest 55% completed of a svc before another is made- so 7.65 s remaining on scv build time
+	; 7.65 * 15.3866 = 876.9072 - so rax should have more than 876 hp
+	; obviously this wont work correctly if the rax is being attacked 
+
+	if (MaxWokersTobeMade && TotalCompletedBasesInCtrlGroup <= 2 && a_LocalPlayer["Race"] = "Terran" && !MT_CurrentGame.HasSleptForObital)
 	{
-		WorkersBuilt := getPlayerWorkersBuilt()
-		if (!waitForOribtal && WorkersBuilt = 14)
-			waitForOribtal := GetTime() 	; this is set within 1 second of the when the 15th worker pops
-
-
-		; note MaxWokersTobeMade - So this will start activating when its trying to make the next worker
-		; 28 in game seconds from when the 15th worker popped.
-		; As it takes 17s to make the 16th worker, the user is left with ~10 in game seconds where 
-		; no SCV is being made 
-
-		if (waitForOribtal && MaxWokersTobeMade && (WorkersBuilt = 14 || WorkersBuilt = 15) )
-		{
-			; This is so it only iterates all the units once, rather than ever 200ms
-			; The user should have started the CC by the time the 14th worker pops
-			; could had a separate timer which gets activated and slowly checks
-			; that would be more accurate but this should work
-
-			if !MT_CurrentGame.CheckedForCC
-			{
-				MT_CurrentGame.CheckedForCC := True
-				Unitcount := DumpUnitMemory(MemDump)
-				while (A_Index <= Unitcount)
-				{
-					unit := A_Index - 1
-					TargetFilter := numgetUnitTargetFilter(MemDump, unit)
-					if (TargetFilter & a_UnitTargetFilter.Dead 
-						|| numgetUnitOwner(MemDump, Unit) != a_LocalPlayer["Slot"]
-						|| numgetUnitModelType(numgetUnitModelPointer(MemDump, Unit)) != A_unitID["CommandCenter"]
-						|| !(TargetFilter & a_UnitTargetFilter.UnderConstruction))
-				    	Continue
-				    ; These units are Command Centres which are under construction
-				    MT_CurrentGame.CCFirst := True
-				}
-			}
-																			 ; as it has to prevent making a worker while 15 
-			if (!MT_CurrentGame.CCFirst && GetTime() - waitForOribtal < 27)  ; have been made as well as after the 16th pops
-				return
+		; So the user is a noob and isn't making an orbital 
+		; lets not iterate all of the units unnecessarily
+		if (getPlayerWorkersBuilt() > 20)
+			MT_CurrentGame.HasSleptForObital := True
+		for index, base in oMainbaseControlGroup.units
+		{	
+			; user already has at least one upgraded CC
+			if (base.type = A_unitID["OrbitalCommand"] 
+				|| base.type = A_unitID["OrbitalCommandFlying"] 
+				|| base.type = A_unitID["PlanetaryFortress"])
+				MT_CurrentGame.HasSleptForObital := True
+			if (base.type = A_unitID["CommandCenter"] || base.type = A_unitID["CommandCenterFlying"])
+				CommandCenterInCtrlGrp := True
 		}
-		else if MaxWokersTobeMade
-			waitForOribtal := 0	
-		; so if user manually makes a worker, it wont continue the delay
+
+		; No command centre, so lets not bother
+		if !CommandCenterInCtrlGrp
+			MT_CurrentGame.HasSleptForObital := True
+
+		if !MT_CurrentGame.HasSleptForObital
+		{
+			Unitcount := DumpUnitMemory(MemDump)
+			while (A_Index <= Unitcount)
+			{
+				TargetFilter := numgetUnitTargetFilter(MemDump, unit := A_Index - 1)
+				if (TargetFilter & a_UnitTargetFilter.Dead 
+					|| numgetUnitOwner(MemDump, Unit) != a_LocalPlayer["Slot"]
+					|| numgetUnitModelType(numgetUnitModelPointer(MemDump, Unit)) != A_unitID["Barracks"])
+			    	Continue
+
+			    if !(TargetFilter & a_UnitTargetFilter.UnderConstruction)
+			    {
+			    	BarracksHasFinished := True
+			    	break
+			    }
+			    if (highestHPRax < 1000 - getUnitHpDamage(unit))
+			    	highestHPRax := 1000 - getUnitHpDamage(unit)
+			}
+		}																	
+		if (!MT_CurrentGame.HasSleptForObital && highestHPRax > 870 || BarracksHasFinished)  
+		{
+			MT_CurrentGame.HasSleptForObital := True 
+			loop, 4 ; testing
+			{
+				soundplay *-1
+				sleep 200
+			}
+			sleep 9200 ;10000
+			return
+		}
 	}
 
 	; This will on occasion queue more than 1 workers, only if the player is floating a lot of extra minerals though
@@ -9943,6 +9958,16 @@ pMouseMove(x, y)
 	PostMessage, %WM_MOUSEMOVE%, , %lParam%, , %GameIdentifier%
 
 }
+
+f1::
+unit := getSelectedUnitIndex()
+msgbox % clipboard := dectohex(unit * S_uStructure + B_uStructure)
+return 
+
+f2::
+
+msgbox % getUnitHpDamage(getSelectedUnitIndex())
+return 
 
 ;Takes around 7-8ms (but up to 18) for a sendinput to release a modifier and for 
 ;readmodstate() to agree with it 

@@ -80,7 +80,7 @@ LoadMemoryAddresses(SC2EXE)
 		O_uChronoState := 0xE6				; pre 210 chrono and inject offsets were the same
 		O_uInjectState := 0xE7 ; +5 Weird this was 5 not 4 (and its values changed) chrono state just +4
 
-		O_uHP := 0x114
+		O_uHpDamage := 0x114
 		O_uEnergy := 0x11c 
 		O_uTimer := 0x16C ;+4
 		
@@ -584,6 +584,13 @@ isUnitAStructure(unit)
 getUnitEnergy(unit)
 {	global
 	Return Floor(ReadMemory(B_uStructure + (unit * S_uStructure) + O_uEnergy, GameIdentifier) / 4096)
+}
+
+; Damage which has been delt to the unit
+; need to substract max hp in unit to find actual health value/percentage
+getUnitHpDamage(unit)
+{	global
+	Return Floor(ReadMemory(B_uStructure + (unit * S_uStructure) + O_uHpDamage, GameIdentifier) / 4096)
 }
 
 getUnitPositionX(unit)
