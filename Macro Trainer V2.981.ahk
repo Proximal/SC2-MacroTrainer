@@ -2701,7 +2701,6 @@ if FileExist(config_file) ; the file exists lets read the ini settings
 	;[Forced Inject]
 	section := "Forced Inject"
 	IniRead, F_Inject_Enable, %config_file%, %section%, F_Inject_Enable, 0
-	IniRead, F_Sleep_Time, %config_file%, %section%, F_Sleep_Time, 0
 	IniRead, FInjectHatchFrequency, %config_file%, %section%, FInjectHatchFrequency, 2500
 	IniRead, FInjectAPMProtection, %config_file%, %section%, FInjectAPMProtection, 190
 	IniRead, F_InjectOff_Key, %config_file%, %section%, F_InjectOff_Key, Lwin & F5
@@ -2921,6 +2920,7 @@ if FileExist(config_file) ; the file exists lets read the ini settings
 	IniRead, EnableAutoWorkerTerranStart, %config_file%, %section%, EnableAutoWorkerTerranStart, 0 
 	IniRead, EnableAutoWorkerProtossStart, %config_file%, %section%, EnableAutoWorkerProtossStart, 0 
 	IniRead, ToggleAutoWorkerState_Key, %config_file%, %section%, ToggleAutoWorkerState_Key, #F2
+	IniRead, AutoWorkerQueueSupplyBlock, %config_file%, %section%, AutoWorkerQueueSupplyBlock, 1
 	IniRead, AutoWorkerAPMProtection, %config_file%, %section%, AutoWorkerAPMProtection, 160
 	IniRead, AutoWorkerStorage_T_Key, %config_file%, %section%, AutoWorkerStorage_T_Key, 3
 	IniRead, AutoWorkerStorage_P_Key, %config_file%, %section%, AutoWorkerStorage_P_Key, 3
@@ -3197,7 +3197,6 @@ ini_settings_write:
 		;[Forced Inject]
 	section := "Forced Inject"
 	IniWrite, %F_Inject_Enable%, %config_file%, %section%, F_Inject_Enable
-	IniWrite, %F_Sleep_Time%, %config_file%, %section%, F_Sleep_Time
 	IniWrite, %FInjectHatchFrequency%, %config_file%, %section%, FInjectHatchFrequency
 	IniWrite, %FInjectAPMProtection%, %config_file%, %section%, FInjectAPMProtection
 	IniWrite, %F_InjectOff_Key%, %config_file%, %section%, F_InjectOff_Key
@@ -3393,6 +3392,7 @@ ini_settings_write:
 	IniWrite, %EnableAutoWorkerTerranStart%, %config_file%, %section%, EnableAutoWorkerTerranStart
 	IniWrite, %EnableAutoWorkerProtossStart%, %config_file%, %section%, EnableAutoWorkerProtossStart
 	IniWrite, %ToggleAutoWorkerState_Key%, %config_file%, %section%, ToggleAutoWorkerState_Key
+	IniWrite, %AutoWorkerQueueSupplyBlock%, %config_file%, %section%, AutoWorkerQueueSupplyBlock
 	IniWrite, %AutoWorkerAPMProtection%, %config_file%, %section%, AutoWorkerAPMProtection
 	IniWrite, %AutoWorkerStorage_T_Key%, %config_file%, %section%, AutoWorkerStorage_T_Key
 	IniWrite, %AutoWorkerStorage_P_Key%, %config_file%, %section%, AutoWorkerStorage_P_Key
@@ -3666,15 +3666,16 @@ Gui, Tab,  Basic
 		Gui, Add, Edit, Readonly yp-2 xs+85 w65 center vInject_spawn_larva, %Inject_spawn_larva%
 			Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#Inject_spawn_larva,  Edit
 
-		Gui, Add, Text, X%XTabX% yp+35 w70, Burrow Key:
-			Gui, Add, Edit, Readonly yp-2 xs+85 w65 center vHotkeysZergBurrow, %HotkeysZergBurrow%
-				Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#HotkeysZergBurrow,  Edit			
+	;	Gui, Add, Text, X%XTabX% yp+35 w70, Burrow Key:
+	;		Gui, Add, Edit, Readonly yp-2 xs+85 w65 center vHotkeysZergBurrow, %HotkeysZergBurrow%
+	;			Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#HotkeysZergBurrow,  Edit			
 
 		Gui, Add, Text, X%XTabX% yp40, Control Group: %A_space%(Unit Selection Storage)
 			Gui, Add, Edit, Readonly y+10 xs+60 w90 center vInject_control_group , %Inject_control_group%
 				Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#Inject_control_group,  Edit	
 
-	Gui, Add, GroupBox, xs y+40 w200 h160, Advanced Settings
+	;Gui, Add, GroupBox, xs y+40 w200 h160, Advanced Settings
+	Gui, Add, GroupBox, xs y+71 w200 h160, Advanced Settings
 				Gui, Add, Text, xs+20 yp+20 vSG1, Sleep time (ms):`n(Lower is faster)
 					GuiControlGet, XTab2, Pos, SG1 ;XTabX = x loc
 				Gui, Add, Edit, Number Right xs+125 yp-2 w45 vEdit_pos_var 
@@ -3709,7 +3710,7 @@ Gui, Add, GroupBox, w200 h180 ys xs+210 section, Backspace Methods
 			Gui, Add, Edit, Readonly y+10 xs+60 w90 center vBI_camera_pos_x , %BI_camera_pos_x%
 				Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#BI_camera_pos_x,  Edit
 
-Gui, Add, GroupBox, w200 h61 y+10 xs,
+Gui, Add, GroupBox, w200 h62 y+10 xs,
 		Gui, Add, Checkbox, xs+10 yp+13 vauto_inject_alert checked%auto_inject_alert%, Enable Alert
 		Gui, Add, Text,xs+10 y+12, Time Between Alerts (s):
 		Gui, Add, Edit, Number Right x+25 yp-2 w45 vTT_auto_inject_time
@@ -3767,12 +3768,8 @@ Gui, Tab,  Manual
 
 
 Gui, Tab,  Auto
-	Gui, Add, GroupBox, y+20 w225 h210, Fully Automated Injects
+	Gui, Add, GroupBox, y+20 w225 h185, Fully Automated Injects
 		Gui, Add, Checkbox,xp+10 yp+30 vF_Inject_Enable checked%F_Inject_Enable%, Enable
-
-		Gui, Add, Text,y+15 x%settings2RX% w140, Sleep time (ms): 
-			Gui, Add, Edit, Number Right x+5 yp-2 w60 vTT_F_Sleep_Time 
-				Gui, Add, UpDown, Range0-100000 vF_Sleep_Time, %F_Sleep_Time%	
 
 		Gui, Add, Text,y+15 x%settings2RX% w140, Check Hatches Every (ms): 
 			Gui, Add, Edit, Number Right x+5 yp-2 w60 vTT_FInjectHatchFrequency
@@ -3786,7 +3783,7 @@ Gui, Tab,  Auto
 			Gui, Add, Edit, Readonly y+10 xp+45 w120  vF_InjectOff_Key center gedit_hotkey, %F_InjectOff_Key%
 			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#F_InjectOff_Key,  Edit				
 
-	Gui, Add, Text,yp+57 x%settings2RX% w340,  Note:`n`nAuto injects will begin after you control group your queen to the correct (inject) queen control group.`n`nAuto injects are performed using the 'MiniMap' macro.`n`nPlease ensure you have correctly set the settings under the 'basic' inject tab. This includes the 'minimap' settings as well as the 'spawn larva key', 'burrow key' and control group storage settings.
+	Gui, Add, Text,yp+57 x%settings2RX% w340,  Note:`n`nAuto injects will begin after you control group your queen to the correct (inject) queen control group.`n`nAuto injects are performed using the 'MiniMap' macro.`n`nPlease ensure you have correctly set the settings under the 'basic' inject tab. This includes the 'minimap' settings as well as the 'spawn larva key' and control group storage settings.
 
 
 Gui, Tab,  Alert
@@ -4301,8 +4298,11 @@ Gui, Tab, Auto
 		Gui, Add, Edit, Number Right x+15 yp-2 w50 vTT_AutoWorkerAPMProtection
 				Gui, Add, UpDown,  Range0-100000 vAutoWorkerAPMProtection, %AutoWorkerAPMProtection%		
 
+;	Gui, Add, Text, xs+220 yp+25 w85, Queue While Supply Blocked:			
+	Gui, Add, Checkbox, xs+220 y+10 vAutoWorkerQueueSupplyBlock Checked%AutoWorkerQueueSupplyBlock%, Queue While Supply Blocked
+
 	thisXTabX := XTabX + 12
-	Gui, Add, GroupBox, xs Y+20 w370 h150 section, Terran 
+	Gui, Add, GroupBox, xs Y+10 w370 h150 section, Terran 
 		Gui, Add, Checkbox, xp+10 yp+25 vEnableAutoWorkerTerranStart Checked%EnableAutoWorkerTerranStart%, Enable
 
 		Gui, Add, Text, X%thisXTabX% y+15 w100, Base Ctrl Group:
@@ -4834,6 +4834,10 @@ ToggleAutoWorkerState_Key_TT := #ToggleAutoWorkerState_Key_TT := "Toggles (enabl
 AutoWorkerProtectionDelay_TT := TT_AutoWorkerProtectionDelay_TT := "After a round a of workers has been made the function will sleep for this period of time (ms).`nThis helps prevent queueing too many workers.`n`n"
 							. "If more than one worker is commonly being queued-up and/or you have a laggy connection perhaps try increasing this value."
 
+AutoWorkerQueueSupplyBlock_TT := "While you are supply blocked a worker will be queued-up.`n"
+		. "This aims to make the automation a little more subtle. If disabled, the instant you have free supply all of your bases will make a worker."
+		. "`n`nNote: The program won't queue multiple workers while supply blocked."
+
 TT_AutoWorkerAPMProtection_TT := AutoWorkerAPMProtection_TT
 := TT_FInjectAPMProtection_TT := FInjectAPMProtection_TT := "Automations will be delayed while your INSTANTANEOUS APM is greater than this value.`n"
 		. "This helps reduce the likelihood of interfering with your game play.`n`nNote: If you're a chronic key spammer who constantly has high APM you may need to increase this value,`n"
@@ -4854,6 +4858,7 @@ AutoWorkerMakeWorker_P_Key_TT := #AutoWorkerMakeWorker_P_Key_TT := "The keyboard
 
 TT_AutoWorkerMaxWorkerTerran_TT := TT_AutoWorkerMaxWorkerProtoss_TT := AutoWorkerMaxWorkerTerran_TT := AutoWorkerMaxWorkerProtoss_TT := "Worker production will stop for the remainder of the game when this number of workers exist.`n"
 				. "Workers can then be 'sacked' and the function will remain off!`n`nIf you wish to turn it back on, simply use the 'toggle hotkey' twice."
+				. "`nNote: For added randomness your final worker count will be within +/- 2 of this value."
 TT_AutoWorkerMaxWorkerPerBaseTerran_TT := TT_AutoWorkerMaxWorkerPerBaseProtoss_TT := AutoWorkerMaxWorkerPerBaseTerran_TT := AutoWorkerMaxWorkerPerBaseProtoss_TT :=  "Worker production will stop when this number is exceeded by`n"
 			. "the current worker count per the number of fully constructed (and control grouped) main-bases`n"
 			. "WHICH are within 8 map units of a gas geyser.`n`n"
@@ -4884,9 +4889,10 @@ speaker_volume_up_key_TT := speaker_volume_down_key_TT := "Changes the windows m
 speech_volume_down_key_TT := speech_volume_up_key_TT := "Changes the programs TTS volume."
 program_volume_up_key_TT := program_volume_down_key_TT := "Changes the programs overall volume."
 input_method_TT := "Sets the method of artificial input.`n"
-	. "Technically ""Event"" is the most 'reliable' across systems, but ""Input"" offers considerably better performance, key buffering and will work with almost all systems.`n"
-	. "Using ""Input"" will also reduce the likelihood of the program interfering with user game play during automations`n`n"
-	. "Hence, use ""Input"" unless it doesn't work."
+	. "Post message is now the only available method."
+;	. "Technically ""Event"" is the most 'reliable' across systems, but ""Input"" offers considerably better performance, key buffering and will work with almost all systems.`n"
+;	. "Using ""Input"" will also reduce the likelihood of the program interfering with user game play during automations`n`n"
+;	. "Hence, use ""Input"" unless it doesn't work."
 TT_EventKeyDelay_TT := EventKeyDelay_TT := "Sets the mouse and key delay (in ms) used when in SendEvent mode.`nLower values sends keystrokes faster - but setting this too low MAY cause some strokes to be missed.`nCommon values are (-1 to 10).`nNote: These delays are accumulative, and for functions which require numerous keystrokes e.g. split this delay can become quite substantial`n`nSendInput is faster and generally more reliable, hence SendInput should be used if it works on your system."
 
 TT_pKeyDelay_TT := pKeyDelay_TT := "Sets the sleep time (in ms) between individual keystrokes/mousecliks."
@@ -6608,7 +6614,7 @@ autoWorkerProductionCheck()
 	, AutoWorkerMakeWorker_T_Key, AutoWorkerMakeWorker_P_Key, AutoWorkerMaxWorkerTerran, AutoWorkerMaxWorkerPerBaseTerran
 	, AutoWorkerMaxWorkerProtoss, AutoWorkerMaxWorkerPerBaseProtoss, AW_MaxWorkersReached
 	, aResourceLocations, aButtons, EventKeyDelay
-	, AutoWorkerAPMProtection, MT_CurrentGame, a_UnitTargetFilter
+	, AutoWorkerAPMProtection, AutoWorkerQueueSupplyBlock, MT_CurrentGame, a_UnitTargetFilter
 	
 	static TickCountRandomSet := 0, randPercent,  UninterruptedWorkersMade, waitForOribtal := 0
 
@@ -6707,7 +6713,10 @@ autoWorkerProductionCheck()
 	if (workers / Basecount >= maxWorkersPerBase)
 		return
 
-	MaxWokersTobeMade := howManyUnitsCanBeProduced(50, 0, 1)
+	
+	if AutoWorkerQueueSupplyBlock
+		MaxWokersTobeMade := howManyUnitsCanBeProduced(50)
+	else MaxWokersTobeMade := howManyUnitsCanBeProduced(50, 0, 1)
 
 	if (MaxWokersTobeMade > TotalCompletedBasesInCtrlGroup) 	
 		MaxWokersTobeMade := TotalCompletedBasesInCtrlGroup
@@ -6735,13 +6744,21 @@ autoWorkerProductionCheck()
 			MT_CurrentGame.HasSleptForObital := True
 		for index, base in oMainbaseControlGroup.units
 		{	
-			; user already has at least one upgraded CC
+		;	; user already has at least one upgraded CC so lets not bother
 			if (base.type = A_unitID["OrbitalCommand"] 
 				|| base.type = A_unitID["OrbitalCommandFlying"] 
 				|| base.type = A_unitID["PlanetaryFortress"])
 				MT_CurrentGame.HasSleptForObital := True
-			if (base.type = A_unitID["CommandCenter"] || base.type = A_unitID["CommandCenterFlying"])
-				CommandCenterInCtrlGrp := True
+
+			; this will prevent a pause if the user has no CCs
+			; or 1 is already being upgraded
+			if (base.type = A_unitID["CommandCenter"])
+			{
+				if isCommandCenterMorphing(base.UnitIndex)
+					MT_CurrentGame.HasSleptForObital := True
+				else 
+					CommandCenterInCtrlGrp := True
+			}
 		}
 
 		; No command centre, so lets not bother
@@ -6768,7 +6785,7 @@ autoWorkerProductionCheck()
 			    	highestHPRax := 1000 - getUnitHpDamage(unit)
 			}
 		}																	
-		if (!MT_CurrentGame.HasSleptForObital && highestHPRax > 870 || BarracksHasFinished)  
+		if (!MT_CurrentGame.HasSleptForObital && (highestHPRax > 850 || BarracksHasFinished))  
 		{
 			MT_CurrentGame.HasSleptForObital := True 
 			loop, 4 ; testing
@@ -6788,6 +6805,8 @@ autoWorkerProductionCheck()
 		pMinerals := getPlayerMinerals() 
 		if (Basecount = 1 && pMinerals >= 540 && getPlayerWorkersBuilt() > 18)
 			MaxWokersTobeMade := 2
+		else if (Basecount >= 2 && pMinerals >= 1500)
+			MaxWokersTobeMade := round(MaxWokersTobeMade * 2.2)
 		else if (Basecount >= 2 && pMinerals >= 800)
 			MaxWokersTobeMade := round(MaxWokersTobeMade * 1.75)
 	}
@@ -7040,16 +7059,16 @@ varInMatchList(var, Matchlist)
 }
 
 
-howManyUnitsCanBeProduced(mineralCost, gasCost, supplyUsage)
+howManyUnitsCanBeProduced(mineralCost := 0, gasCost := 0, supplyUsage := 0)
 {
-	mineralLimit := floor(getPlayerMinerals() / mineralCost)
-	gasLimit := floor(getPlayerGas() / gasCost)
-	supplyLimit := floor(getPlayerFreeSupply() / supplyUsage)
-
+	params := []
+	if mineralCost
+		params.insert(floor(getPlayerMinerals() / mineralCost))
 	if gasCost
-		return lowestValue(mineralLimit, gasLimit, supplyLimit)
-	else 
-		return lowestValue(mineralLimit, supplyLimit)
+		params.insert(floor(getPlayerGas() / gasCost))
+	if supplyUsage
+		params.insert(floor(getPlayerFreeSupply() / supplyUsage))
+	return lowestValue(params*)
 }
 
 lowestValue(aValues*)
@@ -9958,16 +9977,6 @@ pMouseMove(x, y)
 	PostMessage, %WM_MOUSEMOVE%, , %lParam%, , %GameIdentifier%
 
 }
-
-f1::
-unit := getSelectedUnitIndex()
-msgbox % clipboard := dectohex(unit * S_uStructure + B_uStructure)
-return 
-
-f2::
-
-msgbox % getUnitHpDamage(getSelectedUnitIndex())
-return 
 
 ;Takes around 7-8ms (but up to 18) for a sendinput to release a modifier and for 
 ;readmodstate() to agree with it 

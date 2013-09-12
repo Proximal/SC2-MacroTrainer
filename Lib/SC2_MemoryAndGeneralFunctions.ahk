@@ -1,11 +1,10 @@
 /*
 
   O_pTimeSupplyCapped := 0x840
-  O_pAPM := 0x5A0
+  O_pActionsPerformed := 0x5A0 ; accumulative user commands
 
 
 */
-
 
 LoadMemoryAddresses(SC2EXE)
 {	global
@@ -563,6 +562,12 @@ getPlayerCameraPositionY(Player="")
 		player := a_LocalPlayer["Slot"]	
 	Return ReadMemory(B_pStructure + (Player - 1)*S_pStructure + O_pYcam, GameIdentifier) / 4096
 }
+
+;	Note if in game without other players (get instant victory)
+;	then this value will remain zero
+;	I think it might get frozen after a real game finishes 
+;	but user decides to remain in the game
+
 getPlayerCurrentAPM(Player="")
 {	global
 	If (player = "")
