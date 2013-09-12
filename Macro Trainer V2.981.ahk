@@ -35,6 +35,7 @@
 	Disable Auto Grouping
 	Disable Hostile colour assist
 	Change ToggleWorkerState to #F2
+	Local player colour
 	Disable Spread and RemoveUnit
 
 */
@@ -126,7 +127,7 @@ MT_CurrentInstance := [] ; Used to store random info about the current run
 program := []
 program.info := {"IsUpdating": 0} ; program.Info.IsUpdating := 0 ;has to stay here as first instance of creating infor object
 
-ProgramVersion := 2.980
+ProgramVersion := 2.981
 
 l_GameType := "1v1,2v2,3v3,4v4,FFA"
 l_Races := "Terran,Protoss,Zerg"
@@ -886,7 +887,7 @@ Loop, 16	;doing it this way allows for custom games with blank slots ;can get we
 	if !getPlayerName(A_Index) ;empty slot custom games?
 	|| IsInList(getPlayerType(A_Index), "None", "Neutral", "Hostile", "Referee", "Spectator")
 		Continue
-	a_player.insert( new c_Player(A_Index) )   
+	a_player.insert( A_Index, new c_Player(A_Index) )   
 	If (A_Index = getLocalPlayerNumber()) OR (debug AND getPlayerName(A_Index) == debug_name)
 		a_LocalPlayer :=  new c_Player(A_Index)
 }
@@ -6788,12 +6789,16 @@ autoWorkerProductionCheck()
 		if (!MT_CurrentGame.HasSleptForObital && (highestHPRax > 850 || BarracksHasFinished))  
 		{
 			MT_CurrentGame.HasSleptForObital := True 
-			loop, 4 ; testing
+			if !A_IsCompiled ; testing
 			{
-				soundplay *-1
-				sleep 200
+				loop, 4 
+				{
+					soundplay *-1
+					sleep 200
+				}
+				sleep 9200 ;10000
 			}
-			sleep 9200 ;10000
+			else sleep, 10000
 			return
 		}
 	}
@@ -6803,11 +6808,11 @@ autoWorkerProductionCheck()
 	if (MaxWokersTobeMade && rand(1, 5) = 1) 
 	{
 		pMinerals := getPlayerMinerals() 
-		if (Basecount = 1 && pMinerals >= 540 && getPlayerWorkersBuilt() > 18)
+		if (TotalCompletedBasesInCtrlGroup = 1 && pMinerals >= 540 && getPlayerWorkersBuilt() > 18)
 			MaxWokersTobeMade := 2
-		else if (Basecount >= 2 && pMinerals >= 1500)
+		else if (TotalCompletedBasesInCtrlGroup >= 2 && pMinerals >= 1500)
 			MaxWokersTobeMade := round(MaxWokersTobeMade * 2.2)
-		else if (Basecount >= 2 && pMinerals >= 800)
+		else if (TotalCompletedBasesInCtrlGroup >= 2 && pMinerals >= 800)
 			MaxWokersTobeMade := round(MaxWokersTobeMade * 1.75)
 	}
 
