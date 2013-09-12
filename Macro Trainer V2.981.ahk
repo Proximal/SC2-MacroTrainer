@@ -4603,7 +4603,7 @@ Gui, Tab, MiniMap
 
 	Gui, Add, Text, Y50 x367, Refresh Rate (ms):
 		Gui, Add, Edit, Number Right x+25 yp-2 w55 vTT_MiniMapRefresh
-			Gui, Add, UpDown,  Range1-1500 vMiniMapRefresh, %MiniMapRefresh%	
+			Gui, Add, UpDown,  Range150-1500 vMiniMapRefresh, %MiniMapRefresh%	
 	Gui, Add, Text, x367 yp+35, Hide MiniMap:
 	Gui, Add, Edit, Readonly yp-2 xp+80 center w90 vTempHideMiniMapKey gedit_hotkey, %TempHideMiniMapKey%
 	Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#TempHideMiniMapKey,  Edit 		
@@ -4661,10 +4661,10 @@ Gui, Tab, Overlays
 		Gui, Add, DropDownList, xp+20 yp+25 vOverlayIdent Choose%droplist3_var%, Hidden|Name (White)|Name (Coloured)|Coloured Race Icon
 		Gui, Add, Text, yp+40 xp-20, Refresh Rate (ms):
 			Gui, Add, Edit, Number Right x+5 yp-2 w55 vTT_OverlayRefresh
-				Gui, Add, UpDown,  Range1-5000 vOverlayRefresh, %OverlayRefresh%
+				Gui, Add, UpDown,  Range50-5000 vOverlayRefresh, %OverlayRefresh%
 		Gui, Add, Text, yp+35 XS+215, Unit Panel`nRefresh Rate (ms):
 			Gui, Add, Edit, Number Right x+5 yp+6 w55 vTT_UnitOverlayRefresh
-				Gui, Add, UpDown,  Range1-15000 vUnitOverlayRefresh, %UnitOverlayRefresh%
+				Gui, Add, UpDown,  Range150-15000 vUnitOverlayRefresh, %UnitOverlayRefresh%
 
 Gui, Tab, Hotkeys 
 		Gui, Add, Text, X%XTabX% y+40, Toggle Income:
@@ -4972,7 +4972,6 @@ BlockingStandard_TT := BlockingFunctional_TT := BlockingNumpad_TT := BlockingMou
 LwinDisable_TT := "Disables the Left Windows Key while in a SC2 match.`n`nMacro Trainer Left windows hotkeys (and non-overridden windows keybinds) will still function."
 Key_EmergencyRestart_TT := #Key_EmergencyRestart_TT := "If pressed three times, this hotkey will restart the program.`n"
 			. "This is useful in the rare event that the program malfunctions or you lose keyboard/mouse input"
-			. "`n`nThis hotkey CAN NOT contain Shift, Ctrl, or Alt modifiers, but it may contain the Windows modifier."
 
 HighlightInvisible_TT := #UnitHighlightInvisibleColour_TT := "All invisible, cloaked, and burrowed units will be drawn with this colour.`n"
 			. "This will instantly tell you if it's safe to look at the unit i.e. would you legitimately have vision of it."
