@@ -103,7 +103,7 @@ RegRead, wHookTimout, HKEY_CURRENT_USER, Control Panel\Desktop, LowLevelHooksTim
 if (ErrorLevel || wHookTimout < 650)
 	RegWrite, REG_DWORD, HKEY_CURRENT_USER, Control Panel\Desktop, LowLevelHooksTimeout, 650
 ; This will up the timeout from  300 (default). Though probably isn't required
-setLowLevelInputHooks(True)
+
 
 If 0 ; ignored by script but installed by compiler
    FileInstall,C:\Program Files\AutoHotkey\AutoHotkeyMini.dll, this param is ignored
@@ -135,9 +135,14 @@ GameWindowTitle := "StarCraft II"
 GameIdentifier := "ahk_exe SC2.exe"
 GameExe := "SC2.exe"
 
-SAPI := ComObjCreate("SAPI.SpVoice")	; ComObjCreate("SAPI.SpVoice").Speak("Please read this file")
+; For some reason this has to come before Gdip_Startup()
+DllCall("RegisterShellHookWindow", UInt, getScriptHandle())
+
 pToken := Gdip_Startup()
+
 SetupUnitIDArray(A_unitID, A_UnitName)
+
+
 
 setupTargetFilters(a_UnitTargetFilter)
 SetupColourArrays(HexColour, MatrixColour)
@@ -156,7 +161,6 @@ if MTCustomIcon
 	Menu, Tray, Tip, %A_Space% ;clear the tool tip on mouse over
 
 SetProgramWaveVolume(programVolume)
-SAPI.volume := speech_volume
 
 ;	this is required to enable drag and drop on vista and above systems while running with admin privileges 
 ; 	this has a 'process wide' scope (tested it, and it seems to mean what it says i.e. 
@@ -179,6 +183,7 @@ InstallSC2Files()
 #include %A_ScriptDir%\Included Files\Class_ChangeButtonNames.AHk
 ;#Include <xml> ; in the local lib folder
 #Include <SC2_MemoryAndGeneralFunctions> ;In the library folder
+#Include <setLowLevelInputHooks> ;In the library folder
 
 CreatepBitmaps(a_pBitmap, a_unitID)
 aUnitInfo := []
@@ -216,7 +221,6 @@ If (auto_update AND A_IsCompiled AND CheckForUpdates(ProgramVersion, url.vr ))
 	Gui, Show, w600, Macro Trainer Update
 	Return				
 }
-
 
 Launch:
 
@@ -276,11 +280,14 @@ if !MT_CurrentInstance.SCWasRunning
 	sleep 2000 
 while (!(B_SC2Process := getProcessBaseAddress(GameIdentifier)) || B_SC2Process < 0)		;using just the window title could cause problems if a folder had the same name e.g. sc2 folder
 	sleep 400				; required to prevent memory read error - Handle closed: error 		
+SC2hWnd := WinExist(GameIdentifier)
+OnMessage(DllCall("RegisterWindowMessage", Str,"SHELLHOOK" ), "ShellMessage")
 
 LoadMemoryAddresses(B_SC2Process)	
 settimer, clock, 250
 settimer, timer_exit, 5000, -100
-SetTimer, OverlayKeepOnTop, 1000, -20	;better here, as since WOL 2.0.4 having it in the "clock" section isn't reliable 	
+; no using a shell monitor to keep destroy overlays
+;SetTimer, OverlayKeepOnTop, 1000, -20	;better here, as since WOL 2.0.4 having it in the "clock" section isn't reliable 	
 
 l_Changeling := A_unitID["ChangelingZealot"] "," A_unitID["ChangelingMarineShield"] ","  A_unitID["ChangelingMarine"] 
 				. ","  A_unitID["ChangelingZerglingWings"] "," A_unitID["ChangelingZergling"]
@@ -646,7 +653,7 @@ Adjust_overlay:
 		gosub overlay_timer
 		if DrawUnitOverlay
 			gosub g_unitPanelOverlay_timer
-		SetTimer, OverlayKeepOnTop,off
+	;	SetTimer, OverlayKeepOnTop, off	
 		SetTimer, overlay_timer, 50, 0		; make normal priority so it can interupt this thread to move
 		SetTimer, g_unitPanelOverlay_timer, 50, 0
 		SoundPlay, %A_Temp%\On.wav
@@ -655,7 +662,7 @@ Adjust_overlay:
 	KeyWait, %AdjustOverlayKey%, T40
 	Dragoverlay := 0	 	
 	{
-		SetTimer, OverlayKeepOnTop, 1000, -20
+	;	SetTimer, OverlayKeepOnTop, 1000, -20
 		SetTimer, overlay_timer, %OverlayRefresh%, -8
 		SetTimer, g_unitPanelOverlay_timer, %UnitOverlayRefresh%, -9
 		SoundPlay, %A_Temp%\Off.wav
@@ -752,14 +759,15 @@ return
 ;------------
 clock:
 	time := GetTime()
-	if (!time AND game_status = "game") OR (UpdateTimers) ; time=0 outside game
+	if (!time && game_status = "game") || (UpdateTimers) ; time=0 outside game
 	{	
 		game_status := "lobby" ; with this clock = 0 when not in game (while in game at 0s clock = 44)	
 		timeroff("money", "gas", "scvidle", "supply", "worker", "inject", "unit_bank_read", "Auto_mine", "Auto_Group", "AutoGroupIdle", "MiniMap_Timer", "overlay_timer", "g_unitPanelOverlay_timer", "g_autoWorkerProductionCheck", "cast_ForceInject")
 		inject_timer := TimeReadRacesSet := UpdateTimers := Overlay_RunCount := PrevWarning := WinNotActiveAtStart := ResumeWarnings := 0 ;ie so know inject timer is off
 		Try DestroyOverlays()
+		setLowLevelInputHooks(False)
 	}
-	Else if (time AND game_status <> "game" AND getLocalPlayerNumber() <> 16)  OR (debug AND time AND game_status <> "game") ; Local slot = 16 while in lobby - this will stop replay announcements
+	Else if (time && game_status != "game") && (getLocalPlayerNumber() != 16 || debug) ; Local slot = 16 while in lobby/replay - this will stop replay announcements
 	{
 		game_status := "game", warpgate_status := "not researched", gateway_count := warpgate_warning_set := 0
 		AW_MaxWorkersReached := TmpDisableAutoWorker := 0
@@ -769,6 +777,13 @@ clock:
 								; Info about the current game for other functions 
 								; An easy way to have the info cleared each match
 
+		; Install the hook here. In case it got removed.
+		; Remove it at the end of the game.
+		; Also scrolling GUI listboxes with the hook installed
+		; causes the scroll to lag. Obviously it will still lag if user opens the
+		; gui while in a game the scroll will still lag.
+
+		setLowLevelInputHooks(True)
 		BufferInputFast.disableHotkeys() ; disable any previously created buffered hotkeys in case user has changed the key blocking list
 		BufferInputFast.createHotkeys(aButtons.List) ; re-create the hotkeys	
 		if WinActive(GameIdentifier)
@@ -781,7 +796,8 @@ clock:
 			MouseMove A_ScreenWidth/2, A_ScreenHeight/2
 			WinNotActiveAtStart := 1
 		}
-		Gosub, player_team_sorter
+		getPlayers(a_player, a_LocalPlayer)
+		GameType := GetGameType(a_Player)
 		if (ResumeWarnings || UserSavedAppliedSettings && alert_array[GameType, "Enabled"])  
 			doUnitDetection(unit, type, owner, "Resume")	;these first 3 vars are nothing - they wont get Read
 		Else
@@ -830,7 +846,6 @@ clock:
 																		; note may delay some timers from launching for a fraction of a ms while its in thread, no timers interupt mode (but it takes less than 1 ms to run anyway)
 		} 																; Hence with these two timers running autogroup will occur at least once every 30 ms, but generally much more frequently
 		CreateHotkeys()
-		;if (a_LocalPlayer["Name"] == "Kalamity" || a_LocalPlayer["Name"] == "CumBackKid" )
 		if !A_IsCompiled
 		{
 			Hotkey, If, WinActive(GameIdentifier) && time && !BufferInputFast.isInputBlockedOrBuffered()
@@ -842,10 +857,13 @@ clock:
 		SetTimer, overlay_timer, %OverlayRefresh%, -8	
 		SetTimer, g_unitPanelOverlay_timer, %UnitOverlayRefresh%, -9	
 
-	;	SetTimer, g_ControlShiftTimer, 40
-
 		EnemyBaseList := GetEBases()		
-		UserSavedAppliedSettings := 0	
+		UserSavedAppliedSettings := 0
+		If IsInList(a_LocalPlayer.Type, "Referee", "Spectator")
+			timeroff("money", "gas", "scvidle", "supply", "worker", "inject"
+				, "unit_bank_read", "Auto_mine", "Auto_Group", "AutoGroupIdle"
+				, "MiniMap_Timer", "overlay_timer", "g_unitPanelOverlay_timer"
+				, "g_autoWorkerProductionCheck", "cast_ForceInject")
 	}
 return
 
@@ -879,22 +897,23 @@ setupSelectArmyUnits(l_input, A_unitID)
 ;----------------------
 ;	player_team_sorter
 ;-----------------------
-player_team_sorter:
-a_player := [], a_LocalPlayer := []
-;LocalPlayerNumber := ReadMemory_Str(local_ID_off, , , , "#")
-Loop, 16	;doing it this way allows for custom games with blank slots ;can get weird things if 16 (but filtering them for nonplayers)
+getPlayers(byref a_player, byref a_LocalPlayer)
 {
-	if !getPlayerName(A_Index) ;empty slot custom games?
-	|| IsInList(getPlayerType(A_Index), "None", "Neutral", "Hostile", "Referee", "Spectator")
-		Continue
-	a_player.insert( A_Index, new c_Player(A_Index) )   
-	If (A_Index = getLocalPlayerNumber()) OR (debug AND getPlayerName(A_Index) == debug_name)
-		a_LocalPlayer :=  new c_Player(A_Index)
+	a_player := [], a_LocalPlayer := []
+	; this should probably be 15, as I skip the first always neutral player in my player functions
+	Loop, 16	;doing it this way allows for custom games with blank slots ;can get weird things if 16 (but filtering them for nonplayers)
+	{
+		if !getPlayerName(A_Index) ;empty slot custom games?
+		|| IsInList(getPlayerType(A_Index), "None", "Neutral", "Hostile", "Referee", "Spectator")
+			Continue
+		a_player.insert( A_Index, new c_Player(A_Index) )  ; insert at player index so can call using player slot number 
+		If (A_Index = getLocalPlayerNumber()) OR (debug AND getPlayerName(A_Index) == debug_name)
+			a_LocalPlayer :=  new c_Player(A_Index)
+	}
+	return	
 }
-IF (IsInList(a_LocalPlayer.Type, "Referee", "Spectator") OR (A_IsCompiled AND getLocalPlayerNumber() = 16 )) ; dont really need this 16 check, as timer wont activate as clock label checks if local player != 16 (so this will cause issues if it really is a 16 player game as local payer number is 16, but this prevents announcements during replays)
-	timeroff("money", "gas", "scvidle", "supply", "worker", "inject", "unit_bank_read", "Auto_mine", "Auto_Group", "AutoGroupIdle", "MiniMap_Timer", "overlay_timer", "g_unitPanelOverlay_timer", "g_autoWorkerProductionCheck", "cast_ForceInject") ;Pause all warnings. Clock still going so will resume next game
-GameType := GetGameType(a_Player)
-return
+
+
 ;-------------------------
 ;	End of Game 'Setup'
 ;-------------------------
@@ -2343,12 +2362,48 @@ doUnitDetection(unit, type, owner, mode = "")
 	return
 }
 
+; used to monitor the activation/min of the sc2 window
+; for drawing overlays (rather than a timer)
+; lParam is the sc2 hWnd
+; 4 params are passed if you add more params to shell message definition
+; but i dont know what these are.
+ShellMessage(wParam, lParam) 
+{
+;	Local class
+	Global
+	Static ReDrawOverlays
 
+	if (wParam = 32772 || wParam = 4) ;  HSHELL_WINDOWACTIVATED := 4 or 32772
+	{
+	;	WinGetClass, class, A 
+	;	if (class != "Starcraft II" && !ReDrawOverlays && !Dragoverlay)
+		if (SC2hWnd != lParam && !ReDrawOverlays && !Dragoverlay)
+		{
+				ReDrawOverlays 	:= ReDrawMiniMap := ReDrawIncome := ReDrawResources 
+								:= ReDrawArmySize := ReDrawWorker := ReDrawIdleWorkers 
+								:= RedrawUnit := ReDrawLocalPlayerColour := True
+				DestroyOverlays()
+		}
+		else if (SC2hWnd = lParam && ReDrawOverlays) ; This will redraw immediately - but this isn't needed at all
+		{ 
+			gosub, MiniMap_Timer
+			gosub, overlay_timer
+			gosub, g_unitPanelOverlay_timer
+			ReDrawOverlays := False
+		}
+	}
+	return
+}
+
+; Shell is used instead of this timer now
 OverlayKeepOnTop:
-	if (!WinActive(GameIdentifier) And ReDraw <> 1)
-	{	ReDraw := ReDrawIncome := ReDrawResources := ReDrawArmySize := ReDrawWorker := ReDrawIdleWorkers := RedrawUnit := ReDrawLocalPlayerColour := 1
+	if (!ReDrawOverlays  && !WinActive(GameIdentifier))
+	{	
+		ReDrawOverlays := ReDrawMiniMap := ReDrawIncome := ReDrawResources := ReDrawArmySize := ReDrawWorker := ReDrawIdleWorkers 
+				:= RedrawUnit := ReDrawLocalPlayerColour := 1
 		DestroyOverlays()
 	}
+	else ReDrawOverlays := 0
 Return
 
 MiniMap_Timer:
@@ -2360,7 +2415,7 @@ g_HideMiniMap:
 	{
 		Try Gui, MiniMapOverlay: Destroy 
 		sleep, 2500
-		ReDraw := 1
+		ReDrawMiniMap := 1
 	}
 return
 
@@ -2387,8 +2442,8 @@ g_unitPanelOverlay_timer:
 	{
 		getEnemyUnitCount(aEnemyUnits, aEnemyBuildingConstruction, a_UnitID)
 		FilterUnits(aEnemyUnits, aEnemyBuildingConstruction, aUnitPanelUnits, a_UnitID, a_Player)
-		if DrawUnitOverlay
-			DrawUnitOverlay(RedrawUnit, UnitOverlayScale, OverlayIdent, Dragoverlay)
+	;	if DrawUnitOverlay
+		DrawUnitOverlay(RedrawUnit, UnitOverlayScale, OverlayIdent, Dragoverlay)
 	}
 return
 
@@ -5391,9 +5446,8 @@ return
 
 Test_VOL:
 	original_programVolume := programVolume
-	original_speech_volume := speech_volume
 	GuiControlGet, TmpSpeechVol,, speech_volume
-	speech_volume:= TmpSpeechVol := Round(TmpSpeechVol, 0)
+	TmpSpeechVol := Round(TmpSpeechVol, 0)
 	GuiControlGet, TmpTotalVolume,, programVolume
 	programVolume := Round(TmpTotalVolume, 0)
 
@@ -5406,55 +5460,51 @@ Test_VOL:
 			sleep 150
 		}
 	}	
-	SAPI.volume := TmpSpeechVol
 	;Random, Rand_joke, 1, 8
 	Rand_joke ++
 	If ( Rand_joke = 1 )
-		tSpeak("Protoss is OPee")
+		tSpeak("Protoss is OPee", TmpSpeechVol)
 	Else If ( Rand_joke = 2 )
-		tSpeak("A templar comes back to base with a terrified look on his face. The zealots asks - what happened? You look like you've seen a ghost")
+		tSpeak("A templar comes back to base with a terrified look on his face. The zealots asks - what happened? You look like you've seen a ghost", TmpSpeechVol)
 	Else If ( Rand_joke = 3 )
 	{
 
-		tSpeak("A Three Three Protoss army walks into a bar and asks")
+		tSpeak("A Three Three Protoss army walks into a bar and asks", TmpSpeechVol)
 		sleep 50
-		tSpeak("Where is the counter?")
+		tSpeak("Where is the counter?", TmpSpeechVol)
 	}
 	Else If ( Rand_joke = 4 )
 	{
-		tSpeak("What computer does IdrA use?")
+		tSpeak("What computer does IdrA use?", TmpSpeechVol)
 		sleep 1000
-		tSpeak("An EYE BM")
+		tSpeak("An EYE BM", TmpSpeechVol)
 	}
 	Else If ( Rand_joke = 5 )
 	{
-		tSpeak("Why did the Cullosus fall over ?")
+		tSpeak("Why did the Cullosus fall over ?", TmpSpeechVol)
 		sleep 1000
-		tSpeak("because it was imbalanced ")
+		tSpeak("because it was imbalanced", TmpSpeechVol)
 	}
 	Else If ( Rand_joke = 6 )
 	{
-		tSpeak("How many Zealots does it take to change a lightbulb?")
+		tSpeak("How many Zealots does it take to change a lightbulb?", TmpSpeechVol)
 		sleep 1000
-		tSpeak("None, as they cannot hold")	
+		tSpeak("None, as they cannot hold", TmpSpeechVol)	
 	}
 	Else If ( Rand_joke = 7 )
 	{
-		tSpeak("How many Infestors does it take to change a lightbulb?")
+		tSpeak("How many Infestors does it take to change a lightbulb?", TmpSpeechVol)
 		sleep 1000
-		tSpeak("One, you just have to make sure he doesn't over-power it")	
+		tSpeak("One, you just have to make sure he doesn't over-power it", TmpSpeechVol)	
 	}
 	Else
 	{
-		tSpeak("How many members of the Starcraft 2 balance team does it take to change a lightbulb?")
+		tSpeak("How many members of the Starcraft 2 balance team does it take to change a lightbulb?", TmpSpeechVol)
 		sleep 1000
-		tSpeak("All three of them, and Ten patches")	
+		tSpeak("All three of them, and Ten patches", TmpSpeechVol)	
 		rand_joke := 0
 	}
-	programVolume := original_programVolume
-	speech_volume := original_speech_volume
-	SetProgramWaveVolume(programVolume)
-	SAPI.volume := speech_volume
+	SetProgramWaveVolume(programVolume := original_programVolume)
 return
 
 Edit_SendHotkey:
@@ -6795,9 +6845,9 @@ autoWorkerProductionCheck()
 					soundplay *-1
 					sleep 200
 				}
-				sleep 9200 ;10000
+				sleep 10200 ;11000
 			}
-			else sleep, 10000
+			else sleep, 11000
 			return
 		}
 	}
@@ -7303,11 +7353,11 @@ DrawMiniMap()
 	, DrawX, DrawY, Width, height, i, hbm, hdc, obm, G,  pBitmap, PlayerColours, A_MiniMapUnits
 	static Overlay_RunCount
 	Overlay_RunCount ++
-	if (ReDraw and WinActive(GameIdentifier))
+	if (ReDrawMiniMap and WinActive(GameIdentifier))
 	{
 		Try Gui, MiniMapOverlay: Destroy
 		Overlay_RunCount := 1
-		ReDraw := 0
+		ReDrawMiniMap := 0
 	}
 	If (Overlay_RunCount = 1)
 	{
@@ -9981,6 +10031,8 @@ pMouseMove(x, y)
 	PostMessage, %WM_MOUSEMOVE%, , %lParam%, , %GameIdentifier%
 
 }
+
+
 
 ;Takes around 7-8ms (but up to 18) for a sendinput to release a modifier and for 
 ;readmodstate() to agree with it 
