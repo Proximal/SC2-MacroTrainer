@@ -1,6 +1,6 @@
 #include <_MemoryLibrary>
 AhkDllThread_IsH(){ ; FileGetVersionInfo Written by SKAN modified by HotKeyIt www.autohotkey.com/forum/viewtopic.php?p=233188#233188
- Static HexVal:="msvcrt\s" (A_IsUnicode?"w":"") "printf",AHK:=A_AhkPath?A_AhkPath:A_ScriptFullPath
+ Static HexVal:="msvcrt\s" (A_IsUnicode?"w":"") "printf",AHK,init:=VarSetCapacity(AHK,520) DllCall("GetModuleFileName","PTR",0,"PTR",&AHK,"UInt",520) VarSetCapacity(AHK,-1)
  If ((FSz:=DllCall("Version\GetFileVersionInfoSize","Str",AHK,"UInt",0)) && VarSetCapacity(FVI,FSz,0) && VarSetCapacity(Trans,8*(A_IsUnicode?2:1)))
   && DllCall("Version\GetFileVersionInfo","Str",AHK,"Int",0,"UInt",FSz,"PTR",&FVI) 
   && DllCall("Version\VerQueryValue","PTR",&FVI,"Str","\VarFileInfo\Translation","PTR*",Translation,"UInt",0)
@@ -16,7 +16,7 @@ AhkDllThread(dll="AutoHotkey.dll",obj=0){
   static base:={__Delete:"AhkDllThread"}
   static functions :="
 (Join
-ahkFunction:s=ssssssssss|ahkPostFunction:i=ssssssssss|
+ahkFunction:s=sssssssssss|ahkPostFunction:i=sssssssssss|
 ahkdll:ut=sss|ahktextdll:ut=sss|ahkReady:|ahkReload:i|
 ahkTerminate:i|addFile:ut=sucuc|addScript:ut=si|ahkExec:ui=s|
 ahkassign:ui=ss|ahkExecuteLine:ut=utuiui|ahkFindFunc:ut=s|
@@ -30,7 +30,7 @@ SetBatchLines,-1
 #NoTrayIcon
 Return
 AhkDllThreadDLL(dll=""AutoHotkey.dll"",obj=0){
-  static functions := ""ahkFunction:s=ssssssssss|ahkPostFunction:i=ssssssssss|""
+  static functions := ""ahkFunction:s=sssssssssss|ahkPostFunction:i=sssssssssss|""
               . ""ahkdll:ut=sss|ahktextdll:ut=sss|ahkReady:|ahkReload:i|""
               . ""ahkTerminate:i|addFile:ut=sucuc|addScript:ut=si|ahkExec:ui=s|""
               . ""ahkassign:ui=ss|ahkExecuteLine:ut=utuiui|ahkFindFunc:ui=s|""

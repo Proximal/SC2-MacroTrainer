@@ -1,8 +1,13 @@
-﻿pSend(Sequence := "")
+﻿; This command can be used with the same syntax as AHKs sendInput command
+; pSend("^+ap") 		Result:	Control+Shift+a, p
+; pSend("+{click}")		Result: Shift Left click the mouse (down and up event)
+; pSend("{click D " x1 " " y1 "}{Click U " x2 " " y2 "}") ; Result: Box drag the mouse with the LButton
+
+pSend(Sequence := "")
 {
 	Global 	GameIdentifier
-	static 	WM_KEYDOWN := 0x100,
-			WM_KEYUP := 0x101
+	static 	WM_KEYDOWN := 0x100
+			, WM_KEYUP := 0x101
 
 	pKeyDelay :=  Input.pSendDelay()
 	pClickDelay :=  Input.pClickDelay()

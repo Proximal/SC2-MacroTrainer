@@ -77,23 +77,17 @@ Class BufferInputFast
 	releaseModifiers()
 	{
 		if GetKeyState("Shift", "P")
-		{
-			sleep := True
-			sendInput {Blind}{Shift up}
-		}
+			sequence .= "{Shift up}"
 		if GetKeyState("Ctrl", "P")
-		{
-			sleep := True
-			sendInput {Blind}{ctrl up}	
-		}
+			sequence .= "{ctrl up}"	
 		if GetKeyState("Alt", "P")
-		{
-			sleep := True
-			sendInput {Blind}{alt up}
-		}
+			sequence .= "{alt up}"
 		; sleep to prevent out of order messages due to much lower latency with PostMessage
-		if sleep
+		if sequence
+		{
+			sendInput {Blind}%sequence%
 			sleep, 12
+		}
 		return
 	}	
 
@@ -195,7 +189,7 @@ Class BufferInputFast
 	;			soundplay *64
 	;		}
 	;		else 
-				sendInput {Blind}{Shift Up}
+	;			sendInput {Blind}{Shift Up}
 	;	}
 
 	;	if (GetKeyState("Ctrl", "P") != Ctrl)
@@ -203,7 +197,7 @@ Class BufferInputFast
 	;		if GetKeyState("Ctrl", "P")
 	;			sendInput {Blind}{Ctrl Down}
 	;		else 
-				sendInput {Blind}{Ctrl Up}
+	;			sendInput {Blind}{Ctrl Up}
 	;	}
 
 	;	if (GetKeyState("Alt", "P") != Alt)
@@ -211,8 +205,9 @@ Class BufferInputFast
 	;		if GetKeyState("Alt", "P")
 	;			sendInput {Blind}{Alt Down}
 	;		else 
-				sendInput {Blind}{Alt Up}
+	;			sendInput {Blind}{Alt Up}
 	;	}
+		sendInput {Blind}{Shift Up}{Ctrl Up}{Alt Up}
 		this.BufferedState := 0
 		this.BlockedState := 0
 		return
