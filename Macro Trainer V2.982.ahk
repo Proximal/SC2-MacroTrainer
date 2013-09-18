@@ -130,7 +130,7 @@ MT_CurrentInstance := [] ; Used to store random info about the current run
 program := []
 program.info := {"IsUpdating": 0} ; program.Info.IsUpdating := 0 ;has to stay here as first instance of creating infor object
 
-ProgramVersion := 2.981
+ProgramVersion := 2.982
 
 l_GameType := "1v1,2v2,3v3,4v4,FFA"
 l_Races := "Terran,Protoss,Zerg"
@@ -171,8 +171,8 @@ SetProgramWaveVolume(programVolume)
 
 if A_OSVersion in WIN_8,WIN_7,WIN_VISTA
 {  
-	DllCall("ChangeWindowMessageFilter", uint, 0x49, uint, 1) 	; 1 allows message to be received 
-	DllCall("ChangeWindowMessageFilter", uint, 0x233, uint, 1)
+	DllCall("ChangeWindowMessageFilter", uint, 0x49, uint, 1) 	; WM_COPYGLOBALDATA 1 allows message to be received 
+	DllCall("ChangeWindowMessageFilter", uint, 0x233, uint, 1) 	; WM_DROPFILES
 }
 
 ;-----------------------
