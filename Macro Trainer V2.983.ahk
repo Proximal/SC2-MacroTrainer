@@ -5203,6 +5203,8 @@ Screenshots and replays may be attached below.
 		; Report_Email is the address to return to, if user puts a weird name function will fail with an error!  i.e. and address which violates email address rules
 		MT_EmailAddress := "macro.trainer@adam.com.au"
 		Try SendEmail(MT_EmailAddress, Report_Email, "Bug Report", "Return Email: " Report_Email "`n" "Problem: `n`n" Report_TXT, oEmailAttachmentFilePaths)
+	;	SendEmail(MT_EmailAddress, Report_Email, "Bug Report", "Return Email: " Report_Email "`n" "Problem: `n`n" Report_TXT, oEmailAttachmentFilePaths)
+	;	try getProcessBaseAddress(GameIdentifier)
 		catch, comError
 		{
 			MsgBox, % "There was an error submitting this information."
@@ -8820,9 +8822,10 @@ g_SelectArmy:
 	}
 	*/
 	SelectArmy.LastHotKeyPress := A_TickCount
+	input.pSendDelay(-1)
 	MTsend(Sc2SelectArmy_Key)
 ;	sleep SleepSelectArmy ; every now and then it needs a few ms to update
-	DllCall("Sleep", Uint, 5)
+	DllCall("Sleep", Uint, 20)
 	a_RemoveUnits := []
 	findUnitsToRemoveFromArmy(a_RemoveUnits, SelectArmyDeselectXelnaga, SelectArmyDeselectPatrolling
 		, SelectArmyDeselectHoldPosition, SelectArmyDeselectFollowing, l_ActiveDeselectArmy)
@@ -8830,14 +8833,14 @@ g_SelectArmy:
 	{
 		Sort2DArray(a_RemoveUnits, "Unit", 0) ;clicks highest units first, so dont have to calculate new click positions due to the units moving down one spot in the panel grid	
 		Sort2DArray(a_RemoveUnits, "Priority", 1)	; sort in ascending order so select units lower down 1st		
-		DeselectUnitsFromPanel(a_RemoveUnits, -1)
+		DeselectUnitsFromPanel(a_RemoveUnits, 1)
 	;	send {click  %Xarmyselect%, %Yarmyselect%, 0}
 	}
 ;	sleep 1
 	DllCall("Sleep", Uint, 1)
 	if SelectArmyControlGroupEnable
 		MTsend("^" Sc2SelectArmyCtrlGroup)
-
+	input.pSendDelay(pKeyDelay)
 ;	BufferInputFast.disableBufferingAndBlocking()
 	Input.revertKeyState()
 	critical, off
@@ -9364,7 +9367,7 @@ SplitUnits(SplitctrlgroupStorage_key, SleepSplitUnits)
 		;MTsend("a{click left " x " " y "}")
 		
 	;	DeselectUnitsFromPanel(tmpObject, -1)		;might not have enough time to update the selections?
-		input.pSendDelay(-1)
+		
 		DeselectUnitsFromPanel(tmpObject, 1)		;might not have enough time to update the selections?
 		a_SelectedUnits.remove(1)
 		selectionCount--
@@ -10015,6 +10018,11 @@ pMouseMove(x, y)
 	PostMessage, %WM_MOUSEMOVE%, , %lParam%, , %GameIdentifier%
 
 }
+
+
+f1:: 
+tooltip % getunitsubgroup getSubGroupPriority(getSelectedUnitIndex())
+return
 
 ;Takes around 7-8ms (but up to 18) for a sendinput to release a modifier and for 
 ;readmodstate() to agree with it  

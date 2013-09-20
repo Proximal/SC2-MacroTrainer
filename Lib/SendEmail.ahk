@@ -1,3 +1,62 @@
+
+; note test@fake.com.au fails but test@fake.com works
+
+SendEmail(p_to, p_From, p_subject, p_message, oAttachments := "", user="macro.trainer@adam.com.au", pass="asvhaf32489hjk")
+{ 														; username '@adam.com.au' isn't required to receive emails, but it is to SEND!
+		
+	SMTP := "mail.adam.com.au"
+	port := 25
+
+	if (p_From && isValidEmail(p_From)) 		; if user puts a weird name function will fail with an error! hence check if valid
+		Sender_Email      := p_From 				; i.e. an address which violates email address rules 
+	else Sender_Email      := "MT_BugReport@FakeAddress.com" ; Not a Real Address! """AHKUser"" <...@gmail.com>"
+	
+	Email := p_to
+	Subject := p_subject
+	Subject := p_subject
+	Username := user
+	Password := pass
+
+	getSystemTimerResolutions(MinTimer, MaxTimer)
+	p_message 	.= "`n`n`n`n"
+				. "================================================================ `n"
+				. debugData()
+
+	Text := p_message
+	;OR
+	;pmsg.HtmlBody := "<html><head><title >Hello</title></head><body><h2>Hello</h2><br /><p>Testing!</p></body></html>"
+
+
+	;sAttach         := "Path_Of_Attachment" ; can add multiple attachments, the delimiter is |
+
+
+	if (oAttachments && isobject(oAttachments))
+	{
+		for index, attachmentPath in  oAttachments
+			sAttach .= attachmentPath ","
+	}
+	else if oAttachments
+		sAttach := oAttachments
+	sAttach := Trim(sAttach, "`t `,")
+
+	email_string := "-f " Sender_Email " -server " SMTP " -port " port " -t " Email 
+		. " -s """ Subject """ -body """ Text """ -u " Username " -pw " Password
+	sAttach ? email_string .= " -attach """ sAttach """"
+
+	; inlcude the DLL inside exe
+	If 0
+		FileInstall, C:\Users\Matthieu\Desktop\GIT Repos\SC2-MacroTrainer\Included Files\email\blat.dll, Ignore this param
+
+	hBlatt := A_IsCompiled ? ResourceLoadLibrary("blatt.dll") : MemoryLoadLibrary("C:\Users\Matthieu\Desktop\GIT Repos\SC2-MacroTrainer\Included Files\email\blat.dll")
+	BlattSend := MemoryGetProcAddress(hBlatt,"Send" (A_IsUnicode?"W":"A"))
+	DllCall(BlattSend, "Str", email_string)
+	MemoryFreeLibrary(hBlatt)
+
+	;msgbox % i " " errorlevel "`n" email_string	
+	return 
+}
+
+/*  Com Method 
 SendEmail(p_to, p_From, p_subject, p_message, oAttachments := "", user="macro.trainer@adam.com.au", pass="asvhaf32489hjk")
 { 														; username '@adam.com.au' isn't required to receive emails, but it is to SEND!
 		
@@ -59,3 +118,4 @@ SendEmail(p_to, p_From, p_subject, p_message, oAttachments := "", user="macro.tr
 		pmsg.AddAttachment(A_LoopField)
 	pmsg.Send()
 }
+*/
