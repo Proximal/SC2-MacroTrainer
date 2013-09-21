@@ -157,6 +157,7 @@ pSend(Sequence := "")
 		}
 		else 
 		{
+			; If mouse move is included it actually strangles moves the mouse!!
 			postmessage, message.message, message.wParam, message.lparam,, % GameIdentifier
 			if (pClickDelay != -1)
 				DllCall("Sleep", Uint, pClickDelay)

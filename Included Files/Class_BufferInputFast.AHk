@@ -113,11 +113,12 @@ Class BufferInputFast
 		this.releaseModifiers() ;lets release the modifiers (the hard rebinds will prevent it getting pushed down)
 		return
 	}	
-	BlockInput()
+	BlockInput(releaseModifiers := True)
 	{
 		this.BufferedState := 0
 		this.BlockedState := 1
-		this.releaseModifiers() ;lets release the modifiers (the hard rebinds will prevent it getting pushed down)
+		if releaseModifiers
+			this.releaseModifiers() ;lets release the modifiers (the hard rebinds will prevent it getting pushed down)
 		return
 	}
 	testForceDisable()
@@ -126,7 +127,7 @@ Class BufferInputFast
 		this.BlockedState := 0
 		return 
 	}
-	disableBufferingAndBlocking()
+	disableBufferingAndBlocking(releaseModifiers := True)
 	{
 	;	shift = 1, ctrl = 2, alt = 4 (and add them together)
 	;	sleep 2
@@ -207,7 +208,8 @@ Class BufferInputFast
 	;		else 
 	;			sendInput {Blind}{Alt Up}
 	;	}
-		sendInput {Blind}{Shift Up}{Ctrl Up}{Alt Up}
+		if releaseModifiers
+			sendInput {Blind}{Shift Up}{Ctrl Up}{Alt Up}
 		this.BufferedState := 0
 		this.BlockedState := 0
 		return
