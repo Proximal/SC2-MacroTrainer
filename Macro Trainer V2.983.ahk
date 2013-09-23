@@ -8754,26 +8754,16 @@ g_SelectArmy:
 	input.pClickDelay(-1)
 	MTsend(Sc2SelectArmy_Key)
 	dSleep(20)
-	a_RemoveUnits := []
-	findUnitsToRemoveFromArmy(a_RemoveUnits, SelectArmyDeselectXelnaga, SelectArmyDeselectPatrolling
-		, SelectArmyDeselectHoldPosition, SelectArmyDeselectFollowing, l_ActiveDeselectArmy)
-	
-	if a_RemoveUnits.MaxIndex()
-	{
-	;	qpx(1)
-		Sort2DArray(a_RemoveUnits, "Unit", 0) ;clicks highest units first, so dont have to calculate new click positions due to the units moving down one spot in the panel grid	
-		Sort2DArray(a_RemoveUnits, "Priority", 1)	; sort in ascending order so select units lower down 1st		
-	;	v := qpx(0)
-		DeselectUnitsFromPanel(a_RemoveUnits, -1)
-	;	clipboard := v * 1000  13ms
-	}
-
+	aRemoveUnits := [], aSelected := []
+	aRemoveUnits := findUnitsToRemoveFromArmy(aSelected, SelectArmyDeselectXelnaga, SelectArmyDeselectPatrolling
+						, SelectArmyDeselectHoldPosition, SelectArmyDeselectFollowing, l_ActiveDeselectArmy)
+	if aRemoveUnits.MaxIndex()
+		DeselectUnitsFromPanel(aRemoveUnits, aSelected, -1)
 	dSleep(15)
 	if SelectArmyControlGroupEnable
 		MTsend("^" Sc2SelectArmyCtrlGroup)
 	input.pSendDelay(pKeyDelay)
 	input.pClickDelay(pKeyDelay)
-
 	critical, off
 	input.hookBlock(False, False)	
 	sleep 5
@@ -8787,6 +8777,15 @@ g_SelectArmy:
 	;	on next loop through
 return
 
+f1:: 
+numGetSelectionSorted(aSelection)
+objtree(aSelection)
+return 
+f2:: 
+ObjTree(aRemoveUnits, "aRemoveUnits")
+sleep 20
+ObjTree(aSelected, "aSelected")
+return
 getScreenAspectRatio()
 { 	;ROUND as this should group 1366x768 (1.7786458333) in with 16:9
 	AspectRatio := Round(A_ScreenWidth / A_ScreenHeight, 2)
@@ -8802,7 +8801,7 @@ getScreenAspectRatio()
 	return AspectRatio
 }
 
-findUnitsToRemoveFromArmy(byref a_Units, DeselectXelnaga = 1, DeselectPatrolling = 1, DeselectHoldPosition = 0, DeselectFollowing = 0, l_Types = "")
+findUnitsToRemoveFromArmyOld(byref a_Units, DeselectXelnaga = 1, DeselectPatrolling = 1, DeselectHoldPosition = 0, DeselectFollowing = 0, l_Types = "")
 { global uMovementFlags
 	while (A_Index <= getSelectionCount())		;loop thru the units in the selection buffer	
 	{		
@@ -8823,9 +8822,32 @@ findUnitsToRemoveFromArmy(byref a_Units, DeselectXelnaga = 1, DeselectPatrolling
 	return
 }
 
+; aSelected can be used to pass an already SORTED selected array
+; if no array, or an empty array is passed then it will retrieve one
+; The first unit to be removed will have the highest unit panel position
 
-
-
+findUnitsToRemoveFromArmy(byref aSelected := "", DeselectXelnaga = 1, DeselectPatrolling = 1, DeselectHoldPosition = 0, DeselectFollowing = 0, lTypes = "")
+{ 	global uMovementFlags
+	if (!isObject(aSelected) || !aSelected.maxIndex())
+		numGetSelectionSorted(aSelected) ; get a sorted array of the selection buffer
+	remove := []
+	for i, unit in aSelected.units
+	{
+		state := getUnitMoveState(unit.unitIndex)
+		if (DeselectXelnaga && isUnitHoldingXelnaga(unit.unitIndex))
+			|| (DeselectPatrolling && state = uMovementFlags.Patrol)
+			|| (DeselectHoldPosition && state = uMovementFlags.HoldPosition)
+			|| (DeselectFollowing && (state = uMovementFlags.Follow || state = uMovementFlags.FollowNoAttack)) ;no attack follow is used by spell casters e.g. HTs & infests which dont have and attack
+				remove.insert(unit.unitIndex)
+		else if lTypes  
+		{
+			type := unit.unitId
+			If type in %lTypes%
+				remove.insert(unit.unitIndex)
+		}			
+	}
+	return remove
+}
 
 
 SortSelectedUnits(byref a_Units)
@@ -8839,31 +8861,48 @@ SortSelectedUnits(byref a_Units)
 	return
 }	
 
-DeselectUnitsFromPanel(a_RemoveUnits, sleep := -1)	
+; can pass an already sorted unit object/array (if you have one), so saves time having resort them
+; aRemoveUnits is just a simple array containing each unitIndex to be removed
+; aRemoveUnits does NOT need to be sorted
+; aSelection is the entire sorted selection object as returned by numGetSelectionSorted
+; the units in aSelection.units need to be sorted so that they represent the locations in the unit panel
+; i.e. the first unit in aSelection.units is at the top left of the unit panel
+
+DeselectUnitsFromPanel(aRemoveUnits, aSelection := "", sleep := -1)	
 {
-	if a_RemoveUnits.MaxIndex()
+	if aRemoveUnits.MaxIndex()
 	{
-		SortSelectedUnits(a_SelectedUnits)
-		for Index, objRemove in a_RemoveUnits
-			for SelectionIndex, objSelected in a_SelectedUnits
-				if (objRemove.unit = objSelected.unit && SelectionIndex < 144 ) ;can only deselect up to unitselectionindex 143 (as thats the maximun on the card)
-				{
-					if ClickUnitPortrait(SelectionIndex - 1, X, Y, Xpage, Ypage) ; -1 as selection index begins at 0 i.e 1st unit at pos 0 top left
+		if !IsObject(aSelection)
+			numGetSelectionSorted(aSelection)
+			
+		for i, removeUnitIndex in aRemoveUnits
+		{
+			for unitPanelLocation, Selected in aSelection.units
+			{
+				;can only deselect up to unitPanelLocation 143 
+				; as unitpanel can only show 144 units
+				if (unitPanelLocation > 143)
+					break 2
+				Else if (removeUnitIndex = Selected.unitIndex) 
+				{		
+					; -1 as selection index begins at 0 i.e 1st unit at pos 0 (top left)
+					if ClickUnitPortrait(unitPanelLocation - 1, X, Y, Xpage, Ypage) 
 						MTclick(Xpage, Ypage)
-					;	send {click Left %Xpage%, %Ypage%} ;clicks on the page number				
-				;	MTclick(x, y, "Left", "+")
+						; if changed pages, a sleep here is required under some conditions
 					MTsend("+{click " x " " y "}")
-					;send +{click Left %X%, %Y%} 	;shift clicks the unit
 					if (sleep != -1)
-						DllCall("Sleep", Uint, sleep)
+						dSleep(sleep)
 				}
+			}
+		}
 	}
 	if getUnitSelectionPage()	;ie slection page is not 0 (hence its not on 1 (1-1))
 	{
-		ClickUnitPortrait(blank,X,Y, Xpage, Ypage, 1) ; this selects page 1 when done
+		ClickUnitPortrait(0, X, Y, Xpage, Ypage, 1) ; this selects page 1 when done
 		MTclick(Xpage, Ypage)
 	;	send {click Left %Xpage%, %Ypage%}
 	}	
+
 	return
 }
 
@@ -8871,8 +8910,8 @@ DeselectUnitsFromPanel(a_RemoveUnits, sleep := -1)
 
 ClickSelectUnitsPortriat(unit, sleep=20, ClickModifier="")	;can put ^ to do a control click
 {
-	SortSelectedUnits(a_SelectedUnits)
-	for SelectionIndex, objSelected in a_SelectedUnits
+	SortSelectedUnits(aSelectedUnits)
+	for SelectionIndex, objSelected in aSelectedUnits
 		if (unit = objSelected.unit && SelectionIndex < 144 ) ;can only deselect up to unitselectionindex 143 (as thats the maximun on the card)
 		{
 			if ClickUnitPortrait(SelectionIndex - 1, X, Y, Xpage, Ypage) ; -1 as selection index begins at 0 i.e 1st unit at pos 0 top left
@@ -8962,13 +9001,13 @@ FindSelectedPatrollingUnits(byref a_Units)
 			a_Units.insert({"Unit": unit, "Priority": getUnitSubGroupPriority(unit)})
 	return
 }
-sortSelectedUnitsByDistance(byref a_SelectedUnits, Amount = 3)	;takes a simple array which contains the selection indexes (begins at 0)
+sortSelectedUnitsByDistance(byref aSelectedUnits, Amount = 3)	;takes a simple array which contains the selection indexes (begins at 0)
 { 													; the 0th selection index (1st in this array) is taken as the base unit to measure from
-	a_SelectedUnits := []
+	aSelectedUnits := []
 	sIndexBaseUnit := rand(0, getSelectionCount() -1) ;randomly pick a base unit 
 	uIndexBase := getSelectedUnitIndex(sIndexBaseUnit)
 	Base_x := getUnitPositionX(uIndexBase), Base_y := getUnitPositionY(uIndexBase)
-	a_SelectedUnits.insert({"Unit": uIndexBase, "Priority": getUnitSubGroupPriority(uIndexBase), "Distance": 0})
+	aSelectedUnits.insert({"Unit": uIndexBase, "Priority": getUnitSubGroupPriority(uIndexBase), "Distance": 0})
 
 	while (A_Index <= getSelectionCount())	
 	{
@@ -8978,14 +9017,14 @@ sortSelectedUnitsByDistance(byref a_SelectedUnits, Amount = 3)	;takes a simple a
 		else
 		{
 			unit_x := getUnitPositionX(unit), unit_y := getUnitPositionY(unit)
-			a_SelectedUnits.insert({"Unit": unit, "Priority": getUnitSubGroupPriority(unit), "Distance": Abs(Base_x - unit_x) + Abs(Base_y - unit_y)})
+			aSelectedUnits.insert({"Unit": unit, "Priority": getUnitSubGroupPriority(unit), "Distance": Abs(Base_x - unit_x) + Abs(Base_y - unit_y)})
 		}
 	}
-	Sort2DArray(a_SelectedUnits, "Distance", 1)
-	while (a_SelectedUnits.MaxIndex() > Amount)
-		a_SelectedUnits.Remove(a_SelectedUnits.MaxIndex()) 	
-	Sort2DArray(a_SelectedUnits, "Unit", 0) ;clicks highest units first, so dont have to calculate new click positions due to the units moving down one spot in the panel grid	
-	Sort2DArray(a_SelectedUnits, "Priority", 1)	; sort in ascending order so select units lower down 1st	
+	Sort2DArray(aSelectedUnits, "Distance", 1)
+	while (aSelectedUnits.MaxIndex() > Amount)
+		aSelectedUnits.Remove(aSelectedUnits.MaxIndex()) 	
+	Sort2DArray(aSelectedUnits, "Unit", 0) ;clicks highest units first, so dont have to calculate new click positions due to the units moving down one spot in the panel grid	
+	Sort2DArray(aSelectedUnits, "Priority", 1)	; sort in ascending order so select units lower down 1st	
 	return 
 } 
 
@@ -9242,7 +9281,7 @@ SplitUnits(SplitctrlgroupStorage_key, SleepSplitUnits)
 	MTsend("^" SplitctrlgroupStorage_key)
 ;	BlockInput, MouseMove
 ;	mousegetpos, Xorigin, Yorigin
-	a_SelectedUnits := []
+	aSelectedUnits := []
 	xSum := ySum := 0
 
  	If (a_LocalPlayer["Race"] = "Terran")
@@ -9256,7 +9295,7 @@ SplitUnits(SplitctrlgroupStorage_key, SleepSplitUnits)
 	{
 		unit := getSelectedUnitIndex(A_Index -1)
 		getUnitMiniMapMousePos(unit, mX, mY)
-		a_SelectedUnits.insert({"Unit": unit, "mouseX": mX, "mouseY": mY, absDistance: ""})
+		aSelectedUnits.insert({"Unit": unit, "mouseX": mX, "mouseY": mY, absDistance: ""})
 
 		if (getUnitType(unit) = aUnitID[Worker])
 			workerCount++		
@@ -9274,10 +9313,10 @@ SplitUnits(SplitctrlgroupStorage_key, SleepSplitUnits)
 		uSpacing := 9 ; for hellbat and hellion spread
 	Else uSpacing := 5
 
-	for index, unit in a_SelectedUnits
+	for index, unit in aSelectedUnits
 		xSum += unit.mouseX, ySum += unit.mouseY
-	xAvg := xSum/a_SelectedUnits.MaxIndex(), yAvg := ySum/a_SelectedUnits.MaxIndex()	
-	while (a_SelectedUnits.MaxIndex() > squareSpots := A_Index * A_Index)
+	xAvg := xSum/aSelectedUnits.MaxIndex(), yAvg := ySum/aSelectedUnits.MaxIndex()	
+	while (aSelectedUnits.MaxIndex() > squareSpots := A_Index * A_Index)
 		continue	
 ;	botLeftUnitX := xAvg-(sqrt(squareSpots)*uSpacing)/2 , botLeftUnitY := yAvg-(sqrt(squareSpots)*uSpacing)/2 ; should /2?? but is betr without it
 	botLeftUnitX := xAvg-sqrt(squareSpots) , botLeftUnitY := yAvg-sqrt(squareSpots) ; should /2?? but is betr without it
@@ -9286,7 +9325,7 @@ SplitUnits(SplitctrlgroupStorage_key, SleepSplitUnits)
 	while (selectionCount > 0)
 	{
 		
-		unit := a_SelectedUnits[1] ;grab the closest unit
+		unit := aSelectedUnits[1] ;grab the closest unit
 		boxSpot := A_Index
 		X_offsetbox := y_offsetbox := 0
 		while (boxSpot > floor(sqrt(squareSpots) * A_Index))
@@ -9297,13 +9336,13 @@ SplitUnits(SplitctrlgroupStorage_key, SleepSplitUnits)
 		x := X_offsetbox*uSpacing + botLeftUnitX, Y := y_offsetbox*uSpacing + botLeftUnitY
 	;	x := round(x), y := round(y)	;cos mousemove ignores decimal 
 		x := round(x + rand(-.5,.5)), y := round(y + rand(-.5,.5)) 	;cos mousemove ignores decimal 
-		for index, unit in a_SelectedUnits
+		for index, unit in aSelectedUnits
 			unit.absDistance := Abs(x - unit.mouseX)+ Abs(y - unit.mouseY)
 ;		clipboard .= "(" x ", " y ")`n"
 
-		Sort2DArray(a_SelectedUnits, "absDistance", 1)		
+		Sort2DArray(aSelectedUnits, "absDistance", 1)		
 		tmpObject := []
-		tmpObject.insert(a_SelectedUnits[1])
+		tmpObject.insert(aSelectedUnits[1])
 		;send {click right %X%, %Y%}
 		pClick(x, y, "Right")
 		;MTsend("a{click left " x " " y "}")
@@ -9311,7 +9350,7 @@ SplitUnits(SplitctrlgroupStorage_key, SleepSplitUnits)
 	;	DeselectUnitsFromPanel(tmpObject, -1)		;might not have enough time to update the selections?
 		
 		DeselectUnitsFromPanel(tmpObject, 1)		;might not have enough time to update the selections?
-		a_SelectedUnits.remove(1)
+		aSelectedUnits.remove(1)
 		selectionCount--
 
 	}
@@ -9334,34 +9373,34 @@ SplitUnitsWorking(SplitctrlgroupStorage_key, SleepSplitUnits)
 {
 	MTsend("^" SplitctrlgroupStorage_key)
 	mousegetpos, Xorigin, Yorigin
-	a_SelectedUnits := []
+	aSelectedUnits := []
 	xSum := ySum := 0
 	while (A_Index <= getSelectionCount())	
 	{
 		unit := getSelectedUnitIndex(A_Index -1)
 		getUnitMiniMapMousePos(unit, mX, mY)
-		a_SelectedUnits.insert({"Unit": unit, "mouseX": mX, "mouseY": mY})
+		aSelectedUnits.insert({"Unit": unit, "mouseX": mX, "mouseY": mY})
 	}
-	Sort2DArray(a_SelectedUnits, "Unit", 0) ;clicks highest units first, so dont have to calculate new click positions due to the units moving down one spot in the panel grid	
-	Sort2DArray(a_SelectedUnits, "Priority", 1)	; sort in ascending order so select units lower down 1st	
+	Sort2DArray(aSelectedUnits, "Unit", 0) ;clicks highest units first, so dont have to calculate new click positions due to the units moving down one spot in the panel grid	
+	Sort2DArray(aSelectedUnits, "Priority", 1)	; sort in ascending order so select units lower down 1st	
 
-	for index, unit in a_SelectedUnits
+	for index, unit in aSelectedUnits
 		xSum += unit.mouseX, ySum += unit.mouseY
-	xAvg := xSum/a_SelectedUnits.MaxIndex(), yAvg := ySum/a_SelectedUnits.MaxIndex()
+	xAvg := xSum/aSelectedUnits.MaxIndex(), yAvg := ySum/aSelectedUnits.MaxIndex()
 
 	while (getSelectionCount() > 1)
 	{
-		unit := a_SelectedUnits[1]
+		unit := aSelectedUnits[1]
 	;	xR := rand(-2,2), yR := rand(-2,2)
 		FindAngle(Direction, Angle, xAvg,yAvg,unit.mouseX,unit.mouseY)
 		FindXYatAngle(X, Y, Angle, Direction, 4, unit.mouseX, unit.mouseY)
 		x += rand(-2,2), y += rand(-2,2)
 		send {click right %X%, %Y%}
 		tmpObject := []
-		tmpObject.insert(a_SelectedUnits[1])
+		tmpObject.insert(aSelectedUnits[1])
 		DeselectUnitsFromPanel(tmpObject, SleepSplitUnits)
-		a_SelectedUnits.remove(1)
-		if (a_SelectedUnits.MaxIndex() <= 3)
+		aSelectedUnits.remove(1)
+		if (aSelectedUnits.MaxIndex() <= 3)
 			break
 	}
 	MTsend(SplitctrlgroupStorage_key)
@@ -10042,40 +10081,9 @@ getCargoCount(unit)
 */
 
 
-f1::
-
-	numGetSelectionSorted(aSelected)
-	objtree(aSelected)
-	return
-
-
-	return
-	aSelected := []
-	loop % getSelectionCount()
-  	{
-  		unit := getSelectedUnitIndex(A_Index - 1)
-  		unitId := getUnitType(unit)
-  		Priority := getUnitSubGroupPriority(unit)
-  		if aUnitSubGroupAlias.hasKey(unitId)
-  			subGroup := aUnitSubGroupAlias[unitId]
-  		else subGroup := unitId
-  		testName := aUnitName[unitId]
-
- 		aSelected.insert({unit: unit, unitId: unitId, Priority: Priority, subGroup: subGroup, Name: testName})		
-  	}
-  	Sort2DArray(aSelected, "unit", 0)
-  	Sort2DArray(aSelected, "subGroup", 0)
-  	Sort2DArray(aSelected, "Priority", 1)
-  	objtree(aSelected)
-
-return
-
-f2:: 
-ToolTip, % getSelectedUnitIndex(), 500, 500
-return
 /*
-	Sort2DArray(a_RemoveUnits, "Unit", 0) ;clicks highest units first, so dont have to calculate new click positions due to the units moving down one spot in the panel grid	
-	Sort2DArray(a_RemoveUnits, "Priority", 1)
+	Sort2DArray(aRemoveUnits, "Unit", 0) ;clicks highest units first, so dont have to calculate new click positions due to the units moving down one spot in the panel grid	
+	Sort2DArray(aRemoveUnits, "Priority", 1)
 u1  p5 
 u2 	p4
 u3  p4 
@@ -10883,11 +10891,11 @@ getLarvaPointer(Hatch, Larva)
 f3::
 tSpeak(clipboard := isUnitPatrolling(getSelectedUnitIndex()))
 
-	a_RemoveUnits := []
-	findUnitsToRemoveFromArmy(a_RemoveUnits, SelectArmyDeselectXelnaga, SelectArmyDeselectPatrolling, l_ActiveDeselectArmy)
-		Sort2DArray(a_RemoveUnits, "Unit", 0) ;clicks highest units first, so dont have to calculate new click positions due to the units moving down one spot in the panel grid	
-		Sort2DArray(a_RemoveUnits, "Priority", 1)	; sort in ascending order so select units lower down 1st		
-	ObjTree(a_RemoveUnits,"a_selectedunits")
+	aRemoveUnits := []
+	findUnitsToRemoveFromArmy(aRemoveUnits, SelectArmyDeselectXelnaga, SelectArmyDeselectPatrolling, l_ActiveDeselectArmy)
+		Sort2DArray(aRemoveUnits, "Unit", 0) ;clicks highest units first, so dont have to calculate new click positions due to the units moving down one spot in the panel grid	
+		Sort2DArray(aRemoveUnits, "Priority", 1)	; sort in ascending order so select units lower down 1st		
+	ObjTree(aRemoveUnits,"aSelectedUnits")
 return
 
 

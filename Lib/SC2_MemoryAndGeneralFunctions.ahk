@@ -1155,11 +1155,12 @@ numGetControlGroupObject(Byref oControlGroup, Group)
 ; Units with different unitID/SubgroupAliases are tabbable 
 
 ; hallucinated units come before their real counterparts. They can also be tabbed between
+; hallucinated units are also selected with the select army hotkey (unless theyre probes)
 ; so easy/dirty fix is to give them a new subgroup alias slightly lower than their non-hallucinated brothers
 
 ; A subgroup alias is really just a unitID/type i.e. the unit belongs in the tank group
 
-numGetSelectionSorted(ByRef aSelection, ReverseOrder := True)
+numGetSelectionSorted(ByRef aSelection, ReverseOrder := False)
 {
 	aSelection := []
 	selectionCount := getSelectionCount()
@@ -1192,8 +1193,8 @@ numGetSelectionSorted(ByRef aSelection, ReverseOrder := True)
 								, name: aUnitName[unitId]}) ; Include name for easy testing
 	}
 
-	Sort2DArray(aSelection.units, "unitIndex", 0)
-	Sort2DArray(aSelection.units, "subGroup", 0)
+	Sort2DArray(aSelection.units, "unitIndex", !ReverseOrder)   ; 0 on reverse
+	Sort2DArray(aSelection.units, "subGroup", !ReverseOrder)
 	Sort2DArray(aSelection.units, "Priority", ReverseOrder)
 
   	return aSelection["Count"]	
