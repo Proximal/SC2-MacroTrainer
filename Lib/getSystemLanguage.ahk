@@ -131,7 +131,5 @@ getSystemLanguage()
 	languageCode_042a = Vietnamese
 
 	the_language := languageCode_%A_Language%  ; Get the name of the system's default language.
-	if the_language
-		return the_language
-	else return "Error Retrieving Language Name`nLanguage code is: " A_Language
+	return the_language
 }

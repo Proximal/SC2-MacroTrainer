@@ -15,36 +15,56 @@
 	A pointer to a KBDLLHOOKSTRUCT structure.
 */
 
+; Just easy way to install/remove both hooks with one function
 
-
-setLowLevelInputHooks(Install, KeyboardFunction := "KeyboardHook", MouseFunction := "MouseHook")
+setLowLevelInputHooks(Install)
 {
-	; WH_KEYBOARD_LL := 13, WH_MOUSE_LL := 14
-
-	static hHooks := [], CallBacks := [] ; only lookup the callback once for each function
-
-	if Install
+	if install 
 	{
-		if (KeyboardFunction && !CallBacks[KeyboardFunction])
-			hHooks.hHookKeybd  := SetWindowsHookEx(13, CallBacks[KeyboardFunction] := RegisterCallback(KeyboardFunction))
-		else if KeyboardFunction
-			hHooks.hHookKeybd := SetWindowsHookEx(13, CallBacks[KeyboardFunction])
-
-		if (MouseFunction && !CallBacks[MouseFunction])
-			hHooks.hHookMouse  := SetWindowsHookEx(14, CallBacks[MouseFunction] := RegisterCallback(MouseFunction))
-		else if MouseFunction
-			hHooks.hHookMouse := SetWindowsHookEx(14, CallBacks[MouseFunction])
-  		return
-  	}
-  	else
-  	{
-  		if (KeyboardFunction && hHooks.hHookKeybd) ; Don't attempt to remove it if it was never properly installed
-			UnhookWindowsHookEx(hHooks.hHookKeybd), hHooks.hHookKeybd := False
-		if (MouseFunction && hHooks.hHookMouse)	
-			UnhookWindowsHookEx(hHooks.hHookMouse), hHooks.hHookMouse := False	
+		hKbd := setMTKeyboardHook(True)
+		hMse := setMTMouseHook(True)
+		if (!hKbd || !hMse)
+			return 1 ; error installing
+		else return 0
 	}
-  	return	
+	else 
+	{
+		KbdRemoved := setMTKeyboardHook(False)
+		MseRemoved := setMTMouseHook(False)	 ; returns Non-zero on success
+		if (KbdRemoved && MseRemoved)
+			return 0 	; success 
+		else return 1 	; error
+	}
 }
+
+; only lookup the callback once for each function
+setMTKeyboardHook(Install)
+{
+	static hook, CallBack := RegisterCallback("KeyboardHook")
+	if install 
+	{
+		; Attempt to remove the hook if one is already present, as windows lets you install as many as you want
+		if hook
+			UnhookWindowsHookEx(hook)
+		hook := SetWindowsHookEx(13, CallBack) ; WH_KEYBOARD_LL := 13
+	}
+	else return UnhookWindowsHookEx(hook)
+	return hook
+}
+
+setMTMouseHook(Install)
+{	
+	static hook, CallBack := RegisterCallback("MouseHook")
+	if install 
+	{
+		if hook
+			UnhookWindowsHookEx(hook)
+		hook := SetWindowsHookEx(14, CallBack) 	; WH_MOUSE_LL := 14 
+	}
+	else return UnhookWindowsHookEx(hook)
+	return hook
+}
+
 
 MT_InputIdleTime(NewInputTickCount := 0)
 {

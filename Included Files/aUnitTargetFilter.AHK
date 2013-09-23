@@ -1,4 +1,4 @@
-a_UnitTargetFilter := {Outer: 0x0000800000000000
+aUnitTargetFilter := {Outer: 0x0000800000000000
 	, Unstoppable: 0x0000400000000000
 	, Summoned: 0x0000200000000000
 	, Stunned: 0x0000100000000000
