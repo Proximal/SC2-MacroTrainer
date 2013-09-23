@@ -8755,10 +8755,20 @@ g_SelectArmy:
 	MTsend(Sc2SelectArmy_Key)
 	dSleep(20)
 	aRemoveUnits := [], aSelected := []
-	aRemoveUnits := findUnitsToRemoveFromArmy(aSelected, SelectArmyDeselectXelnaga, SelectArmyDeselectPatrolling
-						, SelectArmyDeselectHoldPosition, SelectArmyDeselectFollowing, l_ActiveDeselectArmy)
-	if aRemoveUnits.MaxIndex()
-		DeselectUnitsFromPanel(aRemoveUnits, aSelected, -1)
+
+; 	23/09
+;	This WILL work with the new sorting method	
+;	aRemoveUnits := findUnitsToRemoveFromArmy(aSelected, SelectArmyDeselectXelnaga, SelectArmyDeselectPatrolling
+;						, SelectArmyDeselectHoldPosition, SelectArmyDeselectFollowing, l_ActiveDeselectArmy)
+;	if aRemoveUnits.MaxIndex()
+;		DeselectUnitsFromPanel(aRemoveUnits, aSelected, -1)
+
+;	This is another way to do it with two slightly different functions (this way would be faster too)
+	aUnitPortraitLocations := []
+	aUnitPortraitLocations := findUnitsToRemoveFromArmySimple("", SelectArmyDeselectXelnaga, SelectArmyDeselectPatrolling
+									, SelectArmyDeselectHoldPosition, SelectArmyDeselectFollowing, l_ActiveDeselectArmy)
+	DeselectUnitPortaits(aUnitPortraitLocations)
+
 	dSleep(15)
 	if SelectArmyControlGroupEnable
 		MTsend("^" Sc2SelectArmyCtrlGroup)
@@ -8767,7 +8777,7 @@ g_SelectArmy:
 	critical, off
 	input.hookBlock(False, False)	
 	sleep 5
-	
+;	ObjTree(aUnitPortraitLocations)
 ;	setLowLevelInputHooks(True)	
 	 	
 	; 	Update:
@@ -8849,6 +8859,36 @@ findUnitsToRemoveFromArmy(byref aSelected := "", DeselectXelnaga = 1, DeselectPa
 	return remove
 }
 
+f5::
+objtree(findUnitsToRemoveFromArmySimple(aSelected,0,1))
+return
+; returns a simple array with the exact unit portrait location to be clicked
+; as used by ClickUnitPortrait
+; The highest portrait locations come first
+findUnitsToRemoveFromArmySimple(byref aSelected := "", DeselectXelnaga = 1, DeselectPatrolling = 1, DeselectHoldPosition = 0, DeselectFollowing = 0, lTypes = "")
+{ 	global uMovementFlags
+	if (!isObject(aSelected) || !aSelected.maxIndex())
+		numGetSelectionSorted(aSelected) ; get a sorted array of the selection buffer
+	remove := []
+;	for i, unit in aSelected.units
+	loop % aSelected.units.maxIndex()
+	{	
+		unit := aSelected.units[aSelected.units.maxIndex() - A_Index + 1] ; manually iterate units backward
+		state := getUnitMoveState(unit.unitIndex)
+		if (DeselectXelnaga && isUnitHoldingXelnaga(unit.unitIndex))
+			|| (DeselectPatrolling && state = uMovementFlags.Patrol)
+			|| (DeselectHoldPosition && state = uMovementFlags.HoldPosition)
+			|| (DeselectFollowing && (state = uMovementFlags.Follow || state = uMovementFlags.FollowNoAttack)) ;no attack follow is used by spell casters e.g. HTs & infests which dont have and attack
+				remove.insert(aSelected.units.maxIndex() - A_Index) ; As portrait location begins at 0
+		else if lTypes  
+		{
+			type := unit.unitId
+			If type in %lTypes%
+				remove.insert(aSelected.units.maxIndex() - A_Index)
+		}			
+	}
+	return remove
+}
 
 SortSelectedUnits(byref a_Units)
 {
@@ -8906,6 +8946,24 @@ DeselectUnitsFromPanel(aRemoveUnits, aSelection := "", sleep := -1)
 	return
 }
 
+; deselects an array of unit portraits
+; the portraits should be sorted in descending order
+DeselectUnitPortaits(aUnitPortraitLocations)
+{
+	for i, portrait in aUnitPortraitLocations
+	{
+		if ClickUnitPortrait(portrait, X, Y, Xpage, Ypage) 
+			MTclick(Xpage, Ypage)
+		MTsend("+{click " x " " y "}")		
+	}
+	if getUnitSelectionPage()	;ie slection page is not 0 (hence its not on 1 (1-1))
+	{
+		ClickUnitPortrait(0, X, Y, Xpage, Ypage, 1) ; this selects page 1 when done
+		MTclick(Xpage, Ypage)
+	;	send {click Left %Xpage%, %Ypage%}
+	}
+	return	
+}
 
 
 ClickSelectUnitsPortriat(unit, sleep=20, ClickModifier="")	;can put ^ to do a control click
