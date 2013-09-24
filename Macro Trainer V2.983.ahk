@@ -890,7 +890,7 @@ setupMiniMapUnitLists()
 
 setupSelectArmyUnits(l_input, aUnitID)
 {
-	a_Units := []
+	aUnits := []
 	StringReplace, l_input, l_input, %A_Space%, , All ; Remove Spaces
 	l_input := Trim(l_input, " `t , |")
 	loop, parse, l_input, `,
@@ -8787,31 +8787,9 @@ g_SelectArmy:
 	;	on next loop through
 return
 
-f1:: 
-numGetSelectionSorted(aSelection)
-objtree(aSelection)
-return 
-f2:: 
-ObjTree(aRemoveUnits, "aRemoveUnits")
-sleep 20
-ObjTree(aSelected, "aSelected")
-return
-getScreenAspectRatio()
-{ 	;ROUND as this should group 1366x768 (1.7786458333) in with 16:9
-	AspectRatio := Round(A_ScreenWidth / A_ScreenHeight, 2)
-	if ( AspectRatio = Round(1680/1050, 2)) 	; 1.6
-		AspectRatio := "16:10"
-	else if (AspectRatio = Round(1920/1080, 2)) ; 1.78
-		AspectRatio := "16:9"
-	else if (AspectRatio = Round(1280/1024, 2)) ; 1.25
-		AspectRatio := "5:4"
-	else if (AspectRatio = Round(1600/1200, 2)) ; 1.33
-		AspectRatio := "4:3"
-	else AspectRatio := "Unknown"
-	return AspectRatio
-}
 
-findUnitsToRemoveFromArmyOld(byref a_Units, DeselectXelnaga = 1, DeselectPatrolling = 1, DeselectHoldPosition = 0, DeselectFollowing = 0, l_Types = "")
+
+findUnitsToRemoveFromArmyOld(byref aUnits, DeselectXelnaga = 1, DeselectPatrolling = 1, DeselectHoldPosition = 0, DeselectFollowing = 0, l_Types = "")
 { global uMovementFlags
 	while (A_Index <= getSelectionCount())		;loop thru the units in the selection buffer	
 	{		
@@ -8821,12 +8799,12 @@ findUnitsToRemoveFromArmyOld(byref a_Units, DeselectXelnaga = 1, DeselectPatroll
 		|| (DeselectPatrolling && state = uMovementFlags.Patrol)
 		|| (DeselectHoldPosition && state = uMovementFlags.HoldPosition)
 		|| (DeselectFollowing && (state = uMovementFlags.Follow || state = uMovementFlags.FollowNoAttack)) ;no attack follow is used by spell casters e.g. HTs & infests which dont have and attack
-			a_Units.insert({"Unit": unit, "Priority": getUnitSubGroupPriority(unit)})
+			aUnits.insert({"Unit": unit, "Priority": getUnitSubGroupPriority(unit)})
 		else if l_Types  
 		{
 			type := getunittype(unit)
 			If type in %l_Types%
-				a_Units.insert({"Unit": unit, "Priority": getUnitSubGroupPriority(unit)})
+				aUnits.insert({"Unit": unit, "Priority": getUnitSubGroupPriority(unit)})
 		}
 	}
 	return
@@ -8859,9 +8837,6 @@ findUnitsToRemoveFromArmy(byref aSelected := "", DeselectXelnaga = 1, DeselectPa
 	return remove
 }
 
-f5::
-objtree(findUnitsToRemoveFromArmySimple(aSelected,0,1))
-return
 ; returns a simple array with the exact unit portrait location to be clicked
 ; as used by ClickUnitPortrait
 ; The highest portrait locations come first
@@ -8890,14 +8865,14 @@ findUnitsToRemoveFromArmySimple(byref aSelected := "", DeselectXelnaga = 1, Dese
 	return remove
 }
 
-SortSelectedUnits(byref a_Units)
+SortSelectedUnits(byref aUnits)
 {
-	a_Units := []
+	aUnits := []
 	i := getSelectionCount()
 	while (A_index  <= i)
-		a_Units.insert({"Unit": unit := getSelectedUnitIndex(A_Index-1), "Priority": getUnitSubGroupPriority(unit)})
-	Sort2DArray(a_Units, "Unit") ; sort in ascending order
-	Sort2DArray(a_Units, "Priority", 0)	; sort in descending order
+		aUnits.insert({"Unit": unit := getSelectedUnitIndex(A_Index-1), "Priority": getUnitSubGroupPriority(unit)})
+	Sort2DArray(aUnits, "Unit") ; sort in ascending order
+	Sort2DArray(aUnits, "Priority", 0)	; sort in descending order
 	return
 }	
 
@@ -9044,19 +9019,19 @@ ClickUnitPortrait(SelectionIndex=0, byref X=0, byref Y=0, byref Xpage=0, byref Y
 	return 0	
 }
 
-FindSelectedUnitsOnXelnaga(byref a_Units)
+FindSelectedUnitsOnXelnaga(byref aUnits)
 {
 	while (A_Index <= getSelectionCount())		;loop thru the units in the selection buffer	
 		if isUnitHoldingXelnaga(unit := getSelectedUnitIndex(A_Index -1))
-			a_Units.insert({"Unit": unit, "Priority": getUnitSubGroupPriority(unit)})
+			aUnits.insert(unit)
 	return
 }
 
-FindSelectedPatrollingUnits(byref a_Units)
+FindSelectedPatrollingUnits(byref aUnits)
 {
 	while (A_Index <= getSelectionCount())		;loop thru the units in the selection buffer	
 		if isUnitPatrolling(unit := getSelectedUnitIndex(A_Index -1))
-			a_Units.insert({"Unit": unit, "Priority": getUnitSubGroupPriority(unit)})
+			aUnits.insert(unit)
 	return
 }
 sortSelectedUnitsByDistance(byref aSelectedUnits, Amount = 3)	;takes a simple array which contains the selection indexes (begins at 0)
@@ -9086,11 +9061,6 @@ sortSelectedUnitsByDistance(byref aSelectedUnits, Amount = 3)	;takes a simple ar
 	return 
 } 
 
-
-getUnitSelectionPage()	;0-5 indicates which unit page is currently selected (in game its 1-6)
-{	global 	
-	return pointer(GameIdentifier, P_SelectionPage, O1_SelectionPage, O2_SelectionPage, O3_SelectionPage)
-}
 
 debugData()
 { 	global a_Player, O_mTop, GameIdentifier
@@ -10158,19 +10128,7 @@ u3  p4
 ;msgbox % clipboard := dectohex(getUnitAbilityPointer(getSelectedUnitIndex()))
 ;msgbox % isUnitStimed(getSelectedUnitIndex())
 return
-sleep 500
-critical, on
-selectGroup(1, -1, 8)
-var := getSelectionCount()
-MTsend("{Tab}")
 
-clipboard := var
-return
-MTsend("{Tab}{Tab}{Tab}{Tab}{Tab}ss")
-;DllCall("Sleep", Uint, 2)
-;MTsend("ss")
-
-return
 /* 	pSend vs Control Send
 	Test: loop 1000
 			send "a"
