@@ -1,50 +1,47 @@
-; A modified bubble search
-; This is slow, but very useful.
-; If called in the correct sequence, you can completely order 
-; a 2 dimensional array by as many keys as you want (and in any order)!
+; Note: This can only be used if you want to order the array
+; by one key, and you dont care about how any of the other key values
+; are ordered (when there are multiple sorted keys with the same value)
+; eg sort could result in something like this:
 
-; to achieve this, simply call the function multiple times
-; beginning with the lowest priority key, and ending with the highest priority key
+; sortedKey:     1     associatedKey:   0
+; sortedKey:     2     associatedKey:   2*   Higher
+; sortedKey:     2     associatedKey:   1*   Lower
+; sortedKey:     2     associatedKey:   3
+; sortedKey:     3     associatedKey:   12
 
-sort2DArray(Byref a, key, Order := 1) 
+; (the associated keys will still be paired with their associated sorted key)   
+
+sort2DArray(byRef a, key, Ascending := True)
 {
-    aStorage := []
-    unsorted := True 
-    While unsorted 		                        ; a two dimensional a
-	{           					            ;key : the key name to be sorted
-        unsorted := False                       ;Order: 1:Ascending 0:Descending
-        For index, in a  		 
-		{
-            if (lastIndex = index)          ; This speeds it up (almost halves the time)
-                break                  
-            if (A_Index > 1) &&  (Order 
-                                    ? (a[prevIndex, key] > a[index, key]) 
-                                    : (a[prevIndex, key] < a[index, key])) 
-			{       
-                ; making this a single line expression saves ~20 ms on a 1000 index array
-                aStorage := a[index]
-                , a[index] := a[prevIndex]
-                , a[prevIndex] := aStorage
-                , unsorted := True			
-            }         
-            prevIndex := index
-        }  
-        lastIndex := prevIndex ; previous maxIndex reached (i.e. position of the last moved highest/lowest number)
-        ; on each pass through the current highest number will be moved to 1 spot before 'lastIndex'
-        ; i.e. towards the right
-        ; As we know these values at the end are already the highest
-        ; we can break, and don't have to worry about comparing them again
-    }
-}
+    for index, obj in a
+        out .= obj[key] "-" index "|" ; "-" allows for sort to work with just the value
+    ; out will look like:   value-index|value-index|
 
-; My old Method for bubble used pointers
-/*              
-               address := &a[index]              
-               , PrevAddress := &a[prevIndex]
-               , a[index] := Object(PrevAddress)               
-               , a[prevIndex] := Object(address)  
-    This was maringally slower (&address disables binary caching?)
-    for an object which contained 10000 simple 2 element objects
-    this was only 1ms slower 62524 ms vs 66318 ms
-    clearing the storage object just once (at start) saves another 3s
+    v := a[a.minIndex(), key]
+    if v is number 
+        type := " N "
+    StringTrimRight, out, out, 1 ; remove trailing | 
+    Sort, out, % "D| " type  (!Ascending ? " R" : " ")
+    aStorage := []
+    loop, parse, out, |
+    {
+        StringSplit, split, A_LoopField, -
+        ; split1 = value, split2 = index
+        aStorage.insert(a[split2])
+    }
+    a := aStorage
+    return
+}
+; the sort command only takes a fraction of the function time, the rest is spent
+; iterating and copying the data
+
+; Test:
+; Object: 
+/*
+    loop 10000
+         a.insert({ "key": rand(1,10), "another": "b"})
 */
+; Old Bubble Search
+; Bubble took 54,032 ms
+; New sort took 26.7 ms (2,023x Faster!)
+

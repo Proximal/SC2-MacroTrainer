@@ -991,13 +991,13 @@ Cast_ChronoStructure(StructureToChrono)
 		}	
 
 		if a_WarpgatesOnCoolDown.MaxIndex()
-			Sort2DArray(a_WarpgatesOnCoolDown, "Cooldown", 0)	;so warpgates with longest cooldown get chronoed first
+			bubbleSort2DArray(a_WarpgatesOnCoolDown, "Cooldown", 0)	;so warpgates with longest cooldown get chronoed first
 		if a_gatewaysConvertingToWarpGates.MaxIndex()	
-			RandomiseSimpleArray(a_gatewaysConvertingToWarpGates)
+			RandomiseArray(a_gatewaysConvertingToWarpGates)
 		if a_gateways.MaxIndex()
 		{
-			Sort2DArray(a_gateways, "progress", 1) 				; so the strucutes with least progress gets chronoed (providing have same queue size)
-			Sort2DArray(a_gateways, "QueueSize", 0) 			; so One with the longest queue gets chronoed first
+			bubbleSort2DArray(a_gateways, "progress", 1) 				; so the strucutes with least progress gets chronoed (providing have same queue size)
+			bubbleSort2DArray(a_gateways, "QueueSize", 0) 			; so One with the longest queue gets chronoed first
 		}
 
 		for index, Warpgate in a_WarpgatesOnCoolDown 			; so Warpgates will get chronoed 1st
@@ -1028,8 +1028,8 @@ Cast_ChronoStructure(StructureToChrono)
 		;	structures with the longest queues will be chronoed first
 		; 	if queue size is equal, chronoed by progress (least progressed chronoed 1st)
 
-		Sort2DArray(oStructureToChrono, "progress", 1) ; so the strucutes with least progress gets chronoed (providing have same queue size)
-		Sort2DArray(oStructureToChrono, "QueueSize", 0) ; so One with the longest queue gets chronoed first
+		bubbleSort2DArray(oStructureToChrono, "progress", 1) ; so the strucutes with least progress gets chronoed (providing have same queue size)
+		bubbleSort2DArray(oStructureToChrono, "QueueSize", 0) ; so One with the longest queue gets chronoed first
 	}
 	
 	If !oStructureToChrono.maxIndex()
@@ -6266,7 +6266,7 @@ sortUnitsByDistance(Base, unitlist="", units*)
 		unit_x := getUnitPositionX(unit), unit_y := getUnitPositionY(unit)
 		List[A_Index] := {Unit:unit,Distance:Abs(Base_x - unit_x) + Abs(Base_y - unit_y)}	
 	}
-	Sort2DArray(List, "Distance")
+	bubbleSort2DArray(List, "Distance")
 	For index, obj in List
 		SortedList .= List[index].Unit "|"
 	return RTrim(SortedList, "|")
@@ -6284,7 +6284,7 @@ SortUnitsByMapOrder(unitlist="", units*)
 	for index, unit in units
 		List[A_Index] := {Unit:unit, X: getUnitPositionX(unit), Y: getUnitPositionY(unit)}	
 
-	Sort2DArray(List, "X") ;3rd param def 1 OR ascending
+	bubbleSort2DArray(List, "X") ;3rd param def 1 OR ascending
 	For index, obj in List
 	{
 		If (index = List.minindex())
@@ -6292,7 +6292,7 @@ SortUnitsByMapOrder(unitlist="", units*)
 		If (index = List.MaxIndex())
 			X_Max := List[index].X
 	}
-	Sort2DArray(List, "Y")
+	bubbleSort2DArray(List, "Y")
 	For index, obj in List
 	{
 		If (index = List.minindex())
@@ -6302,13 +6302,13 @@ SortUnitsByMapOrder(unitlist="", units*)
 	}		 
 	If (X_Delta := Abs(X_Max-X_Min)) > (Y_Delta := Abs(Y_Max-Y_Min))
 	{
-		Sort2DArray(List, "X")
+		bubbleSort2DArray(List, "X")
 		For index, obj in List
 			SortedList .= List[index].Unit "|"
 	}
 	else 
 	{
-		Sort2DArray(List, "Y")
+		bubbleSort2DArray(List, "Y")
 		For index, obj in List
 			SortedList .= List[index].Unit "|"	
 	}
@@ -8486,7 +8486,7 @@ castInjectLarva(Method="Backspace", ForceInject=0, sleepTime=80)	;SendWhileBlock
 
 	    For Index, CurrentHatch in oHatcheries 	; so (for the most part) the inject order should match the basecamera order - though there are more rules than just age
 	    	CurrentHatch.Age := getUnitTimer(CurrentHatch.unit)
-	    Sort2DArray(oHatcheries, "Age", 0) ; 0 = descending
+	    bubbleSort2DArray(oHatcheries, "Age", 0) ; 0 = descending
 
 		If(Local QueenCount := getGroupedQueensWhichCanInject(oSelection))  ; this wont fetch burrowed queens!! so dont have to do a check below - as burrowed queens can make cameramove when clicking their hatch
 		{
@@ -8872,8 +8872,8 @@ SortSelectedUnits(byref aUnits)
 	i := getSelectionCount()
 	while (A_index  <= i)
 		aUnits.insert({"Unit": unit := getSelectedUnitIndex(A_Index-1), "Priority": getUnitSubGroupPriority(unit)})
-	Sort2DArray(aUnits, "Unit") ; sort in ascending order
-	Sort2DArray(aUnits, "Priority", 0)	; sort in descending order
+	bubbleSort2DArray(aUnits, "Unit") ; sort in ascending order
+	bubbleSort2DArray(aUnits, "Priority", 0)	; sort in descending order
 	return
 }	
 
@@ -9054,11 +9054,11 @@ sortSelectedUnitsByDistance(byref aSelectedUnits, Amount = 3)	;takes a simple ar
 			aSelectedUnits.insert({"Unit": unit, "Priority": getUnitSubGroupPriority(unit), "Distance": Abs(Base_x - unit_x) + Abs(Base_y - unit_y)})
 		}
 	}
-	Sort2DArray(aSelectedUnits, "Distance", 1)
+	bubbleSort2DArray(aSelectedUnits, "Distance", 1)
 	while (aSelectedUnits.MaxIndex() > Amount)
 		aSelectedUnits.Remove(aSelectedUnits.MaxIndex()) 	
-	Sort2DArray(aSelectedUnits, "Unit", 0) ;clicks highest units first, so dont have to calculate new click positions due to the units moving down one spot in the panel grid	
-	Sort2DArray(aSelectedUnits, "Priority", 1)	; sort in ascending order so select units lower down 1st	
+	bubbleSort2DArray(aSelectedUnits, "Unit", 0) ;clicks highest units first, so dont have to calculate new click positions due to the units moving down one spot in the panel grid	
+	bubbleSort2DArray(aSelectedUnits, "Priority", 1)	; sort in ascending order so select units lower down 1st	
 	return 
 } 
 
@@ -9369,7 +9369,7 @@ SplitUnits(SplitctrlgroupStorage_key, SleepSplitUnits)
 			unit.absDistance := Abs(x - unit.mouseX)+ Abs(y - unit.mouseY)
 ;		clipboard .= "(" x ", " y ")`n"
 
-		Sort2DArray(aSelectedUnits, "absDistance", 1)		
+		bubbleSort2DArray(aSelectedUnits, "absDistance", 1)		
 		tmpObject := []
 		tmpObject.insert(aSelectedUnits[1])
 		;send {click right %X%, %Y%}
@@ -9410,8 +9410,8 @@ SplitUnitsWorking(SplitctrlgroupStorage_key, SleepSplitUnits)
 		getUnitMiniMapMousePos(unit, mX, mY)
 		aSelectedUnits.insert({"Unit": unit, "mouseX": mX, "mouseY": mY})
 	}
-	Sort2DArray(aSelectedUnits, "Unit", 0) ;clicks highest units first, so dont have to calculate new click positions due to the units moving down one spot in the panel grid	
-	Sort2DArray(aSelectedUnits, "Priority", 1)	; sort in ascending order so select units lower down 1st	
+	bubbleSort2DArray(aSelectedUnits, "Unit", 0) ;clicks highest units first, so dont have to calculate new click positions due to the units moving down one spot in the panel grid	
+	bubbleSort2DArray(aSelectedUnits, "Priority", 1)	; sort in ascending order so select units lower down 1st	
 
 	for index, unit in aSelectedUnits
 		xSum += unit.mouseX, ySum += unit.mouseY
@@ -10111,8 +10111,8 @@ getCargoCount(unit)
 
 
 /*
-	Sort2DArray(aRemoveUnits, "Unit", 0) ;clicks highest units first, so dont have to calculate new click positions due to the units moving down one spot in the panel grid	
-	Sort2DArray(aRemoveUnits, "Priority", 1)
+	bubbleSort2DArray(aRemoveUnits, "Unit", 0) ;clicks highest units first, so dont have to calculate new click positions due to the units moving down one spot in the panel grid	
+	bubbleSort2DArray(aRemoveUnits, "Priority", 1)
 u1  p5 
 u2 	p4
 u3  p4 
@@ -10910,8 +10910,8 @@ tSpeak(clipboard := isUnitPatrolling(getSelectedUnitIndex()))
 
 	aRemoveUnits := []
 	findUnitsToRemoveFromArmy(aRemoveUnits, SelectArmyDeselectXelnaga, SelectArmyDeselectPatrolling, l_ActiveDeselectArmy)
-		Sort2DArray(aRemoveUnits, "Unit", 0) ;clicks highest units first, so dont have to calculate new click positions due to the units moving down one spot in the panel grid	
-		Sort2DArray(aRemoveUnits, "Priority", 1)	; sort in ascending order so select units lower down 1st		
+		bubbleSort2DArray(aRemoveUnits, "Unit", 0) ;clicks highest units first, so dont have to calculate new click positions due to the units moving down one spot in the panel grid	
+		bubbleSort2DArray(aRemoveUnits, "Priority", 1)	; sort in ascending order so select units lower down 1st		
 	ObjTree(aRemoveUnits,"aSelectedUnits")
 return
 

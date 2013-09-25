@@ -1,71 +1,74 @@
 #singleinstance force 
-critical
-a := [], a.b := []
-loop 10
-    a.b.insert({"key1":  A_index, "key2":  rand(1, 20), "key3":  rand(1, 20)})
 
-;a.b := reverseArray(a.b) 
-reverseArray(a.b) 
-objtree(a.b)
+a := []
 
-for i, o in a.b 
-    s .= o.key1 "`n"
-msgbox % s
-return 
+a.b := [] 
 
-; 2133.818577
-; 2114.423743
-; 
+loop 10 
+ 
+   ; a.insert(A_Index)
+    a.b.insert(A_Index)
+test(a.b)
 
-/*
-For 2 keys, sort by the minor one first
-
-For any number of keys in the same sort order just 
-sort in from minor to major keys
-
-*/
-
-multi2DSort(byRef a, ascending := True, keys*)
+test(byRef a)
 {
-    reverseArray(keys)
-    for i, key in keys 
-    {
-        sort2DArray(a, key, ascending)
-    }
-}
+    for i in a 
+        a[i] := 10
+    return
+}    
+objtree(a)
 
-multiOrder2DSort(byRef a, aKeyOrder)
+
+
+
+
+
+
+
+return
+a := []
+loop 20
+    a.insert({"Letter": chr(96 + A_Index), "AssociatedValue": A_index})
+for i, o in a, s := "Letter" A_Tab "AssociatedValue`n`n"
+    s .= o.Letter A_Tab o.AssociatedValue "`n"
+msgbox % s "`n`nStarting values`n`nclick ok to randomise array"
+
+RandomiseArray(a)
+for i, o in a, s := "" 
+    s .= o.Letter A_Tab o.AssociatedValue "`n"
+msgbox % s "`n`nclick ok to sort by letter (descending)"
+
+sort2DArray(a, "Letter", 0) ; Descending 
+for i, o in a, s := "" 
+    s .= o.Letter A_Tab o.AssociatedValue "`n"
+msgbox % clipboard := s "`n`nclick ok to reverse order"
+
+reverseArray(a)
+for i, o in a, s := ""
+    s .= o.Letter A_Tab o.AssociatedValue "`n"
+msgbox % clipboard := s 
+
+a := []
+key := 97 
+loop 20
 {
-    aReversed := []
-    for key, order in aKeyOrder
-        aReversed.insert(1, {(key): order})
-    for i, object in aReversed
-    {
-        for key, order in object 
-            sort2DArray(a, key, order)
-    }
-    return 
+    random, major, 97, 101
+    random, minor, 1, 2
+    random, SubMinor, 1, 2
+    a.insert({"major": chr(major), "minor": minor, "SubMinor": SubMinor})
 }
+for i, o in a, s := "Unsorted`n`n" "Major" A_Tab A_Tab A_Tab "Minor" A_Tab A_Tab A_Tab "SubMinor`n`n"
+    s .= o.major A_Tab A_Tab A_Tab o.minor A_Tab A_Tab A_Tab o.SubMinor "`n"
+msgbox % clipboard := s "`n`nBubble sort can be used to correctly rank items by any number of properties"
+        . "`nclick ok to order by major, then minor, then SubMinor"
+; Call bubble sort using the lowest priority key first
+bubbleSort2DArray(a, "SubMinor", 0)
+bubbleSort2DArray(a, "minor", 1)
+bubbleSort2DArray(a, "major", 1)
 
+s := "Major" A_Tab A_Tab A_Tab "Minor" A_Tab A_Tab A_Tab "SubMinor"
+ . "`nAscending" A_Tab A_Tab "Ascending" A_Tab A_Tab "Descending`n`n" 
 
-reverseArray(Byref a)
-{
-    aIndices := []
-    for index, in a
-        aIndices.insert(index)
-    aStorage := []
-    loop % aIndices.maxIndex() 
-       aStorage.insert(a[aIndices[aIndices.maxIndex() - A_index + 1]]) 
-    a := aStorage
-    return aStorage ; for objects within objects
-}
-
-reverseArray2(Byref a)
-{
-    aStorage := []
-    for index, v in a
-        aStorage.insert(1, V)
-    objtree(aStorage) 
-    a := aStorage
-    return aStorage
-}
+for i, o in a
+    s .= o.major A_Tab A_Tab A_Tab o.minor A_Tab A_Tab A_Tab o.SubMinor "`n"
+msgbox % clipboard := s 

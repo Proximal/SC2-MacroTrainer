@@ -1160,9 +1160,9 @@ numGetControlGroupObject(Byref oControlGroup, Group)
 
 ; A subgroup alias is really just a unitID/type i.e. the unit belongs in the tank group
 
-; This method does not call Sort2DArray. Sort2DArray uses a bubble method of sorting
+; This method does not call bubbleSort2DArray. bubbleSort2DArray uses a bubble method of sorting
 ; Which is very slow, and becomes much much slower as the array size grows
-; Not only that, but calling  Sort2DArray three times is required to get the units in the 
+; Not only that, but calling  bubbleSort2DArray three times is required to get the units in the 
 ; correct order. Hence this takes a very long time!
 ;
 ; This new method exploits AHKs internal sorting method for objects, so no manual sorting is required!
@@ -1265,9 +1265,9 @@ numGetSelectionBubbleSort(ByRef aSelection, ReverseOrder := False)
 								, name: aUnitName[unitId]}) ; Include name for easy testing
 	}
 
-	Sort2DArray(aSelection.units, "unitIndex", !ReverseOrder)   ; 0 on reverse
-	Sort2DArray(aSelection.units, "subGroup", !ReverseOrder)
-	Sort2DArray(aSelection.units, "Priority", ReverseOrder)
+	bubbleSort2DArray(aSelection.units, "unitIndex", !ReverseOrder)   ; 0 on reverse
+	bubbleSort2DArray(aSelection.units, "subGroup", !ReverseOrder)
+	bubbleSort2DArray(aSelection.units, "Priority", ReverseOrder)
 
   	return aSelection["Count"]	
 }
@@ -1290,8 +1290,8 @@ numGetUnitSelectionObject(ByRef aSelection, mode = 0)
 			unit := numget(MemDump,(A_Index-1) * S_scStructure + O_scUnitIndex , "Int") >> 18
 			aSelection.units.insert({ "Type": getUnitType(unit), "UnitIndex": unit, "Priority": getUnitSubGroupPriority(unit)})	;NOTE this object will be accessed differently than the one below
 		}
-		Sort2DArray(aSelection.units, "UnitIndex", 1) ; sort in ascending order
-		Sort2DArray(aSelection.units, "Priority", 0)	; sort in descending order
+		bubbleSort2DArray(aSelection.units, "UnitIndex", 1) ; sort in ascending order
+		bubbleSort2DArray(aSelection.units, "Priority", 0)	; sort in descending order
 	}
 	else if (mode = "UnSortedWithPriority")		
 		loop % aSelection["Count"]
@@ -1463,7 +1463,7 @@ SortUnitsByAge(unitlist="", units*)
 	}	
 	for index, unit in units
 		List[A_Index] := {Unit:unit,Age:getUnitTimer(unit)}
-	Sort2DArray(List, "Age", 0) ; 0 = descending
+	bubbleSort2DArray(List, "Age", 0) ; 0 = descending
 	For index, obj in List
 		SortedList .= List[index].Unit "|"
 	return RTrim(SortedList, "|")
