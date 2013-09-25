@@ -34,5 +34,22 @@ reverseArraySort(Byref a)
     a := aStorage
     return aStorage
 }
+An even slower way is to use AHKs Object.Insert(1, Value)
+But this is really really slow, as it has to re-adjust every 
+value's position when another one is added.
+reverseArrayInsert(Byref a)
+{
+    aStorage := []
+    for index, v in a
+        aStorage.insert(1, V)
+    objtree(aStorage) 
+    a := aStorage
+    return aStorage
+}
+
+This is ~930x slower for a 10,000 key object.
+And probably becomes exponentially slower as the number of keys
+increase.
+
 */
 

@@ -8772,6 +8772,7 @@ g_SelectArmy:
 	dSleep(15)
 	if SelectArmyControlGroupEnable
 		MTsend("^" Sc2SelectArmyCtrlGroup)
+	dSleep(5)
 	input.pSendDelay(pKeyDelay)
 	input.pClickDelay(pKeyDelay)
 	critical, off

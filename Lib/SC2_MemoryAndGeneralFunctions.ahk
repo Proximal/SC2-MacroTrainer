@@ -1187,8 +1187,8 @@ numGetSelectionSorted(ByRef aSelection, ReverseOrder := False)
 	aStorage := []
 	loop % aSelection.Count
 	{
-		; Use a negative priority so AHKs normal object enumerates them is the correct 
-		; unit panel order
+		; Use a negative priority so AHKs normal object enumerates them in the correct 
+		; unit panel order (backwards to how they would normally be enumerated)
 		priority := -1 * getUnitSubGroupPriority(unit := numget(MemDump,(A_Index-1) * S_scStructure + O_scUnitIndex , "Int") >> 18)
 		unitId := getUnitType(unit)
 		subGroupAlias := getUnitTargetFilterFast(unit) & aUnitTargetFilter.Hallucination 
