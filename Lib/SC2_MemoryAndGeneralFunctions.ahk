@@ -1210,7 +1210,7 @@ numGetSelectionSorted(ByRef aSelection, ReverseOrder := False)
 		; when aStorage is enumerated, units will be accessed in the same order
 		; as they appear in the unit panel ie top left to bottom right 	
 	}
-	aSelection.IndicesString := sIndices
+	aSelection.IndicesString := substr(sIndices, 2) ; trim first "," 
 	if (aSelection.Count && nonLocalUnitSelected)
 		aSelection.IsGroupable := True
 	; This will convert the data into a simple indexed object

@@ -6911,6 +6911,7 @@ autoWorkerProductionCheck()
 					return		
 			}
 			selctionUnitIndices := oSelection.IndicesString
+			clipboard := selctionUnitIndices
 			loop, parse, selctionUnitIndices, `,
 			{
 				if A_LoopField not in %L_BaseCtrlGroupIndexes%	 ; so if a selected unit isnt in the base control group			
@@ -6983,7 +6984,8 @@ autoWorkerProductionCheck()
 						break
 					}
 				}
-				if (setControlGroup || L_SelectionIndexes != L_ControlstorageIndexes)  
+				L_ControlstorageIndexes := subStr(L_ControlstorageIndexes, 2)
+				if (setControlGroup || oSelection.IndicesString != L_ControlstorageIndexes)  
 					MTsend("^" controlstorageGroup )
 				MTsend(mainControlGroup)
 				dSleep(10) ; wont have that many units grouped with the buildings so 10ms should be plenty
