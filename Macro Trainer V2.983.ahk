@@ -6988,20 +6988,19 @@ autoWorkerProductionCheck()
 				MTsend(mainControlGroup)
 				dSleep(10) ; wont have that many units grouped with the buildings so 10ms should be plenty
 				numGetSelectionSorted(oSelection)
-			}	
-
-			for index, unit in oSelection.units
-			{
-				if (unit.unitId = aUnitId.Nexus
-					|| unit.unitId = aUnitId.OrbitalCommand
-					|| unit.unitId = aUnitId.CommandCenter
-					|| unit.unitId = aUnitId.PlanetaryFortress)
-				{
-					tabPosition := unit.tabPosition
-					break
-				}
 			}
 
+			; These terran mains are in order as they
+			; would appear in the  selection group
+			if (aLocalPlayer.Race = "Protoss")
+				tabPosition := 	oSelection.TabPositions[aUnitId.Nexus]
+			else if oSelection.TabPositions.HasKey(aUnitId.OrbitalCommand)
+				tabPosition := oSelection.TabPositions[aUnitId.OrbitalCommand]
+			else if oSelection.TabPositions.HasKey(aUnitId.CommandCenter)
+				tabPosition := oSelection.TabPositions[aUnitId.CommandCenter]
+			else if oSelection.TabPositions.HasKey(aUnitId.PlanetaryFortress)
+				tabPosition := oSelection.TabPositions[aUnitId.PlanetaryFortress]			
+			clipboard := tabPosition
 			if BaseControlGroupNotSelected
 				sendSequence .= sRepeat(NextSubgroupKey, tabPosition)
 			else 

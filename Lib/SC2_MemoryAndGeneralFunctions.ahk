@@ -1205,7 +1205,7 @@ numGetSelectionSorted(ByRef aSelection, ReverseOrder := False)
 	;		aStorage[priority] := []
 		if !isObject(aStorage[priority, subGroupAlias])
 		  	aStorage[priority, subGroupAlias] := []
-		aStorage[priority, subGroupAlias].insert({"unitIndex": unit, "unitId": unitId})
+		aStorage[priority, subGroupAlias].insert({"unitIndex": unitIndex, "unitId": unitId})
 		
 		; when aStorage is enumerated, units will be accessed in the same order
 		; as they appear in the unit panel ie top left to bottom right 	
@@ -1216,14 +1216,23 @@ numGetSelectionSorted(ByRef aSelection, ReverseOrder := False)
 	; This will convert the data into a simple indexed object
 	; The index value will be 1 more than the unit portrait location
 	aSelection.units := []
+	aSelection.TabPositions := []
 	TabPosition := unitPortrait := 0
 	for priority, object in aStorage
 	{
 		for subGroupAlias, object2 in object 
 		{
+			; I put the next couple of lines here so they don't get needlessly looped
+			; inside the next for loop
+			if (TabPosition = aSelection.HighlightedGroup)
+				aSelection.HighlightedId :=  object2[object2.minIndex()].unitId
+			; Tab positions are stored with the unitId as key
+			; so can just look up the tab location of unit type directly with no looping
+			; cant use .insert(key, tabposition) as that adjusts higher keys (adds 1 to them)!
+			aSelection.TabPositions[object2[object2.minIndex()].unitId] := TabPosition
+
 			for index, unit in object2 ; (unit is an object)
 			{
-				if (getUnitOwner(unitIndex) != )
 				aSelection.units.insert({ "priority": -1*priority ; convert back to positive
 										, "subGroupAlias": subGroupAlias
 										, "unitIndex": unit.unitIndex
@@ -1231,9 +1240,7 @@ numGetSelectionSorted(ByRef aSelection, ReverseOrder := False)
 										, "tabPosition": TabPosition
 										, "unitPortrait": unitPortrait++}) ; will be 1 less than A_index when iterated
 										; Note unitPortrait++ increments after assigning value to unitPortrait
-				if (TabPosition = aSelection.HighlightedGroup && !aSelection.HighlightedId)
-					aSelection.HighlightedId := unit.unitId
-			} 											
+			}										
 			TabPosition++	
 		}
 	}
