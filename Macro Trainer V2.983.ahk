@@ -192,7 +192,6 @@ InstallSC2Files()
 
 CreatepBitmaps(a_pBitmap, aUnitID)
 aUnitInfo := []
-Global aUnitModel := []
 a_pBrush := []
 
 If (auto_update AND A_IsCompiled AND CheckForUpdates(ProgramVersion, url.vr ))
@@ -781,6 +780,7 @@ clock:
 		MT_CurrentGame := []	; This is a variable which from now on will store
 								; Info about the current game for other functions 
 								; An easy way to have the info cleared each match
+		Global aUnitModel := []
 
 		; Install the hook here. In case it got removed.
 		; Remove it at the end of the game.
@@ -801,13 +801,13 @@ clock:
 			MouseMove A_ScreenWidth/2, A_ScreenHeight/2
 			WinNotActiveAtStart := 1
 		}
-		getPlayers(a_player, a_LocalPlayer)
-		GameType := GetGameType(a_Player)
+		getPlayers(aPlayer, aLocalPlayer)
+		GameType := GetGameType(aPlayer)
 		if (ResumeWarnings || UserSavedAppliedSettings && alert_array[GameType, "Enabled"])  
 			doUnitDetection(unit, type, owner, "Resume")	;these first 3 vars are nothing - they wont get Read
 		Else
 			doUnitDetection(unit, type, owner, "Reset") ; clear the variables within the function
-		If (F_Inject_Enable && a_LocalPlayer["Race"] = "Zerg")
+		If (F_Inject_Enable && aLocalPlayer["Race"] = "Zerg")
 		{
 			zergGetHatcheriesToInject(oHatcheries)
 			settimer, cast_ForceInject, %FInjectHatchFrequency%	
@@ -823,26 +823,26 @@ clock:
 			settimer, supply, 200, -5
 		if workeron
 			settimer, worker, 1000, -5
-		LocalPlayerRace := a_LocalPlayer["Race"] ; another messy lazy variable
-		if (EnableAutoWorker%LocalPlayerRace%Start && (a_LocalPlayer["Race"] = "Terran" || a_LocalPlayer["Race"] = "Protoss") )
+		LocalPlayerRace := aLocalPlayer["Race"] ; another messy lazy variable
+		if (EnableAutoWorker%LocalPlayerRace%Start && (aLocalPlayer["Race"] = "Terran" || aLocalPlayer["Race"] = "Protoss") )
 		{
 			SetTimer, g_autoWorkerProductionCheck, 200
-			EnableAutoWorker%LocalPlayerRace% := 1
+			EnableAutoWorker%LocalPlayerRace% := True
 		}
 		if ( Auto_Read_Races AND race_reading ) && 	!((ResumeWarnings || UserSavedAppliedSettings) && time > 12)
 			SetTimer, find_races_timer, 1000, -20
-		If (a_LocalPlayer["Race"] = "Terran")
+		If (aLocalPlayer["Race"] = "Terran")
 			SupplyType := aUnitID["SupplyDepot"]
-		Else If (a_LocalPlayer["Race"] = "Protoss")
+		Else If (aLocalPlayer["Race"] = "Protoss")
 			SupplyType := aUnitID["Pylon"]		
 		if (alert_array[GameType, "Enabled"] || warpgate_warn_on || supplyon) 
 			settimer, unit_bank_read, %UnitDetectionTimer_ms%, -5		
 		SetMiniMap(minimap)
 		setupMiniMapUnitLists()
 		l_ActiveDeselectArmy := setupSelectArmyUnits(l_DeselectArmy, aUnitID)
-		ShortRace := substr(LongRace := a_LocalPlayer["Race"], 1, 4) ;because i changed the local race var from prot to protoss i.e. short to long - MIGHT NO be needed  now
-		setupAutoGroup(a_LocalPlayer["Race"], A_AutoGroup, aUnitID, A_UnitGroupSettings)
-		If A_UnitGroupSettings["AutoGroup", a_LocalPlayer["Race"], "Enabled"]
+		ShortRace := substr(LongRace := aLocalPlayer["Race"], 1, 4) ;because i changed the local race var from prot to protoss i.e. short to long - MIGHT NO be needed  now
+		setupAutoGroup(aLocalPlayer["Race"], A_AutoGroup, aUnitID, A_UnitGroupSettings)
+		If A_UnitGroupSettings["AutoGroup", aLocalPlayer["Race"], "Enabled"]
 		{
 			settimer, Auto_Group, %AutoGroupTimer% 						; set to 30 ms via config ini default
 																		; WITH Normal 1 priority so it should run once every 30 ms
@@ -864,7 +864,7 @@ clock:
 
 		EnemyBaseList := GetEBases()		
 		UserSavedAppliedSettings := 0
-		If IsInList(a_LocalPlayer.Type, "Referee", "Spectator")
+		If IsInList(aLocalPlayer.Type, "Referee", "Spectator")
 			timeroff("money", "gas", "scvidle", "supply", "worker", "inject"
 				, "unit_bank_read", "Auto_mine", "Auto_Group", "AutoGroupIdle"
 				, "MiniMap_Timer", "overlay_timer", "g_unitPanelOverlay_timer"
@@ -902,18 +902,18 @@ setupSelectArmyUnits(l_input, aUnitID)
 ;----------------------
 ;	player_team_sorter
 ;-----------------------
-getPlayers(byref a_player, byref a_LocalPlayer)
+getPlayers(byref aPlayer, byref aLocalPlayer)
 {
-	a_player := [], a_LocalPlayer := []
+	aPlayer := [], aLocalPlayer := []
 	; this should probably be 15, as I skip the first always neutral player in my player functions
 	Loop, 16	;doing it this way allows for custom games with blank slots ;can get weird things if 16 (but filtering them for nonplayers)
 	{
 		if !getPlayerName(A_Index) ;empty slot custom games?
 		|| IsInList(getPlayerType(A_Index), "None", "Neutral", "Hostile", "Referee", "Spectator")
 			Continue
-		a_player.insert( A_Index, new c_Player(A_Index) )  ; insert at player index so can call using player slot number 
+		aPlayer.insert( A_Index, new c_Player(A_Index) )  ; insert at player index so can call using player slot number 
 		If (A_Index = getLocalPlayerNumber()) OR (debug AND getPlayerName(A_Index) == debug_name)
-			a_LocalPlayer :=  new c_Player(A_Index)
+			aLocalPlayer :=  new c_Player(A_Index)
 	}
 	return	
 }
@@ -1506,9 +1506,9 @@ isUserPerformingAction()
 ;	type := getCurrentlyHighlightedUnitType()
 ;	if aUnitTargetFilter.Structure & TargetFilter
 ;		return 0 ; as it's a building and the user cant really be doing anything - perhaps set rally point for hatches via 'y'... Dont need to do this anymore
-;	If (a_LocalPlayer["Race"] = "Terran")
+;	If (aLocalPlayer["Race"] = "Terran")
 ;		worker := "SCV"	
-;	Else If (a_LocalPlayer["Race"] = "Protoss")
+;	Else If (aLocalPlayer["Race"] = "Protoss")
 ;		worker := "Probe"
 ;	Else Worker := "Drone"
 
@@ -1578,7 +1578,7 @@ If (time AND Time <= Start_Mine_Time + 8) && getIdleWorkers()
 		sleep 300
 		Critical 
 		If (Auto_mineMakeWorker && SelectHomeMain(LocalBase))	
-			MakeWorker(a_LocalPlayer["Race"])
+			MakeWorker(aLocalPlayer["Race"])
 		While (Start_Mine_Time > time := GetTime())
 		{	sleep 140
 			while (time = GetTime())	;opponent left game
@@ -1650,7 +1650,7 @@ SelectHomeMain(LocalBase)
 MakeWorker(Race = "")
 { 	global
 	if !Race
-		Race := a_LocalPlayer["Race"]
+		Race := aLocalPlayer["Race"]
 	If ( Race = "Terran" )
 		Send, %Make_Worker_T_Key%
 	Else If ( Race = "Protoss" )
@@ -1859,7 +1859,7 @@ return
 ;    worker production -------------
 ;--------------------------------------------
 worker:	
-	If (a_LocalPlayer["Race"] = "Terran" || a_LocalPlayer["Race"] = "Protoss")
+	If (aLocalPlayer["Race"] = "Terran" || aLocalPlayer["Race"] = "Protoss")
 		WorkerInProductionWarning(a_BaseList, workerProductionTPIdle, 1 + sec_workerprod, additional_delay_worker_production, 120)
 	else
 	{
@@ -1872,11 +1872,11 @@ worker:
 		{ 
 			if  (time - reset_worker_time) > workerproduction_time_if AND (Worker_i <= sec_workerprod) ; sec_workerprod sets how many times to play warning.
 			{
-				If ( a_LocalPlayer["Race"] = "Terran"  )
+				If ( aLocalPlayer["Race"] = "Terran"  )
 					tSpeak(w_workerprod_T)
-				Else If ( a_LocalPlayer["Race"] = "Protoss" )
+				Else If ( aLocalPlayer["Race"] = "Protoss" )
 					tSpeak(w_workerprod_P)
-				Else If ( a_LocalPlayer["Race"] = "Zerg" )
+				Else If ( aLocalPlayer["Race"] = "Zerg" )
 					tSpeak(w_workerprod_Z)
 				Else 
 					tSpeak("Build Worker")
@@ -1890,7 +1890,7 @@ worker:
 	return
 
 WorkerInProductionWarning(a_BaseList, maxIdleTime, maxWarnings, folloupWarningDelay, MaxWorkerCount)	;add secondary delay and max workers
-{	global a_LocalPlayer, w_workerprod_T, w_workerprod_P, w_workerprod_Z
+{	global aLocalPlayer, w_workerprod_T, w_workerprod_P, w_workerprod_Z
 	static lastWorkerInProduction, warningCount, lastwarning
 
 	if (getPlayerWorkerCount() >= MaxWorkerCount)	;stop warnings enough workers
@@ -1920,11 +1920,11 @@ WorkerInProductionWarning(a_BaseList, maxIdleTime, maxWarnings, folloupWarningDe
 			return
 		lastwarning := time
 		warningCount++
-		If ( a_LocalPlayer["Race"] = "Terran" )
+		If ( aLocalPlayer["Race"] = "Terran" )
 			tSpeak(w_workerprod_T)
-		Else If ( a_LocalPlayer["Race"] = "Protoss" )
+		Else If ( aLocalPlayer["Race"] = "Protoss" )
 			tSpeak(w_workerprod_P)
-		Else If ( a_LocalPlayer["Race"] = "Zerg" )
+		Else If ( aLocalPlayer["Race"] = "Zerg" )
 			tSpeak(w_workerprod_Z)
 		Else 
 			tSpeak("Build Worker")	;dont update the idle time so it gets bigger
@@ -2064,20 +2064,20 @@ worker_count:
 			tSpeak("Enemy worker count is only available in 1v1")
 			return
 		}	
-		For slot_number in a_Player
+		For slot_number in aPlayer
 		{
-			If ( a_LocalPlayer["Team"] <> a_Player[slot_number, "Team"] )
+			If ( aLocalPlayer["Team"] <> aPlayer[slot_number, "Team"] )
 			{
-				playernumber := a_Player[slot_number, "Team"]	
-				player_race := a_Player[slot_number, "Race"]
+				playernumber := aPlayer[slot_number, "Team"]	
+				player_race := aPlayer[slot_number, "Race"]
 				Break
 			}
 		}
 	}
 	Else
 	{
-		playernumber := a_LocalPlayer["Slot"]
-		player_race := 	a_LocalPlayer["Race"]
+		playernumber := aLocalPlayer["Slot"]
+		player_race := 	aLocalPlayer["Race"]
 	}
 	if ( "Fail" = newcount := getPlayerWorkerCount(playernumber))
 	{
@@ -2180,7 +2180,7 @@ while (A_Index <= UnitBankCount)
 
 	If (Filter & DeadFilterFlag)
 		Continue
-	if (unit_owner = a_LocalPlayer["Slot"])
+	if (unit_owner = aLocalPlayer["Slot"])
 	{
 		IF (unit_type = supplytype AND Filter & aUnitTargetFilter.UnderConstruction)
 				SupplyInProductionCount ++		
@@ -2215,7 +2215,7 @@ while (A_Index <= UnitBankCount)
 		&&  !(Filter & aUnitTargetFilter.UnderConstruction)
 			a_BaseListTmp.insert(u_iteration)
 	}
-	else if (alert_array[GameType, "Enabled"] && a_Player[unit_owner, "Team"] <> a_LocalPlayer["Team"])	
+	else if (alert_array[GameType, "Enabled"] && aPlayer[unit_owner, "Team"] <> aLocalPlayer["Team"])	
 		doUnitDetection(u_iteration, unit_type, unit_owner)
 } ; While ((UnitRead_i + EndCount) / getUnitCount() < 1.1)
 if warpgate_warn_on
@@ -2313,7 +2313,7 @@ doUnitDetection(unit, type, owner, mode = "")
 				MiniMapWarning.insert({"Unit": unit, "Time": Time})
 
 				If ( alert_array[GameType, "Clipboard"] && WinActive(GameIdentifier))
-					clipboard := alert_array[GameType, A_Index, "Name"] " Detected - " a_Player[owner, "Colour"] " - " a_Player[owner, "Name"]
+					clipboard := alert_array[GameType, A_Index, "Name"] " Detected - " aPlayer[owner, "Colour"] " - " aPlayer[owner, "Name"]
 				PrevWarning := []
 				PrevWarning.speech := alert_array[GameType, A_Index, "Name"]
 				PrevWarning.unitIndex := unit
@@ -2360,7 +2360,7 @@ ShellMessage(wParam, lParam)
 			; when window regains focus
 			setLowLevelInputHooks(False)
 			setLowLevelInputHooks(True)
-			if (ReDrawOverlays  && !IsInList(a_LocalPlayer.Type, "Referee", "Spectator")) ; This will redraw immediately - but this isn't needed at all
+			if (ReDrawOverlays  && !IsInList(aLocalPlayer.Type, "Referee", "Spectator")) ; This will redraw immediately - but this isn't needed at all
 			{  											; need time to check if in game
 				gosub, MiniMap_Timer 					; also need to check player type
 				gosub, overlay_timer
@@ -2419,7 +2419,7 @@ g_unitPanelOverlay_timer:
 	If (DrawUnitOverlay && (WinActive(GameIdentifier) || Dragoverlay))
 	{
 		getEnemyUnitCount(aEnemyUnits, aEnemyBuildingConstruction, aUnitID)
-		FilterUnits(aEnemyUnits, aEnemyBuildingConstruction, aUnitPanelUnits, aUnitID, a_Player)
+		FilterUnits(aEnemyUnits, aEnemyBuildingConstruction, aUnitPanelUnits, aUnitID, aPlayer)
 	;	if DrawUnitOverlay
 		DrawUnitOverlay(RedrawUnit, UnitOverlayScale, OverlayIdent, Dragoverlay)
 	}
@@ -3171,20 +3171,20 @@ ini_settings_write:
 			hotkey, %castSplitUnit_key%, off
 			Hotkey, If, WinActive(GameIdentifier) && time && !isMenuOpen() && RemoveUnitEnable && !BufferInputFast.isInputBlockedOrBuffered()
 			hotkey, %castRemoveUnit_key%, off
-			Hotkey, If, WinActive(GameIdentifier) && (a_LocalPlayer["Race"] = "Zerg") && (auto_inject <> "Disabled") && time && !BufferInputFast.isInputBlockedOrBuffered()
+			Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Zerg") && (auto_inject <> "Disabled") && time && !BufferInputFast.isInputBlockedOrBuffered()
 			hotkey, %cast_inject_key%, off
 			hotkey, %F_InjectOff_Key%, Cast_DisableInject, on	
-			Hotkey, If, WinActive(GameIdentifier) && (a_LocalPlayer["Race"] = "Protoss") && CG_Enable && time && !BufferInputFast.isInputBlockedOrBuffered()
+			Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && CG_Enable && time && !BufferInputFast.isInputBlockedOrBuffered()
 			hotkey, %Cast_ChronoGate_Key%, off
-			Hotkey, If, WinActive(GameIdentifier) && (a_LocalPlayer["Race"] = "Protoss") && ChronoBoostEnableForge && time && !BufferInputFast.isInputBlockedOrBuffered()
+			Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableForge && time && !BufferInputFast.isInputBlockedOrBuffered()
 			hotkey, %Cast_ChronoForge_Key%, off
-			Hotkey, If, WinActive(GameIdentifier) && (a_LocalPlayer["Race"] = "Protoss") && ChronoBoostEnableStargate && time && !BufferInputFast.isInputBlockedOrBuffered()
+			Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableStargate && time && !BufferInputFast.isInputBlockedOrBuffered()
 			hotkey, %Cast_ChronoStargate_Key%, off		
-			Hotkey, If, WinActive(GameIdentifier) && (a_LocalPlayer["Race"] = "Protoss") && ChronoBoostEnableNexus && time && !BufferInputFast.isInputBlockedOrBuffered()
+			Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableNexus && time && !BufferInputFast.isInputBlockedOrBuffered()
 			hotkey, %Cast_ChronoNexus_Key%, off
-			Hotkey, If, WinActive(GameIdentifier) && (a_LocalPlayer["Race"] = "Protoss") && ChronoBoostEnableRoboticsFacility && time && !BufferInputFast.isInputBlockedOrBuffered()
+			Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableRoboticsFacility && time && !BufferInputFast.isInputBlockedOrBuffered()
 			hotkey, %Cast_ChronoRoboticsFacility_Key%, off
-			Hotkey, If, WinActive(GameIdentifier) && (a_LocalPlayer["Race"] = "Terran" || a_LocalPlayer["Race"] = "Protoss")  && time && !BufferInputFast.isInputBlockedOrBuffered()	
+			Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Terran" || aLocalPlayer["Race"] = "Protoss")  && time && !BufferInputFast.isInputBlockedOrBuffered()	
 			hotkey, %ToggleAutoWorkerState_Key%, off		
 			Hotkey, If, WinActive(GameIdentifier) && !isMenuOpen() && time && !BufferInputFast.isInputBlockedOrBuffered()
 			Hotkey, %ping_key%, off		
@@ -6647,7 +6647,7 @@ if (WinActive(GameIdentifier) && time && EnableAutoWorker%LocalPlayerRace% && !T
 return
 
 autoWorkerProductionCheck()
-{	GLOBAl aUnitID, a_LocalPlayer, Base_Control_Group_T_Key, AutoWorkerStorage_P_Key, AutoWorkerStorage_T_Key, Base_Control_Group_P_Key, NextSubgroupKey
+{	GLOBAl aUnitID, aLocalPlayer, Base_Control_Group_T_Key, AutoWorkerStorage_P_Key, AutoWorkerStorage_T_Key, Base_Control_Group_P_Key, NextSubgroupKey
 	, AutoWorkerMakeWorker_T_Key, AutoWorkerMakeWorker_P_Key, AutoWorkerMaxWorkerTerran, AutoWorkerMaxWorkerPerBaseTerran
 	, AutoWorkerMaxWorkerProtoss, AutoWorkerMaxWorkerPerBaseProtoss, AW_MaxWorkersReached
 	, aResourceLocations, aButtons, EventKeyDelay
@@ -6656,7 +6656,7 @@ autoWorkerProductionCheck()
 	static TickCountRandomSet := 0, randPercent,  UninterruptedWorkersMade, waitForOribtal := 0
 
 
-	if (a_LocalPlayer["Race"] = "Terran") 
+	if (aLocalPlayer["Race"] = "Terran") 
 	{
 		mainControlGroup := Base_Control_Group_T_Key
 		controlstorageGroup := AutoWorkerStorage_T_Key
@@ -6664,7 +6664,7 @@ autoWorkerProductionCheck()
 		maxWorkers := AutoWorkerMaxWorkerTerran
 		maxWorkersPerBase := AutoWorkerMaxWorkerPerBaseTerran
 	}
-	else if (a_LocalPlayer["Race"] = "Protoss") 
+	else if (aLocalPlayer["Race"] = "Protoss") 
 	{
 		mainControlGroup := Base_Control_Group_P_Key
 		controlstorageGroup := AutoWorkerStorage_P_Key
@@ -6686,7 +6686,7 @@ autoWorkerProductionCheck()
 
 	if (workers >= maxWorkers)
 	{ 
-		AW_MaxWorkersReached := 1
+		AW_MaxWorkersReached := True
 		UninterruptedWorkersMade := 0 
 		return 
 	}
@@ -6773,7 +6773,7 @@ autoWorkerProductionCheck()
 	; 7.65 * 15.3866 = 876.9072 - so rax should have more than 876 hp
 	; obviously this wont work correctly if the rax is being attacked 
 
-	if (MaxWokersTobeMade && TotalCompletedBasesInCtrlGroup <= 2 && a_LocalPlayer["Race"] = "Terran" && !MT_CurrentGame.HasSleptForObital)
+	if (MaxWokersTobeMade && TotalCompletedBasesInCtrlGroup <= 2 && aLocalPlayer["Race"] = "Terran" && !MT_CurrentGame.HasSleptForObital)
 	{
 		; So the user is a noob and isn't making an orbital 
 		; lets not iterate all of the units unnecessarily
@@ -6809,7 +6809,7 @@ autoWorkerProductionCheck()
 			{
 				TargetFilter := numgetUnitTargetFilter(MemDump, unit := A_Index - 1)
 				if (TargetFilter & aUnitTargetFilter.Dead 
-					|| numgetUnitOwner(MemDump, Unit) != a_LocalPlayer["Slot"]
+					|| numgetUnitOwner(MemDump, Unit) != aLocalPlayer["Slot"]
 					|| numgetUnitModelType(numgetUnitModelPointer(MemDump, Unit)) != aUnitID["Barracks"])
 			    	Continue
 
@@ -6901,21 +6901,21 @@ autoWorkerProductionCheck()
 		dSleep(15) ; increase safety ensure selection buffer fully updated
 
 		HighlightedGroup := getSelectionHighlightedGroup()
-		If numGetUnitSelectionObject(oSelection) ; = 0 as nothing is selected so cant restore this/control group it
+		If numGetSelectionSorted(oSelection) ; = 0 as nothing is selected so cant restore this/control group it
 		{ 
-			for index, object in oSelection.units
+
+			if !oSelection.IsGroupable
 			{
-				L_SelectionIndexes .= "," object.unitIndex
-				if (object.owner != a_LocalPlayer.slot) 	; as cant restore unit selection. Need to work out how to detect allied leaver
-				{	
 					Input.revertKeyState()
 					input.pClickDelay(pClickDelay) ;***********
-					return
-				}	
-				if (!varInMatchList(object.unitIndex, L_BaseCtrlGroupIndexes) || !isUnitAStructure(object.unitIndex)) ; so if a selected unit isnt in the base control group, or is a non-structure
+					return		
+			}
+			selctionUnitIndices := oSelection.IndicesString
+			loop, parse, selctionUnitIndices, `,
+			{
+				if A_LoopField not in %L_BaseCtrlGroupIndexes%	 ; so if a selected unit isnt in the base control group			
 					BaseControlGroupNotSelected := 1
 			}
-
 			; This function is mainly for the auto-control group. So when a user clicks on a finished CC
 			; it will get auto-grouped, but wont immediately make an SCV (which would prevent converting
 			; it into an orbital), the user has 4 real seconds from clicking it to convert it
@@ -6953,14 +6953,15 @@ autoWorkerProductionCheck()
 			; it wont send the base control group button as its not required
 			; Another scenario if there are 3 bases in ctrl group, and 1 is flying, if the user has the  two landed bases selected
 			; it still wont send the base control group, as its not required
+			; cant do a if L_ActualBasesIndexesInBaseCtrlGroup < makeWorkerCount - as you could end up with
+			; an already queued base getting sent workers while the non-selected idle base remains idle 
 			if !BaseControlGroupNotSelected
 			{
-				for index, object in oSelection.units
-					if varInMatchList(object.unitIndex, L_ActualBasesIndexesInBaseCtrlGroup)
+				loop, parse, selctionUnitIndices, `,
+					if A_LoopField in %L_ActualBasesIndexesInBaseCtrlGroup%
 						SelectedBasesCount++
 				if (SelectedBasesCount < TotalCompletedBasesInCtrlGroup)
-					BaseControlGroupNotSelected := 1
-
+					BaseControlGroupNotSelected := True
 			}
 
 			; one thing to remember about these (L_SelectionIndexes != L_BaseCtrlGroupIndexes) 
@@ -6985,17 +6986,32 @@ autoWorkerProductionCheck()
 				if (setControlGroup || L_SelectionIndexes != L_ControlstorageIndexes)  
 					MTsend("^" controlstorageGroup )
 				MTsend(mainControlGroup)
-				dSleep(10) ; wont have that many units grouped with the buildings
+				dSleep(10) ; wont have that many units grouped with the buildings so 10ms should be plenty
+				numGetSelectionSorted(oSelection)
+			}	
 
+			for index, unit in oSelection.units
+			{
+				if (unit.unitId = aUnitId.Nexus
+					|| unit.unitId = aUnitId.OrbitalCommand
+					|| unit.unitId = aUnitId.CommandCenter
+					|| unit.unitId = aUnitId.PlanetaryFortress)
+				{
+					tabPosition := unit.tabPosition
+					break
+				}
 			}
-			Else If HighlightedGroup ; != 0
-				sendSequence .= sRepeat(NextSubgroupKey, tabrepreat := oSelection["Types"]  - HighlightedGroup)	
-				; get tab selection back to 0 ;too hard and too many things can go wrong and slow it down if i try to 
-				; tab to all user possible locations and then do a search		
-				; as there are still building / priority rules i dont understand e.g. planetary fortress is last 
-				; even though it has higher Unitindex than ebay	(so i cant determine how many tabs to send first)
-				; and its much faster as dont have to double sort an array
-							
+
+			if BaseControlGroupNotSelected
+				sendSequence .= sRepeat(NextSubgroupKey, tabPosition)
+			else 
+			{
+				if (oSelection.HighlightedId != aUnitId.Nexus
+					&& oSelection.HighlightedId != aUnitId.OrbitalCommand
+					&& oSelection.HighlightedId != aUnitId.CommandCenter
+					&& oSelection.HighlightedId != aUnitId.PlanetaryFortress)
+					sendSequence .= sRepeat(NextSubgroupKey, tabPositionChanged := oSelection["Types"]  - HighlightedGroup + tabPosition)
+			}
 			; other function gets spammed when user incorrectly adds a unit to the main control group 
 			; (as it will take subgroup 0) and for terran tell that unit to 'stop' when sends s
 			sendSequence .= sRepeat(makeWorkerKey, MaxWokersTobeMade)
@@ -7009,6 +7025,8 @@ autoWorkerProductionCheck()
 
 			; this slow checking allows the user to have as many bases as they want e.g. 7,8, 9 or more which could cause this function to run
 			; and make a worker 5 times in a row without any risk of falsely activating the the control group error routine
+			
+			; should need this anymore
 			if (UninterruptedWorkersMade > 6) ; after 4 days this started giving an error, so now i have added an additional sleep time 
 			{
 				dSleep(5)
@@ -7023,9 +7041,12 @@ autoWorkerProductionCheck()
 				dSleep(5)	
 				MTsend(controlstorageGroup)
 				dSleep(15)
+				if HighlightedGroup
+					MTsend(sRepeat(NextSubgroupKey, HighlightedGroup))				
 			}
-			if HighlightedGroup
-				MTsend(sRepeat(NextSubgroupKey, HighlightedGroup))	
+			else if tabPositionChanged ; eg the ebay or floating CC is selected is the selected tab in the already selected base control group
+				MTsend(sRepeat(NextSubgroupKey, oSelection["Types"]  - tabPosition + HighlightedGroup ))	
+
 			WorkerMade := True
 		}
 		
@@ -7055,11 +7076,11 @@ autoWorkerProductionCheck()
 }
 
 isSelectionGroupable(ByRef oSelection)
-{	GLOBAl a_LocalPlayer
+{	GLOBAl aLocalPlayer
 	if !numGetUnitSelectionObject(oSelection) 	; No units selected
 		return 0
 	for index, object in oSelection.units 	; non-self unit selected, other wise will continually
-		if (object.owner != a_LocalPlayer.slot) ; click middle screen not alloying you to type
+		if (object.owner != aLocalPlayer.slot) ; click middle screen not alloying you to type
 			return 0
 	return 1
 }
@@ -7076,10 +7097,15 @@ selectGroup(group, preSleep := -1, postSleep := 2)
 
 ; sRepeat("as", 3)
 ; r = "asasas"
-sRepeat(string, multi)
+; 0 returns empty string
+sRepeat(string, multiplier)
 {
-	loop, % multi 
-		r .= string 
+	if multiplier
+	{
+		loop, % multiplier 
+			r .= string
+	}
+	else r := ""
 	return r
 }
 
@@ -7130,9 +7156,9 @@ largestValue(aValues*)
 }
 
 getPlayerFreeSupply(player="")
-{ 	global a_LocalPlayer
+{ 	global aLocalPlayer
 	If (player = "")
-		player := a_LocalPlayer["Slot"]
+		player := aLocalPlayer["Slot"]
 	freeSupply := getPlayerSupplyCap(player) - getPlayerSupply(player)
 	if (freeSupply >= 0)
 		return freeSupply 
@@ -7194,15 +7220,15 @@ RestoreModifierPhysicalState()
 
 
 GetEnemyTeamSize()
-{	global a_Player, a_LocalPlayer
-	For slot_number in a_Player
-		If a_LocalPlayer["Team"] <> a_Player[slot_number, "Team"]
+{	global aPlayer, aLocalPlayer
+	For slot_number in aPlayer
+		If aLocalPlayer["Team"] <> aPlayer[slot_number, "Team"]
 			EnemyTeam_i ++
 	Return EnemyTeam_i
 }
 
 GetEBases()
-{	global a_Player, a_LocalPlayer, aUnitID, DeadFilterFlag
+{	global aPlayer, aLocalPlayer, aUnitID, DeadFilterFlag
 	EnemyBase_i := GetEnemyTeamSize()
 	Unitcount := DumpUnitMemory(MemDump)
 	while (A_Index <= Unitcount)
@@ -7214,7 +7240,7 @@ GetEBases()
 	    pUnitModel := numgetUnitModelPointer(MemDump, Unit)
 	   	Type := numgetUnitModelType(pUnitModel)
 	   	owner := numgetUnitOwner(MemDump, Unit) 
-		IF (( type = aUnitID["Nexus"] ) OR ( type = aUnitID["CommandCenter"] ) OR ( type = aUnitID["Hatchery"] )) AND (a_Player[Owner, "Team"] <> a_LocalPlayer["Team"])
+		IF (( type = aUnitID["Nexus"] ) OR ( type = aUnitID["CommandCenter"] ) OR ( type = aUnitID["Hatchery"] )) AND (aPlayer[Owner, "Team"] <> aLocalPlayer["Team"])
 		{
 			Found_i ++
 			list .=  unit "|"
@@ -7248,22 +7274,22 @@ getSelectionType(units*)
 }
 
 GetEnemyRaces()
-{	global a_Player, a_LocalPlayer
-	For slot_number in a_Player
-	{	If ( a_LocalPlayer["Team"] <>  team := a_Player[slot_number, "Team"] )
+{	global aPlayer, aLocalPlayer
+	For slot_number in aPlayer
+	{	If ( aLocalPlayer["Team"] <>  team := aPlayer[slot_number, "Team"] )
 		{
 			If ( EnemyRaces <> "")
 				EnemyRaces .= ", "
-			EnemyRaces .= a_Player[slot_number, "Race"]
+			EnemyRaces .= aPlayer[slot_number, "Race"]
 		}
 	}
 	return EnemyRaces .= "."
 }
 
-GetGameType(a_Player)
+GetGameType(aPlayer)
 {	
-	For slot_number in a_Player
-	{	team := a_Player[slot_number, "Team"]
+	For slot_number in aPlayer
+	{	team := aPlayer[slot_number, "Team"]
 		TeamsList .= Team "|"
 		Player_i ++
 	}
@@ -7278,12 +7304,12 @@ GetGameType(a_Player)
 }
 
 isUnitLocallyOwned(Unit) ; 1 its local player owned
-{	global a_LocalPlayer
-	Return a_LocalPlayer["Slot"] = getUnitOwner(Unit) ? 1 : 0
+{	global aLocalPlayer
+	Return aLocalPlayer["Slot"] = getUnitOwner(Unit) ? 1 : 0
 }
 isOwnerLocal(Owner) ; 1 its local player owned
-{	global a_LocalPlayer
-	Return a_LocalPlayer["Slot"] = Owner ? 1 : 0
+{	global aLocalPlayer
+	Return aLocalPlayer["Slot"] = Owner ? 1 : 0
 }
 
 
@@ -7387,9 +7413,9 @@ DrawMiniMap()
 				continue
 			}
 			owner := getUnitOwner(MiniMapWarning[A_index,"Unit"])	
-			If (a_Player[owner, "Team"] <> a_LocalPlayer["Team"])
+			If (aPlayer[owner, "Team"] <> aLocalPlayer["Team"])
 			{
-				If (arePlayerColoursEnabled() AND a_Player[Owner, "Colour"] = "Green")
+				If (arePlayerColoursEnabled() AND aPlayer[Owner, "Colour"] = "Green")
 					pBitmap := a_pBitmap["PurpleX16"] 
 				Else pBitmap := a_pBitmap["GreenX16"]
 			}
@@ -7427,8 +7453,8 @@ getEnemyUnitsMiniMap(byref A_MiniMapUnits)
      owner := numget(MemDump, UnitAddress + O_uOwner, "Char")     
      If type in %ActiveUnitHighlightExcludeList% ; cant use or/expressions with type in
            Continue
-     if  (a_Player[Owner, "Team"] <> a_LocalPlayer["Team"] && Owner && type >= aUnitID["Colossus"] && !ifTypeInList(type, l_Changeling)) 
-     || (ifTypeInList(type, l_Changeling) && a_Player[Owner, "Team"] = a_LocalPlayer["Team"] ) ; as a changeling owner becomes whoever it is mimicking - its team also becomes theirs
+     if  (aPlayer[Owner, "Team"] <> aLocalPlayer["Team"] && Owner && type >= aUnitID["Colossus"] && !ifTypeInList(type, l_Changeling)) 
+     || (ifTypeInList(type, l_Changeling) && aPlayer[Owner, "Team"] = aLocalPlayer["Team"] ) ; as a changeling owner becomes whoever it is mimicking - its team also becomes theirs
      {
           if (!Radius := aUnitInfo[Type, "Radius"])
               Radius := aUnitInfo[Type, "Radius"] := numgetUnitModelMiniMapRadius(pUnitModel)
@@ -7459,14 +7485,14 @@ getEnemyUnitsMiniMap(byref A_MiniMapUnits)
            Else if (HighlightInvisible && Filter & aUnitTargetFilter.Cloaked) ; this will include burrowed units (so dont need to check their flags)
            	  Colour := UnitHighlightInvisibleColour 				; Have this at bot so if an invis unit has a custom highlight it will be drawn with that colour
            Else if PlayerColours
-              Colour := 0xcFF HexColour[a_Player[Owner, "Colour"]]   ;FF=Transparency
+              Colour := 0xcFF HexColour[aPlayer[Owner, "Colour"]]   ;FF=Transparency
            Else Colour := 0xcFF HexColour["Red"]  
 
            if (GameType != "1v1" && HostileColourAssist)
            {
 	           unitName := aUnitName[type]
 	           if unitName in CommandCenter,CommandCenterFlying,OrbitalCommand,PlanetaryFortress,Nexus,Hatchery,Lair,Hive
-	          		Colour := 0xcFF HexColour[a_Player[Owner, "Colour"]]
+	          		Colour := 0xcFF HexColour[aPlayer[Owner, "Colour"]]
 	       }
 
            A_MiniMapUnits.insert({"X": x, "Y": y, "Colour": Colour, "Radius": Radius*2})  
@@ -7556,7 +7582,7 @@ OverlayMove_LButtonDown()
 }
 
 DrawIdleWorkersOverlay(ByRef Redraw, UserScale=1,Drag=0, expand=1)
-{	global a_LocalPlayer, GameIdentifier, config_file, IdleWorkersOverlayX, IdleWorkersOverlayY, a_pBitmap
+{	global aLocalPlayer, GameIdentifier, config_file, IdleWorkersOverlayX, IdleWorkersOverlayY, a_pBitmap
 	static Font := "Arial", Overlay_RunCount, hwnd1, DragPrevious := 0				
 
 	Overlay_RunCount ++	
@@ -7599,7 +7625,7 @@ DrawIdleWorkersOverlay(ByRef Redraw, UserScale=1,Drag=0, expand=1)
 	G := Gdip_GraphicsFromHDC(hdc)
 	DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0)	
 
-	pBitmap := a_pBitmap[a_LocalPlayer["Race"],"Worker"]
+	pBitmap := a_pBitmap[aLocalPlayer["Race"],"Worker"]
 	SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
 
 	expandOnIdle := 4
@@ -7622,7 +7648,7 @@ DrawIdleWorkersOverlay(ByRef Redraw, UserScale=1,Drag=0, expand=1)
 	Return
 }
 DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Drag=0)
-{	global a_LocalPlayer, HexColour, a_Player, GameIdentifier, IncomeOverlayX, IncomeOverlayY, config_file, MatrixColour, a_pBitmap
+{	global aLocalPlayer, HexColour, aPlayer, GameIdentifier, IncomeOverlayX, IncomeOverlayY, config_file, MatrixColour, a_pBitmap
 	static Font := "Arial", Overlay_RunCount, hwnd1, DragPrevious := 0
 	Overlay_RunCount ++
 	DestX := i := 0
@@ -7664,25 +7690,25 @@ DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Dr
 	obm := SelectObject(hdc, hbm)
 	G := Gdip_GraphicsFromHDC(hdc)
 	DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0)	
-	For slot_number in a_Player
+	For slot_number in aPlayer
 	{
-		If ( a_LocalPlayer["Team"] <> a_Player[slot_number, "Team"] )
+		If ( aLocalPlayer["Team"] <> aPlayer[slot_number, "Team"] )
 		{				
 			DestY := i ? i*Height : 0
 
 			If (PlayerIdentifier = 1 Or PlayerIdentifier = 2 )
 			{	
 				IF (PlayerIdentifier = 2)
-					OptionsName := " Bold cFF" HexColour[a_Player[slot_number, "Colour"]] " r4 s" 17*UserScale
+					OptionsName := " Bold cFF" HexColour[aPlayer[slot_number, "Colour"]] " r4 s" 17*UserScale
 				Else IF (PlayerIdentifier = 1)
 					OptionsName := " Bold cFFFFFFFF r4 s" 17*UserScale	
-				pBitmap := a_pBitmap[a_Player[slot_number, "Race"],"Mineral",Background]
+				pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Mineral",Background]
 				SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
 				Width *= UserScale *.5, Height *= UserScale *.5		
 				gdip_TextToGraphics(G, getPlayerName(slot_number), "x0" "y"(DestY+(Height//4))  OptionsName, Font)
 				if !LongestNameSize
 				{
-					LongestNameData :=	gdip_TextToGraphics(G, getLongestEnemyPlayerName(a_Player), "x0" "y"(DestY+(Height//4))  " Bold c00FFFFFF r4 s" 17*UserScale	, Font) ; text is invisible ;get string size	
+					LongestNameData :=	gdip_TextToGraphics(G, getLongestEnemyPlayerName(aPlayer), "x0" "y"(DestY+(Height//4))  " Bold c00FFFFFF r4 s" 17*UserScale	, Font) ; text is invisible ;get string size	
 					StringSplit, LongestNameSize, LongestNameData, | ;retrieve the length of the string
 					LongestNameSize := LongestNameSize3
 				}
@@ -7690,19 +7716,19 @@ DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Dr
 			}
 			Else If (PlayerIdentifier = 3)
 			{		
-				pBitmap := a_pBitmap[a_Player[slot_number, "Race"],"RaceFlat"]
+				pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"RaceFlat"]
 				SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
 				Width *= UserScale *.5, Height *= UserScale *.5	
-				Gdip_DrawImage(G, pBitmap, 12*UserScale, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight, MatrixColour[a_Player[slot_number, "Colour"]])
+				Gdip_DrawImage(G, pBitmap, 12*UserScale, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight, MatrixColour[aPlayer[slot_number, "Colour"]])
 				;Gdip_DisposeImage(pBitmap)
-				pBitmap := a_pBitmap[a_Player[slot_number, "Race"],"Mineral",Background]
+				pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Mineral",Background]
 				SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
 				Width *= UserScale *.5, Height *= UserScale *.5		
 				DestX := Width+10*UserScale
 			}
 			Else 
 			{
-				pBitmap := a_pBitmap[a_Player[slot_number, "Race"],"Mineral",Background]
+				pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Mineral",Background]
 				SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
 				Width *= UserScale *.5, Height *= UserScale *.5	
 			}
@@ -7710,13 +7736,13 @@ DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Dr
 			Gdip_DrawImage(G, pBitmap, DestX, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)	
 			Gdip_TextToGraphics(G, getPlayerMineralIncome(slot_number), "x"(DestX+Width+5*UserScale) "y"(DestY+(Height//4)) Options, Font)				
 
-			pBitmap := a_pBitmap[a_Player[slot_number, "Race"],"Gas",Background]
+			pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Gas",Background]
 			SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
 			Width *= UserScale *.5, Height *= UserScale *.5
 			Gdip_DrawImage(G, pBitmap, DestX + (85*UserScale), DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)	
 			Gdip_TextToGraphics(G, getPlayerGasIncome(slot_number), "x"(DestX+(85*UserScale)+Width+5*UserScale) "y"(DestY+(Height//4)) Options, Font)				
 
-			pBitmap := a_pBitmap[a_Player[slot_number, "Race"],"Worker"]
+			pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Worker"]
 			SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
 			Width *= UserScale *.5, Height *= UserScale *.5
 			Gdip_DrawImage(G, pBitmap, DestX + (2*85*UserScale), DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
@@ -7737,7 +7763,7 @@ DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Dr
 }	
 
 DrawResourcesOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Drag=0)
-{	global a_LocalPlayer, HexColour, a_Player, GameIdentifier, config_file, ResourcesOverlayX, ResourcesOverlayY, MatrixColour, a_pBitmap
+{	global aLocalPlayer, HexColour, aPlayer, GameIdentifier, config_file, ResourcesOverlayX, ResourcesOverlayY, MatrixColour, a_pBitmap
 	static Font := "Arial", Overlay_RunCount, hwnd1, DragPrevious := 0		
 	Overlay_RunCount ++	
 	DestX := i := 0
@@ -7782,43 +7808,43 @@ DrawResourcesOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0
 	G := Gdip_GraphicsFromHDC(hdc)
 	DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0)		
 
-	For slot_number in a_Player
+	For slot_number in aPlayer
 	{
-		If ( a_LocalPlayer["Team"] <> a_Player[slot_number, "Team"] )
+		If ( aLocalPlayer["Team"] <> aPlayer[slot_number, "Team"] )
 		{	DestY := i ? i*Height : 0
 
 			If (PlayerIdentifier = 1 Or PlayerIdentifier = 2 )
 			{	
 				IF (PlayerIdentifier = 2)
-					OptionsName := " Bold cFF" HexColour[a_Player[slot_number, "Colour"]] " r4 s" 17*UserScale
+					OptionsName := " Bold cFF" HexColour[aPlayer[slot_number, "Colour"]] " r4 s" 17*UserScale
 				Else IF (PlayerIdentifier = 1)
 					OptionsName := " Bold cFFFFFFFF r4 s" 17*UserScale		
-				pBitmap := a_pBitmap[a_Player[slot_number, "Race"],"Mineral",Background]
+				pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Mineral",Background]
 				SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)		
 				Width *= UserScale *.5, Height *= UserScale *.5
 				gdip_TextToGraphics(G, getPlayerName(slot_number), "x0" "y"(DestY+(Height//4))  OptionsName, Font) ;get string size	
 				if !LongestNameSize
 				{
-					LongestNameData :=	gdip_TextToGraphics(G, getLongestEnemyPlayerName(a_Player), "x0" "y"(DestY+(Height//4))  " Bold c00FFFFFF r4 s" 17*UserScale	, Font) ; text is invisible ;get string size	
+					LongestNameData :=	gdip_TextToGraphics(G, getLongestEnemyPlayerName(aPlayer), "x0" "y"(DestY+(Height//4))  " Bold c00FFFFFF r4 s" 17*UserScale	, Font) ; text is invisible ;get string size	
 					StringSplit, LongestNameSize, LongestNameData, | ;retrieve the length of the string
 					LongestNameSize := LongestNameSize3
 				}
 				DestX := LongestNameSize+10*UserScale
 			}
 			Else If (PlayerIdentifier = 3)
-			{	pBitmap := a_pBitmap[a_Player[slot_number, "Race"],"RaceFlat"]
+			{	pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"RaceFlat"]
 				SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
 				Width *= UserScale *.5, Height *= UserScale *.5	
-				Gdip_DrawImage(G, pBitmap, 12*UserScale, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight, MatrixColour[a_Player[slot_number, "Colour"]])
+				Gdip_DrawImage(G, pBitmap, 12*UserScale, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight, MatrixColour[aPlayer[slot_number, "Colour"]])
 				;Gdip_DisposeImage(pBitmap)
-				pBitmap := a_pBitmap[a_Player[slot_number, "Race"],"Mineral",Background]
+				pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Mineral",Background]
 				SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
 				Width *= UserScale *.5, Height *= UserScale *.5		
 				DestX := Width+10*UserScale
 			}
 			Else
 			{
-				pBitmap := a_pBitmap[a_Player[slot_number, "Race"],"Mineral",Background]
+				pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Mineral",Background]
 				SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
 				Width *= UserScale *.5, Height *= UserScale *.5	
 			}
@@ -7826,14 +7852,14 @@ DrawResourcesOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0
 			Gdip_DrawImage(G, pBitmap, DestX, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)	
 			;Gdip_DisposeImage(pBitmap)
 			Gdip_TextToGraphics(G, getPlayerMinerals(slot_number), "x"(DestX+Width+5*UserScale) "y"(DestY+(Height//4)) Options, Font, TextWidthHeight, TextWidthHeight)				
-			pBitmap := a_pBitmap[a_Player[slot_number, "Race"],"Gas",Background]
+			pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Gas",Background]
 			SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
 			Width *= UserScale *.5, Height *= UserScale *.5
 			Gdip_DrawImage(G, pBitmap, DestX + (85*UserScale), DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)	
 			;Gdip_DisposeImage(pBitmap)
 			Gdip_TextToGraphics(G, getPlayerGas(slot_number), "x"(DestX+(85*UserScale)+Width+5*UserScale) "y"(DestY+(Height//4)) Options, Font, TextWidthHeight,TextWidthHeight)				
 
-			pBitmap := a_pBitmap[a_Player[slot_number, "Race"],"Supply",Background]
+			pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Supply",Background]
 			SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
 			Width *= UserScale *.5, Height *= UserScale *.5
 			Gdip_DrawImage(G, pBitmap, DestX + (2*85*UserScale), DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
@@ -7856,7 +7882,7 @@ DrawResourcesOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0
 }
 
 DrawArmySizeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Drag=0)
-{	global a_LocalPlayer, HexColour, a_Player, GameIdentifier, config_file, ArmySizeOverlayX, ArmySizeOverlayY, MatrixColour, a_pBitmap
+{	global aLocalPlayer, HexColour, aPlayer, GameIdentifier, config_file, ArmySizeOverlayX, ArmySizeOverlayY, MatrixColour, a_pBitmap
 	static Font := "Arial", Overlay_RunCount, hwnd1, DragPrevious := 0	
 	Overlay_RunCount ++	
 	DestX := i := 0
@@ -7897,9 +7923,9 @@ DrawArmySizeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,
 	obm := SelectObject(hdc, hbm)
 	G := Gdip_GraphicsFromHDC(hdc)
 	DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0)
-	For slot_number in a_Player
+	For slot_number in aPlayer
 	{	
-		If ( a_LocalPlayer["Team"]  <> a_Player[slot_number, "Team"] )
+		If ( aLocalPlayer["Team"]  <> aPlayer[slot_number, "Team"] )
 		{	
 		;	DestY := i ? i*Height + 5*UserScale : 0
 			DestY := i ? i*Height : 0
@@ -7907,16 +7933,16 @@ DrawArmySizeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,
 			If (PlayerIdentifier = 1 Or PlayerIdentifier = 2 )
 			{	
 				IF (PlayerIdentifier = 2)
-					OptionsName := " Bold cFF" HexColour[a_Player[slot_number, "Colour"]] " r4 s" 17*UserScale
+					OptionsName := " Bold cFF" HexColour[aPlayer[slot_number, "Colour"]] " r4 s" 17*UserScale
 				Else IF (PlayerIdentifier = 1)
 					OptionsName := " Bold cFFFFFFFF r4 s" 17*UserScale	
-				pBitmap := a_pBitmap[a_Player[slot_number, "Race"],"Mineral",Background]
+				pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Mineral",Background]
 				SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
 				Width *= UserScale *.5, Height *= UserScale *.5		
 				gdip_TextToGraphics(G, getPlayerName(slot_number), "x0" "y"(DestY+(Height//4))  OptionsName, Font)		
 				if !LongestNameSize
 				{
-					LongestNameData :=	gdip_TextToGraphics(G, getLongestEnemyPlayerName(a_Player), "x0" "y"(DestY+(Height//4))  " Bold c00FFFFFF r4 s" 17*UserScale	, Font) ; text is invisible ;get string size	
+					LongestNameData :=	gdip_TextToGraphics(G, getLongestEnemyPlayerName(aPlayer), "x0" "y"(DestY+(Height//4))  " Bold c00FFFFFF r4 s" 17*UserScale	, Font) ; text is invisible ;get string size	
 					StringSplit, LongestNameSize, LongestNameData, | ;retrieve the length of the string
 					LongestNameSize := LongestNameSize3
 				}
@@ -7924,26 +7950,26 @@ DrawArmySizeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,
 			}
 			Else If (PlayerIdentifier = 3)
 			{		
-				pBitmap := a_pBitmap[a_Player[slot_number, "Race"],"RaceFlat"] 
+				pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"RaceFlat"] 
 				SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
 				Width *= UserScale *.5, Height *= UserScale *.5	
-				Gdip_DrawImage(G, pBitmap, 12*UserScale, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight, MatrixColour[a_Player[slot_number, "Colour"]])
+				Gdip_DrawImage(G, pBitmap, 12*UserScale, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight, MatrixColour[aPlayer[slot_number, "Colour"]])
 				;Gdip_DisposeImage(pBitmap)
-				pBitmap := a_pBitmap[a_Player[slot_number, "Race"],"Mineral",Background]
+				pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Mineral",Background]
 				SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
 				Width *= UserScale *.5, Height *= UserScale *.5		
 				DestX := Width+10*UserScale
 			}
 			Else
 			{
-				pBitmap := a_pBitmap[a_Player[slot_number, "Race"],"Mineral",Background]
+				pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Mineral",Background]
 				SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
 				Width *= UserScale *.5, Height *= UserScale *.5	
 			}
 			Gdip_DrawImage(G, pBitmap, DestX, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)	
 			;Gdip_DisposeImage(pBitmap)
 			Gdip_TextToGraphics(G, ArmyMinerals := getPlayerArmySizeMinerals(slot_number), "x"(DestX+Width+5*UserScale) "y"(DestY+(Height//4)) Options, Font)				
-			pBitmap := a_pBitmap[a_Player[slot_number, "Race"],"Gas",Background]
+			pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Gas",Background]
 			SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
 			Width *= UserScale *.5, Height *= UserScale *.5
 			Gdip_DrawImage(G, pBitmap, DestX + (85*UserScale), DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)	
@@ -7952,7 +7978,7 @@ DrawArmySizeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,
 
 
 
-			pBitmap := a_pBitmap[a_Player[slot_number, "Race"],"Army"]
+			pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Army"]
 			SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
 			Width *= UserScale *.5, Height *= UserScale *.5
 			Gdip_DrawImage(G, pBitmap, DestX + (2*85*UserScale), DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
@@ -7973,7 +7999,7 @@ DrawArmySizeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,
 	Return
 }
 DrawWorkerOverlay(ByRef Redraw, UserScale=1,Drag=0)
-{	global a_LocalPlayer, GameIdentifier, config_file, WorkerOverlayX, WorkerOverlayY, a_pBitmap
+{	global aLocalPlayer, GameIdentifier, config_file, WorkerOverlayX, WorkerOverlayY, a_pBitmap
 	static Font := "Arial", Overlay_RunCount, hwnd1, DragPrevious := 0				
 	Options := " cFFFFFFFF r4 s" 18*UserScale
 	Overlay_RunCount ++	
@@ -8015,12 +8041,12 @@ DrawWorkerOverlay(ByRef Redraw, UserScale=1,Drag=0)
 	G := Gdip_GraphicsFromHDC(hdc)
 	DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0)	
 
-	pBitmap := a_pBitmap[a_LocalPlayer["Race"],"Worker"]
+	pBitmap := a_pBitmap[aLocalPlayer["Race"],"Worker"]
 	SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
 	Width *= UserScale *.5, Height *= UserScale *.5
 	Gdip_DrawImage(G, pBitmap, DestX, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)	
 	;Gdip_DisposeImage(pBitmap)
-	Gdip_TextToGraphics(G, getPlayerWorkerCount(a_LocalPlayer["Slot"]), "x"(DestX+Width+2*UserScale) "y"(DestY+(Height//4)) Options, Font, TextWidthHeight, TextWidthHeight)
+	Gdip_TextToGraphics(G, getPlayerWorkerCount(aLocalPlayer["Slot"]), "x"(DestX+Width+2*UserScale) "y"(DestY+(Height//4)) Options, Font, TextWidthHeight, TextWidthHeight)
 	Gdip_DeleteGraphics(G)	
 	UpdateLayeredWindow(hwnd1, hdc)
 	SelectObject(hdc, obm) 
@@ -8031,7 +8057,7 @@ DrawWorkerOverlay(ByRef Redraw, UserScale=1,Drag=0)
 
 
 DrawLocalPlayerColour(ByRef Redraw, UserScale=1,Drag=0)
-{	global a_LocalPlayer, GameIdentifier, config_file, LocalPlayerColourOverlayX, LocalPlayerColourOverlayY, a_pBitmap, HexColour, a_pBrush
+{	global aLocalPlayer, GameIdentifier, config_file, LocalPlayerColourOverlayX, LocalPlayerColourOverlayY, a_pBitmap, HexColour, a_pBrush
 	static Overlay_RunCount, hwnd1, DragPrevious := 0,  PreviousPlayerColours := 0 			
 
 	playerColours := arePlayerColoursEnabled()
@@ -8090,7 +8116,7 @@ DrawLocalPlayerColour(ByRef Redraw, UserScale=1,Drag=0)
 	G := Gdip_GraphicsFromHDC(hdc)
 	DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0)	
 	Gdip_SetSmoothingMode(G, 4) ; for some reason its smoother than calling my setDrawingQuality(G) fucntion.......
-	colour := a_LocalPlayer["Colour"]
+	colour := aLocalPlayer["Colour"]
 	if !a_pBrush[colour]
 		a_pBrush[colour] := Gdip_BrushCreateSolid(0xcFF HexColour[colour])	
 	Radius := 12 * UserScale
@@ -8207,14 +8233,14 @@ CreateHotkeys()
 
 	#If, WinActive(GameIdentifier) && !BufferInputFast.isInputBlockedOrBuffered()
 	#If, WinActive(GameIdentifier) && LwinDisable && getTime()	
-	#If, WinActive(GameIdentifier) && (a_LocalPlayer["Race"] = "Zerg") && !isMenuOpen() && time && !BufferInputFast.isInputBlockedOrBuffered()
-	#If, WinActive(GameIdentifier) && (a_LocalPlayer["Race"] = "Zerg") && (auto_inject <> "Disabled") && time && !BufferInputFast.isInputBlockedOrBuffered()
-	#If, WinActive(GameIdentifier) && (a_LocalPlayer["Race"] = "Protoss") && CG_Enable && time && !BufferInputFast.isInputBlockedOrBuffered()
-	#If, WinActive(GameIdentifier) && (a_LocalPlayer["Race"] = "Protoss") && ChronoBoostEnableForge && time && !BufferInputFast.isInputBlockedOrBuffered()
-	#If, WinActive(GameIdentifier) && (a_LocalPlayer["Race"] = "Protoss") && ChronoBoostEnableStargate && time && !BufferInputFast.isInputBlockedOrBuffered()
-	#If, WinActive(GameIdentifier) && (a_LocalPlayer["Race"] = "Protoss") && ChronoBoostEnableNexus && time && !BufferInputFast.isInputBlockedOrBuffered()
-	#If, WinActive(GameIdentifier) && (a_LocalPlayer["Race"] = "Protoss") && ChronoBoostEnableRoboticsFacility && time && !BufferInputFast.isInputBlockedOrBuffered()
-	#If, WinActive(GameIdentifier) && (a_LocalPlayer["Race"] = "Terran" || a_LocalPlayer["Race"] = "Protoss")  && time && !BufferInputFast.isInputBlockedOrBuffered()
+	#If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Zerg") && !isMenuOpen() && time && !BufferInputFast.isInputBlockedOrBuffered()
+	#If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Zerg") && (auto_inject <> "Disabled") && time && !BufferInputFast.isInputBlockedOrBuffered()
+	#If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && CG_Enable && time && !BufferInputFast.isInputBlockedOrBuffered()
+	#If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableForge && time && !BufferInputFast.isInputBlockedOrBuffered()
+	#If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableStargate && time && !BufferInputFast.isInputBlockedOrBuffered()
+	#If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableNexus && time && !BufferInputFast.isInputBlockedOrBuffered()
+	#If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableRoboticsFacility && time && !BufferInputFast.isInputBlockedOrBuffered()
+	#If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Terran" || aLocalPlayer["Race"] = "Protoss")  && time && !BufferInputFast.isInputBlockedOrBuffered()
 	#If, WinActive(GameIdentifier) && time && !isMenuOpen() && EnableAutoWorker%LocalPlayerRace% && !BufferInputFast.isInputBlockedOrBuffered()
 	#If, WinActive(GameIdentifier) && time && !isMenuOpen() && SelectArmyEnable && !BufferInputFast.isInputBlockedOrBuffered()
 	#If, WinActive(GameIdentifier) && time && !isMenuOpen() && SplitUnitsEnable && !BufferInputFast.isInputBlockedOrBuffered()
@@ -8259,27 +8285,27 @@ CreateHotkeys()
 		hotkey, %castSplitUnit_key%, g_SplitUnits, on	
 	Hotkey, If, WinActive(GameIdentifier) && time && !isMenuOpen() && RemoveUnitEnable && !BufferInputFast.isInputBlockedOrBuffered()
 		hotkey, %castRemoveUnit_key%, g_DeselectUnit, on	
-	Hotkey, If, WinActive(GameIdentifier) && (a_LocalPlayer["Race"] = "Zerg") && (auto_inject <> "Disabled") && time && !BufferInputFast.isInputBlockedOrBuffered()
+	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Zerg") && (auto_inject <> "Disabled") && time && !BufferInputFast.isInputBlockedOrBuffered()
 		hotkey, %cast_inject_key%, cast_inject, on	
 		hotkey, %F_InjectOff_Key%, Cast_DisableInject, on			
-	Hotkey, If, WinActive(GameIdentifier) && (a_LocalPlayer["Race"] = "Protoss") && CG_Enable && time && !BufferInputFast.isInputBlockedOrBuffered()
+	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && CG_Enable && time && !BufferInputFast.isInputBlockedOrBuffered()
 		hotkey, %Cast_ChronoGate_Key%, Cast_ChronoStructure, on	
-	Hotkey, If, WinActive(GameIdentifier) && (a_LocalPlayer["Race"] = "Protoss") && ChronoBoostEnableForge && time && !BufferInputFast.isInputBlockedOrBuffered()
+	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableForge && time && !BufferInputFast.isInputBlockedOrBuffered()
 		hotkey, %Cast_ChronoForge_Key%, Cast_ChronoStructure, on	
-	Hotkey, If, WinActive(GameIdentifier) && (a_LocalPlayer["Race"] = "Protoss") && ChronoBoostEnableStargate && time && !BufferInputFast.isInputBlockedOrBuffered()
+	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableStargate && time && !BufferInputFast.isInputBlockedOrBuffered()
 		hotkey, %Cast_ChronoStargate_Key%, Cast_ChronoStructure, on
-	Hotkey, If, WinActive(GameIdentifier) && (a_LocalPlayer["Race"] = "Protoss") && ChronoBoostEnableNexus && time && !BufferInputFast.isInputBlockedOrBuffered()
+	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableNexus && time && !BufferInputFast.isInputBlockedOrBuffered()
 		hotkey, %Cast_ChronoNexus_Key%, Cast_ChronoStructure, on	
-	Hotkey, If, WinActive(GameIdentifier) && (a_LocalPlayer["Race"] = "Protoss") && ChronoBoostEnableRoboticsFacility && time && !BufferInputFast.isInputBlockedOrBuffered()
+	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableRoboticsFacility && time && !BufferInputFast.isInputBlockedOrBuffered()
 		hotkey, %Cast_ChronoRoboticsFacility_Key%, Cast_ChronoStructure, on	
-	Hotkey, If, WinActive(GameIdentifier) && (a_LocalPlayer["Race"] = "Terran" || a_LocalPlayer["Race"] = "Protoss")  && time && !BufferInputFast.isInputBlockedOrBuffered()	
+	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Terran" || aLocalPlayer["Race"] = "Protoss")  && time && !BufferInputFast.isInputBlockedOrBuffered()	
 		hotkey, %ToggleAutoWorkerState_Key%, g_UserToggleAutoWorkerState, on	
 	Hotkey, If, WinActive(GameIdentifier) && time && !isMenuOpen() && EnableAutoWorker%LocalPlayerRace% && !BufferInputFast.isInputBlockedOrBuffered() ; cant use !ischatopen() - as esc will close chat before memory reads value so wont see chat was open
 		hotkey, *~Esc, g_temporarilyDisableAutoWorkerProduction, on	
 	Hotkey, If, WinActive(GameIdentifier) && !isMenuOpen() && time && !BufferInputFast.isInputBlockedOrBuffered()
 	while (10 > i := A_index - 1)
 	{
-		if A_UnitGroupSettings["LimitGroup", a_LocalPlayer["Race"], i,"Enabled"] 
+		if A_UnitGroupSettings["LimitGroup", aLocalPlayer["Race"], i,"Enabled"] 
 			status := "on"
 		else status := "off"
 		hotkey, ^%i%, g_LimitGrouping, % status
@@ -8342,8 +8368,8 @@ Class c_EnemyUnit
 	}
 }
 
-;ParseEnemyUnits(ByRef a_LocalUnits, ByRef a_EnemyUnits, ByRef a_Player)
-ParseEnemyUnits(ByRef a_EnemyUnits, ByRef a_Player)
+;ParseEnemyUnits(ByRef a_LocalUnits, ByRef a_EnemyUnits, ByRef aPlayer)
+ParseEnemyUnits(ByRef a_EnemyUnits, ByRef aPlayer)
 { global DeadFilterFlag
 	LocalTeam := getPlayerTeam(), a_EnemyUnitsTmp := []
 	While (A_Index <= getUnitCount()) ; Read +10% blanks in a row
@@ -8353,7 +8379,7 @@ ParseEnemyUnits(ByRef a_EnemyUnits, ByRef a_Player)
 		If (Filter & DeadFilterFlag) || (type = "Fail")
 			Continue
 		Owner := getUnitOwner(unit)
-		if  (a_Player[Owner, "Team"] <> LocalTeam AND Owner) 
+		if  (aPlayer[Owner, "Team"] <> LocalTeam AND Owner) 
 			a_EnemyUnitsTmp[Unit] := new c_EnemyUnit(Unit)
 	}
 	a_EnemyUnits := a_EnemyUnitsTmp
@@ -9079,8 +9105,8 @@ sortSelectedUnitsByDistance(byref aSelectedUnits, Amount = 3)	;takes a simple ar
 
 
 debugData()
-{ 	global a_Player, O_mTop, GameIdentifier
-	, A_UnitGroupSettings, a_LocalPlayer
+{ 	global aPlayer, O_mTop, GameIdentifier
+	, A_UnitGroupSettings, aLocalPlayer
 	Player := getLocalPlayerNumber()
 	unit := getSelectedUnitIndex()
 	DllCall("QueryPerformanceFrequency", "Int64*", Frequency), DllCall("QueryPerformanceCounter", "Int64*", CurrentTick)
@@ -9109,7 +9135,7 @@ debugData()
 	. "==========================================="
 	. "`n"
 	. "`n"
-	result .= "GetGameType: " GetGameType(a_Player) "`n"
+	result .= "GetGameType: " GetGameType(aPlayer) "`n"
 	. "Enemy Team Size: " getEnemyTeamsize() "`n"
 	. "Time: " gettime() "`n"
 	. "Pause: " isGamePaused() "`n"
@@ -9150,7 +9176,7 @@ debugData()
 	. A_Tab "Map Top: " getMapTop() "`n"
 	. A_Tab "Map Top: "ReadMemory(O_mTop, GameIdentifier) "`n"
 	. A_Tab "`n`n"
-	. "AutoGroupEnabled: " A_UnitGroupSettings["AutoGroup", a_LocalPlayer["Race"], "Enabled"]
+	. "AutoGroupEnabled: " A_UnitGroupSettings["AutoGroup", aLocalPlayer["Race"], "Enabled"]
 	return result
 }
 
@@ -9302,7 +9328,7 @@ Suffix=_SC1 = Classic
 
 splitByMouseLocation(SplitctrlgroupStorage_key)
 {
-	GLOBAL a_LocalPlayer, aUnitID, NextSubgroupKey
+	GLOBAL aLocalPlayer, aUnitID, NextSubgroupKey
 	MouseGetPos, mx, my
 	DllCall("Sleep", Uint, 5)
 	HighlightedGroup := getSelectionHighlightedGroup()
@@ -9318,7 +9344,7 @@ splitByMouseLocation(SplitctrlgroupStorage_key)
 */
 
 SplitUnits(SplitctrlgroupStorage_key, SleepSplitUnits)
-{ 	GLOBAL a_LocalPlayer, aUnitID, NextSubgroupKey
+{ 	GLOBAL aLocalPlayer, aUnitID, NextSubgroupKey
 
 	sleep, % SleepSplitUnits
 	HighlightedGroup := getSelectionHighlightedGroup()
@@ -9328,9 +9354,9 @@ SplitUnits(SplitctrlgroupStorage_key, SleepSplitUnits)
 	aSelectedUnits := []
 	xSum := ySum := 0
 
- 	If (a_LocalPlayer["Race"] = "Terran")
+ 	If (aLocalPlayer["Race"] = "Terran")
 		worker := "SCV"	
-	Else If (a_LocalPlayer["Race"] = "Protoss")
+	Else If (aLocalPlayer["Race"] = "Protoss")
 		worker := "Probe"
 	Else Worker := "Drone"	
 	selectionCount := getSelectionCount()
@@ -9515,7 +9541,7 @@ FindXYatAngle(byref ResultX, byref ResultY,	Angle, Direction, distance, X, Y)
 
 getEnemyUnitCount(byref aEnemyUnits, byref aEnemyBuildingConstruction, byref aUnitID)
 {
-	GLOBAL DeadFilterFlag, a_Player, a_LocalPlayer, aUnitTargetFilter, aUnitInfo, 
+	GLOBAL DeadFilterFlag, aPlayer, aLocalPlayer, aUnitTargetFilter, aUnitInfo, 
 	aEnemyUnits := [], aEnemyBuildingConstruction := []
 ;	if !aEnemyUnitPriorities	;because having  GLOBAL aEnemyUnitPriorities := [] results in it getting cleared each function run
 ;		aEnemyUnitPriorities := []
@@ -9530,7 +9556,7 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyBuildingConstruction, byref aUn
 	       Continue
 		owner := numgetUnitOwner(MemDump, Unit) 
 
-	    if  (a_Player[Owner, "Team"] <> a_LocalPlayer["Team"] && Owner)
+	    if  (aPlayer[Owner, "Team"] <> aLocalPlayer["Team"] && Owner)
 	    {
 	    	pUnitModel := numgetUnitModelPointer(MemDump, Unit)
 	    	Type := numgetUnitModelType(pUnitModel)
@@ -9558,7 +9584,7 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyBuildingConstruction, byref aUn
 	Return
 }
 
-FilterUnits(byref aEnemyUnits, byref aEnemyBuildingConstruction, byref aUnitPanelUnits, byref aUnitID, a_Player)	;care have used aUnitID everywhere else!!
+FilterUnits(byref aEnemyUnits, byref aEnemyBuildingConstruction, byref aUnitPanelUnits, byref aUnitID, aPlayer)	;care have used aUnitID everywhere else!!
 {	global aUnitInfo
 	;	aEnemyUnits[Owner, Type]
 	STATIC aRemovedUnits := {"Terran": ["BarracksTechLab","BarracksReactor","FactoryTechLab","FactoryReactor","StarportTechLab","StarportReactor"]
@@ -9611,7 +9637,7 @@ FilterUnits(byref aEnemyUnits, byref aEnemyBuildingConstruction, byref aUnitPane
 	for owner, priorityObject in aEnemyUnits
 	{
 	;	aDeleteKeys := []					;****have to 'save' the delete keys, as deleting them during a for loop will cause you to go +2 keys on next loop, not 1
-		race := a_Player[owner, "Race"]		;it doesn't matter if it attempts to delete the same key a second time (doesn't effect anything)
+		race := aPlayer[owner, "Race"]		;it doesn't matter if it attempts to delete the same key a second time (doesn't effect anything)
 
 		if (race = "Zerg" && priorityObject[aUnitInfo[aUnitID["Drone"], "Priority"], aUnitID["Drone"]] && aEnemyBuildingConstruction[Owner, "TotalCount"])
 			priorityObject[aUnitInfo[aUnitID["Drone"], "Priority"], aUnitID["Drone"]] -= aEnemyBuildingConstruction[Owner, "TotalCount"] ; as drones morphing are still counted as 'alive' so have to remove them		
@@ -9668,7 +9694,7 @@ FilterUnits(byref aEnemyUnits, byref aEnemyBuildingConstruction, byref aUnitPane
 
 	for owner, priorityObject in aEnemyBuildingConstruction
 	{
-		race := a_Player[owner, "Race"]	
+		race := aPlayer[owner, "Race"]	
 
 		for subUnit, mainUnit in aAddConstruction[Race]
 		{
@@ -9709,10 +9735,10 @@ FilterUnits(byref aEnemyUnits, byref aEnemyBuildingConstruction, byref aUnitPane
 	return
 }
 
-getLongestEnemyPlayerName(a_Player)
+getLongestEnemyPlayerName(aPlayer)
 {
 	localTeam := getPlayerTeam(getLocalPlayerNumber())
-	for index, Player in a_Player
+	for index, Player in aPlayer
 		if (player.team != localTeam && StrLen(player.name) > StrLen(LongestName))
 			LongestName := player.name
 	return player.name
@@ -9720,7 +9746,7 @@ getLongestEnemyPlayerName(a_Player)
 
 DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 {
-	GLOBAL aEnemyUnits, aEnemyBuildingConstruction, a_pBitmap, a_Player, a_LocalPlayer, HexColour, GameIdentifier, config_file, UnitOverlayX, UnitOverlayY, MatrixColour 
+	GLOBAL aEnemyUnits, aEnemyBuildingConstruction, a_pBitmap, aPlayer, aLocalPlayer, HexColour, GameIdentifier, config_file, UnitOverlayX, UnitOverlayY, MatrixColour 
 	static Font := "Arial", Overlay_RunCount, hwnd1, DragPrevious := 0, a_pBrush := [], TransparentBlack := 0x78000000
 	Overlay_RunCount ++	
 	DestX := i := 0
@@ -9772,14 +9798,14 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 		If (PlayerIdentifier = 1 Or PlayerIdentifier = 2 )
 		{	
 			IF (PlayerIdentifier = 2)
-				OptionsName := " Bold cFF" HexColour[a_Player[slot_number, "Colour"]] " r4 s" 17*UserScale
+				OptionsName := " Bold cFF" HexColour[aPlayer[slot_number, "Colour"]] " r4 s" 17*UserScale
 			Else IF (PlayerIdentifier = 1)
 				OptionsName := " Bold cFFFFFFFF r4 s" 17*UserScale		
 			gdip_TextToGraphics(G, getPlayerName(slot_number), "x0" "y"(DestY +12*UserScale)  OptionsName, Font) ;get string size	
 		;	StringSplit, TextSize, TextData, | ;retrieve the length of the string		
 			if !LongestNameSize
 			{
-				LongestNameData :=	gdip_TextToGraphics(G, getLongestEnemyPlayerName(a_Player), "x0" "y"(DestY)  " Bold c00FFFFFF r4 s" 17*UserScale	, Font) ; text is invisible ;get string size	
+				LongestNameData :=	gdip_TextToGraphics(G, getLongestEnemyPlayerName(aPlayer), "x0" "y"(DestY)  " Bold c00FFFFFF r4 s" 17*UserScale	, Font) ; text is invisible ;get string size	
 				StringSplit, LongestNameSize, LongestNameData, | ;retrieve the length of the string
 				LongestNameSize := LongestNameSize3
 			}
@@ -9788,10 +9814,10 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 		}
 		Else If (PlayerIdentifier = 3)
 		{	
-			pBitmap := a_pBitmap[a_Player[slot_number, "Race"],"RaceFlat"]
+			pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"RaceFlat"]
 			SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
 			Width *= UserScale *.5, Height *= UserScale *.5	
-			Gdip_DrawImage(G, pBitmap, 12*UserScale, DestY + Height/5, Width, Height, 0, 0, SourceWidth, SourceHeight, MatrixColour[a_Player[slot_number, "Colour"]])
+			Gdip_DrawImage(G, pBitmap, 12*UserScale, DestY + Height/5, Width, Height, 0, 0, SourceWidth, SourceHeight, MatrixColour[aPlayer[slot_number, "Colour"]])
 			DestX := Width+15*UserScale 
 		}
 		for priority, object in priorityObject
@@ -10654,7 +10680,7 @@ g_TTTest:
 
 testtime := A_TickCount - testtime
 ;ToolTip, % isUserBusyBuilding() "`n" pointer(GameIdentifier, P_IsUserPerformingAction, O1_IsUserPerformingAction), (mx+10), (my+10)
-var := getPlayerCurrentAPM(a_LocalPlayer.slot)"`n"
+var := getPlayerCurrentAPM(aLocalPlayer.slot)"`n"
 var .= getPlayerCurrentAPM(1) "`n"
 var .= getPlayerCurrentAPM(2) "`n"
 var .= getPlayerCurrentAPM(3) "`n"

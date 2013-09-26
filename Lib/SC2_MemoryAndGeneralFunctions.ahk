@@ -349,14 +349,14 @@ getIdleWorkers()
 getPlayerSupply(player="")
 { global
 	If (player = "")
-		player := a_LocalPlayer["Slot"]
+		player := aLocalPlayer["Slot"]
 	Return round(ReadMemory(((B_pStructure + O_pSupply) + (player-1)*S_pStructure), GameIdentifier)  / 4096)		
 	; Round Returns 0 when memory returns Fail
 }
 getPlayerSupplyCap(player="")
 { 	Local SupplyCap 
 	If (player = "")
-		player := a_LocalPlayer["Slot"]
+		player := aLocalPlayer["Slot"]
 		SupplyCap := round(ReadMemory(((B_pStructure + O_pSupplyCap) + (player-1)*S_pStructure), GameIdentifier)  / 4096)
 		if (SupplyCap > 200)	; as this will actually report the amount of supply built i.e. can be more than 200
 			return 200
@@ -365,13 +365,13 @@ getPlayerSupplyCap(player="")
 getPlayerSupplyCapTotal(player="")
 { 	GLOBAL 
 	If (player = "")
-		player := a_LocalPlayer["Slot"]	
+		player := aLocalPlayer["Slot"]	
 	Return round(ReadMemory(((B_pStructure + O_pSupplyCap) + (player-1)*S_pStructure), GameIdentifier)  / 4096)
 }
 getPlayerWorkerCount(player="")
 { global
 	If (player = "")
-		player := a_LocalPlayer["Slot"]
+		player := aLocalPlayer["Slot"]
 	Return ReadMemory(((B_pStructure + O_pWorkerCount) + (player-1)*S_pStructure), GameIdentifier)
 }
 
@@ -382,13 +382,13 @@ getPlayerWorkerCount(player="")
 getPlayerWorkersBuilt(player="")
 { global
 	If (player = "")
-		player := a_LocalPlayer["Slot"]
+		player := aLocalPlayer["Slot"]
 	Return ReadMemory(((B_pStructure + O_pWorkersBuilt) + (player-1)*S_pStructure), GameIdentifier)
 }
 getPlayerWorkersLost(player="")
-{ 	global a_LocalPlayer
+{ 	global aLocalPlayer
 	If (player = "")
-		player := a_LocalPlayer["Slot"]
+		player := aLocalPlayer["Slot"]
 	return getPlayerWorkersBuilt() - getPlayerWorkerCount()
 }
 getUnitType(Unit) ;starts @ 0 i.e. first unit at 0
@@ -483,16 +483,16 @@ getPlayerType(i)
 getPlayerTeam(player="") ;team begins at 0
 {	global
 	If (player = "")
-		player := a_LocalPlayer["Slot"]	
+		player := aLocalPlayer["Slot"]	
 	Return ReadMemory((B_pStructure + O_pTeam) + (player-1) * S_pStructure, GameIdentifier, 1)
 }
 getPlayerColour(i)
-{	local A_Player_Colour, Colour_List
-	A_Player_Colour := []
+{	local aPlayerColour, Colour_List
+	aPlayerColour := []
 	Colour_List := "White|Red|Blue|Teal|Purple|Yellow|Orange|Green|Light Pink|Violet|Light Grey|Dark Green|Brown|Light Green|Dark Grey|Pink"
 	Loop, Parse, Colour_List, |
-		A_Player_Colour[a_index - 1] := A_LoopField
-	Return A_Player_Colour[ReadMemory((B_pStructure + O_pColour) + (i-1) * S_pStructure, GameIdentifier)]
+		aPlayerColour[a_index - 1] := A_LoopField
+	Return aPlayerColour[ReadMemory((B_pStructure + O_pColour) + (i-1) * S_pStructure, GameIdentifier)]
 }
 getLocalPlayerNumber() ;starts @ 1
 {	global
@@ -501,61 +501,61 @@ getLocalPlayerNumber() ;starts @ 1
 getBaseCameraCount(player="")
 { 	global
 	If (player = "")
-		player := a_LocalPlayer["Slot"]	
+		player := aLocalPlayer["Slot"]	
 	Return ReadMemory((B_pStructure + O_pBaseCount) + (player-1) * S_pStructure, GameIdentifier)
 }
 getPlayerMineralIncome(player="")
 { 	global
 	If (player = "")
-		player := a_LocalPlayer["Slot"]	
+		player := aLocalPlayer["Slot"]	
 	Return ReadMemory(B_pStructure + O_pMineralIncome + (player-1) * S_pStructure, GameIdentifier)
 }
 getPlayerGasIncome(player="")
 { 	global
 	If (player = "")
-		player := a_LocalPlayer["Slot"]	
+		player := aLocalPlayer["Slot"]	
 	Return ReadMemory(B_pStructure + O_pGasIncome + (player-1) * S_pStructure, GameIdentifier)
 }
 getPlayerArmySupply(player="")
 { 	global
 	If (player = "")
-		player := a_LocalPlayer["Slot"]	
+		player := aLocalPlayer["Slot"]	
 	Return ReadMemory(B_pStructure + O_pArmySupply + (player-1) * S_pStructure, GameIdentifier) / 4096
 }
 getPlayerArmySizeMinerals(player="")
 { 	global
 	If (player = "")
-		player := a_LocalPlayer["Slot"]	
+		player := aLocalPlayer["Slot"]	
 	Return ReadMemory(B_pStructure + O_pArmyMineralSize + (player-1) * S_pStructure, GameIdentifier)
 }
 getPlayerArmySizeGas(player="")
 { 	global
 	If (player = "")
-		player := a_LocalPlayer["Slot"]	
+		player := aLocalPlayer["Slot"]	
 	Return ReadMemory(B_pStructure + O_pArmyGasSize + (player-1) * S_pStructure, GameIdentifier)
 }
 getPlayerMinerals(player="")
 { 	global
 	If (player = "")
-		player := a_LocalPlayer["Slot"]	
+		player := aLocalPlayer["Slot"]	
 	Return ReadMemory(B_pStructure + O_pMinerals + (player-1) * S_pStructure, GameIdentifier)
 }
 getPlayerGas(player="")
 { 	global
 	If (player = "")
-		player := a_LocalPlayer["Slot"]	
+		player := aLocalPlayer["Slot"]	
 	Return ReadMemory(B_pStructure + O_pGas + (player-1) * S_pStructure, GameIdentifier)
 }
 getPlayerCameraPositionX(Player="")
 {	global
 	If (player = "")
-		player := a_LocalPlayer["Slot"]	
+		player := aLocalPlayer["Slot"]	
 	Return ReadMemory(B_pStructure + (Player - 1)*S_pStructure + O_pXcam, GameIdentifier) / 4096
 }
 getPlayerCameraPositionY(Player="")
 {	global
 	If (player = "")
-		player := a_LocalPlayer["Slot"]	
+		player := aLocalPlayer["Slot"]	
 	Return ReadMemory(B_pStructure + (Player - 1)*S_pStructure + O_pYcam, GameIdentifier) / 4096
 }
 
@@ -567,7 +567,7 @@ getPlayerCameraPositionY(Player="")
 getPlayerCurrentAPM(Player="")
 {	global
 	If (player = "")
-		player := a_LocalPlayer["Slot"]	
+		player := aLocalPlayer["Slot"]	
 	Return ReadMemory(B_pStructure + (Player - 1)*S_pStructure + O_pAPM, GameIdentifier)
 }
 
@@ -1189,24 +1189,30 @@ numGetSelectionSorted(ByRef aSelection, ReverseOrder := False)
 	{
 		; Use a negative priority so AHKs normal object enumerates them in the correct 
 		; unit panel order (backwards to how they would normally be enumerated)
-		priority := -1 * getUnitSubGroupPriority(unit := numget(MemDump,(A_Index-1) * S_scStructure + O_scUnitIndex , "Int") >> 18)
-		unitId := getUnitType(unit)
-		subGroupAlias := getUnitTargetFilterFast(unit) & aUnitTargetFilter.Hallucination 
+		priority := -1 * getUnitSubGroupPriority(unitIndex := numget(MemDump,(A_Index-1) * S_scStructure + O_scUnitIndex , "Int") >> 18)
+		, unitId := getUnitType(unitIndex)
+		, subGroupAlias := getUnitTargetFilterFast(unitIndex) & aUnitTargetFilter.Hallucination 
 													? unitId  - .1 ; Dirty hack for hallucinations
 													: (aUnitSubGroupAlias.hasKey(unitId) 
 															? aUnitSubGroupAlias[unitId] 
 															:  unitId)
+		, sIndices .= "," unitIndex
+		if !isUnitLocallyOwned(unitId)
+			nonLocalUnitSelected := True										
 	; AHK automatically creates an object if it doesn't exist when using this syntax
 	; So i only have to check and make one object
 	;	if !isObject(aStorage[priority])
 	;		aStorage[priority] := []
 		if !isObject(aStorage[priority, subGroupAlias])
 		  	aStorage[priority, subGroupAlias] := []
-		aStorage[priority, subGroupAlias].insert(unit)
-	
+		aStorage[priority, subGroupAlias].insert({"unitIndex": unit, "unitId": unitId})
+		
 		; when aStorage is enumerated, units will be accessed in the same order
 		; as they appear in the unit panel ie top left to bottom right 	
 	}
+	aSelection.IndicesString := sIndices
+	if (aSelection.Count && nonLocalUnitSelected)
+		aSelection.IsGroupable := True
 	; This will convert the data into a simple indexed object
 	; The index value will be 1 more than the unit portrait location
 	aSelection.units := []
@@ -1215,15 +1221,19 @@ numGetSelectionSorted(ByRef aSelection, ReverseOrder := False)
 	{
 		for subGroupAlias, object2 in object 
 		{
-			
-			for index, unitIndex in object2
+			for index, unit in object2 ; (unit is an object)
 			{
+				if (getUnitOwner(unitIndex) != )
 				aSelection.units.insert({ "priority": -1*priority ; convert back to positive
 										, "subGroupAlias": subGroupAlias
-										, "unitIndex": unitIndex
-										, "TabPosition": TabPosition
+										, "unitIndex": unit.unitIndex
+										, "unitId": unit.unitId
+										, "tabPosition": TabPosition
 										, "unitPortrait": unitPortrait++}) ; will be 1 less than A_index when iterated
-			} 											; Note unitPortrait++ increments after assigning value to unitPortrait
+										; Note unitPortrait++ increments after assigning value to unitPortrait
+				if (TabPosition = aSelection.HighlightedGroup && !aSelection.HighlightedId)
+					aSelection.HighlightedId := unit.unitId
+			} 											
 			TabPosition++	
 		}
 	}
