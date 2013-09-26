@@ -3,7 +3,7 @@ RandomiseArray(byref a)
     aIndicies := []
     for i, in a 
          aIndicies.insert(i)
-    for index, v in a
+    for index, in a
     {
         Random, i, 1, aIndicies.MaxIndex()
         storage := a[aIndicies[i]]

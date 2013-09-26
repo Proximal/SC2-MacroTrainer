@@ -12,12 +12,21 @@ reverseArray(Byref a)
         aIndices.insert(index)
     aStorage := []
     loop % aIndices.maxIndex() 
-       aStorage.insert(a[aIndices[aIndices.maxIndex() - A_index + 1]]) 
+       aStorage.insert(a[aIndices[aIndices.maxIndex() - A_index + 1]])
     a := aStorage
     return aStorage
 }
 
 /*
+This is 2x slower 
+
+    loop % floor(aIndices.maxIndex())
+    {
+        storage := a[aIndices[A_index]]
+        a[A_Index] := a[aIndices[aIndices.maxIndex() - A_index + 1]]
+        a[aIndices[aIndices.maxIndex() - A_index + 1]] := storage
+    }
+
 ; A slower way to achieve same result
 ; This is ~7.5X slower
 reverseArraySort(Byref a)

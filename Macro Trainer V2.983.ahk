@@ -2735,6 +2735,7 @@ if FileExist(config_file) ; the file exists lets read the ini settings
 	section := "Forced Inject"
 	IniRead, F_Inject_Enable, %config_file%, %section%, F_Inject_Enable, 0
 	IniRead, FInjectHatchFrequency, %config_file%, %section%, FInjectHatchFrequency, 2500
+	IniRead, FInjectHatchMaxHatches, %config_file%, %section%, FInjectHatchMaxHatches, 10
 	IniRead, FInjectAPMProtection, %config_file%, %section%, FInjectAPMProtection, 190
 	IniRead, F_InjectOff_Key, %config_file%, %section%, F_InjectOff_Key, Lwin & F5
 	
@@ -3232,6 +3233,7 @@ ini_settings_write:
 	section := "Forced Inject"
 	IniWrite, %F_Inject_Enable%, %config_file%, %section%, F_Inject_Enable
 	IniWrite, %FInjectHatchFrequency%, %config_file%, %section%, FInjectHatchFrequency
+	IniWrite, %FInjectHatchMaxHatches%, %config_file%, %section%, FInjectHatchMaxHatches
 	IniWrite, %FInjectAPMProtection%, %config_file%, %section%, FInjectAPMProtection
 	IniWrite, %F_InjectOff_Key%, %config_file%, %section%, F_InjectOff_Key
 
@@ -3803,8 +3805,12 @@ Gui, Tab,  Manual
 
 
 Gui, Tab,  Auto
-	Gui, Add, GroupBox, y+20 w225 h185, Fully Automated Injects
+	Gui, Add, GroupBox, y+20 w225 h215, Fully Automated Injects
 		Gui, Add, Checkbox,xp+10 yp+30 vF_Inject_Enable checked%F_Inject_Enable%, Enable
+	
+		Gui, Add, Text,y+15 x%settings2RX% w140, Max injects per round: 
+			Gui, Add, Edit, Number Right x+5 yp-2 w60 vTT_FInjectHatchMaxHatches
+				Gui, Add, UpDown, Range1-100000 vFInjectHatchMaxHatches, %FInjectHatchMaxHatches%
 
 		Gui, Add, Text,y+15 x%settings2RX% w140, Check Hatches Every (ms): 
 			Gui, Add, Edit, Number Right x+5 yp-2 w60 vTT_FInjectHatchFrequency
@@ -4952,7 +4958,7 @@ TT_F_Sleep_Time_TT := F_Sleep_Time_TT := "The amount of time spent idle after in
 		. "This will vary for users, but 0 ms works reliably for me.`n"
 		. "If 0 ms is not reliable, try increasing this value in increments of 1 ms."
 TT_FInjectHatchFrequency_TT := FInjectHatchFrequency_TT := "How often the larva state of the hatcheries are checked. (In ms/real-time)`nAny uninjected hatches will then be injected.`n`nIncreasing this value will delay injects, that is, a hatch will remain uninjected for longer."
-
+TT_FInjectHatchMaxHatches_TT := FInjectHatchMaxHatches_TT := "The maximum number of hatches to be injected during an inject round"
 
 TT_AM_KeyDelay_TT := AM_KeyDelay_TT := TT_I_KeyDelay_TT := I_KeyDelay_TT := TT_CG_KeyDelay_TT := CG_KeyDelay_TT := "This sets the delay between key/mouse events`nLower numbers are faster, but they may cause problems.`n0-10`n`nWith regards to speed, changing the 'sleep' time will generally have a larger impact."
 TT_ChronoBoostSleep_TT := ChronoBoostSleep_TT := "Sets the amount of time that the program sleeps for during each automation cycle.`nThis has a large effect on the speed, and hence how 'human' the automation appears'.`n`n"
@@ -7068,7 +7074,7 @@ selectGroup(group, preSleep := -1, postSleep := 2)
 	return	
 }
 
-; sMulti("as", 3)
+; sRepeat("as", 3)
 ; r = "asasas"
 sRepeat(string, multi)
 {
@@ -8387,7 +8393,7 @@ castInjectLarva(Method="Backspace", ForceInject=0, sleepTime=80)	;SendWhileBlock
 
 	if (Method = "MiniMap" OR ForceInject)
 	{
-		local xNew, yNew
+		local xNew, yNew, injectedHatches
 
 		; there could be an issue here with the selection buffer not being updated (should sleep for 10ms)
 
@@ -8404,6 +8410,8 @@ castInjectLarva(Method="Backspace", ForceInject=0, sleepTime=80)	;SendWhileBlock
 			if (ForceInject || Inject_RestoreSelection)
 				MTsend("^" Inject_control_group)
 			MTsend(MI_Queen_Group)
+			if ForceInject
+				dsleep(5)
 			For Index, CurrentHatch in oHatcheries
 			{
 				Local := FoundQueen := 0
@@ -8425,6 +8433,9 @@ castInjectLarva(Method="Backspace", ForceInject=0, sleepTime=80)	;SendWhileBlock
 						if sleepTime
 							sleep % ceil(sleepTime * rand(1, Inject_SleepVariance)) ; eg rand(1, 1.XXXX) as the second parameter will always have a decimal point, dont have to worry about it returning just full integers eg 1 or 2 or 3
 						Queen.Energy -= 25	
+						injectedHatches++
+						if (injectedHatches >= FInjectHatchMaxHatches && ForceInject)
+							break, 2
 						Break
 					}
 					else CurrentHatch.NearbyQueen := 0
@@ -8468,12 +8479,16 @@ castInjectLarva(Method="Backspace", ForceInject=0, sleepTime=80)	;SendWhileBlock
 						MTclick(click_x, click_y, "Left", "+")
 						if sleepTime
 							sleep % ceil(sleepTime * rand(1, Inject_SleepVariance))
+						else dSleep(3)
 						if (A_Index = QueenUnit.maxIndex())
 							MTsend(MI_Queen_Group)
-					}					
+						injectedHatches++
+						if (injectedHatches >= FInjectHatchMaxHatches && ForceInject)
+							break, 2					
+						}					
 			}
 		}
-		else return ; no queens in control group - actions were take
+		else return ; no queens in control group - no actions were take
 	}	
 	else if ((Method = "Backspace Adv") || (Method = "Backspace CtrlGroup")) ; I.E. I have disabled this feature until i get around to finding the centred hatch better ((Method="Backspace Adv") || (Method = "Backspace CtrlGroup")) ;cos i changed the name in an update
 	{		; this is really just the minimap method made to look like the backspace
@@ -8594,12 +8609,11 @@ castInjectLarva(Method="Backspace", ForceInject=0, sleepTime=80)	;SendWhileBlock
 	}
 	if (ForceInject || Inject_RestoreSelection)
 	{
-		sendSequence := Inject_control_group
+		MTsend(Inject_control_group)
+		dsleep(5)
 		;if HighlightedGroup
 		;	sleep(2) ; After restoring a control group, needs at least 1 ms so tabs will register
-		loop % HighlightedGroup
-			sendSequence .= NextSubgroupKey
-		MTsend(sendSequence)
+		MTsend(sRepeat(NextSubgroupKey, HighlightedGroup))
 	}
 }
 
@@ -8942,7 +8956,7 @@ DeselectUnitPortaits(aUnitPortraitLocations)
 }
 
 
-ClickSelectUnitsPortriat(unit, sleep=20, ClickModifier="")	;can put ^ to do a control click
+ClickSelectUnitsPortriat(unit, sleep := 10, ClickModifier="")	;can put ^ to do a control click
 {
 	SortSelectedUnits(aSelectedUnits)
 	for SelectionIndex, objSelected in aSelectedUnits
@@ -8953,7 +8967,8 @@ ClickSelectUnitsPortriat(unit, sleep=20, ClickModifier="")	;can put ^ to do a co
 			if ClickModifier
 				MTclick(x, y, "Left", ClickModifier) ;shift clicks the unit
 			else MTclick(x, y)
-			sleep, sleep
+			if (sleep != -1)
+				dSleep(sleep)
 		}
 	if getUnitSelectionPage()	;ie slection page is not 0 (hence its not on 1 (1-1))
 	{
