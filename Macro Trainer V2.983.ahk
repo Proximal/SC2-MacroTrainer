@@ -6906,12 +6906,11 @@ autoWorkerProductionCheck()
 
 			if !oSelection.IsGroupable
 			{
-					Input.revertKeyState()
-					input.pClickDelay(pClickDelay) ;***********
-					return		
+				Input.revertKeyState()
+				input.pClickDelay(pClickDelay) ;***********
+				return		
 			}
 			selctionUnitIndices := oSelection.IndicesString
-			clipboard := selctionUnitIndices
 			loop, parse, selctionUnitIndices, `,
 			{
 				if A_LoopField not in %L_BaseCtrlGroupIndexes%	 ; so if a selected unit isnt in the base control group			
@@ -6978,14 +6977,13 @@ autoWorkerProductionCheck()
 				for index, object in oControlstorage.units 							; already stored in the ctrl group
 				{	
 					L_ControlstorageIndexes .= "," object.unitIndex 				; if they do, it wont bother sending the store control group command
-					if !isUnitLocallyOwned(object.unitIndex)
+					if !isUnitLocallyOwned(object.unitIndex) 			; as unit may have died and its unitIndex is reused
 					{
 						setControlGroup := True
 						break
 					}
 				}
-				L_ControlstorageIndexes := subStr(L_ControlstorageIndexes, 2)
-				if (setControlGroup || oSelection.IndicesString != L_ControlstorageIndexes)  
+				if (setControlGroup || oSelection.IndicesString != subStr(L_ControlstorageIndexes, 2))  
 					MTsend("^" controlstorageGroup )
 				MTsend(mainControlGroup)
 				dSleep(10) ; wont have that many units grouped with the buildings so 10ms should be plenty
