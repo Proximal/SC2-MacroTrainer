@@ -109,10 +109,10 @@ if (ErrorLevel || wHookTimout < 650)
 
 If 0 ; ignored by script but installed by compiler
 {
-  	FileInstall, C:\Program Files\AutoHotkey\AutoHotkeyMini.dll, this param is ignored
-;   FileInstall, C:\Program Files\AutoHotkey\AutoHotkey.dll, this param is ignored
+  	FileInstall, Included Files\ahkH\AutoHotkeyMini.dll, this param is ignored
+;   FileInstall, Included Files\ahkH\AutoHotkey.dll, this param is ignored
 }
-speechThread := AhkDllThread("C:\Program Files\AutoHotkey\AutoHotkeyMini.dll")
+speechThread := AhkDllThread("Included Files\ahkH\AutoHotkeyMini.dll")
 speechThread.ahktextdll(generateSpeechScript())
 
 
@@ -8835,7 +8835,7 @@ return
 
 findUnitsToRemoveFromArmy(byref aSelected := "", DeselectXelnaga = 1, DeselectPatrolling = 1, DeselectHoldPosition = 0, DeselectFollowing = 0, lTypes = "")
 { 	global uMovementFlags
-	if (!isObject(aSelected) || !aSelected.maxIndex())
+	if (!isObject(aSelected) || !aSelected.units.maxIndex())
 		numGetSelectionSorted(aSelected) ; get a sorted array of the selection buffer
 	remove := []
 	for i, unit in aSelected.units
@@ -8863,7 +8863,7 @@ findUnitsToRemoveFromArmy(byref aSelected := "", DeselectXelnaga = 1, DeselectPa
 ; The highest portrait locations come first
 findPortraitsToRemoveFromArmy(byref aSelected := "", DeselectXelnaga = 1, DeselectPatrolling = 1, DeselectHoldPosition = 0, DeselectFollowing = 0, lTypes = "")
 { 	global uMovementFlags
-	if (!isObject(aSelected) || !aSelected.maxIndex())
+	if (!isObject(aSelected) || !aSelected.units.maxIndex())
 		numGetSelectionSorted(aSelected) ; get a sorted array of the selection buffer
 	remove := []
 	
