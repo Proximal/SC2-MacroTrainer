@@ -738,10 +738,17 @@ Overlay_Toggle:
 	{
 		If (!DrawUnitOverlay := !DrawUnitOverlay)
 			DrawUnitOverlay(-1)
-	}
-	If (A_ThisHotkey = ToggleUnitOverlayKey)
 		gosub, g_unitPanelOverlay_timer
-	else gosub, overlay_timer ;this makes the change take effect immediately. 
+		return
+	}	
+	Else If (A_ThisHotkey = ToggleMinimapOverlayKey)
+	{
+		; Disable the minimap, but still draws detected units/non-converted gates
+		DrawMiniMap := !DrawMiniMap
+		gosub, MiniMap_Timer 
+		return	
+	}
+	gosub, overlay_timer ;this makes the change take effect immediately. 
 Return
 
 mt_pause_resume:
@@ -2403,13 +2410,6 @@ g_HideMiniMap:
 	}
 return
 
-gToggleMinimap:
-IniWrite, % DrawMiniMap := !DrawMiniMap, %config_file%, MiniMap, DrawMiniMap
-gosub, MiniMap_Timer 
-return
-
-
-
 overlay_timer: 	;DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdent=0, Background=0,Drag=0)
 	If (WinActive(GameIdentifier) || Dragoverlay) ;really only needed to ressize/scale not drag - as the movement is donve via  a post message - needed as overlay becomes the active window during drag etc
 	{
@@ -3541,6 +3541,7 @@ ini_settings_write:
 		Iniwrite, %scalevar%, %config_file%, %section%, %scalename%	
 		Iniwrite, %Togglevar%, %config_file%, %section%, %Togglename% 	
 	}
+	Iniwrite, %ToggleMinimapOverlayKey%, %config_file%, %section%, ToggleMinimapOverlayKey	
 	Iniwrite, %AdjustOverlayKey%, %config_file%, %section%, AdjustOverlayKey	
 	Iniwrite, %ToggleIdentifierKey%, %config_file%, %section%, ToggleIdentifierKey	
 	Iniwrite, %CycleOverlayKey%, %config_file%, %section%, CycleOverlayKey	
