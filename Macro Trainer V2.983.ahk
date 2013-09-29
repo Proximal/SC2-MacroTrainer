@@ -687,6 +687,7 @@ Return
 Overlay_Toggle:
 	if (A_ThisHotkey = CycleOverlayKey)
 	{
+		tooltip, %A_ThisHotkey%, 500, 500
 		If ((ActiveOverlays := DrawIncomeOverlay + DrawResourcesOverlay + DrawArmySizeOverlay + DrawUnitOverlay) > 1)
 		{
 			DrawResourcesOverlay := DrawArmySizeOverlay := DrawIncomeOverlay := DrawUnitOverlay := 0
@@ -2389,13 +2390,25 @@ MiniMap_Timer:
 Return
 
 g_HideMiniMap:
+; This will temporarily disable the minimap, but still draw detected units/non-converted gates
 	if DrawMiniMap
 	{
-		Try Gui, MiniMapOverlay: Destroy 
+	;	Try Gui, MiniMapOverlay: Destroy 
+		DrawMiniMap := False
+		gosub, MiniMap_Timer ; so minimap dissapears instantly 
 		sleep, 2500
-		ReDrawMiniMap := 1
+		DrawMiniMap := True
+		gosub, MiniMap_Timer
+	;	ReDrawMiniMap := 1
 	}
 return
+
+gToggleMinimap:
+IniWrite, % DrawMiniMap := !DrawMiniMap, %config_file%, MiniMap, DrawMiniMap
+gosub, MiniMap_Timer 
+return
+
+
 
 overlay_timer: 	;DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdent=0, Background=0,Drag=0)
 	If (WinActive(GameIdentifier) || Dragoverlay) ;really only needed to ressize/scale not drag - as the movement is donve via  a post message - needed as overlay becomes the active window during drag etc
@@ -3022,6 +3035,7 @@ if FileExist(config_file) ; the file exists lets read the ini settings
 
 	IniRead, ToggleUnitOverlayKey, %config_file%, %section%, ToggleUnitOverlayKey, <#U
 	IniRead, ToggleIdleWorkersOverlayKey, %config_file%, %section%, ToggleIdleWorkersOverlayKey, <#L
+	IniRead, ToggleMinimapOverlayKey, %config_file%, %section%, ToggleMinimapOverlayKey, <#H
 	IniRead, ToggleIncomeOverlayKey, %config_file%, %section%, ToggleIncomeOverlayKey, <#I
 	IniRead, ToggleResourcesOverlayKey, %config_file%, %section%, ToggleResourcesOverlayKey, <#R
 	IniRead, ToggleArmySizeOverlayKey, %config_file%, %section%, ToggleArmySizeOverlayKey, <#A
@@ -3155,6 +3169,7 @@ ini_settings_write:
 			hotkey, %TempHideMiniMapKey%, off
 			hotkey, %AdjustOverlayKey%, off
 			hotkey, %ToggleIdentifierKey%, off
+			hotkey, %ToggleMinimapOverlayKey%, off
 			hotkey, %ToggleIncomeOverlayKey%, off
 			hotkey, %ToggleResourcesOverlayKey%, off
 			hotkey, %ToggleArmySizeOverlayKey%, off			
@@ -4707,7 +4722,11 @@ Gui, Tab, Overlays
 				Gui, Add, UpDown,  Range150-15000 vUnitOverlayRefresh, %UnitOverlayRefresh%
 
 Gui, Tab, Hotkeys 
-		Gui, Add, Text, X%XTabX% y+40, Toggle Income:
+		Gui, Add, Text, X%XTabX% y+40, Toggle Minimap:
+		Gui, Add, Edit, Readonly yp-2 xp+120 center w85 vToggleMinimapOverlayKey gedit_hotkey, %ToggleMinimapOverlayKey%
+		Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#ToggleMinimapOverlayKey,  Edit 	
+
+		Gui, Add, Text, X%XTabX% yp+35, Toggle Income:
 		Gui, Add, Edit, Readonly yp-2 xp+120 center w85 vToggleIncomeOverlayKey gedit_hotkey, %ToggleIncomeOverlayKey%
 		Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#ToggleIncomeOverlayKey,  Edit 		
 
@@ -8263,6 +8282,7 @@ CreateHotkeys()
 		hotkey, %TempHideMiniMapKey%, g_HideMiniMap, on
 		hotkey, %AdjustOverlayKey%, Adjust_overlay, on
 		hotkey, %ToggleIdentifierKey%, Toggle_Identifier, on
+		hotkey, %ToggleMinimapOverlayKey%, Overlay_Toggle, on
 		hotkey, %ToggleIncomeOverlayKey%, Overlay_Toggle, on
 		hotkey, %ToggleResourcesOverlayKey%, Overlay_Toggle, on
 		hotkey, %ToggleArmySizeOverlayKey%, Overlay_Toggle, on
@@ -8981,33 +9001,37 @@ ClickSelectUnitsPortriat(unitIndex, sleep := 10, ClickModifier="")	;can put ^ to
 
 ClickUnitPortrait(SelectionIndex=0, byref X=0, byref Y=0, byref Xpage=0, byref Ypage=0, ClickPageTab = 0) ;SelectionIndex begins at 0 topleft unit
 {
-	AspectRatio := getScreenAspectRatio()
-	If (AspectRatio = "16:10")
+	static AspectRatio, Xu0, Yu0, Size, Xpage1, Ypage1, Ypage6
+	if (AspectRatio != newAspectRatio := getScreenAspectRatio())
 	{
-		Xu0 := (578/1680)*A_ScreenWidth, Yu0 := (888/1050)*A_ScreenHeight	;X,Yu0 = the middle of unit portrait 0 ( the top left unit)
-		Size := (56/1680)*A_ScreenWidth										;the unit portrait is square 56x56
-		Xpage1 := (528/1680)*A_ScreenWidth, Ypage1 := (877/1050)*A_ScreenHeight, Ypage6 := (1016/1050)*A_ScreenHeight	;Xpage1 & Ypage6 are locations of the Portrait Page numbers 1-5 
-	}	
-	Else If (AspectRatio = "5:4")
-	{	
-		Xu0 := (400/1280)*A_ScreenWidth, Yu0 := (876/1024)*A_ScreenHeight
-		Size := (51.57/1280)*A_ScreenWidth
-		Xpage1 := (352/1280)*A_ScreenWidth, Ypage1 := (864/1024)*A_ScreenHeight, Ypage6 := (992/1024)*A_ScreenHeight
-	}	
-	Else If (AspectRatio = "4:3")
-	{	
-		Xu0 := (400/1280)*A_ScreenWidth, Yu0 := (812/960)*A_ScreenHeight
-		Size := (51.14/1280)*A_ScreenWidth
-		Xpage1 := (350/1280)*A_ScreenWidth, Ypage1 := (800/960)*A_ScreenHeight, Ypage6 := (928/960)*A_ScreenHeight
-	}
-	Else if (AspectRatio = "16:9")
-	{
-		Xu0 := (692/1920)*A_ScreenWidth, Yu0 := (916/1080)*A_ScreenHeight
-		Size := (57/1920)*A_ScreenWidth	;its square
-		Xpage1 := (638/1920)*A_ScreenWidth, Ypage1 := (901/1080)*A_ScreenHeight, Ypage6 := (1044/1080)*A_ScreenHeight
+		AspectRatio := newAspectRatio
+		If (AspectRatio = "16:10")
+		{
+			Xu0 := (578/1680)*A_ScreenWidth, Yu0 := (888/1050)*A_ScreenHeight	;X,Yu0 = the middle of unit portrait 0 ( the top left unit)
+			Size := (56/1680)*A_ScreenWidth										;the unit portrait is square 56x56
+			Xpage1 := (528/1680)*A_ScreenWidth, Ypage1 := (877/1050)*A_ScreenHeight, Ypage6 := (1016/1050)*A_ScreenHeight	;Xpage1 & Ypage6 are locations of the Portrait Page numbers 1-5 
+		}	
+		Else If (AspectRatio = "5:4")
+		{	
+			Xu0 := (400/1280)*A_ScreenWidth, Yu0 := (876/1024)*A_ScreenHeight
+			Size := (51.57/1280)*A_ScreenWidth
+			Xpage1 := (352/1280)*A_ScreenWidth, Ypage1 := (864/1024)*A_ScreenHeight, Ypage6 := (992/1024)*A_ScreenHeight
+		}	
+		Else If (AspectRatio = "4:3")
+		{	
+			Xu0 := (400/1280)*A_ScreenWidth, Yu0 := (812/960)*A_ScreenHeight
+			Size := (51.14/1280)*A_ScreenWidth
+			Xpage1 := (350/1280)*A_ScreenWidth, Ypage1 := (800/960)*A_ScreenHeight, Ypage6 := (928/960)*A_ScreenHeight
+		}
+		Else if (AspectRatio = "16:9")
+		{
+			Xu0 := (692/1920)*A_ScreenWidth, Yu0 := (916/1080)*A_ScreenHeight
+			Size := (57/1920)*A_ScreenWidth	;its square
+			Xpage1 := (638/1920)*A_ScreenWidth, Ypage1 := (901/1080)*A_ScreenHeight, Ypage6 := (1044/1080)*A_ScreenHeight
 
+		}
+		YpageDistance := (Ypage6 - Ypage1)/5		;because there are 6 pages - 6-1
 	}
-	YpageDistance := (Ypage6 - Ypage1)/5		;because there are 6 pages - 6-1
 
 	if ClickPageTab	;use this to return the selection back to a specified page
 	{
@@ -10133,6 +10157,20 @@ u3  p4
 	VikingFighter = 72,
 	Hellion = 90,
 */
+
+
+f1::
+critical 
+aSelection := ""
+qpx(1)
+;numGetSelectionSorted(aSelection)
+numGetSelectionBubbleSort(aSelection)
+objtree(aSelection)
+t := qpx(0) * 1000
+critical off 
+msgbox % t 
+return
+
 
 
 ;msgbox % clipboard := getSelectedUnitIndex() << 18
