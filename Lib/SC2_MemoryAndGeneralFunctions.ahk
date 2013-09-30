@@ -14,7 +14,10 @@ loadGlobalMemoryAddresses:
 	global	S_pStructure := 0xDC0 ;0xCE0
 		global O_pXcam := 0x8
 		global O_pCamDistance := 0xA
+		global O_pCamAngle := 0x14
+		global O_pCamRotation := 0x18
 		global O_pYcam := 0xC	
+
 		global O_pTeam := 0x1C
 		global O_pType := 0x1D ;
 		global O_pStatus := 0x1E
@@ -558,6 +561,25 @@ getPlayerCameraPositionY(Player="")
 		player := aLocalPlayer["Slot"]	
 	Return ReadMemory(B_pStructure + (Player - 1)*S_pStructure + O_pYcam, GameIdentifier) / 4096
 }
+getPlayerCameraDistance(Player="")
+{	global
+	If (player = "")
+		player := aLocalPlayer["Slot"]	
+	Return ReadMemory(B_pStructure + (Player - 1)*S_pStructure + O_pCamDistance, GameIdentifier) / 4096
+}
+getPlayerCameraAngle(Player="")
+{	global
+	If (player = "")
+		player := aLocalPlayer["Slot"]	
+	Return ReadMemory(B_pStructure + (Player - 1)*S_pStructure + O_pCamAngle, GameIdentifier) / 4096
+}
+getPlayerCameraRotation(Player="")
+{	global
+	If (player = "")
+		player := aLocalPlayer["Slot"]	
+	Return ReadMemory(B_pStructure + (Player - 1)*S_pStructure + O_pCamRotation, GameIdentifier) / 4096
+}
+
 
 ;	Note if in game without other players (get instant victory)
 ;	then this value will remain zero

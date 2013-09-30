@@ -84,7 +84,7 @@ if !A_IsAdmin
 }
 OnExit, ShutdownProcedure
 ; Process, Priority, , H
-Process, Priority, , A
+; Process, Priority, , A
 Menu Tray, Add, &Settings && Options, options_menu
 Menu Tray, Add, &Check For Updates, TrayUpdate
 Menu Tray, Add, &Homepage, Homepage
@@ -144,10 +144,9 @@ GameExe := "SC2.exe"
 DllCall("RegisterShellHookWindow", UInt, getScriptHandle())
 
 pToken := Gdip_Startup()
-Global aUnitID, aUnitName, aUnitSubGroupAlias, aUnitTargetFilter
+Global aUnitID, aUnitName, aUnitSubGroupAlias, aUnitTargetFilter, HexColour, MatrixColour
 SetupUnitIDArray(aUnitID, aUnitName)
 getSubGroupAliasArray(aUnitSubGroupAlias)
-
 setupTargetFilters(aUnitTargetFilter)
 SetupColourArrays(HexColour, MatrixColour)
 
@@ -809,6 +808,7 @@ clock:
 			MouseMove A_ScreenWidth/2, A_ScreenHeight/2
 			WinNotActiveAtStart := 1
 		}
+		global aPlayer, aLocalPlayer
 		getPlayers(aPlayer, aLocalPlayer)
 		GameType := GetGameType(aPlayer)
 		if (ResumeWarnings || UserSavedAppliedSettings && alert_array[GameType, "Enabled"])  
@@ -2076,7 +2076,7 @@ worker_count:
 		{
 			If ( aLocalPlayer["Team"] <> aPlayer[slot_number, "Team"] )
 			{
-				playernumber := aPlayer[slot_number, "Team"]	
+				playernumber := slot_number	
 				player_race := aPlayer[slot_number, "Race"]
 				Break
 			}
@@ -7445,6 +7445,9 @@ DrawMiniMap()
 			Gdip_DrawImage(G, pBitmap, (X - Width/2), (Y - Height/2), Width, Height, 0, 0, Width, Height)	
 		} 
 	}
+
+	drawCamera(G)
+
 	Gdip_DeleteGraphics(G)
 	UpdateLayeredWindow(hwnd1, hdc, 0, 0, A_ScreenWidth/4, A_ScreenHeight) ;only draw on left side of the screen
 	SelectObject(hdc, obm) ; needed else eats ram ; Select the object back into the hdc
@@ -10161,7 +10164,19 @@ u3  p4
 
 
 f1::
-critical 
+sleep 250
+while (!getkeystate("F1"))
+{
+	tooltip, % getPlayerCameraPositionX() ", " getPlayerCameraPositionY()
+		. "`nDist: "  getPlayerCameraDistance()
+		. "`nAngle: " getPlayerCameraAngle()
+		. "`nRot: "  getPlayerCameraRotation()
+		, 500, 500
+	sleep 50
+}
+
+return
+
 aSelection := ""
 qpx(1)
 ;numGetSelectionSorted(aSelection)
@@ -10172,7 +10187,56 @@ critical off
 msgbox % t 
 return
 
+/*
+	1--------------------2
+	\                   /
+     \     centre      /
+      \               /
+       4-------------3
+	
+			x1 := xCenter - (33 * (angle/maxAngle)**2 + (Abs(maxAngle-angle)*10) ), y1 := yCenter - (22 * (angle/maxAngle)**2 + (Abs(maxAngle-angle)*20) )
+			, x2 := x1 + (66 * (angle/maxAngle)**2 + (Abs(maxAngle-angle)*20)), y2 := y1 
+			, x3 := x2 - ((x2 - x1)/2) + (25 * (angle/maxAngle)**2 - (Abs(maxAngle-angle)*10)), y3 := y2 + (33 * (angle/maxAngle)**2 + (Abs(maxAngle-angle)*20))
+			, x4 := x1 + ((x2 - x1)/2) - (25 * (angle/maxAngle)**2 - (Abs(maxAngle-angle)*10)),	y4 := y3 
 
+*/
+
+
+drawCamera(pGraphics)
+{
+	static a_pPen := [], maxAngle := 1.195313
+
+	For slotNumber in aPlayer
+	{
+		If ( aLocalPlayer.Team != aPlayer[slotNumber].Team || 1)
+		{
+
+			if !a_pPen[Colour := Colour := 0xcFF HexColour[aPlayer[slotNumber].Colour]]	
+				a_pPen[Colour] := Gdip_CreatePen(Colour, 2)
+			angle := getPlayerCameraAngle(slotNumber)
+			, xCenter := getPlayerCameraPositionX(slotNumber)
+			, yCenter := getPlayerCameraPositionY(slotNumber)
+			, convertCoOrdindatesToMiniMapPos(xCenter, yCenter)
+
+			  x1 := xCenter - (33 * (angle/maxAngle)**2 + (Abs(maxAngle-angle)*10) )
+			, y1 := yCenter - (22 * (angle/maxAngle)**2 + (Abs(maxAngle-angle)*20) )
+			
+			, x2 := x1 + (66 * (angle/maxAngle)**2 + (Abs(maxAngle-angle)*20))
+			, y2 := y1 
+			
+			, x3 := x2 - ((x2 - x1)/2) + (25 * (angle/maxAngle)**2 - (Abs(maxAngle-angle)*10))
+			, y3 := y2 + (33 * (angle/maxAngle)**2 + (Abs(maxAngle-angle)*20))
+			
+			, x4 := x1 + ((x2 - x1)/2) - (25 * (angle/maxAngle)**2 - (Abs(maxAngle-angle)*10))
+			, y4 := y3 
+
+			, Gdip_DrawLines(pGraphics, a_pPen[Colour],  x1 "," y1 "|" x2 "," y2 
+							. "|" x3 "," y3 "|" x4 "," y4 "|" x1 "," y1 )
+		}
+	}
+	Gdip_RotateBitmap(pGraphics, 189)
+	return 
+}
 
 ;msgbox % clipboard := getSelectedUnitIndex() << 18
 ;msgbox % clipboard := dectohex(getSelectedUnitIndex() *S_uStructure + B_uStructure)
