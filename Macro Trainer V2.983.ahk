@@ -283,8 +283,7 @@ while (!(B_SC2Process := getProcessBaseAddress(GameIdentifier)) || B_SC2Process 
 SC2hWnd := WinExist(GameIdentifier)
 OnMessage(DllCall("RegisterWindowMessage", Str,"SHELLHOOK" ), "ShellMessage")
 
-;LoadMemoryAddresses(B_SC2Process)	
-gosub, loadGlobalMemoryAddresses ; this is in SC2_memoryAndGeneralFunctions
+loadMemoryAddresses(B_SC2Process)	
 
 ; it would have been better to assign all the addresses to one super global object
 ; but i tried doing this once before and it caused issues because i forgot to update some address 
@@ -10215,9 +10214,9 @@ drawPlayerCameras(pGraphics)
 			if !a_pPen[Colour := Colour := 0xcFF HexColour[aPlayer[slotNumber].Colour]]	
 				a_pPen[Colour] := Gdip_CreatePen(Colour, 2)
 			angle := getPlayerCameraAngle(slotNumber)
-			, xCenter := getPlayerCameraPositionX(slotNumber)
-			, yCenter := getPlayerCameraPositionY(slotNumber)
-			, convertCoOrdindatesToMiniMapPos(xCenter, yCenter)
+			xCenter := getPlayerCameraPositionX(slotNumber)
+			yCenter := getPlayerCameraPositionY(slotNumber)
+			convertCoOrdindatesToMiniMapPos(xCenter, yCenter)
 
 			x1 := xCenter - (33/1920*A_ScreenWidth * (angle/maxAngle)**2 + (Abs(maxAngle-angle)*10/1920*A_ScreenWidth) )
 			y1 := yCenter - (22/1080*A_ScreenHeight * (angle/maxAngle)**2 + (Abs(maxAngle-angle)*20/1080*A_ScreenHeight) )

@@ -1,3 +1,128 @@
+;lets make all of the offsets super global
+Global B_LocalCharacterNameID
+, B_LocalPlayerSlot
+, B_pStructure
+, S_pStructure
+, O_pXcam
+, O_pCamDistance
+, O_pCamAngle
+, O_pCamRotation
+, O_pYcam
+, O_pTeam
+, O_pType
+, O_pStatus
+, O_pName
+, O_pRacePointer
+, O_pColour
+, O_pAccountID
+, O_pAPM
+, O_pEPM
+, O_pWorkerCount
+, O_pWorkersBuilt
+, O_pBaseCount
+, O_pSupplyCap
+, O_pSupply
+, O_pMinerals
+, O_pGas
+, O_pArmySupply
+, O_pMineralIncome
+, O_pGasIncome
+, O_pArmyMineralSize
+, O_pArmyGasSize
+
+, P_IdleWorker
+, O1_IdleWorker
+, O2_IdleWorker
+, B_Timer
+, B_rStructure
+, S_rStructure
+, P_ChatFocus
+, O1_ChatFocus
+, O2_ChatFocus
+, P_MenuFocus
+, O1_MenuFocus
+, B_uCount
+, B_uHighestIndex
+, B_uStructure
+, S_uStructure
+, O_uModelPointer
+, O_uTargetFilter
+, O_uBuildStatus
+, O_XelNagaActive
+, O_uOwner
+, O_uX
+, O_uY
+, O_uZ
+, O_uDestinationX
+, O_uDestinationY
+, O_P_uCmdQueuePointer
+, O_P_uAbilityPointer
+, O_uChronoState
+, O_uInjectState
+, O_uHpDamage
+, O_uEnergy
+, O_uTimer
+, O_cqMoveState
+
+, O_mUnitID
+, O_mSubgroupPriority
+, O_mMiniMapSize
+, B_SelectionStructure
+, B_CtrlGroupOneStructure
+, S_CtrlGroup
+, S_scStructure
+, O_scTypeCount
+, O_scTypeHighlighted
+, O_scUnitIndex
+
+, B_TeamColours
+, P_SelectionPage
+, O1_SelectionPage
+, O2_SelectionPage
+, O3_SelectionPage
+, DeadFilterFlag
+, BuriedFilterFlag
+, B_MapStruct
+, O_mLeft
+, O_mBottom
+, O_mRight
+, O_mTop
+, uMovementFlags
+
+, P_IsUserPerformingAction
+, O1_IsUserPerformingAction
+, P_IsBuildCardDisplayed
+, 01_IsBuildCardDisplayed
+, 02_IsBuildCardDisplayed
+, 03_IsBuildCardDisplayed
+, P_ChatInput
+, O1_ChatInput
+, O2_ChatInput
+, O3_ChatInput
+, O4_ChatInput
+, B_CameraDragScroll
+, B_InputStructure
+, B_iMouseButtons
+, B_iSpace
+, B_iNums
+, B_iChars
+, B_iTilda
+, B_iNonAlphNumChars
+, B_iNonCharKeys
+, B_iFkeys
+, B_iModifiers
+
+, B_CameraMovingViaMouseAtScreenEdge
+, 01_CameraMovingViaMouseAtScreenEdge
+, 02_CameraMovingViaMouseAtScreenEdge
+, 03_CameraMovingViaMouseAtScreenEdge
+, B_IsGamePaused
+, B_FramesPerSecond
+, B_Gamespeed
+, B_ReplayFolder
+, B_HorizontalResolution
+, B_VerticalResolution
+
 /*
 
   O_pTimeSupplyCapped := 0x840
@@ -5,130 +130,130 @@
 
 
 */
-loadGlobalMemoryAddresses:
-	tmpLabelName := A_ThisLabel
+loadMemoryAddresses(base)
+{
 	;	[Memory Addresses]
-	global	B_LocalCharacterNameID := B_SC2Process + 0x04F65144  ; stored as string Name#123
-	global	B_LocalPlayerSlot := B_SC2Process + 0x011265D8 ; note 1byte and has a second copy just after +1byte eg LS =16d=10h, hex 1010 (2bytes) & LS =01d = hex 0101
-	global	B_pStructure := B_SC2Process + 0x035E7BC0 ;			 
-	global	S_pStructure := 0xDC0 ;0xCE0
-		global O_pXcam := 0x8
-		global O_pCamDistance := 0xA
-		global O_pCamAngle := 0x14
-		global O_pCamRotation := 0x18
-		global O_pYcam := 0xC	
+		B_LocalCharacterNameID := base + 0x04F65144  ; stored as string Name#123
+		B_LocalPlayerSlot := base + 0x011265D8 ; note 1byte and has a second copy just after +1byte eg LS =16d=10h, hex 1010 (2bytes) & LS =01d = hex 0101
+		B_pStructure := base + 0x035E7BC0 ;			 
+		S_pStructure := 0xDC0 ;0xCE0
+		 O_pXcam := 0x8
+		 O_pCamDistance := 0xA
+		 O_pCamAngle := 0x14
+		 O_pCamRotation := 0x18
+		 O_pYcam := 0xC	
 
-		global O_pTeam := 0x1C
-		global O_pType := 0x1D ;
-		global O_pStatus := 0x1E
-		global O_pName := 0x60 ;+8
-		global O_pRacePointer := 0x158
-		global O_pColour := 0x160 ;+8 
-		global O_pAccountID := 0x1C0
+		 O_pTeam := 0x1C
+		 O_pType := 0x1D ;
+		 O_pStatus := 0x1E
+		 O_pName := 0x60 ;+8
+		 O_pRacePointer := 0x158
+		 O_pColour := 0x160 ;+8 
+		 O_pAccountID := 0x1C0
 
-		global O_pAPM := 0x598
-		global O_pEPM := 0x5D8
+		 O_pAPM := 0x598
+		 O_pEPM := 0x5D8
 
-		global O_pWorkerCount := 0x788 ;+1c
-		global O_pWorkersBuilt := 0x798 ; number of workers made (includes the 6 at the start of the game)
-		global O_pBaseCount := 0x7F8 ; +18
-		global O_pSupplyCap := 0x848 ;+18		
-		global O_pSupply := 0x860 ;+ 12		
-		global O_pMinerals := 0x8A0 ;+18
-		global O_pGas := 0x8A8
+		 O_pWorkerCount := 0x788 ;+1c
+		 O_pWorkersBuilt := 0x798 ; number of workers made (includes the 6 at the start of the game)
+		 O_pBaseCount := 0x7F8 ; +18
+		 O_pSupplyCap := 0x848 ;+18		
+		 O_pSupply := 0x860 ;+ 12		
+		 O_pMinerals := 0x8A0 ;+18
+		 O_pGas := 0x8A8
 
-		global O_pArmySupply := 0x880
-		global O_pMineralIncome := 0x920 ;+20
-		global O_pGasIncome := 0x928
-		global O_pArmyMineralSize := 0xC08 ;0xB68 ;+A0
-		global O_pArmyGasSize := 0xC30 ;A8 
+		 O_pArmySupply := 0x880
+		 O_pMineralIncome := 0x920 ;+20
+		 O_pGasIncome := 0x928
+		 O_pArmyMineralSize := 0xC08 ;0xB68 ;+A0
+		 O_pArmyGasSize := 0xC30 ;A8 
 
-	global P_IdleWorker := B_SC2Process + 0x031073C0		
-		global O1_IdleWorker := 0x370
-		global O2_IdleWorker := 0x244
-	global B_Timer := B_SC2Process + 0x3534F44 ;0x3534F40 ;0x24C9EE0 	(Function: GameGetMissionTime)			
-	global B_rStructure := B_SC2Process + 0x02F6C850	
-		global S_rStructure := 0x10
+	 P_IdleWorker := base + 0x031073C0		
+		 O1_IdleWorker := 0x370
+		 O2_IdleWorker := 0x244
+	 B_Timer := base + 0x3534F44 ;0x3534F40 ;0x24C9EE0 	(Function: GameGetMissionTime)			
+	 B_rStructure := base + 0x02F6C850	
+		 S_rStructure := 0x10
 
-	global P_ChatFocus := B_SC2Process + 0x031073C0 		;Just when chat box is in focus
-		global O1_ChatFocus := 0x3AC 
-		global O2_ChatFocus := 0x174
+	 P_ChatFocus := base + 0x031073C0 		;Just when chat box is in focus
+		 O1_ChatFocus := 0x3AC 
+		 O2_ChatFocus := 0x174
 
-	global P_MenuFocus := B_SC2Process + 0x04FE4E5C 		;this is all menus and includes chat box when in focus ; old 0x3F04C04
-		global O1_MenuFocus := 0x17C
+	 P_MenuFocus := base + 0x04FE4E5C 		;this is all menus and includes chat box when in focus ; old 0x3F04C04
+		 O1_MenuFocus := 0x17C
 
-	global B_uCount := B_SC2Process + 0x2F6C438 				; This is the units alive (and includes missiles) ;0x02CF5588			
-	global B_uHighestIndex := B_SC2Process + 0x3665100 ; 0x25F92C0		;this is actually the highest currently alive unit (includes missiles while alive)
-	global B_uStructure := B_SC2Process + 0x3665140			
-	global S_uStructure := 0x1C0
-		global O_uModelPointer := 0x8
-		global O_uTargetFilter := 0x14
-		global O_uBuildStatus := 0x18		; buildstatus is really part of the 8 bit targ filter!
-		global O_XelNagaActive := 0x34
+	 B_uCount := base + 0x2F6C438 				; This is the units alive (and includes missiles) ;0x02CF5588			
+	 B_uHighestIndex := base + 0x3665100 ; 0x25F92C0		;this is actually the highest currently alive unit (includes missiles while alive)
+	 B_uStructure := base + 0x3665140			
+	 S_uStructure := 0x1C0
+		 O_uModelPointer := 0x8
+		 O_uTargetFilter := 0x14
+		 O_uBuildStatus := 0x18		; buildstatus is really part of the 8 bit targ filter!
+		 O_XelNagaActive := 0x34
 		; something added in here in vr 2.10
 
-		global O_uOwner := 0x41  ; this and the rest below +4
-		global O_uX := 0x4C
-		global O_uY := 0x50
-		global O_uZ := 0x54
-		global O_uDestinationX := 0x80
-		global O_uDestinationY := 0x84
-		global O_P_uCmdQueuePointer := 0xD4 ;+4
-		global O_P_uAbilityPointer := 0xDC
+		 O_uOwner := 0x41  ; this and the rest below +4
+		 O_uX := 0x4C
+		 O_uY := 0x50
+		 O_uZ := 0x54
+		 O_uDestinationX := 0x80
+		 O_uDestinationY := 0x84
+		 O_P_uCmdQueuePointer := 0xD4 ;+4
+		 O_P_uAbilityPointer := 0xDC
 
 									; there are other offsets which can be used for chrono/inject state
-		global O_uChronoState := 0xE6				; pre 210 chrono and inject offsets were the same
-		global O_uInjectState := 0xE7 ; +5 Weird this was 5 not 4 (and its values changed) chrono state just +4
+		 O_uChronoState := 0xE6				; pre 210 chrono and inject offsets were the same
+		 O_uInjectState := 0xE7 ; +5 Weird this was 5 not 4 (and its values changed) chrono state just +4
 
-		global O_uHpDamage := 0x114
-		global O_uEnergy := 0x11c 
-		global O_uTimer := 0x16C ;+4
+		 O_uHpDamage := 0x114
+		 O_uEnergy := 0x11c 
+		 O_uTimer := 0x16C ;+4
 		
 	;CommandQueue 	; separate structure
-		global O_cqMoveState := 0x40	
+		 O_cqMoveState := 0x40	
 
 	
 	; Unit Model Structure	
-	global O_mUnitID := 0x6	
-	global O_mSubgroupPriority := 0x3A8 ;0x398
-	global O_mMiniMapSize := 0x3AC ;0x39C
+	 O_mUnitID := 0x6	
+	 O_mSubgroupPriority := 0x3A8 ;0x398
+	 O_mMiniMapSize := 0x3AC ;0x39C
 	
 	; selection and ctrl groups
-	global B_SelectionStructure := B_SC2Process + 0x031CAB90 ;0x0215FB50 
+	 B_SelectionStructure := base + 0x031CAB90 ;0x0215FB50 
 
 	; Note: This is actually the second control group in the group structure. 
 	; The structure begins with ctrl group 0, then goes to 1, But i used ctrl group 1 as base for simplicity 
 	; when getting info for group 1, the negative offset will work fine 
 
-	global B_CtrlGroupOneStructure := B_SC2Process + 0x031CFDB8 
-	global S_CtrlGroup := 0x1B60
-	global S_scStructure := 0x4	; Unit Selection & Ctrl Group Structures
-		global O_scTypeCount := 0x2
-		global O_scTypeHighlighted := 0x4
-		global O_scUnitIndex := 0x8
+	 B_CtrlGroupOneStructure := base + 0x031CFDB8 
+	 S_CtrlGroup := 0x1B60
+	 S_scStructure := 0x4	; Unit Selection & Ctrl Group Structures
+		 O_scTypeCount := 0x2
+		 O_scTypeHighlighted := 0x4
+		 O_scUnitIndex := 0x8
 
-;	P_PlayerColours := B_SC2Process + 0x03D28A84 ; 0 when enemies red  1 when player colours
+;	P_PlayerColours := base + 0x03D28A84 ; 0 when enemies red  1 when player colours
 ;		O1_PlayerColours := 0x4
 ;		O2_PlayerColours := 0x17c
 
-	global B_TeamColours := B_SC2Process + 0x03108504 ; 2 when team colours is on 
+	 B_TeamColours := base + 0x03108504 ; 2 when team colours is on 
 	; another one at + 0x4FA7800
 
-	global P_SelectionPage := B_SC2Process + 0x031073C0 ; theres one other 3 lvl pointer but for a split second (ever second or so) it points to 
-		global O1_SelectionPage := 0x338			; the wrong address! You need to increase CE timer resolution to see this happening! Check it!
-		global O2_SelectionPage := 0x15C			;this is for the currently selected unit portrait page ie 1-6 in game (really starts at 0-5)
-		global O3_SelectionPage := 0x14C 			;might actually be a 2 or 1 byte value....but works fine as 4
+	 P_SelectionPage := base + 0x031073C0 ; theres one other 3 lvl pointer but for a split second (ever second or so) it points to 
+		 O1_SelectionPage := 0x338			; the wrong address! You need to increase CE timer resolution to see this happening! Check it!
+		 O2_SelectionPage := 0x15C			;this is for the currently selected unit portrait page ie 1-6 in game (really starts at 0-5)
+		 O3_SelectionPage := 0x14C 			;might actually be a 2 or 1 byte value....but works fine as 4
 
-	global DeadFilterFlag := 0x0000000200000000	
-	global BuriedFilterFlag :=	0x0000000010000000
+	 DeadFilterFlag := 0x0000000200000000	
+	 BuriedFilterFlag :=	0x0000000010000000
 
-	global B_MapStruct := B_SC2Process + 0x3534EDC ; 0X024C9E7C 
-		global O_mLeft := B_MapStruct + 0xDC	                                   
-		global O_mBottom := B_MapStruct + 0xE0	                                   
-		global O_mRight := B_MapStruct + 0xE4	    ; MapRight 157.999756 (akilon wastes) after dividing 4096                     
-		global O_mTop := B_MapStruct + 0xE8	   	; MapTop: 622591 (akilon wastes) before dividing 4096  
+	 B_MapStruct := base + 0x3534EDC ; 0X024C9E7C 
+		 O_mLeft := B_MapStruct + 0xDC	                                   
+		 O_mBottom := B_MapStruct + 0xE0	                                   
+		 O_mRight := B_MapStruct + 0xE4	    ; MapRight 157.999756 (akilon wastes) after dividing 4096                     
+		 O_mTop := B_MapStruct + 0xE8	   	; MapTop: 622591 (akilon wastes) before dividing 4096  
 
-	global uMovementFlags := {Idle: -1  ; ** Note this isn't actually a read in game type/value its just what my funtion will return if it is idle
+	 uMovementFlags := {Idle: -1  ; ** Note this isn't actually a read in game type/value its just what my funtion will return if it is idle
 	, Amove: 0 		;these arent really flags !! cant '&' them!
 	, Patrol: 1
 	, HoldPosition: 2
@@ -139,25 +264,25 @@ loadGlobalMemoryAddresses:
 	
 
  															; If used as 4byte value, will return 256 	there seems to be 2 of these memory addresses
-	global P_IsUserPerformingAction := B_SC2Process + 0x031073C0			; This is a 1byte value and return 1  when user is casting or in is rallying a hatch via gather/rally or is in middle of issuing Amove/patrol command but
-		global O1_IsUserPerformingAction := 0x230 					; if youre searching for a 4byte value in CE offset will be at 0x254 (but really if using it as 1 byte it is 0x255) - but im lazy and use it as a 4byte with my pointer command
+	 P_IsUserPerformingAction := base + 0x031073C0			; This is a 1byte value and return 1  when user is casting or in is rallying a hatch via gather/rally or is in middle of issuing Amove/patrol command but
+		 O1_IsUserPerformingAction := 0x230 					; if youre searching for a 4byte value in CE offset will be at 0x254 (but really if using it as 1 byte it is 0x255) - but im lazy and use it as a 4byte with my pointer command
 															; also 1 when placing a structure (after structure is selected) or trying to land rax to make a addon Also gives 1 when trying to burrow spore/spine
 															; When searching for 4 byte value this offset will be 0x254 
 															; this address is really really useful!
 															; it is even 0 with a burrowed swarm host selected (unless user click 'y' for rally which is even better)
 
 /* 	Not Currently Used
-	P_IsUserBuildingWithWorker := B_SC2Process + 0x0209C3C8  	 	; this is like the one but will give 1 even when all structure are greyed out (eg lair tech having advanced mutations up)
+	P_IsUserBuildingWithWorker := base + 0x0209C3C8  	 	; this is like the one but will give 1 even when all structure are greyed out (eg lair tech having advanced mutations up)
 		01_IsUserBuildingWithWorker := 0x364 				; works for workers of all races
 		02_IsUserBuildingWithWorker := 0x17C           		; even during constructing SVC will give 0 - give 1 when selection card is up :)
 		03_IsUserBuildingWithWorker := 0x3A8   				; also displays 1 when the toss hallucination card is displayed
 		04_IsUserBuildingWithWorker := 0x168 				; BUT will also give 1 when a hatch is selected!!!
 
 */
-	global P_IsBuildCardDisplayed := B_SC2Process + 0x0311ADB4		; this displays 1 or 0 with units selected - displays 7 when targeting reticle displayed/or placing a building (same thing)
-		global 01_IsBuildCardDisplayed := 0x7C 				; **but when either build card is displayed it displays 6 (even when all advanced structures are greyed out)!!!!
-		global 02_IsBuildCardDisplayed := 0x74 				; also displays 6 when the toss hallucination card is displayed
-		global 03_IsBuildCardDisplayed := 0x398 				; could use this in place of the current 'is user performing action offset'
+	 P_IsBuildCardDisplayed := base + 0x0311ADB4		; this displays 1 or 0 with units selected - displays 7 when targeting reticle displayed/or placing a building (same thing)
+		 01_IsBuildCardDisplayed := 0x7C 				; **but when either build card is displayed it displays 6 (even when all advanced structures are greyed out)!!!!
+		 02_IsBuildCardDisplayed := 0x74 				; also displays 6 when the toss hallucination card is displayed
+		 03_IsBuildCardDisplayed := 0x398 				; could use this in place of the current 'is user performing action offset'
  														; Note: There is another address which has the same info, but when placing a building it will swap between 6 & 7 (not stay at 7)!
 
 
@@ -165,11 +290,11 @@ loadGlobalMemoryAddresses:
  	; while the other one keeps the text even after the chat is sent/closed
  	; this is the latter
  															
- 	global P_ChatInput := B_SC2Process + 0x04FE4E5C
- 		global O1_ChatInput := 0x35C 
- 		global O2_ChatInput := 0x78
- 		global O3_ChatInput := 0x274
- 		global O4_ChatInput := 0x14
+ 	 P_ChatInput := base + 0x04FE4E5C
+ 		 O1_ChatInput := 0x35C 
+ 		 O2_ChatInput := 0x78
+ 		 O3_ChatInput := 0x274
+ 		 O4_ChatInput := 0x14
 
 /*
 Around this modifier area are other values which contain the logical states
@@ -185,50 +310,50 @@ SC2.exe+1FDF7C8 (8 bytes) contains the state of most keys eg a-z etc
 										  	;shift = 1, ctrl = 2, alt = 4 (and add them together)
 
 															; 
-	global B_CameraDragScroll := B_SC2Process + 0x304A478  				; 1 byte Returns 1 when user is moving camera via DragScroll i.e. mmouse button the main map But not when on the minimap (or if mbutton is held down on the unit panel)
+	 B_CameraDragScroll := base + 0x304A478  				; 1 byte Returns 1 when user is moving camera via DragScroll i.e. mmouse button the main map But not when on the minimap (or if mbutton is held down on the unit panel)
 
 	
-	global B_InputStructure := B_SC2Process + 0x304A788
-		global B_iMouseButtons := B_InputStructure + 0x0 	; 1 Byte 	MouseButton state 1 for Lbutton,  2 for middle mouse, 4 for rbutton
-		global B_iSpace := B_iMouseButtons + 0x8 			; 1 Bytes
-		global B_iNums := B_iSpace + 0x2  					; 2 Bytes
-		global B_iChars := B_iNums + 0x2 					; 4 Bytes 
-		global B_iTilda := B_iChars + 0x4 					; 1 Byte  (could be 2 bytes)
-		global B_iNonAlphNumChars := B_iTilda + 0x2 		; 2 Bytes - keys: [];',./ Esc Entr \
-		global B_iNonCharKeys := B_iNonAlphNumChars + 0x2 	; 2 Bytes - keys: BS Up Down Left Right Ins Del Hom etc scrl lock pause caps + tab
-		global B_iFkeys := B_iNonCharKeys + 0x2 			; 2 bytes		
-		global B_iModifiers := B_iFkeys + 0x6 				; 1 Byte
+	 B_InputStructure := base + 0x304A788
+		 B_iMouseButtons := B_InputStructure + 0x0 		; 1 Byte 	MouseButton state 1 for Lbutton,  2 for middle mouse, 4 for rbutton
+		 B_iSpace := B_iMouseButtons + 0x8 				; 1 Bytes
+		 B_iNums := B_iSpace + 0x2  					; 2 Bytes
+		 B_iChars := B_iNums + 0x2 						; 4 Bytes 
+		 B_iTilda := B_iChars + 0x4 					; 1 Byte  (could be 2 bytes)
+		 B_iNonAlphNumChars := B_iTilda + 0x2 			; 2 Bytes - keys: [];',./ Esc Entr \
+		 B_iNonCharKeys := B_iNonAlphNumChars + 0x2 	; 2 Bytes - keys: BS Up Down Left Right Ins Del Hom etc scrl lock pause caps + tab
+		 B_iFkeys := B_iNonCharKeys + 0x2 				; 2 bytes		
+		 B_iModifiers := B_iFkeys + 0x6 				; 1 Byte
 
 
 
-	global B_CameraMovingViaMouseAtScreenEdge := B_SC2Process + 0x031073C0 		; Really a 1 byte value value indicates which direction screen will scroll due to mouse at edge of screen
-		global 01_CameraMovingViaMouseAtScreenEdge	:= 0x2C0					; 1 = Diagonal Left/Top 		4 = Left Edge
-		global 02_CameraMovingViaMouseAtScreenEdge	:= 0x20C				; 2 = Top 						5 = Right Edge			
-		global 03_CameraMovingViaMouseAtScreenEdge	:= 0x4B4				; 3 = Diagonal Right/Top 	  	6 = Diagonal Left/ Bot	
+	 B_CameraMovingViaMouseAtScreenEdge := base + 0x031073C0 		; Really a 1 byte value value indicates which direction screen will scroll due to mouse at edge of screen
+		 01_CameraMovingViaMouseAtScreenEdge	:= 0x2C0			; 1 = Diagonal Left/Top 		4 = Left Edge
+		 02_CameraMovingViaMouseAtScreenEdge	:= 0x20C			; 2 = Top 						5 = Right Edge			
+		 03_CameraMovingViaMouseAtScreenEdge	:= 0x4B4			; 3 = Diagonal Right/Top 	  	6 = Diagonal Left/ Bot	
 																	; 7 = Bottom Edge 			 	8 = Diagonal Right/Bot 
 																	; Note need to do a pointer scan with max offset > 1200d!
 
-	global B_IsGamePaused := B_SC2Process + 0x31F15A5 						
+	 B_IsGamePaused := base + 0x31F15A5 						
 
 
-	global B_FramesPerSecond := B_SC2Process + 0x04FA80EC
-	global B_Gamespeed  := B_SC2Process + 0x04EEB184
+	 B_FramesPerSecond := base + 0x04FA80EC
+	 B_Gamespeed  := base + 0x04EEB184
 
-	; example: D:\My Computer\My Documents\StarCraft II\Accounts\56064144\6-S2-1-79722\Replays\
+	; example: D:\My Computer\My Documents\StarCraft II\Accounts\56021244\6-S2-1-34722\Replays\
 	; this works for En, Fr, and Kr languages 
-	global B_ReplayFolder :=  B_SC2Process + 0x04F669C0
+	 B_ReplayFolder :=  base + 0x04F669C0
 
 	; Horizontal resolution ; 4 bytes
 	; vertical resolution ; The next 4 bytes immediately after the Horizontal resolution cheat and search for 8 bytes 4638564681600 (1920 1080)
 
-	global B_HorizontalResolution := B_SC2Process + 0x4FE4910
-	global B_VerticalResolution := B_HorizontalResolution + 0x4
+	 B_HorizontalResolution := base + 0x4FE4910
+	 B_VerticalResolution := B_HorizontalResolution + 0x4
 
 /*
 	; There is value reached via a pointer which will change the rendered resolution (even in widowed mode)
-	P_HorizontalResolutionReal := B_SC2Process + 0x01106654
+	P_HorizontalResolutionReal := base + 0x01106654
 		01_HorizontalResolutionReal := 0x90 
-	P_VerticalResolutionReal := B_SC2Process + 0x01106654
+	P_VerticalResolutionReal := base + 0x01106654
 		01_VerticalResolutionReal := 0x94
 
 */
@@ -237,27 +362,25 @@ SC2.exe+1FDF7C8 (8 bytes) contains the state of most keys eg a-z etc
 
 /*
 
- 	P_IsUserCasting := B_SC2Process +	0x0209C3C8					; this is probably something to do with the control card
+ 	P_IsUserCasting := base +	0x0209C3C8					; this is probably something to do with the control card
 		O1_IsUserCasting := 0x364 							; 1 indicates user is casting a spell e.g. fungal, snipe, or is trying to place a structure
 		O2_IsUserCasting := 0x19C 							; auto casting e.g. swarm host displays 1 always 
 		O3_IsUserCasting := 0x228
 		O4_IsUserCasting := 0x168
 
-	P_IsCursorReticleBurrowedInfestor:= B_SC2Process + 0x021857EC			; 1 byte	;seems to return 1 when cursors is reticle but not for inject larva on queen
+	P_IsCursorReticleBurrowedInfestor:= base + 0x021857EC			; 1 byte	;seems to return 1 when cursors is reticle but not for inject larva on queen
 		O1_IsCursorReticleBurrowedInfestor := 0x1C 					; also retursn 1 for burrowed swarm hosts though - auto cast? (and fungal - but reticle present for fungal)
 		O2_IsCursorReticleBurrowedInfestor := 0x14 					; 0 when placing a building
 
-	P_IsUserBuildingWithDrone := B_SC2Process + 0x0209C3C8		; gives 1 when drone has basic mutation or advance mutaion/ open
+	P_IsUserBuildingWithDrone := base + 0x0209C3C8		; gives 1 when drone has basic mutation or advance mutaion/ open
 		01_IsUserBuildingWithDrone := 0x364 				; Note: If still on hatch tech and all advanced building 'greyed out' will give 0!!!!!
 		02_IsUserBuildingWithDrone := 0x17C 				; also gives 1 when actually attempting to place building
 		03_IsUserBuildingWithDrone := 0x228
 		04_IsUserBuildingWithDrone := 0x168
 */
-if (tmpLabelName = "loadGlobalMemoryAddresses") ; so can include anywhere without return stopping the autoEexec section
-	return	
 
 /* Not Currently used
-	B_CameraBounds := B_SC2Process + 0x209A094
+	B_CameraBounds := base + 0x209A094
 		O_x0Bound := 0x0
 		O_XmBound := 0x8
 		O_Y0Bound := 0x04
@@ -266,10 +389,8 @@ if (tmpLabelName = "loadGlobalMemoryAddresses") ; so can include anywhere withou
 	B_CurrentBaseCam := 0x017AB3C8	;not current
 		P1_CurrentBaseCam := 0x25C		;not current
 */	
-
-
-
-
+	return
+}	
 
 
 getMapLeft()
@@ -302,7 +423,6 @@ getCtrlGroupedUnitIndex(group, i=0)
 {	global
 	Return ReadMemory(B_CtrlGroupOneStructure + S_CtrlGroup * (group - 1) + O_scUnitIndex + i * S_scStructure, GameIdentifier) >> 18
 }
-
 
 getControlGroupCount(Group)
 {	global
