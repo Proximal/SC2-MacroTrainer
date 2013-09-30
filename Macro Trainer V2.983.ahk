@@ -751,7 +751,7 @@ Overlay_Toggle:
 Return
 
 mt_pause_resume:
-	if (mt_on := !mt_on)	; 1st run mt_on blank so considered false and does else	
+	if (mt_Paused := !mt_Paused)
 	{
 		game_status := "lobby" ; with this clock = 0 when not in game 
 		timeroff("clock", "money", "gas", "scvidle", "supply", "worker", "inject", "unit_bank_read", "Auto_mine", "Auto_Group", "AutoGroupIdle", "MiniMap_Timer", "overlay_timer", "g_unitPanelOverlay_timer", "g_autoWorkerProductionCheck", "cast_ForceInject")
@@ -844,7 +844,8 @@ clock:
 		Else If (aLocalPlayer["Race"] = "Protoss")
 			SupplyType := aUnitID["Pylon"]		
 		if (alert_array[GameType, "Enabled"] || warpgate_warn_on || supplyon) 
-			settimer, unit_bank_read, %UnitDetectionTimer_ms%, -5		
+			settimer, unit_bank_read, %UnitDetectionTimer_ms%, -5
+		global minimap		
 		SetMiniMap(minimap)
 		setupMiniMapUnitLists()
 		l_ActiveDeselectArmy := setupSelectArmyUnits(l_DeselectArmy, aUnitID)
@@ -2368,7 +2369,8 @@ ShellMessage(wParam, lParam)
 			; when window regains focus
 			setLowLevelInputHooks(False)
 			setLowLevelInputHooks(True)
-			if (ReDrawOverlays  && !IsInList(aLocalPlayer.Type, "Referee", "Spectator")) ; This will redraw immediately - but this isn't needed at all
+			;mt_Paused otherwise will redisplay the hidden and frozen overlays
+			if (ReDrawOverlays  && !mt_Paused && !IsInList(aLocalPlayer.Type, "Referee", "Spectator")) ; This will redraw immediately - but this isn't needed at all
 			{  											; need time to check if in game
 				gosub, MiniMap_Timer 					; also need to check player type
 				gosub, overlay_timer
@@ -2442,7 +2444,8 @@ return
 ;	Mini Map Setup
 ;--------------------
 SetMiniMap(byref minimap)
-{	minimap := []
+{	
+	minimap := []
 
 	minimap.MapLeft := getmapleft()
 	minimap.MapRight := getmapright()	
@@ -2490,6 +2493,7 @@ SetMiniMap(byref minimap)
 		minimap.scale := minimap.Screenwidth / minimap.MapPlayableWidth
 		X_Offset := 0
 		minimap.ScreenLeft := ScreenLeft + X_Offset
+		minimap.ScreenRight := ScreenRight - X_Offset	
 		Y_offset := (minimap.ScreenHeight - minimap.scale * minimap.MapPlayableHeight) / 2
 		minimap.ScreenTop := ScreenTop + Y_offset
 		minimap.ScreenBottom := ScreenBottom - Y_offset
@@ -7446,7 +7450,7 @@ DrawMiniMap()
 		} 
 	}
 
-	drawCamera(G)
+	drawPlayerCameras(G)
 
 	Gdip_DeleteGraphics(G)
 	UpdateLayeredWindow(hwnd1, hdc, 0, 0, A_ScreenWidth/4, A_ScreenHeight) ;only draw on left side of the screen
@@ -10188,27 +10192,24 @@ msgbox % t
 return
 
 /*
+	x,y co-ordinates
 	1--------------------2
 	\                   /
      \     centre      /
       \               /
        4-------------3
-	
-			x1 := xCenter - (33 * (angle/maxAngle)**2 + (Abs(maxAngle-angle)*10) ), y1 := yCenter - (22 * (angle/maxAngle)**2 + (Abs(maxAngle-angle)*20) )
-			, x2 := x1 + (66 * (angle/maxAngle)**2 + (Abs(maxAngle-angle)*20)), y2 := y1 
-			, x3 := x2 - ((x2 - x1)/2) + (25 * (angle/maxAngle)**2 - (Abs(maxAngle-angle)*10)), y3 := y2 + (33 * (angle/maxAngle)**2 + (Abs(maxAngle-angle)*20))
-			, x4 := x1 + ((x2 - x1)/2) - (25 * (angle/maxAngle)**2 - (Abs(maxAngle-angle)*10)),	y4 := y3 
 
+Still have to scale this for the map - so probably *minimap.scale
 */
 
 
-drawCamera(pGraphics)
+drawPlayerCameras(pGraphics)
 {
 	static a_pPen := [], maxAngle := 1.195313
 
 	For slotNumber in aPlayer
 	{
-		If ( aLocalPlayer.Team != aPlayer[slotNumber].Team || 1)
+		If (aLocalPlayer.Team != aPlayer[slotNumber].Team || 1)
 		{
 
 			if !a_pPen[Colour := Colour := 0xcFF HexColour[aPlayer[slotNumber].Colour]]	
@@ -10218,23 +10219,32 @@ drawCamera(pGraphics)
 			, yCenter := getPlayerCameraPositionY(slotNumber)
 			, convertCoOrdindatesToMiniMapPos(xCenter, yCenter)
 
-			  x1 := xCenter - (33 * (angle/maxAngle)**2 + (Abs(maxAngle-angle)*10) )
-			, y1 := yCenter - (22 * (angle/maxAngle)**2 + (Abs(maxAngle-angle)*20) )
+			x1 := xCenter - (33/1920*A_ScreenWidth * (angle/maxAngle)**2 + (Abs(maxAngle-angle)*10/1920*A_ScreenWidth) )
+			y1 := yCenter - (22/1080*A_ScreenHeight * (angle/maxAngle)**2 + (Abs(maxAngle-angle)*20/1080*A_ScreenHeight) )
 			
-			, x2 := x1 + (66 * (angle/maxAngle)**2 + (Abs(maxAngle-angle)*20))
-			, y2 := y1 
-			
-			, x3 := x2 - ((x2 - x1)/2) + (25 * (angle/maxAngle)**2 - (Abs(maxAngle-angle)*10))
-			, y3 := y2 + (33 * (angle/maxAngle)**2 + (Abs(maxAngle-angle)*20))
-			
-			, x4 := x1 + ((x2 - x1)/2) - (25 * (angle/maxAngle)**2 - (Abs(maxAngle-angle)*10))
-			, y4 := y3 
+			if (x1 < minimap.ScreenLeft)
+				x1 := minimap.ScreenLeft
+			if (y1 < minimap.ScreenTop)
+				y1 := minimap.ScreenTop
 
-			, Gdip_DrawLines(pGraphics, a_pPen[Colour],  x1 "," y1 "|" x2 "," y2 
+			 x2 := x1 + (66/1920*A_ScreenWidth * (angle/maxAngle)**2 + (Abs(maxAngle-angle)*20/1920*A_ScreenWidth))
+			 y2 := y1 
+
+			if (x2 > minimap.ScreenRight)
+				x2 := minimap.ScreenRight
+
+			 x3 := x2 - ((x2 - x1)/2) + (25/1920*A_ScreenWidth * (angle/maxAngle)**2 - (Abs(maxAngle-angle)*10/1920*A_ScreenWidth))
+			 y3 := y2 + (33/1080*A_ScreenHeight * (angle/maxAngle)**2 + (Abs(maxAngle-angle)*20/1080*A_ScreenHeight))
+			
+			if (y3 > minimap.ScreenBottom)
+				y3 := minimap.ScreenBottom
+			 x4 := x1 + ((x2 - x1)/2) - (25/1920*A_ScreenWidth * (angle/maxAngle)**2 - (Abs(maxAngle-angle)*10/1920*A_ScreenWidth))
+			 y4 := y3 
+
+			 Gdip_DrawLines(pGraphics, a_pPen[Colour],  x1 "," y1 "|" x2 "," y2 
 							. "|" x3 "," y3 "|" x4 "," y4 "|" x1 "," y1 )
 		}
 	}
-	Gdip_RotateBitmap(pGraphics, 189)
 	return 
 }
 
