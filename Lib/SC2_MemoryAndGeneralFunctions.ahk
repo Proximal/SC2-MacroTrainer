@@ -1154,63 +1154,62 @@ getBuildStats(building, byref QueueSize := "")
 }
 
 
-abilityRally(unitIndex, byRef x, byRef y)
+; byteArrayDump can be used to pass an already dumped byte array, savining reading it again
+getAbilityIndex(abilityID, abilitiesCount, ByteArrayAddress := "", byRef byteArrayDump := "")
 {
-	cAbilRally := 0x1a
-	Rally := 0x58
-	RallyCommand := 90
-	RallyHatchery := 0x5c
-	RallyNexus := 0x5b	
-
-	pAbilities := getUnitAbilityPointer(unitIndex)
-	abilitiesCount := getAbilitiesCount(pAbilities)	
-
-	ByteArrayAddress := ReadMemory(pAbilities, GameIdentifier) + 0x3 
-
-	ReadRawMemory(ByteArrayAddress, GameIdentifier, MemDump, abilitiesCount)
+	if !byteArrayDump
+		ReadRawMemory(ByteArrayAddress, GameIdentifier, byteArrayDump, abilitiesCount)
 	loop % abilitiesCount
 	{
-		abilityList .= numget(MemDump, A_Index-1, "Char") "|" dectohex(numget(MemDump, A_Index-1, "Char")) ","
-		if (cAbilRally = numget(MemDump, A_Index-1, "Char"))
-		{
-
-			cAbilRallyIndex := A_Index-1
-			break
-		}
+		if (abilityID = numget(byteArrayDump, A_Index-1, "Char"))
+			return A_Index - 1
 	}
-	if !cAbilRallyIndex
-		return 0
-	O_IndexParentTypes := 0x18
+	return -1 ; as above can return 0
+}
 
-	pCAbillityStruct := readmemory(pAbilities + O_IndexParentTypes + 4 * cAbilRallyIndex, GameIdentifier)
-	O_cAbilityRally := 0x34
-	cAbilityRallyStruct := readmemory(pCAbillityStruct + O_cAbilityRally, GameIdentifier)
-
-	msgbox % clipboard := substr(dectohex(pCAbillityStruct + O_cAbilityRally), 3) " " dectohex(cAbilityRallyStruct)
-	msgbox % readmemory(cAbilityRallyStruct + 0xc, GameIdentifier) /4096
-	return 
-	msgbox % dectohex(cAbilityRallyStruct)
-/*
-	cAbilityRallyStruct
-	Rally Stucture Size := 0x38 
-	+0x0 = rally count - (max 4?)
+/*	cAbilityRallyStruct
+	Rally Stucture Size := 0x1C 
+	+0x0 = rally count - (max 4)
 	Following Repeats for each rally (data only gets chagned when a new rally point >= current one is made)
 	; eg 4 rally points, then set to rally on self structure, then none are changed 
 	; rally count = 0 when self rallied
-		+0x04 = rallied unit reference? (as in the unit which building is rallied to)
-		+0x08 = rally/unit reference (changes depending on what is rallied to)
+		+0x04 = rallied unit ID reference? (as in the unit which the building is rallied to)
+		+0x08 = rally/unit reference (changes depending on what is rallied to/type)
 		+0xc = x1 
 		+0x10 = y1
 		+0x14 = z1
 	
-	size := c24 - BEc
-F0
+	Werdly a lifted CC (or spawning floating CC in the map editor) still has the
+	rally ability present (its rally count is zero though) even though it lacks this 
+	ability in map/unit editor data
 */
-	msgbox % clipboard := abilityList
-	msgbox % cAbilRallyIndex
-	msgbox % clipboard := substr(dectohex(pCAbillityStruct), 3)
-	msgbox % clipboard := substr(dectohex(pAbilities + O_IndexParentTypes + 4 * cAbilRallyIndex), 3)
 
+getStructureRallyPoints(unitIndex, byRef aRallyPoints := "")
+{
+	static O_IndexParentTypes := 0x18, cAbilRally := 0x1a
+
+	aRallyPoints := []
+	pAbilities := getUnitAbilityPointer(unitIndex)
+	abilitiesCount := getAbilitiesCount(pAbilities)	
+	ByteArrayAddress := ReadMemory(pAbilities, GameIdentifier) + 0x3  ; gets the address of a byte array which contains the ID list of the units abilities
+	cAbilRallyIndex := getAbilityIndex(cAbilRally, abilitiesCount, ByteArrayAddress) ;find the position/index of the rally ability in the ID list
+	if (cAbilRallyIndex >= 0)
+	{
+		pCAbillityStruct := readmemory(pAbilities + O_IndexParentTypes + 4 * cAbilRallyIndex, GameIdentifier)
+		bRallyStruct := readmemory(pCAbillityStruct + 0x34, GameIdentifier)
+		if (rallyCount := readMemory(bRallyStruct, GameIdentifier))
+		{	
+			ReadRawMemory(bRallyStruct, GameIdentifier, rallyDump, 0x14 + 0x1C * rallyCount)
+			while (A_Index <= rallyCount)
+			{
+				aRallyPoints.insert({ "x": numget(rallyDump, (A_Index-1) * 0x1C + 0xC, "Int") / 4096
+							  		, "y": numget(rallyDump, (A_Index-1) * 0x1C + 0x10, "Int") / 4096
+							  		, "z": numget(rallyDump, (A_Index-1) * 0x1C + 0x14, "Int") / 4096 })	
+			}
+		}
+		return rallyCount ; self rallied = 0
+	}
+	return -1 ; not rallyable
 }
 
 

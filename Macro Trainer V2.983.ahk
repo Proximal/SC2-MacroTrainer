@@ -10180,59 +10180,12 @@ u3  p4
 	Hellion = 90,
 */
 
-; (ability pointer + 0x10) & 0x10 indicates if unit is rallied
-; 0x00021250 (135744) when rallied
-; 0x00021240 (135760) not rallied
-
-getUnitRallyPoint(unit, byRef x, byRef y)
-{
-	if !(readMemory(0x10 + (ap := getUnitAbilityPointer(unit)), GameIdentifier) & 0x10) ; if not rallied return
-		return "a"
-	;msgbox % dectohex(ap)
-    if (!p1 := readMemory(ap + 0x28, GameIdentifier))
-        return 0
-    if (!p2 := readMemory(p1 + 0x34, GameIdentifier))
-    {
-		p1 := readMemory(ap + 0x20, GameIdentifier)
-		if (!p2 := readMemory(p1 + 0x34, GameIdentifier)) ; eg for scv (but the & 0x10 rally check prevents this anyway)
-      		return 0
-    }
-    x := readMemory(p2 + 0xc, GameIdentifier) / 4096, y := readMemory(p2 + 0xC + 0x4, GameIdentifier) / 4096
-    return 1
-}
-
 
 f1::
-abilityRally(getSelectedUnitIndex(),x,y)
-return 
-sleep 250
-while (!getkeystate("Esc"))
-{
-	r := getUnitRallyPoint(getSelectedUnitIndex(), xRally, yRally)
-	tooltip, % getPlayerCameraPositionX() ", " getPlayerCameraPositionY()
-		. "`nDist: "  getPlayerCameraDistance()
-		. "`nAngle: " getPlayerCameraAngle()
-		. "Rallied: " readMemory(0x10 + (ap := getUnitAbilityPointer(getSelectedUnitIndex())), GameIdentifier) & 0x10
-		. "`nx: " xRally ", " yRally
-		. "`nreturn: " r
-		, 500, 500
-	sleep 100
-}
-tooltip
-
-return
-
-f2::
-msgbox % clipboard := substr(dectohex(B_uStructure + getSelectedUnitIndex() * S_uStructure), 3)
-msgbox % clipboard := substr(dectohex(getUnitAbilityPointer(getSelectedUnitIndex())), 3)
+msgbox % getStructureRallyPoints(getSelectedUnitIndex(), rally)
+objtree(rally)
 return 
 
-f5::
-
-msgbox % "0x00021250: " (0x00021250 & 0xFFFFFFFF) ", " (0x00021250 & 0x10) 
-	. "`n0x00021240: " (0x00021240 & 0xFFFFFFFF) ", " (0x00021240 & 0x10)
-return 
-sleep 250
 while (!getkeystate("Esc"))
 {
 	v := readmemory(getUnitAbilityPointer(getSelectedUnitIndex()) + 0x10, GameIdentifier)
