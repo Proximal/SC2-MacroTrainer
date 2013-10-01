@@ -1154,6 +1154,66 @@ getBuildStats(building, byref QueueSize := "")
 }
 
 
+abilityRally(unitIndex, byRef x, byRef y)
+{
+	cAbilRally := 0x1a
+	Rally := 0x58
+	RallyCommand := 90
+	RallyHatchery := 0x5c
+	RallyNexus := 0x5b	
+
+	pAbilities := getUnitAbilityPointer(unitIndex)
+	abilitiesCount := getAbilitiesCount(pAbilities)	
+
+	ByteArrayAddress := ReadMemory(pAbilities, GameIdentifier) + 0x3 
+
+	ReadRawMemory(ByteArrayAddress, GameIdentifier, MemDump, abilitiesCount)
+	loop % abilitiesCount
+	{
+		abilityList .= numget(MemDump, A_Index-1, "Char") "|" dectohex(numget(MemDump, A_Index-1, "Char")) ","
+		if (cAbilRally = numget(MemDump, A_Index-1, "Char"))
+		{
+
+			cAbilRallyIndex := A_Index-1
+			break
+		}
+	}
+	if !cAbilRallyIndex
+		return 0
+	O_IndexParentTypes := 0x18
+
+	pCAbillityStruct := readmemory(pAbilities + O_IndexParentTypes + 4 * cAbilRallyIndex, GameIdentifier)
+	O_cAbilityRally := 0x34
+	cAbilityRallyStruct := readmemory(pCAbillityStruct + O_cAbilityRally, GameIdentifier)
+
+	msgbox % clipboard := substr(dectohex(pCAbillityStruct + O_cAbilityRally), 3) " " dectohex(cAbilityRallyStruct)
+	msgbox % readmemory(cAbilityRallyStruct + 0xc, GameIdentifier) /4096
+	return 
+	msgbox % dectohex(cAbilityRallyStruct)
+/*
+	cAbilityRallyStruct
+	Rally Stucture Size := 0x38 
+	+0x0 = rally count - (max 4?)
+	Following Repeats for each rally (data only gets chagned when a new rally point >= current one is made)
+	; eg 4 rally points, then set to rally on self structure, then none are changed 
+	; rally count = 0 when self rallied
+		+0x04 = rallied unit reference? (as in the unit which building is rallied to)
+		+0x08 = rally/unit reference (changes depending on what is rallied to)
+		+0xc = x1 
+		+0x10 = y1
+		+0x14 = z1
+	
+	size := c24 - BEc
+F0
+*/
+	msgbox % clipboard := abilityList
+	msgbox % cAbilRallyIndex
+	msgbox % clipboard := substr(dectohex(pCAbillityStruct), 3)
+	msgbox % clipboard := substr(dectohex(pAbilities + O_IndexParentTypes + 4 * cAbilRallyIndex), 3)
+
+}
+
+
 getPercentageUnitCompleted(B_QueueInfo)
 {	GLOBAL GameIdentifier
 	STATIC O_TotalTime := 0x68, O_TimeRemaining := 0x6C
