@@ -6,8 +6,8 @@ SC2 Research/
 ###################
 *.com
 *.class
-*.dll
-*.exe
+/*.dll
+/*.exe
 *.o
 *.so
 
