@@ -136,7 +136,7 @@ ProgramVersion := 2.982
 
 l_GameType := "1v1,2v2,3v3,4v4,FFA"
 l_Races := "Terran,Protoss,Zerg"
-GameWindowTitle := "StarCraft II"
+GLOBAL GameWindowTitle := "StarCraft II"
 GLOBAL GameIdentifier := "ahk_exe SC2.exe"
 GameExe := "SC2.exe"
 
@@ -880,29 +880,7 @@ clock:
 	}
 return
 
-setupMiniMapUnitLists()
-{	local list, unitlist, ListType
-	list := "UnitHighlightList1,UnitHighlightList2,UnitHighlightList3,UnitHighlightList4,UnitHighlightList5,UnitHighlightList6,UnitHighlightList7,UnitHighlightExcludeList"
-	Loop, Parse, list, `,
-	{	
-		ListType := A_LoopField
-		Active%ListType% := ""		;clear incase changed via options between games	
-		StringReplace, unitlist, %A_LoopField%, %A_Space%, , All ; Remove Spaces also creates var unitlist				
-		unitlist := Trim(unitlist, " `t , |")	; , or `, both work - remove spaces, tabs and commas
-		loop, parse, unitlist, `,
-			Active%ListType% .= aUnitID[A_LoopField] ","
-		Active%ListType% := RTrim(Active%ListType%, " ,")
-	}
-	allActiveActiveUnitHighlightLists := ""
-	loop, 6
-	{
-		loop, parse, ActiveUnitHighlightList%A_Index%, ","
-			allActiveActiveUnitHighlightLists .= A_LoopField ","
-	}
-	; this will contain all the unit ids
-	allActiveActiveUnitHighlightLists := RTrim(allActiveActiveUnitHighlightLists, " ,")
-	Return
-}
+
 
 setupSelectArmyUnits(l_input, aUnitID)
 {
@@ -2170,11 +2148,6 @@ warpgate_warn:
 
 return
 
-isUnitDead(unit)
-{ 	global 
-	return	getUnitTargetFilterFast(unit) & DeadFilterFlag
-}
-
 ;------------------
 ;	Unit Bank Read	; I wrote this when I was first startings. I should really clean it up, but I cant be fucked.
 ;------------------
@@ -2401,6 +2374,7 @@ OverlayKeepOnTop:
 Return
 
 MiniMap_Timer:
+return ;testing minimapthread
 	if WinActive(GameIdentifier)
 		DrawMiniMap()
 Return
@@ -2447,111 +2421,6 @@ g_unitPanelOverlay_timer:
 	}
 return
 
-;--------------------
-;	Mini Map Setup
-;--------------------
-SetMiniMap(byref minimap)
-{	
-	minimap := []
-
-	minimap.MapLeft := getmapleft()
-	minimap.MapRight := getmapright()	
-	minimap.MapTop := getMaptop()
-	minimap.MapBottom := getMapBottom()
-
-	AspectRatio := getScreenAspectRatio()	
-	If (AspectRatio = "16:10")
-	{
-		ScreenLeft := (27/1680) * A_ScreenWidth		
-		ScreenBottom := (1036/1050) * A_ScreenHeight	
-		ScreenRight := (281/1680) * A_ScreenWidth	
-		ScreenTop := (786/1050) * A_ScreenHeight
-
-	}	
-	Else If (AspectRatio = "5:4")
-	{	
-		ScreenLeft := (25/1280) * A_ScreenWidth
-		ScreenBottom := (1011/1024) * A_ScreenHeight
-		ScreenRight := (257/1280) * A_ScreenWidth 
-		Screentop := (783/1024) * A_ScreenHeight
-	}	
-	Else If (AspectRatio = "4:3")
-	{	
-		ScreenLeft := (25/1280) * A_ScreenWidth
-		ScreenBottom := (947/960) * A_ScreenHeight
-		ScreenRight := (257/1280) * A_ScreenWidth 
-		ScreenTop := (718/960) * A_ScreenHeight
-
-	}
-	Else ;16:9 Else if (AspectRatio = "16:9")
-	{
-		ScreenLeft 		:= (29/1920) * A_ScreenWidth
-		ScreenBottom 	:= (1066/1080) * A_ScreenHeight
-		ScreenRight 	:= (289/1920) * A_ScreenWidth 
-		ScreenTop 		:= (807/1080) * A_ScreenHeight
-	}	
-	minimap.ScreenWidth := ScreenRight - ScreenLeft
-	minimap.ScreenHeight := ScreenBottom - ScreenTop
-	minimap.MapPlayableWidth 	:= minimap.MapRight - minimap.MapLeft
-	minimap.MapPlayableHeight 	:= minimap.MapTop - minimap.MapBottom
-
-	if (minimap.MapPlayableWidth >= minimap.MapPlayableHeight)
-	{
-		minimap.scale := minimap.Screenwidth / minimap.MapPlayableWidth
-		X_Offset := 0
-		minimap.ScreenLeft := ScreenLeft + X_Offset
-		minimap.ScreenRight := ScreenRight - X_Offset	
-		Y_offset := (minimap.ScreenHeight - minimap.scale * minimap.MapPlayableHeight) / 2
-		minimap.ScreenTop := ScreenTop + Y_offset
-		minimap.ScreenBottom := ScreenBottom - Y_offset
-		minimap.Height := minimap.ScreenBottom - minimap.ScreenTop
-		minimap.Width := minimap.ScreenWidth 
-
-	}
-	else
-	{
-		minimap.scale := minimap.ScreenHeight / minimap.MapPlayableHeight
-		X_Offset:= (minimap.ScreenWidth - minimap.scale * minimap.MapPlayableWidth)/2
-		minimap.ScreenLeft := ScreenLeft + X_Offset
-		minimap.ScreenRight := ScreenRight - X_Offset	
-		Y_offset := 0
-		minimap.ScreenTop := ScreenTop + Y_offset
-		minimap.ScreenBottom := ScreenBottom - Y_offset
-		minimap.Height := minimap.ScreenHeight 
-		minimap.Width := minimap.ScreenRight - minimap.ScreenLeft	
-	}
-	minimap.UnitMinimumRadius := 1 / minimap.scale
-	minimap.UnitMaximumRadius  := 10
-	minimap.AddToRadius := 1 / minimap.scale			
-Return
-}
-
-drawUnitRectangle(G, x, y, width, height)
-{ 	global minimap
-	static pPen
-	width *= minimap.scale
-	height *= minimap.scale
-
-	x := x - width / 2
-	y :=y - height /2
-					;as pen is only 1 pixel, it doesn't encroach into the fill paint (only occurs when >=2)
-	if !pPen
-		pPen := Gdip_CreatePen(0xFF000000, 1)		
-	Gdip_DrawRectangle(G, pPen, x, y, width, height)
-}
-
-FillUnitRectangle(G, x, y, width, height, colour)
-{ 	global minimap
-	static a_pBrush := []
-	width *= minimap.scale
-	height *= minimap.scale
-	x := x - width / 2
-	y := y - height /2
-
-	if !a_pBrush[colour]	;faster than creating same colour again 
-		a_pBrush[colour] := Gdip_BrushCreateSolid(colour)
-	Gdip_FillRectangle(G, a_pBrush[colour], x, y, width, height)
-}
 
 getUnitMiniMapMousePos(Unit, ByRef  Xvar="", ByRef  Yvar="") ; Note raounded as mouse clicks dont round decimals e.g. 10.9 = 10
 {
@@ -2581,7 +2450,7 @@ getMiniMapPos(Unit, ByRef  Xvar="", ByRef  Yvar="") ; unit aray index Number
 	Yvar := minimap.Screenbottom - ( uY/minimap.MapPlayableHeight * minimap.Height)		;think about rounding mouse clicks igornore decimals
 	return	
 }
-convertCoOrdindatesToMiniMapPos(ByRef  X, ByRef  Y) ; unit aray index Number
+convertCoOrdindatesToMiniMapPos(ByRef  X, ByRef  Y) 
 {
 	global minimap
 	X -= minimap.MapLeft, Y -= minimap.MapBottom ; correct units position as mapleft/start of map can be >0
@@ -6553,69 +6422,6 @@ AG_GUI_ADD(Control_Group = "", comma=1, Race=1)
 	Return ;this is needed to for the above if (if the cancel/escape gui)
 
 }
-; 	provides two simple arrays
-;	aUnitID takes the unit name e.g. "Stalker" and return the unit ID
-; 	aUnitName takes the unit ID and Returns the unit name
-
-SetupUnitIDArray(byref aUnitID, byref aUnitName)
-{
-	#include %A_ScriptDir%\Included Files\l_UnitTypes.AHK
-	if !isobject(aUnitID)
-		aUnitID := []
-	if !isobject(aUnitName)
-		aUnitName := []
-	loop, parse, l_UnitTypes, `,
-	{
-		StringSplit, Item , A_LoopField, = 		; Format "Colossus = 38"
-		name := trim(Item1, " `t `n"), UnitID := trim(Item2, " `t `n")
-		aUnitID[name] := UnitID
-		aUnitName[UnitID] := name
-	}
-	Return
-}
-
-setupTargetFilters(byref Array)
-{
-	#include %A_ScriptDir%\Included Files\aUnitTargetFilter.AHK
-	Array := aUnitTargetFilter
-	return
-}
-
-SetupColourArrays(ByRef HexColour, Byref MatrixColour)
-{ 	
-	If IsByRef(HexColour)
-		HexColour := [] 
-	If IsByRef(MatrixColour)	
-		MatrixColour := []
-	HexCoulourList := "White=FFFFFF|Red=B4141E|Blue=0042FF|Teal=1CA7EA|Purple=540081|Yellow=EBE129|Orange=FE8A0E|Green=168000|Light Pink=CCA6FC|Violet=1F01C9|Light Grey=525494|Dark Green=106246|Brown=4E2A04|Light Green=96FF91|Dark Grey=232323|Pink=E55BB0|Black=000000"
-	loop, parse, HexCoulourList, |  
-	{
-		StringSplit, Item , A_LoopField, = ;Format "White = FFFFFF"
-		If IsByRef(HexColour)
-			HexColour[Item1] := Item2 ; White, FFFFFF - hextriplet R G B
-		If IsByRef(MatrixColour)
-		{
-			colour := Item2
-			colourRed := "0x" substr(colour, 1, 2) ;theres a way of doing this with math but im lazy
-			colourGreen := "0x" substr(colour, 3, 2)
-			colourBlue := "0x" substr(colour, 5, 2)	
-			colourRed := Round(colourRed/0xFF,2)
-			colourGreen := Round(colourGreen/0xFF,2)
-			colourBlue := Round(colourBlue/0xFF,2)		
-			Matrix =
-		(
-0		|0		|0		|0		|0
-0		|0		|0		|0		|0
-0		|0		|0		|0		|0
-0		|0		|0		|1		|0
-%colourRed%	|%colourGreen%	|%colourBlue%	|0		|1
-		)
-			MatrixColour[Item1] := Matrix
-		}
-	}
-	Return
-}
-
 
 
 ; there is an 'if' section in the bufferinput send that checks if the user pressed the Esc key
@@ -7125,7 +6931,7 @@ selectGroup(group, preSleep := -1, postSleep := 2)
 	return	
 }
 
-; sRepeat("as", 3)
+; r := sRepeat("as", 3)
 ; r = "asasas"
 ; 0 returns empty string
 sRepeat(string, multiplier)
@@ -7196,10 +7002,6 @@ getPlayerFreeSupply(player="")
 }
 
 
-
-
-
-
 ReleaseAllModifiers() 
 { 	
 	Global GameExe
@@ -7246,40 +7048,6 @@ RestoreModifierPhysicalState()
 }
 
 
-
-
-
-GetEnemyTeamSize()
-{	global aPlayer, aLocalPlayer
-	For slot_number in aPlayer
-		If aLocalPlayer["Team"] <> aPlayer[slot_number, "Team"]
-			EnemyTeam_i ++
-	Return EnemyTeam_i
-}
-
-GetEBases()
-{	global aPlayer, aLocalPlayer, aUnitID, DeadFilterFlag
-	EnemyBase_i := GetEnemyTeamSize()
-	Unitcount := DumpUnitMemory(MemDump)
-	while (A_Index <= Unitcount)
-	{
-		unit := A_Index - 1
-		TargetFilter := numgetUnitTargetFilter(MemDump, unit)
-		if (TargetFilter & DeadFilterFlag)
-	    	Continue	
-	    pUnitModel := numgetUnitModelPointer(MemDump, Unit)
-	   	Type := numgetUnitModelType(pUnitModel)
-	   	owner := numgetUnitOwner(MemDump, Unit) 
-		IF (( type = aUnitID["Nexus"] ) OR ( type = aUnitID["CommandCenter"] ) OR ( type = aUnitID["Hatchery"] )) AND (aPlayer[Owner, "Team"] <> aLocalPlayer["Team"])
-		{
-			Found_i ++
-			list .=  unit "|"
-		}
-	}
-	Return SubStr(list, 1, -1)	; remove last "|"	
-}
-
-
 tSpeak(Message, SAPIVol := "")
 {	global speech_volume, speechThread
 
@@ -7303,44 +7071,6 @@ getSelectionType(units*)
 	Return SubStr(list, 1, -1)
 }
 
-GetEnemyRaces()
-{	global aPlayer, aLocalPlayer
-	For slot_number in aPlayer
-	{	If ( aLocalPlayer["Team"] <>  team := aPlayer[slot_number, "Team"] )
-		{
-			If ( EnemyRaces <> "")
-				EnemyRaces .= ", "
-			EnemyRaces .= aPlayer[slot_number, "Race"]
-		}
-	}
-	return EnemyRaces .= "."
-}
-
-GetGameType(aPlayer)
-{	
-	For slot_number in aPlayer
-	{	team := aPlayer[slot_number, "Team"]
-		TeamsList .= Team "|"
-		Player_i ++
-	}
-	Sort, TeamsList, D| N U
-	TeamsList := SubStr(TeamsList, 1, -1)
-	Loop, Parse, TeamsList, |
-		Team_i := A_Index
-	If (Team_i > 2)
-		Return "FFA" 
-	Else	 ;sets game_type to 1v1,2v2,3v3,4v4 ;this helps with empty player slots in custom games - round up to the next game type
-		Return Ceil(Player_i/Team_i) "v" Ceil(Player_i/Team_i)
-}
-
-isUnitLocallyOwned(Unit) ; 1 its local player owned
-{	global aLocalPlayer
-	Return aLocalPlayer["Slot"] = getUnitOwner(Unit) ? 1 : 0
-}
-isOwnerLocal(Owner) ; 1 its local player owned
-{	global aLocalPlayer
-	Return aLocalPlayer["Slot"] = Owner ? 1 : 0
-}
 
 
 setupAutoGroup(Race, ByRef A_AutoGroup, aUnitID, A_UnitGroupSettings)
@@ -7549,52 +7279,6 @@ ifTypeInList(type, byref list)
 	return 0
 }
 
-
-DumpUnitMemory(BYREF MemDump)
-{   
-  LOCAL UnitCount := getHighestUnitIndex()
-  ReadRawMemory(B_uStructure, GameIdentifier, MemDump, UnitCount * S_uStructure)
-  return UnitCount
-}
-class cUnitModelInfo
-{
-   __New(pUnitModel) 
-   {  global GameIdentifier, O_mUnitID, O_mMiniMapSize, O_mSubgroupPriority
-      ReadRawMemory((pUnitModel<< 5) & 0xFFFFFFFF, GameIdentifier, uModelData, O_mMiniMapSize+4) ; O_mMiniMapSize - 0x39C + 4 (int) is the highest offset i get from the unitmodel
-      this.Type := numget(uModelData, O_mUnitID, "Short") 
-      this.MiniMapRadius := numget(uModelData, O_mMiniMapSize, "int")/4096
-      this.RealSubGroupPriority := numget(uModelData, O_mSubgroupPriority, "Short")
-   }
-
-}
-
-
-
-numgetUnitModelType(pUnitModel)
-{  global aUnitModel
-   if !aUnitModel[pUnitModel]
-      getUnitModelInfo(pUnitModel)
-   return aUnitModel[pUnitModel].Type
-}
-numgetUnitModelMiniMapRadius(pUnitModel)
-{  global aUnitModel
-   if !aUnitModel[pUnitModel]
-      getUnitModelInfo(pUnitModel)
-   return aUnitModel[pUnitModel].MiniMapRadius
-}
-numgetUnitModelPriority(pUnitModel)
-{  global aUnitModel
-   if !aUnitModel[pUnitModel]
-      getUnitModelInfo(pUnitModel)
-   return aUnitModel[pUnitModel].RealSubGroupPriority
-}
-
-getUnitModelInfo(pUnitModel)
-{  global aUnitModel
-   aUnitModel[pUnitModel] := new cUnitModelInfo(pUnitModel)
-   return
-}
-
 HiWord(number)
 {
 	if (number & 0x80000000)
@@ -7603,7 +7287,8 @@ HiWord(number)
 }	
 
 OverlayResize_WM_MOUSEWHEEL(wParam) 		;(wParam, lParam) 0x20A =mousewheel
-{ local WheelMove, ActiveTitle, newScale, Scale
+{ 
+	local WheelMove, ActiveTitle, newScale, Scale
 	WheelMove := wParam > 0x7FFFFFFF ? HiWord(-(~wParam)-1)/120 :  HiWord(wParam)/120 ;get the higher order word & /120 = number of rotations
 	WinGetActiveTitle, ActiveTitle 			;downard rotations are -negative numbers
 	if ActiveTitle in IncomeOverlay,ResourcesOverlay,ArmySizeOverlay,WorkerOverlay,IdleWorkersOverlay,UnitOverlay,LocalPlayerColourOverlay ; here cos it can get non overlay titles
@@ -8212,36 +7897,6 @@ Draw(G,x,y,l=11,h=11,colour=0x880000ff, Mode=0) ;use mode 3 to draw rectangle th
 		Gdip_FillRectangle(G, a_pBrush[colour], (x - l/2), (y - h/2), l, h) ;Gdip_FillRectangle(G, pBrush, x, y, l, h)
 	}
 }
-
-CreatepBitmaps(byref a_pBitmap, aUnitID)
-{
-	a_pBitmap := []
-	l_Races := "Terran,Protoss,Zerg"
-	loop, parse, l_Races, `,
-	{
-		loop, 2
-		{
-			Background := A_index - 1
-			a_pBitmap[A_loopfield,"Mineral",Background] := Gdip_CreateBitmapFromFile(A_Temp "\Mineral_" Background A_loopfield ".png")
-			a_pBitmap[A_loopfield,"Gas",Background] := Gdip_CreateBitmapFromFile(A_Temp "\Gas_" Background A_loopfield ".png")			
-			a_pBitmap[A_loopfield,"Supply",Background] := Gdip_CreateBitmapFromFile(A_Temp "\Supply_" Background A_loopfield ".png")
-		}
-		a_pBitmap[A_loopfield,"Worker"] := Gdip_CreateBitmapFromFile(A_Temp "\Worker_0" A_loopfield ".png")
-		a_pBitmap[A_loopfield,"Army"] := Gdip_CreateBitmapFromFile(A_Temp "\Army_" A_loopfield ".png")
-		a_pBitmap[A_loopfield,"RaceFlat"]  := Gdip_CreateBitmapFromFile(A_Temp "\Race_" A_loopfield "Flat.png")
-		a_pBitmap[A_loopfield,"RacePretty"] := Gdip_CreateBitmapFromFile(A_Temp "\" A_loopfield "90.png")
-	}
-	Loop, %A_Temp%\UnitPanelMacroTrainer\*.png
-	{
-		StringReplace, FileTitle, A_LoopFileName, .%A_LoopFileExt% ;remove the .ext
-		if aUnitID[FileTitle]	;have a 2 pics which arnt in the unit array - bunkerfortified & thorsiegemode
-			a_pBitmap[aUnitID[FileTitle]] := Gdip_CreateBitmapFromFile(A_LoopFileFullPath)
-	}
-	a_pBitmap["PurpleX16"] := Gdip_CreateBitmapFromFile(A_Temp "\PurpleX16.png")
-	a_pBitmap["GreenX16"] := Gdip_CreateBitmapFromFile(A_Temp "\GreenX16.png")
-	a_pBitmap["RedX16"] := Gdip_CreateBitmapFromFile(A_Temp "\RedX16.png")
-}
-
 
 
 ;	Some commands which can come in handy for some functions (obviously have to use within the hotkey command)
@@ -10183,6 +9838,12 @@ u3  p4
 
 f1::
 
+miniMapThread := AhkDllThread("Included Files\ahkH\AutoHotkeyMini.dll")
+miniMapThread.ahkdll(A_ScriptDir "\threadMiniMap.ahk")
+miniMapThread.ahkFunction("setGame")
+
+
+return 
 getUnitMoveCommands(getSelectedUnitIndex(), a)
 objtree(a)
 
@@ -10199,38 +9860,7 @@ while !GetKeyState("Esc")
 	sleep 100
 }
 return
-/*
-	Move Structure
-	+0x0 next Command ptr either (& -2) or (& 0xFFFFFFFE)
-	+0x4 unit Structure Address
-	+08 Some ptr - maybe ability
 
-
-	When at the last command, the Command ptr & 0xFFFFFFFE
-	will = the adress of the first command
-	also, the last bit of the Command ptr (pre &) will be set to 1
-
-;  O_cqMoveState := 0x40
-
-<Struct Name="QueuedCommand" Size="-1">
-<Member Name="pNextCommand" Type="Unsigned" Size="4" Offset="0"/>
-<!--
- A Struct very similar to Command starts here. It is a bit different though. 
--->
-<Member Name="AbilityPointer" Type="Unsigned" Size="4" Offset="pNextCommand+0x18" AbsoluteOffset="0x18"/>
-<Member Name="TargetUnitID" Type="Unsigned" Size="4" Offset="AbilityPointer+8" AbsoluteOffset="0x20"/>
-<Member Name="TargetUnitModelPtr" Type="Unsigned" Size="4" Offset="TargetUnitID+4" AbsoluteOffset="0x24"/>
-<Member Name="TargetX" Type="Fixed" Size="4" Offset="TargetUnitModelPtr+4" AbsoluteOffset="0x28"/>
-<Member Name="TargetY" Type="Fixed" Size="4" Offset="TargetX+4" AbsoluteOffset="0x2C"/>
-<Member Name="TargetZ" Type="Fixed" Size="4" Offset="TargetY+4" AbsoluteOffset="0x30"/>
-<Member Name="Unknown" Type="Unsigned" Size="4" Offset="TargetZ+4" AbsoluteOffset="0x34"/>
-<Member Name="TargetFlags" Type="Unsigned" Size="4" Offset="Unknown+4" AbsoluteOffset="0x38"/>
-<Member Name="Flags" Type="Unsigned" Size="4" Offset="TargetFlags+4" AbsoluteOffset="0x3C"/>
-<Member Name="AbilityCommand" Type="Unsigned" Size="1" Offset="Flags+4" AbsoluteOffset="0x40"/>
-<Member Name="Player" Type="Unsigned" Size="1" Offset="AbilityCommand+2" AbsoluteOffset="0x42"/>
-</Struct>
-
-*/
 nuke()
 {
 	Global 

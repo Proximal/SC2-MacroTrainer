@@ -751,6 +751,40 @@ getUnitPositionZ(unit)
 	Return ReadMemory(B_uStructure + (unit * S_uStructure) + O_uZ, GameIdentifier) /4096
 }
 
+
+/*
+	Move Structure
+	+0x0 next Command ptr either (& -2) or (& 0xFFFFFFFE)
+	+0x4 unit Structure Address
+	+08 Some ptr - maybe ability
+
+
+	When at the last command, the Command ptr & 0xFFFFFFFE
+	will = the adress of the first command
+	also, the last bit of the Command ptr (pre &) will be set to 1
+
+;  O_cqMoveState := 0x40
+
+<Struct Name="QueuedCommand" Size="-1">
+<Member Name="pNextCommand" Type="Unsigned" Size="4" Offset="0"/>
+<!--
+ A Struct very similar to Command starts here. It is a bit different though. 
+-->
+<Member Name="AbilityPointer" Type="Unsigned" Size="4" Offset="pNextCommand+0x18" AbsoluteOffset="0x18"/>
+<Member Name="TargetUnitID" Type="Unsigned" Size="4" Offset="AbilityPointer+8" AbsoluteOffset="0x20"/>
+<Member Name="TargetUnitModelPtr" Type="Unsigned" Size="4" Offset="TargetUnitID+4" AbsoluteOffset="0x24"/>
+<Member Name="TargetX" Type="Fixed" Size="4" Offset="TargetUnitModelPtr+4" AbsoluteOffset="0x28"/>
+<Member Name="TargetY" Type="Fixed" Size="4" Offset="TargetX+4" AbsoluteOffset="0x2C"/>
+<Member Name="TargetZ" Type="Fixed" Size="4" Offset="TargetY+4" AbsoluteOffset="0x30"/>
+<Member Name="Unknown" Type="Unsigned" Size="4" Offset="TargetZ+4" AbsoluteOffset="0x34"/>
+<Member Name="TargetFlags" Type="Unsigned" Size="4" Offset="Unknown+4" AbsoluteOffset="0x38"/>
+<Member Name="Flags" Type="Unsigned" Size="4" Offset="TargetFlags+4" AbsoluteOffset="0x3C"/>
+<Member Name="AbilityCommand" Type="Unsigned" Size="1" Offset="Flags+4" AbsoluteOffset="0x40"/>
+<Member Name="Player" Type="Unsigned" Size="1" Offset="AbilityCommand+2" AbsoluteOffset="0x42"/>
+</Struct>
+
+*/
+
 ; This is probably wrong as there should be more target abilities than just movements
 ; eg psi storm? havent tested
 ; but works for movements.
@@ -769,8 +803,8 @@ getUnitMoveCommands(unit, byRef aQueuedMovements)
 									, "targetY": numget(cmdDump, 0x2C, "Int") / 4096
 									, "targetZ": numget(cmdDump, 0x30, "Int") / 4096
 									, "moveState": numget(cmdDump, 0x40, "Short") }) 	; Different  Nuke +40  1 byte = abilityCommand
-		} Until (0x00000001 & pNextCmd || A_Index > 20) 	; loop until the last/first bit of pNextCmd is set to 1
-		return aQueuedMovements.MaxIndex()
+		} Until (1 & pNextCmd || A_Index > 20) 	; loop until the last/first bit of pNextCmd is set to 1
+		return aQueuedMovements.MaxIndex() 		; interstingly after -2 & pNextCmd (the last one) it should = the first address
 	}
 	else return 0
 
@@ -1773,4 +1807,354 @@ getUnitSubGroupPriority(unit)
     	getUnitModelInfo(pUnitModel)
   	return aUnitModel[pUnitModel].RealSubGroupPriority	
 ;	Return ReadMemory(((ReadMemory(B_uStructure + (unit * S_uStructure) + O_uModelPointer, GameIdentifier) << 5) & 0xFFFFFFFF) + O_mSubgroupPriority, GameIdentifier, 2)
+}
+
+
+
+setupMiniMapUnitLists()
+{	local list, unitlist, ListType
+	list := "UnitHighlightList1,UnitHighlightList2,UnitHighlightList3,UnitHighlightList4,UnitHighlightList5,UnitHighlightList6,UnitHighlightList7,UnitHighlightExcludeList"
+	Loop, Parse, list, `,
+	{	
+		ListType := A_LoopField
+		Active%ListType% := ""		;clear incase changed via options between games	
+		StringReplace, unitlist, %A_LoopField%, %A_Space%, , All ; Remove Spaces also creates var unitlist				
+		unitlist := Trim(unitlist, " `t , |")	; , or `, both work - remove spaces, tabs and commas
+		loop, parse, unitlist, `,
+			Active%ListType% .= aUnitID[A_LoopField] ","
+		Active%ListType% := RTrim(Active%ListType%, " ,")
+	}
+	allActiveActiveUnitHighlightLists := ""
+	loop, 6
+	{
+		loop, parse, ActiveUnitHighlightList%A_Index%, ","
+			allActiveActiveUnitHighlightLists .= A_LoopField ","
+	}
+	; this will contain all the unit ids
+	allActiveActiveUnitHighlightLists := RTrim(allActiveActiveUnitHighlightLists, " ,")
+	Return
+}
+
+
+
+
+;--------------------
+;	Mini Map Setup
+;--------------------
+SetMiniMap(byref minimap)
+{	
+	; minimap is a super global (though here it is a local)
+	minimap := []
+
+	minimap.MapLeft := getmapleft()
+	minimap.MapRight := getmapright()	
+	minimap.MapTop := getMaptop()
+	minimap.MapBottom := getMapBottom()
+
+	AspectRatio := getScreenAspectRatio()	
+	If (AspectRatio = "16:10")
+	{
+		ScreenLeft := (27/1680) * A_ScreenWidth		
+		ScreenBottom := (1036/1050) * A_ScreenHeight	
+		ScreenRight := (281/1680) * A_ScreenWidth	
+		ScreenTop := (786/1050) * A_ScreenHeight
+
+	}	
+	Else If (AspectRatio = "5:4")
+	{	
+		ScreenLeft := (25/1280) * A_ScreenWidth
+		ScreenBottom := (1011/1024) * A_ScreenHeight
+		ScreenRight := (257/1280) * A_ScreenWidth 
+		Screentop := (783/1024) * A_ScreenHeight
+	}	
+	Else If (AspectRatio = "4:3")
+	{	
+		ScreenLeft := (25/1280) * A_ScreenWidth
+		ScreenBottom := (947/960) * A_ScreenHeight
+		ScreenRight := (257/1280) * A_ScreenWidth 
+		ScreenTop := (718/960) * A_ScreenHeight
+
+	}
+	Else ;16:9 Else if (AspectRatio = "16:9")
+	{
+		ScreenLeft 		:= (29/1920) * A_ScreenWidth
+		ScreenBottom 	:= (1066/1080) * A_ScreenHeight
+		ScreenRight 	:= (289/1920) * A_ScreenWidth 
+		ScreenTop 		:= (807/1080) * A_ScreenHeight
+	}	
+	minimap.ScreenWidth := ScreenRight - ScreenLeft
+	minimap.ScreenHeight := ScreenBottom - ScreenTop
+	minimap.MapPlayableWidth 	:= minimap.MapRight - minimap.MapLeft
+	minimap.MapPlayableHeight 	:= minimap.MapTop - minimap.MapBottom
+
+	if (minimap.MapPlayableWidth >= minimap.MapPlayableHeight)
+	{
+		minimap.scale := minimap.Screenwidth / minimap.MapPlayableWidth
+		X_Offset := 0
+		minimap.ScreenLeft := ScreenLeft + X_Offset
+		minimap.ScreenRight := ScreenRight - X_Offset	
+		Y_offset := (minimap.ScreenHeight - minimap.scale * minimap.MapPlayableHeight) / 2
+		minimap.ScreenTop := ScreenTop + Y_offset
+		minimap.ScreenBottom := ScreenBottom - Y_offset
+		minimap.Height := minimap.ScreenBottom - minimap.ScreenTop
+		minimap.Width := minimap.ScreenWidth 
+
+	}
+	else
+	{
+		minimap.scale := minimap.ScreenHeight / minimap.MapPlayableHeight
+		X_Offset:= (minimap.ScreenWidth - minimap.scale * minimap.MapPlayableWidth)/2
+		minimap.ScreenLeft := ScreenLeft + X_Offset
+		minimap.ScreenRight := ScreenRight - X_Offset	
+		Y_offset := 0
+		minimap.ScreenTop := ScreenTop + Y_offset
+		minimap.ScreenBottom := ScreenBottom - Y_offset
+		minimap.Height := minimap.ScreenHeight 
+		minimap.Width := minimap.ScreenRight - minimap.ScreenLeft	
+	}
+	minimap.UnitMinimumRadius := 1 / minimap.scale
+	minimap.UnitMaximumRadius  := 10
+	minimap.AddToRadius := 1 / minimap.scale			
+Return
+}
+
+
+drawUnitRectangle(G, x, y, width, height)
+{ 	global minimap
+	static pPen
+	width *= minimap.scale
+	height *= minimap.scale
+
+	x := x - width / 2
+	y :=y - height /2
+					;as pen is only 1 pixel, it doesn't encroach into the fill paint (only occurs when >=2)
+	if !pPen
+		pPen := Gdip_CreatePen(0xFF000000, 1)		
+	Gdip_DrawRectangle(G, pPen, x, y, width, height)
+}
+
+FillUnitRectangle(G, x, y, width, height, colour)
+{ 	global minimap
+	static a_pBrush := []
+	width *= minimap.scale
+	height *= minimap.scale
+	x := x - width / 2
+	y := y - height /2
+
+	if !a_pBrush[colour]	;faster than creating same colour again 
+		a_pBrush[colour] := Gdip_BrushCreateSolid(colour)
+	Gdip_FillRectangle(G, a_pBrush[colour], x, y, width, height)
+}
+
+
+
+isUnitLocallyOwned(Unit) ; 1 its local player owned
+{	global aLocalPlayer
+	Return aLocalPlayer["Slot"] = getUnitOwner(Unit) ? 1 : 0
+}
+isOwnerLocal(Owner) ; 1 its local player owned
+{	global aLocalPlayer
+	Return aLocalPlayer["Slot"] = Owner ? 1 : 0
+}
+
+GetEnemyRaces()
+{	global aPlayer, aLocalPlayer
+	For slot_number in aPlayer
+	{	If ( aLocalPlayer["Team"] <>  team := aPlayer[slot_number, "Team"] )
+		{
+			If ( EnemyRaces <> "")
+				EnemyRaces .= ", "
+			EnemyRaces .= aPlayer[slot_number, "Race"]
+		}
+	}
+	return EnemyRaces .= "."
+}
+
+GetGameType(aPlayer)
+{	
+	For slot_number in aPlayer
+	{	team := aPlayer[slot_number, "Team"]
+		TeamsList .= Team "|"
+		Player_i ++
+	}
+	Sort, TeamsList, D| N U
+	TeamsList := SubStr(TeamsList, 1, -1)
+	Loop, Parse, TeamsList, |
+		Team_i := A_Index
+	If (Team_i > 2)
+		Return "FFA" 
+	Else	 ;sets game_type to 1v1,2v2,3v3,4v4 ;this helps with empty player slots in custom games - round up to the next game type
+		Return Ceil(Player_i/Team_i) "v" Ceil(Player_i/Team_i)
+}
+
+GetEnemyTeamSize()
+{	global aPlayer, aLocalPlayer
+	For slot_number in aPlayer
+		If aLocalPlayer["Team"] <> aPlayer[slot_number, "Team"]
+			EnemyTeam_i ++
+	Return EnemyTeam_i
+}
+
+GetEBases()
+{	global aPlayer, aLocalPlayer, aUnitID, DeadFilterFlag
+	EnemyBase_i := GetEnemyTeamSize()
+	Unitcount := DumpUnitMemory(MemDump)
+	while (A_Index <= Unitcount)
+	{
+		unit := A_Index - 1
+		TargetFilter := numgetUnitTargetFilter(MemDump, unit)
+		if (TargetFilter & DeadFilterFlag)
+	    	Continue	
+	    pUnitModel := numgetUnitModelPointer(MemDump, Unit)
+	   	Type := numgetUnitModelType(pUnitModel)
+	   	owner := numgetUnitOwner(MemDump, Unit) 
+		IF (( type = aUnitID["Nexus"] ) OR ( type = aUnitID["CommandCenter"] ) OR ( type = aUnitID["Hatchery"] )) AND (aPlayer[Owner, "Team"] <> aLocalPlayer["Team"])
+		{
+			Found_i ++
+			list .=  unit "|"
+		}
+	}
+	Return SubStr(list, 1, -1)	; remove last "|"	
+}
+
+DumpUnitMemory(BYREF MemDump)
+{   
+  LOCAL UnitCount := getHighestUnitIndex()
+  ReadRawMemory(B_uStructure, GameIdentifier, MemDump, UnitCount * S_uStructure)
+  return UnitCount
+}
+class cUnitModelInfo
+{
+   __New(pUnitModel) 
+   {  global GameIdentifier, O_mUnitID, O_mMiniMapSize, O_mSubgroupPriority
+      ReadRawMemory((pUnitModel<< 5) & 0xFFFFFFFF, GameIdentifier, uModelData, O_mMiniMapSize+4) ; O_mMiniMapSize - 0x39C + 4 (int) is the highest offset i get from the unitmodel
+      this.Type := numget(uModelData, O_mUnitID, "Short") 
+      this.MiniMapRadius := numget(uModelData, O_mMiniMapSize, "int")/4096
+      this.RealSubGroupPriority := numget(uModelData, O_mSubgroupPriority, "Short")
+   }
+
+}
+
+numgetUnitModelType(pUnitModel)
+{  global aUnitModel
+   if !aUnitModel[pUnitModel]
+      getUnitModelInfo(pUnitModel)
+   return aUnitModel[pUnitModel].Type
+}
+numgetUnitModelMiniMapRadius(pUnitModel)
+{  global aUnitModel
+   if !aUnitModel[pUnitModel]
+      getUnitModelInfo(pUnitModel)
+   return aUnitModel[pUnitModel].MiniMapRadius
+}
+numgetUnitModelPriority(pUnitModel)
+{  global aUnitModel
+   if !aUnitModel[pUnitModel]
+      getUnitModelInfo(pUnitModel)
+   return aUnitModel[pUnitModel].RealSubGroupPriority
+}
+
+getUnitModelInfo(pUnitModel)
+{  global aUnitModel
+   aUnitModel[pUnitModel] := new cUnitModelInfo(pUnitModel)
+   return
+}
+
+isUnitDead(unit)
+{ 	global 
+	return	getUnitTargetFilterFast(unit) & DeadFilterFlag
+}
+
+
+; 	provides two simple arrays
+;	aUnitID takes the unit name e.g. "Stalker" and return the unit ID
+; 	aUnitName takes the unit ID and Returns the unit name
+
+SetupUnitIDArray(byref aUnitID, byref aUnitName)
+{
+	#include %A_ScriptDir%\Included Files\l_UnitTypes.AHK
+	if !isobject(aUnitID)
+		aUnitID := []
+	if !isobject(aUnitName)
+		aUnitName := []
+	loop, parse, l_UnitTypes, `,
+	{
+		StringSplit, Item , A_LoopField, = 		; Format "Colossus = 38"
+		name := trim(Item1, " `t `n"), UnitID := trim(Item2, " `t `n")
+		aUnitID[name] := UnitID
+		aUnitName[UnitID] := name
+	}
+	Return
+}
+
+setupTargetFilters(byref Array)
+{
+	#include %A_ScriptDir%\Included Files\aUnitTargetFilter.AHK
+	Array := aUnitTargetFilter
+	return
+}
+
+SetupColourArrays(ByRef HexColour, Byref MatrixColour)
+{ 	
+	If IsByRef(HexColour)
+		HexColour := [] 
+	If IsByRef(MatrixColour)	
+		MatrixColour := []
+	HexCoulourList := "White=FFFFFF|Red=B4141E|Blue=0042FF|Teal=1CA7EA|Purple=540081|Yellow=EBE129|Orange=FE8A0E|Green=168000|Light Pink=CCA6FC|Violet=1F01C9|Light Grey=525494|Dark Green=106246|Brown=4E2A04|Light Green=96FF91|Dark Grey=232323|Pink=E55BB0|Black=000000"
+	loop, parse, HexCoulourList, |  
+	{
+		StringSplit, Item , A_LoopField, = ;Format "White = FFFFFF"
+		If IsByRef(HexColour)
+			HexColour[Item1] := Item2 ; White, FFFFFF - hextriplet R G B
+		If IsByRef(MatrixColour)
+		{
+			colour := Item2
+			colourRed := "0x" substr(colour, 1, 2) ;theres a way of doing this with math but im lazy
+			colourGreen := "0x" substr(colour, 3, 2)
+			colourBlue := "0x" substr(colour, 5, 2)	
+			colourRed := Round(colourRed/0xFF,2)
+			colourGreen := Round(colourGreen/0xFF,2)
+			colourBlue := Round(colourBlue/0xFF,2)		
+			Matrix =
+		(
+0		|0		|0		|0		|0
+0		|0		|0		|0		|0
+0		|0		|0		|0		|0
+0		|0		|0		|1		|0
+%colourRed%	|%colourGreen%	|%colourBlue%	|0		|1
+		)
+			MatrixColour[Item1] := Matrix
+		}
+	}
+	Return
+}
+
+
+CreatepBitmaps(byref a_pBitmap, aUnitID)
+{
+	a_pBitmap := []
+	l_Races := "Terran,Protoss,Zerg"
+	loop, parse, l_Races, `,
+	{
+		loop, 2
+		{
+			Background := A_index - 1
+			a_pBitmap[A_loopfield,"Mineral",Background] := Gdip_CreateBitmapFromFile(A_Temp "\Mineral_" Background A_loopfield ".png")
+			a_pBitmap[A_loopfield,"Gas",Background] := Gdip_CreateBitmapFromFile(A_Temp "\Gas_" Background A_loopfield ".png")			
+			a_pBitmap[A_loopfield,"Supply",Background] := Gdip_CreateBitmapFromFile(A_Temp "\Supply_" Background A_loopfield ".png")
+		}
+		a_pBitmap[A_loopfield,"Worker"] := Gdip_CreateBitmapFromFile(A_Temp "\Worker_0" A_loopfield ".png")
+		a_pBitmap[A_loopfield,"Army"] := Gdip_CreateBitmapFromFile(A_Temp "\Army_" A_loopfield ".png")
+		a_pBitmap[A_loopfield,"RaceFlat"]  := Gdip_CreateBitmapFromFile(A_Temp "\Race_" A_loopfield "Flat.png")
+		a_pBitmap[A_loopfield,"RacePretty"] := Gdip_CreateBitmapFromFile(A_Temp "\" A_loopfield "90.png")
+	}
+	Loop, %A_Temp%\UnitPanelMacroTrainer\*.png
+	{
+		StringReplace, FileTitle, A_LoopFileName, .%A_LoopFileExt% ;remove the .ext
+		if aUnitID[FileTitle]	;have a 2 pics which arnt in the unit array - bunkerfortified & thorsiegemode
+			a_pBitmap[aUnitID[FileTitle]] := Gdip_CreateBitmapFromFile(A_LoopFileFullPath)
+	}
+	a_pBitmap["PurpleX16"] := Gdip_CreateBitmapFromFile(A_Temp "\PurpleX16.png")
+	a_pBitmap["GreenX16"] := Gdip_CreateBitmapFromFile(A_Temp "\GreenX16.png")
+	a_pBitmap["RedX16"] := Gdip_CreateBitmapFromFile(A_Temp "\RedX16.png")
 }
