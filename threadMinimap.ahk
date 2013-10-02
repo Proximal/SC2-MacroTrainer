@@ -1,11 +1,9 @@
 #persistent
 #NoEnv  ; think this is default with AHK_H
-#NoTrayIcon
+;#NoTrayIcon
 
-msgbox here
-
-SetBatchLines, -1
-ListLines(False) 
+;SetBatchLines, -1
+;ListLines(False) 
 OnExit, ShutdownProcedure
 if !A_IsCompiled
 {
@@ -50,7 +48,7 @@ l_Changeling := aUnitID["ChangelingZealot"] "," aUnitID["ChangelingMarineShield"
 				. ","  aUnitID["ChangelingZerglingWings"] "," aUnitID["ChangelingZergling"]
 
 
-
+setGame()
 return
 
 

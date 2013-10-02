@@ -2158,3 +2158,277 @@ CreatepBitmaps(byref a_pBitmap, aUnitID)
 	a_pBitmap["GreenX16"] := Gdip_CreateBitmapFromFile(A_Temp "\GreenX16.png")
 	a_pBitmap["RedX16"] := Gdip_CreateBitmapFromFile(A_Temp "\RedX16.png")
 }
+
+;----------------------
+;	player_team_sorter
+;-----------------------
+getPlayers(byref aPlayer, byref aLocalPlayer)
+{
+	aPlayer := [], aLocalPlayer := []
+	; this should probably be 15, as I skip the first always neutral player in my player functions
+	Loop, 16	;doing it this way allows for custom games with blank slots ;can get weird things if 16 (but filtering them for nonplayers)
+	{
+		if !getPlayerName(A_Index) ;empty slot custom games?
+		|| IsInList(getPlayerType(A_Index), "None", "Neutral", "Hostile", "Referee", "Spectator")
+			Continue
+		aPlayer.insert( A_Index, new c_Player(A_Index) )  ; insert at player index so can call using player slot number 
+		If (A_Index = getLocalPlayerNumber()) OR (debug AND getPlayerName(A_Index) == debug_name)
+			aLocalPlayer :=  new c_Player(A_Index)
+	}
+	return	
+}
+
+
+IsInList(Var, items*)
+{
+	for key, item in items
+	{
+		If (var = item)
+			Return 1
+	}
+	return 0
+}
+
+
+class c_Player
+{
+	__New(i) 
+	{	
+		this.Slot := i
+		this.Type := getPlayerType(i)
+		this.Name := getPlayerName(i)
+		this.Team := getPlayerTeam(i)
+		this.Race := getPlayerRace(i)
+		this.Colour := getPlayerColour(i)
+	}
+} 
+
+Class c_EnemyUnit
+{
+	__New(unit) 
+	{	
+		this.Radius := getMiniMapRadius(Unit)
+		this.Owner := getUnitOwner(Unit)
+		this.Type := getUnitType(Unit)
+		this.X := getUnitPositionX(unit)
+		this.Y := getUnitPositionY(unit)
+		this.TargetFilter := getUnitTargetFilter(Unit)	
+	}
+}
+
+;ParseEnemyUnits(ByRef a_LocalUnits, ByRef a_EnemyUnits, ByRef aPlayer)
+ParseEnemyUnits(ByRef a_EnemyUnits, ByRef aPlayer)
+{ global DeadFilterFlag
+	LocalTeam := getPlayerTeam(), a_EnemyUnitsTmp := []
+	While (A_Index <= getUnitCount()) ; Read +10% blanks in a row
+	{
+		unit := A_Index -1
+		Filter := getUnitTargetFilter(unit)	
+		If (Filter & DeadFilterFlag) || (type = "Fail")
+			Continue
+		Owner := getUnitOwner(unit)
+		if  (aPlayer[Owner, "Team"] <> LocalTeam AND Owner) 
+			a_EnemyUnitsTmp[Unit] := new c_EnemyUnit(Unit)
+	}
+	a_EnemyUnits := a_EnemyUnitsTmp
+}
+
+
+
+
+DestroyOverlays()
+{	
+	Try Gui, MiniMapOverlay: Destroy ;destroy minimap when alttabed out
+	Try Gui, IncomeOverlay: Destroy
+	Try Gui, ResourcesOverlay: Destroy
+	Try Gui, ArmySizeOverlay: Destroy
+	Try Gui, WorkerOverlay: Destroy			
+	Try Gui, idleWorkersOverlay: Destroy			
+	Try Gui, LocalPlayerColourOverlay: Destroy			
+	Try Gui, UnitOverlay: Destroy			
+}
+
+setDrawingQuality(G)
+{	static lastG
+	if (lastG <> G)		;as setting these each time is slow
+	{	lastG := G
+		Gdip_SetSmoothingMode(G, 4)
+		Gdip_SetCompositingMode(G, 0) ; 0 = blended, 1= overwrite 
+	}
+}
+Draw(G,x,y,l=11,h=11,colour=0x880000ff, Mode=0) ;use mode 3 to draw rectangle then fill it
+{	; Set the smoothing mode to antialias = 4 to make shapes appear smother (only used for vector drawing and filling)
+	static pPen, a_pBrush := []
+	if Mode	
+	{
+		if !pPen
+			pPen := Gdip_CreatePen(0xFF000000, 1)
+		addtorad := 1/minimap.ratio
+		;Gdip_DrawRectangle(G, pPen, (x - l/2), (y - h/2), l, h) 	;Gdip_DrawRectangle(pGraphics, pPen, x, y, w, h)
+		Gdip_DrawRectangle(G, pPen, (x - l/2), (y - h/2), l * addtorad , h * addtorad) 	;Gdip_DrawRectangle(pGraphics, pPen, x, y, w, h)
+	}
+	if (Mode = 0) || (Mode = 3)
+	{
+		if !a_pBrush[colour]	;faster than creating same colour again 
+			a_pBrush[colour] := Gdip_BrushCreateSolid(colour)
+		Gdip_FillRectangle(G, a_pBrush[colour], (x - l/2), (y - h/2), l, h) ;Gdip_FillRectangle(G, pBrush, x, y, l, h)
+	}
+}
+
+
+
+
+getUnitMiniMapMousePos(Unit, ByRef  Xvar="", ByRef  Yvar="") ; Note raounded as mouse clicks dont round decimals e.g. 10.9 = 10
+{
+	global minimap
+	uX := getUnitPositionX(Unit), uY := getUnitPositionY(Unit)
+	uX -= minimap.MapLeft, uY -= minimap.MapBottom ; correct units position as mapleft/start of map can be >0
+	Xvar := round(minimap.ScreenLeft + (uX/minimap.MapPlayableWidth * minimap.Width))
+	Yvar := round(minimap.Screenbottom - ( uY/minimap.MapPlayableHeight * minimap.Height))		;think about rounding mouse clicks igornore decimals
+	return	
+}
+
+mapToMiniMapPos(x, y, ByRef  Xvar="", ByRef  Yvar="") ; Note raounded as mouse clicks dont round decimals e.g. 10.9 = 10
+{
+	global minimap
+	x -= minimap.MapLeft, y -= minimap.MapBottom ; correct units position as mapleft/start of map can be >0
+	Xvar := round(minimap.ScreenLeft + (x/minimap.MapPlayableWidth * minimap.Width))
+	Yvar := round(minimap.Screenbottom - ( y/minimap.MapPlayableHeight * minimap.Height))		;think about rounding mouse clicks igornore decimals
+	return	
+}
+
+getMiniMapPos(Unit, ByRef  Xvar="", ByRef  Yvar="") ; unit aray index Number
+{
+	global minimap
+	uX := getUnitPositionX(Unit), uY := getUnitPositionY(Unit)
+	uX -= minimap.MapLeft, uY -= minimap.MapBottom ; correct units position as mapleft/start of map can be >0
+	Xvar := minimap.ScreenLeft + (uX/minimap.MapPlayableWidth * minimap.Width)
+	Yvar := minimap.Screenbottom - ( uY/minimap.MapPlayableHeight * minimap.Height)		;think about rounding mouse clicks igornore decimals
+	return	
+}
+convertCoOrdindatesToMiniMapPos(ByRef  X, ByRef  Y) 
+{
+	global minimap
+	X -= minimap.MapLeft, Y -= minimap.MapBottom ; correct units position as mapleft/start of map can be >0
+	, X := round(minimap.ScreenLeft + (X/minimap.MapPlayableWidth * minimap.Width))
+	, Y := round(minimap.Screenbottom - (Y/minimap.MapPlayableHeight * minimap.Height))		;think about rounding mouse clicks igornore decimals
+	return	
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*
+
+
+	GENERAL FUNCTIONS TO BE PUT IN A LIB
+
+*/
+
+
+ifTypeInList(type, byref list)
+{
+	if type in %list%
+		return 1
+	return 0
+}
+
+IniRead(File, Section, Key="", DefaultValue="")
+{
+	IniRead, Output, %File%, %Section%, %Key%, %DefaultValue%
+	Return Output
+}
+
+
+createAlertArray()
+{	
+	local alert_array := [] ; [1v1, unit#, parameter] - [A_LoopField, "list", "size"] alert_array[A_LoopField, "list", "size"]
+	loop, parse, l_GameType, `, ;comma is the separator
+	{
+		IniRead, BAS_on_%A_LoopField%, %config_file%, Building & Unit Alert %A_LoopField%, enable, 1	;alert system on/off
+		IniRead, BAS_copy2clipboard_%A_LoopField%, %config_file%, Building & Unit Alert %A_LoopField%, copy2clipboard, 1
+		alert_array[A_LoopField, "Enabled"] := BAS_on_%A_LoopField% ;this style name, so it matches variable name for update
+		alert_array[A_LoopField, "Clipboard"] := BAS_copy2clipboard_%A_LoopField%
+		loop,	;loop thru the building list sequentialy
+		{
+			IniRead, temp_name, %config_file%, Building & Unit Alert %A_LoopField%, %A_Index%_name_warning
+			if (  temp_name = "ERROR" ) ;ERROR default return
+			{
+				alert_array[A_LoopField, "list", "size"] := A_Index-1
+				break	
+			}
+			IniRead, temp_DWB, %config_file%, Building & Unit Alert %A_LoopField%, %A_Index%_Dont_Warn_Before_Time, 0 ;get around having blank keys in ini)=
+			IniRead, temp_DWA, %config_file%, Building & Unit Alert %A_LoopField%, %A_Index%_Dont_Warn_After_Time, 54000 ;15 hours - get around having blank keys in ini		
+			IniRead, Temp_repeat, %config_file%, Building & Unit Alert %A_LoopField%, %A_Index%_repeat_on_new, 0
+			IniRead, Temp_IDName, %config_file%, Building & Unit Alert %A_LoopField%, %A_Index%_IDName
+			alert_array[A_LoopField, A_Index, "Name"] := temp_name
+			alert_array[A_LoopField, A_Index, "DWB"] := temp_DWB
+			alert_array[A_LoopField, A_Index, "DWA"] := temp_DWA
+			alert_array[A_LoopField, A_Index, "Repeat"] := Temp_repeat
+			alert_array[A_LoopField, A_Index, "IDName"] := Temp_IDName
+		}
+	}
+	Return alert_array
+}
+
+convertObjectToList(Object, Delimiter="|")
+{
+	for index, item in Object
+		if (A_index = 1)
+			List .= item
+		else
+			List .= "|" item
+	return List
+}
+
+;note if the object is part of a multidimensional array it still must first be initialised
+;eg
+;	obj := []
+;	obj["Terran", "Units"] := []
+;	ConvertListToObject(obj["Terran", "Units"], l_UnitNamesTerran)
+ConvertListToObject(byref Object, List, Delimiter="|", ClearObject = 0)
+{
+	if (!IsObject(object) || ClearObject)
+		object := []
+	loop, parse, List, %delimiter%
+		object.insert(A_LoopField)
+	return
+}
