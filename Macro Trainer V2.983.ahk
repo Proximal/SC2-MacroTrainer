@@ -8876,7 +8876,7 @@ return
 ; The first unit to be removed will have the highest unit panel position
 
 findUnitsToRemoveFromArmy(byref aSelected := "", DeselectXelnaga = 1, DeselectPatrolling = 1, DeselectHoldPosition = 0, DeselectFollowing = 0, lTypes = "")
-{ 	global uMovementFlags
+{ 	global aUnitMoveStates
 	if (!isObject(aSelected) || !aSelected.units.maxIndex())
 		numGetSelectionSorted(aSelected) ; get a sorted array of the selection buffer
 	remove := []
@@ -8884,9 +8884,9 @@ findUnitsToRemoveFromArmy(byref aSelected := "", DeselectXelnaga = 1, DeselectPa
 	{
 		state := getUnitMoveState(unit.unitIndex)
 		if (DeselectXelnaga && isUnitHoldingXelnaga(unit.unitIndex))
-			|| (DeselectPatrolling && state = uMovementFlags.Patrol)
-			|| (DeselectHoldPosition && state = uMovementFlags.HoldPosition)
-			|| (DeselectFollowing && (state = uMovementFlags.Follow || state = uMovementFlags.FollowNoAttack)) ;no attack follow is used by spell casters e.g. HTs & infests which dont have and attack
+			|| (DeselectPatrolling && state = aUnitMoveStates.Patrol)
+			|| (DeselectHoldPosition && state = aUnitMoveStates.HoldPosition)
+			|| (DeselectFollowing && (state = aUnitMoveStates.Follow || state = aUnitMoveStates.FollowNoAttack)) ;no attack follow is used by spell casters e.g. HTs & infests which dont have and attack
 				remove.insert(unit.unitIndex)
 		else if lTypes  
 		{
@@ -8904,7 +8904,7 @@ findUnitsToRemoveFromArmy(byref aSelected := "", DeselectXelnaga = 1, DeselectPa
 ; as used by ClickUnitPortrait
 ; The highest portrait locations come first
 findPortraitsToRemoveFromArmy(byref aSelected := "", DeselectXelnaga = 1, DeselectPatrolling = 1, DeselectHoldPosition = 0, DeselectFollowing = 0, lTypes = "")
-{ 	global uMovementFlags
+{ 	global aUnitMoveStates
 	if (!isObject(aSelected) || !aSelected.units.maxIndex())
 		numGetSelectionSorted(aSelected) ; get a sorted array of the selection buffer
 	remove := []
@@ -8913,9 +8913,9 @@ findPortraitsToRemoveFromArmy(byref aSelected := "", DeselectXelnaga = 1, Desele
 	{	
 		state := getUnitMoveState(unit.unitIndex)
 		if (DeselectXelnaga && isUnitHoldingXelnaga(unit.unitIndex))
-			|| (DeselectPatrolling && state = uMovementFlags.Patrol)
-			|| (DeselectHoldPosition && state = uMovementFlags.HoldPosition)
-			|| (DeselectFollowing && (state = uMovementFlags.Follow || state = uMovementFlags.FollowNoAttack)) ;no attack follow is used by spell casters e.g. HTs & infests which dont have and attack
+			|| (DeselectPatrolling && state = aUnitMoveStates.Patrol)
+			|| (DeselectHoldPosition && state = aUnitMoveStates.HoldPosition)
+			|| (DeselectFollowing && (state = aUnitMoveStates.Follow || state = aUnitMoveStates.FollowNoAttack)) ;no attack follow is used by spell casters e.g. HTs & infests which dont have and attack
 				remove.insert(unit.unitPortrait) 
 		else if lTypes  
 		{
@@ -10182,6 +10182,116 @@ u3  p4
 
 
 f1::
+
+getUnitMoveCommands(getSelectedUnitIndex(), a)
+objtree(a)
+
+
+return 
+
+f2::	
+lUnit := getSelectedUnitIndex()
+while !GetKeyState("Esc")
+{
+	ToolTip, % getUnitPositionX(lUnit) * 4096 
+		. "`n" getUnitPositionY(lunit) * 4096
+		. "`n" getUnitPositionZ(lunit) * 4096, 500, 500
+	sleep 100
+}
+return
+/*
+	Move Structure
+	+0x0 next Command ptr either (& -2) or (& 0xFFFFFFFE)
+	+0x4 unit Structure Address
+	+08 Some ptr - maybe ability
+
+
+	When at the last command, the Command ptr & 0xFFFFFFFE
+	will = the adress of the first command
+	also, the last bit of the Command ptr (pre &) will be set to 1
+
+;  O_cqMoveState := 0x40
+
+<Struct Name="QueuedCommand" Size="-1">
+<Member Name="pNextCommand" Type="Unsigned" Size="4" Offset="0"/>
+<!--
+ A Struct very similar to Command starts here. It is a bit different though. 
+-->
+<Member Name="AbilityPointer" Type="Unsigned" Size="4" Offset="pNextCommand+0x18" AbsoluteOffset="0x18"/>
+<Member Name="TargetUnitID" Type="Unsigned" Size="4" Offset="AbilityPointer+8" AbsoluteOffset="0x20"/>
+<Member Name="TargetUnitModelPtr" Type="Unsigned" Size="4" Offset="TargetUnitID+4" AbsoluteOffset="0x24"/>
+<Member Name="TargetX" Type="Fixed" Size="4" Offset="TargetUnitModelPtr+4" AbsoluteOffset="0x28"/>
+<Member Name="TargetY" Type="Fixed" Size="4" Offset="TargetX+4" AbsoluteOffset="0x2C"/>
+<Member Name="TargetZ" Type="Fixed" Size="4" Offset="TargetY+4" AbsoluteOffset="0x30"/>
+<Member Name="Unknown" Type="Unsigned" Size="4" Offset="TargetZ+4" AbsoluteOffset="0x34"/>
+<Member Name="TargetFlags" Type="Unsigned" Size="4" Offset="Unknown+4" AbsoluteOffset="0x38"/>
+<Member Name="Flags" Type="Unsigned" Size="4" Offset="TargetFlags+4" AbsoluteOffset="0x3C"/>
+<Member Name="AbilityCommand" Type="Unsigned" Size="1" Offset="Flags+4" AbsoluteOffset="0x40"/>
+<Member Name="Player" Type="Unsigned" Size="1" Offset="AbilityCommand+2" AbsoluteOffset="0x42"/>
+</Struct>
+
+*/
+nuke()
+{
+	Global 
+	unit := getSelectedUnitIndex()
+	if (CmdQueue := ReadMemory(B_uStructure + unit * S_uStructure + O_P_uCmdQueuePointer, GameIdentifier)) ; points if currently has a command - 0 otherwise
+	{
+		firstCommand := ReadMemory(CmdQueue, GameIdentifier) & 0xFFFFFFFE
+		msgbox % clipboard := substr(dectohex(firstCommand), 3)
+		secondCommand := ReadMemory(firstCommand, GameIdentifier) & 0xFFFFFFFE
+		msgbox % clipboard := substr(dectohex(secondCommand), 3)
+		thirdCommand := ReadMemory(secondCommand, GameIdentifier) & 0xFFFFFFFE
+		msgbox % clipboard := substr(dectohex(thirdCommand), 3)
+		
+		fourthCommand := ReadMemory(thirdCommand, GameIdentifier) & 0xFFFFFFFE
+		msgbox % clipboard := substr(dectohex(fourthCommand), 3)	" her"
+
+		return
+	}
+
+}
+
+
+
+getUnitMoveStateTest()
+{	local CmdQueue, BaseCmdQueStruct
+	unit := getSelectedUnitIndex()
+	if (CmdQueue := ReadMemory(B_uStructure + unit * S_uStructure + O_P_uCmdQueuePointer, GameIdentifier)) ; points if currently has a command - 0 otherwise
+	{
+		BaseCmdQueStruct := ReadMemory(CmdQueue, GameIdentifier) & -2
+		msgbox %  "+40: " ReadMemory(BaseCmdQueStruct + O_cqMoveState, GameIdentifier, 1)
+			. "`n+41: " ReadMemory(BaseCmdQueStruct + 41, GameIdentifier, 1)
+			. "`n42/2: " ReadMemory(BaseCmdQueStruct + O_cqMoveState, GameIdentifier, 2)
+		return ReadMemory(BaseCmdQueStruct + O_cqMoveState, GameIdentifier, 2) ;current state
+	}
+	else return -1 ;cant return 0 as that ould indicate A-move
+}
+
+critical, on
+haystack :=  "clicks highest units first, so dont have to calculate new"
+var := "test"
+qpx(true) 
+loop 10000000
+	if (haystack~="S)" var)
+		msgbox never gonna see me
+r := qpx(false) 
+critical, off
+msgbox % clipboard := r*1000
+return
+;if var in %haystack%
+/*
+loop 10000000
+if var in %haystack%
+	2902.220477
+if InStr(haystack, var)	
+	3152.639201
+if (haystack~=var)
+	8237.289013
+if (haystack~="S)" var)
+	8920.450152
+*/
+
 msgbox % getStructureRallyPoints(getSelectedUnitIndex(), rally)
 objtree(rally)
 return 
@@ -11063,15 +11173,15 @@ return
 
 
 	state := getUnitMoveState(getSelectedUnitIndex())
-	if (state = uMovementFlags.Amove)
+	if (state = aUnitMoveStates.Amove)
 		tSpeak("A move")
-	else if (state = uMovementFlags.Patrol)
+	else if (state = aUnitMoveStates.Patrol)
 		tSpeak("Patrol")
-	else if (state = uMovementFlags.HoldPosition)
+	else if (state = aUnitMoveStates.HoldPosition)
 		tSpeak("Hold")
-	else if (state = uMovementFlags.Move)
+	else if (state = aUnitMoveStates.Move)
 		tSpeak("move")
-	else if (state = uMovementFlags.Follow)
+	else if (state = aUnitMoveStates.Follow)
 		tSpeak("Follow")
 		
 ; fold//

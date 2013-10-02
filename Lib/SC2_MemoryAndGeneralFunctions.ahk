@@ -87,7 +87,7 @@ Global B_LocalCharacterNameID
 , O_mBottom
 , O_mRight
 , O_mTop
-, uMovementFlags
+, aUnitMoveStates
 
 , P_IsUserPerformingAction
 , O1_IsUserPerformingAction
@@ -253,15 +253,15 @@ loadMemoryAddresses(base)
 		 O_mRight := B_MapStruct + 0xE4	    ; MapRight 157.999756 (akilon wastes) after dividing 4096                     
 		 O_mTop := B_MapStruct + 0xE8	   	; MapTop: 622591 (akilon wastes) before dividing 4096  
 
-	 uMovementFlags := {Idle: -1  ; ** Note this isn't actually a read in game type/value its just what my funtion will return if it is idle
-	, Amove: 0 		;these arent really flags !! cant '&' them!
-	, Patrol: 1
-	, HoldPosition: 2
-	, Move: 256
-	, Follow: 512
-	, FollowNoAttack: 515} ; This is used by unit spell casters such as infestors and High temps which dont have a real attack 
-	; note I have Converted these hex numbers from their true decimal conversion 
-	
+	 aUnitMoveStates := {Idle: -1  ; ** Note this isn't actually a read in game type/value its just what my funtion will return if it is idle
+						, Amove: 0 		;these arent really flags !! cant '&' them!
+						, Patrol: 1
+						, HoldPosition: 2
+						, Move: 256
+						, Follow: 512
+						, FollowNoAttack: 515} ; This is used by unit spell casters such as infestors and High temps which dont have a real attack 
+						; note I have Converted these hex numbers from their true decimal conversion 
+						
 
  															; If used as 4byte value, will return 256 	there seems to be 2 of these memory addresses
 	 P_IsUserPerformingAction := base + 0x031073C0			; This is a 1byte value and return 1  when user is casting or in is rallying a hatch via gather/rally or is in middle of issuing Amove/patrol command but
@@ -751,6 +751,31 @@ getUnitPositionZ(unit)
 	Return ReadMemory(B_uStructure + (unit * S_uStructure) + O_uZ, GameIdentifier) /4096
 }
 
+; This is probably wrong as there should be more target abilities than just movements
+; eg psi storm? havent tested
+; but works for movements.
+getUnitMoveCommands(unit, byRef aQueuedMovements)
+{
+	aQueuedMovements := []
+	if (CmdQueue := ReadMemory(B_uStructure + unit * S_uStructure + O_P_uCmdQueuePointer, GameIdentifier)) ; points if currently has a command - 0 otherwise
+	{
+		pNextCmd := ReadMemory(CmdQueue, GameIdentifier) ; If & -2 this is really the first command ie  = BaseCmdQueStruct
+		loop 
+		{
+			ReadRawMemory(pNextCmd & -2, GameIdentifier, cmdDump, 0x42)
+			pNextCmd := numget(cmdDump, 0, "Int") 
+			clipboard := pNextCmd
+			aQueuedMovements.insert({ "targetX": numget(cmdDump, 0x28, "Int") / 4096
+									, "targetY": numget(cmdDump, 0x2C, "Int") / 4096
+									, "targetZ": numget(cmdDump, 0x30, "Int") / 4096
+									, "moveState": numget(cmdDump, 0x40, "Short") }) 	; Different  Nuke +40  1 byte = abilityCommand
+		} Until (0x00000001 & pNextCmd || A_Index > 20) 	; loop until the last/first bit of pNextCmd is set to 1
+		return aQueuedMovements.MaxIndex()
+	}
+	else return 0
+
+}
+
 
 getUnitMoveState(unit)
 {	local CmdQueue, BaseCmdQueStruct
@@ -764,7 +789,7 @@ getUnitMoveState(unit)
 
 isUnitPatrolling(unit)
 {	global
-	return uMovementFlags.Patrol & getUnitMoveState(unit)
+	return aUnitMoveStates.Patrol & getUnitMoveState(unit)
 }
 
 
@@ -1154,7 +1179,7 @@ getBuildStats(building, byref QueueSize := "")
 }
 
 
-; byteArrayDump can be used to pass an already dumped byte array, savining reading it again
+; byteArrayDump can be used to pass an already dumped byte array, saving reading it again
 getAbilityIndex(abilityID, abilitiesCount, ByteArrayAddress := "", byRef byteArrayDump := "")
 {
 	if !byteArrayDump
@@ -1568,7 +1593,7 @@ numgetUnitModelPointer(ByRef Memory, Unit)
 
  getGroupedQueensWhichCanInject(ByRef aControlGroup,  CheckMoveState := 0)
  {	GLOBAL aUnitID, O_scTypeCount, O_scTypeHighlighted, S_CtrlGroup, O_scUnitIndex, GameIdentifier, B_CtrlGroupOneStructure
- 	, S_uStructure, GameIdentifier, MI_Queen_Group, S_scStructure, uMovementFlags
+ 	, S_uStructure, GameIdentifier, MI_Queen_Group, S_scStructure, aUnitMoveStates
 	aControlGroup := []
 	group := MI_Queen_Group
 	groupCount := getControlGroupCount(Group)
@@ -1588,7 +1613,7 @@ numgetUnitModelPointer(ByRef Memory, Unit)
 		type := getUnitType(unit)
 		if (isUnitLocallyOwned(Unit) && aUnitID["Queen"] = type && ((energy := getUnitEnergy(unit)) >= 25)) 
 		&& (!CheckMoveState 
-			||  (CheckMoveState &&  (MoveState := getUnitMoveState(unit)) != uMovementFlags.Amove && MoveState != uMovementFlags.Move && MoveState != uMovementFlags.Patrol)  )  ; I do this because my blocking of keys isnt 100% and if the user is pressing H e.g. hold posistion army or make hydras 
+			||  (CheckMoveState &&  (MoveState := getUnitMoveState(unit)) != aUnitMoveStates.Amove && MoveState != aUnitMoveStates.Move && MoveState != aUnitMoveStates.Patrol)  )  ; I do this because my blocking of keys isnt 100% and if the user is pressing H e.g. hold posistion army or make hydras 
 			aControlGroup.Queens.insert(objectGetUnitXYZAndEnergy(unit)), aControlGroup.Queens[aControlGroup.Queens.MaxIndex(), "Type"] := Type 		; and so can accidentally put queen on hold position thereby stopping injects!!!
 	} 																																					; so queen is not moving/patrolling/a-moving ; also if user right clicks queen to catsh, that would put her on a never ending follow command
 	aControlGroup["QueenCount"] := 	aControlGroup.Queens.maxIndex() ? aControlGroup.Queens.maxIndex() : 0 ; as "SelectedUnitCount" will contain total selected queens + other units in group
@@ -1598,7 +1623,7 @@ numgetUnitModelPointer(ByRef Memory, Unit)
 	; CheckMoveState for forced injects
  getSelectedQueensWhichCanInject(ByRef aSelection, CheckMoveState := 0)
  {	GLOBAL aUnitID, O_scTypeCount, O_scTypeHighlighted, S_scStructure, O_scUnitIndex, GameIdentifier, B_SelectionStructure
- 	, S_uStructure, GameIdentifier, uMovementFlags 
+ 	, S_uStructure, GameIdentifier, aUnitMoveStates 
 	aSelection := []
 	selectionCount := getSelectionCount()
 	ReadRawMemory(B_SelectionStructure, GameIdentifier, MemDump, selectionCount * S_scStructure + O_scUnitIndex)
@@ -1613,7 +1638,7 @@ numgetUnitModelPointer(ByRef Memory, Unit)
 		type := getUnitType(unit)
 		if (isUnitLocallyOwned(Unit) && aUnitID["Queen"] = type && ((energy := getUnitEnergy(unit)) >= 25)) 
 		&& (!CheckMoveState 
-			||  (CheckMoveState &&  (MoveState := getUnitMoveState(unit)) != uMovementFlags.Amove && MoveState != uMovementFlags.Move && MoveState != uMovementFlags.Patrol)  )  ; I do this because my blocking of keys isnt 100% and if the user is pressing H e.g. hold posistion army or make hydras
+			||  (CheckMoveState &&  (MoveState := getUnitMoveState(unit)) != aUnitMoveStates.Amove && MoveState != aUnitMoveStates.Move && MoveState != aUnitMoveStates.Patrol)  )  ; I do this because my blocking of keys isnt 100% and if the user is pressing H e.g. hold posistion army or make hydras
 			aSelection.Queens.insert(objectGetUnitXYZAndEnergy(unit)), aSelection.Queens[aSelection.Queens.MaxIndex(), "Type"] := Type 					; and so can accidentally put queen on hold position thereby stopping injects!!!
 	} 																																			; also if user right clicks queen to catsh, that would put her on a never ending follow command
 	aSelection["Count"] :=  aSelection.Queens.maxIndex() ? aSelection.Queens.maxIndex() : 0 ; as "SelectedUnitCount" will contain total selected queens + other units in group
