@@ -389,7 +389,7 @@ SC2.exe+1FDF7C8 (8 bytes) contains the state of most keys eg a-z etc
 	B_CurrentBaseCam := 0x017AB3C8	;not current
 		P1_CurrentBaseCam := 0x25C		;not current
 */	
-	return
+	return 1
 }	
 
 
@@ -2431,4 +2431,13 @@ ConvertListToObject(byref Object, List, Delimiter="|", ClearObject = 0)
 	loop, parse, List, %delimiter%
 		object.insert(A_LoopField)
 	return
+}
+
+; This is uesed to exit the program without causing the shutdown routine to be called
+; twice. Only used in certain situations. e.g. directly closing a thread
+; using the label option causes it to run twice - even when using a timer, or goto/gosub redirect
+exitApp(ExitCode := 0)
+{
+	ExitApp, %ExitCode%
+	return 
 }

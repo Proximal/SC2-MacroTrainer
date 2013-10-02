@@ -112,8 +112,9 @@ If 0 ; ignored by script but installed by compiler
   	FileInstall, Included Files\ahkH\AutoHotkeyMini.dll, this param is ignored
    	FileInstall, Included Files\ahkH\AutoHotkey.dll, this param is ignored
 }
-speechThread := AhkDllThread("Included Files\ahkH\AutoHotkeyMini.dll")
-speechThread.ahktextdll(generateSpeechScript())
+aThreads := []
+aThreads.Speech := AhkDllThread("Included Files\ahkH\AutoHotkeyMini.dll")
+aThreads.Speech.ahktextdll(generateSpeechScript())
 
 
 start:
@@ -138,7 +139,7 @@ l_GameType := "1v1,2v2,3v3,4v4,FFA"
 l_Races := "Terran,Protoss,Zerg"
 GLOBAL GameWindowTitle := "StarCraft II"
 GLOBAL GameIdentifier := "ahk_exe SC2.exe"
-GameExe := "SC2.exe"
+GLOBAL GameExe := "SC2.exe"
 
 ; For some reason this has to come before Gdip_Startup() for reliability 
 DllCall("RegisterShellHookWindow", UInt, getScriptHandle())
@@ -774,6 +775,8 @@ clock:
 		game_status := "lobby" ; with this clock = 0 when not in game (while in game at 0s clock = 44)	
 		timeroff("money", "gas", "scvidle", "supply", "worker", "inject", "unit_bank_read", "Auto_mine", "Auto_Group", "AutoGroupIdle", "MiniMap_Timer", "overlay_timer", "g_unitPanelOverlay_timer", "g_autoWorkerProductionCheck", "cast_ForceInject")
 		inject_timer := TimeReadRacesSet := UpdateTimers := Overlay_RunCount := PrevWarning := WinNotActiveAtStart := ResumeWarnings := 0 ;ie so know inject timer is off
+		if aThreads.MiniMap.ahkReady()
+			aThreads.MiniMap.ahkPostFunction("gameChange")
 		Try DestroyOverlays()
 		setLowLevelInputHooks(False)
 	}
@@ -787,6 +790,20 @@ clock:
 								; Info about the current game for other functions 
 								; An easy way to have the info cleared each match
 		Global aUnitModel := []
+
+		If (DrawMiniMap || DrawAlerts || DrawSpawningRaces)
+		{
+			if !aThreads.MiniMap.ahkReady()
+			{
+				aThreads.MiniMap := AhkDllThread("Included Files\ahkH\AutoHotkey.dll")
+				aThreads.MiniMap.ahkdll(A_ScriptDir "\threadMiniMap.ahk")
+			}
+			aThreads.MiniMap.ahkPostFunction("gameChange")
+		}
+		Else if aThreads.MiniMap.ahkReady()
+			aThreads.MiniMap.ahkPostFunction("exitApp") ; use post function so don't have to wait and delay the routine below
+	
+
 
 		; Install the hook here. In case it got removed.
 		; Remove it at the end of the game.
@@ -865,8 +882,8 @@ clock:
 			hotkey, >!g, g_GLHF
 			Hotkey, If
 		}	
-		If (DrawMiniMap OR DrawAlerts OR DrawSpawningRaces)
-			SetTimer, MiniMap_Timer, %MiniMapRefresh%, -7		
+	;	If (DrawMiniMap OR DrawAlerts OR DrawSpawningRaces)
+	;		SetTimer, MiniMap_Timer, %MiniMapRefresh%, -7		
 		SetTimer, overlay_timer, %OverlayRefresh%, -8	
 		SetTimer, g_unitPanelOverlay_timer, %UnitOverlayRefresh%, -9	
 
@@ -2430,8 +2447,11 @@ ShutdownProcedure:
 	Closed := ReadMemory_Str()
 	Gdip_Shutdown(pToken)
 
-	if speechThread.ahkReady() 	; it exists
-		speechThread.ahkTerminate(500) ; needs 5 so thread doesn't persist
+	if aThreads.Speech.ahkReady() 	; if exists
+		aThreads.Speech.ahkTerminate(500) ; needs 5 so thread doesn't persist	
+	if aThreads.miniMap.ahkReady() 	
+		aThreads.miniMap.ahkTerminate(500) 
+
 	Iniwrite, % round(GetProgramWaveVolume()), %config_file%, Volume, program
 
 	ExitApp
@@ -6933,11 +6953,11 @@ RestoreModifierPhysicalState()
 
 
 tSpeak(Message, SAPIVol := "")
-{	global speech_volume, speechThread
+{	global speech_volume, aThreads
 
 	if !SAPIVol
 		SAPIVol := speech_volume
-	speechThread.ahkFunction("speak", Message, SAPIVol)
+	aThreads.Speech.ahkFunction("speak", Message, SAPIVol)
 	return
 }
 
@@ -9613,13 +9633,19 @@ u3  p4
 
 
 f1::
+aThreads.MiniMap.ahkPostFunction("exitApp")
+return
+
+/*
+Tried 
+miniMapThread.ahkLabel.ShutdownProcedure.0
+miniMapThread.ahkLabel["ShutdownProcedure", "0"] 
+miniMapThread.ahkLabel["ShutdownProcedure", 0] 
+*/
 
 miniMapThread := AhkDllThread("Included Files\ahkH\AutoHotkey.dll")
-msgbox 1
 miniMapThread.ahkdll(A_ScriptDir "\threadMiniMap.ahk")
-msgbox 2
 miniMapThread.ahkFunction("setGame")
-msgbox 3
 
 return 
 getUnitMoveCommands(getSelectedUnitIndex(), a)
@@ -9629,6 +9655,10 @@ objtree(a)
 return 
 
 f2::	
+
+miniMapThread.ahkLabel.ShutdownProcedure
+return
+
 lUnit := getSelectedUnitIndex()
 while !GetKeyState("Esc")
 {

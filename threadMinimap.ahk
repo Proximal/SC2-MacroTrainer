@@ -1,3 +1,13 @@
+/*
+	Rather than messing around with a lot of shared variables/objects/critical sections
+	and locks,
+	this thread is just going to going to read/update all of the users variables
+	itself, as well as gamedata
+	This has to be run using AHK.dll (mini doesnt have gui functions)
+*/
+
+
+
 #persistent
 #NoEnv  ; think this is default with AHK_H
 ;#NoTrayIcon
@@ -10,7 +20,6 @@ if !A_IsCompiled
 	debug := True
 	debug_name := "Kalamity"	
 }
-; #Include <SC2_MemoryAndGeneralFunctions> ;In the library folder
 
 l_GameType := "1v1,2v2,3v3,4v4,FFA"
 l_Races := "Terran,Protoss,Zerg"
@@ -30,44 +39,47 @@ getSubGroupAliasArray(aUnitSubGroupAlias)
 setupTargetFilters(aUnitTargetFilter)
 SetupColourArrays(HexColour, MatrixColour)
 
-
-
 CreatepBitmaps(a_pBitmap, aUnitID)
 aUnitInfo := []
 a_pBrush := []
 readConfigFile()
 
-Process, wait, %GameExe%	
-while (!(B_SC2Process := getProcessBaseAddress(GameIdentifier)) || B_SC2Process < 0)		;using just the window title could cause problems if a folder had the same name e.g. sc2 folder
-	sleep 400
-loadMemoryAddresses(B_SC2Process)
-
 settimer, timer_exit, 15000, -100 ; Just as a backup if the thread gets orphaned
-
 l_Changeling := aUnitID["ChangelingZealot"] "," aUnitID["ChangelingMarineShield"] ","  aUnitID["ChangelingMarine"] 
 				. ","  aUnitID["ChangelingZerglingWings"] "," aUnitID["ChangelingZergling"]
-
-
-setGame()
 return
 
 
 
 
-setGame()
+gameChange()
 {
-	global 
-	game_status := "game", warpgate_status := "not researched", gateway_count := warpgate_warning_set := 0
-	aUnitModel := []
-	if WinActive(GameIdentifier)
-		ReDrawMiniMap := ReDrawIncome := ReDrawResources := ReDrawArmySize := ReDrawWorker := RedrawUnit := ReDrawIdleWorkers := ReDrawLocalPlayerColour := 1
-	getPlayers(aPlayer, aLocalPlayer)
-	GameType := GetGameType(aPlayer)
-	SetMiniMap(minimap)
-	setupMiniMapUnitLists()
-	SetTimer, MiniMap_Timer, %MiniMapRefresh%, -7
-	EnemyBaseList := GetEBases()
-	msgbox done
+	global
+	if !hasLoadedMemoryAddresses
+	{
+		Process, wait, %GameExe%
+		while (!(B_SC2Process := getProcessBaseAddress(GameIdentifier)) || B_SC2Process < 0)		;using just the window title could cause problems if a folder had the same name e.g. sc2 folder
+			sleep 400
+		hasLoadedMemoryAddresses := loadMemoryAddresses(B_SC2Process)
+	}
+	if getTime()
+	{
+		game_status := "game", warpgate_status := "not researched", gateway_count := warpgate_warning_set := 0
+		aUnitModel := []
+		if WinActive(GameIdentifier)
+			ReDrawMiniMap := ReDrawIncome := ReDrawResources := ReDrawArmySize := ReDrawWorker := RedrawUnit := ReDrawIdleWorkers := ReDrawLocalPlayerColour := 1
+		getPlayers(aPlayer, aLocalPlayer)
+		GameType := GetGameType(aPlayer)
+		SetMiniMap(minimap)
+		setupMiniMapUnitLists()
+		SetTimer, MiniMap_Timer, %MiniMapRefresh%, -7
+		EnemyBaseList := GetEBases()
+	}
+	else 
+	{
+		SetTimer, MiniMap_Timer, off
+	}
+	return
 }
 
 
@@ -91,9 +103,6 @@ ShutdownProcedure:
 	Gdip_Shutdown(pToken)
 	ExitApp
 Return
-
-
-
 
 
 
