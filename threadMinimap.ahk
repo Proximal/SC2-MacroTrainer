@@ -200,6 +200,15 @@ DrawMiniMap()
 
 	drawPlayerCameras(G)
 
+	testObject := []
+	unit := getselectedunitIndex()
+	getUnitMoveCommands(unit, aQueuedMovements)
+	testObject.insert({ "QueuedCommands": aQueuedMovements
+					, "x": getUnitPositionX(unit)
+					, "y": getUnitPositionY(unit) })
+	drawUnitDestinations(G, testObject)
+
+
 	Gdip_DeleteGraphics(G)
 	UpdateLayeredWindow(hwnd1, hdc, 0, 0, A_ScreenWidth/4, A_ScreenHeight) ;only draw on left side of the screen
 	SelectObject(hdc, obm) ; needed else eats ram ; Select the object back into the hdc
@@ -283,7 +292,59 @@ getEnemyUnitsMiniMap(byref A_MiniMapUnits)
   Return
 }
 
+drawUnitDestinations(pGraphics, byRef aEnemyUnitData)
+{
+	static a_pPen := [], hasRun
 
+	if !hasRun
+		a_pPen := createPens(2)
+
+	for indexOuter, aIndividualUnit in aEnemyUnitData
+	{
+		for index, movement in aIndividualUnit.QueuedCommands
+		{
+			if (movement.moveState = aUnitMoveStates.Amove)
+				colour := "Red"
+			else if (movement.moveState	= aUnitMoveStates.Patrol)
+				colour := "Blue"
+			else if (movement.moveState	= aUnitMoveStates.Move
+				|| movement.moveState= aUnitMoveStates.Follow 
+				|| movement.moveState = aUnitMoveStates.FollowNoAttack)
+				colour := "Green"
+			else continue
+
+			if (index = aIndividualUnit.QueuedCommands.MinIndex())
+			{
+				x := aIndividualUnit.x, y := aIndividualUnit.y 	
+				convertCoOrdindatesToMiniMapPos(x,  y)	
+				
+			}
+			Else 
+			{
+				x := xTarget, y := yTarget
+			}
+
+			xTarget := movement.targetX, yTarget := movement.targetY
+
+			convertCoOrdindatesToMiniMapPos(xTarget,  yTarget)	
+
+			msgbox % x ", " y "`n" xTarget ", " yTarget
+			Gdip_DrawLine(pGraphics, a_pPen[colour], x, y, xTarget, yTarget)
+
+		}
+	}
+	objtree(aEnemyMovements)
+	msgbox 
+	return
+}
+
+createPens(penSize)
+{
+	a_pPens := []
+	for colour, hexValue in HexColour
+		a_pPens[Colour] := Gdip_CreatePen(0xcFF hexValue, penSize)
+	return a_pPens
+}
 
 
 
@@ -300,15 +361,15 @@ Still have to scale this for the map - so probably *minimap.scale
 
 drawPlayerCameras(pGraphics)
 {
-	static a_pPen := [], maxAngle := 1.195313
+	static a_pPen := [], maxAngle := 1.195313, hasRun
+	if !hasRun
+		a_pPen := createPens(2)
 
 	For slotNumber in aPlayer
 	{
 		If (aLocalPlayer.Team != aPlayer[slotNumber].Team || 1)
 		{
 
-			if !a_pPen[Colour := Colour := 0xcFF HexColour[aPlayer[slotNumber].Colour]]	
-				a_pPen[Colour] := Gdip_CreatePen(Colour, 2)
 			angle := getPlayerCameraAngle(slotNumber)
 			xCenter := getPlayerCameraPositionX(slotNumber)
 			yCenter := getPlayerCameraPositionY(slotNumber)

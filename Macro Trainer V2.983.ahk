@@ -9633,7 +9633,8 @@ u3  p4
 
 
 f1::
-aThreads.MiniMap.ahkPostFunction("exitApp")
+getUnitMoveCommands(getselectedunitIndex(), aQueuedMovements)
+objtree(aQueuedMovements)
 return
 
 /*

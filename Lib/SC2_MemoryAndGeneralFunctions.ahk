@@ -1,4 +1,5 @@
-;lets make all of the offsets super global
+;lets make all of the offsets super global (cant be fucked putting them in
+; a global memory address array)
 Global B_LocalCharacterNameID
 , B_LocalPlayerSlot
 , B_pStructure
@@ -253,8 +254,8 @@ loadMemoryAddresses(base)
 		 O_mRight := B_MapStruct + 0xE4	    ; MapRight 157.999756 (akilon wastes) after dividing 4096                     
 		 O_mTop := B_MapStruct + 0xE8	   	; MapTop: 622591 (akilon wastes) before dividing 4096  
 
-	 aUnitMoveStates := {Idle: -1  ; ** Note this isn't actually a read in game type/value its just what my funtion will return if it is idle
-						, Amove: 0 		;these arent really flags !! cant '&' them!
+	 aUnitMoveStates := { Idle: -1  ; ** Note this isn't actually a read in game type/value its just what my funtion will return if it is idle
+						, Amove: 0 		
 						, Patrol: 1
 						, HoldPosition: 2
 						, Move: 256
