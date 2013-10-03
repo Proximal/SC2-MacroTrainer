@@ -2560,404 +2560,7 @@ pre_startup:
 
 if FileExist(config_file) ; the file exists lets read the ini settings
 {
-	;[Version]
-	IniRead, read_version, %config_file%, Version, version, 1 ; 1 if cant find value - IE early version
-	;[Auto Inject]
-	IniRead, auto_inject, %config_file%, Auto Inject, auto_inject_enable, 1
-	IniRead, auto_inject_alert, %config_file%, Auto Inject, alert_enable, 1
-	IniRead, auto_inject_time, %config_file%, Auto Inject, auto_inject_time, 41
-	IniRead, cast_inject_key, %config_file%, Auto Inject, auto_inject_key, F5
-	IniRead, Inject_control_group, %config_file%, Auto Inject, control_group, 9
-	IniRead, Inject_spawn_larva, %config_file%, Auto Inject, spawn_larva, v
-	IniRead, HotkeysZergBurrow, %config_file%, Auto Inject, HotkeysZergBurrow, r
-	
-	; [MiniMap Inject]
-	section := "MiniMap Inject"
-	IniRead, MI_Queen_Group, %config_file%, %section%, MI_Queen_Group, 7
-	IniRead, MI_QueenDistance, %config_file%, %section%, MI_QueenDistance, 17
-
-		
-	;[Manual Inject Timer]
-	IniRead, manual_inject_timer, %config_file%, Manual Inject Timer, manual_timer_enable, 0
-	IniRead, manual_inject_time, %config_file%, Manual Inject Timer, manual_inject_time, 43
-	IniRead, inject_start_key, %config_file%, Manual Inject Timer, start_stop_key, Lwin & RButton
-	IniRead, inject_reset_key, %config_file%, Manual Inject Timer, reset_key, Lwin & LButton
-	
-	;[Inject Warning]
-	IniRead, W_inject_ding_on, %config_file%, Inject Warning, ding_on, 1
-	IniRead, W_inject_speech_on, %config_file%, Inject Warning, speech_on, 0
-	IniRead, w_inject_spoken, %config_file%, Inject Warning, w_inject, Inject
-	
-	;[Forced Inject]
-	section := "Forced Inject"
-	IniRead, F_Inject_Enable, %config_file%, %section%, F_Inject_Enable, 0
-	IniRead, FInjectHatchFrequency, %config_file%, %section%, FInjectHatchFrequency, 2500
-	IniRead, FInjectHatchMaxHatches, %config_file%, %section%, FInjectHatchMaxHatches, 10
-	IniRead, FInjectAPMProtection, %config_file%, %section%, FInjectAPMProtection, 190
-	IniRead, F_InjectOff_Key, %config_file%, %section%, F_InjectOff_Key, Lwin & F5
-	
-	
-
-	;[Idle AFK Game Pause]
-	IniRead, idle_enable, %config_file%, Idle AFK Game Pause, enable, 0
-	IniRead, idle_time, %config_file%, Idle AFK Game Pause, idle_time, 15
-	IniRead, UserIdle_LoLimit, %config_file%, Idle AFK Game Pause, UserIdle_LoLimit, 3	;sc2 seconds
-	IniRead, UserIdle_HiLimit, %config_file%, Idle AFK Game Pause, UserIdle_HiLimit, 10	
-	IniRead, chat_text, %config_file%, Idle AFK Game Pause, chat_text, Sorry, please give me 2 minutes. Thanks :)
-
-
-	;[Starcraft Settings & Keys]
-	IniRead, name, %config_file%, Starcraft Settings & Keys, name, YourNameHere
-	IniRead, pause_game, %config_file%, Starcraft Settings & Keys, pause_game, {Pause}
-	IniRead, base_camera, %config_file%, Starcraft Settings & Keys, base_camera, {Backspace}
-	IniRead, NextSubgroupKey, %config_file%, Starcraft Settings & Keys, NextSubgroupKey, {Tab}
-	IniRead, escape, %config_file%, Starcraft Settings & Keys, escape, {escape}
-	
-	;[Backspace Inject Keys]
-	section := "Backspace Inject Keys"
-	IniRead, BI_create_camera_pos_x, %config_file%, %section%, create_camera_pos_x, +{F6}	
-	IniRead, BI_camera_pos_x, %config_file%, %section%, camera_pos_x, {F6}	
-
-
-	;[Forgotten Gateway/Warpgate Warning]
-	section := "Forgotten Gateway/Warpgate Warning"
-	IniRead, warpgate_warn_on, %config_file%, %section%, enable, 1
-	IniRead, sec_warpgate, %config_file%, %section%, warning_count, 1
-	IniRead, delay_warpgate_warn, %config_file%, %section%, initial_time_delay, 10
-	IniRead, delay_warpgate_warn_followup, %config_file%, %section%, follow_up_time_delay, 15
-	IniRead, w_warpgate, %config_file%, %section%, spoken_warning, "WarpGate"
-
-	; ive just added the forge and stargate here as, the warpages already here
-	;[Chrono Boost Gateway/Warpgate]
-	section := "Chrono Boost Gateway/Warpgate"
-	IniRead, CG_Enable, %config_file%, %section%, enable, 1
-	IniRead, Cast_ChronoGate_Key, %config_file%, %section%, Cast_ChronoGate_Key, F5
-	IniRead, CG_control_group, %config_file%, %section%, CG_control_group, 9
-	IniRead, CG_nexus_Ctrlgroup_key, %config_file%, %section%, CG_nexus_Ctrlgroup_key, 4
-	IniRead, chrono_key, %config_file%, %section%, chrono_key, c
-	IniRead, CG_chrono_remainder, %config_file%, %section%, CG_chrono_remainder, 2
-	IniRead, ChronoBoostSleep, %config_file%, %section%, ChronoBoostSleep, 50
-	IniRead, ChronoBoostEnableForge, %config_file%, %section%, ChronoBoostEnableForge, 0
-	IniRead, ChronoBoostEnableStargate, %config_file%, %section%, ChronoBoostEnableStargate, 0
-	IniRead, ChronoBoostEnableNexus, %config_file%, %section%, ChronoBoostEnableNexus, 0
-	IniRead, ChronoBoostEnableRoboticsFacility, %config_file%, %section%, ChronoBoostEnableRoboticsFacility, 0
-	IniRead, Cast_ChronoForge_Key, %config_file%, %section%, Cast_ChronoForge_Key, ^F5
-	IniRead, Cast_ChronoStargate_Key, %config_file%, %section%, Cast_ChronoStargate_Key, +F5
-	IniRead, Cast_ChronoNexus_Key, %config_file%, %section%, Cast_ChronoNexus_Key, >!F5
-	IniRead, Cast_ChronoRoboticsFacility_Key, %config_file%, %section%, Cast_ChronoRoboticsFacility_Key, >!F6
-
-	
-	;[Advanced Auto Inject Settings]
-	IniRead, auto_inject_sleep, %config_file%, Advanced Auto Inject Settings, auto_inject_sleep, 50
-	IniRead, Inject_SleepVariance, %config_file%, Advanced Auto Inject Settings, Inject_SleepVariance, 0
-	Inject_SleepVariance := 1 + (Inject_SleepVariance/100) ; so turn the variance 30% into 1.3 
-
-	IniRead, CanQueenMultiInject, %config_file%, Advanced Auto Inject Settings, CanQueenMultiInject, 1
-	IniRead, Inject_RestoreSelection, %config_file%, Advanced Auto Inject Settings, Inject_RestoreSelection, 1
-	IniRead, Inject_RestoreScreenLocation, %config_file%, Advanced Auto Inject Settings, Inject_RestoreScreenLocation, 1
-	IniRead, drag_origin, %config_file%, Advanced Auto Inject Settings, drag_origin, Left
-
-	;[Read Opponents Spawn-Races]
-	IniRead, race_reading, %config_file%, Read Opponents Spawn-Races, enable, 1
-	IniRead, Auto_Read_Races, %config_file%, Read Opponents Spawn-Races, Auto_Read_Races, 1
-	IniRead, read_races_key, %config_file%, Read Opponents Spawn-Races, read_key, LWin & F1
-	IniRead, race_speech, %config_file%, Read Opponents Spawn-Races, speech, 1
-	IniRead, race_clipboard, %config_file%, Read Opponents Spawn-Races, copy_to_clipboard, 0
-
-	;[Worker Production Helper]	
-	IniRead, workeron, %config_file%, Worker Production Helper, warning_enable, 1
-	IniRead, workerProductionTPIdle, %config_file%, Worker Production Helper, workerProductionTPIdle, 10
-	IniRead, workerproduction_time, %config_file%, Worker Production Helper, production_time_lapse, 24
-		workerproduction_time_if := workerproduction_time	;this allows to swap the 2nd warning time
-
-	;[Minerals]
-	IniRead, mineralon, %config_file%, Minerals, warning_enable, 1
-	IniRead, mineraltrigger, %config_file%, Minerals, mineral_trigger, 1000
-
-	;[Gas]
-	IniRead, gas_on, %config_file%, Gas, warning_enable, 0
-	IniRead, gas_trigger, %config_file%, Gas, gas_trigger, 600
-
-
-	;[Idle Workers]
-	IniRead, idleon, %config_file%, Idle Workers, warning_enable, 1
-	IniRead, idletrigger, %config_file%, Idle Workers, idle_trigger, 5
-
-	;[Supply]
-	IniRead, supplyon, %config_file%, Supply, warning_enable, 1
-	IniRead, minimum_supply, %config_file%, Supply, minimum_supply, 11
-	IniRead, supplylower, %config_file%, Supply, supplylower, 40
-	IniRead, supplymid, %config_file%, Supply, supplymid, 80
-	IniRead, supplyupper, %config_file%, Supply, supplyupper, 120
-	IniRead, sub_lowerdelta, %config_file%, Supply, sub_lowerdelta, 4
-	IniRead, sub_middelta, %config_file%, Supply, sub_middelta, 5
-	IniRead, sub_upperdelta, %config_file%, Supply, sub_upperdelta, 6
-	IniRead, above_upperdelta, %config_file%, Supply, above_upperdelta, 8
-
-	;[Additional Warning Count]-----set number of warnings to make
-	IniRead, sec_supply, %config_file%, Additional Warning Count, supply, 1
-	IniRead, sec_mineral, %config_file%, Additional Warning Count, minerals, 1
-	IniRead, sec_gas, %config_file%, Additional Warning Count, gas, 0
-	IniRead, sec_workerprod, %config_file%, Additional Warning Count, worker_production, 1
-	IniRead, sec_idle, %config_file%, Additional Warning Count, idle_workers, 0
-	
-	;[Auto Control Group]
-	Short_Race_List := "Terr|Prot|Zerg", section := "Auto Control Group", A_UnitGroupSettings := []
-	Loop, Parse, l_Races, `, ;Terran ie full name
-		while (10 > i := A_index - 1)	
-			A_UnitGroupSettings["LimitGroup", A_LoopField, i, "Enabled"] := IniRead(config_file, section, A_LoopField "_LimitGroup_" i, 0)
-	loop, parse, Short_Race_List, |
-	{			
-		If (A_LoopField = "Terr")
-			Race := "Terran"
-		Else if (A_LoopField = "Prot")
-			Race := "Protoss"
-		Else If (A_LoopField = "Zerg")
-			Race := "Zerg"	
-
-		A_UnitGroupSettings["AutoGroup", Race, "Enabled"] := IniRead(config_file, section, "AG_Enable_" A_LoopField , 0)
-		loop, 10		;this reads the auto group and removes the final |/, 
-		{				;and repalces all | with better looking ,
-			String := RTrim(IniRead(config_file, section, "AG_" A_LoopField A_Index - 1 , A_Space), "`, |")
-			StringReplace, String, String, |, `, %a_space%, All ;replace | with ,
-			A_UnitGroupSettings[Race, A_Index - 1] := String			
-		}
-	}
-	IniRead, AG_Delay, %config_file%, %section%, AG_Delay, 0
-
-	
-	;[ Volume]
-	section := "Volume"
-	IniRead, speech_volume, %config_file%, %section%, speech, 100
-	IniRead, programVolume, %config_file%, %section%, program, 100
-	; theres an iniwrite volume in the exit routine
-
-	;[Warnings]-----sets the audio warning
-	IniRead, w_supply, %config_file%, Warnings, supply, "Supply"
-	IniRead, w_mineral, %config_file%, Warnings, minerals, "Money"
-	IniRead, w_gas, %config_file%, Warnings, gas, "Gas"
-	IniRead, w_workerprod_T, %config_file%, Warnings, worker_production_T, "Build SCV"
-	IniRead, w_workerprod_P, %config_file%, Warnings, worker_production_P, "Build Probe"
-	IniRead, w_workerprod_Z, %config_file%, Warnings, worker_production_Z, "Build Drone"
-	IniRead, w_idle, %config_file%, Warnings, idle_workers, "Idle"
-
-	;[Additional Warning Delay]
-	IniRead, additional_delay_supply, %config_file%, Additional Warning Delay, supply, 10
-	IniRead, additional_delay_minerals, %config_file%, Additional Warning Delay, minerals, 10
-	IniRead, additional_delay_gas, %config_file%, Additional Warning Delay, gas, 10
-	IniRead, additional_delay_worker_production, %config_file%, Additional Warning Delay, worker_production, 25 ;sc2time
-	IniRead, additional_idle_workers, %config_file%, Additional Warning Delay, idle_workers, 10
-
-
-	;[Misc Hotkey]
-	IniRead, worker_count_local_key, %config_file%, Misc Hotkey, worker_count_key, F8
-	IniRead, worker_count_enemy_key, %config_file%, Misc Hotkey, enemy_worker_count, Lwin & F8
-	IniRead, warning_toggle_key, %config_file%, Misc Hotkey, pause_resume_warnings_key, Lwin & Pause
-	IniRead, ping_key, %config_file%, Misc Hotkey, ping_map, Lwin & MButton
-
-	;[Misc Settings]
-	section := "Misc Settings"
-	IniRead, input_method, %config_file%, %section%, input_method, Input
-	IniRead, EventKeyDelay, %config_file%, %section%, EventKeyDelay, -1
-	IniRead, pKeyDelay, %config_file%, %section%, pKeyDelay, 3
-	IniRead, auto_update, %config_file%, %section%, auto_check_updates, 1
-	IniRead, launch_settings, %config_file%, %section%, launch_settings, 0
-	IniRead, MaxWindowOnStart, %config_file%, %section%, MaxWindowOnStart, 1
-	IniRead, HumanMouse, %config_file%, %section%, HumanMouse, 0
-	IniRead, HumanMouseTimeLo, %config_file%, %section%, HumanMouseTimeLo, 70
-	IniRead, HumanMouseTimeHi, %config_file%, %section%, HumanMouseTimeHi, 110
-
-	IniRead, UnitDetectionTimer_ms, %config_file%, %section%, UnitDetectionTimer_ms, 3500
-
-	IniRead, MTCustomIcon, %config_file%, %section%, MTCustomIcon, %A_Space% ; I.e. False
-	IniRead, MTCustomProgramName, %config_file%, %section%, MTCustomProgramName, %A_Space% ; I.e. False
-	MTCustomProgramName := Trim(MTCustomProgramName)
-
-	
-
-	;[Key Blocking]
-	section := "Key Blocking"
-	IniRead, BlockingStandard, %config_file%, %section%, BlockingStandard, 1
-	IniRead, BlockingFunctional, %config_file%, %section%, BlockingFunctional, 1
-	IniRead, BlockingNumpad, %config_file%, %section%, BlockingNumpad, 1
-	IniRead, BlockingMouseKeys, %config_file%, %section%, BlockingMouseKeys, 1
-	IniRead, BlockingMultimedia, %config_file%, %section%, BlockingMultimedia, 1
-	IniRead, LwinDisable, %config_file%, %section%, LwinDisable, 1
-	IniRead, Key_EmergencyRestart, %config_file%, %section%, Key_EmergencyRestart, <#Space
-
-	aButtons := [] 	; Note I no longer retreive modifier keys in this list as these will always be blocked using ~*prefix
-	aButtons.List := getKeyboardAndMouseButtonArray(BlockingStandard*1 + BlockingFunctional*2 + BlockingNumpad*4
-																	 + BlockingMouseKeys*8 + BlockingMultimedia*16)	;gets an object contains keys
-	;[Auto Mine]
-	section := "Auto Mine"
-	IniRead, auto_mine, %config_file%, %section%, enable, 0
-	IniRead, Auto_Mine_Set_CtrlGroup, %config_file%, %section%, Auto_Mine_Set_CtrlGroup, 1
-	IniRead, Auto_mineMakeWorker, %config_file%, %section%, Auto_mineMakeWorker, 1
-	IniRead, AutoMineMethod, %config_file%, %section%, AutoMineMethod, Normal
-	IniRead, WorkerSplitType, %config_file%, %section%, WorkerSplitType, 3x2
-	IniRead, Auto_Mine_Sleep2, %config_file%, %section%, Auto_Mine_Sleep2, 100
-	IniRead, AM_PixelColour, %config_file%, %section%, AM_PixelColour, 4286496753
-	;this just stores the ARGB colours for the auto mine menu
-	Gdip_FromARGB(AM_PixelColour, AM_MiniMap_PixelColourAlpha, AM_MiniMap_PixelColourRed, AM_MiniMap_PixelColourGreen, AM_MinsiMap_PixelColourBlue)
-	IniRead, AM_MiniMap_PixelVariance, %config_file%, %section%, AM_MiniMap_PixelVariance, 0
-	IniRead, Start_Mine_Time, %config_file%, %section%, Start_Mine_Time, 1
-	IniRead, AM_KeyDelay, %config_file%, %section%, AM_KeyDelay, 2
-	IniRead, Idle_Worker_Key, %config_file%, %section%, Idle_Worker_Key, {F1}
-	IniRead, Gather_Minerals_key, %config_file%, %section%, Gather_Minerals_key, g
-
-
-	;[Misc Automation]
-	section := "AutoWorkerProduction"	
-	IniRead, EnableAutoWorkerTerranStart, %config_file%, %section%, EnableAutoWorkerTerranStart, 0 
-	IniRead, EnableAutoWorkerProtossStart, %config_file%, %section%, EnableAutoWorkerProtossStart, 0 
-	IniRead, ToggleAutoWorkerState_Key, %config_file%, %section%, ToggleAutoWorkerState_Key, #F2
-	IniRead, AutoWorkerQueueSupplyBlock, %config_file%, %section%, AutoWorkerQueueSupplyBlock, 1
-	IniRead, AutoWorkerAPMProtection, %config_file%, %section%, AutoWorkerAPMProtection, 160
-	IniRead, AutoWorkerStorage_T_Key, %config_file%, %section%, AutoWorkerStorage_T_Key, 3
-	IniRead, AutoWorkerStorage_P_Key, %config_file%, %section%, AutoWorkerStorage_P_Key, 3
-	IniRead, Base_Control_Group_T_Key, %config_file%, %section%, Base_Control_Group_T_Key, 4
-	IniRead, Base_Control_Group_P_Key, %config_file%, %section%, Base_Control_Group_P_Key, 4
-	IniRead, AutoWorkerMakeWorker_T_Key, %config_file%, %section%, AutoWorkerMakeWorker_T_Key, s
-	IniRead, AutoWorkerMakeWorker_P_Key, %config_file%, %section%, AutoWorkerMakeWorker_P_Key, e
-
-	IniRead, AutoWorkerMaxWorkerTerran, %config_file%, %section%, AutoWorkerMaxWorkerTerran, 80
-	IniRead, AutoWorkerMaxWorkerPerBaseTerran, %config_file%, %section%, AutoWorkerMaxWorkerPerBaseTerran, 30
-	IniRead, AutoWorkerMaxWorkerProtoss, %config_file%, %section%, AutoWorkerMaxWorkerProtoss, 80
-	IniRead, AutoWorkerMaxWorkerPerBaseProtoss, %config_file%, %section%, AutoWorkerMaxWorkerPerBaseProtoss, 30
-
-	
-	;[Misc Automation]
-	section := "Misc Automation"
-	IniRead, SelectArmyEnable, %config_file%, %section%, SelectArmyEnable, 0	;enable disable
-	IniRead, Sc2SelectArmy_Key, %config_file%, %section%, Sc2SelectArmy_Key, {F2}
-	IniRead, castSelectArmy_key, %config_file%, %section%, castSelectArmy_key, F2
-	IniRead, SleepSelectArmy, %config_file%, %section%, SleepSelectArmy, 15
-	IniRead, ModifierBeepSelectArmy, %config_file%, %section%, ModifierBeepSelectArmy, 1
-	IniRead, SelectArmyDeselectXelnaga, %config_file%, %section%, SelectArmyDeselectXelnaga, 1
-	IniRead, SelectArmyDeselectPatrolling, %config_file%, %section%, SelectArmyDeselectPatrolling, 1
-	IniRead, SelectArmyDeselectHoldPosition, %config_file%, %section%, SelectArmyDeselectHoldPosition, 0
-	IniRead, SelectArmyDeselectFollowing, %config_file%, %section%, SelectArmyDeselectFollowing, 0
-	IniRead, SelectArmyControlGroupEnable, %config_file%, %section%, SelectArmyControlGroupEnable, 0
-	IniRead, Sc2SelectArmyCtrlGroup, %config_file%, %section%, Sc2SelectArmyCtrlGroup, 1	
-	IniRead, SplitUnitsEnable, %config_file%, %section%, SplitUnitsEnable, 0
-	IniRead, castSplitUnit_key, %config_file%, %section%, castSplitUnit_key, F4
-	IniRead, SplitctrlgroupStorage_key, %config_file%, %section%, SplitctrlgroupStorage_key, 9
-	IniRead, SleepSplitUnits, %config_file%, %section%, SleepSplitUnits, 20
-	IniRead, l_DeselectArmy, %config_file%, %section%, l_DeselectArmy, %A_Space%
-	IniRead, DeselectSleepTime, %config_file%, %section%, DeselectSleepTime, 0
-	IniRead, RemoveUnitEnable, %config_file%, %section%, RemoveUnitEnable, 0
-	IniRead, castRemoveUnit_key, %config_file%, %section%, castRemoveUnit_key, +Esc
-
-	;[Alert Location]
-	IniRead, Playback_Alert_Key, %config_file%, Alert Location, Playback_Alert_Key, <#F7
-
-	alert_array := [],	alert_array := createAlertArray()
-	
-	;[Overlays]
-	section := "Overlays"
-	; This function will get return  the x,y coordinates for the top left, and bottom right of the 
-	; desktop screen (the area on both monitors)
-	DesktopScreenCoordinates(XminScreen, YminScreen, XmaxScreen, YmaxScreen)
-	list := "IncomeOverlay,ResourcesOverlay,ArmySizeOverlay,WorkerOverlay,IdleWorkersOverlay,UnitOverlay,LocalPlayerColourOverlay"
-	loop, parse, list, `,
-	{
-		IniRead, Draw%A_LoopField%, %config_file%, %section%, Draw%A_LoopField%, 0
-		IniRead, %A_LoopField%Scale, %config_file%, %section%, %A_LoopField%Scale, 1
-		if (%A_LoopField%Scale < .5)	;so cant get -scales (or invisibly small)
-			%A_LoopField%Scale := .5
-		IniRead, %A_LoopField%X, %config_file%, %section%, %A_LoopField%X, % A_ScreenWidth/2
-		if (%A_LoopField%X = "" || %A_LoopField%X < XminScreen || %A_LoopField%X > XmaxScreen) ; guard against blank key
-			%A_LoopField%X := A_ScreenWidth/2
-		IniRead, %A_LoopField%Y, %config_file%, %section%, %A_LoopField%Y, % A_ScreenHeight/2	
-		if (%A_LoopField%Y = "" || %A_LoopField%Y < YminScreen || %A_LoopField%Y > YmaxScreen)
-			%A_LoopField%Y := A_ScreenHeight/2
-	}
-
-
-;	IniRead, DrawWorkerOverlay, %config_file%, %section%, DrawWorkerOverlay, 1
-;	IniRead, DrawIdleWorkersOverlay, %config_file%, %section%, DrawIdleWorkersOverlay, 1
-
-	IniRead, ToggleUnitOverlayKey, %config_file%, %section%, ToggleUnitOverlayKey, <#U
-	IniRead, ToggleIdleWorkersOverlayKey, %config_file%, %section%, ToggleIdleWorkersOverlayKey, <#L
-	IniRead, ToggleMinimapOverlayKey, %config_file%, %section%, ToggleMinimapOverlayKey, <#H
-	IniRead, ToggleIncomeOverlayKey, %config_file%, %section%, ToggleIncomeOverlayKey, <#I
-	IniRead, ToggleResourcesOverlayKey, %config_file%, %section%, ToggleResourcesOverlayKey, <#R
-	IniRead, ToggleArmySizeOverlayKey, %config_file%, %section%, ToggleArmySizeOverlayKey, <#A
-	IniRead, ToggleWorkerOverlayKey, %config_file%, %section%, ToggleWorkerOverlayKey, <#W	
-	IniRead, AdjustOverlayKey, %config_file%, %section%, AdjustOverlayKey, Home
-	IniRead, ToggleIdentifierKey, %config_file%, %section%, ToggleIdentifierKey, <#q
-	IniRead, CycleOverlayKey, %config_file%, %section%, CycleOverlayKey, <#Enter
-	IniRead, OverlayIdent, %config_file%, %section%, OverlayIdent, 2
-	IniRead, OverlayBackgrounds, %config_file%, %section%, OverlayBackgrounds, 0
-	IniRead, MiniMapRefresh, %config_file%, %section%, MiniMapRefresh, 300
-	IniRead, OverlayRefresh, %config_file%, %section%, OverlayRefresh, 1000
-	IniRead, UnitOverlayRefresh, %config_file%, %section%, UnitOverlayRefresh, 4500
-
-
-	; [UnitPanelFilter]
-	section := "UnitPanelFilter"
-	aUnitPanelUnits := []	;;array just used to store the smaller lists for each race
-	loop, parse, l_Races, `,
-	{
-		race := A_LoopField,
-		IniRead, list, %config_file%, %section%, %race%FilteredCompleted, %A_Space% ;Format FleetBeacon|TwilightCouncil|PhotonCannon	
-		aUnitPanelUnits[race, "FilteredCompleted"] := [] ; make it an object
-		ConvertListToObject(aUnitPanelUnits[race, "FilteredCompleted"], list)
-		IniRead, list, %config_file%, %section%, %race%FilteredUnderConstruction, %A_Space% ;Format FleetBeacon|TwilightCouncil|PhotonCannon	
-		aUnitPanelUnits[race, "FilteredUnderConstruction"] := [] ; make it an object
-		ConvertListToObject(aUnitPanelUnits[race, "FilteredUnderConstruction"], list)
-		list := ""
-	}
-
-	;[MiniMap]
-	section := "MiniMap" 	
-	IniRead, UnitHighlightList1, %config_file%, %section%, UnitHighlightList1, SporeCrawler, SporeCrawlerUprooted, MissileTurret, PhotonCannon, Observer	;the list
-	IniRead, UnitHighlightList2, %config_file%, %section%, UnitHighlightList2, DarkTemplar, Changeling, ChangelingZealot, ChangelingMarineShield, ChangelingMarine, ChangelingZerglingWings, ChangelingZergling
-	IniRead, UnitHighlightList3, %config_file%, %section%, UnitHighlightList3, %A_Space%
-	IniRead, UnitHighlightList4, %config_file%, %section%, UnitHighlightList4, %A_Space%
-	IniRead, UnitHighlightList5, %config_file%, %section%, UnitHighlightList5, %A_Space%
-	IniRead, UnitHighlightList6, %config_file%, %section%, UnitHighlightList6, %A_Space%
-	IniRead, UnitHighlightList7, %config_file%, %section%, UnitHighlightList7, %A_Space%
-
-	IniRead, UnitHighlightList1Colour, %config_file%, %section%, UnitHighlightList1Colour, 0xFFFFFFFF  ;the colour
-	IniRead, UnitHighlightList2Colour, %config_file%, %section%, UnitHighlightList2Colour, 0xFFFF00FF 
-	IniRead, UnitHighlightList3Colour, %config_file%, %section%, UnitHighlightList3Colour, 0xFF09C7CA 
-	IniRead, UnitHighlightList4Colour, %config_file%, %section%, UnitHighlightList4Colour, 0xFFFFFF00
-	IniRead, UnitHighlightList5Colour, %config_file%, %section%, UnitHighlightList5Colour, 0xFF00FFFF
-	IniRead, UnitHighlightList6Colour, %config_file%, %section%, UnitHighlightList6Colour, 0xFFFFC663
-	IniRead, UnitHighlightList7Colour, %config_file%, %section%, UnitHighlightList7Colour, 0xFF21FBFF
-
-	IniRead, HighlightInvisible, %config_file%, %section%, HighlightInvisible, 1
-	IniRead, UnitHighlightInvisibleColour, %config_file%, %section%, UnitHighlightInvisibleColour, 0xFFB7FF00
-
-	IniRead, HighlightHallucinations, %config_file%, %section%, HighlightHallucinations, 1
-	IniRead, UnitHighlightHallucinationsColour, %config_file%, %section%, UnitHighlightHallucinationsColour, 0xFF808080
-
-	IniRead, UnitHighlightExcludeList, %config_file%, %section%, UnitHighlightExcludeList, CreepTumor, CreepTumorBurrowed
-	IniRead, DrawMiniMap, %config_file%, %section%, DrawMiniMap, 1
-	IniRead, TempHideMiniMapKey, %config_file%, %section%, TempHideMiniMapKey, !Space
-	IniRead, DrawSpawningRaces, %config_file%, %section%, DrawSpawningRaces, 1
-	IniRead, DrawAlerts, %config_file%, %section%, DrawAlerts, 1
-	IniRead, HostileColourAssist, %config_file%, %section%, HostileColourAssist, 0
-	
-	;[Hidden Options]
-	section := "Hidden Options"
-	IniRead, AutoGroupTimer, %config_file%, %section%, AutoGroupTimer, 30 		; care with this setting this below 20 stops the minimap from drawing properly wasted hours finding this problem!!!!
-	IniRead, AutoGroupTimerIdle, %config_file%, %section%, AutoGroupTimerIdle, 5	; have to carefully think about timer priorities and frequency
-	
-	; Resume Warnings
-	Iniread, ResumeWarnings, %config_file%, Resume Warnings, Resume, 0
-
-	; [Misc Info]
-	section := "Misc Info"
-	IniRead, MT_HasWarnedLanguage, %config_file%, %section%, MT_HasWarnedLanguage, 0
-	; RestartMethod is written to in the emergency exit routine
-	; it is used in a couple of checks
-	IniRead, MT_Restart, %config_file%, %section%, RestartMethod, 0
-	if MT_Restart
-		IniWrite, 0, %config_file%, %section%, RestartMethod ; set the value back to 0	
-	IniRead, MT_DWMwarned, %config_file%, %section%, MT_DWMwarned, 0
-
+	readConfigFile()
 	if ( ProgramVersion > read_version ) ; its an update and the file exists - better backup the users settings
 	{
 		program.Info.IsUpdating := 1
@@ -3435,6 +3038,8 @@ ini_settings_write:
 	IniWrite, %TempHideMiniMapKey%, %config_file%, %section%, TempHideMiniMapKey
 	IniWrite, %DrawSpawningRaces%, %config_file%, %section%, DrawSpawningRaces
 	IniWrite, %DrawAlerts%, %config_file%, %section%, DrawAlerts
+	IniWrite, %DrawUnitDestinations%, %config_file%, %section%, DrawUnitDestinations
+	IniWrite, %DrawPlayerCameras%, %config_file%, %section%, DrawPlayerCameras
 	IniWrite, %HostileColourAssist%, %config_file%, %section%, HostileColourAssist
 
 	;this writes back the unit detection lists and settings
@@ -4451,64 +4056,74 @@ Gui, Add, Tab2, w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vMiniMap_TAB, Min
 
 Gui, Tab, MiniMap
 
-	CurrentGuiTabX := XTabX -5
-	Gui, Add, Checkbox, X%CurrentGuiTabX% Y+15 vDrawMiniMap Checked%DrawMiniMap% gG_GuiSetupDrawMiniMapDisable, Enable MiniMap Hack
-	Gui, Add, Checkbox, xp Y+7 vDrawSpawningRaces Checked%DrawSpawningRaces%, Display Spawning Races
-	Gui, Add, Checkbox, Y+7 vDrawAlerts Checked%DrawAlerts%, Display Alerts
-	Gui, Add, Checkbox, Y+7  vHostileColourAssist Checked%HostileColourAssist%, Hostile Colour Assist
 
+	currentGuiTabX := XTabX -5
+	groupboxGuiX := CurrentGuiTabX - 10
+	Gui, add, GroupBox, y+10 x%groupboxGuiX% w410 h195, General
 
-		Gui, add, text, y+15 X%CurrentGuiTabX% w45, Exclude:
-		Gui, Add, Edit, yp-2 x+10 w300  center r1 vUnitHighlightExcludeList, %UnitHighlightExcludeList%
-		Gui, Add, Button, yp-2 x+10 gEdit_AG v#UnitHighlightExcludeList,  Edit 
+		Gui, Add, Checkbox, X%CurrentGuiTabX% Yp+25 vDrawMiniMap Checked%DrawMiniMap% gG_GuiSetupDrawMiniMapDisable, Enable MiniMap Hack
+		Gui, Add, Checkbox, xp Y+9 vDrawSpawningRaces Checked%DrawSpawningRaces%, Display Spawning Races
+		Gui, Add, Checkbox, Y+9 vDrawAlerts Checked%DrawAlerts%, Display Alerts
+		Gui, Add, Checkbox, Y+9 vHostileColourAssist Checked%HostileColourAssist%, Hostile Colour Assist
+		Gui, Add, Checkbox, Y+9 vDrawUnitDestinations Checked%DrawUnitDestinations%, Unit Destinations
+		Gui, Add, Checkbox, Y+9 vDrawPlayerCameras Checked%DrawPlayerCameras%, Player Cameras
 
-		Gui, add, text, y+20 X%CurrentGuiTabX%, Highlight:
-		Gui, Add, Edit, yp-2 x+10 w300 section  center r1 vUnitHighlightList1, %UnitHighlightList1%
-		Gui, Add, Button, yp-2 x+10 gEdit_AG v#UnitHighlightList1,  Edit
+		GuiControlGet, tmpOutput, Pos, DrawMiniMap
+
+		xTmp := tmpOutputX + tmpOutputW + 95
+		Gui, Add, Checkbox, x%xTmp% Y%tmpOutputY% vHighlightInvisible Checked%HighlightInvisible%, Highlight Invisible units
+		Gui, add, text, y+12 Xp+20, Colour:
+		Gui, Add, Picture, xp+60 yp-4 w50 h22 0xE HWND_UnitHighlightInvisibleColour v#UnitHighlightInvisibleColour gColourSelector ;0xE required for GDI
+		paintPictureControl(_UnitHighlightInvisibleColour, UnitHighlightInvisibleColour)	
+
+		Gui, Add, Checkbox, x%xTmp% Y+10 vHighlightHallucinations Checked%HighlightHallucinations%, Highlight hallucinated units
+		Gui, add, text, y+12 Xp+20, Colour:
+		Gui, Add, Picture, XP+60 yp-4 w50 h22 0xE HWND_UnitHighlightHallucinationsColour v#UnitHighlightHallucinationsColour gColourSelector ;0xE required for GDI
+		paintPictureControl(_UnitHighlightHallucinationsColour, UnitHighlightHallucinationsColour)	
+
+		GuiControlGet, tmpOutput, Pos, DrawPlayerCameras
+		xguiUnitBox :=CurrentGuiTabX + 50
+		tmpY := tmpOutputY + 30
+
+		Gui, add, text, y%tmpY% X%CurrentGuiTabX% w45, Exclude:
+		Gui, Add, Edit, yp-2 x%xguiUnitBox% w300  center r1 vUnitHighlightExcludeList, %UnitHighlightExcludeList%
+		Gui, Add, Button, yp x+10 gEdit_AG v#UnitHighlightExcludeList,  Edit 
+
+;	Gui, add, text, y+15 X%CurrentGuiTabX%, Custom Unit Highlights:
+	
+	Gui, add, GroupBox, y+25 x%groupboxGuiX% w410 h200, Custom Unit Highlights
+
+		Gui, add, text, yp+30 X%CurrentGuiTabX%, Unit:
+		Gui, Add, Edit, yp-2 x%xguiUnitBox% w300 section  center r1 vUnitHighlightList1, %UnitHighlightList1%
+		Gui, Add, Button, yp x+10 gEdit_AG v#UnitHighlightList1,  Edit
 		Gui, add, text, y+9 X%CurrentGuiTabX%, Colour:
 		Gui, Add, Picture, xs yp-4 w300 h22 0xE HWND_UnitHighlightList1Colour v#UnitHighlightList1Colour gColourSelector ;0xE required for GDI
 		paintPictureControl(_UnitHighlightList1Colour, UnitHighlightList1Colour)	
 
-		Gui, add, text, y+12 X%CurrentGuiTabX%, Highlight:
-		Gui, Add, Edit, yp-2 x+10 w300  center r1 vUnitHighlightList2, %UnitHighlightList2%
-		Gui, Add, Button, yp-2 x+10 gEdit_AG v#UnitHighlightList2,  Edit
+		Gui, add, text, y+12 X%CurrentGuiTabX%, Unit:
+		Gui, Add, Edit, yp-2 x%xguiUnitBox% w300  center r1 vUnitHighlightList2, %UnitHighlightList2%
+		Gui, Add, Button, yp x+10 gEdit_AG v#UnitHighlightList2,  Edit
 		Gui, add, text, y+9 X%CurrentGuiTabX%, Colour:
 		Gui, Add, Picture, xs yp-4 w300 h22 0xE HWND_UnitHighlightList2Colour v#UnitHighlightList2Colour gColourSelector ;0xE required for GDI
 		paintPictureControl(_UnitHighlightList2Colour, UnitHighlightList2Colour)		
-		Gui, add, text, y+12 X%CurrentGuiTabX%, Highlight:
-		Gui, Add, Edit, yp-2 x+10 w300  center r1 vUnitHighlightList3, %UnitHighlightList3%
-		Gui, Add, Button, yp-2 x+10 gEdit_AG v#UnitHighlightList3,  Edit
+		Gui, add, text, y+12 X%CurrentGuiTabX%, Unit:
+		Gui, Add, Edit, yp-2 x%xguiUnitBox% w300  center r1 vUnitHighlightList3, %UnitHighlightList3%
+		Gui, Add, Button, yp x+10 gEdit_AG v#UnitHighlightList3,  Edit
 		Gui, add, text, y+9 X%CurrentGuiTabX%, Colour:
 		Gui, Add, Picture, xs yp-4 w300 h22 0xE HWND_UnitHighlightList3Colour v#UnitHighlightList3Colour gColourSelector ;0xE required for GDI
 		paintPictureControl(_UnitHighlightList3Colour, UnitHighlightList3Colour)
 
-		Gui, add, text, y+12 X%CurrentGuiTabX%, Highlight:
-		Gui, Add, Edit, yp-2 x+10 w300  center r1 vUnitHighlightList4, %UnitHighlightList4%
-		Gui, Add, Button, yp-2 x+10 gEdit_AG v#UnitHighlightList4,  Edit
-		Gui, add, text, y+9 X%CurrentGuiTabX%, Colour:
-		Gui, Add, Picture, xs yp-4 w300 h22 0xE HWND_UnitHighlightList4Colour v#UnitHighlightList4Colour gColourSelector ;0xE required for GDI
-		paintPictureControl(_UnitHighlightList4Colour, UnitHighlightList4Colour)	
 
-		Gui, add, text, y+12 X%CurrentGuiTabX%, Highlight:
-		Gui, Add, Edit, yp-2 x+10 w300  center r1 vUnitHighlightList5, %UnitHighlightList5%
-		Gui, Add, Button, yp-2 x+10 gEdit_AG v#UnitHighlightList5,  Edit
-		Gui, add, text, y+9 X%CurrentGuiTabX%, Colour:
-		Gui, Add, Picture, xs yp-4 w300 h22 0xE HWND_UnitHighlightList5Colour v#UnitHighlightList5Colour gColourSelector ;0xE required for GDI
-		paintPictureControl(_UnitHighlightList5Colour, UnitHighlightList5Colour)	
+
 
 		Gui, Font, s8 
 		Gui, add, text, x+3 yp+5, <--- Click Me
 		Gui, Font, norm 
 
 
-	Gui, Add, Text, Y50 x367, Refresh Rate (ms):
-		Gui, Add, Edit, Number Right x+25 yp-2 w55 vTT_MiniMapRefresh
-			Gui, Add, UpDown,  Range150-1500 vMiniMapRefresh, %MiniMapRefresh%	
-	Gui, Add, Text, x367 yp+35, Hide MiniMap:
-	Gui, Add, Edit, Readonly yp-2 xp+80 center w90 vTempHideMiniMapKey gedit_hotkey, %TempHideMiniMapKey%
-	Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#TempHideMiniMapKey,  Edit 		
-
 Gui, Tab, MiniMap2
+	
+/*
 	Gui, Add, Checkbox, X%CurrentGuiTabX% Y+15 vHighlightInvisible Checked%HighlightInvisible%, Highlight Invisible units
 
 		Gui, add, text, y+12 Xp+20, Colour:
@@ -4519,26 +4134,44 @@ Gui, Tab, MiniMap2
 		Gui, add, text, y+12 Xp+20, Colour:
 		Gui, Add, Picture, XP+60 yp-4 w50 h22 0xE HWND_UnitHighlightHallucinationsColour v#UnitHighlightHallucinationsColour gColourSelector ;0xE required for GDI
 		paintPictureControl(_UnitHighlightHallucinationsColour, UnitHighlightHallucinationsColour)	
+*/
+	;	Gui, add, text, y+40 X%CurrentGuiTabX%, Additional Custom Unit Highlights:
+		Gui, add, GroupBox, y+15 x%groupboxGuiX% w410 h270, Additional Custom Unit Highlights
 
-		Gui, add, text, y+40 X%CurrentGuiTabX%, Additional Custom Unit Highlights:
-		Gui, add, text, y+12 X%CurrentGuiTabX%, Highlight:
-		Gui, Add, Edit, yp-2 x+10 w300  center r1 vUnitHighlightList6, %UnitHighlightList6%
-		Gui, Add, Button, yp-2 x+10 gEdit_AG v#UnitHighlightList6,  Edit
-		Gui, add, text, y+9 X%CurrentGuiTabX%, Colour:
-		Gui, Add, Picture, xs yp-4 w300 h22 0xE HWND_UnitHighlightList6Colour v#UnitHighlightList6Colour gColourSelector ;0xE required for GDI
-		paintPictureControl(_UnitHighlightList6Colour, UnitHighlightList6Colour)	
+			Gui, add, text, yp+30 X%CurrentGuiTabX%, Unit:
+			Gui, Add, Edit, yp-2 x%xguiUnitBox% w300  center r1 vUnitHighlightList4, %UnitHighlightList4%
+			Gui, Add, Button, yp x+10 gEdit_AG v#UnitHighlightList4,  Edit
+			Gui, add, text, y+9 X%CurrentGuiTabX%, Colour:
+			Gui, Add, Picture, xs yp-4 w300 h22 0xE HWND_UnitHighlightList4Colour v#UnitHighlightList4Colour gColourSelector ;0xE required for GDI
+			paintPictureControl(_UnitHighlightList4Colour, UnitHighlightList4Colour)	
 
-		Gui, add, text, y+12 X%CurrentGuiTabX%, Highlight:
-		Gui, Add, Edit, yp-2 x+10 w300  center r1 vUnitHighlightList7, %UnitHighlightList7%
-		Gui, Add, Button, yp-2 x+10 gEdit_AG v#UnitHighlightList7,  Edit
-		Gui, add, text, y+9 X%CurrentGuiTabX%, Colour:
-		Gui, Add, Picture, xs yp-4 w300 h22 0xE HWND_UnitHighlightList7Colour v#UnitHighlightList7Colour gColourSelector ;0xE required for GDI
-		paintPictureControl(_UnitHighlightList7Colour, UnitHighlightList7Colour)	
+
+			Gui, add, text, y+12 X%CurrentGuiTabX%, Unit:
+			Gui, Add, Edit, yp x%xguiUnitBox% w300  center r1 vUnitHighlightList5, %UnitHighlightList5%
+			Gui, Add, Button, yp-1 x+10 gEdit_AG v#UnitHighlightList5,  Edit
+			Gui, add, text, y+9 X%CurrentGuiTabX%, Colour:
+			Gui, Add, Picture, xs yp-4 w300 h22 0xE HWND_UnitHighlightList5Colour v#UnitHighlightList5Colour gColourSelector ;0xE required for GDI
+			paintPictureControl(_UnitHighlightList5Colour, UnitHighlightList5Colour)	
+
+
+			Gui, add, text, y+12 X%CurrentGuiTabX%, Unit:
+			Gui, Add, Edit, yp x%xguiUnitBox% w300  center r1 vUnitHighlightList6, %UnitHighlightList6%
+			Gui, Add, Button, yp-1 x+10 gEdit_AG v#UnitHighlightList6,  Edit
+			Gui, add, text, y+9 X%CurrentGuiTabX%, Colour:
+			Gui, Add, Picture, xs yp-4 w300 h22 0xE HWND_UnitHighlightList6Colour v#UnitHighlightList6Colour gColourSelector ;0xE required for GDI
+			paintPictureControl(_UnitHighlightList6Colour, UnitHighlightList6Colour)	
+
+			Gui, add, text, y+12 X%CurrentGuiTabX%, Unit:
+			Gui, Add, Edit, yp x%xguiUnitBox% w300  center r1 vUnitHighlightList7, %UnitHighlightList7%
+			Gui, Add, Button, yp-1 x+10 gEdit_AG v#UnitHighlightList7,  Edit
+			Gui, add, text, y+9 X%CurrentGuiTabX%, Colour:
+			Gui, Add, Picture, xs yp-4 w300 h22 0xE HWND_UnitHighlightList7Colour v#UnitHighlightList7Colour gColourSelector ;0xE required for GDI
+			paintPictureControl(_UnitHighlightList7Colour, UnitHighlightList7Colour)	
 
 Gui, Tab, Overlays
 		;Gui, add, text, y+20 X%XTabX%, Display Overlays:
-		Gui, Add, GroupBox, y+30 x+20  w170 h225 section, Display Overlays:
-		Gui, Add, Checkbox, xp+10 yp+30 vDrawIncomeOverlay Checked%DrawIncomeOverlay% , Income Overlay
+		Gui, Add, GroupBox, y+30 x+20  w170 h235 section, Display Overlays:
+		Gui, Add, Checkbox, xp+10 yp+25 vDrawIncomeOverlay Checked%DrawIncomeOverlay% , Income Overlay
 		Gui, Add, Checkbox, xp y+15 vDrawResourcesOverlay Checked%DrawResourcesOverlay% , Resource Overlay
 		Gui, Add, Checkbox, xp y+15 vDrawArmySizeOverlay Checked%DrawArmySizeOverlay% , Army Size Overlay
 		Gui, Add, Checkbox, xp y+15 vDrawWorkerOverlay Checked%DrawWorkerOverlay% , Local Harvester Count
@@ -4552,94 +4185,98 @@ Gui, Tab, Overlays
 		;Gui, Font,
 
 
-		Gui, Add, GroupBox, ys XS+205 w170 h225, Overlays Misc:
+		Gui, Add, GroupBox, ys XS+205 w170 h235, Overlays Misc:
 		Gui, Add, Checkbox, yp+25 xp+10 vOverlayBackgrounds Checked%OverlayBackgrounds% , Show Icon Background		
 		Gui, Add, Text, yp+30 w80, Player Identifier:
 		if OverlayIdent in 0,1,2,3
 			droplist3_var := OverlayIdent + 1
 		Else droplist3_var := 3 
+
 		Gui, Add, DropDownList, xp+20 yp+25 vOverlayIdent Choose%droplist3_var%, Hidden|Name (White)|Name (Coloured)|Coloured Race Icon
-		Gui, Add, Text, yp+40 xp-20, Refresh Rate (ms):
-			Gui, Add, Edit, Number Right x+5 yp-2 w55 vTT_OverlayRefresh
+		
+		Gui, Add, Text, yp+35 xp-20, Refresh Rates (ms):
+		Gui, Add, Text, y+15  XS+215, General:
+			Gui, Add, Edit, Number Right xp+80 yp-2 w55 vTT_OverlayRefresh
 				Gui, Add, UpDown,  Range50-5000 vOverlayRefresh, %OverlayRefresh%
-		Gui, Add, Text, yp+35 XS+215, Unit Panel`nRefresh Rate (ms):
-			Gui, Add, Edit, Number Right x+5 yp+6 w55 vTT_UnitOverlayRefresh
+		Gui, Add, Text, yp+35 XS+215, Unit Panel:
+			Gui, Add, Edit, Number Right xp+80 yp-2 w55 vTT_UnitOverlayRefresh
 				Gui, Add, UpDown,  Range150-15000 vUnitOverlayRefresh, %UnitOverlayRefresh%
+		Gui, Add, Text, XS+215 yp+35, MiniMap:
+			Gui, Add, Edit, Number Right xp+80 yp-2 w55 vTT_MiniMapRefresh
+				Gui, Add, UpDown,  Range150-1500 vMiniMapRefresh, %MiniMapRefresh%					
 
 Gui, Tab, Hotkeys 
-		Gui, Add, Text, X%XTabX% y+40, Toggle Minimap:
+	
+	Gui, add, GroupBox, y+25 w280 h330, Overlay Hotkeys
+
+		Gui, Add, Text, section xp+15 yp+25, Temp. Hide MiniMap:
+		Gui, Add, Edit, Readonly yp-2 xp+120 center w85 vTempHideMiniMapKey gedit_hotkey, %TempHideMiniMapKey%
+		Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#TempHideMiniMapKey,  Edit 	
+
+		Gui, Add, Text, xs yp+35, Toggle Minimap:
 		Gui, Add, Edit, Readonly yp-2 xp+120 center w85 vToggleMinimapOverlayKey gedit_hotkey, %ToggleMinimapOverlayKey%
 		Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#ToggleMinimapOverlayKey,  Edit 	
 
-		Gui, Add, Text, X%XTabX% yp+35, Toggle Income:
+		Gui, Add, Text, xs yp+35, Toggle Income:
 		Gui, Add, Edit, Readonly yp-2 xp+120 center w85 vToggleIncomeOverlayKey gedit_hotkey, %ToggleIncomeOverlayKey%
 		Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#ToggleIncomeOverlayKey,  Edit 		
 
-		Gui, Add, Text, X%XTabX% yp+35, Toggle Resources:
+		Gui, Add, Text, xs yp+35, Toggle Resources:
 		Gui, Add, Edit, Readonly yp-2 xp+120 center w85 vToggleResourcesOverlayKey gedit_hotkey, %ToggleResourcesOverlayKey%
 		Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#ToggleResourcesOverlayKey,  Edit 		
 
-		Gui, Add, Text, X%XTabX% yp+35, Toggle Army Size:
+		Gui, Add, Text, xs yp+35, Toggle Army Size:
 		Gui, Add, Edit, Readonly yp-2 xp+120 center w85 vToggleArmySizeOverlayKey gedit_hotkey, %ToggleArmySizeOverlayKey%
 		Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#ToggleArmySizeOverlayKey,  Edit 		
 
-		Gui, Add, Text, X%XTabX% yp+35, Toggle Workers:
+		Gui, Add, Text, xs yp+35, Toggle Workers:
 		Gui, Add, Edit, Readonly yp-2 xp+120 center w85 vToggleWorkerOverlayKey gedit_hotkey, %ToggleWorkerOverlayKey%
 		Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#ToggleWorkerOverlayKey,  Edit 		
 
-		Gui, Add, Text, X%XTabX% yp+35, Toggle Unit Panel:
+		Gui, Add, Text, xs yp+35, Toggle Unit Panel:
 		Gui, Add, Edit, Readonly yp-2 xp+120 center w85 vToggleUnitOverlayKey gedit_hotkey, %ToggleUnitOverlayKey%
 		Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#ToggleUnitOverlayKey,  Edit 		
 
-		Gui, Add, Text, X%XTabX% yp+35, Cycle Overlays:
+		Gui, Add, Text, xs yp+35, Cycle Overlays:
 		Gui, Add, Edit, Readonly yp-2 xp+120 center w85 vCycleOverlayKey gedit_hotkey, %CycleOverlayKey%
 		Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#CycleOverlayKey,  Edit 		
 
-		Gui, Add, Text, X%XTabX% yp+35, Cycle Identifier:
+		Gui, Add, Text, xs yp+35, Cycle Identifier:
 		Gui, Add, Edit, Readonly yp-2 xp+120 center w85 vToggleIdentifierKey gedit_hotkey, %ToggleIdentifierKey%
 		Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#ToggleIdentifierKey,  Edit 		
 		gui, font, Underline
-		Gui, Add, Text, X%XTabX% yp+35, Move/Resize Overlays:
+		Gui, Add, Text, xs yp+35, *Adjust Overlays:
 		gui, font, Norm 
 		Gui, Add, Edit, Readonly yp-2 xp+120 center w85 vAdjustOverlayKey gedit_hotkey, %AdjustOverlayKey%
 		Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#AdjustOverlayKey,  Edit 
-		Gui, Add, Text, x+10 yp+5, * See 'Info' Tab for Instructions		
+		Gui, Add, Text, xs y+25, * See 'Info' Tab for Instructions		
 
 Gui, Tab, Info
-	Gui, Font, S11 CDefault bold UNDERLINE, Verdana
-	Gui, Add, Text, x+20 y+30 center cRed, How to Move/Resize Overlays:	
+;	Gui, Add, Text, section x+10 y+15,	
+	Gui, add, GroupBox, section y+15 w405 h395
+	Gui, Font, s10 CDefault bold, Verdana
+	Gui, Add, Text, xs+10 yp+25, Adjusting Overlays:	
 	Gui, Font, s10 norm 
+	
 text = 
 ( 
-HOLD down (&& do NOT release) the "Move/Resize" Hotkey 
-	(Home is the default).
+Hold down (and do not release) the "Adjust Overlays" Hotkey (Home is the default).
 	
-You will hear a beep - all the overlays are now adjustable.
- 
-Moving: Simply left click somewhere on the text or graphics 		of the overlay (not a blank area) and drag the 			overlay to its new position.
-
-Resizing: Simply left click somewhere on the overlay and 			then rotate the mouse wheel forward/backward.
-
-When you're done, release the "Move/Resize" Hotkey. 
-You will hear a beep indicating that the new positions have been saved.
-)	
-
-	Gui, Add, Text, xp y+20 w405, %text%
-	Gui, Font, S11 CDefault bold, Verdana
-	Gui, Add, Text, xp y+35 w405 center cRed, The MiniMap and Overlays will only work when SC is in 'Windowed (fullscreen)' mode.
+You will hear a beep - all the overlays are now adjustable.When you're done, release the "Adjust Overlays" Hotkey. 
+)
+	Gui, Add, Text, xs+25 y+10 w370, %text%
+	Gui, Font, CDefault bold, Verdana
+	Gui, Add, Text, xs+10 y+20, Moving:
 	Gui, Font, s10 norm 
+	Gui, Add, Text, xs+25 y+10 w370, Simply left click somewhere on the text or graphics of the overlay (not a blank area) and drag the overlay to its new position.
+ 	Gui, Font, CDefault bold, Verdana
+ 	Gui, Add, Text, xs+10 y+20, Resizing:
+ 	Gui, Font, norm 
+ 	Gui, Add, Text, xs+25 y+10 w370, Simply left click somewhere on the overlay and then rotate the mouse wheel forward/backward.
 
-
-		Gui, Font, S18 ;needs to be here for save spacing Im so very lazy!
-; Gui, Add, Tab2,w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY%, %A_Space% ;This is never hidden and helps slightly prevent blink on menu change (v. minor thing! lol)
-		Gui, Font, s10
-;		GUIButtonPosition := guiMenuHeight - 30
-;		Gui, Add, Button, x+249 y+%GUIButtonPosition% w50 h25 gIni_settings_write, Save
-;		Gui, Add, Button, x+20 w50 h25 gOptionsGuiClose, Cancel
-;		Gui, Add, Button, x+20 w50 h25 gIni_settings_write, Apply
-;		Gui, Font, 
-
-
+	Gui, Font, s9 CDefault bold, Verdana
+	Gui, Add, Text, center xs+10 y+25 w370 cRed, The MiniMap and Overlays will only work when SC is in 'Windowed (fullscreen)' mode.
+	Gui, Font, s10 norm 
 
 unhidden_menu := "Home_TAB"
 
@@ -4842,7 +4479,7 @@ AM_MiniMap_PixelColourAlpha_TT := AM_MiniMap_PixelColourRed_TT := AM_MiniMap_Pix
 #FindPixelColour_TT := "This sets the pixel colour for your exact system."
 AM_MiniMap_PixelVariance_TT := TT_AM_MiniMap_PixelVariance_TT := "A match will result if  a pixel's colour lies within the +/- variance range.`n`nThis is a percent value 0-100%"
 TT_AGDelay_TT := AG_Delay_TT := "The program will wait this period of time before adding the select units to a control group.`nUse this if you want the function to look more 'human'.`n`nNote: This may increase the likelihood of miss-grouping units (especially on slow computers or during large battles with high APM)."
-TempHideMiniMapKey_TT := #TempHideMiniMapKey_TT := "This will temporarily disable the minimap overlay,`nthereby allowing you to determine if you legitimately have vision of a unit or building."
+TempHideMiniMapKey_TT := #TempHideMiniMapKey_TT := "This will disable the minimap overlay for three seconds,`nthereby allowing you to determine if you legitimately have vision of a unit or building."
 TT_UserMiniMapXScale_TT := TT_UserMiniMapYScale_TT := UserMiniMapYScale_TT := UserMiniMapXScale_TT := "Adjusts the relative size of units on the minimap."
 TT_MiniMapRefresh_TT := MiniMapRefresh_TT := "Dictates how frequently the minimap is redrawn"
 BlendUnits_TT := "This will draw the units 'blended together', like SC2 does.`nIn other words, units/buildings grouped together will only have one border around all of them"
@@ -4924,6 +4561,8 @@ g_GuiSetupDrawMiniMapDisable:
 	;	GUIControl, Disable, TempHideMiniMapKey
 	;	GUIControl, Disable, #TempHideMiniMapKey
 		GUIControl, Disable, HostileColourAssist
+		GUIControl, Disable, DrawUnitDestinations
+		GUIControl, Disable, DrawPlayerCameras
 		GUIControl, Disable, HighlightInvisible
 		GUIControl, Disable, HighlightHallucinations
 		GUIControl, Disable, UnitHighlightExcludeList
@@ -4954,6 +4593,8 @@ g_GuiSetupDrawMiniMapDisable:
 	;	GUIControl, Enable, TempHideMiniMapKey
 	;	GUIControl, Enable, #TempHideMiniMapKey
 		GUIControl, Enable, HostileColourAssist
+		GUIControl, Enable, DrawUnitDestinations
+		GUIControl, Enable, DrawPlayerCameras
 		GUIControl, Enable, HighlightInvisible
 		GUIControl, Enable, HighlightHallucinations
 
@@ -9617,95 +9258,6 @@ getCargoCount(unit)
 	+ 0x44 	UnloadTimer	Counts down to 0 (resets and occurs for each unit being unloaded)
 
 */
-
-
-/*
-	bubbleSort2DArray(aRemoveUnits, "Unit", 0) ;clicks highest units first, so dont have to calculate new click positions due to the units moving down one spot in the panel grid	
-	bubbleSort2DArray(aRemoveUnits, "Priority", 1)
-u1  p5 
-u2 	p4
-u3  p4 
-
-	VikingAssault = 71,
-	VikingFighter = 72,
-	Hellion = 90,
-*/
-
-
-f1::
-getUnitMoveCommands(getselectedunitIndex(), aQueuedMovements)
-objtree(aQueuedMovements)
-return
-
-/*
-Tried 
-miniMapThread.ahkLabel.ShutdownProcedure.0
-miniMapThread.ahkLabel["ShutdownProcedure", "0"] 
-miniMapThread.ahkLabel["ShutdownProcedure", 0] 
-*/
-
-miniMapThread := AhkDllThread("Included Files\ahkH\AutoHotkey.dll")
-miniMapThread.ahkdll(A_ScriptDir "\threadMiniMap.ahk")
-miniMapThread.ahkFunction("setGame")
-
-return 
-getUnitMoveCommands(getSelectedUnitIndex(), a)
-objtree(a)
-
-
-return 
-
-f2::	
-
-miniMapThread.ahkLabel.ShutdownProcedure
-return
-
-lUnit := getSelectedUnitIndex()
-while !GetKeyState("Esc")
-{
-	ToolTip, % getUnitPositionX(lUnit) * 4096 
-		. "`n" getUnitPositionY(lunit) * 4096
-		. "`n" getUnitPositionZ(lunit) * 4096, 500, 500
-	sleep 100
-}
-return
-
-nuke()
-{
-	Global 
-	unit := getSelectedUnitIndex()
-	if (CmdQueue := ReadMemory(B_uStructure + unit * S_uStructure + O_P_uCmdQueuePointer, GameIdentifier)) ; points if currently has a command - 0 otherwise
-	{
-		firstCommand := ReadMemory(CmdQueue, GameIdentifier) & 0xFFFFFFFE
-		msgbox % clipboard := substr(dectohex(firstCommand), 3)
-		secondCommand := ReadMemory(firstCommand, GameIdentifier) & 0xFFFFFFFE
-		msgbox % clipboard := substr(dectohex(secondCommand), 3)
-		thirdCommand := ReadMemory(secondCommand, GameIdentifier) & 0xFFFFFFFE
-		msgbox % clipboard := substr(dectohex(thirdCommand), 3)
-		
-		fourthCommand := ReadMemory(thirdCommand, GameIdentifier) & 0xFFFFFFFE
-		msgbox % clipboard := substr(dectohex(fourthCommand), 3)	" her"
-
-		return
-	}
-
-}
-
-
-
-getUnitMoveStateTest()
-{	local CmdQueue, BaseCmdQueStruct
-	unit := getSelectedUnitIndex()
-	if (CmdQueue := ReadMemory(B_uStructure + unit * S_uStructure + O_P_uCmdQueuePointer, GameIdentifier)) ; points if currently has a command - 0 otherwise
-	{
-		BaseCmdQueStruct := ReadMemory(CmdQueue, GameIdentifier) & -2
-		msgbox %  "+40: " ReadMemory(BaseCmdQueStruct + O_cqMoveState, GameIdentifier, 1)
-			. "`n+41: " ReadMemory(BaseCmdQueStruct + 41, GameIdentifier, 1)
-			. "`n42/2: " ReadMemory(BaseCmdQueStruct + O_cqMoveState, GameIdentifier, 2)
-		return ReadMemory(BaseCmdQueStruct + O_cqMoveState, GameIdentifier, 2) ;current state
-	}
-	else return -1 ;cant return 0 as that ould indicate A-move
-}
 
 critical, on
 haystack :=  "clicks highest units first, so dont have to calculate new"
