@@ -294,6 +294,7 @@ getEnemyUnitsMiniMap(byref A_MiniMapUnits)
            A_MiniMapUnits.insert({"X": x, "Y": y
            						, "Colour": Colour
            						, "Radius": Radius*2
+           						, unit: A_index -1
            						, "queuedCommands": QueuedCommands})  
 
      }
@@ -301,13 +302,15 @@ getEnemyUnitsMiniMap(byref A_MiniMapUnits)
   Return
 }
 
+; Theres some problem here fix another day
+; somtimes target x is empty 
 
 drawUnitDestinations(pGraphics, byRef A_MiniMapUnits)
 {
 	static a_pPen := [], hasRun
 
 	if !hasRun
-		a_pPen := createPens(2)
+		a_pPen := createPens(1)
 
 	for indexOuter, unit in A_MiniMapUnits
 	{
@@ -322,14 +325,23 @@ drawUnitDestinations(pGraphics, byRef A_MiniMapUnits)
 				|| movement.moveState = aUnitMoveStates.FollowNoAttack)
 				colour := "Green"
 			else continue
-
+			if !movement.targetX
+				break
 			if (indexQueued = unit.QueuedCommands.MinIndex())
 				x := unit.x, y := unit.y 	
 		;		convertCoOrdindatesToMiniMapPos(x,  y)	already coverted x, y due to minimap data
 			Else 
 				x := xTarget, y := yTarget
+
 			convertCoOrdindatesToMiniMapPos(xTarget := movement.targetX, yTarget := movement.targetY)	
 			Gdip_DrawLine(pGraphics, a_pPen[colour], x, y, xTarget, yTarget)
+		
+		
+	;	objtree(unit.QueuedCommands)
+	;	msgbox % x ", " y 
+	;		. "`n"  xTarget ", " yTarget
+	;		. "`n" unit.unit ", " aUnitName[getUnitType(unit.unit)]
+	;		. "`n" getUnitPositionX(unit.unit) ", " getUnitPositionY(unit.unit)
 		}
 	}
 	return
@@ -407,13 +419,12 @@ drawPlayerCameras(pGraphics)
 {
 	static a_pPen := [], maxAngle := 1.195313, hasRun
 	if !hasRun
-		a_pPen := createPens(2)
+		a_pPen := createPens(1)
 
 	For slotNumber in aPlayer
 	{
 		If (aLocalPlayer.Team != aPlayer[slotNumber].Team || 1)
 		{
-
 			angle := getPlayerCameraAngle(slotNumber)
 			xCenter := getPlayerCameraPositionX(slotNumber)
 			yCenter := getPlayerCameraPositionY(slotNumber)
@@ -441,7 +452,7 @@ drawPlayerCameras(pGraphics)
 			 x4 := x1 + ((x2 - x1)/2) - (25/1920*A_ScreenWidth * (angle/maxAngle)**2 - (Abs(maxAngle-angle)*10/1920*A_ScreenWidth))
 			 y4 := y3 
 
-			 Gdip_DrawLines(pGraphics, a_pPen[Colour],  x1 "," y1 "|" x2 "," y2 
+			 Gdip_DrawLines(pGraphics, a_pPen[aPlayer[slotNumber, "colour"]],  x1 "," y1 "|" x2 "," y2 
 							. "|" x3 "," y3 "|" x4 "," y4 "|" x1 "," y1 )
 		}
 	}
