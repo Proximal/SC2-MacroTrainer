@@ -2517,6 +2517,16 @@ exitApp(ExitCode := 0)
 }
 
 
+tSpeak(Message, SAPIVol := "")
+{	global speech_volume, aThreads
+
+	if !SAPIVol
+		SAPIVol := speech_volume
+	aThreads.Speech.ahkFunction("speak", Message, SAPIVol)
+	return
+}
+
+
 
 readConfigFile()
 {

@@ -6,8 +6,6 @@
 	This has to be run using AHK.dll (mini doesnt have gui functions)
 */
 
-
-
 #persistent
 #NoEnv  ; think this is default with AHK_H
 ;#NoTrayIcon
@@ -15,6 +13,16 @@
 ;SetBatchLines, -1
 ;ListLines(False) 
 OnExit, ShutdownProcedure
+
+;Cmdline passed script parameters 
+pObject := "1", pObject := %pObject%	
+pCriticalSection := "2", pCriticalSection := %pCriticalSection%
+aThreads := CriticalObject(pObject, pCriticalSection)
+
+tSpeak("hello", 100)
+
+
+
 if !A_IsCompiled
 {
 	debug := True

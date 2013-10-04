@@ -112,7 +112,7 @@ If 0 ; ignored by script but installed by compiler
   	FileInstall, Included Files\ahkH\AutoHotkeyMini.dll, this param is ignored
    	FileInstall, Included Files\ahkH\AutoHotkey.dll, this param is ignored
 }
-Global aThreads := []
+Global aThreads := CriticalObject() ; Thread safe object
 aThreads.Speech := AhkDllThread("Included Files\ahkH\AutoHotkeyMini.dll")
 aThreads.Speech.ahktextdll(generateSpeechScript())
 
@@ -800,7 +800,9 @@ clock:
 			if !aThreads.MiniMap.ahkReady()
 			{
 				aThreads.MiniMap := AhkDllThread("Included Files\ahkH\AutoHotkey.dll")
-				aThreads.MiniMap.ahkdll(A_ScriptDir "\threadMiniMap.ahk")
+				; pObject  & pCriticalSection are passed as cmdline paramater 1 and 2 respectively
+				aThreads.MiniMap.ahkdll(A_ScriptDir "\threadMiniMap.ahk"
+						,, pObject := CriticalObject(aThreads,1) " " pCriticalSection := CriticalObject(aThreads,2) )
 			}
 			else
 				aThreads.MiniMap.ahkPostFunction("gameChange")
@@ -6605,18 +6607,6 @@ RestoreModifierPhysicalState()
 }
 
 
-tSpeak(Message, SAPIVol := "")
-{	global speech_volume, aThreads
-
-	if !SAPIVol
-		SAPIVol := speech_volume
-	aThreads.Speech.ahkFunction("speak", Message, SAPIVol)
-	return
-}
-
-
-
-
 getSelectionType(units*) 
 {
 	if !units.MaxIndex() ;no units passed to function
@@ -9305,7 +9295,11 @@ tooltip
 return
 
 f1::
-msgbox % getUnitQueuedCommandsTest(getSelectedUnitIndex(), var)
+loop 30
+{
+	tSpeak(A_index, 100)
+	sleep 5
+}
 ;objtree(var)
 return 
 
