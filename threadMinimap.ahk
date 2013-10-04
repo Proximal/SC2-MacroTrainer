@@ -153,7 +153,7 @@ DrawMiniMap()
 			FillUnitRectangle(G, unit.X, unit.Y,  unit.Radius, unit.Radius, unit.Colour)
 
 	}
-	If (DrawSpawningRaces) && (Time - round(TimeReadRacesSet) <= 14) ;round used to change undefined var to 0 for resume so dont display races
+	If (DrawSpawningRaces) && (getTime() - round(TimeReadRacesSet) <= 14) ;round used to change undefined var to 0 for resume so dont display races
 	{	Gdip_SetInterpolationMode(G, 7)				;TimeReadRacesSet gets set to 0 at start of match
 		loop, parse, EnemyBaseList, |
 		{		
@@ -305,6 +305,18 @@ getEnemyUnitsMiniMap(byref A_MiniMapUnits)
 ; Theres some problem here fix another day
 ; somtimes target x is empty 
 
+/*
+	public enum TargetFlags : uint
+	{
+		OverrideUnitPositon = 0x1,
+		Unknown02 = 0x2,
+		Unknown04 = 0x4,
+		TargetIsPoint = 0x8,
+		TargetIsUnit = 0x10,
+		UseUnitPosition = 0x20
+	}
+*/
+
 drawUnitDestinations(pGraphics, byRef A_MiniMapUnits)
 {
 	static a_pPen := [], hasRun
@@ -324,9 +336,9 @@ drawUnitDestinations(pGraphics, byRef A_MiniMapUnits)
 				|| movement.moveState = aUnitMoveStates.Follow 
 				|| movement.moveState = aUnitMoveStates.FollowNoAttack)
 				colour := "Green"
-			else continue
-			if !movement.targetX
-				break
+			else colour := "Green"
+		;	if !movement.targetX
+		;		break
 			if (indexQueued = unit.QueuedCommands.MinIndex())
 				x := unit.x, y := unit.y 	
 		;		convertCoOrdindatesToMiniMapPos(x,  y)	already coverted x, y due to minimap data

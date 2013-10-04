@@ -4260,7 +4260,7 @@ Gui, Tab, Info
 	
 text = 
 ( 
-Hold down (and do not release) the "Adjust Overlays" Hotkey (Home is the default).
+Hold down (and do not release) the "Adjust Overlays" Hotkey (%AdjustOverlayKey% key).
 	
 You will hear a beep - all the overlays are now adjustable.When you're done, release the "Adjust Overlays" Hotkey. 
 )
@@ -6731,9 +6731,6 @@ DrawMiniMap()
 			Gdip_DrawImage(G, pBitmap, (X - Width/2), (Y - Height/2), Width, Height, 0, 0, Width, Height)	
 		} 
 	}
-
-	drawPlayerCameras(G)
-
 	Gdip_DeleteGraphics(G)
 	UpdateLayeredWindow(hwnd1, hdc, 0, 0, A_ScreenWidth/4, A_ScreenHeight) ;only draw on left side of the screen
 	SelectObject(hdc, obm) ; needed else eats ram ; Select the object back into the hdc
@@ -9286,11 +9283,11 @@ if (haystack~="S)" var)
 msgbox % getStructureRallyPoints(getSelectedUnitIndex(), rally)
 objtree(rally)
 return 
-
+f2::
 while (!getkeystate("Esc"))
 {
-	v := readmemory(getUnitAbilityPointer(getSelectedUnitIndex()) + 0x10, GameIdentifier)
-	tooltip, % v "`n" (v & 0xFFFFFFFF) "`n" (v | 0x10)
+
+	tooltip, % getUnitQueuedCommandsTest(getSelectedUnitIndex(), var)
 		, 500, 500
 	sleep 50
 }
@@ -9298,7 +9295,95 @@ tooltip
 
 return
 
+f1::
+msgbox % getUnitQueuedCommandsTest(getSelectedUnitIndex(), var)
+;objtree(var)
+return 
 
+;  O_cqMoveState := 0x40
+/*
+<Struct Name="QueuedCommand" Size="-1">
+<Member Name="pNextCommand" Type="Unsigned" Size="4" Offset="0"/>
+<!--
+ A Struct very similar to Command starts here. It is a bit different though. 
+-->
+<Member Name="AbilityPointer" Type="Unsigned" Size="4" Offset="pNextCommand+0x18" AbsoluteOffset="0x18"/>
+<Member Name="TargetUnitID" Type="Unsigned" Size="4" Offset="AbilityPointer+8" AbsoluteOffset="0x20"/>
+<Member Name="TargetUnitModelPtr" Type="Unsigned" Size="4" Offset="TargetUnitID+4" AbsoluteOffset="0x24"/>
+<Member Name="TargetX" Type="Fixed" Size="4" Offset="TargetUnitModelPtr+4" AbsoluteOffset="0x28"/>
+<Member Name="TargetY" Type="Fixed" Size="4" Offset="TargetX+4" AbsoluteOffset="0x2C"/>
+<Member Name="TargetZ" Type="Fixed" Size="4" Offset="TargetY+4" AbsoluteOffset="0x30"/>
+<Member Name="Unknown" Type="Unsigned" Size="4" Offset="TargetZ+4" AbsoluteOffset="0x34"/>
+<Member Name="TargetFlags" Type="Unsigned" Size="4" Offset="Unknown+4" AbsoluteOffset="0x38"/>
+<Member Name="Flags" Type="Unsigned" Size="4" Offset="TargetFlags+4" AbsoluteOffset="0x3C"/>
+<Member Name="AbilityCommand" Type="Unsigned" Size="1" Offset="Flags+4" AbsoluteOffset="0x40"/>
+<Member Name="Player" Type="Unsigned" Size="1" Offset="AbilityCommand+2" AbsoluteOffset="0x42"/>
+</Struct>
+
+*/
+
+
+getUnitQueuedCommandsTest(unit, byRef aQueuedMovements)
+{
+	static aTargetFlags := { "overrideUnitPositon":  0x1
+							, "unknown02": 0x2
+							, "unknown04": 0x4
+							, "targetIsPoint": 0x8
+							, "targetIsUnit": 0x10
+							, "useUnitPosition": 0x20 }
+
+	aQueuedMovements := []
+	if (CmdQueue := ReadMemory(B_uStructure + unit * S_uStructure + O_P_uCmdQueuePointer, GameIdentifier)) ; points if currently has a command - 0 otherwise
+	{
+		pNextCmd := ReadMemory(CmdQueue, GameIdentifier) ; If & -2 this is really the first command ie  = BaseCmdQueStruct
+		loop 
+		{
+			ReadRawMemory(pNextCmd & -2, GameIdentifier, cmdDump, 0x42)
+			 
+			
+	;		targetId = aUnitID.MineralField || targetId = aUnitID.RichMineralField ? aUnitMoveStates.Move :
+			aQueuedMovements.insert({ "targetX": numget(cmdDump, 0x28, "Int") / 4096
+									, "targetY": numget(cmdDump, 0x2C, "Int") / 4096
+									, "targetZ": numget(cmdDump, 0x30, "Int") / 4096
+									, "moveState": numget(cmdDump, 0x40, "Short") }) 	; Different  Nuke +40  1 byte = abilityCommand
+		;	msgbox % numget(cmdDump, 0x20, "uInt")
+	return		targetFlag := numget(cmdDump, 0x38, "UInt")
+			if (A_Index > 20 
+			|| !(targetFlag & aTargetFlags.targetIsPoint || targetFlag & aTargetFlags.targetIsUnit)
+			|| !numget(cmdDump, 0x20, "uInt")) ; targetID
+			{
+				; something went wrong or target isnt a point/unit
+				aQueuedMovements := []
+				return 0
+			}
+
+		} Until (1 & pNextCmd := numget(cmdDump, 0, "Int"))				; loop until the last/first bit of pNextCmd is set to 1
+		return aQueuedMovements.MaxIndex() 	; interstingly after -2 & pNextCmd (the last one) it should = the first address
+	}
+	else return 0
+
+}
+
+getUnitMoveState40(unit)
+{	local CmdQueue, BaseCmdQueStruct
+	if (CmdQueue := ReadMemory(B_uStructure + unit * S_uStructure + O_P_uCmdQueuePointer, GameIdentifier)) ; points if currently has a command - 0 otherwise
+	{
+		BaseCmdQueStruct := ReadMemory(CmdQueue, GameIdentifier) & -2
+		msgbox  %  dectohex(ReadMemory(BaseCmdQueStruct + 0x20, GameIdentifier, 4))
+		
+		return ReadMemory(BaseCmdQueStruct + O_cqMoveState, GameIdentifier, 1) ;current state
+	}
+	else return -1 ;cant return 0 as that ould indicate A-move
+}
+getUnitMoveState41(unit)
+{	local CmdQueue, BaseCmdQueStruct
+	if (CmdQueue := ReadMemory(B_uStructure + unit * S_uStructure + O_P_uCmdQueuePointer, GameIdentifier)) ; points if currently has a command - 0 otherwise
+	{
+		BaseCmdQueStruct := ReadMemory(CmdQueue, GameIdentifier) & -2
+		return ReadMemory(BaseCmdQueStruct + O_cqMoveState + 0x1, GameIdentifier, 1) ;current state
+	}
+	else return -1 ;cant return 0 as that ould indicate A-move
+}
 
 
 
@@ -9313,62 +9398,6 @@ critical off
 msgbox % t 
 return
 
-/*
-	x,y co-ordinates
-	1--------------------2
-	\                   /
-     \     centre      /
-      \               /
-       4-------------3
-
-Still have to scale this for the map - so probably *minimap.scale
-*/
-
-
-drawPlayerCameras(pGraphics)
-{
-	static a_pPen := [], maxAngle := 1.195313
-
-	For slotNumber in aPlayer
-	{
-		If (aLocalPlayer.Team != aPlayer[slotNumber].Team || 1)
-		{
-
-			if !a_pPen[Colour := Colour := 0xcFF HexColour[aPlayer[slotNumber].Colour]]	
-				a_pPen[Colour] := Gdip_CreatePen(Colour, 2)
-			angle := getPlayerCameraAngle(slotNumber)
-			xCenter := getPlayerCameraPositionX(slotNumber)
-			yCenter := getPlayerCameraPositionY(slotNumber)
-			convertCoOrdindatesToMiniMapPos(xCenter, yCenter)
-
-			x1 := xCenter - (33/1920*A_ScreenWidth * (angle/maxAngle)**2 + (Abs(maxAngle-angle)*10/1920*A_ScreenWidth) )
-			y1 := yCenter - (22/1080*A_ScreenHeight * (angle/maxAngle)**2 + (Abs(maxAngle-angle)*20/1080*A_ScreenHeight) )
-			
-			if (x1 < minimap.ScreenLeft)
-				x1 := minimap.ScreenLeft
-			if (y1 < minimap.ScreenTop)
-				y1 := minimap.ScreenTop
-
-			 x2 := x1 + (66/1920*A_ScreenWidth * (angle/maxAngle)**2 + (Abs(maxAngle-angle)*20/1920*A_ScreenWidth))
-			 y2 := y1 
-
-			if (x2 > minimap.ScreenRight)
-				x2 := minimap.ScreenRight
-
-			 x3 := x2 - ((x2 - x1)/2) + (25/1920*A_ScreenWidth * (angle/maxAngle)**2 - (Abs(maxAngle-angle)*10/1920*A_ScreenWidth))
-			 y3 := y2 + (33/1080*A_ScreenHeight * (angle/maxAngle)**2 + (Abs(maxAngle-angle)*20/1080*A_ScreenHeight))
-			
-			if (y3 > minimap.ScreenBottom)
-				y3 := minimap.ScreenBottom
-			 x4 := x1 + ((x2 - x1)/2) - (25/1920*A_ScreenWidth * (angle/maxAngle)**2 - (Abs(maxAngle-angle)*10/1920*A_ScreenWidth))
-			 y4 := y3 
-
-			 Gdip_DrawLines(pGraphics, a_pPen[Colour],  x1 "," y1 "|" x2 "," y2 
-							. "|" x3 "," y3 "|" x4 "," y4 "|" x1 "," y1 )
-		}
-	}
-	return 
-}
 
 ;msgbox % clipboard := getSelectedUnitIndex() << 18
 ;msgbox % clipboard := dectohex(getSelectedUnitIndex() *S_uStructure + B_uStructure)

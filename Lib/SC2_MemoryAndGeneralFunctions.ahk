@@ -791,6 +791,13 @@ getUnitPositionZ(unit)
 ; but works for movements.
 getUnitQueuedCommands(unit, byRef aQueuedMovements)
 {
+	static aTargetFlags := { "overrideUnitPositon":  0x1
+							, "unknown02": 0x2
+							, "unknown04": 0x4
+							, "targetIsPoint": 0x8
+							, "targetIsUnit": 0x10
+							, "useUnitPosition": 0x20 }
+
 	aQueuedMovements := []
 	if (CmdQueue := ReadMemory(B_uStructure + unit * S_uStructure + O_P_uCmdQueuePointer, GameIdentifier)) ; points if currently has a command - 0 otherwise
 	{
@@ -798,20 +805,30 @@ getUnitQueuedCommands(unit, byRef aQueuedMovements)
 		loop 
 		{
 			ReadRawMemory(pNextCmd & -2, GameIdentifier, cmdDump, 0x42)
-			pNextCmd := numget(cmdDump, 0, "Int") 
-			clipboard := pNextCmd
+			 
+			; targetFlag = 55 when mining & returning cargo 
+			; breifly = 7 when stops mining (ability) to turn and return minerals	
+			; cant be bothered checking ability addresses so do this so mining workers dont get drawn
+			; with a red attacking line
+			
+			if ( (targetFlag := numget(cmdDump, 0x38, "UInt")) = 55 || targetFlag = 7 )
+				moveState := aUnitMoveStates.Move
+			else moveState := numget(cmdDump, 0x40, "Short")
+	
 			aQueuedMovements.insert({ "targetX": numget(cmdDump, 0x28, "Int") / 4096
 									, "targetY": numget(cmdDump, 0x2C, "Int") / 4096
 									, "targetZ": numget(cmdDump, 0x30, "Int") / 4096
-									, "moveState": numget(cmdDump, 0x40, "Short") }) 	; Different  Nuke +40  1 byte = abilityCommand
-			if (A_Index > 20)
+									, "moveState": moveState }) 	; Different  Nuke +40  1 byte = abilityCommand
+
+			
+			if (A_Index > 20 || !(targetFlag & aTargetFlags.targetIsPoint || targetFlag & aTargetFlags.targetIsUnit))
 			{
-				; something went wrong. 
+				; something went wrong or target isnt a point/unit
 				aQueuedMovements := []
 				return 0
 			}
 
-		} Until (1 & pNextCmd)				; loop until the last/first bit of pNextCmd is set to 1
+		} Until (1 & pNextCmd := numget(cmdDump, 0, "Int"))				; loop until the last/first bit of pNextCmd is set to 1
 		return aQueuedMovements.MaxIndex() 	; interstingly after -2 & pNextCmd (the last one) it should = the first address
 	}
 	else return 0
@@ -833,7 +850,6 @@ isUnitPatrolling(unit)
 {	global
 	return aUnitMoveStates.Patrol & getUnitMoveState(unit)
 }
-
 
 arePlayerColoursEnabled()
 {	global
@@ -888,6 +904,8 @@ getChatText()
 
 
 ; I noticed with this function, it will return 0 when there is less than half a second of cool down left - close enough
+; should really be finding the pointer by looking up the ability index ID in the byte array.
+; but im lazy and this works
 
 getWarpGateCooldown(WarpGate) ; unitIndex
 {	global B_uStructure, S_uStructure, O_P_uAbilityPointer, GameIdentifier
@@ -1322,7 +1340,7 @@ getCAbilQueueIndex(pAbilities, AbilitiesCount)
 }
 
 ; this is just used for testing
-getbilListIndex(pAbilities, AbilitiesCount)
+getAbilListIndex(pAbilities, AbilitiesCount)
 {	GLOBAL GameIdentifier
 	STATIC CAbilQueue := 0x19
 	abilties := []
@@ -1928,16 +1946,20 @@ Return
 
 
 drawUnitRectangle(G, x, y, width, height)
-{ 	global minimap
-	static pPen
+{ 	
+	global minimap
+	static pPen := Gdip_CreatePen(0xFF000000, 1)
 	width *= minimap.scale
 	height *= minimap.scale
 
 	x := x - width / 2
 	y :=y - height /2
 					;as pen is only 1 pixel, it doesn't encroach into the fill paint (only occurs when >=2)
-	if !pPen
-		pPen := Gdip_CreatePen(0xFF000000, 1)		
+;	if !pPen
+;		pPen := Gdip_CreatePen(0xFF000000, 1)	
+
+	
+
 	Gdip_DrawRectangle(G, pPen, x, y, width, height)
 }
 
