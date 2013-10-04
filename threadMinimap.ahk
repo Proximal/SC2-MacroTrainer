@@ -31,31 +31,41 @@ GameExe := "SC2.exe"
 #include %A_ScriptDir%\Included Files\Gdip.ahk
 #Include <SC2_MemoryAndGeneralFunctions> ;In the library folder
 pToken := Gdip_Startup()
-Global aUnitID, aUnitName, aUnitSubGroupAlias, aUnitTargetFilter, HexColour, MatrixColour
+Global aUnitID, aUnitName, aUnitSubGroupAlias, aUnitTargetFilter, aHexColours, MatrixColour
 	, aUnitModel,  aPlayer, aLocalPlayer, minimap
-
+	, a_pBrushes := [], a_pPens := []
 
 SetupUnitIDArray(aUnitID, aUnitName)
 getSubGroupAliasArray(aUnitSubGroupAlias)
 setupTargetFilters(aUnitTargetFilter)
-SetupColourArrays(HexColour, MatrixColour)
+SetupColourArrays(aHexColours, MatrixColour)
+; Note: The brushes are initialised within the readConfig function
+; so they are updated when user changes custom colour highlights
+a_pPens := initialisePenColours(aHexColours)
 
 CreatepBitmaps(a_pBitmap, aUnitID)
 aUnitInfo := []
-a_pBrush := []
-readConfigFile()
+readConfigFile(), hasReadConfig := True
 
 settimer, timer_exit, 15000, -100 ; Just as a backup if the thread gets orphaned
 l_Changeling := aUnitID["ChangelingZealot"] "," aUnitID["ChangelingMarineShield"] ","  aUnitID["ChangelingMarine"] 
 				. ","  aUnitID["ChangelingZerglingWings"] "," aUnitID["ChangelingZergling"]
+gameChange()
 return
 
-
-
+updateUserSettings()
+{	
+	Global hasReadConfig
+	readConfigFile()
+	hasReadConfig := True
+}
 
 gameChange()
 {
 	global
+
+	if !hasReadConfig
+		readConfigFile(), hasReadConfig := True
 	if !hasLoadedMemoryAddresses
 	{
 		Process, wait, %GameExe%
@@ -253,9 +263,11 @@ getEnemyUnitsMiniMap(byref A_MiniMapUnits)
            y :=  numget(MemDump, UnitAddress + O_uY, "int")/4096
 
         ;  Radius += (minimap.AddToRadius/2)
+          
+     
            convertCoOrdindatesToMiniMapPos(x, y)
            if (HighlightInvisible && Filter & aUnitTargetFilter.Hallucination) ; have here so even if non-halluc unit type has custom colour highlight, it will be drawn using halluc colour
-           	  Colour := UnitHighlightHallucinationsColour
+           	  Colour := "UnitHighlightHallucinationsColour"
            else if type in %allActiveActiveUnitHighlightLists%
            {
            		; Overall, checking if the type is actually in the highlight list, 
@@ -263,31 +275,31 @@ getEnemyUnitsMiniMap(byref A_MiniMapUnits)
            		; should be faster than needlessly checking every list
 
 	           if type in %ActiveUnitHighlightList1%
-	              Colour := UnitHighlightList1Colour
+	              Colour := "UnitHighlightList1Colour"
 	           Else If type in %ActiveUnitHighlightList2%
-	              Colour := UnitHighlightList2Colour                 
+	              Colour := "UnitHighlightList2Colour"                 
 	           Else If type in %ActiveUnitHighlightList3%
-	              Colour := UnitHighlightList3Colour                    
+	              Colour := "UnitHighlightList3Colour"                    
 	           Else If type in %ActiveUnitHighlightList4%
-	              Colour := UnitHighlightList4Colour                    
+	              Colour := "UnitHighlightList4Colour"                    
 	           Else If type in %ActiveUnitHighlightList5%
-	              Colour := UnitHighlightList5Colour   
+	              Colour := "UnitHighlightList5Colour"   
 	           Else If type in %ActiveUnitHighlightList6%
-	              Colour := UnitHighlightList6Colour   
+	              Colour := "UnitHighlightList6Colour"   
 	           Else If type in %ActiveUnitHighlightList7%
-	              Colour := UnitHighlightList7Colour
+	              Colour := "UnitHighlightList7Colour"
 	       }
            Else if (HighlightInvisible && Filter & aUnitTargetFilter.Cloaked) ; this will include burrowed units (so dont need to check their flags)
-           	  Colour := UnitHighlightInvisibleColour 				; Have this at bot so if an invis unit has a custom highlight it will be drawn with that colour
+           	  Colour := "UnitHighlightInvisibleColour" 				; Have this at bot so if an invis unit has a custom highlight it will be drawn with that colour
            Else if PlayerColours
-              Colour := 0xcFF HexColour[aPlayer[Owner, "Colour"]]   ;FF=Transparency
-           Else Colour := 0xcFF HexColour["Red"]  
+              Colour := aPlayer[Owner, "Colour"]
+           Else Colour := "Red" 
 
            if (GameType != "1v1" && HostileColourAssist)
            {
 	           unitName := aUnitName[type]
 	           if unitName in CommandCenter,CommandCenterFlying,OrbitalCommand,PlanetaryFortress,Nexus,Hatchery,Lair,Hive
-	          		Colour := 0xcFF HexColour[aPlayer[Owner, "Colour"]]
+	          		Colour := aPlayer[Owner, "Colour"]
 	       }
 	       if DrawUnitDestinations
 	       		getUnitQueuedCommands(A_Index - 1, QueuedCommands)
@@ -409,7 +421,7 @@ drawUnitDestinationsFromCompleteData(pGraphics, byRef aEnemyUnitData)
 createPens(penSize)
 {
 	a_pPens := []
-	for colour, hexValue in HexColour
+	for colour, hexValue in aHexColours
 		a_pPens[Colour] := Gdip_CreatePen(0xcFF hexValue, penSize)
 	return a_pPens
 }

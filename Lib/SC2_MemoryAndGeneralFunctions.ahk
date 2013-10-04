@@ -1944,11 +1944,57 @@ SetMiniMap(byref minimap)
 Return
 }
 
+initialiseBrushColours(aHexColours, byRef a_pBrushes)
+{
+	Global UnitHighlightHallucinationsColour, UnitHighlightInvisibleColour
+		, UnitHighlightList1Colour, UnitHighlightList2Colour, UnitHighlightList3Colour
+		, UnitHighlightList4Colour, UnitHighlightList5Colour, UnitHighlightList6Colour
+		, UnitHighlightList7Colour
 
-drawUnitRectangle(G, x, y, width, height)
+	; If there is already a brush, lets delete it before creating new ones
+	; This is required as the userhighlight brushes colours can change
+
+	if aHexColours[aHexColours.MinIndex()]
+		deleteBrushArray(a_pBrushes)
+	a_pBrushes := []
+	for colour, hexValue in aHexColours
+		a_pBrushes[colour] := Gdip_BrushCreateSolid(0xcFF hexValue)
+	; Used in the unit overlay	
+	a_pBrushes["TransparentBlack"] := Gdip_BrushCreateSolid(0x78000000)
+	
+	a_pBrushes["UnitHighlightHallucinationsColour"] := Gdip_BrushCreateSolid(UnitHighlightHallucinationsColour)
+	a_pBrushes["UnitHighlightInvisibleColour"] := Gdip_BrushCreateSolid(UnitHighlightInvisibleColour)
+	a_pBrushes["UnitHighlightList1Colour"] := Gdip_BrushCreateSolid(UnitHighlightList1Colour)
+	a_pBrushes["UnitHighlightList2Colour"] := Gdip_BrushCreateSolid(UnitHighlightList2Colour)
+	a_pBrushes["UnitHighlightList3Colour"] := Gdip_BrushCreateSolid(UnitHighlightList3Colour)
+	a_pBrushes["UnitHighlightList4Colour"] := Gdip_BrushCreateSolid(UnitHighlightList4Colour)
+	a_pBrushes["UnitHighlightList5Colour"] := Gdip_BrushCreateSolid(UnitHighlightList5Colour)
+	a_pBrushes["UnitHighlightList6Colour"] := Gdip_BrushCreateSolid(UnitHighlightList6Colour)
+	a_pBrushes["UnitHighlightList7Colour"] := Gdip_BrushCreateSolid(UnitHighlightList7Colour)
+
+	return 
+}
+
+deleteBrushArray(byRef a_pBrushes)
+{
+	for colour, pBrush in a_pBrushes
+		Gdip_DeleteBrush(pBrush)
+	a_pBrushes := []
+	return
+}
+
+initialisePenColours(aHexColours)
+{
+	a_pPens := []
+	for colour, hexValue in aHexColours
+		a_pPens[colour] := Gdip_CreatePen(0xcFF hexValue, 1)
+	return a_pPens
+}
+
+
+drawUnitRectangle(G, x, y, width, height, colour := "black")
 { 	
 	global minimap
-	static pPen := Gdip_CreatePen(0xFF000000, 1)
 	width *= minimap.scale
 	height *= minimap.scale
 
@@ -1958,22 +2004,20 @@ drawUnitRectangle(G, x, y, width, height)
 ;	if !pPen
 ;		pPen := Gdip_CreatePen(0xFF000000, 1)	
 
-	
-
-	Gdip_DrawRectangle(G, pPen, x, y, width, height)
+	Gdip_DrawRectangle(G, a_pPens[colour], x, y, width, height)
 }
 
 FillUnitRectangle(G, x, y, width, height, colour)
 { 	global minimap
-	static a_pBrush := []
+
 	width *= minimap.scale
 	height *= minimap.scale
 	x := x - width / 2
 	y := y - height /2
 
-	if !a_pBrush[colour]	;faster than creating same colour again 
-		a_pBrush[colour] := Gdip_BrushCreateSolid(colour)
-	Gdip_FillRectangle(G, a_pBrush[colour], x, y, width, height)
+;	if !a_pBrush[colour]	;faster than creating same colour again 
+;		a_pBrush[colour] := Gdip_BrushCreateSolid(colour)
+	Gdip_FillRectangle(G, a_pBrushes[colour], x, y, width, height)
 }
 
 
@@ -2288,7 +2332,7 @@ setDrawingQuality(G)
 }
 Draw(G,x,y,l=11,h=11,colour=0x880000ff, Mode=0) ;use mode 3 to draw rectangle then fill it
 {	; Set the smoothing mode to antialias = 4 to make shapes appear smother (only used for vector drawing and filling)
-	static pPen, a_pBrush := []
+	static pPen, a_pBrushes := []
 	if Mode	
 	{
 		if !pPen
@@ -2299,9 +2343,9 @@ Draw(G,x,y,l=11,h=11,colour=0x880000ff, Mode=0) ;use mode 3 to draw rectangle th
 	}
 	if (Mode = 0) || (Mode = 3)
 	{
-		if !a_pBrush[colour]	;faster than creating same colour again 
-			a_pBrush[colour] := Gdip_BrushCreateSolid(colour)
-		Gdip_FillRectangle(G, a_pBrush[colour], (x - l/2), (y - h/2), l, h) ;Gdip_FillRectangle(G, pBrush, x, y, l, h)
+		if !a_pBrushes[colour]	;faster than creating same colour again 
+			a_pBrushes[colour] := Gdip_BrushCreateSolid(colour)
+		Gdip_FillRectangle(G, a_pBrushes[colour], (x - l/2), (y - h/2), l, h) ;Gdip_FillRectangle(G, pBrush, x, y, l, h)
 	}
 }
 
@@ -2876,5 +2920,10 @@ readConfigFile()
 	if MT_Restart
 		IniWrite, 0, %config_file%, %section%, RestartMethod ; set the value back to 0	
 	IniRead, MT_DWMwarned, %config_file%, %section%, MT_DWMwarned, 0
+	
+	; So custom colour highlights are updated
+	initialiseBrushColours(aHexColours, a_pBrushes)
+
+
 	return
 }

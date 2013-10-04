@@ -112,7 +112,7 @@ If 0 ; ignored by script but installed by compiler
   	FileInstall, Included Files\ahkH\AutoHotkeyMini.dll, this param is ignored
    	FileInstall, Included Files\ahkH\AutoHotkey.dll, this param is ignored
 }
-aThreads := []
+Global aThreads := []
 aThreads.Speech := AhkDllThread("Included Files\ahkH\AutoHotkeyMini.dll")
 aThreads.Speech.ahktextdll(generateSpeechScript())
 
@@ -145,11 +145,16 @@ GLOBAL GameExe := "SC2.exe"
 DllCall("RegisterShellHookWindow", UInt, getScriptHandle())
 
 pToken := Gdip_Startup()
-Global aUnitID, aUnitName, aUnitSubGroupAlias, aUnitTargetFilter, HexColour, MatrixColour
+Global aUnitID, aUnitName, aUnitSubGroupAlias, aUnitTargetFilter, aHexColours, MatrixColour
+	, a_pBrushes := [], a_pPens := []
+
 SetupUnitIDArray(aUnitID, aUnitName)
 getSubGroupAliasArray(aUnitSubGroupAlias)
 setupTargetFilters(aUnitTargetFilter)
-SetupColourArrays(HexColour, MatrixColour)
+SetupColourArrays(aHexColours, MatrixColour)
+; Note: The brushes are initialised within the readConfig function
+; so they are updated when user changes custom colour highlights
+a_pPens := initialisePenColours(aHexColours)
 
 Menu, Tray, Tip, MT_V%ProgramVersion% Coded By Kalamity
 
@@ -192,7 +197,6 @@ InstallSC2Files()
 
 CreatepBitmaps(a_pBitmap, aUnitID)
 aUnitInfo := []
-a_pBrush := []
 
 If (auto_update AND A_IsCompiled AND CheckForUpdates(ProgramVersion, url.vr ))
 {
@@ -798,7 +802,8 @@ clock:
 				aThreads.MiniMap := AhkDllThread("Included Files\ahkH\AutoHotkey.dll")
 				aThreads.MiniMap.ahkdll(A_ScriptDir "\threadMiniMap.ahk")
 			}
-			aThreads.MiniMap.ahkPostFunction("gameChange")
+			else
+				aThreads.MiniMap.ahkPostFunction("gameChange")
 		}
 		Else if aThreads.MiniMap.ahkReady()
 			aThreads.MiniMap.ahkPostFunction("exitApp") ; use post function so don't have to wait and delay the routine below
@@ -2465,6 +2470,9 @@ GuiReturn:
 	Gui Destroy
 	Return 
 
+; Can only arrive here if cancel or x-close/escape the options menu
+; not via save (or apply) buttons
+
 OptionsGuiClose:
 OptionsGuiEscape:
 Gui, Options:-Disabled  
@@ -3071,6 +3079,10 @@ ini_settings_write:
 	}
 	IF (Tmp_GuiControl = "save" or Tmp_GuiControl = "Apply")
 	{
+		initialiseBrushColours(aHexColours, a_pBrushes)
+		if aThreads.MiniMap.ahkReady()
+			aThreads.MiniMap.ahkPostFunction("updateUserSettings")
+
 		if (time && alert_array[GameType, "Enabled"])
 			 doUnitDetection(unit, type, owner, "Save")
 		Tmp_GuiControl := ""
@@ -6797,14 +6809,14 @@ getEnemyUnitsMiniMap(byref A_MiniMapUnits)
            Else if (HighlightInvisible && Filter & aUnitTargetFilter.Cloaked) ; this will include burrowed units (so dont need to check their flags)
            	  Colour := UnitHighlightInvisibleColour 				; Have this at bot so if an invis unit has a custom highlight it will be drawn with that colour
            Else if PlayerColours
-              Colour := 0xcFF HexColour[aPlayer[Owner, "Colour"]]   ;FF=Transparency
-           Else Colour := 0xcFF HexColour["Red"]  
+              Colour := 0xcFF aHexColours[aPlayer[Owner, "Colour"]]   ;FF=Transparency
+           Else Colour := 0xcFF aHexColours["Red"]  
 
            if (GameType != "1v1" && HostileColourAssist)
            {
 	           unitName := aUnitName[type]
 	           if unitName in CommandCenter,CommandCenterFlying,OrbitalCommand,PlanetaryFortress,Nexus,Hatchery,Lair,Hive
-	          		Colour := 0xcFF HexColour[aPlayer[Owner, "Colour"]]
+	          		Colour := 0xcFF aHexColours[aPlayer[Owner, "Colour"]]
 	       }
 
            A_MiniMapUnits.insert({"X": x, "Y": y, "Colour": Colour, "Radius": Radius*2})  
@@ -6908,7 +6920,7 @@ DrawIdleWorkersOverlay(ByRef Redraw, UserScale=1,Drag=0, expand=1)
 	Return
 }
 DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Drag=0)
-{	global aLocalPlayer, HexColour, aPlayer, GameIdentifier, IncomeOverlayX, IncomeOverlayY, config_file, MatrixColour, a_pBitmap
+{	global aLocalPlayer, aHexColours, aPlayer, GameIdentifier, IncomeOverlayX, IncomeOverlayY, config_file, MatrixColour, a_pBitmap
 	static Font := "Arial", Overlay_RunCount, hwnd1, DragPrevious := 0
 	Overlay_RunCount ++
 	DestX := i := 0
@@ -6959,7 +6971,7 @@ DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Dr
 			If (PlayerIdentifier = 1 Or PlayerIdentifier = 2 )
 			{	
 				IF (PlayerIdentifier = 2)
-					OptionsName := " Bold cFF" HexColour[aPlayer[slot_number, "Colour"]] " r4 s" 17*UserScale
+					OptionsName := " Bold cFF" aHexColours[aPlayer[slot_number, "Colour"]] " r4 s" 17*UserScale
 				Else IF (PlayerIdentifier = 1)
 					OptionsName := " Bold cFFFFFFFF r4 s" 17*UserScale	
 				pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Mineral",Background]
@@ -7023,7 +7035,7 @@ DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Dr
 }	
 
 DrawResourcesOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Drag=0)
-{	global aLocalPlayer, HexColour, aPlayer, GameIdentifier, config_file, ResourcesOverlayX, ResourcesOverlayY, MatrixColour, a_pBitmap
+{	global aLocalPlayer, aHexColours, aPlayer, GameIdentifier, config_file, ResourcesOverlayX, ResourcesOverlayY, MatrixColour, a_pBitmap
 	static Font := "Arial", Overlay_RunCount, hwnd1, DragPrevious := 0		
 	Overlay_RunCount ++	
 	DestX := i := 0
@@ -7076,7 +7088,7 @@ DrawResourcesOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0
 			If (PlayerIdentifier = 1 Or PlayerIdentifier = 2 )
 			{	
 				IF (PlayerIdentifier = 2)
-					OptionsName := " Bold cFF" HexColour[aPlayer[slot_number, "Colour"]] " r4 s" 17*UserScale
+					OptionsName := " Bold cFF" aHexColours[aPlayer[slot_number, "Colour"]] " r4 s" 17*UserScale
 				Else IF (PlayerIdentifier = 1)
 					OptionsName := " Bold cFFFFFFFF r4 s" 17*UserScale		
 				pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Mineral",Background]
@@ -7142,7 +7154,7 @@ DrawResourcesOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0
 }
 
 DrawArmySizeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Drag=0)
-{	global aLocalPlayer, HexColour, aPlayer, GameIdentifier, config_file, ArmySizeOverlayX, ArmySizeOverlayY, MatrixColour, a_pBitmap
+{	global aLocalPlayer, aHexColours, aPlayer, GameIdentifier, config_file, ArmySizeOverlayX, ArmySizeOverlayY, MatrixColour, a_pBitmap
 	static Font := "Arial", Overlay_RunCount, hwnd1, DragPrevious := 0	
 	Overlay_RunCount ++	
 	DestX := i := 0
@@ -7193,7 +7205,7 @@ DrawArmySizeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,
 			If (PlayerIdentifier = 1 Or PlayerIdentifier = 2 )
 			{	
 				IF (PlayerIdentifier = 2)
-					OptionsName := " Bold cFF" HexColour[aPlayer[slot_number, "Colour"]] " r4 s" 17*UserScale
+					OptionsName := " Bold cFF" aHexColours[aPlayer[slot_number, "Colour"]] " r4 s" 17*UserScale
 				Else IF (PlayerIdentifier = 1)
 					OptionsName := " Bold cFFFFFFFF r4 s" 17*UserScale	
 				pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Mineral",Background]
@@ -7317,7 +7329,7 @@ DrawWorkerOverlay(ByRef Redraw, UserScale=1,Drag=0)
 
 
 DrawLocalPlayerColour(ByRef Redraw, UserScale=1,Drag=0)
-{	global aLocalPlayer, GameIdentifier, config_file, LocalPlayerColourOverlayX, LocalPlayerColourOverlayY, a_pBitmap, HexColour, a_pBrush
+{	global aLocalPlayer, GameIdentifier, config_file, LocalPlayerColourOverlayX, LocalPlayerColourOverlayY, a_pBitmap, aHexColours
 	static Overlay_RunCount, hwnd1, DragPrevious := 0,  PreviousPlayerColours := 0 			
 
 	playerColours := arePlayerColoursEnabled()
@@ -7377,10 +7389,9 @@ DrawLocalPlayerColour(ByRef Redraw, UserScale=1,Drag=0)
 	DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0)	
 	Gdip_SetSmoothingMode(G, 4) ; for some reason its smoother than calling my setDrawingQuality(G) fucntion.......
 	colour := aLocalPlayer["Colour"]
-	if !a_pBrush[colour]
-		a_pBrush[colour] := Gdip_BrushCreateSolid(0xcFF HexColour[colour])	
+
 	Radius := 12 * UserScale
-	Gdip_FillEllipse(G, a_pBrush[colour], 0, 0, Radius, Radius)
+	Gdip_FillEllipse(G, a_pBrushes[colour], 0, 0, Radius, Radius)
 
 	Gdip_DeleteGraphics(G)	
 	UpdateLayeredWindow(hwnd1, hdc)
@@ -8852,8 +8863,8 @@ getLongestEnemyPlayerName(aPlayer)
 
 DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 {
-	GLOBAL aEnemyUnits, aEnemyBuildingConstruction, a_pBitmap, aPlayer, aLocalPlayer, HexColour, GameIdentifier, config_file, UnitOverlayX, UnitOverlayY, MatrixColour 
-	static Font := "Arial", Overlay_RunCount, hwnd1, DragPrevious := 0, a_pBrush := [], TransparentBlack := 0x78000000
+	GLOBAL aEnemyUnits, aEnemyBuildingConstruction, a_pBitmap, aPlayer, aLocalPlayer, aHexColours, GameIdentifier, config_file, UnitOverlayX, UnitOverlayY, MatrixColour 
+	static Font := "Arial", Overlay_RunCount, hwnd1, DragPrevious := 0
 	Overlay_RunCount ++	
 	DestX := i := 0
 	Options := "Center cFFFFFFFF r4 s" 17*UserScale					;these cant be static	
@@ -8876,8 +8887,6 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 		Gui, UnitOverlay: Show, NA X%UnitOverlayX% Y%UnitOverlayY% W400 H400, UnitOverlay
 		OnMessage(0x201, "OverlayMove_LButtonDown")
 		OnMessage(0x20A, "OverlayResize_WM_MOUSEWHEEL")
-		if !a_pBrush[TransparentBlack]	;faster than creating same colour again 
-			a_pBrush[TransparentBlack] := Gdip_BrushCreateSolid(TransparentBlack)	; Create a partially transparent, black brush
 	}	
 	If (Drag AND !DragPrevious)
 	{	DragPrevious := 1
@@ -8904,7 +8913,7 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 		If (PlayerIdentifier = 1 Or PlayerIdentifier = 2 )
 		{	
 			IF (PlayerIdentifier = 2)
-				OptionsName := " Bold cFF" HexColour[aPlayer[slot_number, "Colour"]] " r4 s" 17*UserScale
+				OptionsName := " Bold cFF" aHexColours[aPlayer[slot_number, "Colour"]] " r4 s" 17*UserScale
 			Else IF (PlayerIdentifier = 1)
 				OptionsName := " Bold cFFFFFFFF r4 s" 17*UserScale		
 			gdip_TextToGraphics(G, getPlayerName(slot_number), "x0" "y"(DestY +12*UserScale)  OptionsName, Font) ;get string size	
@@ -8939,7 +8948,7 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 				Width *= UserScale *.5, Height *= UserScale *.5	
 
 				Gdip_DrawImage(G, pBitmap, DestX, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
-				Gdip_FillRoundedRectangle(G, a_pBrush[TransparentBlack], DestX + .6*Width, DestY + .6*Height, Width/2.5, Height/2.5, 5)
+				Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, DestX + .6*Width, DestY + .6*Height, Width/2.5, Height/2.5, 5)
 				if (unitCount >= 10)
 					gdip_TextToGraphics(G, unitCount, "x"(DestX + .5*Width + .3*Width/2) "y"(DestY + .5*Height + .35*Height/2)  " Bold cFFFFFFFF r4 s" 9*UserScale, Font)
 				Else
@@ -8948,7 +8957,7 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 				if (unitCount := aEnemyBuildingConstruction[slot_number, priority, unit])	; so there are some of this unit being built lets draw the count on top of the completed units
 				{
 					;	Gdip_FillRoundedRectangle(G, a_pBrush[TransparentBlack], DestX, DestY + .6*Height, Width/2.5, Height/2.5, 5)
-						Gdip_FillRoundedRectangle(G, a_pBrush[TransparentBlack], DestX + .6*Width, DestY, Width/2.5, Height/2.5, 5)
+						Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, DestX + .6*Width, DestY, Width/2.5, Height/2.5, 5)
 						if (unitCount >= 10)
 							gdip_TextToGraphics(G, unitCount, "x"(DestX + .5*Width + .3*Width/2) "y"(DestY + .15*Height/2)  " Bold Italic cFFFFFFFF r4 s" 9*UserScale, Font)
 						Else
@@ -8969,7 +8978,7 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 					SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
 					Width *= UserScale *.5, Height *= UserScale *.5	
 					Gdip_DrawImage(G, pBitmap, DestX, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
-					Gdip_FillRoundedRectangle(G, a_pBrush[TransparentBlack], DestX + .6*Width, DestY, Width/2.5, Height/2.5, 5)
+					Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, DestX + .6*Width, DestY, Width/2.5, Height/2.5, 5)
 					if (unitCount >= 10)
 						gdip_TextToGraphics(G, unitCount, "x"(DestX + .5*Width + .3*Width/2) "y"(DestY + .15*Height/2)  " Bold Italic cFFFFFFFF r4 s" 9*UserScale, Font)
 					Else
