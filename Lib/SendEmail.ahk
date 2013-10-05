@@ -26,9 +26,8 @@ SendEmail(p_to, p_From, p_subject, p_message, oAttachments := "", user="macro.tr
 
 	; inlcude the DLL inside exe
 	If 0
-		FileInstall, C:\Users\Matthieu\Desktop\GIT Repos\SC2-MacroTrainer\Included Files\email\blat.dll, Ignore this param
+		FileInstall, Included Files\email\blat.dll, Ignore this param
 
-	;hBlatt := A_IsCompiled ? ResourceLoadLibrary("blatt.dll") : MemoryLoadLibrary("C:\Users\Matthieu\Desktop\GIT Repos\SC2-MacroTrainer\Included Files\email\blat.dll")
 	hBlatt := A_IsCompiled ? ResourceLoadLibrary("blatt.dll") : MemoryLoadLibrary("Included Files\email\blat.dll")
 	BlattSend := MemoryGetProcAddress(hBlatt,"Send" (A_IsUnicode?"W":"A"))
 	DllCall(BlattSend, "Str", email_string)

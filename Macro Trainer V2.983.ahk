@@ -187,12 +187,13 @@ if A_OSVersion in WIN_8,WIN_7,WIN_VISTA
 ;-----------------------
 
 InstallSC2Files()
-#include %A_ScriptDir%\Included Files\Gdip.ahk
+#Include <Gdip>
+#Include <SC2_MemoryAndGeneralFunctions>
 #include %A_ScriptDir%\Included Files\Colour Selector.ahk
 #include %A_ScriptDir%\Included Files\Class_BufferInputFast.AHk
 #include %A_ScriptDir%\Included Files\Class_ChangeButtonNames.AHk
 ;#Include <xml> ; in the local lib folder
-#Include <SC2_MemoryAndGeneralFunctions> ;In the library folder
+
 #Include <setLowLevelInputHooks> ;In the library folder
 
 CreatepBitmaps(a_pBitmap, aUnitID)
@@ -372,6 +373,7 @@ return
 ;-----------------------
 ; End of execution
 ;-----------------------
+
 ;2147483647  - highest priority so if i ever give something else a high priority, this key combo will still interupt (if thread isnt critical)
 ;#MaxThreadsBuffer on
 ;<#Space::
@@ -800,9 +802,24 @@ clock:
 			if !aThreads.MiniMap.ahkReady()
 			{
 				aThreads.MiniMap := AhkDllThread("Included Files\ahkH\AutoHotkey.dll")
+				if A_IsCompiled
+				{
+					if 0 
+						FileInstall, threadMiniMap.ahk, Ignore
+					miniMapScript :=  LoadScriptString("threadMiniMap.ahk")
 				; pObject  & pCriticalSection are passed as cmdline paramater 1 and 2 respectively
-				aThreads.MiniMap.ahkdll(A_ScriptDir "\threadMiniMap.ahk"
-						,, pObject := CriticalObject(aThreads,1) " " pCriticalSection := CriticalObject(aThreads,2) )
+				aThreads.MiniMap.ahktextdll(miniMapScript 
+										, "", pObject := CriticalObject(aThreads,1) " " pCriticalSection := CriticalObject(aThreads,2) )
+				miniMapScript := ""					
+				}
+				else
+				{ 
+					FileRead, miniMapScript, %A_ScriptDir%\threadMiniMap.ahk
+				; pObject  & pCriticalSection are passed as cmdline paramater 1 and 2 respectively
+				aThreads.MiniMap.ahkdll("threadMiniMap.ahk"
+										, "", pObject := CriticalObject(aThreads,1) " " pCriticalSection := CriticalObject(aThreads,2) )
+				}
+				miniMapScript := ""
 			}
 			else
 				aThreads.MiniMap.ahkPostFunction("gameChange")

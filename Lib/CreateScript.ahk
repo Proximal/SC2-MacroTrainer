@@ -1,4 +1,4 @@
-CreateScript(script, replace*){
+ CreateScript(script){
   static mScript
   StringReplace,script,script,`n,`r`n,A
   StringReplace,script,script,`r`r,`r,A
@@ -7,8 +7,7 @@ CreateScript(script, replace*){
       If (A_IsCompiled){
          lib := DllCall("GetModuleHandle", "ptr", 0, "ptr")
         If !(res := DllCall("FindResource", "ptr", lib, "str", ">AUTOHOTKEY SCRIPT<", "ptr", Type:=10, "ptr"))
-          If !(res := DllCall("FindResource", "ptr", lib, "str", ">AHK WITH ICON<", "ptr", Type:=10, "ptr")) && !A_IsCompiled
-          {
+          If !(res := DllCall("FindResource", "ptr", lib, "str", ">AHK WITH ICON<", "ptr", Type:=10, "ptr")){
             MsgBox Could not extract script!
             return
           }
@@ -56,7 +55,6 @@ CreateScript(script, replace*){
         }
       }
     }
-
     Loop,Parse,script,`n,`r
     {
       If A_Index=1
@@ -80,10 +78,5 @@ CreateScript(script, replace*){
     }
   }
   StringReplace,script,script,`r`n,`n,All
-  for index, text in replace
-	StringReplace,script,script,_Replace_line%index%_:, %text%, A
-
-StringReplace,script,script, _Replace_line1_ = `n(, %A_space%, A
-StringReplace,script,script, _Replace_line1_ = `n), %A_space%, A
- Return Script
+  Return Script
 }

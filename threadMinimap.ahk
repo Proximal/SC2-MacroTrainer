@@ -19,6 +19,8 @@ pObject := "1", pObject := %pObject%
 pCriticalSection := "2", pCriticalSection := %pCriticalSection%
 aThreads := CriticalObject(pObject, pCriticalSection)
 
+tspeak("test", 100)
+msgbox test 
 
 if !A_IsCompiled
 {
@@ -33,7 +35,8 @@ GLOBAL GameIdentifier := "ahk_exe SC2.exe"
 GLOBAL config_file := "MT_Config.ini"
 GameExe := "SC2.exe"
 
-#include %A_ScriptDir%\Included Files\Gdip.ahk
+
+#Include <Gdip> ;In the library folder
 #Include <SC2_MemoryAndGeneralFunctions> ;In the library folder
 pToken := Gdip_Startup()
 Global aUnitID, aUnitName, aUnitSubGroupAlias, aUnitTargetFilter, aHexColours, MatrixColour
@@ -418,8 +421,7 @@ drawUnitDestinationsFromCompleteData(pGraphics, byRef aEnemyUnitData)
 
 		}
 	}
-	objtree(aEnemyMovements)
-	msgbox 
+
 	return
 }
 
