@@ -19,9 +19,6 @@ pObject := "1", pObject := %pObject%
 pCriticalSection := "2", pCriticalSection := %pCriticalSection%
 aThreads := CriticalObject(pObject, pCriticalSection)
 
-tSpeak("hello", 100)
-
-
 
 if !A_IsCompiled
 {

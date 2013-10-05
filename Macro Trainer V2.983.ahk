@@ -9295,12 +9295,28 @@ tooltip
 return
 
 f1::
-loop 30
-{
-	tSpeak(A_index, 100)
-	sleep 5
+
+getUnitMaxHp(getSelectedUnitIndex())
+getUnitMaxHp(unit)
+{   global B_uStructure, S_uStructure, O_uModelPointer
+    mp := readMemory(B_uStructure + unit * S_uStructure + O_uModelPointer, GameIdentifier) << 5 & 0xFFFFFFFF
+
+    addressArray := readMemory(mp + 0xC, GameIdentifier, 4)
+    pCurrentModel := readMemory(addressArray + 0x4, GameIdentifier, 4)
+    ;p1 := readMemory(mp + 0x7AC, GameIdentifier, 4)
+    
+    msgbox % clipboard := dectohex(mp)
+    msgbox % clipboard := dectohex(pCurrentModel)
+    ; Total armour = unit base armour + armour upgrade
+    msgbox % "Total Armour: " round(readMemory(pCurrentModel + 0x34, GameIdentifier) / 4096)
+    		. "`narmour Upgrade " readMemory(pCurrentModel + 0x6C, GameIdentifier)
+    		; (protoss shields)
+    		. "`n`nTotal Shield: " round(readMemory(pCurrentModel + 0xA8, GameIdentifier) / 4096)
+    		. "`nShield Upgrade " readMemory(pCurrentModel + 0xE0, GameIdentifier)
+
+    		
+    return round(readMemory(pCurrentModel + 0x2C, GameIdentifier) / 4096)
 }
-;objtree(var)
 return 
 
 ;  O_cqMoveState := 0x40

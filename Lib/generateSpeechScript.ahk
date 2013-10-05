@@ -37,10 +37,7 @@ generateSpeechScript()
 				for index, message in aMessages
 				{
 					if (message.volume != preSAPIVol)
-					{
-						SAPI.volume := message.volume
-						preSAPIVol := message.volume
-					}
+						SAPI.volume := preSAPIVol := message.volume
 					try SAPI.Speak(message.message)
 				}
 				aMessages := []	
