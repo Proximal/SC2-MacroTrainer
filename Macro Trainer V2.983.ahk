@@ -746,11 +746,11 @@ Overlay_Toggle:
 		gosub, g_unitPanelOverlay_timer
 		return
 	}	
-	Else If (A_ThisHotkey = ToggleMinimapOverlayKey)
+	Else If (A_ThisHotkey = ToggleMinimapOverlayKey && (DrawMiniMap || DrawAlerts || DrawSpawningRaces))
 	{
 		; Disable the minimap, but still draws detected units/non-converted gates
-		DrawMiniMap := !DrawMiniMap
-		gosub, MiniMap_Timer 
+		aThreads.MiniMap.ahkassign.DrawMiniMap := !aThreads.MiniMap.ahkgetvar.DrawMiniMap
+		aThreads.MiniMap.ahkPostFunction("DrawMiniMap")
 		return	
 	}
 	gosub, overlay_timer ;this makes the change take effect immediately. 
@@ -760,9 +760,10 @@ mt_pause_resume:
 	if (mt_Paused := !mt_Paused)
 	{
 		game_status := "lobby" ; with this clock = 0 when not in game 
-		timeroff("clock", "money", "gas", "scvidle", "supply", "worker", "inject", "unit_bank_read", "Auto_mine", "Auto_Group", "AutoGroupIdle", "MiniMap_Timer", "overlay_timer", "g_unitPanelOverlay_timer", "g_autoWorkerProductionCheck", "cast_ForceInject")
+		timeroff("clock", "money", "gas", "scvidle", "supply", "worker", "inject", "unit_bank_read", "Auto_mine", "Auto_Group", "AutoGroupIdle", "overlay_timer", "g_unitPanelOverlay_timer", "g_autoWorkerProductionCheck", "cast_ForceInject")
 		inject_timer := 0	;ie so know inject timer is off
 		Try DestroyOverlays()
+		Try aThreads.MiniMap.ahkPostFunction("DestroyOverlays")
 		tSpeak("Macro Trainer Paused")
 	}	
 	Else
@@ -779,7 +780,7 @@ clock:
 	if (!time && game_status = "game") || (UpdateTimers) ; time=0 outside game
 	{	
 		game_status := "lobby" ; with this clock = 0 when not in game (while in game at 0s clock = 44)	
-		timeroff("money", "gas", "scvidle", "supply", "worker", "inject", "unit_bank_read", "Auto_mine", "Auto_Group", "AutoGroupIdle", "MiniMap_Timer", "overlay_timer", "g_unitPanelOverlay_timer", "g_autoWorkerProductionCheck", "cast_ForceInject")
+		timeroff("money", "gas", "scvidle", "supply", "worker", "inject", "unit_bank_read", "Auto_mine", "Auto_Group", "AutoGroupIdle", "overlay_timer", "g_unitPanelOverlay_timer", "g_autoWorkerProductionCheck", "cast_ForceInject")
 		inject_timer := TimeReadRacesSet := UpdateTimers := Overlay_RunCount := PrevWarning := WinNotActiveAtStart := ResumeWarnings := 0 ;ie so know inject timer is off
 		if aThreads.MiniMap.ahkReady()
 			aThreads.MiniMap.ahkPostFunction("gameChange")
@@ -851,10 +852,12 @@ clock:
 		global aPlayer, aLocalPlayer
 		getPlayers(aPlayer, aLocalPlayer)
 		GameType := GetGameType(aPlayer)
-		if (ResumeWarnings || UserSavedAppliedSettings && alert_array[GameType, "Enabled"])  
-			doUnitDetection(unit, type, owner, "Resume")	;these first 3 vars are nothing - they wont get Read
+		if ((ResumeWarnings || UserSavedAppliedSettings) && alert_array[GameType, "Enabled"])  
+			aThreads.MiniMap.ahkPostFunction("doUnitDetection", unit, type, owner, "Resume")
+		;	doUnitDetection(unit, type, owner, "Resume")	;these first 3 vars are nothing - they wont get Read
 		Else
-			doUnitDetection(unit, type, owner, "Reset") ; clear the variables within the function
+			aThreads.MiniMap.ahkPostFunction("doUnitDetection", unit, type, owner, "Reset")
+		;	doUnitDetection(unit, type, owner, "Reset") ; clear the variables within the function
 		If (F_Inject_Enable && aLocalPlayer["Race"] = "Zerg")
 		{
 			zergGetHatcheriesToInject(oHatcheries)
@@ -883,7 +886,7 @@ clock:
 			SupplyType := aUnitID["SupplyDepot"]
 		Else If (aLocalPlayer["Race"] = "Protoss")
 			SupplyType := aUnitID["Pylon"]		
-		if (alert_array[GameType, "Enabled"] || warpgate_warn_on || supplyon) 
+		if (warpgate_warn_on || supplyon) 
 			settimer, unit_bank_read, %UnitDetectionTimer_ms%, -5
 		global minimap		
 		SetMiniMap(minimap)
@@ -906,8 +909,6 @@ clock:
 			hotkey, >!g, g_GLHF
 			Hotkey, If
 		}	
-	;	If (DrawMiniMap OR DrawAlerts OR DrawSpawningRaces)
-	;		SetTimer, MiniMap_Timer, %MiniMapRefresh%, -7		
 		SetTimer, overlay_timer, %OverlayRefresh%, -8	
 		SetTimer, g_unitPanelOverlay_timer, %UnitOverlayRefresh%, -9	
 
@@ -916,7 +917,7 @@ clock:
 		If IsInList(aLocalPlayer.Type, "Referee", "Spectator")
 			timeroff("money", "gas", "scvidle", "supply", "worker", "inject"
 				, "unit_bank_read", "Auto_mine", "Auto_Group", "AutoGroupIdle"
-				, "MiniMap_Timer", "overlay_timer", "g_unitPanelOverlay_timer"
+				, "overlay_timer", "g_unitPanelOverlay_timer"
 				, "g_autoWorkerProductionCheck", "cast_ForceInject")
 	}
 return
@@ -1815,7 +1816,8 @@ SetTimer, find_races_timer, off
 
 find_races:
 If (A_ThisLabel = "find_races")
-	TimeReadRacesSet := time
+	aThreads.MiniMap.ahkassign.TimeReadRacesSet := time
+	;TimeReadRacesSet := time
 if !time	;leave this in, so if they press the hotkey whileoutside of game, wont get gibberish
 	return
 Else EnemyRaces := GetEnemyRaces()
@@ -2225,8 +2227,8 @@ while (A_Index <= UnitBankCount)
 		&&  !(Filter & aUnitTargetFilter.UnderConstruction)
 			a_BaseListTmp.insert(u_iteration)
 	}
-	else if (alert_array[GameType, "Enabled"] && aPlayer[unit_owner, "Team"] <> aLocalPlayer["Team"])	
-		doUnitDetection(u_iteration, unit_type, unit_owner)
+;	else if (alert_array[GameType, "Enabled"] && aPlayer[unit_owner, "Team"] <> aLocalPlayer["Team"])	
+;		doUnitDetection(u_iteration, unit_type, unit_owner)
 } ; While ((UnitRead_i + EndCount) / getUnitCount() < 1.1)
 if warpgate_warn_on
 	gosub warpgate_warn
@@ -2234,110 +2236,6 @@ SupplyInProduction := SupplyInProductionCount
 a_BaseList := a_BaseListTmp
 return
 
-
-doUnitDetection(unit, type, owner, mode = "")
-{	global 
-	static Alert_TimedOut := [], Alerted_Buildings := [], Alerted_Buildings_Base := []
-	static l_WarningArrays := "Alert_TimedOut,Alerted_Buildings,Alerted_Buildings_Base"
-	if (Mode = "Reset")
-	{
-		Alert_TimedOut := [],, Alerted_Buildings := [], Alerted_Buildings_Base := []
-		return
-	}
-	else If (Mode = "Save")
-	{
-
-		loop, parse, l_WarningArrays, `,
-		{
-			For index, Object in %A_loopfield%
-			{
-				if (A_index <> 1)
-					l_AlertShutdown .= ","
-				if (A_loopfield = "Alert_TimedOut")
-					For PlayerNumber, object2 in Object	;index = player name
-						For Alert, warned_base in Object2
-							l_AlertShutdown .= PlayerNumber " " Alert " " warned_base
-				else
-					For PlayerNumber, warned_base in Object	;index = player number
-						l_AlertShutdown .= PlayerNumber " " warned_base	;use the space as the separator - not allowed in sc2 battletags	
-			}
-			Iniwrite, %l_AlertShutdown%, %config_file%, Resume Warnings, %A_loopfield%		
-			l_AlertShutdown := ""
-		}
-		Iniwrite, 1, %config_file%, Resume Warnings, Resume
-		return
-	}
-	Else if (Mode = "Resume")
-	{
-		Alert_TimedOut := [], Alerted_Buildings := [], Alerted_Buildings_Base := []
-		Iniwrite, 0, %config_file%, Resume Warnings, Resume
-		loop, parse, l_WarningArrays, `,
-		{
-			ArrayName := A_loopfield
-			%ArrayName% := []
-			Iniread, string, %config_file%, Resume Warnings, %ArrayName%, %A_space%
-			if string
-				loop, parse, string, `,
-				{
-					StringSplit, VarOut, A_loopfield, %A_Space%
-					if (ArrayName = "Alert_TimedOut")
-						%ArrayName%[A_index, VarOut1, VarOut2] := VarOut3
-					else
-						%ArrayName%[A_index, VarOut1] := VarOut2	
-				}
-		}
-		IniDelete, %config_file%, Resume Warnings
-		return
-	}
-
-		;i should really compare the unit type, as theres a chance that the warned unit has died and was replaced with another unit which should be warned
-	loop_AlertList:
-		loop, % alert_array[GameType, "list", "size"]
-		{ 			; the below if statement for time		
-			Alert_Index := A_Index	;the alert index number which corresponds to the ini file/config
-			if  ( type = aUnitID[alert_array[GameType, A_Index, "IDName"]] ) ;So if its a shrine and the player is not on ur team
-			{
-				if ( time < alert_array[GameType, A_Index, "DWB"] OR time > alert_array[GameType, A_Index, "DWA"]  ) ; too early/late to warn - add unit to 'warned list'
-				{			
-					For index, object in Alert_TimedOut	; ;checks if the exact unit is in the time list already (eg if time > dont_warn_before, the original if statement wont be true so BAS_Warning will remain "give warning")			
-						if ( unit = object[owner, Alert_Index] ) ;checks if type is in the list already
-							continue, loop_AlertList ; dont break, as could be other alerts for same unit but with different times later/lower in list									
-					Alert_TimedOut[Alert_TimedOut.maxindex() ? Alert_TimedOut.maxindex()+1 : 1, owner, Alert_Index] := unit
-					continue, loop_AlertList
-				}
-				Else
-				{	;during warn time lets check if the unit has already been warned			
-					For index, object in Alert_TimedOut	; ;checks if the exact unit is in the time list already (eg if time > dont_warn_before, the original if statement wont be true so BAS_Warning will remain "give warning")			
-						if ( unit = object[owner, Alert_Index] ) ;checks if type is in the list already									
-								break loop_AlertList
-
-					If  !alert_array[GameType, A_Index, "Repeat"] ;else check if this unit type has already been warned												
-						For index, warned_type in Alerted_Buildings ;	if ( type = Alerted_Buildings[index, owner] ) ;checks if type is in the list already						
-							if ( Alert_Index = warned_type[owner] ) ;checks if alert index i.e. alert 1,2,3 is in the list already						
-								break loop_AlertList			
-
-					For index, warned_unit in Alerted_Buildings_Base  ; this list contains all the exact units which have already been warned				
-						if ( unit = warned_unit[owner] ) ;checks if type is in the list already				
-							break loop_AlertList ; this warning is for the exact unitbase Address																				
-				}										
-				MiniMapWarning.insert({"Unit": unit, "Time": Time})
-
-				If ( alert_array[GameType, "Clipboard"] && WinActive(GameIdentifier))
-					clipboard := alert_array[GameType, A_Index, "Name"] " Detected - " aPlayer[owner, "Colour"] " - " aPlayer[owner, "Name"]
-				PrevWarning := []
-				PrevWarning.speech := alert_array[GameType, A_Index, "Name"]
-				PrevWarning.unitIndex := unit
-				tSpeak(alert_array[GameType, A_Index, "Name"])
-				if (!alert_array[GameType, A_Index, "Repeat"])	; =0 these below setup a list like above, but contins the type - to prevent rewarning
-					Alerted_Buildings.insert({(owner): Alert_Index})
-					;Alerted_Buildings[Alerted_Buildings.maxindex() ? Alerted_Buildings.maxindex()+1 : 1, owner] :=  Alert_Index					
-				Alerted_Buildings_Base.insert({(owner): unit})
-				;Alerted_Buildings_Base[Alerted_Buildings_Base.maxindex() ? Alerted_Buildings_Base.maxindex()+1 : 1, owner] := unit	; prevents the same exact unit beings warned on next run thru
-				break loop_AlertList	
-			} ;End of if unit is on list and player not on our team 
-		} ; loop, % alert_array[GameType, "list", "size"]
-	return
-}
 
 ; used to monitor the activation/min of the sc2 window
 ; Also for removing and reinstalling hooks
@@ -2357,10 +2255,11 @@ ShellMessage(wParam, lParam)
 		if (SC2hWnd != lParam && !ReDrawOverlays && !Dragoverlay)
 		{
 
-			ReDrawOverlays 	:= ReDrawMiniMap := ReDrawIncome := ReDrawResources 
+			ReDrawOverlays 	:= aThreads.MiniMap.ahkassign.ReDrawMiniMap := ReDrawIncome := ReDrawResources 
 							:= ReDrawArmySize := ReDrawWorker := ReDrawIdleWorkers 
 							:= RedrawUnit := ReDrawLocalPlayerColour := True
 			DestroyOverlays()
+			aThreads.MiniMap.ahkPostFunction("DestroyOverlays")
 		}
 		else if (SC2hWnd = lParam && getTime())
 		{
@@ -2372,8 +2271,11 @@ ShellMessage(wParam, lParam)
 			setLowLevelInputHooks(True)
 			;mt_Paused otherwise will redisplay the hidden and frozen overlays
 			if (ReDrawOverlays  && !mt_Paused && !IsInList(aLocalPlayer.Type, "Referee", "Spectator")) ; This will redraw immediately - but this isn't needed at all
-			{  											; need time to check if in game
-				gosub, MiniMap_Timer 					; also need to check player type
+			{  		
+				; need time to check if in game
+				; also need to check player type
+				If (DrawMiniMap || DrawAlerts || DrawSpawningRaces)
+					aThreads.MiniMap.ahkPostFunction("DrawMiniMap") 	
 				gosub, overlay_timer
 				gosub, g_unitPanelOverlay_timer
 				ReDrawOverlays := False
@@ -2394,24 +2296,9 @@ OverlayKeepOnTop:
 	else ReDrawOverlays := 0
 Return
 
-MiniMap_Timer:
-return ;testing minimapthread
-	if WinActive(GameIdentifier)
-		DrawMiniMap()
-Return
-
-g_HideMiniMap:
 ; This will temporarily disable the minimap, but still draw detected units/non-converted gates
-	if DrawMiniMap
-	{
-	;	Try Gui, MiniMapOverlay: Destroy 
-		DrawMiniMap := False
-		gosub, MiniMap_Timer ; so minimap dissapears instantly 
-		sleep, 2500
-		DrawMiniMap := True
-		gosub, MiniMap_Timer
-	;	ReDrawMiniMap := 1
-	}
+g_HideMiniMap:
+aThreads.MiniMap.ahkPostFunction("temporarilyHideMinimap")
 return
 
 overlay_timer: 	;DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdent=0, Background=0,Drag=0)
@@ -9299,7 +9186,7 @@ if (haystack~="S)" var)
 msgbox % getStructureRallyPoints(getSelectedUnitIndex(), rally)
 objtree(rally)
 return 
-f2::
+
 while (!getkeystate("Esc"))
 {
 
@@ -9311,7 +9198,6 @@ tooltip
 
 return
 
-f1::
 
 getUnitMaxHp(getSelectedUnitIndex())
 getUnitMaxHp(unit)

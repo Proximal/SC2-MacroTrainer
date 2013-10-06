@@ -19,9 +19,6 @@ pObject := "1", pObject := %pObject%
 pCriticalSection := "2", pCriticalSection := %pCriticalSection%
 aThreads := CriticalObject(pObject, pCriticalSection)
 
-tspeak("test", 100)
-msgbox test 
-
 if !A_IsCompiled
 {
 	debug := True
@@ -85,6 +82,7 @@ gameChange()
 	{
 		game_status := "game", warpgate_status := "not researched", gateway_count := warpgate_warning_set := 0
 		aUnitModel := []
+		MiniMapWarning := [], a_BaseList := []
 		if WinActive(GameIdentifier)
 			ReDrawMiniMap := ReDrawIncome := ReDrawResources := ReDrawArmySize := ReDrawWorker := RedrawUnit := ReDrawIdleWorkers := ReDrawLocalPlayerColour := 1
 		getPlayers(aPlayer, aLocalPlayer)
@@ -93,10 +91,14 @@ gameChange()
 		setupMiniMapUnitLists()
 		SetTimer, MiniMap_Timer, %MiniMapRefresh%, -7
 		EnemyBaseList := GetEBases()
+		if (alert_array[GameType, "Enabled"]) 
+			settimer, unit_bank_read, %UnitDetectionTimer_ms%, -5
+
 	}
 	else 
 	{
 		SetTimer, MiniMap_Timer, off
+		SetTimer, unit_bank_read, off
 	}
 	return
 }
@@ -236,6 +238,8 @@ DrawMiniMap()
 	SelectObject(hdc, obm) ; needed else eats ram ; Select the object back into the hdc
 	DeleteObject(hbm)   ; needed else eats ram 	; Now the bitmap may be deleted
 	DeleteDC(hdc) ; Also the device context related to the bitmap may be deleted
+
+
 Return
 }
 
@@ -433,6 +437,23 @@ createPens(penSize)
 	return a_pPens
 }
 
+temporarilyHideMinimap()
+{
+	Global DrawMiniMap
+	if DrawMiniMap
+	{
+	;	Try Gui, MiniMapOverlay: Destroy 
+		DrawMiniMap := False
+		gosub, MiniMap_Timer ; so minimap dissapears instantly 
+		sleep, 2500
+		DrawMiniMap := True
+		gosub, MiniMap_Timer
+	;	ReDrawMiniMap := 1
+	}
+}
+
+
+
 
 
 /*
@@ -454,7 +475,7 @@ drawPlayerCameras(pGraphics)
 
 	For slotNumber in aPlayer
 	{
-		If (aLocalPlayer.Team != aPlayer[slotNumber].Team || 1)
+		If (aLocalPlayer.Team != aPlayer[slotNumber].Team ) ;|| 1)
 		{
 			angle := getPlayerCameraAngle(slotNumber)
 			xCenter := getPlayerCameraPositionX(slotNumber)
@@ -489,6 +510,21 @@ drawPlayerCameras(pGraphics)
 	}
 	return 
 }
+
+
+unit_bank_read:
+UnitBankCount := DumpUnitMemory(UBMemDump)
+while (A_Index <= UnitBankCount)
+{
+	u_iteration := A_Index -1
+	If (numgetUnitTargetFilter(UBMemDump, u_iteration) & DeadFilterFlag
+		|| aLocalPlayer["Team"] = aPlayer[ (unit_owner := numgetUnitOwner(UBMemDump, u_iteration)) , "Team"]
+		|| !unit_owner)
+		Continue
+	doUnitDetection(u_iteration, numgetUnitModelType(numgetUnitModelPointer(UBMemDump, u_iteration)), unit_owner)
+} 
+return
+
 
 
 

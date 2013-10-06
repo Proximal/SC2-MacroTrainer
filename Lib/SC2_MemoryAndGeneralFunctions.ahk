@@ -2522,9 +2522,131 @@ tSpeak(Message, SAPIVol := "")
 
 	if !SAPIVol
 		SAPIVol := speech_volume
-	aThreads.Speech.ahkFunction("speak", Message, SAPIVol)
+	aThreads.Speech.ahkPostFunction("speak", Message, SAPIVol)
 	return
 }
+
+
+
+
+
+doUnitDetection(unit, type, owner, mode = "")
+{	
+	global config_file, alert_array, time, MiniMapWarning, PrevWarning, GameIdentifier, aUnitID, GameType
+
+	static Alert_TimedOut := [], Alerted_Buildings := [], Alerted_Buildings_Base := []
+	static l_WarningArrays := "Alert_TimedOut,Alerted_Buildings,Alerted_Buildings_Base"
+	time := getTime()
+	if (Mode = "Reset")
+	{
+		Alert_TimedOut := [],, Alerted_Buildings := [], Alerted_Buildings_Base := []
+		return
+	}
+	else If (Mode = "Save")
+	{
+
+		loop, parse, l_WarningArrays, `,
+		{
+			For index, Object in %A_loopfield%
+			{
+				if (A_index <> 1)
+					l_AlertShutdown .= ","
+				if (A_loopfield = "Alert_TimedOut")
+					For PlayerNumber, object2 in Object	;index = player name
+						For Alert, warned_base in Object2
+							l_AlertShutdown .= PlayerNumber " " Alert " " warned_base
+				else
+					For PlayerNumber, warned_base in Object	;index = player number
+						l_AlertShutdown .= PlayerNumber " " warned_base	;use the space as the separator - not allowed in sc2 battletags	
+			}
+			Iniwrite, %l_AlertShutdown%, %config_file%, Resume Warnings, %A_loopfield%		
+			l_AlertShutdown := ""
+		}
+		Iniwrite, 1, %config_file%, Resume Warnings, Resume
+		return
+	}
+	Else if (Mode = "Resume")
+	{
+		Alert_TimedOut := [], Alerted_Buildings := [], Alerted_Buildings_Base := []
+		Iniwrite, 0, %config_file%, Resume Warnings, Resume
+		loop, parse, l_WarningArrays, `,
+		{
+			ArrayName := A_loopfield
+			%ArrayName% := []
+			Iniread, string, %config_file%, Resume Warnings, %ArrayName%, %A_space%
+			if string
+				loop, parse, string, `,
+				{
+					StringSplit, VarOut, A_loopfield, %A_Space%
+					if (ArrayName = "Alert_TimedOut")
+						%ArrayName%[A_index, VarOut1, VarOut2] := VarOut3
+					else
+						%ArrayName%[A_index, VarOut1] := VarOut2	
+				}
+		}
+		IniDelete, %config_file%, Resume Warnings
+		return
+	}
+	
+		;i should really compare the unit type, as theres a chance that the warned unit has died and was replaced with another unit which should be warned
+	loop_AlertList:
+		loop, % alert_array[GameType, "list", "size"]
+		{ 			; the below if statement for time		
+			Alert_Index := A_Index	;the alert index number which corresponds to the ini file/config
+			if  ( type = aUnitID[alert_array[GameType, A_Index, "IDName"]] ) ;So if its a shrine and the player is not on ur team
+			{
+				if ( time < alert_array[GameType, A_Index, "DWB"] OR time > alert_array[GameType, A_Index, "DWA"]  ) ; too early/late to warn - add unit to 'warned list'
+				{			
+					For index, object in Alert_TimedOut	; ;checks if the exact unit is in the time list already (eg if time > dont_warn_before, the original if statement wont be true so BAS_Warning will remain "give warning")			
+						if ( unit = object[owner, Alert_Index] ) ;checks if type is in the list already
+							continue, loop_AlertList ; dont break, as could be other alerts for same unit but with different times later/lower in list									
+					Alert_TimedOut[Alert_TimedOut.maxindex() ? Alert_TimedOut.maxindex()+1 : 1, owner, Alert_Index] := unit
+					continue, loop_AlertList
+				}
+				Else
+				{	;during warn time lets check if the unit has already been warned			
+					For index, object in Alert_TimedOut	; ;checks if the exact unit is in the time list already (eg if time > dont_warn_before, the original if statement wont be true so BAS_Warning will remain "give warning")			
+						if ( unit = object[owner, Alert_Index] ) ;checks if type is in the list already									
+								break loop_AlertList
+
+					If  !alert_array[GameType, A_Index, "Repeat"] ;else check if this unit type has already been warned												
+						For index, warned_type in Alerted_Buildings ;	if ( type = Alerted_Buildings[index, owner] ) ;checks if type is in the list already						
+							if ( Alert_Index = warned_type[owner] ) ;checks if alert index i.e. alert 1,2,3 is in the list already						
+								break loop_AlertList			
+
+					For index, warned_unit in Alerted_Buildings_Base  ; this list contains all the exact units which have already been warned				
+						if ( unit = warned_unit[owner] ) ;checks if type is in the list already				
+							break loop_AlertList ; this warning is for the exact unitbase Address																				
+				}										
+				MiniMapWarning.insert({"Unit": unit, "Time": Time})
+
+				If ( alert_array[GameType, "Clipboard"] && WinActive(GameIdentifier))
+					clipboard := alert_array[GameType, A_Index, "Name"] " Detected - " aPlayer[owner, "Colour"] " - " aPlayer[owner, "Name"]
+				PrevWarning := []
+				PrevWarning.speech := alert_array[GameType, A_Index, "Name"]
+				PrevWarning.unitIndex := unit
+				tSpeak(alert_array[GameType, A_Index, "Name"])
+				if (!alert_array[GameType, A_Index, "Repeat"])	; =0 these below setup a list like above, but contins the type - to prevent rewarning
+					Alerted_Buildings.insert({(owner): Alert_Index})
+					;Alerted_Buildings[Alerted_Buildings.maxindex() ? Alerted_Buildings.maxindex()+1 : 1, owner] :=  Alert_Index					
+				Alerted_Buildings_Base.insert({(owner): unit})
+				;Alerted_Buildings_Base[Alerted_Buildings_Base.maxindex() ? Alerted_Buildings_Base.maxindex()+1 : 1, owner] := unit	; prevents the same exact unit beings warned on next run thru
+				break loop_AlertList	
+			} ;End of if unit is on list and player not on our team 
+		} ; loop, % alert_array[GameType, "list", "size"]
+	return
+}
+
+
+
+
+
+
+
+
+
+
+
 
 
 
