@@ -2060,7 +2060,7 @@ overlay_timer: 	;DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdent=0, Bac
 Return
 
 g_unitPanelOverlay_timer: 
-	If (DrawUnitOverlay && (WinActive(GameIdentifier) || Dragoverlay))
+	If (DrawUnitOverlay && (WinActive(GameIdentifier) || Dragoverlay)) || 1
 	{
 		getEnemyUnitCount(aEnemyUnits, aEnemyBuildingConstruction, aUnitID)
 		FilterUnits(aEnemyUnits, aEnemyBuildingConstruction, aUnitPanelUnits, aUnitID, aPlayer)
@@ -2657,6 +2657,7 @@ ini_settings_write:
 		Else if OverlayIdent NOT in 0,1,2,3
 			OverlayIdent := 3	
 	Iniwrite, %OverlayIdent%, %config_file%, %section%, OverlayIdent	
+	Iniwrite, %SplitUnitPanel%, %config_file%, %section%, SplitUnitPanel	
 	Iniwrite, %OverlayBackgrounds%, %config_file%, %section%, OverlayBackgrounds	
 	Iniwrite, %MiniMapRefresh%, %config_file%, %section%, MiniMapRefresh	
 	Iniwrite, %OverlayRefresh%, %config_file%, %section%, OverlayRefresh	
@@ -3828,24 +3829,25 @@ Gui, Tab, MiniMap2
 
 Gui, Tab, Overlays
 		;Gui, add, text, y+20 X%XTabX%, Display Overlays:
-		Gui, Add, GroupBox, y+30 x+20  w170 h235 section, Display Overlays:
+		Gui, Add, GroupBox, y+30 x+20  w170 h260 section, Display Overlays:
 		Gui, Add, Checkbox, xp+10 yp+25 vDrawIncomeOverlay Checked%DrawIncomeOverlay% , Income Overlay
-		Gui, Add, Checkbox, xp y+15 vDrawResourcesOverlay Checked%DrawResourcesOverlay% , Resource Overlay
-		Gui, Add, Checkbox, xp y+15 vDrawArmySizeOverlay Checked%DrawArmySizeOverlay% , Army Size Overlay
-		Gui, Add, Checkbox, xp y+15 vDrawWorkerOverlay Checked%DrawWorkerOverlay% , Local Harvester Count
-		Gui, Add, Checkbox, xp y+15 vDrawIdleWorkersOverlay Checked%DrawIdleWorkersOverlay%, Idle Worker Count
-		Gui, Add, Checkbox, xp y+15 vDrawLocalPlayerColourOverlay Checked%DrawLocalPlayerColourOverlay%, Local Player Colour
-		Gui, Add, Checkbox, xp y+15 vDrawUnitOverlay Checked%DrawUnitOverlay%, Unit Panel
+		Gui, Add, Checkbox, xp y+20 vDrawResourcesOverlay Checked%DrawResourcesOverlay% , Resource Overlay
+		Gui, Add, Checkbox, xp y+20 vDrawArmySizeOverlay Checked%DrawArmySizeOverlay% , Army Size Overlay
+		Gui, Add, Checkbox, xp y+20 vDrawWorkerOverlay Checked%DrawWorkerOverlay% , Local Harvester Count
+		Gui, Add, Checkbox, xp y+20 vDrawIdleWorkersOverlay Checked%DrawIdleWorkersOverlay%, Idle Worker Count
+		Gui, Add, Checkbox, xp y+20 vDrawLocalPlayerColourOverlay Checked%DrawLocalPlayerColourOverlay%, Local Player Colour
+		Gui, Add, Checkbox, xp y+20 vDrawUnitOverlay Checked%DrawUnitOverlay%, Unit Panel
 		
 ;		Gui, Add, Text, xp-10 y+40, Custom Unit Filter:
 		;Gui, Font, s10
-		Gui, Add, Button, center xp-10 y+40 w120 h40 Gg_GUICustomUnitPanel, UnitPanel Filter
+		Gui, Add, Button, center xp-10 y+60 w120 h40 Gg_GUICustomUnitPanel, UnitPanel Filter
 		;Gui, Font,
 
 
-		Gui, Add, GroupBox, ys XS+205 w170 h235, Overlays Misc:
+		Gui, Add, GroupBox, ys XS+205 w170 h260, Overlays Misc:
 		Gui, Add, Checkbox, yp+25 xp+10 vOverlayBackgrounds Checked%OverlayBackgrounds% , Show Icon Background		
-		Gui, Add, Text, yp+30 w80, Player Identifier:
+		Gui, Add, Checkbox, xp y+15 vSplitUnitPanel Checked%SplitUnitPanel% , Split Unit Panel		
+		Gui, Add, Text, yp+25 w80, Player Identifier:
 		if OverlayIdent in 0,1,2,3
 			droplist3_var := OverlayIdent + 1
 		Else droplist3_var := 3 
@@ -4069,6 +4071,7 @@ Inject_spawn_larva_TT := #Inject_spawn_larva_TT := "This needs to correspond to 
 MI_Queen_Group_TT := #MI_Queen_Group_TT := "The queens in this control are used to inject hatcheries.`n`nHence you must add your injecting queens to this control group!"
 F_InjectOff_Key_TT := #F_InjectOff_Key_TT := "During a match this hotkey will toggle (either disable or enable) automatic injects."
 
+SplitUnitPanel_TT := "When enabled, the unit panel will display units on separate a line to structures."
 OverlayIdent_TT := "Changes or disables the method of identifying players in the overlays."
 
 Playback_Alert_Key_TT := #Playback_Alert_Key_TT := "Repeats the previous alert"
@@ -4149,6 +4152,9 @@ DrawLocalPlayerColourOverlay_TT := "During team games and while using hostile co
 									. "This is helpful when your allies refer to you by colour."
 HostileColourAssist_TT := "During team games while using hostile colours (green, yellow, and red) enemy bases will still be displayed using player colours.`n`n"
 						. "This helps when co-ordinating attacks e.g. Let's attack yellow!"
+
+DrawUnitDestinations_TT := "Draws blue, green, and red lines on the minimap to indicate an enemy unit's current move state and destination."
+DrawPlayerCameras := "Draws the enemy's camera on the minimap, i.e. it indicates the map area the player is currently looking at."
 
 SleepSplitUnit_TT := TT_SleepSplitUnits_TT := TT_SleepSelectArmy_TT := SleepSelectArmy_TT := "Increase this value if the function doesn't work properly`nThis time is required to update the selection buffer."
 Sc2SelectArmy_Key_TT := #Sc2SelectArmy_Key_TT := "The in game (SC2) button used to select your entire army.`nDefault is F2"
@@ -8307,7 +8313,7 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyBuildingConstruction, byref aUn
 	       Continue
 		owner := numgetUnitOwner(MemDump, Unit) 
 
-	    if  (aPlayer[Owner, "Team"] <> aLocalPlayer["Team"] && Owner)
+	    if  (aPlayer[Owner, "Team"] <> aLocalPlayer["Team"] && Owner) || 1
 	    {
 	    	pUnitModel := numgetUnitModelPointer(MemDump, Unit)
 	    	Type := numgetUnitModelType(pUnitModel)
@@ -8315,6 +8321,9 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyBuildingConstruction, byref aUn
 				continue	
 			if (!Priority := aUnitInfo[Type, "Priority"]) ; faster than reading the priority each time - this is splitting hairs!!!
 				aUnitInfo[Type, "Priority"] := Priority := numgetUnitModelPriority(pUnitModel)
+
+			if (aUnitInfo[Type, "isStructure"] = "")
+				aUnitInfo[Type, "isStructure"] := TargetFilter & aUnitTargetFilter.Structure
 
 			if (TargetFilter & aUnitTargetFilter.UnderConstruction)
 			{
@@ -8498,6 +8507,7 @@ getLongestEnemyPlayerName(aPlayer)
 DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 {
 	GLOBAL aEnemyUnits, aEnemyBuildingConstruction, a_pBitmap, aPlayer, aLocalPlayer, aHexColours, GameIdentifier, config_file, UnitOverlayX, UnitOverlayY, MatrixColour 
+		, aUnitInfo, SplitUnitPanel
 	static Font := "Arial", Overlay_RunCount, hwnd1, DragPrevious := 0
 	Overlay_RunCount ++	
 	DestX := i := 0
@@ -8539,10 +8549,13 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 	G := Gdip_GraphicsFromHDC(hdc)
 	DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0)
 	setDrawingQuality(G)	
+	Height := haveSplitThisPanel := DestY := 0
 	for slot_number, priorityObject in aEnemyUnits ; slotnumber = owner and slotnuber is an object
 	{
-		DestY := i ? i*Height : 0
+		DestY += Height + (haveSplitThisPanel * .7 * Height)
 		DestX := 0
+
+		haveSplitThisPanel := False
 
 		If (PlayerIdentifier = 1 Or PlayerIdentifier = 2 )
 		{	
@@ -8569,6 +8582,10 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 			Gdip_DrawImage(G, pBitmap, 12*UserScale, DestY + Height/5, Width, Height, 0, 0, SourceWidth, SourceHeight, MatrixColour[aPlayer[slot_number, "Colour"]])
 			DestX := Width+15*UserScale 
 		}
+		
+		destUnitSplitX := firstPictureX := DestX
+		destUnitSplitY := DestY
+
 		for priority, object in priorityObject
 		{
 
@@ -8580,6 +8597,16 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 					continue ; as i dont have a picture for that unit - not a real unit?
 				SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
 				Width *= UserScale *.5, Height *= UserScale *.5	
+				
+				; Doing like this as it's a requested feature and im too lazy to change everything to make it simpler
+				if (!aUnitInfo[unit, "isStructure"] && SplitUnitPanel)
+				{
+					prevStructureX := DestX
+					prevStructureY := DestY
+					DestX := destUnitSplitX
+					DestY := destUnitSplitY + Height
+					haveSplitThisPanel := True
+				} 
 
 				Gdip_DrawImage(G, pBitmap, DestX, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
 				Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, DestX + .6*Width, DestY + .6*Height, Width/2.5, Height/2.5, 5)
@@ -8598,34 +8625,68 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 							gdip_TextToGraphics(G, unitCount, "x"(DestX + .5*Width + .4*Width/2) "y"(DestY + .15*Height/2)  " Bold Italic cFFFFFFFF r4 s" 9*UserScale, Font)
 						aEnemyBuildingConstruction[slot_number, priority].remove(unit, "")
 				}
+				if (!aUnitInfo[unit, "isStructure"] && SplitUnitPanel)
+				{
+					destUnitSplitX += (Width+5*UserScale)
+					DestX := prevStructureX
+					DestY := prevStructureY
+				}
+				else DestX += (Width+5*UserScale)
+			}
 
-				DestX += (Width+5*UserScale)
-			}	
 		}
-		; DestX += 35 ; to end buildings in construction appear further to the right
-		if (DestX + Width > WindowWidth)
-			WindowWidth := DestX
+		 DestX += (Width+5*UserScale) ; to end buildings in construction appear further to the right
+		 destUnitSplitX += (Width+5*UserScale) ; to constructing units in construction appear further to the right
+		; in case no units in construction
+
+		; I think if the unit panel is split, all of these units should be structures
+		; so I dont have to worry about checking structure or not
+		; wrong! some units like morphing archons are considered underconstruction!
+
 		for ConstructionPriority, priorityConstructionObject in aEnemyBuildingConstruction[slot_number]
+		{
 			for unit, unitCount in priorityConstructionObject		;	lets draw the buildings under construction (these are ones which werent already drawn above)
-				if (unit <> "TotalCount" && pBitmap := a_pBitmap[unit])				;	i.e. there are no already completed buildings of same type
+			{	
+				if (unit != "TotalCount" && pBitmap := a_pBitmap[unit])				;	i.e. there are no already completed buildings of same type
 				{
 					SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
 					Width *= UserScale *.5, Height *= UserScale *.5	
+					
+					if (!aUnitInfo[unit, "isStructure"] && SplitUnitPanel)
+					{
+						prevStructureX := DestX
+						prevStructureY := DestY
+						DestX := destUnitSplitX
+						DestY := destUnitSplitY + Height
+						haveSplitThisPanel := True
+					} 
+
 					Gdip_DrawImage(G, pBitmap, DestX, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
 					Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, DestX + .6*Width, DestY, Width/2.5, Height/2.5, 5)
 					if (unitCount >= 10)
 						gdip_TextToGraphics(G, unitCount, "x"(DestX + .5*Width + .3*Width/2) "y"(DestY + .15*Height/2)  " Bold Italic cFFFFFFFF r4 s" 9*UserScale, Font)
 					Else
 						gdip_TextToGraphics(G, unitCount, "x"(DestX + .5*Width + .4*Width/2) " y"(DestY + .15*Height/2)  " Bold Italic cFFFFFFFF r4 s" 9*UserScale, Font)
-					DestX += (Width+5*UserScale)
-					if (DestX + Width > WindowWidth)
-						WindowWidth := DestX
+					
+					if (!aUnitInfo[unit, "isStructure"] && SplitUnitPanel)
+					{
+						destUnitSplitX += (Width+5*UserScale)
+						DestX := prevStructureX
+						DestY := prevStructureY
+					}
+					else DestX += (Width+5*UserScale)
 				}
-
-				Height += 10*userscale	;needed to stop the edge of race pic overlap'n due to Supply pic -prot then zerg
-				i++ 	
+			}
+		}
+		; This is here to find the longest unit panel (as they will be different size for different players)
+		if (DestX + Width > WindowWidth)
+			WindowWidth := DestX
+		Height += 10*userscale	;needed to stop the edge of race pic overlap'n due to Supply pic -prot then zerg
 	}
-	WindowHeight := DestY+Height
+
+	; 2*height easy way to ensure the last split unit panel doesn't get cut off
+	WindowHeight := DestY+ 2*Height
+
 	Gdip_DeleteGraphics(G)
 	UpdateLayeredWindow(hwnd1, hdc,,,WindowWidth,WindowHeight)
 	SelectObject(hdc, obm)
@@ -9049,23 +9110,9 @@ getUnitMoveState41(unit)
 
 
 
-
-aSelection := ""
-qpx(1)
-;numGetSelectionSorted(aSelection)
-numGetSelectionBubbleSort(aSelection)
-objtree(aSelection)
-t := qpx(0) * 1000
-critical off 
-msgbox % t 
-return
-
-
-;msgbox % clipboard := getSelectedUnitIndex() << 18
-;msgbox % clipboard := dectohex(getSelectedUnitIndex() *S_uStructure + B_uStructure)
-;msgbox % clipboard := dectohex(getUnitAbilityPointer( getSelectedUnitIndex()))
-;msgbox % clipboard := dectohex(getUnitAbilityPointer(getSelectedUnitIndex()))
-;msgbox % isUnitStimed(getSelectedUnitIndex())
+f1::
+unit := getSelectedUnitIndex()
+tooltip, % getUnitTargetFilter(unit) & aUnitTargetFilter.UnderConstruction "`n" getUnitTargetFilter(unit) & aUnitTargetFilter.Structure, 500, 500
 return
 
 /* 	pSend vs Control Send

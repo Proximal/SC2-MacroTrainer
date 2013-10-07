@@ -2992,6 +2992,7 @@ readConfigFile()
 	IniRead, ToggleIdentifierKey, %config_file%, %section%, ToggleIdentifierKey, <#q
 	IniRead, CycleOverlayKey, %config_file%, %section%, CycleOverlayKey, <#Enter
 	IniRead, OverlayIdent, %config_file%, %section%, OverlayIdent, 2
+	IniRead, SplitUnitPanel, %config_file%, %section%, SplitUnitPanel, 1
 	IniRead, OverlayBackgrounds, %config_file%, %section%, OverlayBackgrounds, 0
 	IniRead, MiniMapRefresh, %config_file%, %section%, MiniMapRefresh, 300
 	IniRead, OverlayRefresh, %config_file%, %section%, OverlayRefresh, 1000
