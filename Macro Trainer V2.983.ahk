@@ -40,6 +40,17 @@
 
 */
 
+
+/*
+
+		in auto worker (and others? army?)
+		; remove when i have updated the other functions
+		;**********************
+		Global pClickDelay
+		input.pClickDelay(-1)
+
+*/
+
 /*
 		MEMORY BENCHMARKS  	- 	NUMGET VS NORMAL METHOD
 		
@@ -397,7 +408,7 @@ g_EmergencyRestart:
 				IniWrite, Icon, %config_file%, Misc Info, RestartMethod
 			SoundPlay, %A_Temp%\Windows Ding.wav
 			if (time && alert_array[GameType, "Enabled"])
-				doUnitDetection(unit, type, owner, "Save")	;these first 3 vars are nothing - they wont get Read
+				aThreads.MiniMap.ahkFunction("doUnitDetection", 0, 0, 0, "Save")	
 		;	try  Run "%A_ScriptFullPath%"
 			if (A_OSVersion = "WIN_XP") ; apparently the below command wont work on XP
 				try RunAsAdmin()
@@ -648,12 +659,7 @@ return
 }
 
 g_PrevWarning:
-	If PrevWarning
-	{
-		tSpeak(PrevWarning.speech)
-		MiniMapWarning.insert({"Unit": PrevWarning.unitIndex, "Time": Time})
-	}
-	Else tSpeak("There have been no alerts")
+	aThreads.MiniMap.ahkPostFunction("announcePreviousUnitWarning")
 Return
 
 Adjust_overlay:
@@ -746,11 +752,10 @@ Overlay_Toggle:
 		gosub, g_unitPanelOverlay_timer
 		return
 	}	
-	Else If (A_ThisHotkey = ToggleMinimapOverlayKey && (DrawMiniMap || DrawAlerts || DrawSpawningRaces))
+	Else If (A_ThisHotkey = ToggleMinimapOverlayKey)
 	{
 		; Disable the minimap, but still draws detected units/non-converted gates
-		aThreads.MiniMap.ahkassign.DrawMiniMap := !aThreads.MiniMap.ahkgetvar.DrawMiniMap
-		aThreads.MiniMap.ahkPostFunction("DrawMiniMap")
+		aThreads.MiniMap.ahkPostFunction("toggleMinimap")
 		return	
 	}
 	gosub, overlay_timer ;this makes the change take effect immediately. 
@@ -772,6 +777,10 @@ mt_pause_resume:
 		tSpeak("Macro Trainer Resumed")
 	}
 return
+
+
+
+
 ;------------
 ;	clock
 ;------------
@@ -783,7 +792,7 @@ clock:
 		timeroff("money", "gas", "scvidle", "supply", "worker", "inject", "unit_bank_read", "Auto_mine", "Auto_Group", "AutoGroupIdle", "overlay_timer", "g_unitPanelOverlay_timer", "g_autoWorkerProductionCheck", "cast_ForceInject")
 		inject_timer := TimeReadRacesSet := UpdateTimers := Overlay_RunCount := PrevWarning := WinNotActiveAtStart := ResumeWarnings := 0 ;ie so know inject timer is off
 		if aThreads.MiniMap.ahkReady()
-			aThreads.MiniMap.ahkPostFunction("gameChange")
+			aThreads.MiniMap.ahkFunction("gameChange")
 		Try DestroyOverlays()
 		setLowLevelInputHooks(False)
 	}
@@ -797,36 +806,15 @@ clock:
 								; Info about the current game for other functions 
 								; An easy way to have the info cleared each match
 		Global aUnitModel := []
-
-		If (DrawMiniMap || DrawAlerts || DrawSpawningRaces)
-		{
-			if !aThreads.MiniMap.ahkReady()
-			{
-				aThreads.MiniMap := AhkDllThread("Included Files\ahkH\AutoHotkey.dll")
-				if A_IsCompiled
-				{
-					if 0 
-						FileInstall, threadMiniMap.ahk, Ignore
-					miniMapScript :=  LoadScriptString("threadMiniMap.ahk")
-				; pObject  & pCriticalSection are passed as cmdline paramater 1 and 2 respectively
-				aThreads.MiniMap.ahktextdll(miniMapScript 
-										, "", pObject := CriticalObject(aThreads,1) " " pCriticalSection := CriticalObject(aThreads,2) )
-				miniMapScript := ""					
-				}
-				else
-				{ 
-					FileRead, miniMapScript, %A_ScriptDir%\threadMiniMap.ahk
-				; pObject  & pCriticalSection are passed as cmdline paramater 1 and 2 respectively
-				aThreads.MiniMap.ahkdll("threadMiniMap.ahk"
-										, "", pObject := CriticalObject(aThreads,1) " " pCriticalSection := CriticalObject(aThreads,2) )
-				}
-				miniMapScript := ""
-			}
-			else
-				aThreads.MiniMap.ahkPostFunction("gameChange")
-		}
-		Else if aThreads.MiniMap.ahkReady()
-			aThreads.MiniMap.ahkPostFunction("exitApp") ; use post function so don't have to wait and delay the routine below
+		global aPlayer, aLocalPlayer
+		getPlayers(aPlayer, aLocalPlayer)
+		GameType := GetGameType(aPlayer)
+		If IsInList(aLocalPlayer.Type, "Referee", "Spectator")
+			return
+		;	timeroff("money", "gas", "scvidle", "supply", "worker", "inject"
+		;		, "unit_bank_read", "Auto_mine", "Auto_Group", "AutoGroupIdle"
+		;		, "overlay_timer", "g_unitPanelOverlay_timer"
+		;		, "g_autoWorkerProductionCheck", "cast_ForceInject")
 	
 
 
@@ -841,39 +829,28 @@ clock:
 		BufferInputFast.createHotkeys(aButtons.List) ; re-create the hotkeys	
 		if WinActive(GameIdentifier)
 			ReDrawMiniMap := ReDrawIncome := ReDrawResources := ReDrawArmySize := ReDrawWorker := RedrawUnit := ReDrawIdleWorkers := ReDrawLocalPlayerColour := 1
-		if idle_enable	;this is the idle AFK
-			settimer, user_idle, 1000, -5
 		if (MaxWindowOnStart && time < 5 && !WinActive(GameIdentifier)) 
 		{	
 			WinActivate, %GameIdentifier%
 			MouseMove A_ScreenWidth/2, A_ScreenHeight/2
 			WinNotActiveAtStart := 1
 		}
-		global aPlayer, aLocalPlayer
-		getPlayers(aPlayer, aLocalPlayer)
-		GameType := GetGameType(aPlayer)
-		if ((ResumeWarnings || UserSavedAppliedSettings) && alert_array[GameType, "Enabled"])  
-			aThreads.MiniMap.ahkPostFunction("doUnitDetection", unit, type, owner, "Resume")
-		;	doUnitDetection(unit, type, owner, "Resume")	;these first 3 vars are nothing - they wont get Read
-		Else
-			aThreads.MiniMap.ahkPostFunction("doUnitDetection", unit, type, owner, "Reset")
-		;	doUnitDetection(unit, type, owner, "Reset") ; clear the variables within the function
+
 		If (F_Inject_Enable && aLocalPlayer["Race"] = "Zerg")
 		{
 			zergGetHatcheriesToInject(oHatcheries)
 			settimer, cast_ForceInject, %FInjectHatchFrequency%	
 		}
-		aResourceLocations := getMapInforMineralsAndGeysers()
+		aResourceLocations := getMapInfoMineralsAndGeysers()
 		if	mineralon
 			settimer, money, 500, -5
 		if	gas_on
 			settimer, gas, 1000, -5
 		if idleon		;this is the idle worker
 			settimer, scvidle, 500, -5	; the idle scv pointer changes every game
-		if supplyon
-			settimer, supply, 200, -5
-		if workeron
-			settimer, worker, 1000, -5
+		if idle_enable	;this is the idle AFK
+			settimer, user_idle, 1000, -5
+
 		LocalPlayerRace := aLocalPlayer["Race"] ; another messy lazy variable
 		if (EnableAutoWorker%LocalPlayerRace%Start && (aLocalPlayer["Race"] = "Terran" || aLocalPlayer["Race"] = "Protoss") )
 		{
@@ -882,12 +859,6 @@ clock:
 		}
 		if ( Auto_Read_Races AND race_reading ) && 	!((ResumeWarnings || UserSavedAppliedSettings) && time > 12)
 			SetTimer, find_races_timer, 1000, -20
-		If (aLocalPlayer["Race"] = "Terran")
-			SupplyType := aUnitID["SupplyDepot"]
-		Else If (aLocalPlayer["Race"] = "Protoss")
-			SupplyType := aUnitID["Pylon"]		
-		if (warpgate_warn_on || supplyon) 
-			settimer, unit_bank_read, %UnitDetectionTimer_ms%, -5
 		global minimap		
 		SetMiniMap(minimap)
 		setupMiniMapUnitLists()
@@ -914,11 +885,17 @@ clock:
 
 		EnemyBaseList := GetEBases()		
 		UserSavedAppliedSettings := 0
-		If IsInList(aLocalPlayer.Type, "Referee", "Spectator")
-			timeroff("money", "gas", "scvidle", "supply", "worker", "inject"
-				, "unit_bank_read", "Auto_mine", "Auto_Group", "AutoGroupIdle"
-				, "overlay_timer", "g_unitPanelOverlay_timer"
-				, "g_autoWorkerProductionCheck", "cast_ForceInject")
+
+		If (DrawMiniMap || DrawAlerts || DrawSpawningRaces || warpgate_warn_on
+			|| supplyon || workeron || alert_array[GameType, "Enabled"])
+		{
+			if !aThreads.MiniMap.ahkReady()
+				launchMiniMapThread()
+			else
+				aThreads.MiniMap.ahkFunction("gameChange")
+		}
+		Else if aThreads.MiniMap.ahkReady()
+			aThreads.MiniMap.ahkFunction("exitApp") 
 	}
 return
 
@@ -1872,118 +1849,6 @@ gas:
 return				
 
 
-;--------------------------------------------
-;    worker production -------------
-;--------------------------------------------
-worker:	
-	If (aLocalPlayer["Race"] = "Terran" || aLocalPlayer["Race"] = "Protoss")
-		WorkerInProductionWarning(a_BaseList, workerProductionTPIdle, 1 + sec_workerprod, additional_delay_worker_production, 120)
-	else
-	{
-		if ( OldWorker_i <> NewWorker_i := getPlayerWorkerCount())
-		{	;A worker has been produced or killed
-			reset_worker_time := time, Worker_i = 0
-			workerproduction_time_if := workerproduction_time
-		}
-		else
-		{ 
-			if  (time - reset_worker_time) > workerproduction_time_if AND (Worker_i <= sec_workerprod) ; sec_workerprod sets how many times to play warning.
-			{
-				If ( aLocalPlayer["Race"] = "Terran"  )
-					tSpeak(w_workerprod_T)
-				Else If ( aLocalPlayer["Race"] = "Protoss" )
-					tSpeak(w_workerprod_P)
-				Else If ( aLocalPlayer["Race"] = "Zerg" )
-					tSpeak(w_workerprod_Z)
-				Else 
-					tSpeak("Build Worker")
-				workerproduction_time_if := additional_delay_worker_production ; will give the second warning after 12 ingame seconds
-				reset_worker_time := time		; This allows for the additional warnings to be delayed relative to the 1st warning
-				Worker_i ++
-			}
-		}
-		 OldWorker_i := NewWorker_i
-	}
-	return
-
-WorkerInProductionWarning(a_BaseList, maxIdleTime, maxWarnings, folloupWarningDelay, MaxWorkerCount)	;add secondary delay and max workers
-{	global aLocalPlayer, w_workerprod_T, w_workerprod_P, w_workerprod_Z
-	static lastWorkerInProduction, warningCount, lastwarning
-
-	if (getPlayerWorkerCount() >= MaxWorkerCount)	;stop warnings enough workers
-		return
-
-	time := getTime()
-	for index, Base in a_BaseList
-	{
-
-		if (state := isWorkerInProduction(Base))
-		{
-			warningCount := 0
-			lastWorkerInProduction := time
-			return
-		}
-		else if (state < 0)
-			morphingBases++
-		else lazyBases++	;hence will only warn if there are no workers in production
-							; and at least 1 building is capable of making workers i.e not flying/moring
-	}
-	if !lazyBases && morphingBases
-		lastWorkerInProduction := time	;this prevents you getting a warning immeditely after the base finishes morphing
-
-	if lazybases && (time - lastWorkerInProduction >= maxIdleTime) && ( warningCount < maxWarnings)
-	{
-		if (warningCount && time - lastwarning < folloupWarningDelay)
-			return
-		lastwarning := time
-		warningCount++
-		If ( aLocalPlayer["Race"] = "Terran" )
-			tSpeak(w_workerprod_T)
-		Else If ( aLocalPlayer["Race"] = "Protoss" )
-			tSpeak(w_workerprod_P)
-		Else If ( aLocalPlayer["Race"] = "Zerg" )
-			tSpeak(w_workerprod_Z)
-		Else 
-			tSpeak("Build Worker")	;dont update the idle time so it gets bigger
-	}
-	return 
-}
-;--------------------------------------------
-;    suply -------------
-;--------------------------------------------
-
-supply:
-	sup:= getPlayerSupply(), SupCap := getPlayerSupplyCap() ; Returns 0 when memory returns Fail
-	if  ( !sup or sup < minimum_supply )  		;this prevents the onetime speaking before a value has been read for sup - Note 0 instead of fail due to math procedures above
-		return 
-	Else If ( sup < supplylower )
-		trigger := sub_lowerdelta
-	Else If ( sup >= supplylower AND sup < supplymid )	
-		trigger := sub_middelta
-	Else If ( sup >= supplymid AND sup < supplyupper )	
-		trigger := sub_upperdelta
-	Else if ( sup >= supplyupper )
-		trigger := above_upperdelta
-	if ( ( sup + trigger ) >= supcap AND supcap < 200 And !SupplyInProduction)	
-	{
-									; <= sec_supply, as this includes the 1st primary warning
-		if (Supply_i <= sec_supply )  ; sec_supply sets how many times alert will be played it should be counted.
-		{
-			tSpeak(w_supply)	;this is the supply warning
-			settimer, supply, % additional_delay_supply *1000
-		}
-		Else	; this ensures follow up warnings are not delayed by waiting for additional seconds before running timmer
-			settimer, supply, 200
-		Supply_i ++	
-	}
-	else
-	{
-		Supply_i = 0 	; reset alert count
-		settimer, supply, 200
-	}
-return
-
-
 ;-------
 ; scv idle
 ;-------
@@ -2111,131 +1976,6 @@ worker_count:
 		tSpeak(newcount "Workers")
 return	
 
-;--------------------
-;	WarpGate Warning
-;--------------------
-
-;	I think the problem here is if a user converts a warpate while the timer isnt running and then another warpgate finishes
-;	it will rewarn the user even though it hasn't really waited the correct amount of time
-;  also remeber that it only updates gateway/warpgate count after doing a unit bank read /iteration
-
-; note: wargate warning only drawn for a set amount of time as the 'time' is only read in once in the unit bank section - so if user has a long follow up delay, that wont be accompanied by a minimap alert
-
-warpgate_warn:
-	if  (warpgate_status != "researched")
-		return
-	if gateway_count  ; this prvents the minmap warning showing converted gateways until they naturally time out in the drawing section
-		for index, object in aGatewayWarnings
-			if ( getUnitType(object.unit) != aUnitID["Gateway"] || isUnitDead(object.unit) || !isUnitLocallyOwned(object.unit) ) ;doing this in case unit dies or becomes other players gateway as this list onyl gets cleared when gateway count = 0
-			{
-				for minimapIndex, minimapObject in MiniMapWarning
-					if (minimapObject.unit = object.unit)
-					{
-						MiniMapWarning.remove(minimapIndex, "") 
-						break
-					}
-				aGatewayWarnings.remove(index, "") ; "" so deleting doesnt stuff up for loop		
-			}
-
-	if (gateway_count AND !warpgate_warning_set)
-	{
-		warpgateGiveWarningAt := getTime() + delay_warpgate_warn
-		warpgate_warning_set := 1
-	}
-	else if ( !gateway_count  )
-	{
-		warpgate_warn_count := 0
-		warpgate_warning_set := 0
-
-		for index, object in aGatewayWarnings
-			for minimapIndex, minimapObject in MiniMapWarning
-				if (minimapObject.unit = object.unit)
-					minimapObject.remove(minimapIndex, "")        ;lets clear the list of old gateway warnings. This gets rid of the x as soon as the gateway becomes a warpgate
-		aGatewayWarnings := []
-
-	}
-	else if ( warpgate_warn_count <= sec_warpgate && time > warpgateGiveWarningAt) 
-	{
-		warpgate_warn_count ++
-		warpgateGiveWarningAt := getTime() + delay_warpgate_warn_followup
-
-		for index, object in aGatewayWarnings
-		{
-			object.time := time ; so this will display an x even with long  follow up delay
-			MiniMapWarning.insert(object)
-		}
-
-		if aGatewayWarnings.maxindex()
-			tSpeak(w_warpgate)	
-	}
-
-return
-
-;------------------
-;	Unit Bank Read	; I wrote this when I was first startings. I should really clean it up, but I cant be fucked.
-;------------------
-unit_bank_read:
-SupplyInProductionCount := gateway_count := warpgate_count := 0
-a_BaseListTmp := []
-UnitBankCount := DumpUnitMemory(UBMemDump)
-while (A_Index <= UnitBankCount)
-{
-	u_iteration := A_Index -1
-
-	pUnitModel := numgetUnitModelPointer(UBMemDump, u_iteration)
-
-	unit_type := numgetUnitModelType(pUnitModel)
-	unit_owner := numgetUnitOwner(UBMemDump, u_iteration) 
-	Filter := numgetUnitTargetFilter(UBMemDump, u_iteration)
-	; unit_HP := MAXHP - sustained dmg
-	; unit_HP := (ReadMemory((( ReadMemory(B_uStructure + ((A_Index - 1) * S_uStructure) + O_uModelPointer,"StarCraft II") << 5) & 0xFFFFFFFF) + u_MaxHP_Off,"StarCraft II") /4096) - (ReadMemory(B_uStructure + ((A_Index - 1) * S_uStructure) + 0x10C,"StarCraft II")/4096)
-
-	If (Filter & DeadFilterFlag)
-		Continue
-	if (unit_owner = aLocalPlayer["Slot"])
-	{
-		IF (unit_type = supplytype AND Filter & aUnitTargetFilter.UnderConstruction)
-				SupplyInProductionCount ++		
-		if ( warpgate_warn_on AND (unit_type = aUnitID["Gateway"] OR unit_type = aUnitID["WarpGate"]) 
-			AND !(Filter & aUnitTargetFilter.UnderConstruction))
-		{
-			if ( unit_type = aUnitID["Gateway"]) 
-			{
-				gateway_count ++	
-				if warpgate_warning_set
-				{
-					isinlist := 0
-					For index in aGatewayWarnings
-					{
-						if aGatewayWarnings[index,"Unit"] = u_iteration
-						{	isinlist := 1
-							Break
-						}		
-					}
-					if !isinlist
-						aGatewayWarnings.insert({"Unit": u_iteration, "Time": Time})
-				} 
-			}
-			Else if (unit_type = aUnitID["WarpGate"] && warpgate_status <> "researched") ; as unit_type must = warpgate_id
-			{
-				warpgate_status := "researched"
-			;	settimer warpgate_warn, 1000
-			}
-		}
-		if (unit_type = aUnitID["Nexus"] || unit_type = aUnitID["CommandCenter"] 
-		|| unit_type =  aUnitID["PlanetaryFortress"] || unit_type =  aUnitID["OrbitalCommand"])
-		&&  !(Filter & aUnitTargetFilter.UnderConstruction)
-			a_BaseListTmp.insert(u_iteration)
-	}
-;	else if (alert_array[GameType, "Enabled"] && aPlayer[unit_owner, "Team"] <> aLocalPlayer["Team"])	
-;		doUnitDetection(u_iteration, unit_type, unit_owner)
-} ; While ((UnitRead_i + EndCount) / getUnitCount() < 1.1)
-if warpgate_warn_on
-	gosub warpgate_warn
-SupplyInProduction := SupplyInProductionCount
-a_BaseList := a_BaseListTmp
-return
-
 
 ; used to monitor the activation/min of the sc2 window
 ; Also for removing and reinstalling hooks
@@ -2259,7 +1999,7 @@ ShellMessage(wParam, lParam)
 							:= ReDrawArmySize := ReDrawWorker := ReDrawIdleWorkers 
 							:= RedrawUnit := ReDrawLocalPlayerColour := True
 			DestroyOverlays()
-			aThreads.MiniMap.ahkPostFunction("DestroyOverlays")
+			aThreads.MiniMap.ahkFunction("DestroyOverlays")
 		}
 		else if (SC2hWnd = lParam && getTime())
 		{
@@ -2275,7 +2015,7 @@ ShellMessage(wParam, lParam)
 				; need time to check if in game
 				; also need to check player type
 				If (DrawMiniMap || DrawAlerts || DrawSpawningRaces)
-					aThreads.MiniMap.ahkPostFunction("DrawMiniMap") 	
+					aThreads.MiniMap.ahkFunction("DrawMiniMap") 	
 				gosub, overlay_timer
 				gosub, g_unitPanelOverlay_timer
 				ReDrawOverlays := False
@@ -2987,10 +2727,10 @@ ini_settings_write:
 	{
 		initialiseBrushColours(aHexColours, a_pBrushes)
 		if aThreads.MiniMap.ahkReady()
-			aThreads.MiniMap.ahkPostFunction("updateUserSettings")
+			aThreads.MiniMap.ahkFunction("updateUserSettings")
 
 		if (time && alert_array[GameType, "Enabled"])
-			 doUnitDetection(unit, type, owner, "Save")
+			 aThreads.MiniMap.ahkFunction("doUnitDetection", 0, 0, 0, "Save")
 		Tmp_GuiControl := ""
 		CreateHotkeys()	; to reactivate the hotkeys
 		UserSavedAppliedSettings := 1
@@ -8897,7 +8637,7 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 
 
 ; This is used by the auto worker macro to check if a real one, or a extra/macro one
-getMapInforMineralsAndGeysers() 
+getMapInfoMineralsAndGeysers() 
 { 	GLOBAL aUnitID
 	resources := [], resources.minerals := [], resources.geysers := []
 
@@ -10136,3 +9876,28 @@ return
 
 
 */
+
+
+
+launchMiniMapThread()
+{
+	if !aThreads.MiniMap.ahkReady()
+	{
+		aThreads.MiniMap := AhkDllThread("Included Files\ahkH\AutoHotkey.dll")
+		if A_IsCompiled
+		{
+			if 0 
+				FileInstall, threadMiniMap.ahk, Ignore
+			miniMapScript :=  LoadScriptString("threadMiniMap.ahk")
+		
+		; pObject  & pCriticalSection are passed as cmdline paramater 1 and 2 respectively
+			aThreads.MiniMap.ahktextdll(miniMapScript 
+				, "", pObject := CriticalObject(aThreads,1) " " pCriticalSection := CriticalObject(aThreads,2) )
+				
+		}
+		else
+			aThreads.MiniMap.ahkdll("threadMiniMap.ahk"
+								, "", pObject := CriticalObject(aThreads,1) " " pCriticalSection := CriticalObject(aThreads,2) )
+	}
+	Return 
+}

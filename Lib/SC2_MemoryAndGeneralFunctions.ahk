@@ -2527,7 +2527,7 @@ tSpeak(Message, SAPIVol := "")
 }
 
 
-
+; One of the first functions i ever wrote. Very messy. But it works and im lazy
 
 
 doUnitDetection(unit, type, owner, mode = "")
@@ -2540,6 +2540,7 @@ doUnitDetection(unit, type, owner, mode = "")
 	if (Mode = "Reset")
 	{
 		Alert_TimedOut := [],, Alerted_Buildings := [], Alerted_Buildings_Base := []
+		Iniwrite, 0, %config_file%, Resume Warnings, Resume
 		return
 	}
 	else If (Mode = "Save")
@@ -2638,7 +2639,17 @@ doUnitDetection(unit, type, owner, mode = "")
 }
 
 
-
+announcePreviousUnitWarning()
+{
+	global
+	If PrevWarning
+	{
+		tSpeak(PrevWarning.speech)
+		MiniMapWarning.insert({"Unit": PrevWarning.unitIndex, "Time": Time})
+	}
+	Else tSpeak("There have been no alerts")
+	return 
+}
 
 
 
