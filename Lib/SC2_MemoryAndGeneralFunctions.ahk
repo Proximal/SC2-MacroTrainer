@@ -3105,3 +3105,49 @@ getCursorUnit()
 	p2 := readMemory(p1 + 0x2C0, GameIdentifier)
 	return  readMemory(p2 + 0x21C, GameIdentifier) >> 18
 }
+
+/*
+	Transport Structure (includes bunker too)
+
+	Base = readmemory(getUnitAbilityPointer(unit) + 0x24)
+	+ 0x20 	Memory Address of the unit in the unit structure
+	+ 0x28 	Currently queued/loaded unit count eg 2 marines + hellbat = 3
+			This includes units queued up to be loaded.
+				E.g. click medivac and shift click onto 4 marines, value = 1 (even though is empty)
+				the value remains current cargo + 1 until units begin loading
+				select 4 marines and then click onto medivac, value = 4 (even though is empty)
+	+ 0x3c 	Total units loaded (accumulative) 4bytes
+	+ 0x40 	Total units unloaded
+		(current loaded units = their deltas)
+	+ 0x44 	UnloadTimer	Counts down to 0 (resets and occurs for each unit being unloaded)
+
+*/
+
+; Returns unit count inside a transport eg 2 marines + hellbat = 3
+getCargoCount(unit)
+{
+	transportStructure := readmemory(getUnitAbilityPointer(unit) + 0x24, GameIdentifier)
+	totalLoaded := readmemory(transportStructure + 0x3C, GameIdentifier)
+	totalUnloaded := readmemory(transportStructure + 0x40, GameIdentifier)
+	return totalLoaded - totalUnloaded
+}
+
+/*
+	There is some other information within the pCurrentModel 
+	for example: 
+		+ 0x2C 	- Max Hp /4096
+		+ 0x34 	- Total armour (unit base armour + armour upgrade) /4096
+		+ 0x6C	- Current armour Upgrade
+		+ 0xA8  - Total Shields /4096
+		+ 0xE0 	- Shield Upgrades
+	
+*/
+
+getUnitMaxHp(unit)
+{   global B_uStructure, S_uStructure, O_uModelPointer
+    mp := readMemory(B_uStructure + unit * S_uStructure + O_uModelPointer, GameIdentifier) << 5 & 0xFFFFFFFF
+    addressArray := readMemory(mp + 0xC, GameIdentifier, 4)
+    pCurrentModel := readMemory(addressArray + 0x4, GameIdentifier, 4) 		
+    return round(readMemory(pCurrentModel + 0x2C, GameIdentifier) / 4096)
+}
+return 
