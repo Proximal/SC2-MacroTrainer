@@ -3071,3 +3071,15 @@ readConfigFile()
 
 	return
 }
+
+
+/*
+current unit under cursor
+p1 := readMemory(sc2exe+0x31073C0, GameIdentifier, 4)
+p2 := readMemory(p1 + 0x2C0, GameIdentifier, 4)
+p3 := readMemory(p2 + 0x21C, GameIdentifier, 4)
+u := p3 >> 18
+
+
+
+*/

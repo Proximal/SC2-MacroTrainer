@@ -2060,7 +2060,7 @@ overlay_timer: 	;DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdent=0, Bac
 Return
 
 g_unitPanelOverlay_timer: 
-	If (DrawUnitOverlay && (WinActive(GameIdentifier) || Dragoverlay)) || 1
+	If (DrawUnitOverlay && (WinActive(GameIdentifier) || Dragoverlay))
 	{
 		getEnemyUnitCount(aEnemyUnits, aEnemyBuildingConstruction, aUnitID)
 		FilterUnits(aEnemyUnits, aEnemyBuildingConstruction, aUnitPanelUnits, aUnitID, aPlayer)
@@ -4154,7 +4154,7 @@ HostileColourAssist_TT := "During team games while using hostile colours (green,
 						. "This helps when co-ordinating attacks e.g. Let's attack yellow!"
 
 DrawUnitDestinations_TT := "Draws blue, green, and red lines on the minimap to indicate an enemy unit's current move state and destination."
-DrawPlayerCameras := "Draws the enemy's camera on the minimap, i.e. it indicates the map area the player is currently looking at."
+DrawPlayerCameras_TT := "Draws the enemy's camera on the minimap, i.e. it indicates the map area the player is currently looking at."
 
 SleepSplitUnit_TT := TT_SleepSplitUnits_TT := TT_SleepSelectArmy_TT := SleepSelectArmy_TT := "Increase this value if the function doesn't work properly`nThis time is required to update the selection buffer."
 Sc2SelectArmy_Key_TT := #Sc2SelectArmy_Key_TT := "The in game (SC2) button used to select your entire army.`nDefault is F2"
@@ -8313,7 +8313,7 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyBuildingConstruction, byref aUn
 	       Continue
 		owner := numgetUnitOwner(MemDump, Unit) 
 
-	    if  (aPlayer[Owner, "Team"] <> aLocalPlayer["Team"] && Owner) || 1
+	    if  (aPlayer[Owner, "Team"] <> aLocalPlayer["Team"] && Owner)
 	    {
 	    	pUnitModel := numgetUnitModelPointer(MemDump, Unit)
 	    	Type := numgetUnitModelType(pUnitModel)
@@ -8419,6 +8419,10 @@ FilterUnits(byref aEnemyUnits, byref aEnemyBuildingConstruction, byref aUnitPane
 				if !priority := aUnitInfo[mainUnit, "Priority"]
 					priority := subPriority		;take a change, hopefully they will have same priority
 
+				; since its possible that the main unit hasn't been allocated a isStructure
+				; use the isStructure from the subUnit which will be the same, and has already been assigned
+				if (aUnitInfo[mainUnit, "isStructure"] = "")
+					aUnitInfo[mainUnit, "isStructure"] := aUnitInfo[subUnit, "isStructure"]
 
 
 				if priorityObject[priority, mainUnit]
@@ -8465,6 +8469,11 @@ FilterUnits(byref aEnemyUnits, byref aEnemyBuildingConstruction, byref aUnitPane
 				mainUnit := aUnitID[mainUnit]
 				if !priority := aUnitInfo[mainUnit, "Priority"]
 					priority := subPriority		;take a change, hopefully they will have same priority can cause issues
+
+				; since its possible that the main unit hasn't been allocated a isStructure
+				; use the isStructure from the subUnit which will be the same, and has already been assigned
+				if (aUnitInfo[mainUnit, "isStructure"] = "")
+					aUnitInfo[mainUnit, "isStructure"] := aUnitInfo[subUnit, "isStructure"]
 
 				if priorityObject[priority, mainUnit]
 					priorityObject[priority, mainUnit] += total
@@ -8552,7 +8561,7 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 	Height := haveSplitThisPanel := DestY := 0
 	for slot_number, priorityObject in aEnemyUnits ; slotnumber = owner and slotnuber is an object
 	{
-		DestY += Height + (haveSplitThisPanel * .7 * Height)
+		DestY += Height + (haveSplitThisPanel * Height)
 		DestX := 0
 
 		haveSplitThisPanel := False
@@ -8604,8 +8613,8 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 					prevStructureX := DestX
 					prevStructureY := DestY
 					DestX := destUnitSplitX
-					DestY := destUnitSplitY + Height
-					haveSplitThisPanel := True
+					DestY := destUnitSplitY + Height * 1.1 	; 1.1 so the tranparent backgrounds of the count and count underconstruction
+					haveSplitThisPanel := True 				; dont overlap
 				} 
 
 				Gdip_DrawImage(G, pBitmap, DestX, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
@@ -8657,8 +8666,8 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 						prevStructureX := DestX
 						prevStructureY := DestY
 						DestX := destUnitSplitX
-						DestY := destUnitSplitY + Height
-						haveSplitThisPanel := True
+						DestY := destUnitSplitY + Height * 1.1 	; 1.1 so the tranparent backgrounds of the count and count underconstruction
+						haveSplitThisPanel := True 				; dont overlap 
 					} 
 
 					Gdip_DrawImage(G, pBitmap, DestX, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
