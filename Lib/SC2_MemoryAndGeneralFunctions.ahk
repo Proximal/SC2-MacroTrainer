@@ -3150,4 +3150,3 @@ getUnitMaxHp(unit)
     pCurrentModel := readMemory(addressArray + 0x4, GameIdentifier, 4) 		
     return round(readMemory(pCurrentModel + 0x2C, GameIdentifier) / 4096)
 }
-return 

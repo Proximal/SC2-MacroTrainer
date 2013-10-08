@@ -14,8 +14,6 @@
 ; if script re-copied from github should save it using UTF-8 with BOM (otherwise some of the ascii symbols like • wont be displayed correctly)
 /*	Things to do
 
-
-
 	Update unit panel structure so can add build progress and hallucination properties
 	Check if chrono structures are powered - It seems to be a behaviour ' Power User (Queue) '
 	Team send warn message after clicking building..maybe
@@ -239,6 +237,8 @@ If (auto_update AND A_IsCompiled AND CheckForUpdates(ProgramVersion, url.vr ))
 	Gui, Add, Button, x+100 yp w100 h30 gLaunch vDisable_Auto_Update, &Disable
 	Gui, Add, Button, x+100 yp w100 h30 gLaunch vCancel_Auto_Update, &Cancel
 	Gui, Show, w600, Macro Trainer Update
+	sleep, 1500 	; needs 50ms to prevent wb unknown comm error
+	WB.Refresh() 	; So it updates to current changelog (not one in cache)
 	Return				
 }
 
@@ -619,6 +619,8 @@ g_PixelColourFinderHelpFile:
 	Gui Add, ActiveX, xm w980 h640 vWB, Shell.Explorer
 	WB.Navigate(url.PixelColour)
 	Gui, Show,, Pixel Finder - How To:
+	sleep, 1500 	; needs 50ms to prevent wb unknown comm error
+	WB.Refresh() 	; So it updates to current changelog (not one in cache)
 Return
 
 g_FindTestPixelColour:
@@ -2159,12 +2161,13 @@ TrayUpdate:
 	;	Gui, Add, Edit, x12 y+10 w560 h220 readonly -E0x200, % LTrim(changelog_text)
 		Gui Add, ActiveX, x12 y+10 w560 h220  vWB, Shell.Explorer
 		WB.Navigate(url.changelog)
-
 		Gui, Font, S8 CDefault Bold, Verdana
 		Gui, Add, Button, Default x122 y330 w100 h30 gUpdate, &Update
 		Gui, Font, Norm 
 		Gui, Add, Button, x342 y330 w100 h30 gGuiReturn, Cancel
 		Gui, Show, x483 y242 h379 w593, Macro Trainer Update
+		sleep, 1500 	; needs 50ms to prevent wb unknown comm error
+		WB.Refresh() 	; So it updates to current changelog (not one in cache)		
 		Return				
 	}
 	Else
@@ -4380,6 +4383,8 @@ B_ChangeLog:
 	Gui Add, ActiveX, xm w980 h640 vWB, Shell.Explorer
 	WB.Navigate(url.changelog)
 	Gui, Show,,ChangeLog Vr: %ProgramVersion%
+	sleep, 1500 	; needs 50ms to prevent wb unknown comm error
+	WB.Refresh() 	; So it updates to current changelog (not one in cache)
 Return
 
 B_Report:
@@ -9117,6 +9122,19 @@ if (haystack~="S)" var)
 	8920.450152
 */
 
+/*
+	There is some other information within the pCurrentModel 
+	for example: 
+		+ 0x2C 	- Max Hp /4096
+		+ 0x34 	- Total armour (unit base armour + armour upgrade) /4096
+		+ 0x6C	- Current armour Upgrade
+		+ 0xA8  - Total Shields /4096
+		+ 0xE0 	- Shield Upgrades
+	
+*/
+
+
+
 
 
 /* 	pSend vs Control Send
@@ -9126,8 +9144,6 @@ if (haystack~="S)" var)
 	But CS lags a lot longer than that! 
 	There is a lag during/after the command
 	the pS lag is way shorter!
-*/
- 
  ; control send 0.87
  ; psend 0.117
  /*
