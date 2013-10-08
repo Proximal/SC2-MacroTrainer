@@ -89,6 +89,7 @@ Global B_LocalCharacterNameID
 , O_mRight
 , O_mTop
 , aUnitMoveStates
+, B_UnitCursor
 
 , P_IsUserPerformingAction
 , O1_IsUserPerformingAction
@@ -262,7 +263,8 @@ loadMemoryAddresses(base)
 						, Follow: 512
 						, FollowNoAttack: 515} ; This is used by unit spell casters such as infestors and High temps which dont have a real attack 
 						; note I have Converted these hex numbers from their true decimal conversion 
-						
+		
+	B_UnitCursor :=	base + 0x31073C0 					
 
  															; If used as 4byte value, will return 256 	there seems to be 2 of these memory addresses
 	 P_IsUserPerformingAction := base + 0x031073C0			; This is a 1byte value and return 1  when user is casting or in is rallying a hatch via gather/rally or is in middle of issuing Amove/patrol command but
@@ -2952,6 +2954,16 @@ readConfigFile()
 	IniRead, RemoveUnitEnable, %config_file%, %section%, RemoveUnitEnable, 0
 	IniRead, castRemoveUnit_key, %config_file%, %section%, castRemoveUnit_key, +Esc
 
+	IniRead, EasyUnloadTerranEnable, %config_file%, %section%, EasyUnloadTerranEnable, 0
+	IniRead, EasyUnloadProtossEnable, %config_file%, %section%, EasyUnloadProtossEnable, 0
+	IniRead, EasyUnloadZergEnable, %config_file%, %section%, EasyUnloadZergEnable, 0
+	IniRead, EasyUnloadHotkey, %config_file%, %section%, EasyUnloadHotkey, F5
+	IniRead, EasyUnloadQueuedHotkey, %config_file%, %section%, EasyUnloadQueuedHotkey, +F5
+	IniRead, EasyUnload_T_Key, %config_file%, %section%, EasyUnload_T_Key, d
+	IniRead, EasyUnload_P_Key, %config_file%, %section%, EasyUnload_P_Key, d
+	IniRead, EasyUnload_Z_Key, %config_file%, %section%, EasyUnload_Z_Key, d
+	IniRead, EasyUnloadStorageKey, %config_file%, %section%, EasyUnloadStorageKey, 9
+
 	;[Alert Location]
 	IniRead, Playback_Alert_Key, %config_file%, Alert Location, Playback_Alert_Key, <#F7
 
@@ -3072,14 +3084,24 @@ readConfigFile()
 	return
 }
 
+stripModifiers(pressedKey)
+{
+    StringReplace, pressedKey, pressedKey, ^ 
+	StringReplace, pressedKey, pressedKey, + ;	these are needed in case the hotkey/keyname in key list contains these modifiers
+	StringReplace, pressedKey, pressedKey, ! 
+	StringReplace, pressedKey, pressedKey, *
+	StringReplace, pressedKey, pressedKey, ~
+	return pressedKey
+}
 
-/*
-current unit under cursor
-p1 := readMemory(sc2exe+0x31073C0, GameIdentifier, 4)
-p2 := readMemory(p1 + 0x2C0, GameIdentifier, 4)
-p3 := readMemory(p2 + 0x21C, GameIdentifier, 4)
-u := p3 >> 18
+; This returns 0 when no unit is under the cursor
+; Note: if the units real index is 0, then you need to look for another value to indicate a unit is actually
+; under the cursors
+; But this would never really occur in the game, as a players unit wouldnt have index 0 (probably a map item)
 
-
-
-*/
+getCursorUnit()
+{
+	p1 := readMemory(B_UnitCursor, GameIdentifier)
+	p2 := readMemory(p1 + 0x2C0, GameIdentifier)
+	return  readMemory(p2 + 0x21C, GameIdentifier) >> 18
+}

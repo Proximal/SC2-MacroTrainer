@@ -851,7 +851,7 @@ clock:
 		if idle_enable	;this is the idle AFK
 			settimer, user_idle, 1000, -5
 
-		LocalPlayerRace := aLocalPlayer["Race"] ; another messy lazy variable
+		LocalPlayerRace := aLocalPlayer["Race"] ; another messy lazy variable but used in a few spots
 		if (EnableAutoWorker%LocalPlayerRace%Start && (aLocalPlayer["Race"] = "Terran" || aLocalPlayer["Race"] = "Protoss") )
 		{
 			SetTimer, g_autoWorkerProductionCheck, 200
@@ -2251,6 +2251,13 @@ ini_settings_write:
 	Tmp_GuiControl := A_GuiControl ; store this result otherwise it will be empty when it gets to the bottom
 	if (Tmp_GuiControl = "save" OR Tmp_GuiControl = "Apply") ;I come from the save menu options Not an update and writing back user settings
 	{
+
+		; If a hotkey error occurs inside the try, execution will jump outside of the try and
+		; throw the catch error
+		; BUT if you use a try on each individual command, execution will continue
+		; coulde use the errorlevel setting in hotkey command
+		; or just relay on conditional #if hotkey-on variants 
+
 		Try 
 		{
 			Hotkey, If, WinActive(GameIdentifier) && !BufferInputFast.isInputBlockedOrBuffered() 						
@@ -2579,7 +2586,17 @@ ini_settings_write:
 	IniWrite, %DeselectSleepTime%, %config_file%, %section%, DeselectSleepTime
 	IniWrite, %RemoveUnitEnable%, %config_file%, %section%, RemoveUnitEnable
 	IniWrite, %castRemoveUnit_key%, %config_file%, %section%, castRemoveUnit_key
-		
+
+	IniWrite, %EasyUnloadTerranEnable%, %config_file%, %section%, EasyUnloadTerranEnable
+	IniWrite, %EasyUnloadProtossEnable%, %config_file%, %section%, EasyUnloadProtossEnable
+	IniWrite, %EasyUnloadZergEnable%, %config_file%, %section%, EasyUnloadZergEnable
+	IniWrite, %EasyUnloadHotkey%, %config_file%, %section%, EasyUnloadHotkey
+	IniWrite, %EasyUnloadQueuedHotkey%, %config_file%, %section%, EasyUnloadQueuedHotkey
+	IniWrite, %EasyUnload_T_Key%, %config_file%, %section%, EasyUnload_T_Key
+	IniWrite, %EasyUnload_P_Key%, %config_file%, %section%, EasyUnload_P_Key
+	IniWrite, %EasyUnload_Z_Key%, %config_file%, %section%, EasyUnload_Z_Key
+	IniWrite, %EasyUnloadStorageKey%, %config_file%, %section%, EasyUnloadStorageKey
+
 	;[Misc Hotkey]
 	IniWrite, %worker_count_local_key%, %config_file%, Misc Hotkey, worker_count_key
 	IniWrite, %worker_count_enemy_key%, %config_file%, Misc Hotkey, enemy_worker_count
@@ -2883,7 +2900,7 @@ Gui, Add, GroupBox, xs y+15 w200 h160, MiniMap && Backspace Ctrl Group
 				droplist_var := 10
 			else 
 				droplist_var := MI_Queen_Group  	; i have a dropdown menu now so user has to put a number, cant use another key as I use this to check the control groups
-			Gui, Add, DropDownList,  x+30 w45 center vMI_Queen_Group Choose%droplist_var%, 1|2|3|4|5|6|7||8|9|0
+			Gui, Add, DropDownList,  x+30 w45 center vMI_Queen_Group Choose%droplist_var%, 1|2|3|4|5|6|7|8|9|0
 		;	Gui, Add, Edit, Readonly y+10 xs+60 w90 center vMI_Queen_Group, %MI_Queen_Group%
 		;		Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#MI_Queen_Group,  Edit			
 
@@ -3475,14 +3492,14 @@ Gui, Tab, Auto
 				droplist_var := 10
 			else 
 				droplist_var := Base_Control_Group_T_Key  	; i have a dropdown menu now so user has to put a number, cant use another key as I use this to check the control groups
-			Gui, Add, DropDownList,  xs+130 yp w45 center vBase_Control_Group_T_Key Choose%droplist_var%, 1|2|3|4||5|6|7|8|9|0
+			Gui, Add, DropDownList,  xs+130 yp w45 center vBase_Control_Group_T_Key Choose%droplist_var%, 1|2|3|4|5|6|7|8|9|0
 
 		Gui, Add, Text, X%thisXTabX% yp+35 w100, Storage Ctrl Group:
 			if (AutoWorkerStorage_T_Key = 0)
 				droplist_var := 10
 			else 
 				droplist_var := AutoWorkerStorage_T_Key  	; i have a dropdown menu now so user has to put a number, cant use another key as I use this to check the control groups
-			Gui, Add, DropDownList,  xs+130 yp w45 center vAutoWorkerStorage_T_Key Choose%droplist_var%, 1|2|3|4|5|6|7||8|9|0
+			Gui, Add, DropDownList,  xs+130 yp w45 center vAutoWorkerStorage_T_Key Choose%droplist_var%, 1|2|3|4|5|6|7|8|9|0
 
 
 		Gui, Add, Text, X%thisXTabX% yp+35 w100, Make SCV Key:
@@ -3506,14 +3523,14 @@ Gui, Tab, Auto
 				droplist_var := 10
 			else 
 				droplist_var := Base_Control_Group_P_Key  	; i have a dropdown menu now so user has to put a number, cant use another key as I use this to check the control groups
-			Gui, Add, DropDownList, xs+130 yp w45 center vBase_Control_Group_P_Key Choose%droplist_var%, 1|2|3|4||5|6|7|8|9|0
+			Gui, Add, DropDownList, xs+130 yp w45 center vBase_Control_Group_P_Key Choose%droplist_var%, 1|2|3|4|5|6|7|8|9|0
 
 		Gui, Add, Text, X%thisXTabX% yp+35 w100, Storage Ctrl Group:
 			if (AutoWorkerStorage_P_Key = 0)
 				droplist_var := 10
 			else 
 				droplist_var := AutoWorkerStorage_P_Key  	; i have a dropdown menu now so user has to put a number, cant use another key as I use this to check the control groups
-			Gui, Add, DropDownList,  xs+130 yp w45 center vAutoWorkerStorage_P_Key Choose%droplist_var%, 1|2|3|4|5|6|7||8|9|0	
+			Gui, Add, DropDownList,  xs+130 yp w45 center vAutoWorkerStorage_P_Key Choose%droplist_var%, 1|2|3|4|5|6|7|8|9|0	
 
 		Gui, Add, Text, X%thisXTabX% yp+35 w100, Make Probe Key:
 		Gui, Add, Edit, Readonly yp-2 x+1 w65 center vAutoWorkerMakeWorker_P_Key, %AutoWorkerMakeWorker_P_Key%
@@ -3546,7 +3563,7 @@ Gui, Tab, Info
 		gui, font, norm s10
 		gui, font, 		
 
-Gui, Add, Tab2, w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vMiscAutomation_TAB, Select Army||Spread|Remove Unit|
+Gui, Add, Tab2, w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vMiscAutomation_TAB, Select Army||Spread|Remove Unit|Easy Unload
 Gui, Tab, Select Army
 	Gui, Add, Checkbox, y+25 x+15 vSelectArmyEnable Checked%SelectArmyEnable% , Enable Select Army Function		
 	Gui, Add, Checkbox, yp+25 xp+15 section vModifierBeepSelectArmy Checked%ModifierBeepSelectArmy%, Beep if modifier is held down		
@@ -3596,6 +3613,46 @@ Gui, Tab, Remove Unit
 	Gui, Add, Edit, Readonly yp-2 xs+85 center w65 vcastRemoveUnit_key gedit_hotkey, %castRemoveUnit_key%
 	Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#castRemoveUnit_key,  Edit
 	Gui, Add, Text, Xs yp+70 w380, This removes the first unit (top left of selection card) from the selected units.`n`nThis is very usefuly for 'cloning' workers to geisers or sending 1 ling towards a group of banelings etc.
+
+Gui, Tab, Easy Unload
+	Gui, Add, GroupBox, x+95 y+30 w95 h100 section, Enable
+		Gui, Add, Checkbox, xp+10 yp+25 vEasyUnloadTerranEnable Checked%EasyUnloadTerranEnable%, Terran	
+		Gui, Add, Checkbox, xp y+10 vEasyUnloadProtossEnable Checked%EasyUnloadProtossEnable%, Protoss	
+		Gui, Add, Checkbox, xp y+10 vEasyUnloadZergEnable Checked%EasyUnloadZergEnable%, Zerg
+
+			Gui, Add, GroupBox, xs+105 ys w100 h100, Storage Ctrl Group
+				if (EasyUnloadStorageKey = 0)
+					droplist_var := 10
+				else 
+					droplist_var := EasyUnloadStorageKey  	; i have a dropdown menu now so user has to put a number, cant use another key as I use this to check the control groups
+				Gui, Add, DropDownList,  xp+25 yp+40 w45 center vEasyUnloadStorageKey Choose%droplist_var%, 1|2|3|4|5|6|7|8|9|0
+
+
+	Gui, Add, GroupBox, xs ys+110 w205 h90, Unload Hotkey
+		Gui, Add, Text, Xp+10 yp+25 w85, Immediate:
+			Gui, Add, Edit, Readonly yp-2 xs+85 center w65 vEasyUnloadHotkey gedit_hotkey, %EasyUnloadHotkey%
+			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#EasyUnloadHotkey,  Edit 	
+
+		Gui, Add, Text, Xs+10 yp+35 w85, Queued:
+			Gui, Add, Edit, Readonly yp-2 xs+85 center w65 vEasyUnloadQueuedHotkey gedit_hotkey, %EasyUnloadQueuedHotkey%
+			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#EasyUnloadQueuedHotkey,  Edit 			
+	
+	Gui, Add, GroupBox, xs y+25 w205 h120, SC2 Unload All Button
+		Gui, Add, Text, Xp+10 yp+25 w85, Terran:
+		Gui, Add, Edit, Readonly yp-2 xs+85 w65 center vEasyUnload_T_Key, %EasyUnload_T_Key%
+			Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#EasyUnload_T_Key,  Edit
+		
+		Gui, Add, Text, Xs+10 yp+35 w85, Protoss:
+		Gui, Add, Edit, Readonly yp-2 xs+85 w65 center vEasyUnload_P_Key, %EasyUnload_P_Key%
+			Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#EasyUnload_P_Key,  Edit
+		
+		Gui, Add, Text, Xs+10 yp+35 w85, Zerg:
+		Gui, Add, Edit, Readonly yp-2 xs+85 w65 center vEasyUnload_Z_Key, %EasyUnload_Z_Key%
+			Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#EasyUnload_Z_Key,  Edit
+
+
+
+
 
 Gui, Add, Tab2, w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vAutoMine_TAB, Settings||Hotkeys|
 Gui, Tab, Settings	
@@ -7089,6 +7146,11 @@ CreateHotkeys()
 	#If, WinActive(GameIdentifier) && time && !isMenuOpen() && RemoveUnitEnable && !BufferInputFast.isInputBlockedOrBuffered()
 	#If, WinActive(GameIdentifier) && !isMenuOpen() && time && !BufferInputFast.isInputBlockedOrBuffered()
 	#If, WinActive(GameIdentifier) && time && !BufferInputFast.isInputBlockedOrBuffered()
+	#If, WinActive(GameIdentifier) && !isMenuOpen() && ((EasyUnloadTerranEnable && aLocalPlayer.Race = "Terran") 
+										|| (EasyUnloadProtossEnable && aLocalPlayer.Race = "Protoss")   
+										|| (EasyUnloadZergEnable && aLocalPlayer.Race = "Zerg")) && time
+	#If, WinActive(GameIdentifier) && EasyUnloadProtossEnable && time
+	#If, WinActive(GameIdentifier) && EasyUnloadZergEnable && time
 	#If
 	Hotkey, If, WinActive(GameIdentifier) && !BufferInputFast.isInputBlockedOrBuffered() 														
 		hotkey, %warning_toggle_key%, mt_pause_resume, on		
@@ -7122,6 +7184,14 @@ CreateHotkeys()
 		hotkey, %inject_start_key%, inject_start, on
 		hotkey, %inject_reset_key%, inject_reset, on
 	}	
+
+
+	Hotkey, If, WinActive(GameIdentifier) && !isMenuOpen() && ((EasyUnloadTerranEnable && aLocalPlayer.Race = "Terran") 
+										|| (EasyUnloadProtossEnable && aLocalPlayer.Race = "Protoss")   
+										|| (EasyUnloadZergEnable && aLocalPlayer.Race = "Zerg")) && time
+		hotkey, %EasyUnloadHotkey%, gEasyUnload, on
+		hotkey, %EasyUnloadQueuedHotkey%, gEasyUnloadQueued, on
+
 	Hotkey, If, WinActive(GameIdentifier) && time && !isMenuOpen() && SelectArmyEnable && !BufferInputFast.isInputBlockedOrBuffered()
 		hotkey, %castSelectArmy_key%, g_SelectArmy, on  ; buffer to make double tap better remove 50ms delay
 	Hotkey, If, WinActive(GameIdentifier) && time && !isMenuOpen() && SplitUnitsEnable && !BufferInputFast.isInputBlockedOrBuffered()
@@ -7143,6 +7213,11 @@ CreateHotkeys()
 		hotkey, %Cast_ChronoRoboticsFacility_Key%, Cast_ChronoStructure, on	
 	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Terran" || aLocalPlayer["Race"] = "Protoss")  && time && !BufferInputFast.isInputBlockedOrBuffered()	
 		hotkey, %ToggleAutoWorkerState_Key%, g_UserToggleAutoWorkerState, on	
+	
+	; Important Note: EnableAutoWorker%LocalPlayerRace% evaluates true even when EnableAutoWorkerTerran = 0,
+	; hence the label/hotkey will be fired even when disabled rather than doing EnableAutoWorkerTerran && Race = Terran
+	; since this is a pass through ~ key, just check if EnableAutoWorker%LocalPlayerRace% is true in the g_temporarilyDisableAutoWorkerProduction lable
+
 	Hotkey, If, WinActive(GameIdentifier) && time && !isMenuOpen() && EnableAutoWorker%LocalPlayerRace% && !BufferInputFast.isInputBlockedOrBuffered() ; cant use !ischatopen() - as esc will close chat before memory reads value so wont see chat was open
 		hotkey, *~Esc, g_temporarilyDisableAutoWorkerProduction, on	
 	Hotkey, If, WinActive(GameIdentifier) && !isMenuOpen() && time && !BufferInputFast.isInputBlockedOrBuffered()
@@ -9118,8 +9193,84 @@ getUnitMoveState41(unit)
 }
 
 
+gEasyUnloadQueued:
+gEasyUnload:
+thread, NoTimers, true
+castEasyUnload(A_ThisHotkey, A_ThisLabel = "gEasyUnloadQueued")
+return
 
-f1::
+
+castEasyUnload(hotkey, queueUnload)
+{	
+	global EasyUnload_T_Key, EasyUnload_P_Key, EasyUnload_Z_Key, EasyUnloadStorageKey
+
+	if aLocalPlayer.Race = "Terran"
+		unloadAll_Key := EasyUnload_T_Key
+	else if aLocalPlayer.Race = "Protoss"
+		unloadAll_Key := EasyUnload_P_Key	
+	else if aLocalPlayer.Race = "Zerg"
+		unloadAll_Key := EasyUnload_Z_Key
+	else return
+	
+	; Incase the user has modifiers in the hotkey
+	; Ahk doesn't seem to be blocking these from interferring with SC2
+	; should really send these as INput, but that will cause issues
+	; and when the user releases the keys, windowsoutside of sc2 should register this as im not blocking input
+	; or using critical 
+
+	if instr(hotkey, "^")
+		upSequence .= "{ctrl Up}"
+	if instr(hotkey, "+")
+		upSequence .= "{Shift Up}"
+	if instr(hotkey, "!")
+		upSequence .= "{Alt Up}"
+	if upSequence
+		psend(upSequence)
+	hotkey := stripModifiers(hotkey)
+	while GetKeyState(hotkey, "P")
+	{
+		If (unitIndex := getCursorUnit())
+		{
+			if unitIndex not in %lMedivacs%
+			{
+				; Undecided if I want to check if medivac has troops inside
+				; as you may want to ctrl group the empty medivacs too and bring them with you
+
+				if (getUnitType(unitIndex) = aUnitId.Medivac)
+				{
+					if !lMedivacs
+						queueUnload ? MTSend("{click}^" EasyUnloadStorageKey "{Shift Down}" unloadAll_Key "{click}{Shift Up}")
+									: MTSend("{click}^" EasyUnloadStorageKey unloadAll_Key "{click}")
+					else
+						queueUnload ? MTSend("{click}{Shift Down}" EasyUnloadStorageKey unloadAll_Key "{click}{Shift Up}")
+									: MTSend("{click}+" EasyUnloadStorageKey unloadAll_Key "{click}")
+					lMedivacs .= unitIndex ","
+					soundplay *-1		
+				}
+			}
+		}
+		sleep 20
+	}
+	if lMedivacs
+		MTSend(EasyUnloadStorageKey)
+	; to restore the modifier keys if the user is still holding them down
+	; e.g. is they want to shift click somewhere without first releasing the shift key
+	if upSequence
+	{
+		if GetKeyState("Ctrl", "P")
+			downSequence .= "{Ctrl Down}"
+		if GetKeyState("Shift", "P")
+			downSequence .= "{Shift Down}"
+		if GetKeyState("Alt", "P")
+			downSequence .= "{Alt Down}"
+		psend(downSequence)
+	}
+	return
+}
+
+
+
+
 unit := getSelectedUnitIndex()
 tooltip, % getUnitTargetFilter(unit) & aUnitTargetFilter.UnderConstruction "`n" getUnitTargetFilter(unit) & aUnitTargetFilter.Structure, 500, 500
 return
