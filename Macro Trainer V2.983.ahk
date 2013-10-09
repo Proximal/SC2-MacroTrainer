@@ -2814,9 +2814,9 @@ loop, parse, optionsMenuTitles, |
 
 		Gui, Font, s10
 		GUIButtonPosition := guiMenuHeight + 13
-		Gui, Add, Button, x415 y%GUIButtonPosition% w50 h25 gIni_settings_write, Save
-		Gui, Add, Button, x+20 w50 h25 gOptionsGuiClose, Cancel
-		Gui, Add, Button, x+20 w50 h25 gIni_settings_write, Apply
+		Gui, Add, Button, x403 y%GUIButtonPosition% w54 h25 gIni_settings_write, Save
+		Gui, Add, Button, x+20 w54 h25 gOptionsGuiClose, Cancel
+		Gui, Add, Button, x+20 w54 h25 gIni_settings_write, Apply
 		Gui, Font, 
 
 Gui, Add, Tab2, w440 h%guiMenuHeight% ys x165 vInjects_TAB, Info||Basic|Auto|Alert|Manual
@@ -7151,11 +7151,7 @@ CreateHotkeys()
 	#If, WinActive(GameIdentifier) && time && !isMenuOpen() && RemoveUnitEnable && !BufferInputFast.isInputBlockedOrBuffered()
 	#If, WinActive(GameIdentifier) && !isMenuOpen() && time && !BufferInputFast.isInputBlockedOrBuffered()
 	#If, WinActive(GameIdentifier) && time && !BufferInputFast.isInputBlockedOrBuffered()
-	#If, WinActive(GameIdentifier) && !isMenuOpen() && ((EasyUnloadTerranEnable && aLocalPlayer.Race = "Terran") 
-										|| (EasyUnloadProtossEnable && aLocalPlayer.Race = "Protoss")   
-										|| (EasyUnloadZergEnable && aLocalPlayer.Race = "Zerg")) && time
-	#If, WinActive(GameIdentifier) && EasyUnloadProtossEnable && time
-	#If, WinActive(GameIdentifier) && EasyUnloadZergEnable && time
+	#If, WinActive(GameIdentifier) && !isMenuOpen() && EasyUnload%LocalPlayerRace%Enable && time
 	#If
 	Hotkey, If, WinActive(GameIdentifier) && !BufferInputFast.isInputBlockedOrBuffered() 														
 		hotkey, %warning_toggle_key%, mt_pause_resume, on		
@@ -7190,10 +7186,10 @@ CreateHotkeys()
 		hotkey, %inject_reset_key%, inject_reset, on
 	}	
 
+	; Note: for double reference need to use ` to escape % in current command so that is evaluated when hotkey fires
+	; could also do if, % "EasyUnload%LocalPlayerRac%"
 
-	Hotkey, If, WinActive(GameIdentifier) && !isMenuOpen() && ((EasyUnloadTerranEnable && aLocalPlayer.Race = "Terran") 
-										|| (EasyUnloadProtossEnable && aLocalPlayer.Race = "Protoss")   
-										|| (EasyUnloadZergEnable && aLocalPlayer.Race = "Zerg")) && time
+	Hotkey, If, WinActive(GameIdentifier) && !isMenuOpen() && EasyUnload`%LocalPlayerRace`%Enable && time
 		hotkey, %EasyUnloadHotkey%, gEasyUnload, on
 		hotkey, %EasyUnloadQueuedHotkey%, gEasyUnloadQueued, on
 
@@ -7219,11 +7215,7 @@ CreateHotkeys()
 	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Terran" || aLocalPlayer["Race"] = "Protoss")  && time && !BufferInputFast.isInputBlockedOrBuffered()	
 		hotkey, %ToggleAutoWorkerState_Key%, g_UserToggleAutoWorkerState, on	
 	
-	; Important Note: EnableAutoWorker%LocalPlayerRace% evaluates true even when EnableAutoWorkerTerran = 0,
-	; hence the label/hotkey will be fired even when disabled rather than doing EnableAutoWorkerTerran && Race = Terran
-	; since this is a pass through ~ key, just check if EnableAutoWorker%LocalPlayerRace% is true in the g_temporarilyDisableAutoWorkerProduction lable
-
-	Hotkey, If, WinActive(GameIdentifier) && time && !isMenuOpen() && EnableAutoWorker%LocalPlayerRace% && !BufferInputFast.isInputBlockedOrBuffered() ; cant use !ischatopen() - as esc will close chat before memory reads value so wont see chat was open
+	Hotkey, If, WinActive(GameIdentifier) && time && !isMenuOpen() && EnableAutoWorker`%LocalPlayerRace`% && !BufferInputFast.isInputBlockedOrBuffered() ; cant use !ischatopen() - as esc will close chat before memory reads value so wont see chat was open
 		hotkey, *~Esc, g_temporarilyDisableAutoWorkerProduction, on	
 	Hotkey, If, WinActive(GameIdentifier) && !isMenuOpen() && time && !BufferInputFast.isInputBlockedOrBuffered()
 	while (10 > i := A_index - 1)
@@ -9027,7 +9019,10 @@ class SC2
             return     
           }
 
-}    
+} 
+
+
+
 
 ; This is required for some commands to function correctly. 
 ; One example is if the chat box is open
