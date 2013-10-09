@@ -492,7 +492,8 @@ temporarilyHideMinimap()
       \               /
        4-------------3
 
-Still have to scale this for the map - so probably *minimap.scale
+	Im bad at math so I just made this using trial and error
+	it scales close enough for map sizes and zoom angles.
 */
 
 drawPlayerCameras(pGraphics)
@@ -503,33 +504,38 @@ drawPlayerCameras(pGraphics)
 
 	For slotNumber in aPlayer
 	{
-		If (aLocalPlayer.Team != aPlayer[slotNumber].Team ) ;|| 1)
+		If (aLocalPlayer.Team != aPlayer[slotNumber].Team  || 1)
 		{
 			angle := getPlayerCameraAngle(slotNumber)
 			xCenter := getPlayerCameraPositionX(slotNumber)
 			yCenter := getPlayerCameraPositionY(slotNumber)
 			convertCoOrdindatesToMiniMapPos(xCenter, yCenter)
 
-			x1 := xCenter - (33/1920*A_ScreenWidth * (angle/maxAngle)**2 + (Abs(maxAngle-angle)*10/1920*A_ScreenWidth) )
-			y1 := yCenter - (22/1080*A_ScreenHeight * (angle/maxAngle)**2 + (Abs(maxAngle-angle)*20/1080*A_ScreenHeight) )
+			x1 := xCenter - (18/1920*A_ScreenWidth/minimap.MapPlayableWidth * minimap.Width) * (angle/maxAngle)**2
+			y1 := yCenter - (11/1080*A_ScreenHeight/minimap.MapPlayableHeight * minimap.Height) * angle/maxAngle
 			
+			; This is so no part of the frame gets drawn outside of the minimap
+			; One day i might change it so it accurately reflects the area the player 
+			; has sight of when the real camera is past the edge of the minimap
+			; but i cant be bothered atm for such a small thing
+
 			if (x1 < minimap.ScreenLeft)
 				x1 := minimap.ScreenLeft
 			if (y1 < minimap.ScreenTop)
 				y1 := minimap.ScreenTop
 
-			 x2 := x1 + (66/1920*A_ScreenWidth * (angle/maxAngle)**2 + (Abs(maxAngle-angle)*20/1920*A_ScreenWidth))
+			 x2 := x1 + (36/1920*A_ScreenWidth/minimap.MapPlayableWidth * minimap.Width) * (angle/maxAngle)**2
 			 y2 := y1 
 
 			if (x2 > minimap.ScreenRight)
 				x2 := minimap.ScreenRight
 
-			 x3 := x2 - ((x2 - x1)/2) + (25/1920*A_ScreenWidth * (angle/maxAngle)**2 - (Abs(maxAngle-angle)*10/1920*A_ScreenWidth))
-			 y3 := y2 + (33/1080*A_ScreenHeight * (angle/maxAngle)**2 + (Abs(maxAngle-angle)*20/1080*A_ScreenHeight))
+			 x3 := (x2 - (x2 - x1)/2) + (xOffset := 14/1920*A_ScreenWidth/minimap.MapPlayableWidth * minimap.Width * (angle/maxAngle)**3)
+			 y3 := y2 + ((18/1080*A_ScreenHeight /minimap.MapPlayableHeight * minimap.Height) * angle/maxAngle)
 			
 			if (y3 > minimap.ScreenBottom)
 				y3 := minimap.ScreenBottom
-			 x4 := x1 + ((x2 - x1)/2) - (25/1920*A_ScreenWidth * (angle/maxAngle)**2 - (Abs(maxAngle-angle)*10/1920*A_ScreenWidth))
+			 x4 := x1 + ((x2 - x1)/2) - xOffset
 			 y4 := y3 
 
 			 Gdip_DrawLines(pGraphics, a_pPen[aPlayer[slotNumber, "colour"]],  x1 "," y1 "|" x2 "," y2 

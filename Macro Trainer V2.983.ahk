@@ -2820,7 +2820,6 @@ loop, parse, optionsMenuTitles, |
 		Gui, Font, 
 
 Gui, Add, Tab2, w440 h%guiMenuHeight% ys x165 vInjects_TAB, Info||Basic|Auto|Alert|Manual
-;Gui, Add, Tab2, w440 h%guiMenuHeight% ys x+5 vInjects_TAB, Info||Basic|Auto|Alert|Manual
 GuiControlGet, MenuTab, Pos, Injects_TAB
 Gui, Tab,  Basic
 	Gui, Add, GroupBox, w200 h240 section vOriginTab, One Button Inject
