@@ -3831,11 +3831,8 @@ Gui, Tab, MiniMap
 		Gui, Add, Picture, xs yp-4 w300 h22 0xE HWND_UnitHighlightList3Colour v#UnitHighlightList3Colour gColourSelector ;0xE required for GDI
 		paintPictureControl(_UnitHighlightList3Colour, UnitHighlightList3Colour)
 
-
-
-
 		Gui, Font, s8 
-		Gui, add, text, x+3 yp+5, <--- Click Me
+		Gui, add, text, x+3 yp+5, <--- Click
 		Gui, Font, norm 
 
 
@@ -5971,21 +5968,20 @@ autoWorkerProductionCheck()
 
 	if (MaxWokersTobeMade >= 1) && (idleBases || almostComplete || (halfcomplete && !nearHalfComplete)  ) ; i have >= 1 in case i stuffed the math and end up with a negative number or a fraction
 	{
-
 		While (isUserPerformingActionIgnoringCamera() || getKeyState("LButton") ||   getKeyState("LButton", "P")
-		||  getKeyState("RButton") || getKeyState("RButton", "P") ||  getKeyState("MButton") || getKeyState("MButton", "P")
-		|| getkeystate("Shift") || getkeystate("Ctrl") || getkeystate("Alt")
-	;	|| getkeystate("Alt") || getkeystate("Alt", "P")
-		|| getkeystate("Shift", "P") || getkeystate("Ctrl", "P") || getkeystate("Alt", "P")
-		|| getkeystate("LWin") || getkeystate("RWin")
-		|| getkeystate("Enter") ; required so chat box doesnt get repoened when user presses enter to close the chat box
-		||  MT_InputIdleTime() < 50
-		|| getPlayerCurrentAPM() > AutoWorkerAPMProtection) ; probably dont need this anymore
-		{
-			if (A_index > 24)
-				return ; timed out after 120 ms
-			sleep 1
-		}
+			||  getKeyState("RButton") || getKeyState("RButton", "P") ||  getKeyState("MButton") || getKeyState("MButton", "P")
+			|| getkeystate("Shift") || getkeystate("Ctrl") || getkeystate("Alt")
+		;	|| getkeystate("Alt") || getkeystate("Alt", "P")
+			|| getkeystate("Shift", "P") || getkeystate("Ctrl", "P") || getkeystate("Alt", "P")
+			|| getkeystate("LWin") || getkeystate("RWin")
+			|| getkeystate("Enter") ; required so chat box doesnt get repoened when user presses enter to close the chat box
+			||  MT_InputIdleTime() < 50
+			|| getPlayerCurrentAPM() > AutoWorkerAPMProtection) ; probably dont need this anymore
+			{
+				if (A_index > 24)
+					return ; timed out after 120 ms
+				sleep 1
+			}
 		
 		if (!isSelectionGroupable(oSelection) || isGamePaused() || isMenuOpen())
 			return
@@ -6010,7 +6006,6 @@ autoWorkerProductionCheck()
 		HighlightedGroup := getSelectionHighlightedGroup()
 		If numGetSelectionSorted(oSelection) ; = 0 as nothing is selected so cant restore this/control group it
 		{ 
-
 			if !oSelection.IsGroupable
 			{
 				Input.revertKeyState()
@@ -6030,7 +6025,7 @@ autoWorkerProductionCheck()
 			; Dont need to check if locally owned CC as the function above already 
 			; did this
 			if (TotalCompletedBasesInCtrlGroup >= 2 && oSelection.count = 1
-				&& oSelection.units[1].type = aUnitID["CommandCenter"]
+				&& oSelection.units[1].unitID = aUnitID.CommandCenter
 				&& isInControlGroup(mainControlGroup, oSelection.units[1].UnitIndex) )
 			{
 				if !IsObject(MT_CurrentGame.CommandCenterPauseList) ; because MT_CurrentGame gets cleared each game
@@ -6107,7 +6102,7 @@ autoWorkerProductionCheck()
 				tabPosition := oSelection.TabPositions[aUnitId.CommandCenter]
 			else if oSelection.TabPositions.HasKey(aUnitId.PlanetaryFortress)
 				tabPosition := oSelection.TabPositions[aUnitId.PlanetaryFortress]			
-			clipboard := tabPosition
+
 			if BaseControlGroupNotSelected
 				sendSequence .= sRepeat(NextSubgroupKey, tabPosition)
 			else 

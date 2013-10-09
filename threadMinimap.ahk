@@ -494,6 +494,7 @@ temporarilyHideMinimap()
 
 	Im bad at math so I just made this using trial and error
 	it scales close enough for map sizes and zoom angles.
+	(if bored might add roll/yaw or whatever it's called)
 */
 
 drawPlayerCameras(pGraphics)
@@ -527,10 +528,16 @@ drawPlayerCameras(pGraphics)
 			 x2 := x1 + (36/1920*A_ScreenWidth/minimap.MapPlayableWidth * minimap.Width) * (angle/maxAngle)**2
 			 y2 := y1 
 
+			currentTopDelta := realTopDelta := x2 - x1
+			; This is so the frame doesn't get drawn too square'ish
+			; when the camera is past the right edge of the minimap
 			if (x2 > minimap.ScreenRight)
+			{
 				x2 := minimap.ScreenRight
+				currentTopDelta := x2 - x1
+			}
 
-			 x3 := (x2 - (x2 - x1)/2) + (xOffset := 14/1920*A_ScreenWidth/minimap.MapPlayableWidth * minimap.Width * (angle/maxAngle)**3)
+			 x3 := (x2 - (x2 - x1)/2) + (xOffset := (currentTopDelta/realTopDelta) * 14/1920*A_ScreenWidth/minimap.MapPlayableWidth * minimap.Width * (angle/maxAngle)**3)
 			 y3 := y2 + ((18/1080*A_ScreenHeight /minimap.MapPlayableHeight * minimap.Height) * angle/maxAngle)
 			
 			if (y3 > minimap.ScreenBottom)
