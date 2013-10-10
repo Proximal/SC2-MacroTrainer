@@ -2314,14 +2314,16 @@ ParseEnemyUnits(ByRef a_EnemyUnits, ByRef aPlayer)
 
 DestroyOverlays()
 {	
-	Try Gui, MiniMapOverlay: Destroy ;destroy minimap when alttabed out
+	; destroy minimap when alttabed out
+	; and at end of game
+	Try Gui, MiniMapOverlay: Destroy 
 	Try Gui, IncomeOverlay: Destroy
 	Try Gui, ResourcesOverlay: Destroy
 	Try Gui, ArmySizeOverlay: Destroy
 	Try Gui, WorkerOverlay: Destroy			
 	Try Gui, idleWorkersOverlay: Destroy			
 	Try Gui, LocalPlayerColourOverlay: Destroy			
-	Try Gui, UnitOverlay: Destroy			
+	Try Gui, UnitOverlay: Destroy	
 }
 
 setDrawingQuality(G)

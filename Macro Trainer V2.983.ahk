@@ -88,11 +88,27 @@ if !A_IsAdmin
 {
 	if (A_OSVersion = "WIN_XP") ; apparently the below command wont work on XP
 		RunAsAdmin()
-	else try  Run *RunAs "%A_ScriptFullPath%"
+	else
+	{ 
+		try  Run *RunAs "%A_ScriptFullPath%"
+		; The catch is here, as I had someone say
+		; that the programmed just exited without
+		; prompting for admin rights
+		catch
+			msgbox Please Run this again with admin rights.
+	}
 	ExitApp
 }
 OnExit, ShutdownProcedure
-; Process, Priority, , H
+
+; This is here in case the user deletes the dll
+; although, the AHK-MD shouldn't launch if it doesn't exist
+; (and there's not one in sys32)
+if !FileExist("msvcr100.dll")
+{
+	FileInstall, msvcr100.dll, msvcr100.dll, 0
+	reload ; already have admin rights
+}
 ; Process, Priority, , A
 Menu Tray, Add, &Settings && Options, options_menu
 Menu Tray, Add, &Check For Updates, TrayUpdate
@@ -3291,7 +3307,11 @@ Gui, Add, Tab2,w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vSettings_TAB, Set
 	Gui, Add, Text, xp+10 yp+25 w40,Name:
 		Gui, Add, Edit, yp-2 x+5 w100  center vMTCustomProgramName, %MTCustomProgramName%
 
-
+	; Can't just use the menu, Icon change command to change the icon, 
+	; as the compiled icon will still show up in the sound mixer
+	; hence have to change the internal compiled icon
+	; Also as using resource hacker to change icon, cant use mpress :(
+	; so the compiled exe will be ~4x bigger!
 	Gui, Add, GroupBox, Xs+171 ys+360 w245 h60, Custom Icon
 		;	Gui, Add, Edit, Readonly yp-2 x+15 w100  center vKey_EmergencyRestart , %Key_EmergencyRestart%
 
@@ -4640,6 +4660,12 @@ OptionsGuiDropFiles:
 if (A_GuiControl = "EmailAttachmentListViewID")
 	Gosub, g_AddEmailAttachment 
 return 
+
+	; Can't just use the menu, Icon change command to change the icon, 
+	; as the compiled icon will still show up in the sound mixer
+	; hence have to change the internal compiled icon
+	; Also as using resource hacker to change icon, cant use mpress :(
+	; so the compiled exe will be ~4x bigger!
 
 g_MTChageIcon:
 FileSelectFile, NewIconFile, S3, , Select an Icon or Picture, *.ico ; only *.ico will work with reshacker
@@ -8867,13 +8893,7 @@ castEasyUnload(hotkey, queueUnload)
 	; and when the user releases the keys, windowsoutside of sc2 should register this as im not blocking input
 	; or using critical 
 
-	if instr(hotkey, "^")
-		upSequence .= "{ctrl Up}"
-	if instr(hotkey, "+")
-		upSequence .= "{Shift Up}"
-	if instr(hotkey, "!")
-		upSequence .= "{Alt Up}"
-	if upSequence
+	if (upSequence := getModifierUpSequenceFromHotkey(hotkey))
 		psend(upSequence)
 	hotkey := stripModifiers(hotkey)
 	while GetKeyState(hotkey, "P")
@@ -8884,8 +8904,10 @@ castEasyUnload(hotkey, queueUnload)
 			{
 				; Undecided if I want to check if medivac has troops inside
 				; as you may want to ctrl group the empty medivacs too and bring them with you
-
-				if (getUnitType(unitIndex) = aUnitId.Medivac)
+				if (isUnitLocallyOwned(unitIndex)  
+					&& ((type := getUnitType(unitIndex)) = aUnitId.Medivac
+					|| type = aUnitID.WarpPrism || type = aUnitID.WarpPrismPhasing
+					|| type = aUnitID.overlord))
 				{
 					if !lMedivacs
 						queueUnload ? MTSend("{click}^" EasyUnloadStorageKey "{Shift Down}" unloadAll_Key "{click}{Shift Up}")
@@ -8905,17 +8927,90 @@ castEasyUnload(hotkey, queueUnload)
 	; to restore the modifier keys if the user is still holding them down
 	; e.g. is they want to shift click somewhere without first releasing the shift key
 	if upSequence
-	{
-		if GetKeyState("Ctrl", "P")
-			downSequence .= "{Ctrl Down}"
-		if GetKeyState("Shift", "P")
-			downSequence .= "{Shift Down}"
-		if GetKeyState("Alt", "P")
-			downSequence .= "{Alt Down}"
-		psend(downSequence)
-	}
+		psend(getModifierDownSequenceFromKeyboard())
 	return
 }
+
+
+
+
+castEasySelectLoadedTransport(A_ThisHotkey)
+return 
+
+getModifierUpSequenceFromHotkey(hotkey)
+{
+	if instr(hotkey, "^")
+		upSequence .= "{ctrl Up}"
+	if instr(hotkey, "+")
+		upSequence .= "{Shift Up}"
+	if instr(hotkey, "!")
+		upSequence .= "{Alt Up}"
+	return upSequence
+}
+
+getModifierDownSequenceFromKeyboard()
+{
+	if GetKeyState("Ctrl", "P")
+		downSequence .= "{Ctrl Down}"
+	if GetKeyState("Shift", "P")
+		downSequence .= "{Shift Down}"
+	if GetKeyState("Alt", "P")
+		downSequence .= "{Alt Down}"	
+	return downSequence
+}
+
+; I think it would be better to actually ctrl left click one medivac
+; check that the medivacs were selected
+; then deselect the non-loaded medivacs (though this appears more obvious on replay)
+; but its possible for the wrong unit to be clicked when waving the mouse over
+; units in a dense formation
+castEasySelectLoadedTransport(hotkey)
+{	
+	; Incase the user has modifiers in the hotkey
+	; Ahk doesn't seem to be blocking these from interferring with SC2
+	; should really send these as INput, but that will cause issues
+	; and when the user releases the keys, windowsoutside of sc2 should register this as im not blocking input
+	; or using critical 
+
+	if (upSequence := getModifierUpSequenceFromHotkey(hotkey))
+		psend(upSequence)
+	hotkey := stripModifiers(hotkey)
+	while GetKeyState(hotkey, "P")
+	{
+		If (unitIndex := getCursorUnit())
+		{
+			if unitIndex not in %lMedivacs%
+			{
+
+				if (isUnitLocallyOwned(unitIndex)  
+					&& ((type := getUnitType(unitIndex)) = aUnitId.Medivac
+					|| type = aUnitID.WarpPrism || type = aUnitID.WarpPrismPhasing
+					|| type = aUnitID.overlord) 
+					&& getCargoCount(unitIndex))
+				{
+					if !lMedivacs
+						MTSend("{click}")
+					else
+						MTSend("+{click}")
+					lMedivacs .= unitIndex ","
+					soundplay *-1		
+				}
+			}
+		}
+		sleep 20
+	}
+	; to restore the modifier keys if the user is still holding them down
+	; e.g. is they want to shift click somewhere without first releasing the shift key
+	if upSequence
+		psend(getModifierDownSequenceFromKeyboard())
+	return
+}
+
+
+
+
+
+
 
 
 ; converts the unit data (extracted from SC2 MPQ files) into an AHK object
@@ -9121,9 +9216,10 @@ if (haystack~="S)" var)
 		+ 0xE0 	- Shield Upgrades
 	
 */
-
-
-
+CEhex(dec)
+{
+	return clipboard := substr(dectohex(dec), 3)
+}
 
 
 /* 	pSend vs Control Send

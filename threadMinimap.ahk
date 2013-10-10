@@ -126,6 +126,7 @@ gameChange()
 	{
 		SetTimer, MiniMap_Timer, off
 		SetTimer, unit_bank_read, off
+		DestroyOverlays()
 	}
 	return
 }
