@@ -4242,7 +4242,7 @@ SelectArmyDeselectPatrolling_TT := "Patrolling units will be removed from the se
 		. "`n`nNote: Units set to follow (and are moving) a patrolling unit will also me removed."
 SelectArmyDeselectHoldPosition_TT := "Units on hold position will be removed from the selection group."
 SelectArmyDeselectFollowing_TT := "Units on a follow command will be removed from the selection group."
-SelectArmyDeselectLoadedTransport_TT := "Removes loaded medivacs, overlords and warp prisms"
+SelectArmyDeselectLoadedTransport_TT := "Removes loaded medivacs and warp prisms"
 SelectArmyDeselectQueuedDrops_TT := "Removes transports which have a drop command queued`n`nDoesn't include tranports which have begun unloading."
 
 castRemoveUnit_key_TT := #castRemoveUnit_key_TT := castSplitUnit_key_TT := #castSplitUnit_key_TT := "The hotkey used to invoke this function."
@@ -7673,23 +7673,11 @@ for a 146 terran army deslecting all but 1 unit
  15ms - worked 100%
 */
 g_SelectArmy:
-;	input.hookBlock(True, True)
-;	setLowLevelInputHooks(False)	
 	critical, 10000
 	input.pSendDelay(-1)
 	input.pClickDelay(-1)
 	MTsend(Sc2SelectArmy_Key)
 	dSleep(15)
-	aRemoveUnits := [], aSelected := []
-
-; 	23/09
-;	This WILL work with the new sorting method	
-;	aRemoveUnits := findUnitsToRemoveFromArmy(aSelected, SelectArmyDeselectXelnaga, SelectArmyDeselectPatrolling
-;						, SelectArmyDeselectHoldPosition, SelectArmyDeselectFollowing, l_ActiveDeselectArmy)
-;	if aRemoveUnits.MaxIndex()
-;		DeselectUnitsFromPanel(aRemoveUnits, aSelected, -1)
-
-;	This is another way to do it with two slightly different functions (this way would be faster too)
 	aUnitPortraitLocations := []
 	aUnitPortraitLocations := findPortraitsToRemoveFromArmy("", SelectArmyDeselectXelnaga, SelectArmyDeselectPatrolling
 									, SelectArmyDeselectHoldPosition, SelectArmyDeselectFollowing, SelectArmyDeselectLoadedTransport 
@@ -7704,15 +7692,13 @@ g_SelectArmy:
 	critical, off
 	input.hookBlock(False, False)	
 	sleep 20 
-
-;	setLowLevelInputHooks(True)	
-	 	
+return	
 	; 	Update:
 	;	Adding a sleep at the end of the command increases reliability. It prevents the user slowing down SC
 	; 	by allowing a small sleep even if the function is constantly repeating (user holding button)
 	;	Also seems to give time for any input to clear so reduces chance of interrupting automation
 	;	on next loop through 20ms was enough for 146 army
-return
+
 
 
 ; aSelected can be used to pass an already SORTED selected array
@@ -7766,8 +7752,8 @@ findPortraitsToRemoveFromArmy(byref aSelected := "", DeselectXelnaga = 1, Desele
 		else if (lTypes  || DeselectLoadedTransport || DeselectQueuedDrops)
 		{
 			type := unit.unitId
-			if (DeselectLoadedTransport	|| DeselectQueuedDrops) && (type = aUnitId.Medivac || type = aUnitID.WarpPrism || type = aUnitID.WarpPrismPhasing
-			|| type = aUnitID.overlord)
+			if (DeselectLoadedTransport	|| DeselectQueuedDrops) && (type = aUnitId.Medivac || type = aUnitID.WarpPrism || type = aUnitID.WarpPrismPhasing)
+			; actually dont need to check overlord as its not in the army selection
 			{
 				if (DeselectLoadedTransport && getCargoCount(unit.unitIndex))
 				|| (DeselectQueuedDrops && isTransportDropQueued(unit.unitIndex))
