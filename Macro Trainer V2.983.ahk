@@ -2593,6 +2593,7 @@ ini_settings_write:
 	IniWrite, %ModifierBeepSelectArmy%, %config_file%, %section%, ModifierBeepSelectArmy
 	IniWrite, %SelectArmyDeselectXelnaga%, %config_file%, %section%, SelectArmyDeselectXelnaga
 	IniWrite, %SelectArmyDeselectPatrolling%, %config_file%, %section%, SelectArmyDeselectPatrolling
+	IniWrite, %SelectArmyDeselectLoadedTransport%, %config_file%, %section%, SelectArmyDeselectLoadedTransport
 	IniWrite, %SelectArmyDeselectHoldPosition%, %config_file%, %section%, SelectArmyDeselectHoldPosition
 	IniWrite, %SelectArmyDeselectFollowing%, %config_file%, %section%, SelectArmyDeselectFollowing
 
@@ -3598,9 +3599,6 @@ Gui, Tab, Select Army
 	Gui, Add, Edit, Readonly yp-2 xs+85 w65 center vSc2SelectArmy_Key , %Sc2SelectArmy_Key%
 		Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#Sc2SelectArmy_Key,  Edit
 
-	Gui, Add, Text, Xs yp+35, Sleep time (ms):
-	Gui, Add, Edit, Number Right xp+145 yp-2 w45 vTT_SleepSelectArmy
-	Gui, Add, UpDown,  Range0-100 vSleepSelectArmy, %SleepSelectArmy%
 	Gui, Add, Checkbox, Xs yp+35 vSelectArmyControlGroupEnable Checked%SelectArmyControlGroupEnable%, Control group the units
 	Gui, Add, Text, Xs+30 yp+20 w70, Ctrl Group:
 	Gui, Add, Edit, Readonly yp-2 xs+85 w65 center vSc2SelectArmyCtrlGroup , %Sc2SelectArmyCtrlGroup%
@@ -3608,6 +3606,7 @@ Gui, Tab, Select Army
 	Gui, Add, Text, Xs yp+40, Deselect These Units:
 	Gui, Add, Checkbox, Xs+30 yp+20 vSelectArmyDeselectXelnaga Checked%SelectArmyDeselectXelnaga%, Xelnaga (tower) units
 	Gui, Add, Checkbox, Xs+30 yp+20 vSelectArmyDeselectPatrolling Checked%SelectArmyDeselectPatrolling%, Patrolling units
+	Gui, Add, Checkbox, Xs+30 yp+20 vSelectArmyDeselectLoadedTransport Checked%SelectArmyDeselectLoadedTransport%, Loaded transports
 	Gui, Add, Checkbox, Xs+30 yp+20 vSelectArmyDeselectHoldPosition Checked%SelectArmyDeselectHoldPosition%, On hold position
 	Gui, Add, Checkbox, Xs+30 yp+20 vSelectArmyDeselectFollowing Checked%SelectArmyDeselectFollowing%, On follow command
 	Gui, add, text, Xs y+15, Units:
@@ -4241,7 +4240,7 @@ SelectArmyDeselectXelnaga_TT := "Units controlling the xelnaga watch towers will
 SelectArmyDeselectPatrolling_TT := "Patrolling units will be removed from the selection group.`nThis is very useful if you dont want to select some units e.g. banes/lings at your base or a drop ship waiting outside a base!`nJust set them to patrol and they will not be selected with your army.`n`n**Note:Units set to follow (and are moving) will also me removed."
 SelectArmyDeselectHoldPosition_TT := "Units on hold position will be removed from the selection group."
 SelectArmyDeselectFollowing_TT := "Units on a follow command will be removed from the selection group."
-
+SelectArmyDeselectLoadedTransport_TT := "Removes loaded medivacs, overlords and warp prisms"
 castRemoveUnit_key_TT := #castRemoveUnit_key_TT := castSplitUnit_key_TT := #castSplitUnit_key_TT := "The hotkey used to invoke this function."
 SplitctrlgroupStorage_key_TT := #SplitctrlgroupStorage_key_TT := "This ctrl group is used during the function.`nAssign it to a control group you DON'T use!"
 TT_DeselectSleepTime_TT :=  DeselectSleepTime_TT := "Time between deselecting units from the unit panel.`nThis is used by the split and select army, and deselect unit functions"
@@ -4764,8 +4763,8 @@ edit_hotkey:
 		hotkey_name := SubStr(A_GuiControl, 2)	;this label (and hotkeygui) for a 2nd time 
 		if (hotkey_name = "AdjustOverlayKey")		
 			hotkey_var := HotkeyGUI("Options",%hotkey_name%,2046, "Select Hotkey:   " hotkey_name)  ;as due to toggle keywait cant use modifiers
-		else if (hotkey_name = "castSelectArmy_key") ;disable the modifiers
-			hotkey_var := HotkeyGUI("Options",%hotkey_name%, 2+4+8+16+32+64+128+256+512+1024, "Select Hotkey:   " hotkey_name) ;the hotkey		
+;		else if (hotkey_name = "castSelectArmy_key") ;disable the modifiers
+;			hotkey_var := HotkeyGUI("Options",%hotkey_name%, 2+4+8+16+32+64+128+256+512+1024, "Select Hotkey:   " hotkey_name) ;the hotkey		
 		else if (hotkey_name = "Key_EmergencyRestart")  
 			; Force Right side modifiers and force the wildcard option (disable and check)
 			; this is done as if have stuck modifier then this could prevent the hotkey firing.
@@ -7661,11 +7660,6 @@ return
 ;	Using a hookblock doesn't increase ropbustness when user is constantly holding down the hotkey
 ;	But this isn't a real issue anyway (and it works well even if they are)
 
-f1::
-a := [31, 2]
-DeselectUnitPortraits(a)
-return 
-
 
 ; Testing sleep after selecting army:
 /*
@@ -7694,7 +7688,7 @@ g_SelectArmy:
 ;	This is another way to do it with two slightly different functions (this way would be faster too)
 	aUnitPortraitLocations := []
 	aUnitPortraitLocations := findPortraitsToRemoveFromArmy("", SelectArmyDeselectXelnaga, SelectArmyDeselectPatrolling
-									, SelectArmyDeselectHoldPosition, SelectArmyDeselectFollowing, l_ActiveDeselectArmy)
+									, SelectArmyDeselectHoldPosition, SelectArmyDeselectFollowing, SelectArmyDeselectLoadedTransport, l_ActiveDeselectArmy)
 	DeselectUnitPortraits(aUnitPortraitLocations)
 	dSleep(20)
 	if SelectArmyControlGroupEnable
@@ -7748,7 +7742,8 @@ findUnitsToRemoveFromArmy(byref aSelected := "", DeselectXelnaga = 1, DeselectPa
 ; returns a simple array with the exact unit portrait location to be clicked
 ; as used by ClickUnitPortrait
 ; The highest portrait locations come first
-findPortraitsToRemoveFromArmy(byref aSelected := "", DeselectXelnaga = 1, DeselectPatrolling = 1, DeselectHoldPosition = 0, DeselectFollowing = 0, lTypes = "")
+findPortraitsToRemoveFromArmy(byref aSelected := "", DeselectXelnaga = 1, DeselectPatrolling = 1 
+								, DeselectHoldPosition = 0, DeselectFollowing = 0, SelectArmyDeselectLoadedTransport = 0, lTypes = "")
 { 	global aUnitMoveStates
 	if (!isObject(aSelected) || !aSelected.units.maxIndex())
 		numGetSelectionSorted(aSelected) ; get a sorted array of the selection buffer
@@ -7762,9 +7757,16 @@ findPortraitsToRemoveFromArmy(byref aSelected := "", DeselectXelnaga = 1, Desele
 			|| (DeselectHoldPosition && state = aUnitMoveStates.HoldPosition)
 			|| (DeselectFollowing && (state = aUnitMoveStates.Follow || state = aUnitMoveStates.FollowNoAttack)) ;no attack follow is used by spell casters e.g. HTs & infests which dont have and attack
 				remove.insert(unit.unitPortrait) 
-		else if lTypes  
+		else if (lTypes  || SelectArmyDeselectLoadedTransport)
 		{
 			type := unit.unitId
+			if (SelectArmyDeselectLoadedTransport
+			&& (type = aUnitId.Medivac || type = aUnitID.WarpPrism || type = aUnitID.WarpPrismPhasing
+			|| type = aUnitID.overlord) && getCargoCount(unit.unitIndex))
+			{
+				remove.insert(unit.unitPortrait) 
+				continue
+			}
 			If type in %lTypes%
 				remove.insert(unit.unitPortrait) 
 		}			
@@ -7821,6 +7823,15 @@ DeselectUnitsFromPanel(aRemoveUnits, aSelection := "", sleep := -1)
 	; when deselecting all but 1!
 	; seems it doesnt need a sleep once
 
+; 13/10 Tested this again in map editor with 293 terran army of all unit types
+; deselecting 1 of each unit type
+; needed 1 ms sleep after changing selection page
+; I dont know why my previous test didn't require this!!! It was in a replay
+; This finding also agrees with a test i did ages ago.
+
+; also if you manually tab through all of the units before deselecting, no sleep is required!
+; i.e. sc2 caches the unit selection
+
 ; deselects an array of unit portraits
 ; the portraits should be sorted in descending order
 DeselectUnitPortraits(aUnitPortraitLocations)
@@ -7833,7 +7844,7 @@ DeselectUnitPortraits(aUnitPortraitLocations)
 			if ClickUnitPortrait(portrait, X, Y, Xpage, Ypage) 
 			{
 				MTclick(Xpage, Ypage)
-
+				dsleep(5)
 			}
 			MTsend("+{click " x " " y "}")	
 		}

@@ -531,7 +531,7 @@ getUnitType(Unit) ;starts @ 0 i.e. first unit at 0
 getUnitName2(unit)
 {	global 
 	Return substr(ReadMemory_Str(ReadMemory(ReadMemory(((ReadMemory(B_uStructure + (Unit * S_uStructure) 
-			+ O_uModelPointer, GameIdentifier)) << 5) + 0xC, GameIdentifier), GameIdentifier) + 0x29, ,GameIdentifier), 6)
+			+ O_uModelPointer, GameIdentifier)) << 5) + 0xC, GameIdentifier), GameIdentifier) + 0x29, GameIdentifier), 6)
 	;	pNameDataAddress := ReadMemory(unit_type + 0x6C, "StarCraft II")
 	;	NameDataAddress  := ReadMemory(pNameDataAddress, "StarCraft II") + 0x29 
 	;	Name := ReadMemory_Str(NameDataAddress, , "StarCraft II")
@@ -543,7 +543,7 @@ getUnitName(unit)
 	pNameDataAddress := ReadMemory(mp + 0xC, GameIdentifier) ; mp + pName_address
 	pNameDataAddress := ReadMemory(pNameDataAddress, GameIdentifier) 
 	NameDataAddress := ReadMemory(pNameDataAddress, GameIdentifier) 
-	return substr(ReadMemory_Str(NameDataAddress + 0x20, , GameIdentifier), 11) ; trim name/unit/
+	return substr(ReadMemory_Str(NameDataAddress + 0x20, GameIdentifier), 11) ; trim name/unit/
 }
 
 getUnitOwner(Unit) ;starts @ 0 i.e. first unit at 0 - 2.0.4 starts at 1?
@@ -582,13 +582,13 @@ getHighestUnitIndex() 	; this is the highest alive units index - note its out by
 }
 getPlayerName(i) ; start at 0
 {	global
-	Return ReadMemory_Str((B_pStructure + O_pName) + (i-1) * S_pStructure, , GameIdentifier) 
+	Return ReadMemory_Str(B_pStructure + O_pName + (i-1) * S_pStructure, GameIdentifier) 
 }
 getPlayerRace(i) ; start at 0
 {	global
 	local Race
 	; Race := ReadMemory_Str((B_rStructure + (i-1) * S_rStructure), ,GameIdentifier) ;old easy way
-	Race := ReadMemory_Str(ReadMemory(ReadMemory(B_pStructure + O_pRacePointer + (i-1)*S_pStructure, GameIdentifier) + 4, GameIdentifier), , GameIdentifier) 
+	Race := ReadMemory_Str(ReadMemory(ReadMemory(B_pStructure + O_pRacePointer + (i-1)*S_pStructure, GameIdentifier) + 4, GameIdentifier), GameIdentifier) 
 	If (Race == "Terr")
 		Race := "Terran"
 	Else if (Race == "Prot")
@@ -938,7 +938,7 @@ isUnitHoldingXelnaga(unitIndex)
 ; example: D:\My Computer\My Documents\StarCraft II\Accounts\56064144\6-S2-1-79722\Replays\
 getReplayFolder()
 {	GLOBAL
-	Return ReadMemory_Str(B_ReplayFolder, , GameIdentifier) 
+	Return ReadMemory_Str(B_ReplayFolder, GameIdentifier) 
 }
 
 getChatText()
@@ -946,7 +946,7 @@ getChatText()
 	Local ChatAddress := pointer(GameIdentifier, P_ChatInput, O1_ChatInput, O2_ChatInput
 									, O3_ChatInput, O4_ChatInput)
 
-	return ReadMemory_Str(ChatAddress,, GameIdentifier)	
+	return ReadMemory_Str(ChatAddress, GameIdentifier)	
 }
 
 
@@ -1202,7 +1202,8 @@ getSCModState(KeyName)
 ; this will only have a temporary affect
 ; as sc2 continually poles the modifier states
 ; use exact value if you want to write a number
-WriteModifiers(shift := 0, ctrl := 0, alt := 0, ExactValue := 0){
+WriteModifiers(shift := 0, ctrl := 0, alt := 0, ExactValue := 0)
+{
 	LOCAL value 
 	if shift
 		value += 1
@@ -1417,7 +1418,7 @@ SC2VerticalResolution()
 
 getCharacerInfo(byref returnName := "", byref returnID := "")
 {	GLOBAL B_LocalCharacterNameID, GameIdentifier
-	CharacterString := ReadMemory_Str(B_LocalCharacterNameID, , GameIdentifier) 
+	CharacterString := ReadMemory_Str(B_LocalCharacterNameID, GameIdentifier) 
 	StringSplit, OutputArray, CharacterString, #
 	returnName := OutputArray1
 	returnID := OutputArray2
@@ -2290,7 +2291,7 @@ getPlayers(byref aPlayer, byref aLocalPlayer)
 {
 	aPlayer := [], aLocalPlayer := []
 	; this should probably be 15, as I skip the first always neutral player in my player functions
-	Loop, 16	;doing it this way allows for custom games with blank slots ;can get weird things if 16 (but filtering them for nonplayers)
+	Loop, 15	;doing it this way allows for custom games with blank slots ;can get weird things if 16 (but filtering them for nonplayers)
 	{
 		if !getPlayerName(A_Index) ;empty slot custom games?
 		|| IsInList(getPlayerType(A_Index), "None", "Neutral", "Hostile", "Referee", "Spectator")
@@ -2440,37 +2441,6 @@ convertCoOrdindatesToMiniMapPos(ByRef  X, ByRef  Y)
 	, Y := round(minimap.Screenbottom - (Y/minimap.MapPlayableHeight * minimap.Height))		;think about rounding mouse clicks igornore decimals
 	return	
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -2702,12 +2672,6 @@ announcePreviousUnitWarning()
 	Else tSpeak("There have been no alerts")
 	return 
 }
-
-
-
-
-
-
 
 
 
@@ -2993,6 +2957,7 @@ readConfigFile()
 	IniRead, SelectArmyDeselectPatrolling, %config_file%, %section%, SelectArmyDeselectPatrolling, 1
 	IniRead, SelectArmyDeselectHoldPosition, %config_file%, %section%, SelectArmyDeselectHoldPosition, 0
 	IniRead, SelectArmyDeselectFollowing, %config_file%, %section%, SelectArmyDeselectFollowing, 0
+	IniRead, SelectArmyDeselectLoadedTransport, %config_file%, %section%, SelectArmyDeselectLoadedTransport, 0
 	IniRead, SelectArmyControlGroupEnable, %config_file%, %section%, SelectArmyControlGroupEnable, 0
 	IniRead, Sc2SelectArmyCtrlGroup, %config_file%, %section%, Sc2SelectArmyCtrlGroup, 1	
 	IniRead, SplitUnitsEnable, %config_file%, %section%, SplitUnitsEnable, 0
