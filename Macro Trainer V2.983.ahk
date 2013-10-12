@@ -104,7 +104,7 @@ OnExit, ShutdownProcedure
 ; This is here in case the user deletes the dll
 ; although, the AHK-MD shouldn't launch if it doesn't exist
 ; (and there's not one in sys32)
-if !FileExist("msvcr100.dll")
+if (!FileExist("msvcr100.dll") && A_IsCompiled)
 {
 	FileInstall, msvcr100.dll, msvcr100.dll, 0
 	reload ; already have admin rights
@@ -819,7 +819,7 @@ clock:
 		game_status := "game", warpgate_status := "not researched", gateway_count := warpgate_warning_set := 0
 		AW_MaxWorkersReached := TmpDisableAutoWorker := 0
 		MiniMapWarning := [], a_BaseList := [], aGatewayWarnings := []
-		aResourceLocations := []
+		aResourceLocations := [], global aXelnagas := []
 		MT_CurrentGame := []	; This is a variable which from now on will store
 								; Info about the current game for other functions 
 								; An easy way to have the info cleared each match
@@ -901,7 +901,8 @@ clock:
 		SetTimer, overlay_timer, %OverlayRefresh%, -8	
 		SetTimer, g_unitPanelOverlay_timer, %UnitOverlayRefresh%, -9	
 
-		EnemyBaseList := GetEBases()		
+		EnemyBaseList := GetEBases()
+		findXelnagas(aXelnagas)		
 		UserSavedAppliedSettings := 0
 
 		If (DrawMiniMap || DrawAlerts || DrawSpawningRaces || warpgate_warn_on
@@ -7660,6 +7661,19 @@ return
 ;	Using a hookblock doesn't increase ropbustness when user is constantly holding down the hotkey
 ;	But this isn't a real issue anyway (and it works well even if they are)
 
+f1::
+a := [31, 2]
+DeselectUnitPortraits(a)
+return 
+
+
+; Testing sleep after selecting army:
+/*
+for a 146 terran army deslecting all but 1 unit
+
+ 10ms - 1 in ~7 times most of the units weren't deselected
+ 15ms - worked 100%
+*/
 g_SelectArmy:
 ;	input.hookBlock(True, True)
 ;	setLowLevelInputHooks(False)	
@@ -7667,7 +7681,7 @@ g_SelectArmy:
 	input.pSendDelay(-1)
 	input.pClickDelay(-1)
 	MTsend(Sc2SelectArmy_Key)
-	dSleep(20)
+	dSleep(15)
 	aRemoveUnits := [], aSelected := []
 
 ; 	23/09
@@ -7682,8 +7696,7 @@ g_SelectArmy:
 	aUnitPortraitLocations := findPortraitsToRemoveFromArmy("", SelectArmyDeselectXelnaga, SelectArmyDeselectPatrolling
 									, SelectArmyDeselectHoldPosition, SelectArmyDeselectFollowing, l_ActiveDeselectArmy)
 	DeselectUnitPortraits(aUnitPortraitLocations)
-
-	dSleep(15)
+	dSleep(20)
 	if SelectArmyControlGroupEnable
 		MTsend("^" Sc2SelectArmyCtrlGroup)
 	dSleep(5)
@@ -7691,15 +7704,15 @@ g_SelectArmy:
 	input.pClickDelay(pKeyDelay)
 	critical, off
 	input.hookBlock(False, False)	
-	sleep 5
-;	ObjTree(aUnitPortraitLocations)
+	sleep 20 
+
 ;	setLowLevelInputHooks(True)	
 	 	
 	; 	Update:
 	;	Adding a sleep at the end of the command increases reliability. It prevents the user slowing down SC
 	; 	by allowing a small sleep even if the function is constantly repeating (user holding button)
 	;	Also seems to give time for any input to clear so reduces chance of interrupting automation
-	;	on next loop through
+	;	on next loop through 20ms was enough for 146 army
 return
 
 
@@ -7804,25 +7817,31 @@ DeselectUnitsFromPanel(aRemoveUnits, aSelection := "", sleep := -1)
 
 	return
 }
+	; no sleep was required for a 144 terran army
+	; when deselecting all but 1!
+	; seems it doesnt need a sleep once
 
 ; deselects an array of unit portraits
 ; the portraits should be sorted in descending order
 DeselectUnitPortraits(aUnitPortraitLocations)
 {
+	startPage := getUnitSelectionPage()
 	for i, portrait in aUnitPortraitLocations
 	{
 		if (portrait <= 143)
 		{
 			if ClickUnitPortrait(portrait, X, Y, Xpage, Ypage) 
+			{
 				MTclick(Xpage, Ypage)
-			MTsend("+{click " x " " y "}")		
+
+			}
+			MTsend("+{click " x " " y "}")	
 		}
 	}
-	if getUnitSelectionPage()	;ie slection page is not 0 (hence its not on 1 (1-1))
+	if (startPage != getUnitSelectionPage())
 	{
-		ClickUnitPortrait(0, X, Y, Xpage, Ypage, 1) ; this selects page 1 when done
+		ClickUnitPortrait(0, X, Y, Xpage, Ypage, startPage + 1) ; for this page numbers start at 1, hence +1
 		MTclick(Xpage, Ypage)
-	;	send {click Left %Xpage%, %Ypage%}
 	}
 	return	
 }
@@ -7852,10 +7871,10 @@ ClickSelectUnitsPortriat(unitIndex, sleep := 10, ClickModifier="")	;can put ^ to
 	return
 }
 
-
+; clickTabPage is the real tab number ! its not off by 1! i.e. tab 1 = 1
 ClickUnitPortrait(SelectionIndex=0, byref X=0, byref Y=0, byref Xpage=0, byref Ypage=0, ClickPageTab = 0) ;SelectionIndex begins at 0 topleft unit
 {
-	static AspectRatio, Xu0, Yu0, Size, Xpage1, Ypage1, Ypage6
+	static AspectRatio, Xu0, Yu0, Size, Xpage1, Ypage1, Ypage6, YpageDistance
 	if (AspectRatio != newAspectRatio := getScreenAspectRatio())
 	{
 		AspectRatio := newAspectRatio
@@ -7902,7 +7921,7 @@ ClickUnitPortrait(SelectionIndex=0, byref X=0, byref Y=0, byref Xpage=0, byref Y
 
 	; A delay may be required for selection page to update
 	; could use an overide value - but not sure if the click would register
-	if (PageIndex <> getUnitSelectionPage())
+	if (PageIndex != getUnitSelectionPage())
 	{
 		Xpage := Xpage1, Ypage := Ypage1 + (PageIndex * YpageDistance)
 		return 1 ; indicating that you must left click the index page first
@@ -8396,7 +8415,7 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyBuildingConstruction, byref aUn
 ;		aEnemyUnitPriorities := []
 
 	Unitcount := DumpUnitMemory(MemDump)
-	while (A_Index <= Unitcount)
+	loop, % Unitcount
 	{
 
  		unit := A_Index - 1
@@ -8898,7 +8917,7 @@ castEasyUnload(hotkey, queueUnload)
 	hotkey := stripModifiers(hotkey)
 	while GetKeyState(hotkey, "P")
 	{
-		If (unitIndex := getCursorUnit())
+		If ( (unitIndex := getCursorUnit()) >= 0)
 		{
 			if unitIndex not in %lMedivacs%
 			{
@@ -8977,7 +8996,7 @@ castEasySelectLoadedTransport(hotkey)
 	hotkey := stripModifiers(hotkey)
 	while GetKeyState(hotkey, "P")
 	{
-		If (unitIndex := getCursorUnit())
+		If ( (unitIndex := getCursorUnit()) >= 0)
 		{
 			if unitIndex not in %lMedivacs%
 			{
@@ -9216,11 +9235,6 @@ if (haystack~="S)" var)
 		+ 0xE0 	- Shield Upgrades
 	
 */
-CEhex(dec)
-{
-	return clipboard := substr(dectohex(dec), 3)
-}
-
 
 /* 	pSend vs Control Send
 	Test: loop 1000

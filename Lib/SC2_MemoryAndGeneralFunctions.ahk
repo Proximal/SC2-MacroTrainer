@@ -527,14 +527,23 @@ getUnitType(Unit) ;starts @ 0 i.e. first unit at 0
 ;	Return ReadMemory(((ReadMemory(B_uStructure + (Unit * S_uStructure) 
 ;				+ O_uModelPointer, GameIdentifier)) << 5) + O_mUnitID, GameIdentifier, 2) ; note the pointer is 4byte, but the unit type is 2byte/word
 }
-getUnitName(unit)
+
+getUnitName2(unit)
 {	global 
 	Return substr(ReadMemory_Str(ReadMemory(ReadMemory(((ReadMemory(B_uStructure + (Unit * S_uStructure) 
-			+ O_uModelPointer, GameIdentifier)) << 5) + 0x6C, GameIdentifier), GameIdentifier) + 0x29, ,GameIdentifier), 6)
+			+ O_uModelPointer, GameIdentifier)) << 5) + 0xC, GameIdentifier), GameIdentifier) + 0x29, ,GameIdentifier), 6)
 	;	pNameDataAddress := ReadMemory(unit_type + 0x6C, "StarCraft II")
-	;	NameDataAddress  := ReadMemory(pNameDataAddress, "StarCraft II") + 0x29 ; ie its a pointer 
+	;	NameDataAddress  := ReadMemory(pNameDataAddress, "StarCraft II") + 0x29 
 	;	Name := ReadMemory_Str(NameDataAddress, , "StarCraft II")
 	;	NameLength := ReadMemory(NameDataAddress, "StarCraft II") 		
+}
+getUnitName(unit)
+{
+	mp := ReadMemory(B_uStructure + Unit * S_uStructure + O_uModelPointer, GameIdentifier) << 5 ; 
+	pNameDataAddress := ReadMemory(mp + 0xC, GameIdentifier) ; mp + pName_address
+	pNameDataAddress := ReadMemory(pNameDataAddress, GameIdentifier) 
+	NameDataAddress := ReadMemory(pNameDataAddress, GameIdentifier) 
+	return substr(ReadMemory_Str(NameDataAddress + 0x20, , GameIdentifier), 11) ; trim name/unit/
 }
 
 getUnitOwner(Unit) ;starts @ 0 i.e. first unit at 0 - 2.0.4 starts at 1?
@@ -881,14 +890,50 @@ getUnitTimer(unit)
 	return ReadMemory(B_uStructure + unit * S_uStructure + O_uTimer, GameIdentifier)
 }
 
-isUnitHoldingXelnaga(unit)
-{	global
 
-	return ReadMemory(B_uStructure + unit * S_uStructure + O_XelNagaActive, GameIdentifier)
+getUnitHoldingXelnaga(Xelnaga)
+{
+	p1 := ReadMemory(getUnitAbilityPointer(Xelnaga) + 0x18, GameIdentifier)
+	if (unit := ReadMemory(p1 + 0x38 , GameIdentifier))
+		return unit >> 18
+	else return -1
+}
+
+; call this function at the start of every match
+findXelnagas(byRef aXelnagas)
+{
+	aXelnagas := []
+	loop, % getHighestUnitIndex()
+	{
+		if (aUnitID.XelNagaTower = getUnitType(A_Index - 1))
+			aXelnagas.insert(A_Index - 1)
+	}
+	if aXelnagas.MaxIndex()
+		return aXelnagas.MaxIndex()
+	else return 0
+}
+
+; aXelnagas is a global array read at the start of each game
+
+isUnitHoldingXelnaga(unitIndex)
+{	
+	global
+	for i, xelnagaIndex in aXelnagas
+	{
+		if (unitIndex = getUnitHoldingXelnaga(xelnagaIndex))
+			return 1
+	}
+	return 0
+}
+
+;  	for some reason this offset can be reversed for some units 
+; 	perhaps if they kill a unit which is already on the tower?
+; 	but it happens quite often
+;	return ReadMemory(B_uStructure + unit * S_uStructure + O_XelNagaActive, GameIdentifier)
 	;if (256 = ReadMemory(B_uStructure + unit * S_uStructure + O_XelNagaActive, GameIdentifier))
 	;	return 1
 	;else return 0
-}
+
 
 ; example: D:\My Computer\My Documents\StarCraft II\Accounts\56064144\6-S2-1-79722\Replays\
 getReplayFolder()
@@ -1226,6 +1271,10 @@ getBuildStatsPF(unit, byref QueueSize := "",  QueuePosition := 0) ; dirty hack u
 	else return 0
 }
 
+cHex(dec)
+{
+	return clipboard := substr(dectohex(dec), 3)
+}
 
 getBuildStats(building, byref QueueSize := "")
 {
@@ -1239,7 +1288,6 @@ getBuildStats(building, byref QueueSize := "")
 		return getPercentageUnitCompleted(B_QueueInfo)
 	else return 0
 }
-
 
 ; byteArrayDump can be used to pass an already dumped byte array, saving reading it again
 getAbilityIndex(abilityID, abilitiesCount, ByteArrayAddress := "", byRef byteArrayDump := "")
@@ -3096,16 +3144,15 @@ stripModifiers(pressedKey)
 	return pressedKey
 }
 
-; This returns 0 when no unit is under the cursor
-; Note: if the units real index is 0, then you need to look for another value to indicate a unit is actually
-; under the cursors
-; But this would never really occur in the game, as a players unit wouldnt have index 0 (probably a map item)
+; This returns -1 when no unit is under the cursor
 
 getCursorUnit()
 {
 	p1 := readMemory(B_UnitCursor, GameIdentifier)
 	p2 := readMemory(p1 + 0x2C0, GameIdentifier)
-	return  readMemory(p2 + 0x21C, GameIdentifier) >> 18
+	if (index := readMemory(p2 + 0x21C, GameIdentifier))
+		return index >> 18
+	return -1
 }
 
 /*
