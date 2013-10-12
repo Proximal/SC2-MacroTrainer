@@ -3589,9 +3589,9 @@ Gui, Tab, Info
 
 Gui, Add, Tab2, w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vMiscAutomation_TAB, Select Army||Spread|Remove Unit|Easy Unload
 Gui, Tab, Select Army
-	Gui, Add, Checkbox, y+25 x+15 vSelectArmyEnable Checked%SelectArmyEnable% , Enable Select Army Function		
-	Gui, Add, Checkbox, yp+25 xp+15 section vModifierBeepSelectArmy Checked%ModifierBeepSelectArmy%, Beep if modifier is held down		
-	Gui, Add, Text, yp+35, Hotkey: **
+	Gui, add, GroupBox, y+15 w405 h180
+	Gui, Add, Checkbox, Xs yp+25 vSelectArmyEnable Checked%SelectArmyEnable% , Enable Select Army Function		
+	Gui, Add, Text, yp+35, Hotkey:
 	Gui, Add, Edit, Readonly yp-2 xs+85 center w65 vcastSelectArmy_key gedit_hotkey, %castSelectArmy_key%
 	Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#castSelectArmy_key,  Edit ;have to use a trick eg '#' as cant write directly to above edit var, or it will activate its own label!
 
@@ -3603,17 +3603,18 @@ Gui, Tab, Select Army
 	Gui, Add, Text, Xs+30 yp+20 w70, Ctrl Group:
 	Gui, Add, Edit, Readonly yp-2 xs+85 w65 center vSc2SelectArmyCtrlGroup , %Sc2SelectArmyCtrlGroup%
 		Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#Sc2SelectArmyCtrlGroup,  Edit
-	Gui, Add, Text, Xs yp+40, Deselect These Units:
-	Gui, Add, Checkbox, Xs+30 yp+20 vSelectArmyDeselectXelnaga Checked%SelectArmyDeselectXelnaga%, Xelnaga (tower) units
-	Gui, Add, Checkbox, Xs+30 yp+20 vSelectArmyDeselectPatrolling Checked%SelectArmyDeselectPatrolling%, Patrolling units
-	Gui, Add, Checkbox, Xs+30 yp+20 vSelectArmyDeselectLoadedTransport Checked%SelectArmyDeselectLoadedTransport%, Loaded transports
-	Gui, Add, Checkbox, Xs+30 yp+20 vSelectArmyDeselectHoldPosition Checked%SelectArmyDeselectHoldPosition%, On hold position
-	Gui, Add, Checkbox, Xs+30 yp+20 vSelectArmyDeselectFollowing Checked%SelectArmyDeselectFollowing%, On follow command
+	
+	;Gui, Add, Text, Xs yp+40, Deselect These Units:
+	Gui, add, GroupBox, xs-15 y+40 w405 h190, Deselect These Units
+	Gui, Add, Checkbox, Xs yp+25 vSelectArmyDeselectXelnaga Checked%SelectArmyDeselectXelnaga%, Xelnaga (tower) units
+	Gui, Add, Checkbox, Xs yp+20 vSelectArmyDeselectPatrolling Checked%SelectArmyDeselectPatrolling%, Patrolling units
+	Gui, Add, Checkbox, Xs yp+20 vSelectArmyDeselectLoadedTransport Checked%SelectArmyDeselectLoadedTransport%, Loaded transports
+	Gui, Add, Checkbox, Xs yp+20 vSelectArmyDeselectQueuedDrops Checked%SelectArmyDeselectQueuedDrops%, Transports queued to drop
+	Gui, Add, Checkbox, Xs yp+20 vSelectArmyDeselectHoldPosition Checked%SelectArmyDeselectHoldPosition%, On hold position
+	Gui, Add, Checkbox, Xs yp+20 vSelectArmyDeselectFollowing Checked%SelectArmyDeselectFollowing%, On follow command
 	Gui, add, text, Xs y+15, Units:
 	Gui, Add, Edit, yp-2 x+10 w300 section  center r1 vl_DeselectArmy, %l_DeselectArmy%
 	Gui, Add, Button, yp-2 x+10 gEdit_AG v#l_DeselectArmy,  Edit
-
-	Gui, Add, Text, X420 y115 w160, ** This function will work better && FAR more reliably if this hotkey does not contain a modifier i.e Shift, Ctrl, or Alt.`n`n'F1' or 'F2' should work well.
 
 Gui, Tab, Spread
 	Gui, Add, Checkbox, y+25 x+25 vSplitUnitsEnable Checked%SplitUnitsEnable% , Enable Spread Unit Function	
@@ -4237,10 +4238,13 @@ Sc2SelectArmy_Key_TT := #Sc2SelectArmy_Key_TT := "The in game (SC2) button used 
 ModifierBeepSelectArmy_TT := "Will play a beep if a modifer key is being held down.`nModifiers include the ctrl, alt, shift and windows keys."
 castSelectArmy_key_TT := #castSelectArmy_key_TT := "The button used to invoke this function."
 SelectArmyDeselectXelnaga_TT := "Units controlling the xelnaga watch towers will be removed from the selection group."
-SelectArmyDeselectPatrolling_TT := "Patrolling units will be removed from the selection group.`nThis is very useful if you dont want to select some units e.g. banes/lings at your base or a drop ship waiting outside a base!`nJust set them to patrol and they will not be selected with your army.`n`n**Note:Units set to follow (and are moving) will also me removed."
+SelectArmyDeselectPatrolling_TT := "Patrolling units will be removed from the selection group.`nThis is very useful if you dont want to select some units e.g. banes/lings at your base or a drop ship waiting outside a base!`nJust set them to patrol and they will not be selected with your army."
+		. "`n`nNote: Units set to follow (and are moving) a patrolling unit will also me removed."
 SelectArmyDeselectHoldPosition_TT := "Units on hold position will be removed from the selection group."
 SelectArmyDeselectFollowing_TT := "Units on a follow command will be removed from the selection group."
 SelectArmyDeselectLoadedTransport_TT := "Removes loaded medivacs, overlords and warp prisms"
+SelectArmyDeselectQueuedDrops_TT := "Removes transports which have a drop command queued`n`nDoesn't include tranports which have begun unloading."
+
 castRemoveUnit_key_TT := #castRemoveUnit_key_TT := castSplitUnit_key_TT := #castSplitUnit_key_TT := "The hotkey used to invoke this function."
 SplitctrlgroupStorage_key_TT := #SplitctrlgroupStorage_key_TT := "This ctrl group is used during the function.`nAssign it to a control group you DON'T use!"
 TT_DeselectSleepTime_TT :=  DeselectSleepTime_TT := "Time between deselecting units from the unit panel.`nThis is used by the split and select army, and deselect unit functions"
@@ -7688,7 +7692,8 @@ g_SelectArmy:
 ;	This is another way to do it with two slightly different functions (this way would be faster too)
 	aUnitPortraitLocations := []
 	aUnitPortraitLocations := findPortraitsToRemoveFromArmy("", SelectArmyDeselectXelnaga, SelectArmyDeselectPatrolling
-									, SelectArmyDeselectHoldPosition, SelectArmyDeselectFollowing, SelectArmyDeselectLoadedTransport, l_ActiveDeselectArmy)
+									, SelectArmyDeselectHoldPosition, SelectArmyDeselectFollowing, SelectArmyDeselectLoadedTransport 
+									, SelectArmyDeselectQueuedDrops, l_ActiveDeselectArmy)
 	DeselectUnitPortraits(aUnitPortraitLocations)
 	dSleep(20)
 	if SelectArmyControlGroupEnable
@@ -7743,7 +7748,8 @@ findUnitsToRemoveFromArmy(byref aSelected := "", DeselectXelnaga = 1, DeselectPa
 ; as used by ClickUnitPortrait
 ; The highest portrait locations come first
 findPortraitsToRemoveFromArmy(byref aSelected := "", DeselectXelnaga = 1, DeselectPatrolling = 1 
-								, DeselectHoldPosition = 0, DeselectFollowing = 0, SelectArmyDeselectLoadedTransport = 0, lTypes = "")
+								, DeselectHoldPosition = 0, DeselectFollowing = 0, DeselectLoadedTransport = 0 
+								, DeselectQueuedDrops = 0, lTypes = "")
 { 	global aUnitMoveStates
 	if (!isObject(aSelected) || !aSelected.units.maxIndex())
 		numGetSelectionSorted(aSelected) ; get a sorted array of the selection buffer
@@ -7757,15 +7763,18 @@ findPortraitsToRemoveFromArmy(byref aSelected := "", DeselectXelnaga = 1, Desele
 			|| (DeselectHoldPosition && state = aUnitMoveStates.HoldPosition)
 			|| (DeselectFollowing && (state = aUnitMoveStates.Follow || state = aUnitMoveStates.FollowNoAttack)) ;no attack follow is used by spell casters e.g. HTs & infests which dont have and attack
 				remove.insert(unit.unitPortrait) 
-		else if (lTypes  || SelectArmyDeselectLoadedTransport)
+		else if (lTypes  || DeselectLoadedTransport || DeselectQueuedDrops)
 		{
 			type := unit.unitId
-			if (SelectArmyDeselectLoadedTransport
-			&& (type = aUnitId.Medivac || type = aUnitID.WarpPrism || type = aUnitID.WarpPrismPhasing
-			|| type = aUnitID.overlord) && getCargoCount(unit.unitIndex))
+			if (DeselectLoadedTransport	|| DeselectQueuedDrops) && (type = aUnitId.Medivac || type = aUnitID.WarpPrism || type = aUnitID.WarpPrismPhasing
+			|| type = aUnitID.overlord)
 			{
-				remove.insert(unit.unitPortrait) 
-				continue
+				if (DeselectLoadedTransport && getCargoCount(unit.unitIndex))
+				|| (DeselectQueuedDrops && isTransportDropQueued(unit.unitIndex))
+				{
+					remove.insert(unit.unitPortrait) 
+					continue
+				}
 			}
 			If type in %lTypes%
 				remove.insert(unit.unitPortrait) 
@@ -9210,6 +9219,16 @@ input.pSendDelay(pClickDelay)
 input.pClickDelay(pClickDelay)
 return 
 */
+f1::
+msgbox % getUnitQueuedCommands(getSelectedUnitIndex(), a)
+sleep 500 
+objtree(a)
+return 
+f2::
+msgbox % getUnitMoveState(getSelectedUnitIndex())
+
+return 
+
 
 
 critical, on

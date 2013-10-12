@@ -796,6 +796,20 @@ getUnitPositionZ(unit)
 </Struct>
 
 */
+; Check if a medivac, prism or overlord has a drop queued up
+; unload command movestate = 2
+; target flag  = 15 for drop and for movement
+isTransportDropQueued(transportIndex)
+{
+	getUnitQueuedCommands(transportIndex, aCommands)
+	for i, command in aCommands
+	{
+		if (command.moveState = 2)
+			return i
+	}
+	return 0
+}
+
 
 ; This is probably wrong as there should be more target abilities than just movements
 ; eg psi storm? havent tested
@@ -808,6 +822,10 @@ getUnitQueuedCommands(unit, byRef aQueuedMovements)
 							, "targetIsPoint": 0x8
 							, "targetIsUnit": 0x10
 							, "useUnitPosition": 0x20 }
+	; when a unit is on hold position the target flag = 7
+	; real movestate/0x40 = 2
+	; unload command movestate = 2
+	; target flag  = 15 for drop and for movement
 
 	aQueuedMovements := []
 	if (CmdQueue := ReadMemory(B_uStructure + unit * S_uStructure + O_P_uCmdQueuePointer, GameIdentifier)) ; points if currently has a command - 0 otherwise
@@ -2958,6 +2976,7 @@ readConfigFile()
 	IniRead, SelectArmyDeselectHoldPosition, %config_file%, %section%, SelectArmyDeselectHoldPosition, 0
 	IniRead, SelectArmyDeselectFollowing, %config_file%, %section%, SelectArmyDeselectFollowing, 0
 	IniRead, SelectArmyDeselectLoadedTransport, %config_file%, %section%, SelectArmyDeselectLoadedTransport, 0
+	IniRead, SelectArmyDeselectQueuedDrops, %config_file%, %section%, SelectArmyDeselectQueuedDrops, 0
 	IniRead, SelectArmyControlGroupEnable, %config_file%, %section%, SelectArmyControlGroupEnable, 0
 	IniRead, Sc2SelectArmyCtrlGroup, %config_file%, %section%, Sc2SelectArmyCtrlGroup, 1	
 	IniRead, SplitUnitsEnable, %config_file%, %section%, SplitUnitsEnable, 0
