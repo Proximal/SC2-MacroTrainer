@@ -3203,6 +3203,9 @@ getCursorUnit()
 	Transport Structure (includes bunker too)
 
 	Base = readmemory(getUnitAbilityPointer(unit) + 0x24)
+	+ 0x0C Current state, idle (3), load, unload(259)
+			Clicking one unit portrait to unload doesn't change it
+			shifting clicking two or more does (as does unload all)
 	+ 0x20 	Memory Address of the unit in the unit structure
 	+ 0x28 	Currently queued/loaded unit count eg 2 marines + hellbat = 3
 			This includes units queued up to be loaded.
@@ -3214,16 +3217,28 @@ getCursorUnit()
 		(current loaded units = their deltas)
 	+ 0x44 	UnloadTimer	Counts down to 0 (resets and occurs for each unit being unloaded)
 
+	static aStates := {"loading": 67 ; 3 + 64d/0x40
+					, "loading": 35  ; changes just before units begin loading
+					, "unloading": 259 ;  3 + 256d	} 
+
 */
 
 ; Returns unit count inside a transport eg 2 marines + hellbat = 3
-getCargoCount(unit)
+getCargoCount(unit, byRef isUnloading := "")
 {
 	transportStructure := readmemory(getUnitAbilityPointer(unit) + 0x24, GameIdentifier)
 	totalLoaded := readmemory(transportStructure + 0x3C, GameIdentifier)
 	totalUnloaded := readmemory(transportStructure + 0x40, GameIdentifier)
+	isUnloading := readmemory(transportStructure + 0x0C, GameIdentifier) = 259 ? 1 : 0
 	return totalLoaded - totalUnloaded
 }
+
+isTransportUnloading(unit)
+{
+	transportStructure := readmemory(getUnitAbilityPointer(unit) + 0x24, GameIdentifier)
+	return readmemory(transportStructure + 0x0C, GameIdentifier) = 259 ? 1 : 0
+}
+
 
 /*
 	There is some other information within the pCurrentModel 

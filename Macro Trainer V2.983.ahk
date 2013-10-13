@@ -8960,31 +8960,31 @@ castEasyUnload(hotkey, queueUnload)
 	hotkey := stripModifiers(hotkey)
 	while GetKeyState(hotkey, "P")
 	{
-		If ( (unitIndex := getCursorUnit()) >= 0)
+		If ( (unitIndex := getCursorUnit()) >= 0 && !varIn(unitIndex, lUnloaded))
 		{
-			if unitIndex not in %lMedivacs%
+
+			; Undecided if I want to check if medivac has troops inside
+			; as you may want to ctrl group the empty medivacs too and bring them with you
+			if (isUnitLocallyOwned(unitIndex)  
+			&& ((type := getUnitType(unitIndex)) = aUnitId.Medivac
+			|| type = aUnitID.WarpPrism || type = aUnitID.WarpPrismPhasing
+			|| type = aUnitID.overlord) && getCargoCount(unitIndex, isUnloading) && !isUnloading)
 			{
-				; Undecided if I want to check if medivac has troops inside
-				; as you may want to ctrl group the empty medivacs too and bring them with you
-				if (isUnitLocallyOwned(unitIndex)  
-					&& ((type := getUnitType(unitIndex)) = aUnitId.Medivac
-					|| type = aUnitID.WarpPrism || type = aUnitID.WarpPrismPhasing
-					|| type = aUnitID.overlord))
-				{
-					if !lMedivacs
-						queueUnload ? MTSend("{click}^" EasyUnloadStorageKey "{Shift Down}" unloadAll_Key "{click}{Shift Up}")
-									: MTSend("{click}^" EasyUnloadStorageKey unloadAll_Key "{click}")
-					else
-						queueUnload ? MTSend("{click}{Shift Down}" EasyUnloadStorageKey unloadAll_Key "{click}{Shift Up}")
-									: MTSend("{click}+" EasyUnloadStorageKey unloadAll_Key "{click}")
-					lMedivacs .= unitIndex ","
-					soundplay *-1		
-				}
+				if !haveUnloaded
+					queueUnload ? MTSend("{click}^" EasyUnloadStorageKey "{Shift Down}" unloadAll_Key "{click}{Shift Up}")
+								: MTSend("{click}^" EasyUnloadStorageKey unloadAll_Key "{click}")
+				else
+					queueUnload ? MTSend("{click}{Shift Down}" EasyUnloadStorageKey unloadAll_Key "{click}{Shift Up}")
+								: MTSend("{click}+" EasyUnloadStorageKey unloadAll_Key "{click}")
+				haveUnloaded := True
+				queueUnload	? lUnloaded .= unitIndex ","
+				soundplay *-1
+
 			}
 		}
 		sleep 20
 	}
-	if lMedivacs
+	if haveUnloaded
 		MTSend(EasyUnloadStorageKey)
 	; to restore the modifier keys if the user is still holding them down
 	; e.g. is they want to shift click somewhere without first releasing the shift key
@@ -9315,20 +9315,6 @@ loop
 msgbox % qpx(False) * 1000
 return
 */
-f1:: 
-msgbox % isLocalUnitHoldingXelnaga(getSelectedUnitIndex()) "`n" getUnitsHoldingXelnaga(getSelectedUnitIndex())
-return 
-
-f2::
-msgbox % getSelectedUnitIndex() << 18  "`n" getSelectedUnitIndex()
-return 
-
-f3:: 
-msgbox % aLocalPlayer.slot
-return 
-
-
-
 
 /*
 f1::
@@ -9339,7 +9325,6 @@ pClick("R", 500, 500, 2, "+")
 ;msgbox % qpx(false) * 1000
 
 return 
-
 
 */
 
