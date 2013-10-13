@@ -6155,7 +6155,8 @@ autoWorkerProductionCheck()
 							aDeselect.insert(unit.unitPortrait)
 					}
 				}
-				DeselectUnitPortraits(aDeselect)
+				reverseArray(aDeselect)
+				clickUnitPortraits(aDeselect)
 		;		dsleep(2) ; not sure if a sleep here is required
 			}
 
@@ -7719,7 +7720,7 @@ g_SelectArmy:
 	aUnitPortraitLocations := findPortraitsToRemoveFromArmy("", SelectArmyDeselectXelnaga, SelectArmyDeselectPatrolling
 									, SelectArmyDeselectHoldPosition, SelectArmyDeselectFollowing, SelectArmyDeselectLoadedTransport 
 									, SelectArmyDeselectQueuedDrops, l_ActiveDeselectArmy)
-	DeselectUnitPortraits(aUnitPortraitLocations)
+	clickUnitPortraits(aUnitPortraitLocations)
 	dSleep(20)
 	if SelectArmyControlGroupEnable
 		MTsend("^" Sc2SelectArmyCtrlGroup)
@@ -7866,7 +7867,7 @@ DeselectUnitsFromPanel(aRemoveUnits, aSelection := "", sleep := -1)
 
 ; deselects an array of unit portraits
 ; the portraits should be sorted in descending order
-DeselectUnitPortraits(aUnitPortraitLocations)
+clickUnitPortraits(aUnitPortraitLocations, Modifers := "+")
 {
 	startPage := getUnitSelectionPage()
 	for i, portrait in aUnitPortraitLocations
@@ -7878,7 +7879,7 @@ DeselectUnitPortraits(aUnitPortraitLocations)
 				MTclick(Xpage, Ypage)
 				dsleep(5)
 			}
-			MTsend("+{click " x " " y "}")	
+			MTsend(Modifers "{click " x " " y "}")	
 		}
 	}
 	if (startPage != getUnitSelectionPage())
@@ -7888,6 +7889,8 @@ DeselectUnitPortraits(aUnitPortraitLocations)
 	}
 	return	
 }
+
+
 
 
 ClickSelectUnitsPortriat(unitIndex, sleep := 10, ClickModifier="")	;can put ^ to do a control click
@@ -8940,6 +8943,7 @@ return
 castEasyUnload(hotkey, queueUnload)
 {	
 	global EasyUnload_T_Key, EasyUnload_P_Key, EasyUnload_Z_Key, EasyUnloadStorageKey
+	static tickCount := 0
 
 	if aLocalPlayer.Race = "Terran"
 		unloadAll_Key := EasyUnload_T_Key
@@ -8949,42 +8953,76 @@ castEasyUnload(hotkey, queueUnload)
 		unloadAll_Key := EasyUnload_Z_Key
 	else return
 	
-	; Incase the user has modifiers in the hotkey
-	; Ahk doesn't seem to be blocking these from interferring with SC2
+	; In case the user has modifiers in the hotkey
+	; Ahk doesn't seem to be blocking these from interfering with SC2
 	; should really send these as INput, but that will cause issues
-	; and when the user releases the keys, windowsoutside of sc2 should register this as im not blocking input
+	; and when the user releases the keys, windows outside of sc2 should register this as im not blocking input
 	; or using critical 
 
 	if (upSequence := getModifierUpSequenceFromHotkey(hotkey))
 		psend(upSequence)
 	hotkey := stripModifiers(hotkey)
+
+	if !queueUnload
+	{
+		if (A_TickCount - tickCount < 250)
+		{
+			tickCount := A_TickCount
+			castEasySelectLoadedTransport()
+			if upSequence
+				psend(getModifierDownSequenceFromKeyboard())
+			return
+		}
+		sleepTick := tickCount := A_TickCount
+		while (GetKeyState(hotkey, "P") || A_TickCount - sleepTick < 50)
+			sleep 5
+	}
+
 	while GetKeyState(hotkey, "P")
 	{
-		If ( (unitIndex := getCursorUnit()) >= 0 && !varIn(unitIndex, lUnloaded))
+		If ((unitIndex := getCursorUnit()) >= 0)
 		{
-
-			; Undecided if I want to check if medivac has troops inside
-			; as you may want to ctrl group the empty medivacs too and bring them with you
 			if (isUnitLocallyOwned(unitIndex)  
 			&& ((type := getUnitType(unitIndex)) = aUnitId.Medivac
-			|| type = aUnitID.WarpPrism || type = aUnitID.WarpPrismPhasing
-			|| type = aUnitID.overlord) && getCargoCount(unitIndex, isUnloading) && !isUnloading)
+			|| type = aUnitID.WarpPrism || type = aUnitID.WarpPrismPhasing || type = aUnitID.overlord))
 			{
-				if !haveUnloaded
-					queueUnload ? MTSend("{click}^" EasyUnloadStorageKey "{Shift Down}" unloadAll_Key "{click}{Shift Up}")
-								: MTSend("{click}^" EasyUnloadStorageKey unloadAll_Key "{click}")
-				else
-					queueUnload ? MTSend("{click}{Shift Down}" EasyUnloadStorageKey unloadAll_Key "{click}{Shift Up}")
-								: MTSend("{click}+" EasyUnloadStorageKey unloadAll_Key "{click}")
-				haveUnloaded := True
-				queueUnload	? lUnloaded .= unitIndex ","
-				soundplay *-1
-
+				hasCargo := getCargoCount(unitIndex, isUnloading)
+				{
+					if (hasCargo && !isUnloading)
+					{
+						if !setCtrlGroup
+							queueUnload ? MTSend("{click}^" EasyUnloadStorageKey "{Shift Down}" unloadAll_Key "{click}{Shift Up}")
+										: MTSend("{click}^" EasyUnloadStorageKey unloadAll_Key "{click}")
+						else
+							queueUnload ? MTSend("{click}{Shift Down}" EasyUnloadStorageKey unloadAll_Key "{click}{Shift Up}")
+										: MTSend("{click}+" EasyUnloadStorageKey unloadAll_Key "{click}")
+						setCtrlGroup := True
+						soundplay *-1
+					}
+					else if !isInControlGroup(EasyUnloadStorageKey, unitIndex)
+					{
+						if !setCtrlGroup
+							MTSend("{click}^" EasyUnloadStorageKey)
+						else MTSend("{click}+" EasyUnloadStorageKey)
+						setCtrlGroup := True
+						soundplay *-1
+					}
+					else 
+					{
+						if !setCtrlGroup
+							soundplay *-1
+						; play sound to indicate that function has activated i.e. if hotkey let go transports will be selected
+						; e.g. they let go of the hotkey, then pressed it again and waved it over one of the already processed transports
+						; in other words user is waving mouse over medivacs which are empty or have begun unloading and are in the ctrl group
+						setCtrlGroup := True 	
+						
+					}	
+				}
 			}
 		}
 		sleep 20
 	}
-	if haveUnloaded
+	if setCtrlGroup
 		MTSend(EasyUnloadStorageKey)
 	; to restore the modifier keys if the user is still holding them down
 	; e.g. is they want to shift click somewhere without first releasing the shift key
@@ -8992,12 +9030,6 @@ castEasyUnload(hotkey, queueUnload)
 		psend(getModifierDownSequenceFromKeyboard())
 	return
 }
-
-
-
-
-castEasySelectLoadedTransport(A_ThisHotkey)
-return 
 
 getModifierUpSequenceFromHotkey(hotkey)
 {
@@ -9021,50 +9053,47 @@ getModifierDownSequenceFromKeyboard()
 	return downSequence
 }
 
-; I think it would be better to actually ctrl left click one medivac
-; check that the medivacs were selected
-; then deselect the non-loaded medivacs (though this appears more obvious on replay)
-; but its possible for the wrong unit to be clicked when waving the mouse over
-; units in a dense formation
-castEasySelectLoadedTransport(hotkey)
+
+castEasySelectLoadedTransport()
 {	
-	; Incase the user has modifiers in the hotkey
-	; Ahk doesn't seem to be blocking these from interferring with SC2
-	; should really send these as INput, but that will cause issues
-	; and when the user releases the keys, windowsoutside of sc2 should register this as im not blocking input
-	; or using critical 
-
-	if (upSequence := getModifierUpSequenceFromHotkey(hotkey))
-		psend(upSequence)
-	hotkey := stripModifiers(hotkey)
-	while GetKeyState(hotkey, "P")
+	MTsend("{click D " A_ScreenWidth-25 " " 45 "}{Click U " 35 " "  A_ScreenHeight-240 "}")
+	sleep 15
+	if numGetSelectionSorted(aSelected)
 	{
-		If ( (unitIndex := getCursorUnit()) >= 0)
+		aCtrlClick := []
+		for i, unit in aSelected.units
 		{
-			if unitIndex not in %lMedivacs%
+			if ((unit.unitId = aUnitId.Medivac || unit.unitId = aUnitID.WarpPrism 
+			|| unit.unitId = aUnitID.WarpPrismPhasing || unit.unitId = aUnitID.overlord) 
+			&& getCargoCount(unit.unitIndex))
 			{
-
-				if (isUnitLocallyOwned(unitIndex)  
-					&& ((type := getUnitType(unitIndex)) = aUnitId.Medivac
-					|| type = aUnitID.WarpPrism || type = aUnitID.WarpPrismPhasing
-					|| type = aUnitID.overlord) 
-					&& getCargoCount(unitIndex))
+				aCtrlClick.insert(unit.unitPortrait)
+				break
+			}
+		}
+		if aCtrlClick.MaxIndex()
+		{
+			clickUnitPortraits(aCtrlClick, "^")
+			sleep 10
+			aRemove := []
+			if numGetSelectionSorted(aSelected)
+			{
+				for i, unit in aSelected.units
 				{
-					if !lMedivacs
-						MTSend("{click}")
-					else
-						MTSend("+{click}")
-					lMedivacs .= unitIndex ","
-					soundplay *-1		
+					if ((unit.unitId = aUnitId.Medivac || unit.unitId = aUnitID.WarpPrism 
+					|| unit.unitId = aUnitID.WarpPrismPhasing || unit.unitId = aUnitID.overlord) 
+					&& getCargoCount(unit.unitIndex))
+						Continue					
+					aRemove.insert(unit.unitPortrait)
+				}
+				if aRemove.MaxIndex()
+				{
+					reverseArray(aRemove)
+					clickUnitPortraits(aRemove, "+")
 				}
 			}
 		}
-		sleep 20
 	}
-	; to restore the modifier keys if the user is still holding them down
-	; e.g. is they want to shift click somewhere without first releasing the shift key
-	if upSequence
-		psend(getModifierDownSequenceFromKeyboard())
 	return
 }
 

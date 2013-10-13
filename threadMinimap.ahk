@@ -91,11 +91,11 @@ gameChange()
 			sleep 400
 		hasLoadedMemoryAddresses := loadMemoryAddresses(B_SC2Process)
 	}
-	if getTime()
+	if (Time := getTime())
 	{
 		game_status := "game", warpgate_status := "not researched", gateway_count := warpgate_warning_set := 0
 		aUnitModel := []
-		MiniMapWarning := [], a_BaseList := []
+		MiniMapWarning := [], a_BaseList := [], aGatewayWarnings := []
 		if WinActive(GameIdentifier)
 			ReDrawMiniMap := ReDrawIncome := ReDrawResources := ReDrawArmySize := ReDrawWorker := RedrawUnit := ReDrawIdleWorkers := ReDrawLocalPlayerColour := 1
 		getPlayers(aPlayer, aLocalPlayer)
@@ -120,12 +120,14 @@ gameChange()
 			doUnitDetection(0, 0, 0, "Resume")
 		Else
 			doUnitDetection(0, 0, 0, "Reset") ; clear the variables within the function	
+		settimer, gClock, 1000, -4
 
 	}
 	else 
 	{
 		SetTimer, MiniMap_Timer, off
 		SetTimer, unit_bank_read, off
+		SetTimer, gClock, off
 		DestroyOverlays()
 	}
 	return
@@ -556,17 +558,18 @@ drawPlayerCameras(pGraphics)
 
 unit_bank_read:
 SupplyInProductionCount := gateway_count := warpgate_count := 0
+Time := getTime()
 a_BaseListTmp := []
 UnitBankCount := DumpUnitMemory(UBMemDump)
 while (A_Index <= UnitBankCount)
-{
+{ 
 	u_iteration := A_Index -1
 	If ((Filter := numgetUnitTargetFilter(UBMemDump, u_iteration)) & DeadFilterFlag
 		|| !(unit_owner := numgetUnitOwner(UBMemDump, u_iteration))
 		|| (aLocalPlayer["Team"] = aPlayer[unit_owner, "Team"] && unit_owner != aLocalPlayer["Slot"]))
 		Continue
 	; so these units are alive, and either local or enemy units (and not neutral player 0)
-	unit_type := numgetUnitModelType(pUnitModel)
+	unit_type := numgetUnitModelType(numgetUnitModelPointer(UBMemDump, u_iteration))
 	if (unit_owner = aLocalPlayer["Slot"])
 	{
 		IF (unit_type = supplytype AND Filter & aUnitTargetFilter.UnderConstruction)
@@ -603,7 +606,7 @@ while (A_Index <= UnitBankCount)
 			a_BaseListTmp.insert(u_iteration)
 	}
 	else if (alert_array[GameType, "Enabled"]) ; these units are enemies
-		doUnitDetection(u_iteration, numgetUnitModelType(numgetUnitModelPointer(UBMemDump, u_iteration)), unit_owner)
+		doUnitDetection(u_iteration, unit_type, unit_owner)
 }
 if warpgate_warn_on
 	gosub warpgate_warn

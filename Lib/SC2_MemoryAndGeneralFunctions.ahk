@@ -1704,6 +1704,19 @@ numGetSelectionBubbleSort(ByRef aSelection, ReverseOrder := False)
   	return aSelection["Count"]	
 }
 
+isInSelection(unitIndex)
+{
+	selectionCount := getSelectionCount()
+	ReadRawMemory(B_SelectionStructure, GameIdentifier, MemDump, selectionCount * S_scStructure + O_scUnitIndex)
+	loop % selectionCount
+	{
+		if (unitIndex = numget(MemDump, (A_Index-1) * S_scStructure + O_scUnitIndex, "Int") >> 18)
+			return 1
+	}
+	return 0
+}
+
+
 numGetUnitSelectionObject(ByRef aSelection, mode = 0)
 {	GLOBAL O_scTypeCount, O_scTypeHighlighted, S_scStructure, O_scUnitIndex, GameIdentifier, B_SelectionStructure
 	aSelection := []
