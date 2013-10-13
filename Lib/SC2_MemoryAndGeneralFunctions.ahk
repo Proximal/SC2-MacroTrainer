@@ -908,14 +908,64 @@ getUnitTimer(unit)
 	return ReadMemory(B_uStructure + unit * S_uStructure + O_uTimer, GameIdentifier)
 }
 
+/*
+01DFD4C0 - 8B 07  - mov eax,[edi]
+01DFD4C2 - 89 55 08  - mov [ebp+08],edx
+01DFD4C5 - 89 44 8E 28  - mov [esi+ecx*4+28],eax <<
+01DFD4C9 - 8D 7E 28  - lea edi,[esi+28]
+01DFD4CC - C7 45 10 10000000 - mov [ebp+10],00000010
 
-getUnitHoldingXelnaga(Xelnaga)
+EAX=00080001
+EBX=00000000
+ECX=00000001
+EDX=00080001
+ESI=05D88800 = p1 := ReadMemory(getUnitAbilityPointer(Xelnaga) + 0x18, GameIdentifier)
+EDI=08C1B94C
+ESP=08C1B4B4
+EBP=08C1B4E4
+EIP=01DFD4C9
+
+*/
+
+; 
+; There can be multiple units on the xelnaga, 1 spot for each of the 16 players
+; If one player has multiple units holding the xelnaga, only the unit with the highest
+; unit index will be listed in their player slot on the tower
+
+; returns a ',' delimited list of unit indexes of units which are capturing the tower
+; these units can be owned by any player
+getUnitsHoldingXelnaga(Xelnaga)
 {
 	p1 := ReadMemory(getUnitAbilityPointer(Xelnaga) + 0x18, GameIdentifier)
-	if (unit := ReadMemory(p1 + 0x38 , GameIdentifier))
-		return unit >> 18
-	else return -1
+	if (ReadMemory(p1 + 0xC, GameIdentifier) = 227) ; 227 when towerCaptured / 35 when not captured
+	{
+		loop, 16
+		{
+			if (unit := ReadMemory(p1 + (A_Index - 1) * 4 + 0x28 , GameIdentifier))
+				units .= unit >> 18 ","
+		}
+		return RTrim(units, ",")
+	}
+	return -1
 }
+
+; if a local unit is on the tower, then its Index will be returned
+; if multiple units are on the tower, the one with the highest index will be
+; returned
+getLocalUnitHoldingXelnaga(Xelnaga)
+{
+	p1 := ReadMemory(getUnitAbilityPointer(Xelnaga) + 0x18, GameIdentifier)
+	; 227 when towerCaptured / 35 when not captured
+	; though don't really need to check this, as if local unit isn't on
+	; the tower, then unit/address = 0
+	if (ReadMemory(p1 + 0xC, GameIdentifier) = 227) 
+	{
+		if (unit := ReadMemory(p1 + aLocalPlayer.slot * 4 + 0x28 , GameIdentifier))
+			return unit >> 18 
+	}
+	return -1
+}
+
 
 ; call this function at the start of every match
 findXelnagas(byRef aXelnagas)
@@ -933,14 +983,24 @@ findXelnagas(byRef aXelnagas)
 
 ; aXelnagas is a global array read at the start of each game
 
-isUnitHoldingXelnaga(unitIndex)
+isLocalUnitHoldingXelnaga(unitIndex)
 {	
-	global
-	for i, xelnagaIndex in aXelnagas
+	static tickCount := 0, unitsOnTower
+	; Prevent lots of unnecessary memory reads
+	; Though its not like it really matters
+	; for a user invoked function
+	if (A_TickCount - tickCount > 5)
 	{
-		if (unitIndex = getUnitHoldingXelnaga(xelnagaIndex))
-			return 1
+		tickCount := A_TickCount
+		unitsOnTower := ""
+		for i, xelnagaIndex in aXelnagas
+		{
+			if ((unitOnTower := getLocalUnitHoldingXelnaga(xelnagaIndex)) > 0)
+				unitsOnTower .= unitOnTower ","	
+		}	
 	}
+	if unitIndex in %unitsOnTower%
+		return 1
 	return 0
 }
 

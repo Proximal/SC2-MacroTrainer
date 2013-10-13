@@ -819,7 +819,8 @@ clock:
 		game_status := "game", warpgate_status := "not researched", gateway_count := warpgate_warning_set := 0
 		AW_MaxWorkersReached := TmpDisableAutoWorker := 0
 		MiniMapWarning := [], a_BaseList := [], aGatewayWarnings := []
-		aResourceLocations := [], global aXelnagas := []
+		aResourceLocations := []
+		global aXelnagas := [] ; global cant cant come after already command expressions
 		MT_CurrentGame := []	; This is a variable which from now on will store
 								; Info about the current game for other functions 
 								; An easy way to have the info cleared each match
@@ -7749,7 +7750,7 @@ findUnitsToRemoveFromArmy(byref aSelected := "", DeselectXelnaga = 1, DeselectPa
 	for i, unit in aSelected.units
 	{
 		state := getUnitMoveState(unit.unitIndex)
-		if (DeselectXelnaga && isUnitHoldingXelnaga(unit.unitIndex))
+		if (DeselectXelnaga && isLocalUnitHoldingXelnaga(unit.unitIndex))
 			|| (DeselectPatrolling && state = aUnitMoveStates.Patrol)
 			|| (DeselectHoldPosition && state = aUnitMoveStates.HoldPosition)
 			|| (DeselectFollowing && (state = aUnitMoveStates.Follow || state = aUnitMoveStates.FollowNoAttack)) ;no attack follow is used by spell casters e.g. HTs & infests which dont have and attack
@@ -7780,7 +7781,7 @@ findPortraitsToRemoveFromArmy(byref aSelected := "", DeselectXelnaga = 1, Desele
 	for i, unit in aSelected.units
 	{	
 		state := getUnitMoveState(unit.unitIndex)
-		if (DeselectXelnaga && isUnitHoldingXelnaga(unit.unitIndex))
+		if (DeselectXelnaga && isLocalUnitHoldingXelnaga(unit.unitIndex))
 			|| (DeselectPatrolling && state = aUnitMoveStates.Patrol)
 			|| (DeselectHoldPosition && state = aUnitMoveStates.HoldPosition)
 			|| (DeselectFollowing && (state = aUnitMoveStates.Follow || state = aUnitMoveStates.FollowNoAttack)) ;no attack follow is used by spell casters e.g. HTs & infests which dont have and attack
@@ -7974,7 +7975,7 @@ ClickUnitPortrait(SelectionIndex=0, byref X=0, byref Y=0, byref Xpage=0, byref Y
 FindSelectedUnitsOnXelnaga(byref aUnits)
 {
 	while (A_Index <= getSelectionCount())		;loop thru the units in the selection buffer	
-		if isUnitHoldingXelnaga(unit := getSelectedUnitIndex(A_Index -1))
+		if isLocalUnitHoldingXelnaga(unit := getSelectedUnitIndex(A_Index -1))
 			aUnits.insert(unit)
 	return
 }
@@ -9314,6 +9315,21 @@ loop
 msgbox % qpx(False) * 1000
 return
 */
+f1:: 
+msgbox % isLocalUnitHoldingXelnaga(getSelectedUnitIndex()) "`n" getUnitsHoldingXelnaga(getSelectedUnitIndex())
+return 
+
+f2::
+msgbox % getSelectedUnitIndex() << 18  "`n" getSelectedUnitIndex()
+return 
+
+f3:: 
+msgbox % aLocalPlayer.slot
+return 
+
+
+
+
 /*
 f1::
 critical
