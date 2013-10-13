@@ -5829,51 +5829,71 @@ autoWorkerProductionCheck()
 
 	numGetControlGroupObject(oMainbaseControlGroup, mainControlGroup)
 	workersInProduction := Basecount := almostComplete := idleBases := halfcomplete := nearHalfComplete := 0 ; in case there are no idle bases
-
+	aRecentlyCompletedCC := []
 
 	; This will change the random percent every 12 seconds - otherwise
 	; 200ms timer kind of negates the +/- variance on the progress meter
-	if (A_TickCount - TickCountRandomSet > 12 * 1000) 
+	if (A_TickCount - TickCountRandomSet > 12000) 
 	{
 		TickCountRandomSet := A_TickCount
 		randPercent := rand(-0.10, .20) ; rand(-0.04, .15) 
 	}
-
+	time := getTime()
 	for index, object in oMainbaseControlGroup.units
 	{
 		if ( object.type = aUnitID["CommandCenter"] || object.type = aUnitID["OrbitalCommand"]
 		|| object.type = aUnitID["PlanetaryFortress"] || object.type = aUnitID["Nexus"] )
-		&& !isUnderConstruction(object.unitIndex) 
 		{
-			; this is for terran, so if build cc inside base, wont build up to 60 workers even though 2 bases, but just 1 mining
-			for index, geyser in aResourceLocations.geysers
-				if isUnitNearUnit(geyser, object, 7.9) ; also compares z but for 1 map unit ; so if the base is within 8 map units it counts. It seems geyers are generally no more than 7 or 7.5 away
-				{
-					Basecount++ ; for calculating max workers per base
-					break
-				}
-			oBasesToldToBuildWorkers.insert({unitIndex: object.unitIndex, type: object.type})
-			if !isWorkerInProduction(object.unitIndex) ; also accounts for if morphing 
-				idleBases++
-			else 
+			if !isUnderConstruction(object.unitIndex) 
 			{
-				if (object.type = aUnitID["PlanetaryFortress"])
-					progress :=  getBuildStatsPF(object.unitIndex, QueueSize)
-				else
-					 progress := getBuildStats(object.unitIndex, QueueSize) ; returns build percentage
-				 if (QueueSize = 1)
-				 {
-				 	if (progress >= .97)
-				 		almostComplete++
-				 	else if (progress - randPercent >= .65)
-				 		halfcomplete++
-				 	else if (progress >= .35)
-				 		nearHalfComplete++
-				 }
-				 workersInProduction += QueueSize
+				; this is for terran, so if build cc inside base, wont build up to 60 workers even though 2 bases, but just 1 mining
+				for index, geyser in aResourceLocations.geysers
+					if isUnitNearUnit(geyser, object, 7.9) ; also compares z but for 1 map unit ; so if the base is within 8 map units it counts. It seems geyers are generally no more than 7 or 7.5 away
+					{
+						Basecount++ ; for calculating max workers per base
+						break
+					}
+				oBasesToldToBuildWorkers.insert({unitIndex: object.unitIndex, type: object.type})
+				if !isWorkerInProduction(object.unitIndex) ; also accounts for if morphing 
+				{
+					; This is used to prevent a worker being made at a CC which has been completed
+					; for less than 20 in game seconds.
+
+					if (!MT_CurrentGame.TerranCCUnderConstructionList[object.unitIndex] 
+					|| (time - MT_CurrentGame.TerranCCUnderConstructionList[object.unitIndex]) > 20)
+						idleBases++
+					else 
+					{
+						removeRecentlyCompletedCC := True 
+						aRecentlyCompletedCC.insert(object.unitIndex)
+					}					
+				}
+				else 
+				{
+					if (object.type = aUnitID["PlanetaryFortress"])
+						progress :=  getBuildStatsPF(object.unitIndex, QueueSize)
+					else
+						 progress := getBuildStats(object.unitIndex, QueueSize) ; returns build percentage
+					 if (QueueSize = 1)
+					 {
+					 	if (progress >= .97)
+					 		almostComplete++
+					 	else if (progress - randPercent >= .65)
+					 		halfcomplete++
+					 	else if (progress >= .35)
+					 		nearHalfComplete++
+					 }
+					 workersInProduction += QueueSize
+				}
+				TotalCompletedBasesInCtrlGroup++
+				L_ActualBasesIndexesInBaseCtrlGroup .= "," object.unitIndex
 			}
-			TotalCompletedBasesInCtrlGroup++
-			L_ActualBasesIndexesInBaseCtrlGroup .= "," object.unitIndex
+			else if (aLocalPlayer.race = "Terran")
+			{
+				if !IsObject(MT_CurrentGame.TerranCCUnderConstructionList) ; because MT_CurrentGame gets cleared each game
+					MT_CurrentGame.TerranCCUnderConstructionList := []
+				MT_CurrentGame.TerranCCUnderConstructionList[object.unitIndex] := getTime()
+			}
 		}
 		else if ( object.type = aUnitID["CommandCenterFlying"] || object.type = aUnitID["OrbitalCommandFlying"] )
 		&& !isUnderConstruction(object.unitIndex) 
@@ -6054,6 +6074,7 @@ autoWorkerProductionCheck()
 			; before SCV production recommences
 			; Dont need to check if locally owned CC as the function above already 
 			; did this
+
 			if (TotalCompletedBasesInCtrlGroup >= 2 && oSelection.count = 1
 				&& oSelection.units[1].unitID = aUnitID.CommandCenter
 				&& isInControlGroup(mainControlGroup, oSelection.units[1].UnitIndex) )
@@ -6103,7 +6124,7 @@ autoWorkerProductionCheck()
 			; better to be safe than sorry!
 			; thats why im doing it slightly different now
 
-			if BaseControlGroupNotSelected ; hence if the 'main base' control group is already selected, it wont bother control grouping them (and later restoring them)
+			if (BaseControlGroupNotSelected || removeRecentlyCompletedCC) ; hence if the 'main base' control group is already selected, it wont bother control grouping them (and later restoring them)
 			{
 				numGetControlGroupObject(oControlstorage, controlstorageGroup) 	; this checks if the currently selected units match those
 				for index, object in oControlstorage.units 							; already stored in the ctrl group
@@ -6120,6 +6141,21 @@ autoWorkerProductionCheck()
 				MTsend(mainControlGroup)
 				dSleep(10) ; wont have that many units grouped with the buildings so 10ms should be plenty
 				numGetSelectionSorted(oSelection)
+			}
+
+			if removeRecentlyCompletedCC
+			{
+				aDeselect := []
+				for i, unit in oSelection.units
+				{
+					for index, completedCCIndex in aRecentlyCompletedCC
+					{
+						if (unit.unitIndex = completedCCIndex)
+							aDeselect.insert(unit.unitPortrait)
+					}
+				}
+				DeselectUnitPortraits(aDeselect)
+		;		dsleep(2) ; not sure if a sleep here is required
 			}
 
 			; These terran mains are in order as they
@@ -6167,7 +6203,7 @@ autoWorkerProductionCheck()
 						BaseCtrlGroupError := 1					; as the macro will tell that unit e.g. probe to 'make a worker' and cause it to bug out
 			}
 			MTsend(sendSequence), sendSequence := ""
-			if BaseControlGroupNotSelected
+			if (BaseControlGroupNotSelected || removeRecentlyCompletedCC)
 			{
 				dSleep(5)	
 				MTsend(controlstorageGroup)
@@ -9205,17 +9241,6 @@ input.pSendDelay(pClickDelay)
 input.pClickDelay(pClickDelay)
 return 
 */
-f1::
-msgbox % getUnitQueuedCommands(getSelectedUnitIndex(), a)
-sleep 500 
-objtree(a)
-return 
-f2::
-msgbox % getUnitMoveState(getSelectedUnitIndex())
-
-return 
-
-
 
 critical, on
 haystack :=  "clicks highest units first, so dont have to calculate new"
@@ -9300,9 +9325,7 @@ pClick("R", 500, 500, 2, "+")
 return 
 
 
-
-
-
+*/
 
 /*
 
