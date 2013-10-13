@@ -345,7 +345,7 @@ getEnemyUnitsMiniMap(byref A_MiniMapUnits)
 	          		Colour := aPlayer[Owner, "Colour"]
 	       }
 	       if DrawUnitDestinations
-	       		getUnitQueuedCommands(A_Index - 1, QueuedCommands)
+	       		getUnitQueuedCommands(A_Index - 1, QueuedCommands, True)
            A_MiniMapUnits.insert({"X": x, "Y": y
            						, "Colour": Colour
            						, "Radius": Radius*2

@@ -814,7 +814,7 @@ isTransportDropQueued(transportIndex)
 ; This is probably wrong as there should be more target abilities than just movements
 ; eg psi storm? havent tested
 ; but works for movements.
-getUnitQueuedCommands(unit, byRef aQueuedMovements)
+getUnitQueuedCommands(unit, byRef aQueuedMovements, ModifyMoveStateForWorkers := False)
 {
 	static aTargetFlags := { "overrideUnitPositon":  0x1
 							, "unknown02": 0x2
@@ -834,22 +834,21 @@ getUnitQueuedCommands(unit, byRef aQueuedMovements)
 		loop 
 		{
 			ReadRawMemory(pNextCmd & -2, GameIdentifier, cmdDump, 0x42)
-			 
+			targetFlag := numget(cmdDump, 0x38, "UInt")
 			; targetFlag = 55 when mining & returning cargo 
 			; breifly = 7 when stops mining (ability) to turn and return minerals	
 			; cant be bothered checking ability addresses so do this so mining workers dont get drawn
 			; with a red attacking line
-			
-			if ( (targetFlag := numget(cmdDump, 0x38, "UInt")) = 55 || targetFlag = 7 )
+			if (ModifyMoveStateForWorkers && (targetFlag = 55 || targetFlag = 7))
 				moveState := aUnitMoveStates.Move
 			else moveState := numget(cmdDump, 0x40, "Short")
-	
+
 			aQueuedMovements.insert({ "targetX": numget(cmdDump, 0x28, "Int") / 4096
 									, "targetY": numget(cmdDump, 0x2C, "Int") / 4096
 									, "targetZ": numget(cmdDump, 0x30, "Int") / 4096
 									, "moveState": moveState }) 	; Different  Nuke +40  1 byte = abilityCommand
 
-			
+
 			if (A_Index > 20 || !(targetFlag & aTargetFlags.targetIsPoint || targetFlag & aTargetFlags.targetIsUnit))
 			{
 				; something went wrong or target isnt a point/unit

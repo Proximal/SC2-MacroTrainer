@@ -8932,13 +8932,14 @@ g_CheckForScriptToGetGameInfo:
 runRemoteScript()
 return
 
-
-
 gEasyUnloadQueued:
 gEasyUnload:
 thread, NoTimers, true
 castEasyUnload(A_ThisHotkey, A_ThisLabel = "gEasyUnloadQueued")
 return
+
+; If user double taps the immediate unload hotkey, all locally owned loaded transports
+; will be selected
 
 castEasyUnload(hotkey, queueUnload)
 {	
@@ -8955,7 +8956,7 @@ castEasyUnload(hotkey, queueUnload)
 	
 	; In case the user has modifiers in the hotkey
 	; Ahk doesn't seem to be blocking these from interfering with SC2
-	; should really send these as INput, but that will cause issues
+	; should really send these with Input, but that will cause issues
 	; and when the user releases the keys, windows outside of sc2 should register this as im not blocking input
 	; or using critical 
 
@@ -8974,7 +8975,7 @@ castEasyUnload(hotkey, queueUnload)
 			return
 		}
 		sleepTick := tickCount := A_TickCount
-		while (GetKeyState(hotkey, "P") || A_TickCount - sleepTick < 50)
+		while (GetKeyState(hotkey, "P") && A_TickCount - sleepTick < 50)
 			sleep 5
 	}
 
@@ -8988,7 +8989,7 @@ castEasyUnload(hotkey, queueUnload)
 			{
 				hasCargo := getCargoCount(unitIndex, isUnloading)
 				{
-					if (hasCargo && !isUnloading)
+					if (!queueUnload && hasCargo && !isUnloading) || (queueUnload && hasCargo && !isTransportDropQueued(unitIndex))
 					{
 						if !setCtrlGroup
 							queueUnload ? MTSend("{click}^" EasyUnloadStorageKey "{Shift Down}" unloadAll_Key "{click}{Shift Up}")
