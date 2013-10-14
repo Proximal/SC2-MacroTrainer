@@ -253,17 +253,6 @@ DrawMiniMap()
 	}
 	if DrawPlayerCameras
 		drawPlayerCameras(G)
-
-/* Test
-	testObject := []
-	unit := getselectedunitIndex()
-	getUnitMoveCommands(unit, aQueuedMovements)
-	testObject.insert({ "QueuedCommands": aQueuedMovements
-					, "x": getUnitPositionX(unit)
-					, "y": getUnitPositionY(unit) })
-	drawUnitDestinations(G, testObject)
-*/
-
 	Gdip_DeleteGraphics(G)
 	UpdateLayeredWindow(hwnd1, hdc, 0, 0, A_ScreenWidth/4, A_ScreenHeight) ;only draw on left side of the screen
 	SelectObject(hdc, obm) ; needed else eats ram ; Select the object back into the hdc
@@ -508,7 +497,7 @@ drawPlayerCameras(pGraphics)
 
 	For slotNumber in aPlayer
 	{
-		If (aLocalPlayer.Team != aPlayer[slotNumber].Team  || 1)
+		If (aLocalPlayer.Team != aPlayer[slotNumber].Team)
 		{
 			angle := getPlayerCameraAngle(slotNumber)
 			xCenter := getPlayerCameraPositionX(slotNumber)

@@ -7815,7 +7815,7 @@ findPortraitsToRemoveFromArmy(byref aSelected := "", DeselectXelnaga = 1, Desele
 ; the units in aSelection.units need to be sorted so that they represent the locations in the unit panel
 ; i.e. the first unit in aSelection.units is at the top left of the unit panel
 
-DeselectUnitsFromPanel(aRemoveUnits, aSelection := "", sleep := -1)	
+DeselectUnitsFromPanel(aRemoveUnits, aSelection := "")	
 {
 	if aRemoveUnits.MaxIndex()
 	{
@@ -7833,13 +7833,17 @@ DeselectUnitsFromPanel(aRemoveUnits, aSelection := "", sleep := -1)
 				Else if (removeUnitIndex = Selected.unitIndex) 
 				{		
 					; -1 as selection index begins at 0 i.e 1st unit at pos 0 (top left)
-					if ClickUnitPortrait(unitPanelLocation - 1, X, Y, Xpage, Ypage) 
+					if ClickUnitPortrait(unitPanelLocation - 1, X, Y, Xpage, Ypage)
+					{ 
+						dsleep(5)
 						MTclick(Xpage, Ypage)
+					}
 						; if changed pages, a sleep here is required under some conditions
 					MTsend("+{click " x " " y "}")
-					if (sleep != -1)
-						dSleep(sleep)
 				}
+		;		objtree(aSelection.units)
+		;		objtree(aRemoveUnits)
+		;		msgbox % removeUnitIndex
 			}
 		}
 	}
@@ -7877,7 +7881,7 @@ clickUnitPortraits(aUnitPortraitLocations, Modifers := "+")
 			if ClickUnitPortrait(portrait, X, Y, Xpage, Ypage) 
 			{
 				MTclick(Xpage, Ypage)
-				dsleep(5)
+				dsleep(10)
 			}
 			MTsend(Modifers "{click " x " " y "}")	
 		}
@@ -8260,7 +8264,7 @@ splitByMouseLocation(SplitctrlgroupStorage_key)
 SplitUnits(SplitctrlgroupStorage_key, SleepSplitUnits)
 { 	GLOBAL aLocalPlayer, aUnitID, NextSubgroupKey
 
-	sleep, % SleepSplitUnits
+;	sleep, % SleepSplitUnits
 	HighlightedGroup := getSelectionHighlightedGroup()
 	MTsend("^" SplitctrlgroupStorage_key)
 ;	BlockInput, MouseMove
@@ -8275,19 +8279,31 @@ SplitUnits(SplitctrlgroupStorage_key, SleepSplitUnits)
 	Else Worker := "Drone"	
 	selectionCount := getSelectionCount()
 
+	mMapRadiusSum := 0
+
 	while (A_Index <= selectionCount)	
 	{
 		unit := getSelectedUnitIndex(A_Index -1)
 		getUnitMiniMapMousePos(unit, mX, mY)
 		aSelectedUnits.insert({"Unit": unit, "mouseX": mX, "mouseY": mY, absDistance: ""})
-
+		getMiniMapRadius(Unit)
 		if (getUnitType(unit) = aUnitID[Worker])
 			workerCount++		
 		Else if (getUnitType(unit) = aUnitID["WidowMine"])
 			WidowMine++	
 		Else if (getUnitType(unit) = aUnitID["SiegeTank"])
 			SiegeTank++
+		mMapRadiusSum += getMiniMapRadius(Unit)
+		commandCount := getUnitQueuedCommands(unit, aCommands)
+		if (A_Index > 1 && (abs(aCommands[commandCount].targetX - xTargetPrev) > 5
+		|| abs(aCommands[commandCount].targetY - yTargetPrev) > 5
+		|| commandCount <= 1))
+			notOnsameMoveCommand := True, clipboard := xTargetPrev ", " yTargetPrev "`n" aCommands[commandCount].targetX ", " aCommands[commandCount].targety
+		xTargetPrev := aCommands[commandCount].targetX
+		yTargetPrev := aCommands[commandCount].targety
 	}
+
+
 
 	if (workerCount / selectionCount >= .3 ) ; i.e. 30% of the selected units are workers
 		uSpacing := 10 ; for hellbat and hellion spread
@@ -8295,47 +8311,90 @@ SplitUnits(SplitctrlgroupStorage_key, SleepSplitUnits)
 		uSpacing := 8 ; for hellbat and hellion spread
 	Else if (SiegeTank / selectionCount >= .9 ) ; i.e. 90% of the selected units are workers
 		uSpacing := 9 ; for hellbat and hellion spread
-	Else uSpacing := 5
+	;Else uSpacing := 5
 
-	for index, unit in aSelectedUnits
-		xSum += unit.mouseX, ySum += unit.mouseY
-	xAvg := xSum/aSelectedUnits.MaxIndex(), yAvg := ySum/aSelectedUnits.MaxIndex()	
-	while (aSelectedUnits.MaxIndex() > squareSpots := A_Index * A_Index)
-		continue	
-;	botLeftUnitX := xAvg-(sqrt(squareSpots)*uSpacing)/2 , botLeftUnitY := yAvg-(sqrt(squareSpots)*uSpacing)/2 ; should /2?? but is betr without it
-	botLeftUnitX := xAvg-sqrt(squareSpots) , botLeftUnitY := yAvg-sqrt(squareSpots) ; should /2?? but is betr without it
-	
-;	clipboard := ""
-	while (selectionCount > 0)
+	else uSpacing := mMapRadiusSum / selectionCount * 11
+
+
+	squareSpots := ceil(Sqrt(aSelectedUnits.MaxIndex()))**2
+
+	if !notOnsameMoveCommand
 	{
-		
-		unit := aSelectedUnits[1] ;grab the closest unit
-		boxSpot := A_Index
-		X_offsetbox := y_offsetbox := 0
-		while (boxSpot > floor(sqrt(squareSpots) * A_Index))
-			y_offsetbox ++
+		convertCoOrdindatesToMiniMapPos(xAvg := xTargetPrev, yAvg := yTargetPrev)
+		moveState := aCommands[commandCount].moveState
+		if (moveState = aUnitMoveStates.Amove || moveState = aUnitMoveStates.FollowNoAttack)
+			attack := True
+	}
+	else 
+	{
+		for index, unit in aSelectedUnits
+			xSum += unit.mouseX, ySum += unit.mouseY
+		xAvg := xSum/aSelectedUnits.MaxIndex(), yAvg := ySum/aSelectedUnits.MaxIndex()	
+	}
 
-		X_offsetbox := (boxSpot - 1) - sqrt(squareSpots) * y_offsetbox
+	botLeftUnitX := xAvg-sqrt(squareSpots) , botLeftUnitY := yAvg+sqrt(squareSpots) 
+	botLeft := topRight := 0
+	aRandom := []
+	while (A_Index <= squareSpots)
+		aRandom.insert(A_Index)
+	randomiseArray(aRandom)
+	global aOrder := []
 
-		x := X_offsetbox*uSpacing + botLeftUnitX, Y := y_offsetbox*uSpacing + botLeftUnitY
+	loop, % squareSpots
+	{
+		boxSpot := A_Index - 1
+		y_offsetbox := floor(boxSpot/ ceil(sqrt(squareSpots)))
+		X_offsetbox := boxSpot - sqrt(squareSpots) * y_offsetbox
+
+
+		if !isObject(aOrder[y_offsetbox])
+			aOrder[y_offsetbox] := []
+		aOrder[y_offsetbox].insert(X_offsetbox)
+
+	}
+
+	
+	botLeft := topRight := 0
+	loop, % selectionCount
+;	for i, boxSpot in aRandom
+	{
+	;	sleep 2000
+
+		if mod(A_Index, 2)
+			boxSpot := botLeft++
+		else  
+			boxSpot := squareSpots - (++topRight) ; Increment first as box spots start at 0 (hence max spot = boxspots -1)
+
+	;	boxSpot := 	A_Index - 1
+
+		y_offsetbox := floor(boxSpot/ ceil(sqrt(squareSpots)))
+
+
+		X_offsetbox := boxSpot - sqrt(squareSpots) * y_offsetbox
+
+		x := X_offsetbox*uSpacing + botLeftUnitX, Y := botLeftUnitY - y_offsetbox*uSpacing
 	;	x := round(x), y := round(y)	;cos mousemove ignores decimal 
-		x := round(x + rand(-.5,.5)), y := round(y + rand(-.5,.5)) 	;cos mousemove ignores decimal 
+	
+		x := round(x), y := round(y) 	;cos mousemove ignores decimal 
 		for index, unit in aSelectedUnits
 			unit.absDistance := Abs(x - unit.mouseX)+ Abs(y - unit.mouseY)
 ;		clipboard .= "(" x ", " y ")`n"
 
-		bubbleSort2DArray(aSelectedUnits, "absDistance", 1)		
+		sort2DArray(aSelectedUnits, "absDistance")
+
 		tmpObject := []
-		tmpObject.insert(aSelectedUnits[1])
-		;send {click right %X%, %Y%}
-		pClick(x, y, "Right")
-		;MTsend("a{click left " x " " y "}")
-		
-	;	DeselectUnitsFromPanel(tmpObject, -1)		;might not have enough time to update the selections?
-		
+		tmpObject.insert(aSelectedUnits[1].unit)
+		if Attack 
+		{
+		;	mtSend("{shift down}a{Click " x " " y  "}{shift up}")
+			mtSend("a{Click " x + rand(-3,3) " " y + rand(-1,2)  "}")
+		;	pClick(x + rand(-3,3), y + rand(-1,2), "Right")	
+		}
+		else pClick(x + rand(-3,3), y + rand(-1,2), "Right")	
 		DeselectUnitsFromPanel(tmpObject, 1)		;might not have enough time to update the selections?
+;		dSleep(1)
+		sleep, -1
 		aSelectedUnits.remove(1)
-		selectionCount--
 
 	}
 ;	clipboard .= "avg (" xavg ", " yavg ")`n"
@@ -8351,7 +8410,10 @@ SplitUnits(SplitctrlgroupStorage_key, SleepSplitUnits)
 		return
 }
 
+f1::
+tooltip, % getUnitQueuedCommands(getSelectedUnitIndex(), a), 500, 500
 
+return
 
 SplitUnitsWorking(SplitctrlgroupStorage_key, SleepSplitUnits)
 {
@@ -8372,20 +8434,20 @@ SplitUnitsWorking(SplitctrlgroupStorage_key, SleepSplitUnits)
 		xSum += unit.mouseX, ySum += unit.mouseY
 	xAvg := xSum/aSelectedUnits.MaxIndex(), yAvg := ySum/aSelectedUnits.MaxIndex()
 
-	while (getSelectionCount() > 1)
+	while (getSelectionCount() - A_Index > 0 && A_Index < 200)
 	{
 		unit := aSelectedUnits[1]
 	;	xR := rand(-2,2), yR := rand(-2,2)
 		FindAngle(Direction, Angle, xAvg,yAvg,unit.mouseX,unit.mouseY)
 		FindXYatAngle(X, Y, Angle, Direction, 4, unit.mouseX, unit.mouseY)
 		x += rand(-2,2), y += rand(-2,2)
-		send {click right %X%, %Y%}
+		MTsend("{click right " X " " Y "}")
 		tmpObject := []
-		tmpObject.insert(aSelectedUnits[1])
-		DeselectUnitsFromPanel(tmpObject, SleepSplitUnits)
+		tmpObject.insert(aSelectedUnits[1].unit)
+		DeselectUnitsFromPanel(tmpObject)
 		aSelectedUnits.remove(1)
-		if (aSelectedUnits.MaxIndex() <= 3)
-			break
+;		if (aSelectedUnits.MaxIndex() <= 3)
+;			break
 	}
 	MTsend(SplitctrlgroupStorage_key)
 	send {click  %Xorigin%, %Yorigin%, 0}
