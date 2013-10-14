@@ -8265,6 +8265,7 @@ SplitUnits(SplitctrlgroupStorage_key, SleepSplitUnits)
 { 	GLOBAL aLocalPlayer, aUnitID, NextSubgroupKey
 
 ;	sleep, % SleepSplitUnits
+	dSleep(20)
 	HighlightedGroup := getSelectionHighlightedGroup()
 	MTsend("^" SplitctrlgroupStorage_key)
 ;	BlockInput, MouseMove
@@ -8279,7 +8280,7 @@ SplitUnits(SplitctrlgroupStorage_key, SleepSplitUnits)
 	Else Worker := "Drone"	
 	selectionCount := getSelectionCount()
 
-	mMapRadiusSum := 0
+	mMapRadiusSum :=  0
 
 	while (A_Index <= selectionCount)	
 	{
@@ -8295,10 +8296,11 @@ SplitUnits(SplitctrlgroupStorage_key, SleepSplitUnits)
 			SiegeTank++
 		mMapRadiusSum += getMiniMapRadius(Unit)
 		commandCount := getUnitQueuedCommands(unit, aCommands)
-		if (A_Index > 1 && (abs(aCommands[commandCount].targetX - xTargetPrev) > 5
-		|| abs(aCommands[commandCount].targetY - yTargetPrev) > 5
+		if (A_Index > 1 && (abs(aCommands[commandCount].targetX - xTargetPrev) > 6
+		|| abs(aCommands[commandCount].targetY - yTargetPrev) > 6
 		|| commandCount <= 1))
-			notOnsameMoveCommand := True, clipboard := xTargetPrev ", " yTargetPrev "`n" aCommands[commandCount].targetX ", " aCommands[commandCount].targety
+			notOnsameMoveCommand := True ;, clipboard := xTargetPrev ", " yTargetPrev "`n" aCommands[commandCount].targetX ", " aCommands[commandCount].targety
+		moveStateSum +=  aCommands[commandCount].moveState
 		xTargetPrev := aCommands[commandCount].targetX
 		yTargetPrev := aCommands[commandCount].targety
 	}
@@ -8333,26 +8335,6 @@ SplitUnits(SplitctrlgroupStorage_key, SleepSplitUnits)
 	}
 
 	botLeftUnitX := xAvg-sqrt(squareSpots) , botLeftUnitY := yAvg+sqrt(squareSpots) 
-	botLeft := topRight := 0
-	aRandom := []
-	while (A_Index <= squareSpots)
-		aRandom.insert(A_Index)
-	randomiseArray(aRandom)
-	global aOrder := []
-
-	loop, % squareSpots
-	{
-		boxSpot := A_Index - 1
-		y_offsetbox := floor(boxSpot/ ceil(sqrt(squareSpots)))
-		X_offsetbox := boxSpot - sqrt(squareSpots) * y_offsetbox
-
-
-		if !isObject(aOrder[y_offsetbox])
-			aOrder[y_offsetbox] := []
-		aOrder[y_offsetbox].insert(X_offsetbox)
-
-	}
-
 	
 	botLeft := topRight := 0
 	loop, % selectionCount
@@ -8364,8 +8346,6 @@ SplitUnits(SplitctrlgroupStorage_key, SleepSplitUnits)
 			boxSpot := botLeft++
 		else  
 			boxSpot := squareSpots - (++topRight) ; Increment first as box spots start at 0 (hence max spot = boxspots -1)
-
-	;	boxSpot := 	A_Index - 1
 
 		y_offsetbox := floor(boxSpot/ ceil(sqrt(squareSpots)))
 
@@ -8409,11 +8389,6 @@ SplitUnits(SplitctrlgroupStorage_key, SleepSplitUnits)
 ;	send {click %Xorigin%, %Yorigin%, 0}
 		return
 }
-
-f1::
-tooltip, % getUnitQueuedCommands(getSelectedUnitIndex(), a), 500, 500
-
-return
 
 SplitUnitsWorking(SplitctrlgroupStorage_key, SleepSplitUnits)
 {
