@@ -8298,7 +8298,8 @@ SplitUnits(SplitctrlgroupStorage_key, SleepSplitUnits)
 		commandCount := getUnitQueuedCommands(unit, aCommands)
 		if (A_Index > 1 && (abs(aCommands[commandCount].targetX - xTargetPrev) > 6
 		|| abs(aCommands[commandCount].targetY - yTargetPrev) > 6
-		|| commandCount <= 1))
+		|| !commandCount))
+		;|| commandCount <= 1))
 			notOnsameMoveCommand := True ;, clipboard := xTargetPrev ", " yTargetPrev "`n" aCommands[commandCount].targetX ", " aCommands[commandCount].targety
 		moveStateSum +=  aCommands[commandCount].moveState
 		xTargetPrev := aCommands[commandCount].targetX
@@ -8978,6 +8979,16 @@ return
 ; If user double taps the immediate unload hotkey, all locally owned loaded transports
 ; will be selected
 
+f2::
+
+unitIndex := getSelectedUnitIndex()
+loop 
+{
+				hasCargo := getCargoCount(unitIndex, isUnloading)
+				tooltip, % "cargo " hasCargo "`nisUnloading " isUnloading, 500, 500
+sleep 100
+}
+
 castEasyUnload(hotkey, queueUnload)
 {	
 	global EasyUnload_T_Key, EasyUnload_P_Key, EasyUnload_Z_Key, EasyUnloadStorageKey
@@ -9016,6 +9027,7 @@ castEasyUnload(hotkey, queueUnload)
 			sleep 5
 	}
 
+	aDroppTick := []
 	while GetKeyState(hotkey, "P")
 	{
 		If ((unitIndex := getCursorUnit()) >= 0)
@@ -9025,9 +9037,16 @@ castEasyUnload(hotkey, queueUnload)
 			|| type = aUnitID.WarpPrism || type = aUnitID.WarpPrismPhasing || type = aUnitID.overlord))
 			{
 				hasCargo := getCargoCount(unitIndex, isUnloading)
+				if (!queueUnload && hasCargo && !isUnloading) || (queueUnload && hasCargo && !isTransportDropQueued(unitIndex))
 				{
-					if (!queueUnload && hasCargo && !isUnloading) || (queueUnload && hasCargo && !isTransportDropQueued(unitIndex))
+					; it takes a while before the isUnloading changes in real games on bnet
+					; ie command delay. So check tick count so dont spam it
+					; with 250ms on NA server from Aus i still get two beeps (which is ok) - dont want to take too long
+					; in case SC ignored the first command e.g. the click missed the medivac
+
+					if (!aDroppTick.hasKey(unitIndex) || A_TickCount - aDroppTick[unitIndex] >= 250)
 					{
+						aDroppTick[unitIndex] := A_TickCount
 						if !setCtrlGroup
 							queueUnload ? MTSend("{click}^" EasyUnloadStorageKey "{Shift Down}" unloadAll_Key "{click}{Shift Up}")
 										: MTSend("{click}^" EasyUnloadStorageKey unloadAll_Key "{click}")
@@ -9037,25 +9056,25 @@ castEasyUnload(hotkey, queueUnload)
 						setCtrlGroup := True
 						soundplay *-1
 					}
-					else if !isInControlGroup(EasyUnloadStorageKey, unitIndex)
-					{
-						if !setCtrlGroup
-							MTSend("{click}^" EasyUnloadStorageKey)
-						else MTSend("{click}+" EasyUnloadStorageKey)
-						setCtrlGroup := True
-						soundplay *-1
-					}
-					else 
-					{
-						if !setCtrlGroup
-							soundplay *-1
-						; play sound to indicate that function has activated i.e. if hotkey let go transports will be selected
-						; e.g. they let go of the hotkey, then pressed it again and waved it over one of the already processed transports
-						; in other words user is waving mouse over medivacs which are empty or have begun unloading and are in the ctrl group
-						setCtrlGroup := True 	
-						
-					}	
 				}
+				else if !isInControlGroup(EasyUnloadStorageKey, unitIndex)
+				{
+					if !setCtrlGroup
+						MTSend("{click}^" EasyUnloadStorageKey)
+					else MTSend("{click}+" EasyUnloadStorageKey)
+					setCtrlGroup := True
+					soundplay *-1
+				}
+				else 
+				{
+					if !setCtrlGroup
+						soundplay *-1
+					; play sound to indicate that function has activated i.e. if hotkey let go transports will be selected
+					; e.g. they let go of the hotkey, then pressed it again and waved it over one of the already processed transports
+					; in other words user is waving mouse over medivacs which are empty or have begun unloading and are in the ctrl group
+					setCtrlGroup := True 	
+					
+				}	
 			}
 		}
 		sleep 20
