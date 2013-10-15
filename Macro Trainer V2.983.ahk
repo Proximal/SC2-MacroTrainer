@@ -1192,6 +1192,7 @@ AutoGroup(byref A_AutoGroup, AGDelay = 0)
 	; sends the group command twice very quickly
 	if sleepOnExit  
 	{
+		Thread, Priority, -2147483648
 		sleep 60
 		settimer, AutoGroupIdle, On, -9999 ;on re-enables timers with previous period
 		settimer, Auto_Group, On		
@@ -5934,6 +5935,7 @@ autoWorkerProductionCheck()
 		; lets not iterate all of the units unnecessarily
 		if (getPlayerWorkersBuilt() > 20)
 			MT_CurrentGame.HasSleptForObital := True
+
 		for index, base in oMainbaseControlGroup.units
 		{	
 		;	; user already has at least one upgraded CC so lets not bother
@@ -5977,9 +5979,17 @@ autoWorkerProductionCheck()
 			    	highestHPRax := 1000 - getUnitHpDamage(unit)
 			}
 		}																	
-		if (!MT_CurrentGame.HasSleptForObital && (highestHPRax > 850 || BarracksHasFinished))  
+		if (!MT_CurrentGame.HasSleptForObital && (highestHPRax > 850 || BarracksHasFinished)) 
 		{
 			MT_CurrentGame.HasSleptForObital := True 
+
+			; As this thread has a default priority of 0, higher than some others, if we dont lower it,
+			; other waiting timers/threads with a lower priority cannot interrupt this thread while it 
+			; is sleeping!!
+			; Don't need to change the priority back, as the timer will automatically launch this routine
+			; with its default priority
+
+			Thread, Priority, -2147483648
 			if !A_IsCompiled ; testing
 			{
 				loop, 4 
@@ -6097,6 +6107,7 @@ autoWorkerProductionCheck()
 					critical, off
 					Thread, NoTimers, false 
 					input.pClickDelay(pClickDelay) ; ********
+					Thread, Priority, -2147483648
 					sleep 4500
 					return
 				}
@@ -6236,6 +6247,7 @@ autoWorkerProductionCheck()
 		if WorkerMade
 		{
 			UninterruptedWorkersMade++ ; keep track of how many workers are made in a row
+			Thread, Priority, -2147483648
 			sleep, 800 	; this will prevent the timer running again otherwise sc2 slower to update 'isin production' 
 		}		 	; so will send another build event and queueing more workers
 					; 400 worked find for stable connection, but on Kr sever needed more. 800 seems to work well
@@ -8978,16 +8990,6 @@ return
 
 ; If user double taps the immediate unload hotkey, all locally owned loaded transports
 ; will be selected
-
-f2::
-
-unitIndex := getSelectedUnitIndex()
-loop 
-{
-				hasCargo := getCargoCount(unitIndex, isUnloading)
-				tooltip, % "cargo " hasCargo "`nisUnloading " isUnloading, 500, 500
-sleep 100
-}
 
 castEasyUnload(hotkey, queueUnload)
 {	
