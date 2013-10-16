@@ -816,6 +816,8 @@ clock:
 	}
 	Else if (time && game_status != "game") && (getLocalPlayerNumber() != 16 || debug) ; Local slot = 16 while in lobby/replay - this will stop replay announcements
 	{
+		if !A_IsCompiled
+			soundplay *-1
 		game_status := "game", warpgate_status := "not researched", gateway_count := warpgate_warning_set := 0
 		AW_MaxWorkersReached := TmpDisableAutoWorker := 0
 		MiniMapWarning := [], a_BaseList := [], aGatewayWarnings := []
@@ -834,16 +836,36 @@ clock:
 		;		, "unit_bank_read", "Auto_mine", "Auto_Group", "AutoGroupIdle"
 		;		, "overlay_timer", "g_unitPanelOverlay_timer"
 		;		, "g_autoWorkerProductionCheck", "cast_ForceInject")
-	
-
-
-		; Install the hook here. In case it got removed.
+		
+		If (DrawMiniMap || DrawAlerts || DrawSpawningRaces || warpgate_warn_on
+			|| supplyon || workeron || alert_array[GameType, "Enabled"])
+		{
+			if !aThreads.MiniMap.ahkReady()
+				launchMiniMapThread()
+			else
+				aThreads.MiniMap.ahkFunction("gameChange")
+		}
+		Else if aThreads.MiniMap.ahkReady()
+			aThreads.MiniMap.ahkFunction("exitApp") 
+		; install LL hooks
 		; Remove it at the end of the game.
 		; Also scrolling GUI listboxes with the hook installed
 		; causes the scroll to lag. Obviously it will still lag if user opens the
 		; gui while in a game the scroll will still lag.
+		; Install after starting the minimap thread, as i have had this happen a couple of times 
+		; half way through the loading screen
+		; where input the system input locks up for a few seconds
+		; of course it always works fine, but it could cause the users LLINput to be removed if they were already installed
+		;
+		; My timer function should only register positive when the game has actually begun!
+		; so the script shouldn't be doing anything for this to occur
+		; will test with a beep during some matches
+		; I think that it only happens when game is 100% loaded, but still waiting for someone else?
+		; perhaps online/lag sometimes causes the timer changes slightly before the game begins
+		; and while AHK is launching the minimap thread the LL callbacks are being delayed ???
+		setLowLevelInputHooks(True)	
 
-		setLowLevelInputHooks(True)
+
 		BufferInputFast.disableHotkeys() ; disable any previously created buffered hotkeys in case user has changed the key blocking list
 		BufferInputFast.createHotkeys(aButtons.List) ; re-create the hotkeys	
 		if WinActive(GameIdentifier)
@@ -905,17 +927,6 @@ clock:
 		EnemyBaseList := GetEBases()
 		findXelnagas(aXelnagas)		
 		UserSavedAppliedSettings := 0
-
-		If (DrawMiniMap || DrawAlerts || DrawSpawningRaces || warpgate_warn_on
-			|| supplyon || workeron || alert_array[GameType, "Enabled"])
-		{
-			if !aThreads.MiniMap.ahkReady()
-				launchMiniMapThread()
-			else
-				aThreads.MiniMap.ahkFunction("gameChange")
-		}
-		Else if aThreads.MiniMap.ahkReady()
-			aThreads.MiniMap.ahkFunction("exitApp") 
 	}
 return
 
@@ -7733,7 +7744,7 @@ g_SelectArmy:
 									, SelectArmyDeselectHoldPosition, SelectArmyDeselectFollowing, SelectArmyDeselectLoadedTransport 
 									, SelectArmyDeselectQueuedDrops, l_ActiveDeselectArmy)
 	clickUnitPortraits(aUnitPortraitLocations)
-	dSleep(20)
+	dSleep(40)
 	if SelectArmyControlGroupEnable
 		MTsend("^" Sc2SelectArmyCtrlGroup)
 	dSleep(5)
@@ -7893,7 +7904,7 @@ clickUnitPortraits(aUnitPortraitLocations, Modifers := "+")
 			if ClickUnitPortrait(portrait, X, Y, Xpage, Ypage) 
 			{
 				MTclick(Xpage, Ypage)
-				dsleep(10)
+				dsleep(15)
 			}
 			MTsend(Modifers "{click " x " " y "}")	
 		}

@@ -366,7 +366,10 @@ drawUnitDestinations(pGraphics, byRef A_MiniMapUnits)
 	static a_pPen := [], hasRun
 
 	if !hasRun
+	{
 		a_pPen := createPens(1)
+		hasRun := True
+	}
 
 	for indexOuter, unit in A_MiniMapUnits
 	{
@@ -385,19 +388,11 @@ drawUnitDestinations(pGraphics, byRef A_MiniMapUnits)
 		;		break
 			if (indexQueued = unit.QueuedCommands.MinIndex())
 				x := unit.x, y := unit.y 	
-		;		convertCoOrdindatesToMiniMapPos(x,  y)	already coverted x, y due to minimap data
 			Else 
 				x := xTarget, y := yTarget
 
 			convertCoOrdindatesToMiniMapPos(xTarget := movement.targetX, yTarget := movement.targetY)	
 			Gdip_DrawLine(pGraphics, a_pPen[colour], x, y, xTarget, yTarget)
-		
-		
-	;	objtree(unit.QueuedCommands)
-	;	msgbox % x ", " y 
-	;		. "`n"  xTarget ", " yTarget
-	;		. "`n" unit.unit ", " aUnitName[getUnitType(unit.unit)]
-	;		. "`n" getUnitPositionX(unit.unit) ", " getUnitPositionY(unit.unit)
 		}
 	}
 	return
