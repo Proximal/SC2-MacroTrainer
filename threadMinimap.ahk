@@ -161,16 +161,16 @@ DrawMiniMap()
 {	global
 	local UnitRead_i, unit, type, Owner, Radius, Filter, EndCount, colour, ResourceOverlay_i, unitcount
 	, DrawX, DrawY, Width, height, i, hbm, hdc, obm, G,  pBitmap, PlayerColours, A_MiniMapUnits
-	static Overlay_RunCount
+	static overlayCreated := 0
 
-	Overlay_RunCount ++
+	
 	if (ReDrawMiniMap and WinActive(GameIdentifier))
 	{
 		Try Gui, MiniMapOverlay: Destroy
-		Overlay_RunCount := 1
+		overlayCreated := False
 		ReDrawMiniMap := 0
 	}
-	If (Overlay_RunCount = 1)
+	If (!overlayCreated)
 	{
 		; Set the width and height we want as our drawing area, to draw everything in. This will be the dimensions of our bitmap
 		; Create a layered window ;E0x20 click thru (+E0x80000 : must be used for UpdateLayeredWindow to work!) that is always on top (+AlwaysOnTop), has no taskbar entry or caption		
@@ -404,7 +404,10 @@ drawUnitDestinationsFromCompleteData(pGraphics, byRef aEnemyUnitData)
 	static a_pPen := [], hasRun
 
 	if !hasRun
-		a_pPen := createPens(2)
+	{
+		a_pPen := createPens(1)
+		hasRun := True
+	}
 
 	for indexOuter, aIndividualUnit in aEnemyUnitData
 	{
@@ -488,7 +491,10 @@ drawPlayerCameras(pGraphics)
 {
 	static a_pPen := [], maxAngle := 1.195313, hasRun
 	if !hasRun
+	{
 		a_pPen := createPens(1)
+		hasRun := True
+	}
 
 	For slotNumber in aPlayer
 	{

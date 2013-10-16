@@ -716,7 +716,6 @@ Return
 Overlay_Toggle:
 	if (A_ThisHotkey = CycleOverlayKey)
 	{
-		tooltip, %A_ThisHotkey%, 500, 500
 		If ((ActiveOverlays := DrawIncomeOverlay + DrawResourcesOverlay + DrawArmySizeOverlay + DrawUnitOverlay) > 1)
 		{
 			DrawResourcesOverlay := DrawArmySizeOverlay := DrawIncomeOverlay := DrawUnitOverlay := 0
@@ -808,7 +807,7 @@ clock:
 	{	
 		game_status := "lobby" ; with this clock = 0 when not in game (while in game at 0s clock = 44)	
 		timeroff("money", "gas", "scvidle", "supply", "worker", "inject", "unit_bank_read", "Auto_mine", "Auto_Group", "AutoGroupIdle", "overlay_timer", "g_unitPanelOverlay_timer", "g_autoWorkerProductionCheck", "cast_ForceInject")
-		inject_timer := TimeReadRacesSet := UpdateTimers := Overlay_RunCount := PrevWarning := WinNotActiveAtStart := ResumeWarnings := 0 ;ie so know inject timer is off
+		inject_timer := TimeReadRacesSet := UpdateTimers := PrevWarning := WinNotActiveAtStart := ResumeWarnings := 0 ;ie so know inject timer is off
 		if aThreads.MiniMap.ahkReady()
 			aThreads.MiniMap.ahkFunction("gameChange")
 		Try DestroyOverlays()
@@ -6642,25 +6641,24 @@ OverlayMove_LButtonDown()
 
 DrawIdleWorkersOverlay(ByRef Redraw, UserScale=1,Drag=0, expand=1)
 {	global aLocalPlayer, GameIdentifier, config_file, IdleWorkersOverlayX, IdleWorkersOverlayY, a_pBitmap
-	static Font := "Arial", Overlay_RunCount, hwnd1, DragPrevious := 0				
+	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0				
 
-	Overlay_RunCount ++	
 	DestX := DestY := 0
 	idleCount := getIdleWorkers()
 	If (Redraw = -1 || !idleCount)		;only draw overlay when idle workers present
 	{
 		Try Gui, idleWorkersOverlay: Destroy
-		Overlay_RunCount := 0
+		overlayCreated := False
 		Redraw := 0
 		Return
 	}	
 	Else if (ReDraw AND WinActive(GameIdentifier) && idleCount)
 	{
 		Try Gui, idleWorkersOverlay: Destroy
-		Overlay_RunCount := 1
+		overlayCreated := False
 		Redraw := 0
 	}	
-	If (Overlay_RunCount = 1)
+	If (!overlayCreated)
 	{
 		Gui, idleWorkersOverlay: -Caption Hwndhwnd1 +E0x20 +E0x80000 +LastFound  +ToolWindow +AlwaysOnTop
 		Gui, idleWorkersOverlay: Show, NA X%idleWorkersOverlayX% Y%idleWorkersOverlayY% W400 H400, idleWorkersOverlay
@@ -6708,24 +6706,24 @@ DrawIdleWorkersOverlay(ByRef Redraw, UserScale=1,Drag=0, expand=1)
 }
 DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Drag=0)
 {	global aLocalPlayer, aHexColours, aPlayer, GameIdentifier, IncomeOverlayX, IncomeOverlayY, config_file, MatrixColour, a_pBitmap
-	static Font := "Arial", Overlay_RunCount, hwnd1, DragPrevious := 0
-	Overlay_RunCount ++
+	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0
+
 	DestX := i := 0
 	Options := " cFFFFFFFF r4 s" 17*UserScale					;these cant be static	
 	If (Redraw = -1)
 	{
 		Try Gui, IncomeOverlay: Destroy
-		Overlay_RunCount := 0
+		overlayCreated := False
 		Redraw := 0
 		Return
 	}		
 	Else if (ReDraw AND WinActive(GameIdentifier))
 	{
 		Try Gui, IncomeOverlay: Destroy
-		Overlay_RunCount := 1
+		overlayCreated := False
 		Redraw := 0
 	}	
-	If (Overlay_RunCount = 1)
+	If (!overlayCreated)
 	{
 		Gui, IncomeOverlay: -Caption Hwndhwnd1 +E0x20 +E0x80000 +LastFound  +ToolWindow +AlwaysOnTop
 		Gui, IncomeOverlay: Show, NA X%IncomeOverlayX% Y%IncomeOverlayY% W400 H400, IncomeOverlay
@@ -6823,24 +6821,24 @@ DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Dr
 
 DrawResourcesOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Drag=0)
 {	global aLocalPlayer, aHexColours, aPlayer, GameIdentifier, config_file, ResourcesOverlayX, ResourcesOverlayY, MatrixColour, a_pBitmap
-	static Font := "Arial", Overlay_RunCount, hwnd1, DragPrevious := 0		
-	Overlay_RunCount ++	
+	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0		
+
 	DestX := i := 0
 	Options := " cFFFFFFFF r4 s" 17*UserScale					;these cant be static	
 	If (Redraw = -1)
 	{
 		Try Gui, ResourcesOverlay: Destroy
-		Overlay_RunCount := 0
+		overlayCreated := False
 		Redraw := 0
 		Return
 	}	
 	Else if (ReDraw AND WinActive(GameIdentifier))
 	{
 		Try Gui, ResourcesOverlay: Destroy
-		Overlay_RunCount := 1
+		overlayCreated := False
 		Redraw := 0
 	}
-	If (Overlay_RunCount = 1)
+	If (!overlayCreated)
 	{
 		Gui, ResourcesOverlay: -Caption Hwndhwnd1 +E0x20 +E0x80000 +LastFound  +ToolWindow +AlwaysOnTop
 		Gui, ResourcesOverlay: Show, NA X%ResourcesOverlayX% Y%ResourcesOverlayY% W400 H400, ResourcesOverlay
@@ -6942,24 +6940,24 @@ DrawResourcesOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0
 
 DrawArmySizeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Drag=0)
 {	global aLocalPlayer, aHexColours, aPlayer, GameIdentifier, config_file, ArmySizeOverlayX, ArmySizeOverlayY, MatrixColour, a_pBitmap
-	static Font := "Arial", Overlay_RunCount, hwnd1, DragPrevious := 0	
-	Overlay_RunCount ++	
+	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0	
+		
 	DestX := i := 0
 	Options := " cFFFFFFFF r4 Bold s" 17*UserScale					;these cant be static
 	If (Redraw = -1)
 	{
 		Try Gui, ArmySizeOverlay: Destroy
-		Overlay_RunCount := 0
+		overlayCreated := False
 		Redraw := 0
 		Return
 	}	
 	Else if (ReDraw AND WinActive(GameIdentifier))
 	{
 		Try Gui, ArmySizeOverlay: Destroy
-		Overlay_RunCount := 1
+		overlayCreated := False
 		Redraw := 0
 	}	
-	If (Overlay_RunCount = 1)
+	If (!overlayCreated)
 	{	; Create a layered window ;E0x20 click thru (+E0x80000 : must be used for UpdateLayeredWindow to work!) that is always on top (+AlwaysOnTop), has no taskbar entry or caption		
 		Gui, ArmySizeOverlay: -Caption Hwndhwnd1 +E0x20 +E0x80000 +LastFound  +ToolWindow +AlwaysOnTop
 		Gui, ArmySizeOverlay: Show, NA X%ArmySizeOverlayX% Y%ArmySizeOverlayY% W400 H400, ArmySizeOverlay
@@ -7059,24 +7057,24 @@ DrawArmySizeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,
 }
 DrawWorkerOverlay(ByRef Redraw, UserScale=1,Drag=0)
 {	global aLocalPlayer, GameIdentifier, config_file, WorkerOverlayX, WorkerOverlayY, a_pBitmap
-	static Font := "Arial", Overlay_RunCount, hwnd1, DragPrevious := 0				
+	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0				
 	Options := " cFFFFFFFF r4 s" 18*UserScale
-	Overlay_RunCount ++	
+
 	DestX := DestY := 0
 	If (Redraw = -1)
 	{
 		Try Gui, WorkerOverlay: Destroy
-		Overlay_RunCount := 0
+		overlayCreated := False
 		Redraw := 0
 		Return
 	}	
 	Else if (ReDraw AND WinActive(GameIdentifier))
 	{
 		Try Gui, WorkerOverlay: Destroy
-		Overlay_RunCount := 1
+		overlayCreated := False
 		Redraw := 0
 	}	
-	If (Overlay_RunCount = 1)
+	If (!overlayCreated)
 	{
 		Gui, WorkerOverlay: -Caption Hwndhwnd1 +E0x20 +E0x80000 +LastFound  +ToolWindow +AlwaysOnTop
 		Gui, WorkerOverlay: Show, NA X%WorkerOverlayX% Y%WorkerOverlayY% W400 H400, WorkerOverlay
@@ -7117,7 +7115,7 @@ DrawWorkerOverlay(ByRef Redraw, UserScale=1,Drag=0)
 
 DrawLocalPlayerColour(ByRef Redraw, UserScale=1,Drag=0)
 {	global aLocalPlayer, GameIdentifier, config_file, LocalPlayerColourOverlayX, LocalPlayerColourOverlayY, a_pBitmap, aHexColours
-	static Overlay_RunCount, hwnd1, DragPrevious := 0,  PreviousPlayerColours := 0 			
+	static overlayCreated, hwnd1, DragPrevious := 0,  PreviousPlayerColours := 0 			
 
 	playerColours := arePlayerColoursEnabled()
 
@@ -7129,27 +7127,27 @@ DrawLocalPlayerColour(ByRef Redraw, UserScale=1,Drag=0)
 	else if (playerColours && !PreviousPlayerColours)
 	{
 		Try Gui, LocalPlayerColourOverlay: Destroy
+		overlayCreated := False
 		PreviousPlayerColours := 1
 		return
 	}
 	else if playerColours
 		return
 
-	Overlay_RunCount ++	
 	If (Redraw = -1)
 	{
 		Try Gui, LocalPlayerColourOverlay: Destroy
-		Overlay_RunCount := 0
+		overlayCreated := False
 		Redraw := 0
 		Return
 	}	
 	Else if (ReDraw AND WinActive(GameIdentifier))
 	{
 		Try Gui, LocalPlayerColourOverlay: Destroy
-		Overlay_RunCount := 1
+		overlayCreated := False
 		Redraw := 0
 	}	
-	If (Overlay_RunCount = 1)
+	If (!overlayCreated)
 	{
 		Gui, LocalPlayerColourOverlay: -Caption Hwndhwnd1 +E0x20 +E0x80000 +LastFound  +ToolWindow +AlwaysOnTop
 		Gui, LocalPlayerColourOverlay: Show, NA X%LocalPlayerColourOverlayX% Y%LocalPlayerColourOverlayY% W400 H400, LocalPlayerColourOverlay
@@ -8735,24 +8733,24 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 {
 	GLOBAL aEnemyUnits, aEnemyBuildingConstruction, a_pBitmap, aPlayer, aLocalPlayer, aHexColours, GameIdentifier, config_file, UnitOverlayX, UnitOverlayY, MatrixColour 
 		, aUnitInfo, SplitUnitPanel
-	static Font := "Arial", Overlay_RunCount, hwnd1, DragPrevious := 0
-	Overlay_RunCount ++	
+	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0
+
 	DestX := i := 0
 	Options := "Center cFFFFFFFF r4 s" 17*UserScale					;these cant be static	
 	If (Redraw = -1)
 	{
 		Try Gui, UnitOverlay: Destroy
-		Overlay_RunCount := 0
+		overlayCreated := False
 		Redraw := 0
 		Return
 	}	
 	Else if (ReDraw AND WinActive(GameIdentifier))
 	{
 		Try Gui, UnitOverlay: Destroy
-		Overlay_RunCount := 1
+		overlayCreated := False
 		Redraw := 0
 	}
-	If (Overlay_RunCount = 1)
+	If (!overlayCreated)
 	{
 		Gui, UnitOverlay: -Caption Hwndhwnd1 +E0x20 +E0x80000 +LastFound  +ToolWindow +AlwaysOnTop
 		Gui, UnitOverlay: Show, NA X%UnitOverlayX% Y%UnitOverlayY% W400 H400, UnitOverlay
