@@ -681,7 +681,7 @@ g_PrevWarning:
 Return
 
 Adjust_overlay:
-	Dragoverlay := 1
+	Dragoverlay := True
 	{
 		gosub overlay_timer
 		if DrawUnitOverlay
@@ -693,7 +693,7 @@ Adjust_overlay:
 	}	
 	sleep 500
 	KeyWait, %AdjustOverlayKey%, T40
-	Dragoverlay := 0	 	
+	Dragoverlay := False	 	
 	{
 	;	SetTimer, OverlayKeepOnTop, 1000, -20
 		SetTimer, overlay_timer, %OverlayRefresh%, -8
@@ -3636,9 +3636,6 @@ Gui, Tab, Spread
 	Gui, Add, Text, Xs yp+35 w70, Ctrl Group Storage:
 	Gui, Add, Edit, Readonly yp xs+85 w65 center vSplitctrlgroupStorage_key , %SplitctrlgroupStorage_key%
 		Gui, Add, Button, yp x+10 gEdit_SendHotkey v#SplitctrlgroupStorage_key,  Edit
-	Gui, Add, Text, Xs yp+35, Sleep time (ms):
-	Gui, Add, Edit, Number Right xp+145 yp-2 w45 vTT_SleepSplitUnits
-	Gui, Add, UpDown,  Range0-100 vSleepSplitUnits, %SleepSplitUnits%
 	Gui, Add, Text, Xs yp+100 w360, This can be used to spread your workers when being attack by hellbats/hellions.`n`nWhen 30`% of the selected units are worksers, the units will be spread over a much larger area
 	Gui, Add, Text, Xs yp+80 w360, Note: When spreading army/attacking units this is designed to spread your units BEFORE the engagement - Dont use it while being attacked!`n`n****This is in a very beta stage and will be improved later***
 
@@ -6664,6 +6661,7 @@ DrawIdleWorkersOverlay(ByRef Redraw, UserScale=1,Drag=0, expand=1)
 		Gui, idleWorkersOverlay: Show, NA X%idleWorkersOverlayX% Y%idleWorkersOverlayY% W400 H400, idleWorkersOverlay
 		OnMessage(0x201, "OverlayMove_LButtonDown")
 		OnMessage(0x20A, "OverlayResize_WM_MOUSEWHEEL")
+		overlayCreated := True	
 	}
 	If (Drag AND !DragPrevious)
 	{	DragPrevious := 1
@@ -6730,6 +6728,7 @@ DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Dr
 	;	hwnd1 := WinExist()
 		OnMessage(0x201, "OverlayMove_LButtonDown")
 		OnMessage(0x20A, "OverlayResize_WM_MOUSEWHEEL")
+		overlayCreated := True
 	}
 	If (Drag AND !DragPrevious)
 	{	DragPrevious := 1
@@ -6846,6 +6845,7 @@ DrawResourcesOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0
 	;	hwnd1 := WinExist()
 		OnMessage(0x201, "OverlayMove_LButtonDown")
 		OnMessage(0x20A, "OverlayResize_WM_MOUSEWHEEL")
+		overlayCreated := True
 	}	
 	If (Drag AND !DragPrevious)
 	{	DragPrevious := 1
@@ -6963,6 +6963,7 @@ DrawArmySizeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,
 		Gui, ArmySizeOverlay: Show, NA X%ArmySizeOverlayX% Y%ArmySizeOverlayY% W400 H400, ArmySizeOverlay
 		OnMessage(0x201, "OverlayMove_LButtonDown")
 		OnMessage(0x20A, "OverlayResize_WM_MOUSEWHEEL")
+		overlayCreated := True
 	}
 	If (Drag AND !DragPrevious)
 	{	DragPrevious := 1
@@ -7057,7 +7058,7 @@ DrawArmySizeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,
 }
 DrawWorkerOverlay(ByRef Redraw, UserScale=1,Drag=0)
 {	global aLocalPlayer, GameIdentifier, config_file, WorkerOverlayX, WorkerOverlayY, a_pBitmap
-	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0				
+	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := False				
 	Options := " cFFFFFFFF r4 s" 18*UserScale
 
 	DestX := DestY := 0
@@ -7080,13 +7081,16 @@ DrawWorkerOverlay(ByRef Redraw, UserScale=1,Drag=0)
 		Gui, WorkerOverlay: Show, NA X%WorkerOverlayX% Y%WorkerOverlayY% W400 H400, WorkerOverlay
 		OnMessage(0x201, "OverlayMove_LButtonDown")
 		OnMessage(0x20A, "OverlayResize_WM_MOUSEWHEEL")
+		overlayCreated := True
 	}
 	If (Drag AND !DragPrevious)
-	{	DragPrevious := 1
+	{	
+		DragPrevious := True
 		Gui, WorkerOverlay: -E0x20
 	}
 	Else if (!Drag AND DragPrevious)
-	{	DragPrevious := 0
+	{	
+		DragPrevious := False
 		Gui, WorkerOverlay: +E0x20 +LastFound
 		WinGetPos,WorkerOverlayX,WorkerOverlayY		
 		IniWrite, %WorkerOverlayX%, %config_file%, Overlays, WorkerOverlayX
@@ -7102,7 +7106,6 @@ DrawWorkerOverlay(ByRef Redraw, UserScale=1,Drag=0)
 	SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
 	Width *= UserScale *.5, Height *= UserScale *.5
 	Gdip_DrawImage(G, pBitmap, DestX, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)	
-	;Gdip_DisposeImage(pBitmap)
 	Gdip_TextToGraphics(G, getPlayerWorkerCount(aLocalPlayer["Slot"]), "x"(DestX+Width+2*UserScale) "y"(DestY+(Height//4)) Options, Font, TextWidthHeight, TextWidthHeight)
 	Gdip_DeleteGraphics(G)	
 	UpdateLayeredWindow(hwnd1, hdc)
@@ -7153,6 +7156,7 @@ DrawLocalPlayerColour(ByRef Redraw, UserScale=1,Drag=0)
 		Gui, LocalPlayerColourOverlay: Show, NA X%LocalPlayerColourOverlayX% Y%LocalPlayerColourOverlayY% W400 H400, LocalPlayerColourOverlay
 		OnMessage(0x201, "OverlayMove_LButtonDown")
 		OnMessage(0x20A, "OverlayResize_WM_MOUSEWHEEL")
+		overlayCreated := True
 	}
 	If (Drag AND !DragPrevious)
 	{	DragPrevious := 1
@@ -7715,7 +7719,7 @@ g_SplitUnits:
 	input.hookBlock(False, False)
 	if sleep
 		DllCall("Sleep", Uint, 15) ;
-	SplitUnits(SplitctrlgroupStorage_key, SleepSplitUnits)
+	SplitUnits(SplitctrlgroupStorage_key)
 return
 
 
@@ -7733,8 +7737,8 @@ for a 146 terran army deslecting all but 1 unit
 */
 g_SelectArmy:
 	critical, 10000
-	input.pSendDelay(-1)
-	input.pClickDelay(-1)
+;	input.pSendDelay(-1)
+;	input.pClickDelay(-1)
 	MTsend(Sc2SelectArmy_Key)
 	dSleep(15)
 	aUnitPortraitLocations := []
@@ -7742,14 +7746,13 @@ g_SelectArmy:
 									, SelectArmyDeselectHoldPosition, SelectArmyDeselectFollowing, SelectArmyDeselectLoadedTransport 
 									, SelectArmyDeselectQueuedDrops, l_ActiveDeselectArmy)
 	clickUnitPortraits(aUnitPortraitLocations)
-	dSleep(40)
+	dSleep(30)
 	if SelectArmyControlGroupEnable
 		MTsend("^" Sc2SelectArmyCtrlGroup)
 	dSleep(5)
 	input.pSendDelay(pKeyDelay)
 	input.pClickDelay(pKeyDelay)
 	critical, off
-	input.hookBlock(False, False)	
 	sleep 20 
 return	
 	; 	Update:
@@ -7902,7 +7905,7 @@ clickUnitPortraits(aUnitPortraitLocations, Modifers := "+")
 			if ClickUnitPortrait(portrait, X, Y, Xpage, Ypage) 
 			{
 				MTclick(Xpage, Ypage)
-				dsleep(15)
+				dsleep(8)
 			}
 			MTsend(Modifers "{click " x " " y "}")	
 		}
@@ -7911,6 +7914,7 @@ clickUnitPortraits(aUnitPortraitLocations, Modifers := "+")
 	{
 		ClickUnitPortrait(0, X, Y, Xpage, Ypage, startPage + 1) ; for this page numbers start at 1, hence +1
 		MTclick(Xpage, Ypage)
+		dsleep(5)
 	}
 	return	
 }
@@ -8282,7 +8286,7 @@ splitByMouseLocation(SplitctrlgroupStorage_key)
 	BR 	1894 756
 */
 
-SplitUnits(SplitctrlgroupStorage_key, SleepSplitUnits)
+SplitUnits(SplitctrlgroupStorage_key)
 { 	GLOBAL aLocalPlayer, aUnitID, NextSubgroupKey
 
 ;	sleep, % SleepSplitUnits
@@ -8319,8 +8323,7 @@ SplitUnits(SplitctrlgroupStorage_key, SleepSplitUnits)
 		commandCount := getUnitQueuedCommands(unit, aCommands)
 		if (A_Index > 1 && (abs(aCommands[commandCount].targetX - xTargetPrev) > 6
 		|| abs(aCommands[commandCount].targetY - yTargetPrev) > 6
-		|| !commandCount))
-		;|| commandCount <= 1))
+		|| commandCount <= 1))
 			notOnsameMoveCommand := True ;, clipboard := xTargetPrev ", " yTargetPrev "`n" aCommands[commandCount].targetX ", " aCommands[commandCount].targety
 		moveStateSum +=  aCommands[commandCount].moveState
 		xTargetPrev := aCommands[commandCount].targetX
@@ -8336,8 +8339,7 @@ SplitUnits(SplitctrlgroupStorage_key, SleepSplitUnits)
 	Else if (SiegeTank / selectionCount >= .9 ) ; i.e. 90% of the selected units are workers
 		uSpacing := 9 ; for hellbat and hellion spread
 	;Else uSpacing := 5
-
-	else uSpacing := mMapRadiusSum / selectionCount * 11
+	else uSpacing := mMapRadiusSum / selectionCount * 10
 
 
 	squareSpots := ceil(Sqrt(aSelectedUnits.MaxIndex()))**2
@@ -8358,11 +8360,13 @@ SplitUnits(SplitctrlgroupStorage_key, SleepSplitUnits)
 
 	botLeftUnitX := xAvg-sqrt(squareSpots) , botLeftUnitY := yAvg+sqrt(squareSpots) 
 	
+	xMin := botLeftUnitX, yMin := yMax - floor(selectionCount/ ceil(sqrt(squareSpots)))*uSpacing
+	xMax := (selectionCount - sqrt(squareSpots) * yMin)*uSpacing + botLeftUnitX 
+	yMax := botLeftUnitY
+
 	botLeft := topRight := 0
 	loop, % selectionCount
-;	for i, boxSpot in aRandom
 	{
-	;	sleep 2000
 
 		if mod(A_Index, 2)
 			boxSpot := botLeft++
@@ -8374,7 +8378,15 @@ SplitUnits(SplitctrlgroupStorage_key, SleepSplitUnits)
 
 		X_offsetbox := boxSpot - sqrt(squareSpots) * y_offsetbox
 
-		x := X_offsetbox*uSpacing + botLeftUnitX, Y := botLeftUnitY - y_offsetbox*uSpacing
+		loop 
+			x := X_offsetbox*uSpacing + botLeftUnitX + rand(-6,6)
+		until ( x > xMin && x < xMax || A_index > 1000)
+		loop 
+			Y := botLeftUnitY - y_offsetbox*uSpacing + rand(-6,6)
+		until ( y > yMin && y < yMax || A_index > 1000)
+
+
+		
 	;	x := round(x), y := round(y)	;cos mousemove ignores decimal 
 	
 		x := round(x), y := round(y) 	;cos mousemove ignores decimal 
@@ -8389,10 +8401,10 @@ SplitUnits(SplitctrlgroupStorage_key, SleepSplitUnits)
 		if Attack 
 		{
 		;	mtSend("{shift down}a{Click " x " " y  "}{shift up}")
-			mtSend("a{Click " x + rand(-3,3) " " y + rand(-1,2)  "}")
+			mtSend("a{Click " x " " y "}")
 		;	pClick(x + rand(-3,3), y + rand(-1,2), "Right")	
 		}
-		else pClick(x + rand(-3,3), y + rand(-1,2), "Right")	
+		else pClick(x, y, "Right")	
 		DeselectUnitsFromPanel(tmpObject, 1)		;might not have enough time to update the selections?
 ;		dSleep(1)
 		sleep, -1
@@ -8412,7 +8424,7 @@ SplitUnits(SplitctrlgroupStorage_key, SleepSplitUnits)
 		return
 }
 
-SplitUnitsWorking(SplitctrlgroupStorage_key, SleepSplitUnits)
+SplitUnitsWorking(SplitctrlgroupStorage_key)
 {
 	MTsend("^" SplitctrlgroupStorage_key)
 	mousegetpos, Xorigin, Yorigin
@@ -8756,6 +8768,7 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 		Gui, UnitOverlay: Show, NA X%UnitOverlayX% Y%UnitOverlayY% W400 H400, UnitOverlay
 		OnMessage(0x201, "OverlayMove_LButtonDown")
 		OnMessage(0x20A, "OverlayResize_WM_MOUSEWHEEL")
+		overlayCreated := True
 	}	
 	If (Drag AND !DragPrevious)
 	{	DragPrevious := 1
@@ -9038,6 +9051,7 @@ castEasyUnload(hotkey, queueUnload)
 			sleep 5
 	}
 
+	lClickedUnits := ""
 	aDroppTick := []
 	while GetKeyState(hotkey, "P")
 	{
@@ -9055,9 +9069,9 @@ castEasyUnload(hotkey, queueUnload)
 					; with 250ms on NA server from Aus i still get two beeps (which is ok) - dont want to take too long
 					; in case SC ignored the first command e.g. the click missed the medivac
 
-					if (!aDroppTick.hasKey(unitIndex) || A_TickCount - aDroppTick[unitIndex] >= 250)
+				;	if (!aDroppTick.hasKey(unitIndex) || A_TickCount - aDroppTick[unitIndex] >= 250)
 					{
-						aDroppTick[unitIndex] := A_TickCount
+					;	aDroppTick[unitIndex] := A_TickCount
 						if !setCtrlGroup
 							queueUnload ? MTSend("{click}^" EasyUnloadStorageKey "{Shift Down}" unloadAll_Key "{click}{Shift Up}")
 										: MTSend("{click}^" EasyUnloadStorageKey unloadAll_Key "{click}")
@@ -9065,7 +9079,12 @@ castEasyUnload(hotkey, queueUnload)
 							queueUnload ? MTSend("{click}{Shift Down}" EasyUnloadStorageKey unloadAll_Key "{click}{Shift Up}")
 										: MTSend("{click}+" EasyUnloadStorageKey unloadAll_Key "{click}")
 						setCtrlGroup := True
-						soundplay *-1
+						
+						if unitIndex not in %lClickedUnits%
+						{
+							lClickedUnits .= unitIndex ","
+							soundplay *-1
+						}
 					}
 				}
 				else if !isInControlGroup(EasyUnloadStorageKey, unitIndex)
@@ -9074,7 +9093,11 @@ castEasyUnload(hotkey, queueUnload)
 						MTSend("{click}^" EasyUnloadStorageKey)
 					else MTSend("{click}+" EasyUnloadStorageKey)
 					setCtrlGroup := True
-					soundplay *-1
+					if unitIndex not in %lClickedUnits%
+					{
+						lClickedUnits .= unitIndex ","
+						soundplay *-1
+					}
 				}
 				else 
 				{

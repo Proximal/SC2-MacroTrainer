@@ -127,6 +127,8 @@ gameChange()
 	{
 		SetTimer, MiniMap_Timer, off
 		SetTimer, unit_bank_read, off
+		SetTimer, worker, off
+		SetTimer, supply, off
 		SetTimer, gClock, off
 		DestroyOverlays()
 	}
