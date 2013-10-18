@@ -381,10 +381,10 @@ drawUnitDestinations(pGraphics, byRef A_MiniMapUnits)
 				colour := "Red"
 			else if (movement.moveState	= aUnitMoveStates.Patrol)
 				colour := "Blue"
-			else if (movement.moveState	= aUnitMoveStates.Move
-				|| movement.moveState = aUnitMoveStates.Follow 
-				|| movement.moveState = aUnitMoveStates.FollowNoAttack)
-				colour := "Green"
+		;	else if (movement.moveState	= aUnitMoveStates.Move
+		;		|| movement.moveState = aUnitMoveStates.Follow 
+		;		|| movement.moveState = aUnitMoveStates.FollowNoAttack)
+		;		colour := "Green"
 			else colour := "Green"
 		;	if !movement.targetX
 		;		break
@@ -392,7 +392,8 @@ drawUnitDestinations(pGraphics, byRef A_MiniMapUnits)
 				x := unit.x, y := unit.y 	
 			Else 
 				x := xTarget, y := yTarget
-
+			if !x
+				break
 			convertCoOrdindatesToMiniMapPos(xTarget := movement.targetX, yTarget := movement.targetY)	
 			Gdip_DrawLine(pGraphics, a_pPen[colour], x, y, xTarget, yTarget)
 		}

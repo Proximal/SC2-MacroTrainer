@@ -1209,7 +1209,7 @@ AutoGroup(byref A_AutoGroup, AGDelay = 0)
 	}
 	Return
 }
-
+   
 g_LimitGrouping:
 	LimitGroup(A_AutoGroup, A_ThisHotkey)
 Return
@@ -1275,7 +1275,6 @@ Cast_DisableInject:
 		tSpeak("Injects Off")
 	}
 	Return
-
 
 
 
@@ -7752,11 +7751,16 @@ for a 146 terran army deslecting all but 1 unit
 */
 
 g_SelectArmy:
-	sleep := Input.releaseKeys(True)
+	while (GetKeyState("Lbutton", "P") || GetKeyState("Rbutton", "P"))
+	{
+		sleep 1
+		MouseDown := True
+	}
+	sleep := Input.releaseKeys()
 	critical, 1000
 	input.pSendDelay(-1)
 	input.pClickDelay(-1)
-	if sleep
+	if (sleep || MouseDown)
 		dSleep(15)
 	MTsend(Sc2SelectArmy_Key)
 	dSleep(25)
@@ -7775,12 +7779,12 @@ g_SelectArmy:
 	critical, off
 	sleep, -1
 	sleep 20
-	; -1 ensures LL callbacks get processed 
-	; without the postive vale sleep, its possible to make the input lag/beep
-	; after holding down the hotkey for a while and clicking lots i.e. not enough time
-	; to process command call backs in the LL hooks?
-;	objtree(aUnitPortraitLocations)
-return	
+	return	
+	; sleep, -1 ensures LL callbacks get processed 
+	; without the postive value sleep, its possible to make the input lag/beep
+	; after holding down the hotkey for a while and clicking lots perhaps not enough time
+	; to process command call backs in the LL hooks before the next hotkey fires? but that doesn't seem right
+
 	; 	Update:
 	;	Adding a sleep at the end of the command increases reliability. It prevents the user slowing down SC
 	; 	by allowing a small sleep even if the function is constantly repeating (user holding button)
@@ -7940,7 +7944,7 @@ clickUnitPortraits(aUnitPortraitLocations, Modifers := "+")
 				currentPage := getUnitSelectionPage()
 				MTclick(Xpage, Ypage)
 				pageTick := A_TickCount
-				while (getUnitSelectionPage() = currentPage && A_TickCount - pageTick < 20)
+				while (getUnitSelectionPage() = currentPage && A_TickCount - pageTick < 25)
 					dsleep(1)
 			}
 			MTsend("{click " x " " y "}")			
@@ -7954,7 +7958,7 @@ clickUnitPortraits(aUnitPortraitLocations, Modifers := "+")
 		currentPage := getUnitSelectionPage()
 		ClickUnitPortrait(0, X, Y, Xpage, Ypage, startPage + 1) ; for this page numbers start at 1, hence +1
 		MTclick(Xpage, Ypage)
-		while (getUnitSelectionPage() = currentPage && A_TickCount - pageTick < 20)
+		while (getUnitSelectionPage() = currentPage && A_TickCount - pageTick < 25)
 			dsleep(1)
 	}
 	return	
@@ -8398,8 +8402,6 @@ SplitUnits(SplitctrlgroupStorage_key)
 		yTargetPrev := aCommands[commandCount].targety
 	}
 
-
-
 	if (workerCount / selectionCount >= .3 ) ; i.e. 30% of the selected units are workers
 		uSpacing := 6.5 ; for hellbat and hellion spread
 	Else if (WidowMine / selectionCount >= .9 ) ; i.e. 90% of the selected units are workers
@@ -8407,7 +8409,6 @@ SplitUnits(SplitctrlgroupStorage_key)
 	Else if (SiegeTank / selectionCount >= .9 ) ; i.e. 90% of the selected units are workers
 		uSpacing := 3 ; for hellbat and hellion spread
 	;Else uSpacing := 5
-
 	else uSpacing := mMapRadiusSum / selectionCount * 7
 
 

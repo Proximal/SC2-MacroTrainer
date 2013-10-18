@@ -815,6 +815,9 @@ isTransportDropQueued(transportIndex)
 ; This is probably wrong as there should be more target abilities than just movements
 ; eg psi storm? havent tested
 ; but works for movements.
+
+; This is really starting to get messy. Need to spend some time looking at this structure
+
 getUnitQueuedCommands(unit, byRef aQueuedMovements, ModifyMoveStateForWorkers := False)
 {
 	static aTargetFlags := { "overrideUnitPositon":  0x1
@@ -826,7 +829,7 @@ getUnitQueuedCommands(unit, byRef aQueuedMovements, ModifyMoveStateForWorkers :=
 	; when a unit is on hold position the target flag = 7
 	; real movestate/0x40 = 2
 	; unload command movestate = 2
-	; target flag  = 15 for drop and for movement
+	; target flag = 15 for drop and for movement
 
 	aQueuedMovements := []
 	if (CmdQueue := ReadMemory(B_uStructure + unit * S_uStructure + O_P_uCmdQueuePointer, GameIdentifier)) ; points if currently has a command - 0 otherwise
@@ -837,21 +840,28 @@ getUnitQueuedCommands(unit, byRef aQueuedMovements, ModifyMoveStateForWorkers :=
 			ReadRawMemory(pNextCmd & -2, GameIdentifier, cmdDump, 0x42)
 			targetFlag := numget(cmdDump, 0x38, "UInt")
 			; targetFlag = 55 when mining & returning cargo 
-			; breifly = 7 when stops mining (ability) to turn and return minerals	
+			; breifly = 7 after returning cargo to main and going back to the mineral patch	
 			; cant be bothered checking ability addresses so do this so mining workers dont get drawn
-			; with a red attacking line
+			; with a red attacking line (as their move state = my attack value)
 			; target flag = 7 on hold position too
+
+			; Still requires some reversing which i cant be bothered. 
+			; building different kinds of structures affects the move state - Supply = blue, rax = green, CC = Red
+
 			if (ModifyMoveStateForWorkers && (targetFlag = 55 || targetFlag = 7))
 				moveState := aUnitMoveStates.Move
 			else moveState := numget(cmdDump, 0x40, "Short")
 
-			aQueuedMovements.insert({ "targetX": numget(cmdDump, 0x28, "Int") / 4096
+			aQueuedMovements.insert({ "targetX": targetX := numget(cmdDump, 0x28, "Int") / 4096
 									, "targetY": numget(cmdDump, 0x2C, "Int") / 4096
 									, "targetZ": numget(cmdDump, 0x30, "Int") / 4096
 									, "moveState": moveState }) 	; Different  Nuke +40  1 byte = abilityCommand
 
+			; on some maps workers have a target x,y,z of 0 (with a target flag of 7) at a point in their mining cycle causing lines to be drawn off map
+			; so just throw these out. Probably a flag in this structure that i could look for
+			; have to check hold position, as that also has a targ flag of 7
 
-			if (A_Index > 20 || (!(targetFlag & aTargetFlags.targetIsPoint || targetFlag & aTargetFlags.targetIsUnit) && targetFlag != 7))
+			if (A_Index > 20 || !(targetFlag & aTargetFlags.targetIsPoint || targetFlag & aTargetFlags.targetIsUnit || (targetFlag = 7 && moveState = aUnitMoveStates.HoldPosition)))
 			{
 				; something went wrong or target isnt a point/unit and its not on holdposition either
 				aQueuedMovements := []
@@ -864,6 +874,7 @@ getUnitQueuedCommands(unit, byRef aQueuedMovements, ModifyMoveStateForWorkers :=
 	else return 0
 
 }
+
 
 getUnitQueuedCommandString(aQueuedMovementsOrUnitIndex)
 {
