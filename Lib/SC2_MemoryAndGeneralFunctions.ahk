@@ -799,6 +799,7 @@ getUnitPositionZ(unit)
 ; Check if a medivac, prism or overlord has a drop queued up
 ; unload command movestate = 2
 ; target flag  = 15 for drop and for movement
+; target flag = 7 for hold position but movestate is the same
 isTransportDropQueued(transportIndex)
 {
 	getUnitQueuedCommands(transportIndex, aCommands)
@@ -839,6 +840,7 @@ getUnitQueuedCommands(unit, byRef aQueuedMovements, ModifyMoveStateForWorkers :=
 			; breifly = 7 when stops mining (ability) to turn and return minerals	
 			; cant be bothered checking ability addresses so do this so mining workers dont get drawn
 			; with a red attacking line
+			; target flag = 7 on hold position too
 			if (ModifyMoveStateForWorkers && (targetFlag = 55 || targetFlag = 7))
 				moveState := aUnitMoveStates.Move
 			else moveState := numget(cmdDump, 0x40, "Short")
@@ -849,9 +851,9 @@ getUnitQueuedCommands(unit, byRef aQueuedMovements, ModifyMoveStateForWorkers :=
 									, "moveState": moveState }) 	; Different  Nuke +40  1 byte = abilityCommand
 
 
-			if (A_Index > 20 || !(targetFlag & aTargetFlags.targetIsPoint || targetFlag & aTargetFlags.targetIsUnit))
+			if (A_Index > 20 || (!(targetFlag & aTargetFlags.targetIsPoint || targetFlag & aTargetFlags.targetIsUnit) && targetFlag != 7))
 			{
-				; something went wrong or target isnt a point/unit
+				; something went wrong or target isnt a point/unit and its not on holdposition either
 				aQueuedMovements := []
 				return 0
 			}
@@ -863,9 +865,40 @@ getUnitQueuedCommands(unit, byRef aQueuedMovements, ModifyMoveStateForWorkers :=
 
 }
 
+getUnitQueuedCommandString(aQueuedMovementsOrUnitIndex)
+{
+	if !isObject(aQueuedMovementsOrUnitIndex)
+	{
+		unitIndex := aQueuedMovementsOrUnitIndex	 ; safer to do this
+		aQueuedMovementsOrUnitIndex := [] 			; as AHK has a weird think where variables in functions can alter themselves strangely
+		getUnitQueuedCommands(unitIndex, aQueuedMovementsOrUnitIndex) 
+	}
+	for i, movement in aQueuedMovementsOrUnitIndex
+	{
+		if (movement.moveState = aUnitMoveStates.Amove)
+			s .= "Attack,"
+		else if (movement.moveState	= aUnitMoveStates.Patrol)
+			s .= "Patrol,"
+		else if (movement.moveState	= aUnitMoveStates.Move)
+			s .= "Move,"
+		else if (movement.moveState	= aUnitMoveStates.Follow)
+			s .= "Follow,"
+		else if (movement.moveState	= aUnitMoveStates.FollowNoAttack)
+			s .= "FNA,"
+		else if (movement.moveState	= aUnitMoveStates.HoldPosition)
+			s .= "Hold,"
+	}
+	; just sort to remove duplicates
+	if s
+		Sort, s, D`, U
+	return s
+}
+
+
 
 getUnitMoveState(unit)
-{	local CmdQueue, BaseCmdQueStruct
+{	
+	local CmdQueue, BaseCmdQueStruct
 	if (CmdQueue := ReadMemory(B_uStructure + unit * S_uStructure + O_P_uCmdQueuePointer, GameIdentifier)) ; points if currently has a command - 0 otherwise
 	{
 		BaseCmdQueStruct := ReadMemory(CmdQueue, GameIdentifier) & -2

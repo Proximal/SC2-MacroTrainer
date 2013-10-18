@@ -92,7 +92,7 @@ if !A_IsAdmin
 	{ 
 		try  Run *RunAs "%A_ScriptFullPath%"
 		; The catch is here, as I had someone say
-		; that the programmed just exited without
+		; that the program just exited without
 		; prompting for admin rights
 		catch
 			msgbox Please Run this again with admin rights.
@@ -1301,13 +1301,27 @@ class Input
 		,	MouseBlocked := False
 		,	KybdBlocked := False
 
-	releaseKeys()
+	; Very Important Note about logical and physical hotkey states
+	; if the hotkey has no modifiers, then physical state will be down
+	; and the logical will be up (as expected)
+	; But if the hotkey has modifiers
+	; then both the hotkey key and its modifiers will be physically AND logically down!! 
+
+	releaseKeys(checkMouse := False)
 	{
 		this.downSequence := ""
 		SetFormat, IntegerFast, hex
 		for index, key in this.keys 
-			if GetKeyState(key) 	; check the logical state
+			if GetKeyState(key) 	; check the logical state (as AHK will block the physical)
 				upsequence .= "{VK" GetKeyVK(key) " Up}", this.downSequence .= "{" key " Down}" 
+		if checkMouse
+		{
+			for index, key in this.MouseButtons 
+			{
+				if GetKeyState(key) 	; check the logical state
+					upsequence .= "{VK" GetKeyVK(key) " Up}", this.downSequence .= "{" key " Down}" 
+			}
+		}
 		SetFormat, IntegerFast, d
 		if upsequence
 		{
@@ -2606,6 +2620,7 @@ ini_settings_write:
 	IniWrite, %SelectArmyDeselectXelnaga%, %config_file%, %section%, SelectArmyDeselectXelnaga
 	IniWrite, %SelectArmyDeselectPatrolling%, %config_file%, %section%, SelectArmyDeselectPatrolling
 	IniWrite, %SelectArmyDeselectLoadedTransport%, %config_file%, %section%, SelectArmyDeselectLoadedTransport
+	IniWrite, %SelectArmyDeselectQueuedDrops%, %config_file%, %section%, SelectArmyDeselectQueuedDrops
 	IniWrite, %SelectArmyDeselectHoldPosition%, %config_file%, %section%, SelectArmyDeselectHoldPosition
 	IniWrite, %SelectArmyDeselectFollowing%, %config_file%, %section%, SelectArmyDeselectFollowing
 
@@ -4247,10 +4262,10 @@ Sc2SelectArmy_Key_TT := #Sc2SelectArmy_Key_TT := "The in game (SC2) button used 
 ModifierBeepSelectArmy_TT := "Will play a beep if a modifer key is being held down.`nModifiers include the ctrl, alt, shift and windows keys."
 castSelectArmy_key_TT := #castSelectArmy_key_TT := "The button used to invoke this function."
 SelectArmyDeselectXelnaga_TT := "Units controlling the xelnaga watch towers will be removed from the selection group."
-SelectArmyDeselectPatrolling_TT := "Patrolling units will be removed from the selection group.`nThis is very useful if you dont want to select some units e.g. banes/lings at your base or a drop ship waiting outside a base!`nJust set them to patrol and they will not be selected with your army."
-		. "`n`nNote: Units set to follow (and are moving) a patrolling unit will also me removed."
-SelectArmyDeselectHoldPosition_TT := "Units on hold position will be removed from the selection group."
-SelectArmyDeselectFollowing_TT := "Units on a follow command will be removed from the selection group."
+SelectArmyDeselectPatrolling_TT := "Units with a patrol command queued will be removed from the selection group.`n`nThis is very useful if you dont want to select some units e.g. banes/lings at your base or a drop ship waiting outside a base!`nJust set them to patrol and they will not be selected with your army."
+		. "`n`nNote: Units set to follow a patrolling unit will also me removed."
+SelectArmyDeselectHoldPosition_TT := "Units with a hold position command queued will be removed from the selection group."
+SelectArmyDeselectFollowing_TT := "Units with a follow command queued will be removed from the selection group."
 SelectArmyDeselectLoadedTransport_TT := "Removes loaded medivacs and warp prisms"
 SelectArmyDeselectQueuedDrops_TT := "Removes transports which have a drop command queued`n`nDoesn't include tranports which have begun unloading."
 
@@ -7735,25 +7750,36 @@ for a 146 terran army deslecting all but 1 unit
  10ms - 1 in ~7 times most of the units weren't deselected
  15ms - worked 100%
 */
+
 g_SelectArmy:
-	critical, 10000
-;	input.pSendDelay(-1)
-;	input.pClickDelay(-1)
+	sleep := Input.releaseKeys(True)
+	critical, 1000
+	input.pSendDelay(-1)
+	input.pClickDelay(-1)
+	if sleep
+		dSleep(15)
 	MTsend(Sc2SelectArmy_Key)
-	dSleep(15)
+	dSleep(25)
 	aUnitPortraitLocations := []
 	aUnitPortraitLocations := findPortraitsToRemoveFromArmy("", SelectArmyDeselectXelnaga, SelectArmyDeselectPatrolling
 									, SelectArmyDeselectHoldPosition, SelectArmyDeselectFollowing, SelectArmyDeselectLoadedTransport 
 									, SelectArmyDeselectQueuedDrops, l_ActiveDeselectArmy)
 	clickUnitPortraits(aUnitPortraitLocations)
-	dSleep(30)
+	dSleep(15)
 	if SelectArmyControlGroupEnable
 		MTsend("^" Sc2SelectArmyCtrlGroup)
-	dSleep(5)
+	dSleep(15)
+	Input.revertKeyState()
 	input.pSendDelay(pKeyDelay)
 	input.pClickDelay(pKeyDelay)
 	critical, off
-	sleep 20 
+	sleep, -1
+	sleep 20
+	; -1 ensures LL callbacks get processed 
+	; without the postive vale sleep, its possible to make the input lag/beep
+	; after holding down the hotkey for a while and clicking lots i.e. not enough time
+	; to process command call backs in the LL hooks?
+;	objtree(aUnitPortraitLocations)
 return	
 	; 	Update:
 	;	Adding a sleep at the end of the command increases reliability. It prevents the user slowing down SC
@@ -7795,23 +7821,24 @@ findUnitsToRemoveFromArmy(byref aSelected := "", DeselectXelnaga = 1, DeselectPa
 ; returns a simple array with the exact unit portrait location to be clicked
 ; as used by ClickUnitPortrait
 ; The highest portrait locations come first
+; This only take 3 or 4 ms with heaps of units selected
 findPortraitsToRemoveFromArmy(byref aSelected := "", DeselectXelnaga = 1, DeselectPatrolling = 1 
 								, DeselectHoldPosition = 0, DeselectFollowing = 0, DeselectLoadedTransport = 0 
 								, DeselectQueuedDrops = 0, lTypes = "")
-{ 	global aUnitMoveStates
+{ 	
+	global aUnitMoveStates
 	if (!isObject(aSelected) || !aSelected.units.maxIndex())
 		numGetSelectionSorted(aSelected) ; get a sorted array of the selection buffer
 	remove := []
-	
 	for i, unit in aSelected.units
 	{	
-		state := getUnitMoveState(unit.unitIndex)
+		commandString := getUnitQueuedCommandString(unit.unitIndex)
 		if (DeselectXelnaga && isLocalUnitHoldingXelnaga(unit.unitIndex))
-			|| (DeselectPatrolling && state = aUnitMoveStates.Patrol)
-			|| (DeselectHoldPosition && state = aUnitMoveStates.HoldPosition)
-			|| (DeselectFollowing && (state = aUnitMoveStates.Follow || state = aUnitMoveStates.FollowNoAttack)) ;no attack follow is used by spell casters e.g. HTs & infests which dont have and attack
+			|| (DeselectPatrolling && InStr(commandString, "Patrol"))
+			|| (DeselectHoldPosition && InStr(commandString, "Hold"))
+			|| (DeselectFollowing && InStr(commandString, "Follow")) ; Dont check Follow No Attack is used by spell casters e.g. HTs & infests which dont have and attack - as this will revmove them when theyre really on Amove
 				remove.insert(unit.unitPortrait) 
-		else if (lTypes  || DeselectLoadedTransport || DeselectQueuedDrops)
+		else if (lTypes || DeselectLoadedTransport || DeselectQueuedDrops)
 		{
 			type := unit.unitId
 			if (DeselectLoadedTransport	|| DeselectQueuedDrops) && (type = aUnitId.Medivac || type = aUnitID.WarpPrism || type = aUnitID.WarpPrismPhasing)
@@ -7898,29 +7925,70 @@ DeselectUnitsFromPanel(aRemoveUnits, aSelection := "")
 clickUnitPortraits(aUnitPortraitLocations, Modifers := "+")
 {
 	startPage := getUnitSelectionPage()
+	; Send modifiers down once at start so don't needlessly send up/down for each click 
+	; though i dont think it really matters
+	; Also, page numbers can be clicked with the shift/ctrl/alt keys down
+
+	if (aUnitPortraitLocations.MaxIndex() && downModifers := getModifierDownSequenceFromString(Modifers))
+		MTsend(downModifers)
+	for i, portrait in aUnitPortraitLocations
+	{
+		if (portrait <= 143)
+		{
+			if ClickUnitPortrait(portrait, X, Y, Xpage, Ypage) 
+			{	
+				currentPage := getUnitSelectionPage()
+				MTclick(Xpage, Ypage)
+				pageTick := A_TickCount
+				while (getUnitSelectionPage() = currentPage && A_TickCount - pageTick < 20)
+					dsleep(1)
+			}
+			MTsend("{click " x " " y "}")			
+		}
+	}
+	if downModifers
+		MTsend(getModifierUpSequenceFromString(Modifers))
+
+	if (startPage != getUnitSelectionPage())
+	{
+		currentPage := getUnitSelectionPage()
+		ClickUnitPortrait(0, X, Y, Xpage, Ypage, startPage + 1) ; for this page numbers start at 1, hence +1
+		MTclick(Xpage, Ypage)
+		while (getUnitSelectionPage() = currentPage && A_TickCount - pageTick < 20)
+			dsleep(1)
+	}
+	return	
+}
+
+clickUnitPortraitsOld(aUnitPortraitLocations, Modifers := "+")
+{
+	startPage := getUnitSelectionPage()
 	for i, portrait in aUnitPortraitLocations
 	{
 		if (portrait <= 143)
 		{
 			if ClickUnitPortrait(portrait, X, Y, Xpage, Ypage) 
 			{
+				currentPage := getUnitSelectionPage()
 				MTclick(Xpage, Ypage)
-				dsleep(8)
+				pageTick := A_TickCount
+				while (getUnitSelectionPage() = currentPage && A_TickCount - pageTick < 20)
+					dsleep(1)
 			}
 			MTsend(Modifers "{click " x " " y "}")	
+			
 		}
 	}
 	if (startPage != getUnitSelectionPage())
 	{
+		currentPage := getUnitSelectionPage()
 		ClickUnitPortrait(0, X, Y, Xpage, Ypage, startPage + 1) ; for this page numbers start at 1, hence +1
 		MTclick(Xpage, Ypage)
-		dsleep(5)
+		while (getUnitSelectionPage() = currentPage && A_TickCount - pageTick < 20)
+			dsleep(1)
 	}
 	return	
 }
-
-
-
 
 ClickSelectUnitsPortriat(unitIndex, sleep := 10, ClickModifier="")	;can put ^ to do a control click
 {
@@ -7945,7 +8013,7 @@ ClickSelectUnitsPortriat(unitIndex, sleep := 10, ClickModifier="")	;can put ^ to
 	}	
 	return
 }
-
+; portrait numbers begin at 0 i.e. first page contains portraits 0-23
 ; clickTabPage is the real tab number ! its not off by 1! i.e. tab 1 = 1
 ClickUnitPortrait(SelectionIndex=0, byref X=0, byref Y=0, byref Xpage=0, byref Ypage=0, ClickPageTab = 0) ;SelectionIndex begins at 0 topleft unit
 {
@@ -8223,12 +8291,12 @@ class ChatString
 getAccountFolder()
 {
 
-		; example: D:\My Computer\My Documents\StarCraft II\Accounts\56064144\6-S2-1-79722\Replays\
+	; example: D:\My Computer\My Documents\StarCraft II\Accounts\56053144\6-S2-1-49722\Replays\
 	replayFolder := getReplayFolder()
-	StringReplace, ModifiedString, replayFolder,  \Accounts\, ?, All ;replace with ? which can occur in name
+	StringReplace, ModifiedString, replayFolder,  \Accounts\, ?, All ;replace with ? which cant occur in name
 	stringSplit, output, ModifiedString, ?
 	; output1 D:\My Computer\My Documents\StarCraft II
-	; output2 56064144\6-S2-1-79722\Replays\
+	; output2 56053144\6-S2-1-49722\Replays\
 	loop % strlen(output2)
 		if ((Char := substr(output2, A_Index, 1)) = "\") ; read each character of account number until reach '\' of next folder
 			break
@@ -8333,13 +8401,14 @@ SplitUnits(SplitctrlgroupStorage_key)
 
 
 	if (workerCount / selectionCount >= .3 ) ; i.e. 30% of the selected units are workers
-		uSpacing := 10 ; for hellbat and hellion spread
+		uSpacing := 6.5 ; for hellbat and hellion spread
 	Else if (WidowMine / selectionCount >= .9 ) ; i.e. 90% of the selected units are workers
-		uSpacing := 8 ; for hellbat and hellion spread
+		uSpacing := 4 ; for hellbat and hellion spread
 	Else if (SiegeTank / selectionCount >= .9 ) ; i.e. 90% of the selected units are workers
-		uSpacing := 9 ; for hellbat and hellion spread
+		uSpacing := 3 ; for hellbat and hellion spread
 	;Else uSpacing := 5
-	else uSpacing := mMapRadiusSum / selectionCount * 10
+
+	else uSpacing := mMapRadiusSum / selectionCount * 7
 
 
 	squareSpots := ceil(Sqrt(aSelectedUnits.MaxIndex()))**2
@@ -8359,10 +8428,11 @@ SplitUnits(SplitctrlgroupStorage_key)
 	}
 
 	botLeftUnitX := xAvg-sqrt(squareSpots) , botLeftUnitY := yAvg+sqrt(squareSpots) 
-	
-	xMin := botLeftUnitX, yMin := yMax - floor(selectionCount/ ceil(sqrt(squareSpots)))*uSpacing
-	xMax := (selectionCount - sqrt(squareSpots) * yMin)*uSpacing + botLeftUnitX 
-	yMax := botLeftUnitY
+	xMin := botLeftUnitX, yMin := botLeftUnitY - sqrt(squareSpots)*uSpacing
+	xMax := botLeftUnitX + sqrt(squareSpots)*uSpacing, yMax :=  botLeftUnitY
+
+;	clipboard := xMin "," yMin
+;			. "`n" xMax "," yMax
 
 	botLeft := topRight := 0
 	loop, % selectionCount
@@ -8374,53 +8444,34 @@ SplitUnits(SplitctrlgroupStorage_key)
 			boxSpot := squareSpots - (++topRight) ; Increment first as box spots start at 0 (hence max spot = boxspots -1)
 
 		y_offsetbox := floor(boxSpot/ ceil(sqrt(squareSpots)))
-
-
 		X_offsetbox := boxSpot - sqrt(squareSpots) * y_offsetbox
 
+		loop
+			x := X_offsetbox*uSpacing + botLeftUnitX + rand(-4,4)
+		until (x >= xMin && x <= xMax || A_Index > 100)
 		loop 
-			x := X_offsetbox*uSpacing + botLeftUnitX + rand(-6,6)
-		until ( x > xMin && x < xMax || A_index > 1000)
-		loop 
-			Y := botLeftUnitY - y_offsetbox*uSpacing + rand(-6,6)
-		until ( y > yMin && y < yMax || A_index > 1000)
-
-
-		
-	;	x := round(x), y := round(y)	;cos mousemove ignores decimal 
-	
-		x := round(x), y := round(y) 	;cos mousemove ignores decimal 
+			Y := botLeftUnitY - y_offsetbox*uSpacing + rand(-1,1)
+		until (y >= yMin && y <= yMax || A_Index > 100)
 		for index, unit in aSelectedUnits
 			unit.absDistance := Abs(x - unit.mouseX)+ Abs(y - unit.mouseY)
-;		clipboard .= "(" x ", " y ")`n"
-
 		sort2DArray(aSelectedUnits, "absDistance")
 
 		tmpObject := []
 		tmpObject.insert(aSelectedUnits[1].unit)
 		if Attack 
-		{
-		;	mtSend("{shift down}a{Click " x " " y  "}{shift up}")
 			mtSend("a{Click " x " " y "}")
-		;	pClick(x + rand(-3,3), y + rand(-1,2), "Right")	
-		}
-		else pClick(x, y, "Right")	
+		else 
+			pClick(x, y, "Right")	
 		DeselectUnitsFromPanel(tmpObject, 1)		;might not have enough time to update the selections?
 ;		dSleep(1)
 		sleep, -1
 		aSelectedUnits.remove(1)
-
 	}
-;	clipboard .= "avg (" xavg ", " yavg ")`n"
-;	clipboard .= "BL (" botLeftUnitX ", " botLeftUnity ")`n"
-;	clipboard .= "Squarespots: " squareSpots "`n"
+
 	sendSequence := SplitctrlgroupStorage_key
 	loop % HighlightedGroup
 		sendSequence .= NextSubgroupKey
 	MTsend(sendSequence)
-
-;	BlockInput, MouseMoveOff
-;	send {click %Xorigin%, %Yorigin%, 0}
 		return
 }
 
@@ -9032,7 +9083,7 @@ castEasyUnload(hotkey, queueUnload)
 	; and when the user releases the keys, windows outside of sc2 should register this as im not blocking input
 	; or using critical 
 
-	if (upSequence := getModifierUpSequenceFromHotkey(hotkey))
+	if (upSequence := getModifierUpSequenceFromString(hotkey))
 		psend(upSequence)
 	hotkey := stripModifiers(hotkey)
 
@@ -9122,7 +9173,7 @@ castEasyUnload(hotkey, queueUnload)
 	return
 }
 
-getModifierUpSequenceFromHotkey(hotkey)
+getModifierUpSequenceFromString(hotkey)
 {
 	if instr(hotkey, "^")
 		upSequence .= "{ctrl Up}"
@@ -9132,7 +9183,16 @@ getModifierUpSequenceFromHotkey(hotkey)
 		upSequence .= "{Alt Up}"
 	return upSequence
 }
-
+getModifierDownSequenceFromString(hotkey)
+{
+	if instr(hotkey, "^")
+		upSequence .= "{ctrl Down}"
+	if instr(hotkey, "+")
+		upSequence .= "{Shift Down}"
+	if instr(hotkey, "!")
+		upSequence .= "{Alt Down}"
+	return upSequence
+}
 getModifierDownSequenceFromKeyboard()
 {
 	if GetKeyState("Ctrl", "P")
@@ -9291,8 +9351,6 @@ class SC2
           }
 
 } 
-
-
 
 
 ; This is required for some commands to function correctly. 
