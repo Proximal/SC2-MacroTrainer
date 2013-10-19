@@ -1,6 +1,6 @@
 
-; If the AHK.exe is 64 bit, then you must call GetWindowLongPtr
-; otherwise call GetWindowLong
+; If the AHK.exe is 64 bit, then function will call GetWindowLongPtr
+; otherwise  it calls GetWindowLong
 
 getProcessBaseAddress(WindowTitle, Hex=1, MatchMode=3)	;WindowTitle can be anything ahk_exe ahk_class etc
 {

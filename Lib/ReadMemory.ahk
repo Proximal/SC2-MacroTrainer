@@ -6,7 +6,7 @@
 ;The new method using Numget is around 35% faster!!!
 
 ;Bytes can take 1,2,3,4 or 8
-; wont correctly handle 8 bytes (I read these with another function)
+; wont correctly handle 8 bytes with extreme values
 ReadMemory(MADDRESS=0,PROGRAM="",BYTES=4)
 {
    Static OLDPROC, ProcessHandle

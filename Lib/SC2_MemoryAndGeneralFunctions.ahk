@@ -832,7 +832,7 @@ getUnitQueuedCommands(unit, byRef aQueuedMovements)
 		{
 			ReadRawMemory(pNextCmd & -2, GameIdentifier, cmdDump, 0x42)
 			targetFlag := numget(cmdDump, 0x38, "UInt")
-			
+
 			if !aStringTable.hasKey(pString := numget(cmdDump, 0x18, "UInt"))
 				aStringTable[pString] := ReadMemory_Str(readMemory(pString + 0x4, GameIdentifier), GameIdentifier)
 
@@ -857,6 +857,11 @@ getUnitQueuedCommands(unit, byRef aQueuedMovements)
 	else return 0
 }
 
+/*
+	QueenBuild = make creepTumour (or on way to making it) - state = 0
+	Transfusion  - state = 0
+
+*/
 
 getUnitQueuedCommandString(aQueuedCommandsOrUnitIndex)
 {
@@ -883,6 +888,7 @@ getUnitQueuedCommandString(aQueuedCommandsOrUnitIndex)
 		}
 		else if (command.ability = "attack")
 			s .= "Attack,"
+		else s .= command.ability ","
 	}
 	; just sort to remove duplicates
 	if s
@@ -1381,7 +1387,7 @@ cHex(dec)
 	return clipboard := substr(dectohex(dec), 3)
 }
 
-getBuildStats(building, byref QueueSize := "")
+getBuildStats(building, byref QueueSize := "", byRef item := "")
 {
 	pAbilities := getUnitAbilityPointer(building)
 	AbilitiesCount := getAbilitiesCount(pAbilities)
@@ -1389,6 +1395,12 @@ getBuildStats(building, byref QueueSize := "")
 	B_QueueInfo := getPointerToQueueInfo(pAbilities, CAbilQueueIndex, localQueSize)
 	if IsByRef(QueueSize)
 		QueueSize := localQueSize
+	if IsByRef(item)
+	{
+		if !aStringTable.hasKey(pString := readMemory(B_QueueInfo + 0xD0, GameIdentifier))
+			aStringTable[pString] := ReadMemory_Str(readMemory(pString + 0x4, GameIdentifier), GameIdentifier)
+		item := aStringTable[pString]
+	}
 	if localQueSize
 		return getPercentageUnitCompleted(B_QueueInfo)
 	else return 0
@@ -1412,8 +1424,6 @@ getBuildStatsTest(building, byref QueueSize := "", byRef item := "")
 		return getPercentageUnitCompleted(B_QueueInfo)
 	else return 0
 }
-
-
 
 ; byteArrayDump can be used to pass an already dumped byte array, saving reading it again
 getAbilityIndex(abilityID, abilitiesCount, ByteArrayAddress := "", byRef byteArrayDump := "")
@@ -1837,9 +1847,6 @@ numgetUnitModelPointer(ByRef Memory, Unit)
   return numget(Memory, Unit * S_uStructure + O_uModelPointer, "Int")  
 }
 
-
-
-
  getGroupedQueensWhichCanInject(ByRef aControlGroup,  CheckMoveState := 0)
  {	GLOBAL aUnitID, O_scTypeCount, O_scTypeHighlighted, S_CtrlGroup, O_scUnitIndex, GameIdentifier, B_CtrlGroupOneStructure
  	, S_uStructure, GameIdentifier, MI_Queen_Group, S_scStructure, aUnitMoveStates
@@ -1861,10 +1868,22 @@ numgetUnitModelPointer(ByRef Memory, Unit)
 			continue 
 		type := getUnitType(unit)
 		if (isUnitLocallyOwned(Unit) && aUnitID["Queen"] = type && ((energy := getUnitEnergy(unit)) >= 25)) 
-		&& (!CheckMoveState 
-			||  (CheckMoveState &&  (MoveState := getUnitMoveState(unit)) != aUnitMoveStates.Amove && MoveState != aUnitMoveStates.Move && MoveState != aUnitMoveStates.Patrol)  )  ; I do this because my blocking of keys isnt 100% and if the user is pressing H e.g. hold posistion army or make hydras 
-			aControlGroup.Queens.insert(objectGetUnitXYZAndEnergy(unit)), aControlGroup.Queens[aControlGroup.Queens.MaxIndex(), "Type"] := Type 		; and so can accidentally put queen on hold position thereby stopping injects!!!
-	} 																																					; so queen is not moving/patrolling/a-moving ; also if user right clicks queen to catsh, that would put her on a never ending follow command
+		{
+			; I do this because my blocking of keys isnt 100% and if the user is pressing H e.g. hold posistion army or make hydras 
+			; and so can accidentally put queen on hold position thereby stopping injects!!!
+			; so queen is not moving/patrolling/a-moving ; also if user right clicks queen to catsh, that would put her on a never ending follow command
+			; QueenBuild = make creepTumour (or on way to making it) - state = 0
+			if CheckMoveState
+			{
+				commandString := getUnitQueuedCommandString(unit)
+				if !(InStr(commandString, "Patrol") || InStr(commandString, "Move") || InStr(commandString, "Attack")
+				|| InStr(commandString, "QueenBuild") || InStr(commandString, "Transfusion"))
+					aControlGroup.Queens.insert(objectGetUnitXYZAndEnergy(unit)), aControlGroup.Queens[aControlGroup.Queens.MaxIndex(), "Type"] := Type
+			}
+			else 
+				aControlGroup.Queens.insert(objectGetUnitXYZAndEnergy(unit)), aControlGroup.Queens[aControlGroup.Queens.MaxIndex(), "Type"] := Type
+		}
+	} 																																					
 	aControlGroup["QueenCount"] := 	aControlGroup.Queens.maxIndex() ? aControlGroup.Queens.maxIndex() : 0 ; as "SelectedUnitCount" will contain total selected queens + other units in group
 	return 	aControlGroup.Queens.maxindex()
  }
@@ -1886,11 +1905,19 @@ numgetUnitModelPointer(ByRef Memory, Unit)
 		unit := numget(MemDump,(A_Index-1) * S_scStructure + O_scUnitIndex , "Int") >> 18
 		type := getUnitType(unit)
 		if (isUnitLocallyOwned(Unit) && aUnitID["Queen"] = type && ((energy := getUnitEnergy(unit)) >= 25)) 
-		&& (!CheckMoveState 
-			||  (CheckMoveState &&  (MoveState := getUnitMoveState(unit)) != aUnitMoveStates.Amove && MoveState != aUnitMoveStates.Move && MoveState != aUnitMoveStates.Patrol)  )  ; I do this because my blocking of keys isnt 100% and if the user is pressing H e.g. hold posistion army or make hydras
-			aSelection.Queens.insert(objectGetUnitXYZAndEnergy(unit)), aSelection.Queens[aSelection.Queens.MaxIndex(), "Type"] := Type 					; and so can accidentally put queen on hold position thereby stopping injects!!!
-	} 																																			; also if user right clicks queen to catsh, that would put her on a never ending follow command
-	aSelection["Count"] :=  aSelection.Queens.maxIndex() ? aSelection.Queens.maxIndex() : 0 ; as "SelectedUnitCount" will contain total selected queens + other units in group
+		{
+			if CheckMoveState
+			{
+				commandString := getUnitQueuedCommandString(unit)
+				if !(InStr(commandString, "Patrol") || InStr(commandString, "Move") || InStr(commandString, "Attack")
+				|| InStr(commandString, "QueenBuild") || InStr(commandString, "Transfusion"))		
+					aSelection.Queens.insert(objectGetUnitXYZAndEnergy(unit)), aSelection.Queens[aSelection.Queens.MaxIndex(), "Type"] := Type
+			}
+			else 
+				aSelection.Queens.insert(objectGetUnitXYZAndEnergy(unit)), aSelection.Queens[aSelection.Queens.MaxIndex(), "Type"] := Type
+		}
+	} 																								; also if user right clicks queen to catsh, that would put her on a never ending follow command
+	aSelection["Count"] :=  aSelection.Queens.maxIndex() ? aSelection.Queens.maxIndex() : 0 		; as "SelectedUnitCount" will contain total selected queens + other units in group
 	return 	aSelection.Queens.maxindex()
  }
 

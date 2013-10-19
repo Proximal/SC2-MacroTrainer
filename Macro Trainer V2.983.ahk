@@ -8383,7 +8383,6 @@ SplitUnits(SplitctrlgroupStorage_key)
 		|| abs(aCommands[commandCount].targetY - yTargetPrev) > 6
 		|| commandCount <= 1))
 			notOnsameMoveCommand := True ;, clipboard := xTargetPrev ", " yTargetPrev "`n" aCommands[commandCount].targetX ", " aCommands[commandCount].targety
-		moveStateSum +=  aCommands[commandCount].moveState
 		xTargetPrev := aCommands[commandCount].targetX
 		yTargetPrev := aCommands[commandCount].targety
 	}
@@ -8403,7 +8402,7 @@ SplitUnits(SplitctrlgroupStorage_key)
 	if !notOnsameMoveCommand
 	{
 		convertCoOrdindatesToMiniMapPos(xAvg := xTargetPrev, yAvg := yTargetPrev)
-		moveState := aCommands[commandCount].moveState
+		moveState := aCommands[commandCount].state
 		if (moveState = aUnitMoveStates.Amove || moveState = aUnitMoveStates.FollowNoAttack)
 			attack := True
 	}
@@ -9480,37 +9479,6 @@ loop
 msgbox % qpx(False) * 1000
 return
 */
-f1::
-getUnitQueuedCommands(getSelectedUnitIndex(), a)
-objtree(a)
-
-msgbox % getBuildStatsTest(getSelectedUnitIndex(), QueueSize, item) "`n" item "`n" QueueSize
-return 
-
-
-
-getBuildStatsTest2(building, byref QueueSize := "")
-{
-	pAbilities := getUnitAbilityPointer(building)
-	AbilitiesCount := getAbilitiesCount(pAbilities)
-	CAbilQueueIndex := getCAbilQueueIndex(pAbilities, AbilitiesCount)
-	B_QueueInfo := getPointerToQueueInfo(pAbilities, CAbilQueueIndex, localQueSize)
-	
-	cHex(B_QueueInfo)
-
-	if IsByRef(QueueSize)
-		QueueSize := localQueSize
-	if localQueSize
-		return getPercentageUnitCompleted(B_QueueInfo)
-	else return 0
-}
-
-
-
-
-
-
-
 
 
 /*
