@@ -94,9 +94,9 @@ gameChange()
 	if (Time := getTime())
 	{
 		game_status := "game", warpgate_status := "not researched", gateway_count := warpgate_warning_set := 0
-		; aAbilityNames and aUnitModel are super global declared in memory and general functions
+		; aStringTable and aUnitModel are super global declared in memory and general functions
 		aUnitModel := [] 		
-		aAbilityNames := []
+		aStringTable := []
 		MiniMapWarning := [], a_BaseList := [], aGatewayWarnings := []
 		if WinActive(GameIdentifier)
 			ReDrawMiniMap := ReDrawIncome := ReDrawResources := ReDrawArmySize := ReDrawWorker := RedrawUnit := ReDrawIdleWorkers := ReDrawLocalPlayerColour := 1

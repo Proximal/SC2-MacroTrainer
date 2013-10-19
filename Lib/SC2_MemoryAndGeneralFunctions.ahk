@@ -63,7 +63,7 @@ Global B_LocalCharacterNameID
 , O_uHpDamage
 , O_uEnergy
 , O_uTimer
-, O_cqMoveState
+, O_cqState
 
 , O_mUnitID
 , O_mSubgroupPriority
@@ -127,7 +127,7 @@ Global B_LocalCharacterNameID
 
 
 global aUnitModel := []
-, aAbilityNames := []
+, aStringTable := []
 /*
 
   O_pTimeSupplyCapped := 0x840
@@ -215,7 +215,7 @@ loadMemoryAddresses(base)
 		 O_uTimer := 0x16C ;+4
 		
 	;CommandQueue 	; separate structure
-		 O_cqMoveState := 0x40	
+		 O_cqState := 0x40	
 
 	
 	; Unit Model Structure	
@@ -778,7 +778,7 @@ getUnitPositionZ(unit)
 	will = the adress of the first command
 	also, the last bit of the Command ptr (pre &) will be set to 1
 
-;  O_cqMoveState := 0x40
+;  O_cqState := 0x40
 
 <Struct Name="QueuedCommand" Size="-1">
 <Member Name="pNextCommand" Type="Unsigned" Size="4" Offset="0"/>
@@ -832,18 +832,17 @@ getUnitQueuedCommands(unit, byRef aQueuedMovements)
 		{
 			ReadRawMemory(pNextCmd & -2, GameIdentifier, cmdDump, 0x42)
 			targetFlag := numget(cmdDump, 0x38, "UInt")
+			
+			if !aStringTable.hasKey(pString := numget(cmdDump, 0x18, "UInt"))
+				aStringTable[pString] := ReadMemory_Str(readMemory(pString + 0x4, GameIdentifier), GameIdentifier)
 
-			StringAbilityPointer := numget(cmdDump, 0x18, "UInt")
-			if !aAbilityNames.hasKey(StringAbilityPointer)
-				aAbilityNames[StringAbilityPointer] := ReadMemory_Str(readMemory(StringAbilityPointer + 0x4, GameIdentifier), GameIdentifier)
-
-			moveState := numget(cmdDump, 0x40, "Short") ; really should rename this to state
+			state := numget(cmdDump, O_cqState, "Short")
 
 			aQueuedMovements.insert({ "targetX": targetX := numget(cmdDump, 0x28, "Int") / 4096
 									, "targetY": numget(cmdDump, 0x2C, "Int") / 4096
 									, "targetZ": numget(cmdDump, 0x30, "Int") / 4096
-									, "ability": aAbilityNames[StringAbilityPointer] 
-									, "moveState": moveState })
+									, "ability": aStringTable[pString] 
+									, "state": state })
 
 			if (A_Index > 20 || !(targetFlag & aTargetFlags.targetIsPoint || targetFlag & aTargetFlags.targetIsUnit || targetFlag = 7))
 			{
@@ -856,7 +855,6 @@ getUnitQueuedCommands(unit, byRef aQueuedMovements)
 		return aQueuedMovements.MaxIndex() 	; interstingly after -2 & pNextCmd (the last one) it should = the first address
 	}
 	else return 0
-
 }
 
 
@@ -872,15 +870,15 @@ getUnitQueuedCommandString(aQueuedCommandsOrUnitIndex)
 	{
 		if (command.ability = "move")
 		{
-			if (command.moveState = aUnitMoveStates.Patrol)
+			if (command.state = aUnitMoveStates.Patrol)
 				s .= "Patrol,"
-			else if (command.moveState	= aUnitMoveStates.Move)
+			else if (command.state	= aUnitMoveStates.Move)
 				s .= "Move,"
-			else if (command.moveState	= aUnitMoveStates.Follow)
+			else if (command.state	= aUnitMoveStates.Follow)
 				s .= "Follow,"
-			else if (command.moveState = aUnitMoveStates.HoldPosition)
+			else if (command.state = aUnitMoveStates.HoldPosition)
 				s .= "Hold,"
-			else if (movement.moveState	= aUnitMoveStates.FollowNoAttack)
+			else if (movement.state	= aUnitMoveStates.FollowNoAttack)
 				s .= "FNA,"
 		}
 		else if (command.ability = "attack")
@@ -896,14 +894,14 @@ getUnitQueuedCommandString(aQueuedCommandsOrUnitIndex)
 	; unload command movestate = 2
 	; target flag = 15 for drop and for movement
 
-
+; This is just returns the state, which depends on the ability command (so its kind of wrong by itself)
 getUnitMoveState(unit)
 {	
 	local CmdQueue, BaseCmdQueStruct
 	if (CmdQueue := ReadMemory(B_uStructure + unit * S_uStructure + O_P_uCmdQueuePointer, GameIdentifier)) ; points if currently has a command - 0 otherwise
 	{
 		BaseCmdQueStruct := ReadMemory(CmdQueue, GameIdentifier) & -2
-		return ReadMemory(BaseCmdQueStruct + O_cqMoveState, GameIdentifier, 2) ;current state
+		return ReadMemory(BaseCmdQueStruct + O_cqState, GameIdentifier, 2) ;current state
 	}
 	else return -1 ;cant return 0 as that ould indicate A-move
 }
@@ -1395,6 +1393,27 @@ getBuildStats(building, byref QueueSize := "")
 		return getPercentageUnitCompleted(B_QueueInfo)
 	else return 0
 }
+
+getBuildStatsTest(building, byref QueueSize := "", byRef item := "")
+{
+	pAbilities := getUnitAbilityPointer(building)
+	AbilitiesCount := getAbilitiesCount(pAbilities)
+	CAbilQueueIndex := getCAbilQueueIndex(pAbilities, AbilitiesCount)
+	B_QueueInfo := getPointerToQueueInfo(pAbilities, CAbilQueueIndex, localQueSize)
+	if IsByRef(QueueSize)
+		QueueSize := localQueSize
+	if IsByRef(item)
+	{
+		if !aStringTable.hasKey(pString := readMemory(B_QueueInfo + 0xD0, GameIdentifier))
+			aStringTable[pString] := ReadMemory_Str(readMemory(pString + 0x4, GameIdentifier), GameIdentifier)
+		item := aStringTable[pString]
+	}
+	if localQueSize
+		return getPercentageUnitCompleted(B_QueueInfo)
+	else return 0
+}
+
+
 
 ; byteArrayDump can be used to pass an already dumped byte array, saving reading it again
 getAbilityIndex(abilityID, abilitiesCount, ByteArrayAddress := "", byRef byteArrayDump := "")

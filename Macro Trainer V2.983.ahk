@@ -819,7 +819,7 @@ clock:
 		AW_MaxWorkersReached := TmpDisableAutoWorker := 0
 		MiniMapWarning := [], a_BaseList := [], aGatewayWarnings := []
 		aResourceLocations := []
-		global aAbilityNames := []
+		global aStringTable := []
 		global aXelnagas := [] ; global cant cant come after already command expressions
 		MT_CurrentGame := []	; This is a variable which from now on will store
 								; Info about the current game for other functions 
@@ -9480,6 +9480,37 @@ loop
 msgbox % qpx(False) * 1000
 return
 */
+f1::
+getUnitQueuedCommands(getSelectedUnitIndex(), a)
+objtree(a)
+
+msgbox % getBuildStatsTest(getSelectedUnitIndex(), QueueSize, item) "`n" item "`n" QueueSize
+return 
+
+
+
+getBuildStatsTest2(building, byref QueueSize := "")
+{
+	pAbilities := getUnitAbilityPointer(building)
+	AbilitiesCount := getAbilitiesCount(pAbilities)
+	CAbilQueueIndex := getCAbilQueueIndex(pAbilities, AbilitiesCount)
+	B_QueueInfo := getPointerToQueueInfo(pAbilities, CAbilQueueIndex, localQueSize)
+	
+	cHex(B_QueueInfo)
+
+	if IsByRef(QueueSize)
+		QueueSize := localQueSize
+	if localQueSize
+		return getPercentageUnitCompleted(B_QueueInfo)
+	else return 0
+}
+
+
+
+
+
+
+
 
 
 /*
