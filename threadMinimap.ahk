@@ -94,7 +94,9 @@ gameChange()
 	if (Time := getTime())
 	{
 		game_status := "game", warpgate_status := "not researched", gateway_count := warpgate_warning_set := 0
-		aUnitModel := []
+		; aAbilityNames and aUnitModel are super global declared in memory and general functions
+		aUnitModel := [] 		
+		aAbilityNames := []
 		MiniMapWarning := [], a_BaseList := [], aGatewayWarnings := []
 		if WinActive(GameIdentifier)
 			ReDrawMiniMap := ReDrawIncome := ReDrawResources := ReDrawArmySize := ReDrawWorker := RedrawUnit := ReDrawIdleWorkers := ReDrawLocalPlayerColour := 1
@@ -336,7 +338,7 @@ getEnemyUnitsMiniMap(byref A_MiniMapUnits)
 	          		Colour := aPlayer[Owner, "Colour"]
 	       }
 	       if DrawUnitDestinations
-	       		getUnitQueuedCommands(A_Index - 1, QueuedCommands, True)
+	       		getUnitQueuedCommands(A_Index - 1, QueuedCommands)
            A_MiniMapUnits.insert({"X": x, "Y": y
            						, "Colour": Colour
            						, "Radius": Radius*2
@@ -375,78 +377,27 @@ drawUnitDestinations(pGraphics, byRef A_MiniMapUnits)
 
 	for indexOuter, unit in A_MiniMapUnits
 	{
-		for indexQueued, movement in unit.QueuedCommands
+		for indexQueued, command in unit.QueuedCommands
 		{
-			if (movement.moveState = aUnitMoveStates.Amove)
+			if (command.ability = "attack")
 				colour := "Red"
-			else if (movement.moveState	= aUnitMoveStates.Patrol)
-				colour := "Blue"
-		;	else if (movement.moveState	= aUnitMoveStates.Move
-		;		|| movement.moveState = aUnitMoveStates.Follow 
-		;		|| movement.moveState = aUnitMoveStates.FollowNoAttack)
-		;		colour := "Green"
+			else if (command.ability = "move")
+			{
+				if (command.moveState = aUnitMoveStates.Patrol)
+					colour := "Blue"
+			}
 			else colour := "Green"
-		;	if !movement.targetX
-		;		break
+			; some commands will have x,y,z targets of 0 (causing them to be drawn off the map)
+			if !command.targetX
+				break
 			if (indexQueued = unit.QueuedCommands.MinIndex())
 				x := unit.x, y := unit.y 	
 			Else 
-				x := xTarget, y := yTarget
-			if !x
-				break
-			convertCoOrdindatesToMiniMapPos(xTarget := movement.targetX, yTarget := movement.targetY)	
-			Gdip_DrawLine(pGraphics, a_pPen[colour], x, y, xTarget, yTarget)
+				x := targetX, y := targetY
+			convertCoOrdindatesToMiniMapPos(targetX := command.targetX, targetY := command.targetY)	
+			Gdip_DrawLine(pGraphics, a_pPen[colour], x, y, targetX, targetY)
 		}
 	}
-	return
-}
-
-
-drawUnitDestinationsFromCompleteData(pGraphics, byRef aEnemyUnitData)
-{
-	static a_pPen := [], hasRun
-
-	if !hasRun
-	{
-		a_pPen := createPens(1)
-		hasRun := True
-	}
-
-	for indexOuter, aIndividualUnit in aEnemyUnitData
-	{
-		for index, movement in aIndividualUnit.QueuedCommands
-		{
-			if (movement.moveState = aUnitMoveStates.Amove)
-				colour := "Red"
-			else if (movement.moveState	= aUnitMoveStates.Patrol)
-				colour := "Blue"
-			else if (movement.moveState	= aUnitMoveStates.Move
-				|| movement.moveState = aUnitMoveStates.Follow 
-				|| movement.moveState = aUnitMoveStates.FollowNoAttack)
-				colour := "Green"
-			else continue
-
-			if (index = aIndividualUnit.QueuedCommands.MinIndex())
-			{
-				x := aIndividualUnit.x, y := aIndividualUnit.y 	
-				convertCoOrdindatesToMiniMapPos(x,  y)	
-				
-			}
-			Else 
-			{
-				x := xTarget, y := yTarget
-			}
-
-			xTarget := movement.targetX, yTarget := movement.targetY
-
-			convertCoOrdindatesToMiniMapPos(xTarget,  yTarget)	
-
-			msgbox % x ", " y "`n" xTarget ", " yTarget
-			Gdip_DrawLine(pGraphics, a_pPen[colour], x, y, xTarget, yTarget)
-
-		}
-	}
-
 	return
 }
 

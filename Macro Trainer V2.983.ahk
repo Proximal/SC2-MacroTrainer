@@ -815,12 +815,11 @@ clock:
 	}
 	Else if (time && game_status != "game") && (getLocalPlayerNumber() != 16 || debug) ; Local slot = 16 while in lobby/replay - this will stop replay announcements
 	{
-		if !A_IsCompiled
-			soundplay *-1
 		game_status := "game", warpgate_status := "not researched", gateway_count := warpgate_warning_set := 0
 		AW_MaxWorkersReached := TmpDisableAutoWorker := 0
 		MiniMapWarning := [], a_BaseList := [], aGatewayWarnings := []
 		aResourceLocations := []
+		global aAbilityNames := []
 		global aXelnagas := [] ; global cant cant come after already command expressions
 		MT_CurrentGame := []	; This is a variable which from now on will store
 								; Info about the current game for other functions 
@@ -862,6 +861,8 @@ clock:
 		; I think that it only happens when game is 100% loaded, but still waiting for someone else?
 		; perhaps online/lag sometimes causes the timer changes slightly before the game begins
 		; and while AHK is launching the minimap thread the LL callbacks are being delayed ???
+		
+		setLowLevelInputHooks(False) ; try to remove them first, as can get here from just saving/applying settings in options GUI
 		setLowLevelInputHooks(True)	
 
 
@@ -8076,21 +8077,6 @@ ClickUnitPortrait(SelectionIndex=0, byref X=0, byref Y=0, byref Xpage=0, byref Y
 	return 0	
 }
 
-FindSelectedUnitsOnXelnaga(byref aUnits)
-{
-	while (A_Index <= getSelectionCount())		;loop thru the units in the selection buffer	
-		if isLocalUnitHoldingXelnaga(unit := getSelectedUnitIndex(A_Index -1))
-			aUnits.insert(unit)
-	return
-}
-
-FindSelectedPatrollingUnits(byref aUnits)
-{
-	while (A_Index <= getSelectionCount())		;loop thru the units in the selection buffer	
-		if isUnitPatrolling(unit := getSelectedUnitIndex(A_Index -1))
-			aUnits.insert(unit)
-	return
-}
 sortSelectedUnitsByDistance(byref aSelectedUnits, Amount = 3)	;takes a simple array which contains the selection indexes (begins at 0)
 { 													; the 0th selection index (1st in this array) is taken as the base unit to measure from
 	aSelectedUnits := []
@@ -9494,6 +9480,7 @@ loop
 msgbox % qpx(False) * 1000
 return
 */
+
 
 /*
 f1::
