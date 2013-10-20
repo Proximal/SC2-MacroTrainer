@@ -1375,10 +1375,10 @@ getBuildStatsPF(unit, byref QueueSize := "",  QueuePosition := 0) ; dirty hack u
 	if IsByRef(QueueSize)
 		QueueSize := localQueSize
 	queuedArray := readmemory(CAbilQueue + O_pQueueArray, GameIdentifier)
-	B_QueueInfo := readmemory(queuedArray + 4 * QueuePosition, GameIdentifier)
+	B_QueuedUnitInfo := readmemory(queuedArray + 4 * QueuePosition, GameIdentifier)
 
 	if localQueSize
-		return getPercentageUnitCompleted(B_QueueInfo)
+		return getPercentageUnitCompleted(B_QueuedUnitInfo)
 	else return 0
 }
 
@@ -1392,22 +1392,22 @@ getBuildStats(building, byref QueueSize := "", byRef item := "")
 	pAbilities := getUnitAbilityPointer(building)
 	AbilitiesCount := getAbilitiesCount(pAbilities)
 	CAbilQueueIndex := getCAbilQueueIndex(pAbilities, AbilitiesCount)
-	B_QueueInfo := getPointerToQueueInfo(pAbilities, CAbilQueueIndex, localQueSize)
+	B_QueuedUnitInfo := getPointerToQueuedUnitInfo(pAbilities, CAbilQueueIndex, localQueSize)
 	if IsByRef(QueueSize)
 		QueueSize := localQueSize
 	if IsByRef(item)
 	{
-		if !aStringTable.hasKey(pString := readMemory(B_QueueInfo + 0xD0, GameIdentifier))
+		if !aStringTable.hasKey(pString := readMemory(B_QueuedUnitInfo + 0xD0, GameIdentifier))
 			aStringTable[pString] := ReadMemory_Str(readMemory(pString + 0x4, GameIdentifier), GameIdentifier)
 		item := aStringTable[pString]
 	}
 	if localQueSize
-		return getPercentageUnitCompleted(B_QueueInfo)
+		return getPercentageUnitCompleted(B_QueuedUnitInfo)
 	else return 0
 }
 
 /*
-	Queue Unit info (B_QueueInfo)
+	Queued Unit info (B_QueuedUnitInfo)
 	+0x1c = pString Action e.g. barracks train
 	+0xB0 = string Ability e.g. abil/BarracksTrain
 	+0xC0 = string Ability e.g. abil/BarracksTrain
@@ -1495,12 +1495,12 @@ getStructureRallyPoints(unitIndex, byRef aRallyPoints := "")
 }
 
 
-getPercentageUnitCompleted(B_QueueInfo)
+getPercentageUnitCompleted(B_QueuedUnitInfo)
 {	GLOBAL GameIdentifier
 	STATIC O_TotalTime := 0x68, O_TimeRemaining := 0x6C
 
-	TotalTime := ReadMemory(B_QueueInfo + O_TotalTime, GameIdentifier)
-	RemainingTime := ReadMemory(B_QueueInfo + O_TimeRemaining, GameIdentifier)
+	TotalTime := ReadMemory(B_QueuedUnitInfo + O_TotalTime, GameIdentifier)
+	RemainingTime := ReadMemory(B_QueuedUnitInfo + O_TimeRemaining, GameIdentifier)
 
 	return round( (TotalTime - RemainingTime) / TotalTime, 2) ;return .47 (ie 47%)
 }
@@ -1508,7 +1508,7 @@ getPercentageUnitCompleted(B_QueueInfo)
 ; this doesnt correspond to the unit in production for all structures!
 ; 	+0x48 != 0 when reactor present
 
-getPointerToQueueInfo(pAbilities, CAbilQueueIndex, byref QueueSize := "", QueuePosition := 0)
+getPointerToQueuedUnitInfo(pAbilities, CAbilQueueIndex, byref QueueSize := "", QueuePosition := 0)
 {	GLOBAL GameIdentifier
 	STATIC O_pQueueArray := 0x34, O_IndexParentTypes := 0x18, O_unitsQueued := 0x28
 
@@ -1518,7 +1518,7 @@ getPointerToQueueInfo(pAbilities, CAbilQueueIndex, byref QueueSize := "", QueueP
 		QueueSize := readmemory(CAbilQueue + O_unitsQueued, GameIdentifier)
 
 	queuedArray := readmemory(CAbilQueue + O_pQueueArray, GameIdentifier)
-	return B_QueueInfo := readmemory(queuedArray + 4 * QueuePosition, GameIdentifier)
+	return B_QueuedUnitInfo := readmemory(queuedArray + 4 * QueuePosition, GameIdentifier)
 }
 
 getAbilitiesCount(pAbilities)

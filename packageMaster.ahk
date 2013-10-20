@@ -58,8 +58,8 @@ del "%A_SCRIPTFULLPATH%"
 ping 127.0.0.1 -n 2 ; give some extra time for exe to close
 move /y "%A_Temp%\Macro Trainer V%updatedVersion%.exe" "%A_ScriptDir%\Macro Trainer V%updatedVersion%.exe"
 "%A_ScriptDir%\Macro Trainer V%updatedVersion%.exe"
-del c:\tempDelete.bat
 del "%A_Temp%\Macro Trainer V%updatedVersion%.exe"
+del c:\tempDelete.bat
 ), c:\tempDelete.bat
 
 msgbox % "This and future versions require msvcr100.dll to be in the same "

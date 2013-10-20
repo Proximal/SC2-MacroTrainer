@@ -1406,6 +1406,7 @@ cast_ForceInject:
 				{
 					Thread, Priority, -2147483648
 					sleep % rand(0, 1000)
+					Thread, Priority, 0	
 					startInjectWait := A_TickCount
 					while getkeystate("LWin", "P") || getkeystate("RWin", "P")	
 					|| getkeystate("LWin") || getkeystate("RWin")	
@@ -1418,11 +1419,12 @@ cast_ForceInject:
 					|| MT_InputIdleTime() < 50  ;probably best to leave this in, as every now and then the next command wont be shift modified
 					|| getPlayerCurrentAPM() > FInjectAPMProtection
 					{
-						if (A_TickCount - startInjectWait > 650)
+						if (A_TickCount - startInjectWait > 500)
 							return
+						Thread, Priority, -2147483648
 						sleep 1
+						Thread, Priority, 0	
 					}
-					Thread, Priority, 0	
 					if (!WinActive(GameIdentifier) || isGamePaused() || isMenuOpen() || !isSelectionGroupable(oSelection)) 
 						return
 					input.hookBlock(True, True)
@@ -3848,7 +3850,7 @@ Gui, Tab, MiniMap
 
 ;	Gui, add, text, y+15 X%CurrentGuiTabX%, Custom Unit Highlights:
 	
-	Gui, add, GroupBox, y+25 x%groupboxGuiX% w410 h200, Custom Unit Highlights
+	Gui, add, GroupBox, y+25 x%groupboxGuiX% w410 h205, Custom Unit Highlights
 
 		Gui, add, text, yp+30 X%CurrentGuiTabX%, Unit:
 		Gui, Add, Edit, yp-2 x%xguiUnitBox% w300 section  center r1 vUnitHighlightList1, %UnitHighlightList1%
@@ -6056,8 +6058,10 @@ autoWorkerProductionCheck()
 			|| getPlayerCurrentAPM() > AutoWorkerAPMProtection) ; probably dont need this anymore
 			{
 				if (A_index > 24)
-					return ; timed out after 120 ms
+					return ; (actually could be 480 ms - sleep 1 usually = 20ms)
+				Thread, Priority, -2147483648	
 				sleep 1
+				Thread, Priority, 0	
 			}
 		
 		if (!isSelectionGroupable(oSelection) || isGamePaused() || isMenuOpen())
