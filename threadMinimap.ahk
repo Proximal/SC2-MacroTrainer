@@ -8,7 +8,7 @@
 
 #persistent
 #NoEnv  ; think this is default with AHK_H
-;#NoTrayIcon
+#NoTrayIcon
 
 SetBatchLines, -1
 ListLines(False) 
@@ -424,10 +424,6 @@ temporarilyHideMinimap()
 	}
 }
 
-
-
-
-
 /*
 	x,y co-ordinates
 	1--------------------2
@@ -480,78 +476,6 @@ drawPlayerCameras(pGraphics)
 	Gdip_DeleteRegion(Region)
 	return 
 }
-
-
-
-
-
-
-
-
-
-drawPlayerCameras2(pGraphics)
-{
-	static a_pPen := [], maxAngle := 1.195313, hasRun
-	if !hasRun
-	{
-		a_pPen := createPens(1)
-		hasRun := True
-	}
-
-	For slotNumber in aPlayer
-	{
-		If (aLocalPlayer.Team != aPlayer[slotNumber].Team)
-		{
-			angle := getPlayerCameraAngle(slotNumber)
-			xCenter := getPlayerCameraPositionX(slotNumber)
-			yCenter := getPlayerCameraPositionY(slotNumber)
-			convertCoOrdindatesToMiniMapPos(xCenter, yCenter)
-
-			x1 := xCenter - (18/1920*A_ScreenWidth/minimap.MapPlayableWidth * minimap.Width) * (angle/maxAngle)**2
-			y1 := yCenter - (11/1080*A_ScreenHeight/minimap.MapPlayableHeight * minimap.Height) * angle/maxAngle
-			
-			; This is so no part of the frame gets drawn outside of the minimap
-			; One day i might change it so it accurately reflects the area the player 
-			; has sight of when the real camera is past the edge of the minimap
-			; but i cant be bothered atm for such a small thing
-
-			if (x1 < minimap.ScreenLeft)
-				x1 := minimap.ScreenLeft
-			if (y1 < minimap.ScreenTop)
-				y1 := minimap.ScreenTop
-
-			 x2 := x1 + (36/1920*A_ScreenWidth/minimap.MapPlayableWidth * minimap.Width) * (angle/maxAngle)**2
-			 y2 := y1 
-
-			currentTopDelta := realTopDelta := x2 - x1
-			; This is so the frame doesn't get drawn too square'ish
-			; when the camera is past the right edge of the minimap
-			if (x2 > minimap.ScreenRight)
-			{
-				x2 := minimap.ScreenRight
-				currentTopDelta := x2 - x1
-			}
-
-			 x3 := (x2 - (x2 - x1)/2) + (xOffset := (currentTopDelta/realTopDelta) * 14/1920*A_ScreenWidth/minimap.MapPlayableWidth * minimap.Width * (angle/maxAngle)**3)
-			 y3 := y2 + ((18/1080*A_ScreenHeight /minimap.MapPlayableHeight * minimap.Height) * angle/maxAngle)
-			
-			if (y3 > minimap.ScreenBottom)
-				y3 := minimap.ScreenBottom
-			 x4 := x1 + ((x2 - x1)/2) - xOffset
-			 y4 := y3 
-
-			 Gdip_DrawLines(pGraphics, a_pPen[aPlayer[slotNumber, "colour"]],  x1 "," y1 "|" x2 "," y2 
-							. "|" x3 "," y3 "|" x4 "," y4 "|" x1 "," y1 )
-		}
-	}
-	return 
-}
-
-
-
-
-
-
 
 unit_bank_read:
 SupplyInProductionCount := gateway_count := warpgate_count := 0

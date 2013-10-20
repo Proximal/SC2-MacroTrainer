@@ -147,7 +147,7 @@ MT_CurrentInstance := [] ; Used to store random info about the current run
 program := []
 program.info := {"IsUpdating": 0} ; program.Info.IsUpdating := 0 ;has to stay here as first instance of creating infor object
 
-ProgramVersion := 2.982
+ProgramVersion := 2.983
 
 l_GameType := "1v1,2v2,3v3,4v4,FFA"
 l_Races := "Terran,Protoss,Zerg"
@@ -10241,8 +10241,8 @@ launchMiniMapThread()
 		if A_IsCompiled
 		{
 			if 0 
-				FileInstall, threadMiniMap.ahk, Ignore
-			miniMapScript :=  LoadScriptString("threadMiniMap.ahk")
+				FileInstall, threadMiniMapFull.ahk, Ignore
+			miniMapScript :=  LoadScriptString("threadMiniMapFull.ahk")
 		
 		; pObject  & pCriticalSection are passed as cmdline paramater 1 and 2 respectively
 			aThreads.MiniMap.ahktextdll(miniMapScript 

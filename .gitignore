@@ -11,6 +11,10 @@ SC2 Research/
 *.o
 *.so
 
+# minimap thread extract #
+###############
+threadMiniMapFull.ahk
+
 # Don't Ignore #
 ############
 !msvcr100.dll
