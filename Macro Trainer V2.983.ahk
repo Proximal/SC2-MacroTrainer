@@ -38,17 +38,6 @@
 
 */
 
-
-/*
-
-		in auto worker (and others? army?)
-		; remove when i have updated the other functions
-		;**********************
-		Global pClickDelay
-		input.pClickDelay(-1)
-
-*/
-
 /*
 		MEMORY BENCHMARKS  	- 	NUMGET VS NORMAL METHOD
 		
@@ -2102,7 +2091,7 @@ overlay_timer: 	;DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdent=0, Bac
 			DrawWorkerOverlay(ReDrawWorker, WorkerOverlayScale, Dragoverlay) ;2 less parameters
 		If DrawIdleWorkersOverlay
 			DrawIdleWorkersOverlay(ReDrawIdleWorkers, IdleWorkersOverlayScale, dragOverlay)
-		if (DrawLocalPlayerColourOverlay && (GameType != "1v1" || GameType != "FFA"))   ;easier just to redraw it each time as otherwise have to change internal for when dragging
+		if (DrawLocalPlayerColourOverlay && (GameType != "1v1" && GameType != "FFA"))   ;easier just to redraw it each time as otherwise have to change internal for when dragging
 			DrawLocalPlayerColour(ReDrawLocalPlayerColour, LocalPlayerColourOverlayScale, DragOverlay)
 	}
 Return
@@ -2117,7 +2106,9 @@ g_unitPanelOverlay_timer:
 	}
 return
 
-
+gYoutubeEasyUnload:
+	run http://youtu.be/JAV4y_DoPUk
+	return
 
 Homepage:
 	run % url.homepage
@@ -3294,14 +3285,14 @@ Gui, Add, Tab2,w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vSettings_TAB, Set
 		; only allow pMessage now But will leave this here anyway 
 		Gui, Add, DropDownList, x+25 yp-2 w80 Vinput_method Choose1, pMessage
 
-		Gui, Add, Text, xs+10 yp+30 w40, KeyDelay:
-		Gui, Add, Edit, Number Right x+50 yp-2 w45 vTT_pKeyDelay
-			Gui, Add, UpDown,  Range-1-300 vpKeyDelay, %pKeyDelay%
+	;	Gui, Add, Text, xs+10 yp+30 w40, KeyDelay:
+	;	Gui, Add, Edit, Number Right x+50 yp-2 w45 vTT_pKeyDelay
+	;		Gui, Add, UpDown,  Range-1-300 vpKeyDelay, %pKeyDelay%
 
+		;yp+30
+		Gui, Add, Checkbox,xs+10 yp+45 Vauto_update checked%auto_update%, Auto Check For Updates
 
-		Gui, Add, Checkbox,xs+10 yp+30 Vauto_update checked%auto_update%, Auto Check For Updates
-
-	Gui, Add, GroupBox, xs yp+30 w161 h170, Key Blocking
+	Gui, Add, GroupBox, xs yp+43 w161 h170, Key Blocking
 		Gui, Add, Checkbox,xp+10 yp+25 vBlockingStandard checked%BlockingStandard%, Standard Keys	
 		Gui, Add, Checkbox, y+10 vBlockingFunctional checked%BlockingFunctional%, Functional F-Keys 	
 		Gui, Add, Checkbox, y+10 vBlockingNumpad checked%BlockingNumpad%, Numpad Keys	
@@ -3700,7 +3691,7 @@ Gui, Tab, Easy Unload
 		Gui, Add, Edit, Readonly yp-2 xs+85 w65 center vEasyUnload_Z_Key, %EasyUnload_Z_Key%
 			Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#EasyUnload_Z_Key,  Edit
 
-
+		Gui, Add, Button, X540 y425 w50 h25 ggYoutubeEasyUnload, Help
 
 
 
@@ -6071,13 +6062,6 @@ autoWorkerProductionCheck()
 		
 		if (!isSelectionGroupable(oSelection) || isGamePaused() || isMenuOpen())
 			return
-
-		; remove when i have updated the other functions
-		;**********************
-		Global pClickDelay
-		input.pClickDelay(-1)
-
-
 		Thread, NoTimers, true
 		input.hookBlock(True, True)
 		upsequence := Input.releaseKeys()
@@ -6095,7 +6079,6 @@ autoWorkerProductionCheck()
 			if !oSelection.IsGroupable
 			{
 				Input.revertKeyState()
-				input.pClickDelay(pClickDelay) ;***********
 				return		
 			}
 			selctionUnitIndices := oSelection.IndicesString
@@ -6131,7 +6114,6 @@ autoWorkerProductionCheck()
 					Input.revertKeyState()
 					critical, off
 					Thread, NoTimers, false 
-					input.pClickDelay(pClickDelay) ; ********
 					Thread, Priority, -2147483648
 					sleep 4500
 					return
@@ -6258,8 +6240,6 @@ autoWorkerProductionCheck()
 		Input.revertKeyState()
 		critical, off
 		Thread, NoTimers, false 
-		input.pClickDelay(pClickDelay) ; *********
-
 	;	BaseCtrlGroupError := 0
 		if BaseCtrlGroupError ; as non-structure units will have higher priority and appear in group 0/top left control card - and this isnt compatible with this macro
 		{	; as the macro will tell that unit e.g. probe to 'make a worker' and cause it to bug out	
@@ -7236,8 +7216,8 @@ CreateHotkeys()
 ;		SendMode Play	; causes problems 
 ;	Else SendMode Input
 
- 	input.pClickDelay(pKeyDelay)
- 	input.pSendDelay(pKeyDelay)
+ 	input.pClickDelay(-1)
+ 	input.pSendDelay(-1)
  	EventKeyDelay := -1
 
 	#If, WinActive(GameIdentifier) && !BufferInputFast.isInputBlockedOrBuffered()
@@ -7746,7 +7726,7 @@ g_SplitUnits:
 	critical, 1000
 	input.hookBlock(False, False)
 	if sleep
-		DllCall("Sleep", Uint, 15) ;
+		dSleep(15) ;
 	SplitUnits(SplitctrlgroupStorage_key)
 return
 
@@ -7772,8 +7752,6 @@ g_SelectArmy:
 	}
 	sleep := Input.releaseKeys()
 	critical, 1000
-	input.pSendDelay(-1)
-	input.pClickDelay(-1)
 	if (sleep || MouseDown)
 		dSleep(15)
 	MTsend(Sc2SelectArmy_Key)
@@ -7788,8 +7766,6 @@ g_SelectArmy:
 		MTsend("^" Sc2SelectArmyCtrlGroup)
 	dSleep(15)
 	Input.revertKeyState()
-	input.pSendDelay(pKeyDelay)
-	input.pClickDelay(pKeyDelay)
 	critical, off
 	sleep, -1
 	sleep 20
@@ -8364,8 +8340,6 @@ SplitUnits(SplitctrlgroupStorage_key)
 	dSleep(20)
 	HighlightedGroup := getSelectionHighlightedGroup()
 	MTsend("^" SplitctrlgroupStorage_key)
-;	BlockInput, MouseMove
-;	mousegetpos, Xorigin, Yorigin
 	aSelectedUnits := []
 	xSum := ySum := 0
 
