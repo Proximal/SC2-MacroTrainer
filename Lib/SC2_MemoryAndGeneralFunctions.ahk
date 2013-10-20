@@ -1406,24 +1406,35 @@ getBuildStats(building, byref QueueSize := "", byRef item := "")
 	else return 0
 }
 
-getBuildStatsTest(building, byref QueueSize := "", byRef item := "")
-{
-	pAbilities := getUnitAbilityPointer(building)
-	AbilitiesCount := getAbilitiesCount(pAbilities)
-	CAbilQueueIndex := getCAbilQueueIndex(pAbilities, AbilitiesCount)
-	B_QueueInfo := getPointerToQueueInfo(pAbilities, CAbilQueueIndex, localQueSize)
-	if IsByRef(QueueSize)
-		QueueSize := localQueSize
-	if IsByRef(item)
-	{
-		if !aStringTable.hasKey(pString := readMemory(B_QueueInfo + 0xD0, GameIdentifier))
-			aStringTable[pString] := ReadMemory_Str(readMemory(pString + 0x4, GameIdentifier), GameIdentifier)
-		item := aStringTable[pString]
-	}
-	if localQueSize
-		return getPercentageUnitCompleted(B_QueueInfo)
-	else return 0
-}
+/*
+	Queue Unit info (B_QueueInfo)
+	+0x1c = pString Action e.g. barracks train
+	+0xB0 = string Ability e.g. abil/BarracksTrain
+	+0xC0 = string Ability e.g. abil/BarracksTrain
+	+0xDO = pString Current item in production
+	+0x108 = pString to unit ID e.g. barracks
+*/
+
+
+/*
+	player alerts (stuff on the left hand side of the screen)
+
+01C14C2B - FF 87 18030000  - inc [edi+00000318]
+01C14C31 - 8B 87 18030000  - mov eax,[edi+00000318]
+01C14C37 - 89 B4 87 18030000  - mov [edi+eax*4+00000318],esi <<
+01C14C3E - 85 F6  - test esi,esi
+01C14C40 - 75 1E - jne SC2.AssertAndCrash+116C90
+
+EAX=00000004
+EBX=0000009A
+ECX=00000000
+EDX=0894B6A8
+ESI=22F0F614
+EDI=27270F3C
+ESP=0894B6C0
+EBP=0894B70C
+EIP=01C14C3E
+*/
 
 ; byteArrayDump can be used to pass an already dumped byte array, saving reading it again
 getAbilityIndex(abilityID, abilitiesCount, ByteArrayAddress := "", byRef byteArrayDump := "")
@@ -1495,12 +1506,13 @@ getPercentageUnitCompleted(B_QueueInfo)
 }
 
 ; this doesnt correspond to the unit in production for all structures!
+; 	+0x48 != 0 when reactor present
+
 getPointerToQueueInfo(pAbilities, CAbilQueueIndex, byref QueueSize := "", QueuePosition := 0)
 {	GLOBAL GameIdentifier
 	STATIC O_pQueueArray := 0x34, O_IndexParentTypes := 0x18, O_unitsQueued := 0x28
 
 	CAbilQueue := readmemory(pAbilities + O_IndexParentTypes + 4 * CAbilQueueIndex, GameIdentifier)
-
 
 	if IsByRef(QueueSize) 
 		QueueSize := readmemory(CAbilQueue + O_unitsQueued, GameIdentifier)

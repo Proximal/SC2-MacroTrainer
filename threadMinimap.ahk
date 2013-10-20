@@ -38,7 +38,7 @@ GameExe := "SC2.exe"
 pToken := Gdip_Startup()
 Global aUnitID, aUnitName, aUnitSubGroupAlias, aUnitTargetFilter, aHexColours, MatrixColour
 	, aUnitModel,  aPlayer, aLocalPlayer, minimap
-	, a_pBrushes := [], a_pPens := []
+	, a_pBrushes := [], a_pPens := [], a_pBitmap
 
 SetupUnitIDArray(aUnitID, aUnitName)
 getSubGroupAliasArray(aUnitSubGroupAlias)
@@ -350,21 +350,6 @@ getEnemyUnitsMiniMap(byref A_MiniMapUnits)
   Return
 }
 
-; Theres some problem here fix another day
-; somtimes target x is empty 
-
-/*
-	public enum TargetFlags : uint
-	{
-		OverrideUnitPositon = 0x1,
-		Unknown02 = 0x2,
-		Unknown04 = 0x4,
-		TargetIsPoint = 0x8,
-		TargetIsUnit = 0x10,
-		UseUnitPosition = 0x20
-	}
-*/
-
 drawUnitDestinations(pGraphics, byRef A_MiniMapUnits)
 {
 	static a_pPen := [], hasRun
@@ -383,8 +368,23 @@ drawUnitDestinations(pGraphics, byRef A_MiniMapUnits)
 				colour := "Red"
 			else if (command.ability = "move")
 			{
-				if (command.moveState = aUnitMoveStates.Patrol)
+				if (command.State = aUnitMoveStates.Patrol)
 					colour := "Blue"
+			}
+			else if (command.ability = "MedivacTransport"
+			|| command.ability = "WarpPrismTransport"
+			|| command.ability = "OverlordTransport")
+			{
+				colour := "Orange"
+			}
+			; as destinations are drawn first, the picture gets drawn over by unit boxes
+			else if (command.ability = "TacNukeStrike")
+			{
+				pBitmap := a_pBitmap["RedX16"]
+				convertCoOrdindatesToMiniMapPos(x := command.targetX, y := command.targetY)
+				Width := Gdip_GetImageWidth(pBitmap), Height := Gdip_GetImageHeight(pBitmap)	
+				Gdip_DrawImage(pGraphics, pBitmap, (X - Width/2), (Y - Height/2), Width, Height, 0, 0, Width, Height)
+				continue
 			}
 			else colour := "Green"
 			; some commands will have x,y,z targets of 0 (causing them to be drawn off the map)
@@ -449,6 +449,54 @@ drawPlayerCameras(pGraphics)
 		a_pPen := createPens(1)
 		hasRun := True
 	}
+	Region := Gdip_GetClipRegion(pGraphics)
+	Gdip_SetClipRect(pGraphics, minimap.ScreenLeft, minimap.ScreenTop, minimap.Width, minimap.Height, 0)
+
+	For slotNumber in aPlayer
+	{
+		If (aLocalPlayer.Team != aPlayer[slotNumber].Team)
+		{
+			angle := getPlayerCameraAngle(slotNumber)
+			xCenter := getPlayerCameraPositionX(slotNumber)
+			yCenter := getPlayerCameraPositionY(slotNumber)
+			convertCoOrdindatesToMiniMapPos(xCenter, yCenter)
+
+			x1 := xCenter - (18/1920*A_ScreenWidth/minimap.MapPlayableWidth * minimap.Width) * (angle/maxAngle)**2
+			y1 := yCenter - (11/1080*A_ScreenHeight/minimap.MapPlayableHeight * minimap.Height) * angle/maxAngle
+			
+			x2 := x1 + (36/1920*A_ScreenWidth/minimap.MapPlayableWidth * minimap.Width) * (angle/maxAngle)**2
+			y2 := y1 
+
+			x3 := (x2 - (x2 - x1)/2) + (xOffset := 14/1920*A_ScreenWidth/minimap.MapPlayableWidth * minimap.Width * (angle/maxAngle)**3)
+			y3 := y2 + ((18/1080*A_ScreenHeight /minimap.MapPlayableHeight * minimap.Height) * angle/maxAngle)
+
+			x4 := x1 + ((x2 - x1)/2) - xOffset
+			y4 := y3 
+
+			Gdip_DrawLines(pGraphics, a_pPen[aPlayer[slotNumber, "colour"]],  x1 "," y1 "|" x2 "," y2 
+							. "|" x3 "," y3 "|" x4 "," y4 "|" x1 "," y1 )
+		}
+	}
+	Gdip_DeleteRegion(Region)
+	return 
+}
+
+
+
+
+
+
+
+
+
+drawPlayerCameras2(pGraphics)
+{
+	static a_pPen := [], maxAngle := 1.195313, hasRun
+	if !hasRun
+	{
+		a_pPen := createPens(1)
+		hasRun := True
+	}
 
 	For slotNumber in aPlayer
 	{
@@ -498,6 +546,11 @@ drawPlayerCameras(pGraphics)
 	}
 	return 
 }
+
+
+
+
+
 
 
 unit_bank_read:

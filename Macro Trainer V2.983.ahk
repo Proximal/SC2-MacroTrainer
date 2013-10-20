@@ -1415,7 +1415,8 @@ cast_ForceInject:
 			For Index, Queen in aControlGroup.Queens
 				if (isQueenNearHatch(Queen, CurrentHatch, MI_QueenDistance) && Queen.Energy >= 25  && !isHatchInjected(CurrentHatch.Unit)) 
 				{
-					sleep % rand(0, 1000)	
+					Thread, Priority, -2147483648
+					sleep % rand(0, 1000)
 					startInjectWait := A_TickCount
 					while getkeystate("LWin", "P") || getkeystate("RWin", "P")	
 					|| getkeystate("LWin") || getkeystate("RWin")	
@@ -1432,6 +1433,7 @@ cast_ForceInject:
 							return
 						sleep 1
 					}
+					Thread, Priority, 0	
 					if (!WinActive(GameIdentifier) || isGamePaused() || isMenuOpen() || !isSelectionGroupable(oSelection)) 
 						return
 					input.hookBlock(True, True)
@@ -1439,8 +1441,9 @@ cast_ForceInject:
 					critical 1000
 					input.hookBlock(False, False)
 					if sleep
-						DllCall("Sleep", Uint, 15) ;  sleep, 5
-					else DllCall("Sleep", Uint, 2) ; give 2 ms to allow for selection buffer to fully update so we are extra safe. 
+						dSleep(15) ;  sleep, 5
+					else 
+						dSleep(10)  ; give 10 ms to allow for selection buffer to fully update so we are extra safe. 
 					if isSelectionGroupable(oSelection) ; in case it somehow changed/updated 
 						castInjectLarva("MiniMap", 1, 0)	
 					Input.revertKeyState()						
@@ -4254,7 +4257,7 @@ DrawLocalPlayerColourOverlay_TT := "During team games and while using hostile co
 HostileColourAssist_TT := "During team games while using hostile colours (green, yellow, and red) enemy bases will still be displayed using player colours.`n`n"
 						. "This helps when co-ordinating attacks e.g. Let's attack yellow!"
 
-DrawUnitDestinations_TT := "Draws blue, green, and red lines on the minimap to indicate an enemy unit's current move state and destination."
+DrawUnitDestinations_TT := "Draws blue, green, orange, and red lines on the minimap to indicate an enemy unit's current move state and destination."
 DrawPlayerCameras_TT := "Draws the enemy's camera on the minimap, i.e. it indicates the map area the player is currently looking at."
 
 SleepSplitUnit_TT := TT_SleepSplitUnits_TT := TT_SleepSelectArmy_TT := SleepSelectArmy_TT := "Increase this value if the function doesn't work properly`nThis time is required to update the selection buffer."
@@ -7369,6 +7372,7 @@ castInjectLarva(Method="Backspace", ForceInject=0, sleepTime=80)	;SendWhileBlock
 			, start_x, start_y
 			, QueenMultiInjects, MaxInjects, CurrentQueenInjectCount
 			, HatchIndex, Dx1, Dy1, Dx2, Dy2, QueenIndex
+			, ctrlTickCount
 
 	LOCAL HighlightedGroup := getSelectionHighlightedGroup()
 
@@ -7389,10 +7393,9 @@ castInjectLarva(Method="Backspace", ForceInject=0, sleepTime=80)	;SendWhileBlock
 		If (Local QueenCount := getGroupedQueensWhichCanInject(oSelection, ForceInject)) ; this wont fetch burrowed queens!! so dont have to do a check below - as burrowed queens can make cameramove when clicking their hatch
 		{
 			if (ForceInject || Inject_RestoreSelection)
-				MTsend("^" Inject_control_group)
+				MTsend("^" Inject_control_group), ctrlTickCount := A_TickCount
 			MTsend(MI_Queen_Group)
-			if ForceInject
-				dsleep(5)
+			dsleep(10)
 			For Index, CurrentHatch in oHatcheries
 			{
 				Local := FoundQueen := 0
@@ -7448,10 +7451,14 @@ castInjectLarva(Method="Backspace", ForceInject=0, sleepTime=80)	;SendWhileBlock
 					}
 				}
 				For QueenIndex, QueenObject in QueenMultiInjects
+				{
 					for index, CurrentHatch in QueenObject
 					{
 						if (A_index = 1)
-							ClickSelectUnitsPortriat(QueenIndex, 10) 
+						{
+							ClickSelectUnitsPortriat(QueenIndex, 0) 
+							dSleep(10) 
+						}
 						MTsend(Inject_spawn_larva) ;always need to send this, otherwise might left click minimap for somereason
 						click_x := CurrentHatch.MiniMapX, click_y := CurrentHatch.MiniMapY
 						If HumanMouse
@@ -7460,13 +7467,17 @@ castInjectLarva(Method="Backspace", ForceInject=0, sleepTime=80)	;SendWhileBlock
 						MTclick(click_x, click_y, "Left", "+")
 						if sleepTime
 							sleep % ceil(sleepTime * rand(1, Inject_SleepVariance))
-						else dSleep(3)
+					;	else dSleep(2)
 						if (A_Index = QueenUnit.maxIndex())
+						{
 							MTsend(MI_Queen_Group)
+							dSleep(5) 
+						}
 						injectedHatches++
 						if (injectedHatches >= FInjectHatchMaxHatches && ForceInject)
 							break, 2					
-						}					
+					}
+				}					
 			}
 		}
 		else return ; no queens in control group - no actions were take
@@ -7487,7 +7498,7 @@ castInjectLarva(Method="Backspace", ForceInject=0, sleepTime=80)	;SendWhileBlock
 		If(Local QueenCount := getGroupedQueensWhichCanInject(oSelection))  ; this wont fetch burrowed queens!! so dont have to do a check below - as burrowed queens can make cameramove when clicking their hatch
 		{
 			if Inject_RestoreSelection
-				MTsend("^" Inject_control_group)
+				MTsend("^" Inject_control_group), ctrlTickCount := A_TickCount
 			if Inject_RestoreScreenLocation
 				MTsend(BI_create_camera_pos_x)
 			MTsend(MI_Queen_Group)
@@ -7539,7 +7550,7 @@ castInjectLarva(Method="Backspace", ForceInject=0, sleepTime=80)	;SendWhileBlock
 		;	so the subsequent left click on the hatch will actually select the hatch (as the spell wasn't cast)
 		;	this was what part of the reason queens were somtimes being cancelled
 		if  Inject_RestoreSelection
-			MTsend("^" Inject_control_group)
+			MTsend("^" Inject_control_group), ctrlTickCount := A_TickCount
 
 		HatchIndex := getBuildingList(aUnitID["Hatchery"], aUnitID["Lair"], aUnitID["Hive"])
 		if Inject_RestoreScreenLocation
@@ -7590,8 +7601,10 @@ castInjectLarva(Method="Backspace", ForceInject=0, sleepTime=80)	;SendWhileBlock
 	}
 	if (ForceInject || Inject_RestoreSelection)
 	{
+		if (A_TickCount - ctrlTickCount < 20)
+			dsleep(15)
 		MTsend(Inject_control_group)
-		dsleep(5)
+		dsleep(15)
 		;if HighlightedGroup
 		;	sleep(2) ; After restoring a control group, needs at least 1 ms so tabs will register
 		MTsend(sRepeat(NextSubgroupKey, HighlightedGroup))
@@ -8863,9 +8876,6 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 
 		for priority, object in priorityObject
 		{
-
-
-
 			for unit, unitCount in object
 			{
 				if !(pBitmap := a_pBitmap[unit])
@@ -9479,7 +9489,6 @@ loop
 msgbox % qpx(False) * 1000
 return
 */
-
 
 /*
 f1::

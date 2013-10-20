@@ -14,7 +14,7 @@ pointer(game, base, offsets*)
 		{
 			IF (A_Index = 1) 
 				pointer := ReadMemory(offset + ReadMemory(base, game), game)
-			Else If (index := offsets.MaxIndex() = A_Index)
+			Else If (index = offsets.MaxIndex())
 				pointer += offset
 			Else pointer := ReadMemory(pointer + offset, game)
 		}

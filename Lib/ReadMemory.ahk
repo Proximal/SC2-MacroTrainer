@@ -22,11 +22,11 @@ ReadMemory(MADDRESS=0,PROGRAM="",BYTES=4)
    If !(ProcessHandle && DllCall("ReadProcessMemory","UInt",ProcessHandle,"UInt",MADDRESS,"Str",MVALUE,"UInt",BYTES,"UInt *",0))
       return !ProcessHandle ? "Handle Closed: " closed : "Fail"
    else if (BYTES = 1)
-      Type := "Char"
+      Type := "UChar"
    else if (BYTES = 2)
-      Type := "Short"
+      Type := "UShort"
    else if (BYTES = 4)
-      Type := "Int"
+      Type := "UInt"
    else 
    {
       loop % BYTES 
