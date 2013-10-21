@@ -2109,7 +2109,7 @@ g_unitPanelOverlay_timer:
 return
 
 gYoutubeEasyUnload:
-	run http://youtu.be/JAV4y_DoPUk
+	run http://youtu.be/D11tsrjPUTU
 	return
 
 Homepage:
@@ -9395,17 +9395,6 @@ input.pClickDelay(pClickDelay)
 return 
 */
 
-critical, on
-haystack :=  "clicks highest units first, so dont have to calculate new"
-var := "test"
-qpx(true) 
-loop 10000000
-	if (haystack~="S)" var)
-		msgbox never gonna see me
-r := qpx(false) 
-critical, off
-msgbox % clipboard := r*1000
-return
 ;if var in %haystack%
 /*
 loop 10000000

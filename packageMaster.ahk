@@ -164,3 +164,4 @@ Return
 ; I don't think i really need to set an install folder
 ; should work fine as is
 ;IniWrite, %installFolder%, %config_file%, Misc Settings, installFolder
+*/
