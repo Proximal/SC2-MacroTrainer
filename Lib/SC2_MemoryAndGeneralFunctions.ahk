@@ -42,6 +42,7 @@ Global B_LocalCharacterNameID
 , O2_ChatFocus
 , P_MenuFocus
 , O1_MenuFocus
+, P_SocialMenu
 , B_uCount
 , B_uHighestIndex
 , B_uStructure
@@ -126,6 +127,10 @@ Global B_LocalCharacterNameID
 , B_VerticalResolution
 
 
+; for user test
+global ExtraDelayInputTest 
+
+
 global aUnitModel := []
 , aStringTable := []
 /*
@@ -186,6 +191,8 @@ loadMemoryAddresses(base)
 
 	 P_MenuFocus := base + 0x04FE4E5C 		;this is all menus and includes chat box when in focus ; old 0x3F04C04
 		 O1_MenuFocus := 0x17C
+
+	P_SocialMenu := base + 0x0409B098
 
 	 B_uCount := base + 0x2F6C438 				; This is the units alive (and includes missiles) ;0x02CF5588			
 	 B_uHighestIndex := base + 0x3665100 ; 0x25F92C0		;this is actually the highest currently alive unit (includes missiles while alive)
@@ -934,6 +941,14 @@ isChatOpen()
 	Return  pointer(GameIdentifier, P_ChatFocus, O1_ChatFocus, O2_ChatFocus)
 }
 
+; True when previous chat box or the social menu has text focus.
+; invalid outside of game
+
+isSocialMenuFocused()
+{	 
+	Return  pointer(GameIdentifier, P_SocialMenu, 0x3DC, 0x3C4, 0x3A8, 0xA4)
+}
+
 
 getUnitTimer(unit)
 {	global 
@@ -1392,19 +1407,27 @@ getBuildStats(building, byref QueueSize := "", byRef item := "")
 	pAbilities := getUnitAbilityPointer(building)
 	AbilitiesCount := getAbilitiesCount(pAbilities)
 	CAbilQueueIndex := getCAbilQueueIndex(pAbilities, AbilitiesCount)
+
 	B_QueuedUnitInfo := getPointerToQueuedUnitInfo(pAbilities, CAbilQueueIndex, localQueSize)
+
 	if IsByRef(QueueSize)
 		QueueSize := localQueSize
+
 	if IsByRef(item)
 	{
-		if !aStringTable.hasKey(pString := readMemory(B_QueuedUnitInfo + 0xD0, GameIdentifier))
-			aStringTable[pString] := ReadMemory_Str(readMemory(pString + 0x4, GameIdentifier), GameIdentifier)
-		item := aStringTable[pString]
+		if localQueSize
+		{
+			if !aStringTable.hasKey(pString := readMemory(B_QueuedUnitInfo + 0xD0, GameIdentifier))
+				aStringTable[pString] := ReadMemory_Str(readMemory(pString + 0x4, GameIdentifier), GameIdentifier)
+			item := aStringTable[pString]
+		}
+		else item := ""
 	}
 	if localQueSize
 		return getPercentageUnitCompleted(B_QueuedUnitInfo)
 	else return 0
 }
+
 
 /*
 	Queued Unit info (B_QueuedUnitInfo)
@@ -1414,7 +1437,6 @@ getBuildStats(building, byref QueueSize := "", byRef item := "")
 	+0xDO = pString Current item in production
 	+0x108 = pString to unit ID e.g. barracks
 */
-
 
 /*
 	player alerts (stuff on the left hand side of the screen)
@@ -3065,12 +3087,14 @@ readConfigFile()
 	IniRead, HumanMouseTimeHi, %config_file%, %section%, HumanMouseTimeHi, 110
 
 	IniRead, UnitDetectionTimer_ms, %config_file%, %section%, UnitDetectionTimer_ms, 3500
+	
 
 	IniRead, MTCustomIcon, %config_file%, %section%, MTCustomIcon, %A_Space% ; I.e. False
 	IniRead, MTCustomProgramName, %config_file%, %section%, MTCustomProgramName, %A_Space% ; I.e. False
 	MTCustomProgramName := Trim(MTCustomProgramName)
 
-	
+	; testing for guy with problem extra delay
+	IniRead, ExtraDelayInputTest, %config_file%, %section%, ExtraDelayInputTest, 0
 
 	;[Key Blocking]
 	section := "Key Blocking"

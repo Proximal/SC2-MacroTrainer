@@ -1052,6 +1052,7 @@ Cast_ChronoStructure(StructureToChrono)
 	HighlightedGroup := getSelectionHighlightedGroup()
 	max_chronod := nexus_chrono_count - CG_chrono_remainder
 	MTsend("^" CG_control_group CG_nexus_Ctrlgroup_key)
+	timerID := stopwatch()
 	sleep, 10 	; Can use real sleep here as not a silent automation
 	for  index, oject in oStructureToChrono
 	{
@@ -1067,8 +1068,11 @@ Cast_ChronoStructure(StructureToChrono)
 	}
 	If HumanMouse
 		MouseMoveHumanSC2("x" start_x "y" start_y "t" rand(HumanMouseTimeLo, HumanMouseTimeHi))
+	elapsedTimeGrouping := stopwatch(timerID)	
+	if (elapsedTimeGrouping < 20)
+		sleep, % ceil(20 - elapsedTimeGrouping)	
 	MTsend(CG_control_group)
-	sleep, 10
+	sleep, 15
 	if HighlightedGroup
 		MTsend(sRepeat(NextSubgroupKey, HighlightedGroup))
 	Return 
@@ -1154,7 +1158,7 @@ AutoGroup(byref A_AutoGroup, AGDelay = 0)
 			critical, 1000
 			input.hookBlock(False, False)
 			if sleep
-				DllCall("Sleep", Uint, 15) ;  sleep, 5
+				dSleep(15) ;  sleep, 5
 			; if the user has a delay for grouping, this increases the risk of the unit selection changing before the
 			; sent ctrl+group command is received/processed. Therefore a small sleep here should make it more robust
 			; in theory this should not be required with a delay of 0 (for the most part), as there is the idle grouping
@@ -1164,7 +1168,7 @@ AutoGroup(byref A_AutoGroup, AGDelay = 0)
 			if AGDelay ; the MTDelay should prevent the need for a sleep
 			{
 				if !sleep 
-					DllCall("Sleep", Uint, 3)
+					dSleep(5)
 				;sleep 5 ; so rounds to no more than 10ms.
 				;Sleep(2) ; give time for selection buffer to update. This along with blocking input should cover pre- and post-selection delay buffer changes
 				numGetUnitSelectionObject(oSelection)
@@ -1222,7 +1226,7 @@ LimitGroup(byref UnitList, Hotkey)
 	critical 1000
 	input.hookBlock(False, False)
 	if sleep
-		DllCall("Sleep", Uint, 10) 
+		dSleep(10) 
 	MTsend(Hotkey)
 	Input.revertKeyState()
 	Return
@@ -2661,6 +2665,9 @@ ini_settings_write:
 	Iniwrite, %UnitDetectionTimer_ms%, %config_file%, %section%, UnitDetectionTimer_ms
 	Iniwrite, %MTCustomIcon%, %config_file%, %section%, MTCustomIcon
 
+	; for custom test
+	Iniwrite, %ExtraDelayInputTest%, %config_file%, %section%, ExtraDelayInputTest
+
 	if (MTCustomProgramName && A_IsCompiled)
 	{
 		if (substr(MTCustomProgramName, -3) != ".exe") ; extract last four chars (0 gets the last char) - case insensitive
@@ -3302,7 +3309,11 @@ Gui, Add, Tab2,w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vSettings_TAB, Set
 		Gui, Add, Checkbox, y+10 vBlockingMultimedia checked%BlockingMultimedia%, Mutimedia Buttons	
 		Gui, Add, Checkbox, y+10 vLwinDisable checked%LwinDisable%, Disable Left Windows Key
 
-	Gui, Add, GroupBox, xs yp+35 w161 h60, Empty
+	Gui, Add, GroupBox, xs yp+35 w161 h60, Extra Delay Input Time
+		Gui, Add, Text, xp+10 yp+25, Delay Time (ms) :
+		Gui, Add, Edit, Number Right x+15 yp-2 w45
+			Gui, Add, UpDown,  Range0-60 vExtraDelayInputTest, %ExtraDelayInputTest%
+
 /*
 	Gui, Add, GroupBox, xs yp+35 w161 h60, Unit Deselection
 		Gui, Add, Text, xp+10 yp+25, Sleep Time:
@@ -4251,6 +4262,7 @@ HostileColourAssist_TT := "During team games while using hostile colours (green,
 						. "This helps when co-ordinating attacks e.g. Let's attack yellow!"
 
 DrawUnitDestinations_TT := "Draws blue, green, orange, and red lines on the minimap to indicate an enemy unit's current move state and destination."
+						. "`nAlso draws an alert cross for nukes."
 DrawPlayerCameras_TT := "Draws the enemy's camera on the minimap, i.e. it indicates the map area the player is currently looking at."
 
 SleepSplitUnit_TT := TT_SleepSplitUnits_TT := TT_SleepSelectArmy_TT := SleepSelectArmy_TT := "Increase this value if the function doesn't work properly`nThis time is required to update the selection buffer."
@@ -6160,7 +6172,11 @@ autoWorkerProductionCheck()
 					}
 				}
 				if (setControlGroup || oSelection.IndicesString != subStr(L_ControlstorageIndexes, 2))  
-					MTsend("^" controlstorageGroup )
+				{
+					setControlGroup := True
+					MTsend("^" controlstorageGroup)
+					stopWatchCtrlID := stopwatch()
+				}
 				MTsend(mainControlGroup)
 				dSleep(10) ; wont have that many units grouped with the buildings so 10ms should be plenty
 				numGetSelectionSorted(oSelection)
@@ -6229,7 +6245,15 @@ autoWorkerProductionCheck()
 			MTsend(sendSequence), sendSequence := ""
 			if (BaseControlGroupNotSelected || removeRecentlyCompletedCC)
 			{
-				dSleep(5)	
+			;	dSleep(5)
+				if setControlGroup
+				{
+					elapsedTimeGrouping := stopwatch(stopWatchCtrlID)	
+					if (elapsedTimeGrouping < 20 + ExtraDelayInputTest)
+						dSleep(ceil((20 + ExtraDelayInputTest) - elapsedTimeGrouping))
+				}
+				else dsleep(15)
+
 				MTsend(controlstorageGroup)
 				dSleep(15)
 				if HighlightedGroup
@@ -6265,6 +6289,44 @@ autoWorkerProductionCheck()
 	return
 }
 
+
+/*
+Test: Game against AI
+
+ctrl group 1 had 1 marine in it set to patrol
+ctrl group 2 was empty
+selection was of 113 units of different terran types
+
+ctrl group selection
+retrieve group 1,  order stop patrolling
+sleep
+restore ctrl group 2
+
+Result 
+
+; WHEN ctrl group empty, 12ms wasnt enough 13 is if the units which were ctrl grouped were idle
+; if they have patrol commands (or doing other stuff probably too) then it takes longer
+; 15 ms was adequate with command queue full of patrol commands for 113 units
+
+
+f1::
+input.pClickDelay(-1)
+input.pSendDelay(-1)
+critical, on
+MTsend("^2" "1" "s")
+dsleep(15)
+mtsend(2)
+critical off 
+return
+
+*/
+
+
+
+
+
+
+
 isSelectionGroupable(ByRef oSelection)
 {	GLOBAl aLocalPlayer
 	if !numGetUnitSelectionObject(oSelection) 	; No units selected
@@ -6287,15 +6349,15 @@ selectGroup(group, preSleep := -1, postSleep := 2)
 
 ; r := sRepeat("as", 3)
 ; r = "asasas"
-; 0 returns empty string
+; 0 returns empty string (same for negative numbers)
 sRepeat(string, multiplier)
 {
-	if multiplier
+	if (multiplier > 0)
 	{
 		loop, % multiplier 
 			r .= string
 	}
-	else r := ""
+	else return
 	return r
 }
 
@@ -7356,7 +7418,7 @@ castInjectLarva(Method="Backspace", ForceInject=0, sleepTime=80)	;SendWhileBlock
 			, start_x, start_y
 			, QueenMultiInjects, MaxInjects, CurrentQueenInjectCount
 			, HatchIndex, Dx1, Dy1, Dx2, Dy2, QueenIndex
-			, ctrlTickCount
+			, stopWatchCtrlID 
 
 	LOCAL HighlightedGroup := getSelectionHighlightedGroup()
 
@@ -7377,7 +7439,7 @@ castInjectLarva(Method="Backspace", ForceInject=0, sleepTime=80)	;SendWhileBlock
 		If (Local QueenCount := getGroupedQueensWhichCanInject(oSelection, ForceInject)) ; this wont fetch burrowed queens!! so dont have to do a check below - as burrowed queens can make cameramove when clicking their hatch
 		{
 			if (ForceInject || Inject_RestoreSelection)
-				MTsend("^" Inject_control_group), ctrlTickCount := A_TickCount
+				MTsend("^" Inject_control_group), stopWatchCtrlID := stopwatch()
 			MTsend(MI_Queen_Group)
 			dsleep(10)
 			For Index, CurrentHatch in oHatcheries
@@ -7482,7 +7544,7 @@ castInjectLarva(Method="Backspace", ForceInject=0, sleepTime=80)	;SendWhileBlock
 		If(Local QueenCount := getGroupedQueensWhichCanInject(oSelection))  ; this wont fetch burrowed queens!! so dont have to do a check below - as burrowed queens can make cameramove when clicking their hatch
 		{
 			if Inject_RestoreSelection
-				MTsend("^" Inject_control_group), ctrlTickCount := A_TickCount
+				MTsend("^" Inject_control_group), stopWatchCtrlID := stopwatch()
 			if Inject_RestoreScreenLocation
 				MTsend(BI_create_camera_pos_x)
 			MTsend(MI_Queen_Group)
@@ -7534,7 +7596,7 @@ castInjectLarva(Method="Backspace", ForceInject=0, sleepTime=80)	;SendWhileBlock
 		;	so the subsequent left click on the hatch will actually select the hatch (as the spell wasn't cast)
 		;	this was what part of the reason queens were somtimes being cancelled
 		if  Inject_RestoreSelection
-			MTsend("^" Inject_control_group), ctrlTickCount := A_TickCount
+			MTsend("^" Inject_control_group), stopWatchCtrlID := stopwatch()
 
 		HatchIndex := getBuildingList(aUnitID["Hatchery"], aUnitID["Lair"], aUnitID["Hive"])
 		if Inject_RestoreScreenLocation
@@ -7585,8 +7647,9 @@ castInjectLarva(Method="Backspace", ForceInject=0, sleepTime=80)	;SendWhileBlock
 	}
 	if (ForceInject || Inject_RestoreSelection)
 	{
-		if (A_TickCount - ctrlTickCount < 20)
-			dsleep(15)
+		elapsedTimeGrouping := stopwatch(stopWatchCtrlID)	
+		if (elapsedTimeGrouping < 20)
+			dSleep(ceil(20 - elapsedTimeGrouping))
 		MTsend(Inject_control_group)
 		dsleep(15)
 		;if HighlightedGroup
@@ -8344,6 +8407,8 @@ SplitUnits(SplitctrlgroupStorage_key)
 	dSleep(20)
 	HighlightedGroup := getSelectionHighlightedGroup()
 	MTsend("^" SplitctrlgroupStorage_key)
+	timerID := stopwatch()
+
 	aSelectedUnits := []
 	xSum := ySum := 0
 
@@ -8445,11 +8510,14 @@ SplitUnits(SplitctrlgroupStorage_key)
 		aSelectedUnits.remove(1)
 	}
 
+	elapsedTimeGrouping := stopwatch(timerID)	
+	if (elapsedTimeGrouping < 20)
+		dSleep(ceil(20 - elapsedTimeGrouping))
+
 	sendSequence := SplitctrlgroupStorage_key
-	loop % HighlightedGroup
-		sendSequence .= NextSubgroupKey
-	MTsend(sendSequence)
-		return
+	MTsend(SplitctrlgroupStorage_key sRepeat(NextSubgroupKey, HighlightedGroup))
+	dsleep(15)
+	return
 }
 
 SplitUnitsWorking(SplitctrlgroupStorage_key)
@@ -9467,7 +9535,26 @@ pClick("R", 500, 500, 2, "+")
 
 return 
 
+
+
+
 */
+
+; takes 0.0107 ms to install and remove the hooks
+/*
+setLowLevelInputHooks(false)
+thread, Interrupt, off
+critical, 1000
+qpx(1)
+loop 10000
+{
+	setLowLevelInputHooks(True)
+	setLowLevelInputHooks(false)
+}
+t := (qpx(0) * 1000) / 10000
+critical off 
+msgbox % t 
+return 
 
 /*
 
