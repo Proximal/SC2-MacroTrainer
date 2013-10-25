@@ -127,10 +127,6 @@ Global B_LocalCharacterNameID
 , B_VerticalResolution
 
 
-; for user test
-global ExtraDelayInputTest 
-
-
 global aUnitModel := []
 , aStringTable := []
 /*
@@ -3077,8 +3073,9 @@ readConfigFile()
 	;[Misc Settings]
 	section := "Misc Settings"
 	IniRead, input_method, %config_file%, %section%, input_method, Input
+	IniRead, pSendDelay, %config_file%, %section%, pSendDelay, -1
+	IniRead, pClickDelay, %config_file%, %section%, pClickDelay, -1
 	IniRead, EventKeyDelay, %config_file%, %section%, EventKeyDelay, -1
-	IniRead, pKeyDelay, %config_file%, %section%, pKeyDelay, 3
 	IniRead, auto_update, %config_file%, %section%, auto_check_updates, 1
 	IniRead, launch_settings, %config_file%, %section%, launch_settings, 0
 	IniRead, MaxWindowOnStart, %config_file%, %section%, MaxWindowOnStart, 1
@@ -3092,9 +3089,6 @@ readConfigFile()
 	IniRead, MTCustomIcon, %config_file%, %section%, MTCustomIcon, %A_Space% ; I.e. False
 	IniRead, MTCustomProgramName, %config_file%, %section%, MTCustomProgramName, %A_Space% ; I.e. False
 	MTCustomProgramName := Trim(MTCustomProgramName)
-
-	; testing for guy with problem extra delay
-	IniRead, ExtraDelayInputTest, %config_file%, %section%, ExtraDelayInputTest, 0
 
 	;[Key Blocking]
 	section := "Key Blocking"

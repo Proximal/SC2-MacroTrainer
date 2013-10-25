@@ -414,7 +414,6 @@ g_EmergencyRestart:
 			SoundPlay, %A_Temp%\Windows Ding.wav
 			if (time && alert_array[GameType, "Enabled"])
 				aThreads.MiniMap.ahkFunction("doUnitDetection", 0, 0, 0, "Save")	
-		;	try  Run "%A_ScriptFullPath%"
 			if (A_OSVersion = "WIN_XP") ; apparently the below command wont work on XP
 				try RunAsAdmin()
 			else try  Run *RunAs "%A_ScriptFullPath%"
@@ -2655,7 +2654,9 @@ ini_settings_write:
 	section := "Misc Settings"
 	IniWrite, %input_method%, %config_file%, %section%, input_method
 	IniWrite, %EventKeyDelay%, %config_file%, %section%, EventKeyDelay
-	IniWrite, %pKeyDelay%, %config_file%, %section%, pKeyDelay
+	IniWrite, %pSendDelay%, %config_file%, %section%, pSendDelay
+	IniWrite, %pClickDelay%, %config_file%, %section%, pClickDelay
+
 	IniWrite, %auto_update%, %config_file%, %section%, auto_check_updates
 	Iniwrite, %launch_settings%, %config_file%, %section%, launch_settings
 	Iniwrite, %MaxWindowOnStart%, %config_file%, %section%, MaxWindowOnStart
@@ -2664,9 +2665,6 @@ ini_settings_write:
 	Iniwrite, %HumanMouseTimeHi%, %config_file%, %section%, HumanMouseTimeHi
 	Iniwrite, %UnitDetectionTimer_ms%, %config_file%, %section%, UnitDetectionTimer_ms
 	Iniwrite, %MTCustomIcon%, %config_file%, %section%, MTCustomIcon
-
-	; for custom test
-	Iniwrite, %ExtraDelayInputTest%, %config_file%, %section%, ExtraDelayInputTest
 
 	if (MTCustomProgramName && A_IsCompiled)
 	{
@@ -3288,20 +3286,19 @@ Gui, Add, Tab2,w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vMisc_TAB, Misc Ab
 
 
 Gui, Add, Tab2,w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vSettings_TAB, Settings				
-	Gui, Add, GroupBox, xs ys+5 w161 h110 section, Misc. Settings
+	Gui, Add, GroupBox, xs ys+5 w161 h110 section, Input Settings
 
-		Gui, Add, Text, xp+10 yp+30 w40, Input:
-		; only allow pMessage now But will leave this here anyway 
-		Gui, Add, DropDownList, x+25 yp-2 w80 Vinput_method Choose1, pMessage
+		Gui, Add, Text, xs+10 yp+35 w60, Send Delay:
+		Gui, Add, Edit, Number Right x+30 yp-2 w45 vTT_pSendDelay
+			Gui, Add, UpDown,  Range-1-300 vpSendDelay, %pSendDelay%
 
-	;	Gui, Add, Text, xs+10 yp+30 w40, KeyDelay:
-	;	Gui, Add, Edit, Number Right x+50 yp-2 w45 vTT_pKeyDelay
-	;		Gui, Add, UpDown,  Range-1-300 vpKeyDelay, %pKeyDelay%
+		Gui, Add, Text, xs+10 yp+40 w60, Click Delay:
+		Gui, Add, Edit, Number Right x+30 yp-2 w45 vTT_pClickDelay
+			Gui, Add, UpDown,  Range-1-300 vpClickDelay, %pClickDelay%
 
 		;yp+30
-		Gui, Add, Checkbox,xs+10 yp+45 Vauto_update checked%auto_update%, Auto Check For Updates
 
-	Gui, Add, GroupBox, xs yp+43 w161 h170, Key Blocking
+	Gui, Add, GroupBox, xs yp+45 w161 h170, Key Blocking
 		Gui, Add, Checkbox,xp+10 yp+25 vBlockingStandard checked%BlockingStandard%, Standard Keys	
 		Gui, Add, Checkbox, y+10 vBlockingFunctional checked%BlockingFunctional%, Functional F-Keys 	
 		Gui, Add, Checkbox, y+10 vBlockingNumpad checked%BlockingNumpad%, Numpad Keys	
@@ -3309,10 +3306,8 @@ Gui, Add, Tab2,w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vSettings_TAB, Set
 		Gui, Add, Checkbox, y+10 vBlockingMultimedia checked%BlockingMultimedia%, Mutimedia Buttons	
 		Gui, Add, Checkbox, y+10 vLwinDisable checked%LwinDisable%, Disable Left Windows Key
 
-	Gui, Add, GroupBox, xs yp+35 w161 h60, Extra Delay Input Time
-		Gui, Add, Text, xp+10 yp+25, Delay Time (ms) :
-		Gui, Add, Edit, Number Right x+15 yp-2 w45
-			Gui, Add, UpDown,  Range0-60 vExtraDelayInputTest, %ExtraDelayInputTest%
+	Gui, Add, GroupBox, xs yp+35 w161 h60, Updates
+		Gui, Add, Checkbox,xs+10 yp+25 Vauto_update checked%auto_update%, Auto Check For Updates
 
 /*
 	Gui, Add, GroupBox, xs yp+35 w161 h60, Unit Deselection
@@ -4206,13 +4201,10 @@ input_method_TT := "Sets the method of artificial input.`n"
 ;	. "Hence, use ""Input"" unless it doesn't work."
 TT_EventKeyDelay_TT := EventKeyDelay_TT := "Sets the mouse and key delay (in ms) used when in SendEvent mode.`nLower values sends keystrokes faster - but setting this too low MAY cause some strokes to be missed.`nCommon values are (-1 to 10).`nNote: These delays are accumulative, and for functions which require numerous keystrokes e.g. split this delay can become quite substantial`n`nSendInput is faster and generally more reliable, hence SendInput should be used if it works on your system."
 
-TT_pKeyDelay_TT := pKeyDelay_TT := "Sets the sleep time (in ms) between individual keystrokes/mousecliks."
-					. "`n`nNote: This is an important setting as SC2 often requires a small delay to ensure ALL the keystrokes are processed."
-					. "`nIn my experience if this is too low the control-grouping command may be ignored once every few games." 
-					. "`nHence, this may prevent unit selections being restored during automations."
-					. "`n2 ms works perfectly for me."
+TT_pClickDelay_TT := pClickDelay_TT := TT_pSendDelay_TT := pSendDelay_TT := "Sets the sleep time (in ms) between individual keystrokes/mousecliks."	
+					. "`n`nNote: -1 (no delay) should work for everyone, but if unit selections are not being saved/restored, perhaps try increasing this to 2 or 3"
 					. "`n`nValid values are:"
-					. "`n-1: no sleep"
+					. "`n-1: no delay"
 					. "`n 0: Yields the remaining time slice to any other process (if requested)"
 					. "`nAny positive integer."
 
@@ -6083,10 +6075,6 @@ autoWorkerProductionCheck()
 		upsequence := Input.releaseKeys()
 		critical, 1000
 		input.hookBlock(False, False)
-	;	if upsequence
-	;		DllCall("Sleep", Uint, 15) ;  sleep, 5
-	;	if (upsequence && IsKeyDownSC2Input())
-	;		SendInput, {BLIND}%upsequence%
 		dSleep(15) ; increase safety ensure selection buffer fully updated
 
 		HighlightedGroup := getSelectionHighlightedGroup()
@@ -6101,7 +6089,10 @@ autoWorkerProductionCheck()
 			loop, parse, selctionUnitIndices, `,
 			{
 				if A_LoopField not in %L_BaseCtrlGroupIndexes%	 ; so if a selected unit isnt in the base control group			
-					BaseControlGroupNotSelected := 1
+				{
+					BaseControlGroupNotSelected := True
+					break 
+				}
 			}
 			; This function is mainly for the auto-control group. So when a user clicks on a finished CC
 			; it will get auto-grouped, but wont immediately make an SCV (which would prevent converting
@@ -6249,8 +6240,8 @@ autoWorkerProductionCheck()
 				if setControlGroup
 				{
 					elapsedTimeGrouping := stopwatch(stopWatchCtrlID)	
-					if (elapsedTimeGrouping < 20 + ExtraDelayInputTest)
-						dSleep(ceil((20 + ExtraDelayInputTest) - elapsedTimeGrouping))
+					if (elapsedTimeGrouping < 20)
+						dSleep(ceil(20 - elapsedTimeGrouping))
 				}
 				else dsleep(15)
 
@@ -7282,8 +7273,8 @@ CreateHotkeys()
 ;		SendMode Play	; causes problems 
 ;	Else SendMode Input
 
- 	input.pClickDelay(-1)
- 	input.pSendDelay(-1)
+	input.pSendDelay(pSendDelay)
+ 	input.pClickDelay(pClickDelay)
  	EventKeyDelay := -1
 
 	#If, WinActive(GameIdentifier) && !BufferInputFast.isInputBlockedOrBuffered()
