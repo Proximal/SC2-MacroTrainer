@@ -11,6 +11,7 @@
 ;-----------------------
 
 
+
 ; if script re-copied from github should save it using UTF-8 with BOM (otherwise some of the ascii symbols like • wont be displayed correctly)
 /*	Things to do
 
