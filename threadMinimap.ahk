@@ -81,7 +81,7 @@ updateUserSettings()
 gameChange()
 {
 	global
-
+	soundplay *-1
 	if !hasReadConfig
 		readConfigFile(), hasReadConfig := True
 	if !hasLoadedMemoryAddresses

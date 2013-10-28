@@ -803,6 +803,8 @@ clock:
 	}
 	Else if (time && game_status != "game") && (getLocalPlayerNumber() != 16 || debug) ; Local slot = 16 while in lobby/replay - this will stop replay announcements
 	{
+		SoundPlay, %A_Temp%\gentleBeep.wav
+
 		game_status := "game", warpgate_status := "not researched", gateway_count := warpgate_warning_set := 0
 		AW_MaxWorkersReached := TmpDisableAutoWorker := 0
 		MiniMapWarning := [], a_BaseList := [], aGatewayWarnings := []
@@ -6312,11 +6314,10 @@ return
 
 */
 
-
-
-
-
-
+f1::
+getBuildStats(getSelectedUnitIndex(), q, i)
+msgbox % (clipboard := i) "`n" q 
+return 
 
 isSelectionGroupable(ByRef oSelection)
 {	GLOBAl aLocalPlayer

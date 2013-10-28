@@ -3,6 +3,7 @@ InstallSC2Files()
 	FileCreateDir, %A_Temp%\UnitPanelMacroTrainer
 	FileInstall, Included Files\On.wav, %A_Temp%\On.wav, 1 
 	FileInstall, Included Files\Off.wav, %A_Temp%\Off.wav, 1 
+	FileInstall, Included Files\gentleBeep.wav, %A_Temp%\gentleBeep.wav, 1 
 	FileInstall, Included Files\Windows Ding.wav, %A_Temp%\Windows Ding.wav, 1 
 	FileInstall, Included Files\Windows Ding2.wav, %A_Temp%\Windows Ding2.wav, 1 
 	FileInstall, Included Files\Windows Ding3.wav, %A_Temp%\Windows Ding3.wav, 1 
