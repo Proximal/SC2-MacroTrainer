@@ -142,6 +142,7 @@ url.ChronoRules := "http://www.users.on.net/~jb10/MTSite/chronoBoost.html"
 url.Homepage := "http://www.users.on.net/~jb10/MTSite/overview.html"
 url.buyBeer := "http://www.users.on.net/~jb10/MTSite/buyBeer.html"
 url.PixelColour := url.homepage "Macro Trainer/PIXEL COLOUR.htm"
+url.BugReport := "http://mt.9xq.ru/"
 
 MT_CurrentInstance := [] ; Used to store random info about the current run
 program := []
@@ -4465,43 +4466,33 @@ Screenshots and replays may be attached below.
 	Else
 	{
 		Gui, ListView, EmailAttachmentListViewID ;note all future and current threads now refer to this listview!
-		oEmailAttachmentFilePaths := []
+		attachments := ""
 		loop % LV_GetCount()
 		{
 			LV_GetText(AttachmentPath, A_Index) ; start at 1 as 0 retrieves the column header
-			oEmailAttachmentFilePaths.insert(AttachmentPath)
+			attachments .= AttachmentPath ","
 		}
+		if attachments
+			attachments := Trim(attachments, " `t`,")
+
 		GuiControl, Disable, B_Report
-		; Report_Email is the address to return to, if user puts a weird name function will fail with an error!  i.e. and address which violates email address rules
-		MT_EmailAddress := "macro.trainer@adam.com.au"
-		Try SendEmail(MT_EmailAddress, Report_Email, "Bug Report", "Return Email: " Report_Email "`n" "Problem: `n`n" Report_TXT, oEmailAttachmentFilePaths)
-	;	SendEmail(MT_EmailAddress, Report_Email, "Bug Report", "Return Email: " Report_Email "`n" "Problem: `n`n" Report_TXT, oEmailAttachmentFilePaths)
-	;	try getProcessBaseAddress(GameIdentifier)
-		catch, comError
+		if (error := bugReportPoster(Report_Email, "Bug Report:`n`n" Report_TXT, attachments, ticketNumber))
 		{
-			MsgBox, % "There was an error submitting this information."
-				. "`n`nPress OK to manually send an email to: macro.trainer@adam.com.au"
-				. "`n`nPlease attach your MT_Config.ini file!"
-			Report_TXT := Report_TXT . "`n`n========================"
-						. "`n`nCom Report Error:    "   
-						. "`n`rMsg: " comError.Message
-
-			; This converts the text into a mailto/html compatible format
-			StringReplace, Report_TXT, Report_TXT, %A_Space% , `%20, All ; %20
-			StringReplace, Report_TXT, Report_TXT, `n, `%0D`%0A, All  ;line breaks need to be %0D%0A
-			StringReplace, Report_TXT, Report_TXT, `,, `%2C, All  
-			StringReplace, Report_TXT, Report_TXT, ?, `%3F, All  
-			StringReplace, Report_TXT, Report_TXT, ., `%2E, All  
-			StringReplace, Report_TXT, Report_TXT, !, `%21, All  
-			StringReplace, Report_TXT, Report_TXT, :, `%3A, All  
-			StringReplace, Report_TXT, Report_TXT, `;, `%3B, All  
-
-			run, mailto:%MT_EmailAddress%?subject=Bug Report &body=%Report_TXT% 
-			return
+			GuiControl, ,Report_TXT, %Report_TXT%`n`n`nAuto Bug Report Error:`n%error%
+			msgbox, 1, Error, % "There was an error submitting your report"
+				. "`n`nError: " error
+				. "`n`nPress OK to submit the report using your web browser"
+				. "`n`nOtherwise Press cancel"
+			IfMsgBox, OK
+				run % url.BugReport
+			else return 
 		}
-		msgbox, 64, , Report Sent, 10
-		GuiControl, ,Report_Email,
-		GuiControl, ,Report_TXT, `n`n`n`n`n`n%a_tab%%a_tab%Thank You!
+		else 
+		{
+			msgbox, 64, , Report Sent`n`nTicket Number: %ticketNumber%, 10
+			GuiControl, ,Report_Email,
+			GuiControl, ,Report_TXT, `n`n`n`n`n`n%a_tab%%a_tab%Thank You!
+		}
 	}
 	return
 
@@ -7222,7 +7213,6 @@ DrawLocalPlayerColour(ByRef Redraw, UserScale=1,Drag=0)
 		Iniwrite, %LocalPlayerColourOverlayY%, %config_file%, Overlays, LocalPlayerColourOverlayY
 	}
 
-
 	hbm := CreateDIBSection(A_ScreenWidth, A_ScreenHeight) ;/10 not really necessary but should be plenty large enough
 	hdc := CreateCompatibleDC()
 	obm := SelectObject(hdc, hbm)
@@ -8594,19 +8584,6 @@ FindXYatAngle(byref ResultX, byref ResultY,	Angle, Direction, distance, X, Y)
 	return
 }
 
-/*
-	object looks like this
-	(owner)	|----3
-	(Priority)	 |-----2
-	(unit)			   |------247
-
-*/
-
-; an easier way to do this would just to create an array containg an object of each unit
-; each unit object would then have type, owner, priorty property
-; and it could then be sorted by each property in turn to get the order correct
-; but tipple sorting an array would take 'considerable' time, at least relative to not sorthing it
-; so i would rather do it without sorting the array
 
 getEnemyUnitCount(byref aEnemyUnits, byref aEnemyBuildingConstruction, byref aUnitID)
 {
@@ -8655,6 +8632,93 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyBuildingConstruction, byref aUn
 	}
 	Return
 }
+
+/*
+	object looks like this
+	(owner)	|----3
+	(Priority)	 |-----2
+	(unit)			   |------247
+
+*/
+
+; an easier way to do this would just to create an array containg an object of each unit
+; each unit object would then have type, owner, priorty property
+; and it could then be sorted by each property in turn to get the order correct
+; but tipple sorting an array would take 'considerable' time, at least relative to not sorthing it
+; so i would rather do it without sorting the array
+
+getEnemyUnitCountNew(byref aEnemyUnits, byref aEnemyBuildingConstruction, byref aUnitID)
+{
+	GLOBAL DeadFilterFlag, aPlayer, aLocalPlayer, aUnitTargetFilter, aUnitInfo, 
+	aEnemyUnits := [], aEnemyBuildingConstruction := []
+;	if !aEnemyUnitPriorities	;because having  GLOBAL aEnemyUnitPriorities := [] results in it getting cleared each function run
+;		aEnemyUnitPriorities := []
+
+	Unitcount := DumpUnitMemory(MemDump)
+	loop, % Unitcount
+	{
+
+ 		unit := A_Index - 1
+	    TargetFilter := numgetUnitTargetFilter(MemDump, unit)
+	    if (TargetFilter & DeadFilterFlag || TargetFilter & aUnitTargetFilter.Hallucination)
+	       Continue
+		owner := numgetUnitOwner(MemDump, Unit) 
+
+	    if  (aPlayer[Owner, "Team"] <> aLocalPlayer["Team"] && Owner)
+	    {
+	    	pUnitModel := numgetUnitModelPointer(MemDump, Unit)
+	    	Type := numgetUnitModelType(pUnitModel)
+	    	if  (Type < aUnitID["Colossus"])
+				continue	
+			if (!Priority := aUnitInfo[Type, "Priority"]) ; faster than reading the priority each time - this is splitting hairs!!!
+				aUnitInfo[Type, "Priority"] := Priority := numgetUnitModelPriority(pUnitModel)
+
+			if (aUnitInfo[Type, "isStructure"] = "")
+				aUnitInfo[Type, "isStructure"] := TargetFilter & aUnitTargetFilter.Structure
+
+			if (TargetFilter & aUnitTargetFilter.UnderConstruction)
+			{
+				aEnemyBuildingConstruction[Owner, Priority, Type] := aEnemyBuildingConstruction[Owner, Priority, Type] ? aEnemyBuildingConstruction[Owner, Priority, Type] + 1 : 1
+				aEnemyBuildingConstruction[Owner, "TotalCount"] := aEnemyBuildingConstruction[Owner, "TotalCount"] ? aEnemyBuildingConstruction[Owner, "TotalCount"] + 1 : 1
+			}		; this is a cheat and very lazy way of incorporating a count into the array without stuffing the for loop and having another variable
+			Else 
+			{
+				if TargetFilter & aUnitTargetFilter.Structure
+				{
+					if (Type = aUnitID["CommandCenter"] && MorphingType := isCommandCenterMorphing(unit))	; this allows the orbital to show as a 'under construction' unit on the right
+						Priority := aUnitInfo["CommandCenter", "Priority"], aEnemyBuildingConstruction[Owner, Priority, MorphingType] := aEnemyBuildingConstruction[Owner, Priority, MorphingType] ? aEnemyBuildingConstruction[Owner, Priority, MorphingType] + 1 : 1 ;*** use 4 as morphing has no 0 priority, which != 4/CC
+					else if (Type = aUnitID["Hatchery"] || aUnitID["Lair"]) && MorphingType := isHatchOrLairMorphing(unit)
+						Priority := aUnitInfo["Hatchery", "Priority"], aEnemyBuildingConstruction[Owner, Priority, MorphingType] := aEnemyBuildingConstruction[Owner, Priority, MorphingType] ? aEnemyBuildingConstruction[Owner, Priority, MorphingType] + 1 : 1
+				}
+				else
+					aEnemyUnits[Owner, Priority, Type] := aEnemyUnits[Owner, Priority, Type] ? aEnemyUnits[Owner, Priority, Type] + 1 : 1 ;note +1 (++ will not work!!!)
+			}
+	   	}
+	}
+	Return
+}
+
+getStructureProductionInfo(unit, byRef aInfo)
+{
+	aInfo := []
+	pAbilities := getUnitAbilityPointer(building)
+	AbilitiesCount := getAbilitiesCount(pAbilities)
+	CAbilQueueIndex := getCAbilQueueIndex(pAbilities, AbilitiesCount)
+	B_QueuedUnitInfo := getPointerToQueuedUnitInfo(pAbilities, CAbilQueueIndex, localQueSize)
+	loop 
+	{
+		getPercentageUnitCompleted(B_QueuedUnitInfo)
+		progress := getPercentageUnitCompleted(B_QueuedUnitInfo)
+		if !aStringTable.hasKey(pString := readMemory(B_QueuedUnitInfo + 0xD0, GameIdentifier))
+			aStringTable[pString] := ReadMemory_Str(readMemory(pString + 0x4, GameIdentifier), GameIdentifier)
+		item := aStringTable[pString]
+		if progress
+			aInfo.insert({ "Item": item, "progress": progress})
+		B_QueuedUnitInfo += 4
+	} until (A_index => localQueSize || !progress)  ;progress = 0 not being built, but is in queue
+	return aInfo.maxIndex()
+}
+
 
 FilterUnits(byref aEnemyUnits, byref aEnemyBuildingConstruction, byref aUnitPanelUnits, byref aUnitID, aPlayer)	;care have used aUnitID everywhere else!!
 {	global aUnitInfo
