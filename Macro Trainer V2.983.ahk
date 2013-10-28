@@ -6314,10 +6314,6 @@ return
 
 */
 
-f1::
-getBuildStats(getSelectedUnitIndex(), q, i)
-msgbox % (clipboard := i) "`n" q 
-return 
 
 isSelectionGroupable(ByRef oSelection)
 {	GLOBAl aLocalPlayer
