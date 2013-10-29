@@ -1076,7 +1076,6 @@ cURL_CloseHandle(fHandle){
 Curl_ProgressFunction( clientp, dltotal_l, dltotal_h, dlnow_l
                       ,dlnow_h, ultotal_l, ultotal_h, ulnow_l, ulnow_h){
 
-                      msgbox true
   VarSetCapacity(dltotal, 8, 0)
   NumPut(dltotal_l, dltotal, 0), NumPut(dltotal_h, dltotal, 4)
  

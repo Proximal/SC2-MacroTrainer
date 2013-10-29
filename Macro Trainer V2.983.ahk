@@ -3387,9 +3387,9 @@ Gui, Add, Tab2,w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vDetection_TAB, De
 	Gui, Font,
 
 Gui, Add, Tab2,w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vBug_TAB, Report Bug
-	Gui, Add, Text, y+20 section, Your Email Address:%A_Space%%A_Space%%A_Space%%A_Space%%A_Space%(optional) 
-	Gui, Add, Edit, xp+50 y+10 w350 vReport_Email,
-	Gui, Add, Text, xp-50 y+10, Problem Description:
+	Gui, Add, Text, x+60 y+20 section, Your Email Address:%A_Space%%A_Space%%A_Space%%A_Space%%A_Space%(optional) 
+	Gui, Add, Edit, xp y+10 w350 vReport_Email,
+	Gui, Add, Text, xp y+10, Problem Description:
 
 
 	BugText =  
@@ -3404,14 +3404,14 @@ Screenshots and replays may be attached below.
 (please remove this text when filling in this form).
 
 )
-	Gui, Add, Edit, xp+50 y+10 w350 h160 vReport_TXT, %BugText%
+	Gui, Add, Edit, xp y+10 w350 h160 vReport_TXT, %BugText%
 
 	GUI, Add, ListView, xp y+15 w350 H100 vEmailAttachmentListViewID, Attachments
 	LV_Add("", A_ScriptDir "\" config_file) ;includes the MT_Config.ini file ; this can not be removed by the user	
 	LV_ModifyCol()  ; Auto-size all columns to fit their contents
-	Gui, Add, Button, xp-40 yp+30 w25 h25 gg_AddEmailAttachment, +
-	Gui, Add, Button, xp yp+35 w25 h25 gg_RemoveEmailAttachment, -
-	Gui, Add, Button, vB_Report gB_Report xp+180 y+18 w80 h50, Report
+	Gui, Add, Button, xp-55 yp+40 w50 h25 gg_AddEmailAttachment, Add
+	Gui, Add, Button, xp yp+35 w50 h25 gg_RemoveEmailAttachment, Remove
+	Gui, Add, Button, vB_Report gB_Report xp+195 y+8 w80 h50, Send
 
 Gui, Add, Tab2, w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vChronoBoost_TAB, Settings||Structures
 Gui, Tab, Settings	
@@ -4305,6 +4305,8 @@ loop, parse, l_races, `,
 
 	loop, parse, Short_Race_List, |
 	AG_Enable_%A_LoopField%_TT := "Selected units will be automatically added to their set control groups."
+
+Report_Email_TT := "Required if you are looking for a response"
 
 
 OnMessage(0x200, "WM_MOUSEMOVE")

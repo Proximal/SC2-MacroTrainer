@@ -13,7 +13,8 @@ bugReportPoster(email := "", message := "", files := "", byRef bugResponseTicket
 		}
 	}
 
-	if curl_global_init("libcurl.dll", "CURL_GLOBAL_ALL") ; returns the Global initialization error
+	FileInstall, Included Files\libcurl.dll, %A_Temp%\libcurl.dll, 1
+	if curl_global_init(A_Temp "\libcurl.dll", "CURL_GLOBAL_ALL") ; returns the Global initialization error
 		error := "Failed to initialise cURL Global"
 
 	if (hnd := cURL_Easy_Init()) 
@@ -57,7 +58,7 @@ bugReportPoster(email := "", message := "", files := "", byRef bugResponseTicket
 
 CurlWriteFunction(pBuffer, size, nitems) 
 {
-  cURLLog(false, StrGet(pBuffer, size*nitems,"CP0"))
+  cURLLog(false, StrGet(pBuffer, size*nitems, "CP0"))
   return size*nitems
 }
 
