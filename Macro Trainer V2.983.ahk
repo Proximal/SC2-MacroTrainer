@@ -205,6 +205,7 @@ if A_OSVersion in WIN_8,WIN_7,WIN_VISTA
 InstallSC2Files()
 #Include <Gdip>
 #Include <SC2_MemoryAndGeneralFunctions>
+#Include <classInput>
 #include %A_ScriptDir%\Included Files\Colour Selector.ahk
 #include %A_ScriptDir%\Included Files\Class_BufferInputFast.AHk
 #include %A_ScriptDir%\Included Files\Class_ChangeButtonNames.AHk
@@ -1274,100 +1275,6 @@ Cast_DisableInject:
 	Return
 
 
-
-; As Im not accounting for mouse buttons (just want to see how well this works)
-; make sure to check Mousebuttons are not down before calling releaseKeys()
-; Same with Windows keys (as releasing these will cause the windows menu to appear) - although the automation
-; may still work
-
-; Note** Do not call releaseKeys() while thread is in critical! As the LL-Hooks wont process the input
-; until the thread comes out of critical, or an AHK sleep command is used
-; Also note, any AHK command which has an internal sleep (including eg controlsend) will cause AHK to check its msg queue
-; and the hooks will then process any user pressed key which could interrupt the automation!
-
-class Input 
-{
-	static keys := ["LControl", "RControl", "LAlt", "RAlt", "LShift", "RShift", "LWin", "RWin"
-				, "AppsKey", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12"
-				, "Left", "Right", "Up", "Down", "Home", "End", "PgUp", "PgDn", "Del", "Ins", "BS", "Capslock", "Numlock", "PrintScreen" 
-				, "Pause", "Space", "Enter", "Tab", "Esc", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "B", "C", "D", "E", "F", "G"
-				, "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-	 	,	MouseButtons := ["LButton", "RButton", "MButton", "XButton1", "XButton2"]
-		,	downSequence
-		,	MouseBlocked := False
-		,	KybdBlocked := False
-
-	; Very Important Note about logical and physical hotkey states
-	; if the hotkey has no modifiers, then physical state will be down
-	; and the logical will be up (as expected)
-	; But if the hotkey has modifiers
-	; then both the hotkey key and its modifiers will be physically AND logically down!! 
-
-	releaseKeys(checkMouse := False)
-	{
-		this.downSequence := ""
-		SetFormat, IntegerFast, hex
-		for index, key in this.keys 
-			if GetKeyState(key) 	; check the logical state (as AHK will block the physical)
-				upsequence .= "{VK" GetKeyVK(key) " Up}", this.downSequence .= "{" key " Down}" 
-		if checkMouse
-		{
-			for index, key in this.MouseButtons 
-			{
-				if GetKeyState(key) 	; check the logical state
-					upsequence .= "{VK" GetKeyVK(key) " Up}", this.downSequence .= "{" key " Down}" 
-			}
-		}
-		SetFormat, IntegerFast, d
-		if upsequence
-		{
-			SendInput, {BLIND}%upsequence%
-			return upsequence 	; This will indicate that we should sleep for 15ms (after activating critical)
-		}	 					; to prevent out of order command sequence with sendinput vs. post message
-		return 
-	}
-
-	revertKeyState()
-	{
-		if this.downSequence
-			pSend(this.downSequence)
-		return							
-	}
-	userInputModified()
-	{
-		return this.downSequence
-	}
-
-	pClickDelay(newDelay := "")
-	{
-		static clickDelay := -1
-		if newDelay is number
-			clickDelay := newDelay
-		return clickDelay
-	}
-
-	pSendDelay(newDelay := "")
-	{
-		static SendDelay := -1
-		if newDelay is number 
-			SendDelay := newDelay
-		return SendDelay
-	}	
-	hookBlock(kybd := False, mouse := False)
-	{
-		this.KybdBlocked := kybd
-		this.MouseBlocked := mouse
-		return
-	}
-	iskeyboardBlocked()
-	{
-		return this.KybdBlocked
-	}
-	isMouseBlocked()
-	{
-		return this.KybdBlocked 
-	}
-}
 
 ;	5/9/13
 ;	Now using postMessage to send clicks. Note, not going to block or revert key states for the user invoked
@@ -6346,7 +6253,7 @@ sRepeat(string, multiplier)
 ClickMinimapPlayerView()
 {
 	mapToMiniMapPos(getPlayerCameraPositionX(), getPlayerCameraPositionY(), x, y)
-	pClick(x, y)
+	input.pClick(x, y)
 	return
 }
 
@@ -8484,7 +8391,7 @@ SplitUnits(SplitctrlgroupStorage_key)
 		if Attack 
 			mtSend("a{Click " x " " y "}")
 		else 
-			pClick(x, y, "Right")	
+			input.pClick(x, y, "Right")	
 		DeselectUnitsFromPanel(tmpObject, 1)		;might not have enough time to update the selections?
 ;		dSleep(1)
 		sleep, -1
@@ -9181,7 +9088,7 @@ castEasyUnload(hotkey, queueUnload)
 	; or using critical 
 
 	if (upSequence := getModifierUpSequenceFromString(hotkey))
-		psend(upSequence)
+		Input.psend(upSequence)
 	hotkey := stripModifiers(hotkey)
 
 	if !queueUnload
@@ -9191,7 +9098,7 @@ castEasyUnload(hotkey, queueUnload)
 			tickCount := A_TickCount
 			castEasySelectLoadedTransport()
 			if upSequence
-				psend(getModifierDownSequenceFromKeyboard())
+				Input.psend(getModifierDownSequenceFromKeyboard())
 			return
 		}
 		sleepTick := tickCount := A_TickCount
@@ -9266,7 +9173,7 @@ castEasyUnload(hotkey, queueUnload)
 	; to restore the modifier keys if the user is still holding them down
 	; e.g. is they want to shift click somewhere without first releasing the shift key
 	if upSequence
-		psend(getModifierDownSequenceFromKeyboard())
+		Input.psend(getModifierDownSequenceFromKeyboard())
 	return
 }
 

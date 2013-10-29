@@ -1,6 +1,6 @@
 MTsend(keys)
 {
 	if keys
-		psend(keys)
+		Input.psend(keys)
 	return
 }
