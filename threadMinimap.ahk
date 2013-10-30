@@ -66,7 +66,12 @@ toggleMinimap()
 {
 	Global
 	if (DrawMiniMap := !DrawMiniMap)
+	{
+		IniRead, DrawPlayerCameras, %config_file%, MiniMap, DrawPlayerCameras, 0
 		SetTimer, MiniMap_Timer, %MiniMapRefresh%, -7
+	}
+	else 
+		DrawPlayerCameras := False
 	drawMinimap()
 	return 
 }
@@ -411,16 +416,17 @@ createPens(penSize)
 
 temporarilyHideMinimap()
 {
-	Global DrawMiniMap
+	Global DrawMiniMap, DrawPlayerCameras
 	if DrawMiniMap
 	{
-	;	Try Gui, MiniMapOverlay: Destroy 
+		if DrawPlayerCameras
+			DrawPlayerCameras := False, ReDrawPlayerCams := True
 		DrawMiniMap := False
 		gosub, MiniMap_Timer ; so minimap dissapears instantly 
+		Thread, Priority, -2147483648
 		sleep, 2500
-		DrawMiniMap := True
+		DrawMiniMap := True, ReDrawPlayerCams ? DrawPlayerCameras := true
 		gosub, MiniMap_Timer
-	;	ReDrawMiniMap := 1
 	}
 }
 

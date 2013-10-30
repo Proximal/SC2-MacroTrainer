@@ -2869,9 +2869,6 @@ announcePreviousUnitWarning()
 }
 
 
-
-
-
 readConfigFile()
 {
 	Global 

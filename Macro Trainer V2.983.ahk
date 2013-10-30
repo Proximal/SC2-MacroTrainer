@@ -112,7 +112,7 @@ Else
 {
 	Menu Tray, Icon, Included Files\Used_Icons\Starcraft-2.ico
 
-	debug := 1
+	debug := False
 	debug_name := "Kalamity"
 	hotkey, ^+!F12, g_GiveLocalPalyerResources
 }
@@ -5980,6 +5980,9 @@ autoWorkerProductionCheck()
 		input.hookBlock(False, False)
 		dSleep(15) ; increase safety ensure selection buffer fully updated
 
+		debugTxt := "`n`n========`nTime: " getTime() "`n========`n"
+
+
 		HighlightedGroup := getSelectionHighlightedGroup()
 		If numGetSelectionSorted(oSelection) ; = 0 as nothing is selected so cant restore this/control group it
 		{ 
@@ -5989,6 +5992,9 @@ autoWorkerProductionCheck()
 				return		
 			}
 			selctionUnitIndices := oSelection.IndicesString
+
+			debugTxt .= "`nselctionUnitIndices: " selctionUnitIndices
+
 			loop, parse, selctionUnitIndices, `,
 			{
 				if A_LoopField not in %L_BaseCtrlGroupIndexes%	 ; so if a selected unit isnt in the base control group			
@@ -5997,6 +6003,11 @@ autoWorkerProductionCheck()
 					break 
 				}
 			}
+			if BaseControlGroupNotSelected
+				debugTxt .= "`nBaseControlGroupNotSelected: " BaseControlGroupNotSelected
+			else debugTxt .= "`nBaseControlGroupNotSelected: False"
+
+
 			; This function is mainly for the auto-control group. So when a user clicks on a finished CC
 			; it will get auto-grouped, but wont immediately make an SCV (which would prevent converting
 			; it into an orbital), the user has 4 real seconds from clicking it to convert it
@@ -6043,7 +6054,8 @@ autoWorkerProductionCheck()
 					if A_LoopField in %L_ActualBasesIndexesInBaseCtrlGroup%
 						SelectedBasesCount++
 				if (SelectedBasesCount < TotalCompletedBasesInCtrlGroup)
-					BaseControlGroupNotSelected := True
+					BaseControlGroupNotSelected := True, debugTxt .= "`nBaseControlGroupNotSelected: " BaseControlGroupNotSelected " (from check base ctrl group against selection group)"
+				else debugTxt .= "`nBaseControlGroupNotSelected: still false"
 			}
 
 			; one thing to remember about these (L_SelectionIndexes != L_BaseCtrlGroupIndexes) 
@@ -6062,15 +6074,21 @@ autoWorkerProductionCheck()
 					if !isUnitLocallyOwned(object.unitIndex) 			; as unit may have died and its unitIndex is reused
 					{
 						setControlGroup := True
+						debugTxt .= "`nsetControlGroup True - local unit in ctrl group died and nolonger local"
 						break
 					}
 				}
+				debugTxt .= "`nStorageIndices: " subStr(L_ControlstorageIndexes, 2)
+				debugTxt .= "`nsetControlGroup = " setControlGroup
 				if (setControlGroup || oSelection.IndicesString != subStr(L_ControlstorageIndexes, 2))  
 				{
+					debugTxt .= "`nSending Storage group - Ctrl group: ctrl+" controlstorageGroup
+
 					setControlGroup := True
 					MTsend("^" controlstorageGroup)
 					stopWatchCtrlID := stopwatch()
 				}
+				debugTxt .= "`nSending base ctrl group " mainControlGroup
 				MTsend(mainControlGroup)
 				dSleep(10) ; wont have that many units grouped with the buildings so 10ms should be plenty
 				numGetSelectionSorted(oSelection)
@@ -6088,6 +6106,7 @@ autoWorkerProductionCheck()
 					}
 				}
 				reverseArray(aDeselect)
+				debugTxt .= "`nRemoving recently completed CC"
 				clickUnitPortraits(aDeselect)
 		;		dsleep(2) ; not sure if a sleep here is required
 			}
@@ -6137,17 +6156,20 @@ autoWorkerProductionCheck()
 						BaseCtrlGroupError := 1					; as the macro will tell that unit e.g. probe to 'make a worker' and cause it to bug out
 			}
 			MTsend(sendSequence), sendSequence := ""
+			debugTxt .= "`nPre-retrieve ctrl storage group BaseControlGroupNotSelected = " BaseControlGroupNotSelected " removeRecentlyCompletedCC=" removeRecentlyCompletedCC
+						. "`nsetControlGroup = " setControlGroup
 			if (BaseControlGroupNotSelected || removeRecentlyCompletedCC)
 			{
 			;	dSleep(5)
 				if setControlGroup
 				{
+					debugTxt .= "`nchecking elapsed time"
 					elapsedTimeGrouping := stopwatch(stopWatchCtrlID)	
 					if (elapsedTimeGrouping < 20)
-						dSleep(ceil(20 - elapsedTimeGrouping))
+						dSleep(ceil(20 - elapsedTimeGrouping)), debugTxt .= "`nSleeping for longer as full delay not occured"
 				}
-				else dsleep(15)
-
+				else dsleep(15), debugTxt .= "`ndSleeping for 15ms as setcontrolgroup is false"
+				debugTxt .= "`nSending control group = " controlstorageGroup
 				MTsend(controlstorageGroup)
 				dSleep(15)
 				if HighlightedGroup
@@ -6158,7 +6180,7 @@ autoWorkerProductionCheck()
 
 			WorkerMade := True
 		}
-		
+		clipboard .= debugTxt
 		Input.revertKeyState()
 		critical, off
 		Thread, NoTimers, false 
@@ -6183,7 +6205,11 @@ autoWorkerProductionCheck()
 	return
 }
 
-
+f1::
+numGetSelectionSorted(oSelection)
+objtree(oSelection)
+msgbox % oSelection.IndicesString
+return 
 /*
 Test: Game against AI
 
