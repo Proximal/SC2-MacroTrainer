@@ -773,7 +773,7 @@ mt_pause_resume:
 	if (mt_Paused := !mt_Paused)
 	{
 		game_status := "lobby" ; with this clock = 0 when not in game 
-		timeroff("clock", "money", "gas", "scvidle", "supply", "worker", "inject", "unit_bank_read", "Auto_mine", "Auto_Group", "AutoGroupIdle", "overlay_timer", "g_unitPanelOverlay_timer", "g_autoWorkerProductionCheck", "cast_ForceInject")
+		timeroff("clock", "money", "gas", "scvidle", "supply", "worker", "inject", "unit_bank_read", "Auto_mine", "Auto_Group", "AutoGroupIdle", "overlay_timer", "g_unitPanelOverlay_timer", "g_autoWorkerProductionCheck", "cast_ForceInject", "find_races_timer")
 		inject_timer := 0	;ie so know inject timer is off
 		Try DestroyOverlays()
 		Try aThreads.MiniMap.ahkPostFunction("DestroyOverlays")
@@ -797,7 +797,7 @@ clock:
 	if (!time && game_status = "game") || (UpdateTimers) ; time=0 outside game
 	{	
 		game_status := "lobby" ; with this clock = 0 when not in game (while in game at 0s clock = 44)	
-		timeroff("money", "gas", "scvidle", "supply", "worker", "inject", "unit_bank_read", "Auto_mine", "Auto_Group", "AutoGroupIdle", "overlay_timer", "g_unitPanelOverlay_timer", "g_autoWorkerProductionCheck", "cast_ForceInject")
+		timeroff("money", "gas", "scvidle", "supply", "worker", "inject", "unit_bank_read", "Auto_mine", "Auto_Group", "AutoGroupIdle", "overlay_timer", "g_unitPanelOverlay_timer", "g_autoWorkerProductionCheck", "cast_ForceInject", "find_races_timer")
 		inject_timer := TimeReadRacesSet := UpdateTimers := PrevWarning := WinNotActiveAtStart := ResumeWarnings := 0 ;ie so know inject timer is off
 		if aThreads.MiniMap.ahkReady()
 			aThreads.MiniMap.ahkFunction("gameChange")
@@ -806,8 +806,6 @@ clock:
 	}
 	Else if (time && game_status != "game") && (getLocalPlayerNumber() != 16 || debug) ; Local slot = 16 while in lobby/replay - this will stop replay announcements
 	{
-		SoundPlay, %A_Temp%\gentleBeep.wav
-
 		game_status := "game", warpgate_status := "not researched", gateway_count := warpgate_warning_set := 0
 		AW_MaxWorkersReached := TmpDisableAutoWorker := 0
 		MiniMapWarning := [], a_BaseList := [], aGatewayWarnings := []
@@ -1519,8 +1517,6 @@ If (time AND Time <= Start_Mine_Time + 8) && getIdleWorkers()
 			ReDrawMiniMap := ReDrawIncome := ReDrawResources := ReDrawArmySize := ReDrawWorker := RedrawUnit := 1
 		}
 		Gosub overlay_timer	; here so can update the overlays
-		If (DrawMiniMap OR DrawAlerts OR DrawSpawningRaces)
-			DrawMiniMap()
 		sleep 300
 		Critical 
 		If (Auto_mineMakeWorker && SelectHomeMain(LocalBase))	
@@ -5980,9 +5976,6 @@ autoWorkerProductionCheck()
 		input.hookBlock(False, False)
 		dSleep(15) ; increase safety ensure selection buffer fully updated
 
-		debugTxt := "`n`n========`nTime: " getTime() "`n========`n"
-
-
 		HighlightedGroup := getSelectionHighlightedGroup()
 		If numGetSelectionSorted(oSelection) ; = 0 as nothing is selected so cant restore this/control group it
 		{ 
@@ -5993,8 +5986,6 @@ autoWorkerProductionCheck()
 			}
 			selctionUnitIndices := oSelection.IndicesString
 
-			debugTxt .= "`nselctionUnitIndices: " selctionUnitIndices
-
 			loop, parse, selctionUnitIndices, `,
 			{
 				if A_LoopField not in %L_BaseCtrlGroupIndexes%	 ; so if a selected unit isnt in the base control group			
@@ -6003,10 +5994,6 @@ autoWorkerProductionCheck()
 					break 
 				}
 			}
-			if BaseControlGroupNotSelected
-				debugTxt .= "`nBaseControlGroupNotSelected: " BaseControlGroupNotSelected
-			else debugTxt .= "`nBaseControlGroupNotSelected: False"
-
 
 			; This function is mainly for the auto-control group. So when a user clicks on a finished CC
 			; it will get auto-grouped, but wont immediately make an SCV (which would prevent converting
@@ -6054,8 +6041,7 @@ autoWorkerProductionCheck()
 					if A_LoopField in %L_ActualBasesIndexesInBaseCtrlGroup%
 						SelectedBasesCount++
 				if (SelectedBasesCount < TotalCompletedBasesInCtrlGroup)
-					BaseControlGroupNotSelected := True, debugTxt .= "`nBaseControlGroupNotSelected: " BaseControlGroupNotSelected " (from check base ctrl group against selection group)"
-				else debugTxt .= "`nBaseControlGroupNotSelected: still false"
+					BaseControlGroupNotSelected := True				
 			}
 
 			; one thing to remember about these (L_SelectionIndexes != L_BaseCtrlGroupIndexes) 
@@ -6074,21 +6060,16 @@ autoWorkerProductionCheck()
 					if !isUnitLocallyOwned(object.unitIndex) 			; as unit may have died and its unitIndex is reused
 					{
 						setControlGroup := True
-						debugTxt .= "`nsetControlGroup True - local unit in ctrl group died and nolonger local"
 						break
 					}
 				}
-				debugTxt .= "`nStorageIndices: " subStr(L_ControlstorageIndexes, 2)
-				debugTxt .= "`nsetControlGroup = " setControlGroup
+
 				if (setControlGroup || oSelection.IndicesString != subStr(L_ControlstorageIndexes, 2))  
 				{
-					debugTxt .= "`nSending Storage group - Ctrl group: ctrl+" controlstorageGroup
-
 					setControlGroup := True
 					MTsend("^" controlstorageGroup)
 					stopWatchCtrlID := stopwatch()
 				}
-				debugTxt .= "`nSending base ctrl group " mainControlGroup
 				MTsend(mainControlGroup)
 				dSleep(10) ; wont have that many units grouped with the buildings so 10ms should be plenty
 				numGetSelectionSorted(oSelection)
@@ -6106,7 +6087,6 @@ autoWorkerProductionCheck()
 					}
 				}
 				reverseArray(aDeselect)
-				debugTxt .= "`nRemoving recently completed CC"
 				clickUnitPortraits(aDeselect)
 		;		dsleep(2) ; not sure if a sleep here is required
 			}
@@ -6156,20 +6136,18 @@ autoWorkerProductionCheck()
 						BaseCtrlGroupError := 1					; as the macro will tell that unit e.g. probe to 'make a worker' and cause it to bug out
 			}
 			MTsend(sendSequence), sendSequence := ""
-			debugTxt .= "`nPre-retrieve ctrl storage group BaseControlGroupNotSelected = " BaseControlGroupNotSelected " removeRecentlyCompletedCC=" removeRecentlyCompletedCC
-						. "`nsetControlGroup = " setControlGroup
+
 			if (BaseControlGroupNotSelected || removeRecentlyCompletedCC)
 			{
 			;	dSleep(5)
 				if setControlGroup
 				{
-					debugTxt .= "`nchecking elapsed time"
 					elapsedTimeGrouping := stopwatch(stopWatchCtrlID)	
 					if (elapsedTimeGrouping < 20)
-						dSleep(ceil(20 - elapsedTimeGrouping)), debugTxt .= "`nSleeping for longer as full delay not occured"
+						dSleep(ceil(20 - elapsedTimeGrouping))
 				}
-				else dsleep(15), debugTxt .= "`ndSleeping for 15ms as setcontrolgroup is false"
-				debugTxt .= "`nSending control group = " controlstorageGroup
+				else dsleep(15)
+
 				MTsend(controlstorageGroup)
 				dSleep(15)
 				if HighlightedGroup
@@ -6180,7 +6158,6 @@ autoWorkerProductionCheck()
 
 			WorkerMade := True
 		}
-		clipboard .= debugTxt
 		Input.revertKeyState()
 		critical, off
 		Thread, NoTimers, false 
@@ -6205,11 +6182,30 @@ autoWorkerProductionCheck()
 	return
 }
 
-f1::
-numGetSelectionSorted(oSelection)
-objtree(oSelection)
-msgbox % oSelection.IndicesString
-return 
+openCloseProcess(programOrHandle := "", Close := False)
+{
+	if close 
+		return DllCall("CloseHandle","UInt",programOrHandle)
+	else 
+	{
+		WinGet, pid, pid, % programOrHandle
+		return DllCall("OpenProcess","Int",0x0800,"Int",0,"UInt",pid)
+	}
+}
+
+
+SuspendProcess(hwnd)
+{
+	return DllCall("ntdll\NtSuspendProcess","uint",hwnd)
+}
+
+ResumeProcess(hwnd)
+{
+	return DllCall("ntdll\NtResumeProcess","uint",hwnd)
+}
+
+
+
 /*
 Test: Game against AI
 
@@ -6413,180 +6409,6 @@ setupAutoGroup(Race, ByRef A_AutoGroup, aUnitID, A_UnitGroupSettings)
 	Return
 }
 
-
-DrawMiniMap()
-{	global
-	local UnitRead_i, unit, type, Owner, Radius, Filter, EndCount, colour, ResourceOverlay_i, unitcount
-	, DrawX, DrawY, Width, height, i, hbm, hdc, obm, G,  pBitmap, PlayerColours, A_MiniMapUnits
-	static Overlay_RunCount
-	Overlay_RunCount ++
-	if (ReDrawMiniMap and WinActive(GameIdentifier))
-	{
-		Try Gui, MiniMapOverlay: Destroy
-		Overlay_RunCount := 1
-		ReDrawMiniMap := 0
-	}
-	If (Overlay_RunCount = 1)
-	{
-		; Set the width and height we want as our drawing area, to draw everything in. This will be the dimensions of our bitmap
-		; Create a layered window ;E0x20 click thru (+E0x80000 : must be used for UpdateLayeredWindow to work!) that is always on top (+AlwaysOnTop), has no taskbar entry or caption		
-		Gui, MiniMapOverlay: -Caption Hwndhwnd1 +E0x20 +E0x80000 +LastFound  +ToolWindow +AlwaysOnTop
-		; Show the window
-		Gui, MiniMapOverlay: Show, NA
-		; Get a handle to this window we have created in order to update it later
-	;	hwnd1 := WinExist()
-	}
-		; Create a gdi bitmap with width and height of what we are going to draw into it. This is the entire drawing area for everything
-		hbm := CreateDIBSection(A_ScreenWidth/4, A_ScreenHeight) ;only draw on left side of the screen
-		; Get a device context compatible with the screen
-		hdc := CreateCompatibleDC()
-		; Select the bitmap into the device context
-		obm := SelectObject(hdc, hbm)
-	; Get a pointer to the graphics of the bitmap, for use with drawing functions
-	G := Gdip_GraphicsFromHDC(hdc) ;needs to be here
-	DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0)	
-	if DrawMiniMap
-	{
-		setDrawingQuality(G)
-		A_MiniMapUnits := []
-
- 		getEnemyUnitsMiniMap(A_MiniMapUnits)
-
-		for index, unit in A_MiniMapUnits
-			drawUnitRectangle(G, unit.X, unit.Y, unit.Radius + minimap.AddToRadius, unit.Radius + minimap.AddToRadius)	;draw rectangles first
-		for index, unit in A_MiniMapUnits
-			FillUnitRectangle(G, unit.X, unit.Y,  unit.Radius, unit.Radius, unit.Colour)
-
-	}
-	If (DrawSpawningRaces) && (Time - round(TimeReadRacesSet) <= 14) ;round used to change undefined var to 0 for resume so dont display races
-	{	Gdip_SetInterpolationMode(G, 7)				;TimeReadRacesSet gets set to 0 at start of match
-		loop, parse, EnemyBaseList, |
-		{		
-			type := getUnitType(A_LoopField)
-			getUnitMiniMapMousePos(A_LoopField, BaseX, BaseY)
-			if ( type = aUnitID["Nexus"]) 		
-			{	pBitmap := a_pBitmap["Protoss","RacePretty"]
-				Width := Gdip_GetImageWidth(pBitmap), Height := Gdip_GetImageHeight(pBitmap)	
-				Gdip_DrawImage(G, pBitmap, (BaseX - Width/5), (BaseY - Height/5), Width//2.5, Height//2.5, 0, 0, Width, Height)
-			}
-			Else if (type = aUnitID["CommandCenter"] || type =  aUnitID["PlanetaryFortress"] || type =  aUnitID["OrbitalCommand"])
-			{
-				pBitmap := a_pBitmap["Terran","RacePretty"]
-				Width := Gdip_GetImageWidth(pBitmap), Height := Gdip_GetImageHeight(pBitmap)
-				Gdip_DrawImage(G, pBitmap, (BaseX - Width/10), (BaseY - Height/10), Width//5, Height//5, 0, 0, Width, Height)
-			}
-			Else if (type = aUnitID["Hatchery"] || type =  aUnitID["Lair"] || type =  aUnitID["Hive"])
-			{	pBitmap := a_pBitmap["Zerg","RacePretty"]
-				Width := Gdip_GetImageWidth(pBitmap), Height := Gdip_GetImageHeight(pBitmap)
-				Gdip_DrawImage(G, pBitmap, (BaseX - Width/6), (BaseY - Height/6), Width//3, Height//3, 0, 0, Width, Height)
-			}
-		}
-
-	}
-	if DrawAlerts
-	{
-		While (A_index <= MiniMapWarning.MaxIndex())
-		{	
-			If (Time - MiniMapWarning[A_index,"Time"] >= 20) ;display for 20 seconds
-			{	MiniMapWarning.Remove(A_index)
-				continue
-			}
-			owner := getUnitOwner(MiniMapWarning[A_index,"Unit"])	
-			If (aPlayer[owner, "Team"] <> aLocalPlayer["Team"])
-			{
-				If (arePlayerColoursEnabled() AND aPlayer[Owner, "Colour"] = "Green")
-					pBitmap := a_pBitmap["PurpleX16"] 
-				Else pBitmap := a_pBitmap["GreenX16"]
-			}
-			Else 
-				pBitmap := a_pBitmap["RedX16"]
-			getUnitMiniMapMousePos(MiniMapWarning[A_index,"Unit"], X, Y)
-			Width := Gdip_GetImageWidth(pBitmap), Height := Gdip_GetImageHeight(pBitmap)	
-			Gdip_DrawImage(G, pBitmap, (X - Width/2), (Y - Height/2), Width, Height, 0, 0, Width, Height)	
-		} 
-	}
-	Gdip_DeleteGraphics(G)
-	UpdateLayeredWindow(hwnd1, hdc, 0, 0, A_ScreenWidth/4, A_ScreenHeight) ;only draw on left side of the screen
-	SelectObject(hdc, obm) ; needed else eats ram ; Select the object back into the hdc
-	DeleteObject(hbm)   ; needed else eats ram 	; Now the bitmap may be deleted
-	DeleteDC(hdc) ; Also the device context related to the bitmap may be deleted
-Return
-}
-
-getEnemyUnitsMiniMap(byref A_MiniMapUnits)
-{  LOCAL Unitcount, UnitAddress, pUnitModel, Filter, MemDump, Radius, x, y, PlayerColours, MemDump, PlayerColours, Unitcount, owner, unitName
- 	, Colour, Type
-  A_MiniMapUnits := []
-  PlayerColours := arePlayerColoursEnabled()
-  Unitcount := DumpUnitMemory(MemDump)
-  while (A_Index <= Unitcount)
-  {
-     UnitAddress := (A_Index - 1) * S_uStructure
-     Filter := numget(MemDump, UnitAddress + O_uTargetFilter, "Int64")
-     if (Filter & DeadFilterFlag)
-        Continue
-
-     pUnitModel := numget(MemDump, UnitAddress + O_uModelPointer, "Int")  
-     Type := numgetUnitModelType(pUnitModel)
-
-     owner := numget(MemDump, UnitAddress + O_uOwner, "Char")     
-     If type in %ActiveUnitHighlightExcludeList% ; cant use or/expressions with type in
-           Continue
-     if  (aPlayer[Owner, "Team"] <> aLocalPlayer["Team"] && Owner && type >= aUnitID["Colossus"] && !ifTypeInList(type, l_Changeling)) 
-     || (ifTypeInList(type, l_Changeling) && aPlayer[Owner, "Team"] = aLocalPlayer["Team"] ) ; as a changeling owner becomes whoever it is mimicking - its team also becomes theirs
-     {
-          if (!Radius := aUnitInfo[Type, "Radius"])
-              Radius := aUnitInfo[Type, "Radius"] := numgetUnitModelMiniMapRadius(pUnitModel)
-          if (Radius < minimap.UnitMinimumRadius) ; probes and such
-           	Radius := minimap.UnitMinimumRadius
-          
-	       x :=  numget(MemDump, UnitAddress + O_uX, "int")/4096
-           y :=  numget(MemDump, UnitAddress + O_uY, "int")/4096
-
-        ;  Radius += (minimap.AddToRadius/2)
-           convertCoOrdindatesToMiniMapPos(x, y)
-           if (HighlightInvisible && Filter & aUnitTargetFilter.Hallucination) ; have here so even if non-halluc unit type has custom colour highlight, it will be drawn using halluc colour
-           	  Colour := UnitHighlightHallucinationsColour
-           else if type in %allActiveActiveUnitHighlightLists%
-           {
-           		; Overall, checking if the type is actually in the highlight list, 
-           		; and then checking each  individual list 
-           		; should be faster than needlessly checking every list
-
-	           if type in %ActiveUnitHighlightList1%
-	              Colour := UnitHighlightList1Colour
-	           Else If type in %ActiveUnitHighlightList2%
-	              Colour := UnitHighlightList2Colour                 
-	           Else If type in %ActiveUnitHighlightList3%
-	              Colour := UnitHighlightList3Colour                    
-	           Else If type in %ActiveUnitHighlightList4%
-	              Colour := UnitHighlightList4Colour                    
-	           Else If type in %ActiveUnitHighlightList5%
-	              Colour := UnitHighlightList5Colour   
-	           Else If type in %ActiveUnitHighlightList6%
-	              Colour := UnitHighlightList6Colour   
-	           Else If type in %ActiveUnitHighlightList7%
-	              Colour := UnitHighlightList7Colour
-	       }
-           Else if (HighlightInvisible && Filter & aUnitTargetFilter.Cloaked) ; this will include burrowed units (so dont need to check their flags)
-           	  Colour := UnitHighlightInvisibleColour 				; Have this at bot so if an invis unit has a custom highlight it will be drawn with that colour
-           Else if PlayerColours
-              Colour := 0xcFF aHexColours[aPlayer[Owner, "Colour"]]   ;FF=Transparency
-           Else Colour := 0xcFF aHexColours["Red"]  
-
-           if (GameType != "1v1" && HostileColourAssist)
-           {
-	           unitName := aUnitName[type]
-	           if unitName in CommandCenter,CommandCenterFlying,OrbitalCommand,PlanetaryFortress,Nexus,Hatchery,Lair,Hive
-	          		Colour := 0xcFF aHexColours[aPlayer[Owner, "Colour"]]
-	       }
-
-           A_MiniMapUnits.insert({"X": x, "Y": y, "Colour": Colour, "Radius": Radius*2})  
-
-     }
-  }
-  Return
-}
 
 HiWord(number)
 {

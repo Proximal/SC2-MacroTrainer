@@ -8,7 +8,7 @@
 
 #persistent
 #NoEnv  ; think this is default with AHK_H
-#NoTrayIcon
+;#NoTrayIcon
 
 SetBatchLines, -1
 ListLines(False) 
@@ -18,12 +18,6 @@ OnExit, ShutdownProcedure
 pObject := "1", pObject := %pObject%	
 pCriticalSection := "2", pCriticalSection := %pCriticalSection%
 aThreads := CriticalObject(pObject, pCriticalSection)
-
-if !A_IsCompiled
-{
-	debug := True
-	debug_name := "CumBackKid"	
-}
 
 l_GameType := "1v1,2v2,3v3,4v4,FFA"
 l_Races := "Terran,Protoss,Zerg"
@@ -58,8 +52,20 @@ l_Changeling := aUnitID["ChangelingZealot"] "," aUnitID["ChangelingMarineShield"
 gameChange()
 return
 
+; Need this, as somtimes call from main thread to gameChange() fails
+; also, sometimes the call succeeds, but the timers remain on
+; it's fucking retarded!
+
 gClock:
-time := getTime()
+if (!time := getTime())
+{
+		SetTimer, MiniMap_Timer, off
+		SetTimer, unit_bank_read, off
+		SetTimer, worker, off
+		SetTimer, supply, off
+		SetTimer, gClock, off
+		DestroyOverlays()
+}
 return 
 
 toggleMinimap()
@@ -83,10 +89,11 @@ updateUserSettings()
 	hasReadConfig := True
 }
 
+
+
 gameChange()
 {
 	global
-	soundplay *-1
 	if !hasReadConfig
 		readConfigFile(), hasReadConfig := True
 	if !hasLoadedMemoryAddresses
@@ -113,10 +120,11 @@ gameChange()
 			SupplyType := aUnitID["Pylon"]			
 		SetMiniMap(minimap)
 		setupMiniMapUnitLists()
+		EnemyBaseList := GetEBases()
+		
 		If (DrawMiniMap || DrawAlerts || DrawSpawningRaces || warpgate_warn_on
 		|| alert_array[GameType, "Enabled"])
 			SetTimer, MiniMap_Timer, %MiniMapRefresh%, -7
-		EnemyBaseList := GetEBases()
 		if (warpgate_warn_on || supplyon || workeron || alert_array[GameType, "Enabled"]) 
 			settimer, unit_bank_read, %UnitDetectionTimer_ms%, -6
 		if workeron
@@ -128,7 +136,6 @@ gameChange()
 		Else
 			doUnitDetection(0, 0, 0, "Reset") ; clear the variables within the function	
 		settimer, gClock, 1000, -4
-
 	}
 	else 
 	{
@@ -139,7 +146,7 @@ gameChange()
 		SetTimer, gClock, off
 		DestroyOverlays()
 	}
-	return
+	return "testValue"
 }
 
 
@@ -164,15 +171,12 @@ ShutdownProcedure:
 	ExitApp
 Return
 
-
-
 DrawMiniMap()
 {	global
 	local UnitRead_i, unit, type, Owner, Radius, Filter, EndCount, colour, ResourceOverlay_i, unitcount
-	, DrawX, DrawY, Width, height, i, hbm, hdc, obm, G,  pBitmap, PlayerColours, A_MiniMapUnits
+	, DrawX, DrawY, Width, height, i, hbm, hdc, obm, G,  pBitmap, PlayerColours, A_MiniMapUnits, hwnd1
 	static overlayCreated := 0
 
-	
 	if (ReDrawMiniMap and WinActive(GameIdentifier))
 	{
 		Try Gui, MiniMapOverlay: Destroy
