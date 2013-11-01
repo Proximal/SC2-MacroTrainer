@@ -8,8 +8,7 @@
 
 #persistent
 #NoEnv  ; think this is default with AHK_H
-;#NoTrayIcon
-
+#NoTrayIcon
 SetBatchLines, -1
 ListLines(False) 
 OnExit, ShutdownProcedure

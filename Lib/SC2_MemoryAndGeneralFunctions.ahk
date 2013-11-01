@@ -1525,6 +1525,16 @@ getPercentageUnitCompleted(B_QueuedUnitInfo)
 
 ; this doesnt correspond to the unit in production for all structures!
 ; 	+0x48 != 0 when reactor present
+getPointerAddressToQueuedUnitInfo(pAbilities, CAbilQueueIndex, byref QueueSize := "")
+{	GLOBAL GameIdentifier
+	STATIC O_pQueueArray := 0x34, O_IndexParentTypes := 0x18, O_unitsQueued := 0x28
+
+	CAbilQueue := readmemory(pAbilities + O_IndexParentTypes + 4 * CAbilQueueIndex, GameIdentifier)
+
+	QueueSize := readmemory(CAbilQueue + O_unitsQueued, GameIdentifier)
+
+	return queuedArray := readmemory(CAbilQueue + O_pQueueArray, GameIdentifier)
+}
 
 getPointerToQueuedUnitInfo(pAbilities, CAbilQueueIndex, byref QueueSize := "", QueuePosition := 0)
 {	GLOBAL GameIdentifier
@@ -1604,6 +1614,8 @@ getCharacerInfo(byref returnName := "", byref returnID := "")
 ; so if you know what unit should be in this control group, then just check unit type matches, is local unit and is alive
 ; and this should work for most scenarios (or at least the chances of it causing a problem are quite low)
 
+
+; note ctrl group base address really starts with ctrl group 0 - but the negative offset from ctrl group 1 works fine
 numGetControlGroupObject(Byref oControlGroup, Group)
 {	GLOBAL B_CtrlGroupOneStructure, S_CtrlGroup, GameIdentifier, S_scStructure, O_scUnitIndex
 	oControlGroup := []

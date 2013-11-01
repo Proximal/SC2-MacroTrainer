@@ -112,7 +112,7 @@ Else
 {
 	Menu Tray, Icon, Included Files\Used_Icons\Starcraft-2.ico
 
-	debug := False
+	debug := True
 	debug_name := "Kalamity"
 	hotkey, ^+!F12, g_GiveLocalPalyerResources
 }
@@ -2011,8 +2011,8 @@ Return
 g_unitPanelOverlay_timer: 
 	If (DrawUnitOverlay && (WinActive(GameIdentifier) || Dragoverlay))
 	{
-		getEnemyUnitCount(aEnemyUnits, aEnemyBuildingConstruction, aUnitID)
-		FilterUnits(aEnemyUnits, aEnemyBuildingConstruction, aUnitPanelUnits, aUnitID, aPlayer)
+		getEnemyUnitCount(aEnemyUnits, aEnemyUnitConstruction, aUnitID)
+		FilterUnits(aEnemyUnits, aEnemyUnitConstruction, aUnitPanelUnits, aUnitID, aPlayer)
 	;	if DrawUnitOverlay
 		DrawUnitOverlay(RedrawUnit, UnitOverlayScale, OverlayIdent, Dragoverlay)
 	}
@@ -3584,14 +3584,14 @@ Gui, Tab, Easy Unload
 				Gui, Add, DropDownList,  xp+25 yp+40 w45 center vEasyUnloadStorageKey Choose%droplist_var%, 1|2|3|4|5|6|7|8|9|0
 
 
-	Gui, Add, GroupBox, xs ys+110 w205 h90, Unload Hotkey
+	Gui, Add, GroupBox, xs ys+110 w205 h55, Unload Hotkey
 		Gui, Add, Text, Xp+10 yp+25 w85, Immediate:
 			Gui, Add, Edit, Readonly yp-2 xs+85 center w65 vEasyUnloadHotkey gedit_hotkey, %EasyUnloadHotkey%
 			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#EasyUnloadHotkey,  Edit 	
 
-		Gui, Add, Text, Xs+10 yp+35 w85, Queued:
-			Gui, Add, Edit, Readonly yp-2 xs+85 center w65 vEasyUnloadQueuedHotkey gedit_hotkey, %EasyUnloadQueuedHotkey%
-			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#EasyUnloadQueuedHotkey,  Edit 			
+;		Gui, Add, Text, Xs+10 yp+35 w85, Queued:
+;			Gui, Add, Edit, Readonly yp-2 xs+85 center w65 vEasyUnloadQueuedHotkey gedit_hotkey, %EasyUnloadQueuedHotkey%
+;			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#EasyUnloadQueuedHotkey,  Edit 			
 	
 	Gui, Add, GroupBox, xs y+25 w205 h120, SC2 Unload All Button
 		Gui, Add, Text, Xp+10 yp+25 w85, Terran:
@@ -4566,7 +4566,7 @@ Loop
     if !EmailRowNumber  ; The above returned zero, so there are no more selected rows.
         break
     LV_GetText(RowText, EmailRowNumber)
-    if instr(RowText, "MT_Config.ini")
+    if instr(RowText, config_file)
     	UserTriedToRemoveIniAttachment := True
     else 
     {
@@ -4982,20 +4982,22 @@ Text := "
 	( LTrim
 		These filters will remove the selected units from the unit panel.
 
-		The unit panel displays two types of units, those which exist on the map (or are completed) and those which are being built (mainly buildings).
+		The unit panel displays two types of units, those which exist on the map (or are completed) and those which are being produced.
 
 		For each race there are two filters which are always active.
+
 		Filter 1: 'Completed' - This will remove completed (or fully built) units of the selected types.
 
-		Filter 2: 'Under Construction' - This will remove units which are under construction/being built.
+		Filter 2: 'Under Construction' - This will remove units which are under construction/being produced.
 
 		Please Note: 
 
-		Not all of the listed units will appear in the unit panel. For example, having a 'marine' in the under construction panel will do nothing.
-		Hence it is best to actually use the unit panel first and then decide on which units you wish to filter.
+		It is best to actually use the unit panel first and then decide on which units you wish to filter.
+
+		Some units are automatically removed, these include interceptors, locusts, broodlings, completed creep tumours, reactors, and techlabs.
 	)"
 
-Gui, Add, Edit, x12 y+10 w350 h450 readonly -E0x200, % Text
+Gui, Add, Edit, x12 y+10 w360 h380 readonly -E0x200, % Text
 Gui, UnitFilterInfo:Show,, MT Unit Filter Info
 return
 
@@ -7078,7 +7080,6 @@ CreateHotkeys()
 
 	Hotkey, If, WinActive(GameIdentifier) && !isMenuOpen() && EasyUnload`%LocalPlayerRace`%Enable && time
 		hotkey, %EasyUnloadHotkey%, gEasyUnload, on
-		hotkey, %EasyUnloadQueuedHotkey%, gEasyUnloadQueued, on
 
 	Hotkey, If, WinActive(GameIdentifier) && time && !isMenuOpen() && SelectArmyEnable && !BufferInputFast.isInputBlockedOrBuffered()
 		hotkey, %castSelectArmy_key%, g_SelectArmy, on  ; buffer to make double tap better remove 50ms delay
@@ -8343,10 +8344,10 @@ FindXYatAngle(byref ResultX, byref ResultY,	Angle, Direction, distance, X, Y)
 }
 
 
-getEnemyUnitCount(byref aEnemyUnits, byref aEnemyBuildingConstruction, byref aUnitID)
+getEnemyUnitCountOld(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aUnitID)
 {
 	GLOBAL DeadFilterFlag, aPlayer, aLocalPlayer, aUnitTargetFilter, aUnitInfo, 
-	aEnemyUnits := [], aEnemyBuildingConstruction := []
+	aEnemyUnits := [], aEnemyUnitConstruction := []
 ;	if !aEnemyUnitPriorities	;because having  GLOBAL aEnemyUnitPriorities := [] results in it getting cleared each function run
 ;		aEnemyUnitPriorities := []
 
@@ -8374,17 +8375,94 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyBuildingConstruction, byref aUn
 
 			if (TargetFilter & aUnitTargetFilter.UnderConstruction)
 			{
-				aEnemyBuildingConstruction[Owner, Priority, Type] := aEnemyBuildingConstruction[Owner, Priority, Type] ? aEnemyBuildingConstruction[Owner, Priority, Type] + 1 : 1
-				aEnemyBuildingConstruction[Owner, "TotalCount"] := aEnemyBuildingConstruction[Owner, "TotalCount"] ? aEnemyBuildingConstruction[Owner, "TotalCount"] + 1 : 1
+				aEnemyUnitConstruction[Owner, Priority, Type] := aEnemyUnitConstruction[Owner, Priority, Type] ? aEnemyUnitConstruction[Owner, Priority, Type] + 1 : 1
+				aEnemyUnitConstruction[Owner, "TotalCount"] := aEnemyUnitConstruction[Owner, "TotalCount"] ? aEnemyUnitConstruction[Owner, "TotalCount"] + 1 : 1
 			}		; this is a cheat and very lazy way of incorporating a count into the array without stuffing the for loop and having another variable
 			Else 
 			{
 				if (Type = aUnitID["CommandCenter"] && MorphingType := isCommandCenterMorphing(unit))	; this allows the orbital to show as a 'under construction' unit on the right
-					Priority := aUnitInfo["CommandCenter", "Priority"], aEnemyBuildingConstruction[Owner, Priority, MorphingType] := aEnemyBuildingConstruction[Owner, Priority, MorphingType] ? aEnemyBuildingConstruction[Owner, Priority, MorphingType] + 1 : 1 ;*** use 4 as morphing has no 0 priority, which != 4/CC
+					Priority := aUnitInfo["CommandCenter", "Priority"], aEnemyUnitConstruction[Owner, Priority, MorphingType] := aEnemyUnitConstruction[Owner, Priority, MorphingType] ? aEnemyUnitConstruction[Owner, Priority, MorphingType] + 1 : 1 ;*** use 4 as morphing has no 0 priority, which != 4/CC
 				else if (Type = aUnitID["Hatchery"] || aUnitID["Lair"]) && MorphingType := isHatchOrLairMorphing(unit)
-					Priority := aUnitInfo["Hatchery", "Priority"], aEnemyBuildingConstruction[Owner, Priority, MorphingType] := aEnemyBuildingConstruction[Owner, Priority, MorphingType] ? aEnemyBuildingConstruction[Owner, Priority, MorphingType] + 1 : 1
+					Priority := aUnitInfo["Hatchery", "Priority"], aEnemyUnitConstruction[Owner, Priority, MorphingType] := aEnemyUnitConstruction[Owner, Priority, MorphingType] ? aEnemyUnitConstruction[Owner, Priority, MorphingType] + 1 : 1
 				else
 					aEnemyUnits[Owner, Priority, Type] := aEnemyUnits[Owner, Priority, Type] ? aEnemyUnits[Owner, Priority, Type] + 1 : 1 ;note +1 (++ will not work!!!)
+			}
+	   	}
+	}
+	Return
+}
+
+getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aUnitID)
+{
+	GLOBAL DeadFilterFlag, aPlayer, aLocalPlayer, aUnitTargetFilter, aUnitInfo, 
+	aEnemyUnits := [], aEnemyUnitConstruction := []
+;	if !aEnemyUnitPriorities	;because having  GLOBAL aEnemyUnitPriorities := [] results in it getting cleared each function run
+;		aEnemyUnitPriorities := []
+
+	loop, % Unitcount := DumpUnitMemory(MemDump)
+	{
+
+	    TargetFilter := numgetUnitTargetFilter(MemDump, unit := A_Index - 1)
+	    if (TargetFilter & DeadFilterFlag || TargetFilter & aUnitTargetFilter.Hallucination)
+	       Continue
+		owner := numgetUnitOwner(MemDump, Unit) 
+
+	    if  (aPlayer[Owner, "Team"] <> aLocalPlayer["Team"] && Owner)
+	    {
+	    	pUnitModel := numgetUnitModelPointer(MemDump, Unit)
+	    	Type := numgetUnitModelType(pUnitModel)
+	    	if  (Type < aUnitID["Colossus"])
+				continue	
+			if (!Priority := aUnitInfo[Type, "Priority"]) ; faster than reading the priority each time - this is splitting hairs!!!
+				aUnitInfo[Type, "Priority"] := Priority := numgetUnitModelPriority(pUnitModel)
+
+			if (aUnitInfo[Type, "isStructure"] = "")
+				aUnitInfo[Type, "isStructure"] := TargetFilter & aUnitTargetFilter.Structure
+
+			if (TargetFilter & aUnitTargetFilter.UnderConstruction)
+			{
+				aEnemyUnitConstruction[Owner, Priority, Type] := aEnemyUnitConstruction[Owner, Priority, Type] ? aEnemyUnitConstruction[Owner, Priority, Type] + 1 : 1
+				aEnemyUnitConstruction[Owner, "TotalCount"] := aEnemyUnitConstruction[Owner, "TotalCount"] ? aEnemyUnitConstruction[Owner, "TotalCount"] + 1 : 1
+			}		; this is a cheat and very lazy way of incorporating a count into the array without stuffing the for loop and having another variable
+			Else 
+			{
+				if (TargetFilter & aUnitTargetFilter.Structure)
+				{
+					if (queueSize := getStructureProductionInfo(unit, aQueueInfo))
+					{
+						for i, aProduction in aQueueInfo
+						{
+
+							if (QueuedType := aUnitID[aProduction.Item])
+							{
+								QueuedPriority := aUnitInfo[QueuedType, "Priority"] ; this could fail in first game when no unit has been made yet of this type
+								aEnemyUnitConstruction[Owner, QueuedPriority, QueuedType] := aEnemyUnitConstruction[Owner, QueuedPriority, QueuedType] ? aEnemyUnitConstruction[Owner, QueuedPriority, QueuedType] + 1 : 1 	
+							}
+						}
+					}
+					; priority - CC = PF = 3, Orbital = 4
+					; this allows the orbital to show as a 'under construction' unit on the right
+					if (Type = aUnitID["CommandCenter"] && MorphingType := isCommandCenterMorphing(unit))
+					{	
+						; if first game then aUnitInfo might not contain the priority
+						; priority - CC = PF = 3, Orbital = 4
+						if !Priority := aUnitInfo[MorphingType, "Priority"]
+						{
+							if (MorphingType = aUnitID.OrbitalCommand)
+								Priority := aUnitInfo[Type, "Priority"] + 1
+							else Priority := aUnitInfo[Type, "Priority"]
+							aUnitInfo[MorphingType, "isStructure"] := True ; so a unit morphing into a type which isnt already in aUnitInfo wont get drawn as a unit rather than structure
+						}
+						aEnemyUnitConstruction[Owner, Priority, MorphingType] := aEnemyUnitConstruction[Owner, Priority, MorphingType] ? aEnemyUnitConstruction[Owner, Priority, MorphingType] + 1 : 1 
+					}
+					; hatchery, lair, and hive have the same priority - 2, so just use the hatches priority as it had to already exist 
+					else if (Type = aUnitID["Hatchery"] || aUnitID["Lair"]) && MorphingType := isHatchOrLairMorphing(unit)
+						aUnitInfo[MorphingType, "isStructure"] := True, Priority := aUnitInfo["Hatchery", "Priority"], aEnemyUnitConstruction[Owner, Priority, MorphingType] := aEnemyUnitConstruction[Owner, Priority, MorphingType] ? aEnemyUnitConstruction[Owner, Priority, MorphingType] + 1 : 1
+					else
+						aEnemyUnits[Owner, Priority, Type] := aEnemyUnits[Owner, Priority, Type] ? aEnemyUnits[Owner, Priority, Type] + 1 : 1 ;note +1 (++ will not work!!!)			
+				}
+				else 
+					aEnemyUnits[Owner, Priority, Type] := aEnemyUnits[Owner, Priority, Type] ? aEnemyUnits[Owner, Priority, Type] + 1 : 1
 			}
 	   	}
 	}
@@ -8405,80 +8483,33 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyBuildingConstruction, byref aUn
 ; but tipple sorting an array would take 'considerable' time, at least relative to not sorthing it
 ; so i would rather do it without sorting the array
 
-getEnemyUnitCountNew(byref aEnemyUnits, byref aEnemyBuildingConstruction, byref aUnitID)
-{
-	GLOBAL DeadFilterFlag, aPlayer, aLocalPlayer, aUnitTargetFilter, aUnitInfo, 
-	aEnemyUnits := [], aEnemyBuildingConstruction := []
-;	if !aEnemyUnitPriorities	;because having  GLOBAL aEnemyUnitPriorities := [] results in it getting cleared each function run
-;		aEnemyUnitPriorities := []
-
-	Unitcount := DumpUnitMemory(MemDump)
-	loop, % Unitcount
-	{
-
- 		unit := A_Index - 1
-	    TargetFilter := numgetUnitTargetFilter(MemDump, unit)
-	    if (TargetFilter & DeadFilterFlag || TargetFilter & aUnitTargetFilter.Hallucination)
-	       Continue
-		owner := numgetUnitOwner(MemDump, Unit) 
-
-	    if  (aPlayer[Owner, "Team"] <> aLocalPlayer["Team"] && Owner)
-	    {
-	    	pUnitModel := numgetUnitModelPointer(MemDump, Unit)
-	    	Type := numgetUnitModelType(pUnitModel)
-	    	if  (Type < aUnitID["Colossus"])
-				continue	
-			if (!Priority := aUnitInfo[Type, "Priority"]) ; faster than reading the priority each time - this is splitting hairs!!!
-				aUnitInfo[Type, "Priority"] := Priority := numgetUnitModelPriority(pUnitModel)
-
-			if (aUnitInfo[Type, "isStructure"] = "")
-				aUnitInfo[Type, "isStructure"] := TargetFilter & aUnitTargetFilter.Structure
-
-			if (TargetFilter & aUnitTargetFilter.UnderConstruction)
-			{
-				aEnemyBuildingConstruction[Owner, Priority, Type] := aEnemyBuildingConstruction[Owner, Priority, Type] ? aEnemyBuildingConstruction[Owner, Priority, Type] + 1 : 1
-				aEnemyBuildingConstruction[Owner, "TotalCount"] := aEnemyBuildingConstruction[Owner, "TotalCount"] ? aEnemyBuildingConstruction[Owner, "TotalCount"] + 1 : 1
-			}		; this is a cheat and very lazy way of incorporating a count into the array without stuffing the for loop and having another variable
-			Else 
-			{
-				if TargetFilter & aUnitTargetFilter.Structure
-				{
-					if (Type = aUnitID["CommandCenter"] && MorphingType := isCommandCenterMorphing(unit))	; this allows the orbital to show as a 'under construction' unit on the right
-						Priority := aUnitInfo["CommandCenter", "Priority"], aEnemyBuildingConstruction[Owner, Priority, MorphingType] := aEnemyBuildingConstruction[Owner, Priority, MorphingType] ? aEnemyBuildingConstruction[Owner, Priority, MorphingType] + 1 : 1 ;*** use 4 as morphing has no 0 priority, which != 4/CC
-					else if (Type = aUnitID["Hatchery"] || aUnitID["Lair"]) && MorphingType := isHatchOrLairMorphing(unit)
-						Priority := aUnitInfo["Hatchery", "Priority"], aEnemyBuildingConstruction[Owner, Priority, MorphingType] := aEnemyBuildingConstruction[Owner, Priority, MorphingType] ? aEnemyBuildingConstruction[Owner, Priority, MorphingType] + 1 : 1
-				}
-				else
-					aEnemyUnits[Owner, Priority, Type] := aEnemyUnits[Owner, Priority, Type] ? aEnemyUnits[Owner, Priority, Type] + 1 : 1 ;note +1 (++ will not work!!!)
-			}
-	   	}
-	}
-	Return
-}
 
 getStructureProductionInfo(unit, byRef aInfo)
 {
+	STATIC O_pQueueArray := 0x34, O_IndexParentTypes := 0x18, O_unitsQueued := 0x28
 	aInfo := []
-	pAbilities := getUnitAbilityPointer(building)
-	AbilitiesCount := getAbilitiesCount(pAbilities)
-	CAbilQueueIndex := getCAbilQueueIndex(pAbilities, AbilitiesCount)
-	B_QueuedUnitInfo := getPointerToQueuedUnitInfo(pAbilities, CAbilQueueIndex, localQueSize)
-	loop 
+	if (!pAbilities := getUnitAbilityPointer(unit))
+		return 0
+	if (-1 = CAbilQueueIndex := getCAbilQueueIndex(pAbilities, getAbilitiesCount(pAbilities)))
+		return 0 ; refinery,reactor, depot, spine, extractor
+	CAbilQueue := readmemory(pAbilities + O_IndexParentTypes + 4 * CAbilQueueIndex, GameIdentifier)
+	QueueSize := readmemory(CAbilQueue + O_unitsQueued, GameIdentifier)
+	queuedArray := readmemory(CAbilQueue + O_pQueueArray, GameIdentifier)
+
+	while (A_Index <= QueueSize && B_QueuedUnitInfo := readmemory(queuedArray + 4 * (A_index-1), GameIdentifier) )   ; A_index-1 = queue position ;progress = 0 not being built, but is in queue
 	{
-		getPercentageUnitCompleted(B_QueuedUnitInfo)
-		progress := getPercentageUnitCompleted(B_QueuedUnitInfo)
 		if !aStringTable.hasKey(pString := readMemory(B_QueuedUnitInfo + 0xD0, GameIdentifier))
 			aStringTable[pString] := ReadMemory_Str(readMemory(pString + 0x4, GameIdentifier), GameIdentifier)
 		item := aStringTable[pString]
-		if progress
+		if progress := getPercentageUnitCompleted(B_QueuedUnitInfo) ; 0.0 will be seen as false 
 			aInfo.insert({ "Item": item, "progress": progress})
-		B_QueuedUnitInfo += 4
-	} until (A_index => localQueSize || !progress)  ;progress = 0 not being built, but is in queue
-	return aInfo.maxIndex()
+		else break 
+	} 
+	return aInfo.maxIndex() ? aInfo.maxIndex() : 0
 }
 
 
-FilterUnits(byref aEnemyUnits, byref aEnemyBuildingConstruction, byref aUnitPanelUnits, byref aUnitID, aPlayer)	;care have used aUnitID everywhere else!!
+FilterUnits(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aUnitPanelUnits, byref aUnitID, aPlayer)	;care have used aUnitID everywhere else!!
 {	global aUnitInfo
 	;	aEnemyUnits[Owner, Type]
 	STATIC aRemovedUnits := {"Terran": ["BarracksTechLab","BarracksReactor","FactoryTechLab","FactoryReactor","StarportTechLab","StarportReactor"]
@@ -8533,8 +8564,8 @@ FilterUnits(byref aEnemyUnits, byref aEnemyBuildingConstruction, byref aUnitPane
 	;	aDeleteKeys := []					;****have to 'save' the delete keys, as deleting them during a for loop will cause you to go +2 keys on next loop, not 1
 		race := aPlayer[owner, "Race"]		;it doesn't matter if it attempts to delete the same key a second time (doesn't effect anything)
 
-		if (race = "Zerg" && priorityObject[aUnitInfo[aUnitID["Drone"], "Priority"], aUnitID["Drone"]] && aEnemyBuildingConstruction[Owner, "TotalCount"])
-			priorityObject[aUnitInfo[aUnitID["Drone"], "Priority"], aUnitID["Drone"]] -= aEnemyBuildingConstruction[Owner, "TotalCount"] ; as drones morphing are still counted as 'alive' so have to remove them		
+		if (race = "Zerg" && priorityObject[aUnitInfo[aUnitID["Drone"], "Priority"], aUnitID["Drone"]] && aEnemyUnitConstruction[Owner, "TotalCount"])
+			priorityObject[aUnitInfo[aUnitID["Drone"], "Priority"], aUnitID["Drone"]] -= aEnemyUnitConstruction[Owner, "TotalCount"] ; as drones morphing are still counted as 'alive' so have to remove them		
 
 		for index, removeUnit in aRemovedUnits[race]
 		{
@@ -8551,7 +8582,7 @@ FilterUnits(byref aEnemyUnits, byref aEnemyBuildingConstruction, byref aUnitPane
 			{														;** actually its the other unit priority which may be blank
 				mainUnit := aUnitID[mainUnit]
 				if !priority := aUnitInfo[mainUnit, "Priority"]
-					priority := subPriority		;take a change, hopefully they will have same priority
+					priority := subPriority		;take a chance, hopefully they will have same priority
 
 				; since its possible that the main unit hasn't been allocated a isStructure
 				; use the isStructure from the subUnit which will be the same, and has already been assigned
@@ -8575,7 +8606,6 @@ FilterUnits(byref aEnemyUnits, byref aEnemyBuildingConstruction, byref aUnitPane
 			priorityObject[priority].remove(removeUnit, "")
 		}
 
-
 		for index, unit in aUnitOrder[race]
 			if (count := priorityObject[aUnitInfo[aUnitID[unit], "Priority"], aUnitID[unit]])
 			{
@@ -8590,7 +8620,7 @@ FilterUnits(byref aEnemyUnits, byref aEnemyBuildingConstruction, byref aUnitPane
 ;			priorityObject[aEnemyUnitPriorities[unit]].remove(unit, "")				;				as the keys are integers, otherwise it will decrease the keys afterwards by 1 for each removed unit!!!!													
 	}
 
-	for owner, priorityObject in aEnemyBuildingConstruction
+	for owner, priorityObject in aEnemyUnitConstruction
 	{
 		race := aPlayer[owner, "Race"]	
 
@@ -8613,7 +8643,7 @@ FilterUnits(byref aEnemyUnits, byref aEnemyBuildingConstruction, byref aUnitPane
 					priorityObject[priority, mainUnit] += total
 				else priorityObject[priority, mainUnit] := total
 				priorityObject[subPriority].remove(subunit, "")
-				aEnemyBuildingConstruction[Owner, "TotalCount"] -= total 	;these counts still seem to be out, but works for zerg?
+				aEnemyUnitConstruction[Owner, "TotalCount"] -= total 	;these counts still seem to be out, but works for zerg?
 			}		
 		}
 
@@ -8649,7 +8679,7 @@ getLongestEnemyPlayerName(aPlayer)
 
 DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 {
-	GLOBAL aEnemyUnits, aEnemyBuildingConstruction, a_pBitmap, aPlayer, aLocalPlayer, aHexColours, GameIdentifier, config_file, UnitOverlayX, UnitOverlayY, MatrixColour 
+	GLOBAL aEnemyUnits, aEnemyUnitConstruction, a_pBitmap, aPlayer, aLocalPlayer, aHexColours, GameIdentifier, config_file, UnitOverlayX, UnitOverlayY, MatrixColour 
 		, aUnitInfo, SplitUnitPanel
 	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0
 
@@ -8756,7 +8786,7 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 				Else
 					gdip_TextToGraphics(G, unitCount, "x"(DestX + .5*Width + .4*Width/2) "y"(DestY + .5*Height + .35*Height/2)  " Bold cFFFFFFFF r4 s" 9*UserScale, Font)
 
-				if (unitCount := aEnemyBuildingConstruction[slot_number, priority, unit])	; so there are some of this unit being built lets draw the count on top of the completed units
+				if (unitCount := aEnemyUnitConstruction[slot_number, priority, unit])	; so there are some of this unit being built lets draw the count on top of the completed units
 				{
 					;	Gdip_FillRoundedRectangle(G, a_pBrush[TransparentBlack], DestX, DestY + .6*Height, Width/2.5, Height/2.5, 5)
 						Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, DestX + .6*Width, DestY, Width/2.5, Height/2.5, 5)
@@ -8764,7 +8794,7 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 							gdip_TextToGraphics(G, unitCount, "x"(DestX + .5*Width + .3*Width/2) "y"(DestY + .15*Height/2)  " Bold Italic cFFFFFFFF r4 s" 9*UserScale, Font)
 						Else
 							gdip_TextToGraphics(G, unitCount, "x"(DestX + .5*Width + .4*Width/2) "y"(DestY + .15*Height/2)  " Bold Italic cFFFFFFFF r4 s" 9*UserScale, Font)
-						aEnemyBuildingConstruction[slot_number, priority].remove(unit, "")
+						aEnemyUnitConstruction[slot_number, priority].remove(unit, "")
 				}
 				if (!aUnitInfo[unit, "isStructure"] && SplitUnitPanel)
 				{
@@ -8784,7 +8814,7 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 		; so I dont have to worry about checking structure or not
 		; wrong! some units like morphing archons are considered underconstruction!
 
-		for ConstructionPriority, priorityConstructionObject in aEnemyBuildingConstruction[slot_number]
+		for ConstructionPriority, priorityConstructionObject in aEnemyUnitConstruction[slot_number]
 		{
 			for unit, unitCount in priorityConstructionObject		;	lets draw the buildings under construction (these are ones which werent already drawn above)
 			{	
@@ -8907,6 +8937,8 @@ g_CheckForScriptToGetGameInfo:
 runRemoteScript()
 return
 
+; gEasyUnloadQueued is disabled! Until i sort out a better way to ensure modifiers are not left stuck down.
+
 gEasyUnloadQueued:
 gEasyUnload:
 thread, NoTimers, true
@@ -9020,8 +9052,9 @@ castEasyUnload(hotkey, queueUnload)
 		MTSend(EasyUnloadStorageKey)
 	; to restore the modifier keys if the user is still holding them down
 	; e.g. is they want to shift click somewhere without first releasing the shift key
-	if upSequence
-		Input.psend(getModifierDownSequenceFromKeyboard())
+	; disabled to prevent stuck modifers in in certain situations 
+;	if upSequence
+;		Input.psend(getModifierDownSequenceFromKeyboard())
 	return
 }
 
