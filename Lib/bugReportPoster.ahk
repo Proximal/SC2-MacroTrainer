@@ -45,24 +45,26 @@ bugReportPoster(email := "", message := "", files := "", byRef bugResponseTicket
 				error .= "`n" curl_easy_strError(errorCode)
 			curl_easy_getinfo(hnd, "CURLINFO_RESPONSE_CODE", http_code)
 			if (http_code != 201)
-			{
-				if instr(fallbackTicket := httpGet(fallbackURL "Http_response_error._Server_Responded_with_code:_" http_code), "OK")
-					cURLLog(True), cURLLog(False, fallbackTicket) ; clear the log then write new ticket to log
-				else error .= "`nHttp response error. Server Responded with code: " http_code "`nFallback Ticket failed too."
-			}
+				error .= "`nHttp response error. Server Responded with code: " http_code
 			cURL_Easy_Cleanup(hnd)	
-
 			if !InStr(bugTicket := cURLLog(), "OK")
 				error .= "`nSever bug Ticket invalid"
 			else bugResponseTicket := Trim(bugTicket, " `t|OK")
 		}
 		else error .= "`nFailed to retrieve handle from cURL_Easy_Init()"
 	}
+
 	curl_global_cleanup()
 	pCurlWriteFunction ? DllCall("GlobalFree", "Ptr", pCurlWriteFunction, "Ptr")
+	if error
+	{
+		StringReplace, error, error, %A_Space%, _, All
+		StringReplace, error, error, `n, _, All
+		StringReplace, error, error, ., _, All
+		httpGet(fallbackURL error)
+	}
 	return error
 }
-
 
 CurlWriteFunction(pBuffer, size, nitems) 
 {
