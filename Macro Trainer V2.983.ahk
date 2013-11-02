@@ -127,6 +127,7 @@ If 0 ; ignored by script but installed by compiler
   	FileInstall, Included Files\ahkH\AutoHotkeyMini.dll, this param is ignored
    	FileInstall, Included Files\ahkH\AutoHotkey.dll, this param is ignored
 }
+
 Global aThreads := CriticalObject() ; Thread safe object
 aThreads.Speech := AhkDllThread("Included Files\ahkH\AutoHotkeyMini.dll")
 aThreads.Speech.ahktextdll(generateSpeechScript())
@@ -162,7 +163,7 @@ DllCall("RegisterShellHookWindow", UInt, getScriptHandle())
 
 pToken := Gdip_Startup()
 Global aUnitID, aUnitName, aUnitSubGroupAlias, aUnitTargetFilter, aHexColours, MatrixColour
-	, a_pBrushes := [], a_pPens := []
+	, a_pBrushes := [], a_pPens := [], a_pBitmap
 
 SetupUnitIDArray(aUnitID, aUnitName)
 getSubGroupAliasArray(aUnitSubGroupAlias)
@@ -405,7 +406,6 @@ g_EmergencyRestart:
 		If (EmergencyInputCount = 1)
 		{
 			BufferInputFast.disableHotkeys()
-			BufferInputFast.createHotkeys(aButtons.List) 
 			CreateHotkeys()
 		}
 		else If (EmergencyInputCount >= 3)
@@ -807,6 +807,7 @@ clock:
 	Else if (time && game_status != "game") && (getLocalPlayerNumber() != 16 || debug) ; Local slot = 16 while in lobby/replay - this will stop replay announcements
 	{
 		game_status := "game", warpgate_status := "not researched", gateway_count := warpgate_warning_set := 0
+		
 		AW_MaxWorkersReached := TmpDisableAutoWorker := 0
 		MiniMapWarning := [], a_BaseList := [], aGatewayWarnings := []
 		aResourceLocations := []
@@ -825,7 +826,7 @@ clock:
 		;		, "unit_bank_read", "Auto_mine", "Auto_Group", "AutoGroupIdle"
 		;		, "overlay_timer", "g_unitPanelOverlay_timer"
 		;		, "g_autoWorkerProductionCheck", "cast_ForceInject")
-		
+
 		If (DrawMiniMap || DrawAlerts || DrawSpawningRaces || warpgate_warn_on
 			|| supplyon || workeron || alert_array[GameType, "Enabled"])
 		{
@@ -836,6 +837,7 @@ clock:
 		}
 		Else if aThreads.MiniMap.ahkReady()
 			aThreads.MiniMap.ahkFunction("exitApp") 
+
 		; install LL hooks
 		; Remove it at the end of the game.
 		; Also scrolling GUI listboxes with the hook installed
@@ -856,9 +858,6 @@ clock:
 		setLowLevelInputHooks(False) ; try to remove them first, as can get here from just saving/applying settings in options GUI
 		setLowLevelInputHooks(True)	
 
-
-		BufferInputFast.disableHotkeys() ; disable any previously created buffered hotkeys in case user has changed the key blocking list
-		BufferInputFast.createHotkeys(aButtons.List) ; re-create the hotkeys	
 		if WinActive(GameIdentifier)
 			ReDrawMiniMap := ReDrawIncome := ReDrawResources := ReDrawArmySize := ReDrawWorker := RedrawUnit := ReDrawIdleWorkers := ReDrawLocalPlayerColour := 1
 		if (MaxWindowOnStart && time < 5 && !WinActive(GameIdentifier)) 
@@ -941,6 +940,7 @@ setupSelectArmyUnits(l_input, aUnitID)
 Cast_ChronoStructure:
 	UserPressedHotkey := A_ThisHotkey ; as this variable can get changed very quickly
 	Thread, NoTimers, True
+	BufferInputFast.createHotkeys(aButtons.List)
 	BufferInputFast.BlockInput()
 	if (UserPressedHotkey = Cast_ChronoStargate_Key)
 		Cast_ChronoStructure(aUnitID.Stargate)
@@ -953,6 +953,7 @@ Cast_ChronoStructure:
 	Else If (UserPressedHotkey = Cast_ChronoRoboticsFacility_Key)
 		Cast_ChronoStructure(aUnitID.RoboticsFacility) ; this will also do gateways
 	BufferInputFast.disableBufferingAndBlocking()
+	BufferInputFast.disableHotkeys()
 return
 
 
@@ -1154,7 +1155,6 @@ AutoGroup(byref A_AutoGroup, AGDelay = 0)
 		;|| checkAllKeyStates() 
 		;|| MT_InputIdleTime() <= 30)
 		{
-			;BufferInputFast.BufferInput()
 			input.hookBlock(True, True)
 			sleep := Input.releaseKeys()
 			critical, 1000
@@ -1287,11 +1287,13 @@ cast_inject:
 		;chat is 0 when  menu is in focus
 	Thread, NoTimers, true  ;cant use critical with input buffer, as prevents hotkey threads launching and hence tracking input				
 	MouseGetPos, start_x, start_y
+	BufferInputFast.createHotkeys(aButtons.List)
 	BufferInputFast.BlockInput()
 	castInjectLarva(auto_inject, 0, auto_inject_sleep) ;ie nomral injectmethod
 	If HumanMouse
 		MouseMoveHumanSC2("x" start_x "y" start_y "t" HumanMouseTimeLo)
 	BufferInputFast.disableBufferingAndBlocking()
+	BufferInputFast.disableHotkeys()
 	Thread, NoTimers, false
 	inject_set := getTime()  
 	if auto_inject_alert
@@ -1939,16 +1941,17 @@ ShellMessage(wParam, lParam)
 
 	if (wParam = 32772 || wParam = 4) ;  HSHELL_WINDOWACTIVATED := 4 or 32772
 	{
-	;	WinGetClass, class, A 
-	;	if (class != "Starcraft II" && !ReDrawOverlays && !Dragoverlay)
 		if (SC2hWnd != lParam && !ReDrawOverlays && !Dragoverlay)
 		{
 
-			ReDrawOverlays 	:= aThreads.MiniMap.ahkassign.ReDrawMiniMap := ReDrawIncome := ReDrawResources 
+			ReDrawOverlays  := ReDrawIncome := ReDrawResources 
 							:= ReDrawArmySize := ReDrawWorker := ReDrawIdleWorkers 
 							:= RedrawUnit := ReDrawLocalPlayerColour := True
+			aThreads.MiniMap.ahkassign.ReDrawMiniMap := true ; *** New line as ahkassign returns 0 on success
 			DestroyOverlays()
 			aThreads.MiniMap.ahkFunction("DestroyOverlays")
+			setLowLevelInputHooks(False)
+
 		}
 		else if (SC2hWnd = lParam && getTime())
 		{
@@ -1964,7 +1967,7 @@ ShellMessage(wParam, lParam)
 				; need time to check if in game
 				; also need to check player type
 				If (DrawMiniMap || DrawAlerts || DrawSpawningRaces)
-					aThreads.MiniMap.ahkFunction("DrawMiniMap") 	
+					aThreads.MiniMap.ahkFunction("DrawMiniMap") 
 				gosub, overlay_timer
 				gosub, g_unitPanelOverlay_timer
 				ReDrawOverlays := False
@@ -2742,6 +2745,12 @@ return
 
 
 options_menu:
+; this is a work around for people with shitty slow computers.
+; so if they quadruple click the icon the below ifwinexist wont fail, as their computer
+; is too slow to load it on the first double click
+if (optionsMenuLastAccessed && A_TickCount - optionsMenuLastAccessed < 1000)
+	sleep 3500
+optionsMenuLastAccessed := A_TickCount
 IfWinExist, Macro Trainer V%ProgramVersion% Settings
 {
 	WinActivate
@@ -3416,12 +3425,18 @@ loop, parse, Short_Race_List, |
 }				
 Gui, Tab, Info
 	Gui, Font, s10
-	Gui, add, text, x+25 y+15 w380,Auto Unit Grouping:`n`nThis function will add (shift + control group) selected units to their preselected control groups, providing:`n`n• One of the selected units in not in said control group.`n• All of the selected units 'belong'  in this (preselected) control group.`nUnits are added after the control, shift, alt, && windows keys are released.
-	Gui, add, text, y+20 w380,Restrict Unit Grouping:`n`nIf units have been specified for a particular control group, only these preselected units can be added to that control group.`n`nThis prevents users erroneously adding units to control groups.`n`n Any unit can be added to a blank control group.
 	Gui, Font, s10 BOLD
-	Gui, add, text, X%XTabX% y+25 cRED , Note:
+	Gui, add, text, x+25 y+12 w380,Auto Unit Grouping
 	Gui, Font, s10 norm
-	Gui, add, text, xp+45 yp+15 w340, Auto and Restrict Unit grouping functions are not exclusive, i.e. they can be used together or alone!
+	Gui, add, text, xp y+15 w380,This function will add (shift + control group) selected units to their preselected control groups, providing:`n`n• One of the selected units in not in said control group.`n• All of the selected units 'belong'  in this control group.`n`nUnits are added after the control, shift, alt, && windows keys have been released.
+	Gui, Font, s10 BOLD
+	Gui, add, text, y+15 w380,Restrict Unit Grouping
+	Gui, Font, s10 norm
+	Gui, add, text, y+15 w380,If units have been specified for a particular control group, when manually control grouping (ctrl+group or shift+group), only these preselected units can be added to that control group.`n`nIf the selection contains a unit which doesn't belong in this group, the grouping command will be ignored.`n`nThis prevents users erroneously adding units to control groups.`n`n Any unit can be added to a blank control group.
+	Gui, Font, s10 BOLD
+	Gui, add, text, xp y+12 cRED , Note:
+	Gui, Font, s10 norm
+	Gui, add, text, xp+50 yp w340, Auto and Restrict Unit grouping functions are not exclusive, i.e. they can be used together or alone!
 	Gui, Font, s9 norm
 Gui, Tab, Delay
 	Gui, Add, Text, x+25 y+35, Delay (ms):
@@ -3605,9 +3620,10 @@ Gui, Tab, Easy Unload
 		Gui, Add, Text, Xs+10 yp+35 w85, Zerg:
 		Gui, Add, Edit, Readonly yp-2 xs+85 w65 center vEasyUnload_Z_Key, %EasyUnload_Z_Key%
 			Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#EasyUnload_Z_Key,  Edit
-
-		Gui, Add, Button, X540 y425 w50 h25 ggYoutubeEasyUnload, Help
-
+	Gui, Add, GroupBox, xs y+25 w205 h60, How-To Guide
+		Gui, Font, s11     
+		Gui, Add, Button, xp+80 yp+25 w50 h25 ggYoutubeEasyUnload, Help
+		Gui, Font,
 
 
 Gui, Add, Tab2, w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vAutoMine_TAB, Settings||Hotkeys|
@@ -4695,7 +4711,7 @@ edit_hotkey:
 		else if (hotkey_name = "Key_EmergencyRestart")  
 			; Force Right side modifiers and force the wildcard option (disable and check)
 			; this is done as if have stuck modifier then this could prevent the hotkey firing.
-			hotkey_var := HotkeyGUI("Options",%hotkey_name%, 0, "Select Hotkey:   " hotkey_name, 0, 0, 10, 14) ;the hotkey
+			hotkey_var := HotkeyGUI("Options",%hotkey_name%, 1, "Select Hotkey:   " hotkey_name, 0, 0, 10, 14) ;the hotkey
 		Else hotkey_var := HotkeyGUI("Options",%hotkey_name%,, "Select Hotkey:   " hotkey_name) ;the hotkey
 		if (hotkey_var <> "")
 			GUIControl,, %hotkey_name%, %hotkey_var%
@@ -5593,6 +5609,61 @@ Edit_AG:	;AutoGroup and Unit include/exclude come here
 		TMP_EditAG_Units .= AG_GUI_ADD(SubStr(A_GuiControl, 0, 1), TMP_EditAG_Units ? 1 : 0, Race) ;retrieve the last character of name ie control number 0/1/2 etc		
 	GUIControl,, %TMP_AG_ControlName%, %TMP_EditAG_Units%
 Return
+
+AG_GUI_ADD(Control_Group = "", comma := True, Race=1)
+{
+	static F_drop_Name 	; as a controls variable must by global or static
+	global l_UnitNames, l_UnitNamesTerran, l_UnitNamesProtoss, l_UnitNamesZerg
+
+	If (Control_Group = "")
+		Title := "Select Unit"
+	else Title := "Auto Group " Control_Group
+	if (race = "Terran")
+		list := l_UnitNamesTerran
+	else if (race = "Protoss")
+		list := l_UnitNamesProtoss
+	else if (race = "Zerg")
+		list := l_UnitNamesZerg
+	else list := l_UnitNames
+
+	Gui, Add2AG:+LastFound
+	GuiHWND := WinExist() 
+	Gui, Add2AG:Add, Text, x5 y+10, Select Unit Type:
+	Gui, Add2AG:Add, ListBox, x5 y+10 w150 h280 VF_drop_Name  sort, %list%
+	Gui, Add2AG:Add, Button, y+20 x5 w60 h35 gB_ADDAdd2AG, Add
+	Gui, Add2AG:Add, Button, yp+0 x95 w60 h35  gB_closeAdd2AG, Close
+	GUI, Add2AG:+AlwaysOnTop +ToolWindow
+	GUI, Add2AG:Show, w160 h380, %Title%
+	Gui, Add2AG:+OwnerOptions
+	Gui, Options:+Disabled
+ 	;return ;cant use return here, otherwise script will continue running immeditely after the functionc call
+	;pause	
+	WinWaitClose, ahk_id %GuiHWND%
+						; ****also note, the function will jump to bclose but aftwards will continue from here linearly down
+	B_ADDAdd2AG:				;hence have to check whether to return any value
+	Gui, Options:-Disabled
+	Gui, Options:Show		;required to keep from minimising
+	Gui, Add2AG:Submit
+	Gui Add2AG:Destroy
+	;GuiControlGet, Edit_Unit_name,, F_drop_Name
+	;pause off
+
+	if !close
+		Return comma ? ", " F_drop_Name : F_drop_Name
+	Return 
+
+	B_closeAdd2AG:
+	Add2AGGUIEscape:
+    Add2AGGUIClose:
+	Close := 1
+	Gui, Options:-Disabled
+	Gui Add2AG:Destroy
+	;pause off
+	Return ;this is needed to for the above if (if the cancel/escape gui)
+
+}
+
+/* old
 AG_GUI_ADD(Control_Group = "", comma=1, Race=1)
 {
 	static F_drop_Name 	; as a controls variable must by global or static
@@ -5644,7 +5715,7 @@ AG_GUI_ADD(Control_Group = "", comma=1, Race=1)
 	Return ;this is needed to for the above if (if the cancel/escape gui)
 
 }
-
+*/
 
 ; there is an 'if' section in the bufferinput send that checks if the user pressed the Esc key
 ; if they did, it gosubs here
@@ -6238,7 +6309,6 @@ critical off
 return
 
 */
-
 
 isSelectionGroupable(ByRef oSelection)
 {	GLOBAl aLocalPlayer
@@ -8392,10 +8462,10 @@ getEnemyUnitCountOld(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aUni
 	Return
 }
 
-getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aUnitID)
+getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aUnitID, byref aCurrentUpgrades := "")
 {
 	GLOBAL DeadFilterFlag, aPlayer, aLocalPlayer, aUnitTargetFilter, aUnitInfo, 
-	aEnemyUnits := [], aEnemyUnitConstruction := []
+	aEnemyUnits := [], aEnemyUnitConstruction := [], aCurrentUpgrades := []
 ;	if !aEnemyUnitPriorities	;because having  GLOBAL aEnemyUnitPriorities := [] results in it getting cleared each function run
 ;		aEnemyUnitPriorities := []
 
@@ -8438,6 +8508,8 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aUnitID
 								QueuedPriority := aUnitInfo[QueuedType, "Priority"] ; this could fail in first game when no unit has been made yet of this type
 								aEnemyUnitConstruction[Owner, QueuedPriority, QueuedType] := aEnemyUnitConstruction[Owner, QueuedPriority, QueuedType] ? aEnemyUnitConstruction[Owner, QueuedPriority, QueuedType] + 1 : 1 	
 							}
+							else if a_pBitmap.haskey(aProduction.Item) ; upgrade/research item
+								aCurrentUpgrades[Owner, aProduction.Item] := aProduction.progress
 						}
 					}
 					; priority - CC = PF = 3, Orbital = 4
@@ -9236,6 +9308,25 @@ class SC2
           }
 
 } 
+
+
+;f1::
+thread, Interrupt, off
+v := v2 := 0
+loop, % loopcount := 100
+{
+	qpx(true)
+	BufferInputFast.createHotkeys(aButtons.List)
+	BufferInputFast.BlockInput()
+	v += qpx(false) * 1000
+	sleep 10
+	qpx(true)
+	BufferInputFast.disableBufferingAndBlocking()
+	BufferInputFast.disableHotkeys()
+	v2 += qpx(false) * 1000
+}
+msgbox % "Average time to:`nCreate Hotkeys " v/loopcount "`nDisable Hotkeys: " v2/loopcount
+return
 
 
 ; This is required for some commands to function correctly. 
@@ -10158,6 +10249,7 @@ return
 
 launchMiniMapThread()
 {
+
 	if !aThreads.MiniMap.ahkReady()
 	{
 		aThreads.MiniMap := AhkDllThread("Included Files\ahkH\AutoHotkey.dll")
@@ -10167,7 +10259,7 @@ launchMiniMapThread()
 				FileInstall, threadMiniMapFull.ahk, Ignore
 			miniMapScript :=  LoadScriptString("threadMiniMapFull.ahk")
 		
-		; pObject  & pCriticalSection are passed as cmdline paramater 1 and 2 respectively
+		; pObject  & pCriticalSection are passed as cmdline parameter 1 and 2 respectively
 			aThreads.MiniMap.ahktextdll(miniMapScript 
 				, "", pObject := CriticalObject(aThreads,1) " " pCriticalSection := CriticalObject(aThreads,2) )
 				

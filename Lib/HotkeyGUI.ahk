@@ -763,6 +763,7 @@ Return
     HG_Hotkey:=""
     HG_HKDesc:=""
     closingBracket := ""
+    HotkeySide := DescSide := ""
 
     ;-- Options
     if HG_NativeOption
@@ -771,13 +772,13 @@ Return
     if HG_WildcardOption
         HG_Hotkey.="*"
 
-    if (HG_LeftPairOption && (HG_CtrlModifier || HG_ShiftModifier || HG_WinModifier || HG_AltModifier) )
+    if (HG_LeftPairOption)
     {
         HotkeySide := "<"
         DescSide := "L."
     }
 
-    if (HG_RightPairOption && (HG_CtrlModifier || HG_ShiftModifier || HG_WinModifier || HG_AltModifier) )
+    if (HG_RightPairOption)
     {
         HotkeySide := ">"
         DescSide := "R."
@@ -785,34 +786,34 @@ Return
 
     ;-- Modifiers
     if HG_CtrlModifier
-        {
-            HG_Hotkey .= HotkeySide "^"
-            HG_HKDesc .= DescSide "Ctrl"
-        }
+    {
+        HG_Hotkey .= HotkeySide "^"
+        HG_HKDesc .= DescSide "Ctrl"
+    }
 
     if HG_ShiftModifier
-        {
-            HG_Hotkey.= HotkeySide "+"
-            if (HG_CtrlModifier)
-              HG_HKDesc .= " + "
-            HG_HKDesc.= DescSide "Shift"
-        }
+    {
+        HG_Hotkey.= HotkeySide "+"
+        if (HG_CtrlModifier)
+          HG_HKDesc .= " + "
+        HG_HKDesc.= DescSide "Shift"
+    }
 
     if HG_WinModifier
-        {
-            HG_Hotkey.= HotkeySide "#"
-            if (HG_CtrlModifier || HG_ShiftModifier)
-              HG_HKDesc .= " + "
-            HG_HKDesc.= DescSide "Win"
-        }
+    {
+        HG_Hotkey.= HotkeySide "#"
+        if (HG_CtrlModifier || HG_ShiftModifier)
+          HG_HKDesc .= " + "
+        HG_HKDesc.= DescSide "Win"
+    }
 
     if HG_AltModifier
-        {
-            HG_Hotkey.= HotkeySide "!"
-            if (HG_CtrlModifier || HG_ShiftModifier || HG_WinModifier)
-              HG_HKDesc .= " + "
-            HG_HKDesc.= DescSide "Alt"
-        }
+    {
+        HG_Hotkey.= HotkeySide "!"
+        if (HG_CtrlModifier || HG_ShiftModifier || HG_WinModifier)
+          HG_HKDesc .= " + "
+        HG_HKDesc.= DescSide "Alt"
+    }
 
       if (HG_CtrlModifier || HG_ShiftModifier || HG_WinModifier || HG_AltModifier)
         HG_HKDesc .= " + "

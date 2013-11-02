@@ -177,5 +177,77 @@ InstallSC2Files()
 	FileInstall, Included Files\Used_Icons\Units\Zerg\viper.png, %A_Temp%\UnitPanelMacroTrainer\viper.png, 1
 	FileInstall, Included Files\Used_Icons\Units\Zerg\zergling.png, %A_Temp%\UnitPanelMacroTrainer\zergling.png, 1
 
+	FileInstall, Included Files\Used_Icons\Upgrades\Protoss\PhoenixRangeUpgrade.png, %A_Temp%\UnitPanelMacroTrainer\PhoenixRangeUpgrade.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Protoss\ProtossAirArmorLevel1.png, %A_Temp%\UnitPanelMacroTrainer\ProtossAirArmorLevel1.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Protoss\ProtossAirArmorLevel2.png, %A_Temp%\UnitPanelMacroTrainer\ProtossAirArmorLevel2.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Protoss\ProtossAirArmorLevel3.png, %A_Temp%\UnitPanelMacroTrainer\ProtossAirArmorLevel3.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Protoss\ProtossAirWeaponsLevel1.png, %A_Temp%\UnitPanelMacroTrainer\ProtossAirWeaponsLevel1.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Protoss\ProtossAirWeaponsLevel2.png, %A_Temp%\UnitPanelMacroTrainer\ProtossAirWeaponsLevel2.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Protoss\ProtossAirWeaponsLevel3.png, %A_Temp%\UnitPanelMacroTrainer\ProtossAirWeaponsLevel3.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Protoss\ProtossGroundArmorLevel1.png, %A_Temp%\UnitPanelMacroTrainer\ProtossGroundArmorLevel1.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Protoss\ProtossGroundArmorLevel2.png, %A_Temp%\UnitPanelMacroTrainer\ProtossGroundArmorLevel2.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Protoss\ProtossGroundArmorLevel3.png, %A_Temp%\UnitPanelMacroTrainer\ProtossGroundArmorLevel3.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Protoss\ProtossGroundWeaponsLevel1.png, %A_Temp%\UnitPanelMacroTrainer\ProtossGroundWeaponsLevel1.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Protoss\ProtossGroundWeaponsLevel2.png, %A_Temp%\UnitPanelMacroTrainer\ProtossGroundWeaponsLevel2.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Protoss\ProtossGroundWeaponsLevel3.png, %A_Temp%\UnitPanelMacroTrainer\ProtossGroundWeaponsLevel3.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Protoss\ProtossShieldsLevel1.png, %A_Temp%\UnitPanelMacroTrainer\ProtossShieldsLevel1.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Protoss\ProtossShieldsLevel2.png, %A_Temp%\UnitPanelMacroTrainer\ProtossShieldsLevel2.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Protoss\ProtossShieldsLevel3.png, %A_Temp%\UnitPanelMacroTrainer\ProtossShieldsLevel3.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Protoss\ResearchExtendedThermalLance.png, %A_Temp%\UnitPanelMacroTrainer\ResearchExtendedThermalLance.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Protoss\ResearchGraviticBooster.png, %A_Temp%\UnitPanelMacroTrainer\ResearchGraviticBooster.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Protoss\ResearchGraviticDrive.png, %A_Temp%\UnitPanelMacroTrainer\ResearchGraviticDrive.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Protoss\ResearchInterceptorLaunchSpeedUpgrade.png, %A_Temp%\UnitPanelMacroTrainer\ResearchInterceptorLaunchSpeedUpgrade.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Terran\ResearchBattlecruiserEnergyUpgrade.png, %A_Temp%\UnitPanelMacroTrainer\ResearchBattlecruiserEnergyUpgrade.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Terran\ResearchBattlecruiserSpecializations.png, %A_Temp%\UnitPanelMacroTrainer\ResearchBattlecruiserSpecializations.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Terran\ResearchDurableMaterials.png, %A_Temp%\UnitPanelMacroTrainer\ResearchDurableMaterials.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Terran\ResearchGhostEnergyUpgrade.png, %A_Temp%\UnitPanelMacroTrainer\ResearchGhostEnergyUpgrade.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Terran\ResearchHighCapacityBarrels.png, %A_Temp%\UnitPanelMacroTrainer\ResearchHighCapacityBarrels.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Terran\ResearchHiSecAutoTracking.png, %A_Temp%\UnitPanelMacroTrainer\ResearchHiSecAutoTracking.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Terran\ResearchMedivacEnergyUpgrade.png, %A_Temp%\UnitPanelMacroTrainer\ResearchMedivacEnergyUpgrade.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Terran\ResearchNeosteelFrame.png, %A_Temp%\UnitPanelMacroTrainer\ResearchNeosteelFrame.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Terran\ResearchRavenEnergyUpgrade.png, %A_Temp%\UnitPanelMacroTrainer\ResearchRavenEnergyUpgrade.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Terran\TerranInfantryArmorLevel1.png, %A_Temp%\UnitPanelMacroTrainer\TerranInfantryArmorLevel1.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Terran\TerranInfantryArmorLevel2.png, %A_Temp%\UnitPanelMacroTrainer\TerranInfantryArmorLevel2.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Terran\TerranInfantryArmorLevel3.png, %A_Temp%\UnitPanelMacroTrainer\TerranInfantryArmorLevel3.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Terran\TerranInfantryWeaponsLevel1.png, %A_Temp%\UnitPanelMacroTrainer\TerranInfantryWeaponsLevel1.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Terran\TerranInfantryWeaponsLevel2.png, %A_Temp%\UnitPanelMacroTrainer\TerranInfantryWeaponsLevel2.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Terran\TerranInfantryWeaponsLevel3.png, %A_Temp%\UnitPanelMacroTrainer\TerranInfantryWeaponsLevel3.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Terran\TerranShipWeaponsLevel1.png, %A_Temp%\UnitPanelMacroTrainer\TerranShipWeaponsLevel1.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Terran\TerranShipWeaponsLevel2.png, %A_Temp%\UnitPanelMacroTrainer\TerranShipWeaponsLevel2.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Terran\TerranShipWeaponsLevel3.png, %A_Temp%\UnitPanelMacroTrainer\TerranShipWeaponsLevel3.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Terran\TerranVehicleAndShipPlatingLevel1.png, %A_Temp%\UnitPanelMacroTrainer\TerranVehicleAndShipPlatingLevel1.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Terran\TerranVehicleAndShipPlatingLevel2.png, %A_Temp%\UnitPanelMacroTrainer\TerranVehicleAndShipPlatingLevel2.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Terran\TerranVehicleAndShipPlatingLevel3.png, %A_Temp%\UnitPanelMacroTrainer\TerranVehicleAndShipPlatingLevel3.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Terran\TerranVehicleWeaponsLevel1.png, %A_Temp%\UnitPanelMacroTrainer\TerranVehicleWeaponsLevel1.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Terran\TerranVehicleWeaponsLevel2.png, %A_Temp%\UnitPanelMacroTrainer\TerranVehicleWeaponsLevel2.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Terran\TerranVehicleWeaponsLevel3.png, %A_Temp%\UnitPanelMacroTrainer\TerranVehicleWeaponsLevel3.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Terran\UpgradeBuildingArmorLevel1.png, %A_Temp%\UnitPanelMacroTrainer\UpgradeBuildingArmorLevel1.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Zerg\EvolveCentrificalHooks.png, %A_Temp%\UnitPanelMacroTrainer\EvolveCentrificalHooks.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Zerg\EvolveChitinousPlating.png, %A_Temp%\UnitPanelMacroTrainer\EvolveChitinousPlating.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Zerg\EvolveGlialRegeneration.png, %A_Temp%\UnitPanelMacroTrainer\EvolveGlialRegeneration.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Zerg\EvolveInfestorEnergyUpgrade.png, %A_Temp%\UnitPanelMacroTrainer\EvolveInfestorEnergyUpgrade.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Zerg\EvolveTunnelingClaws.png, %A_Temp%\UnitPanelMacroTrainer\EvolveTunnelingClaws.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Zerg\EvolveVentralSacks.png, %A_Temp%\UnitPanelMacroTrainer\EvolveVentralSacks.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Zerg\hydraliskspeed.png, %A_Temp%\UnitPanelMacroTrainer\hydraliskspeed.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Zerg\MuscularAugments.png, %A_Temp%\UnitPanelMacroTrainer\MuscularAugments.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Zerg\overlordspeed.png, %A_Temp%\UnitPanelMacroTrainer\overlordspeed.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Zerg\zergflyerarmor1.png, %A_Temp%\UnitPanelMacroTrainer\zergflyerarmor1.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Zerg\zergflyerarmor2.png, %A_Temp%\UnitPanelMacroTrainer\zergflyerarmor2.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Zerg\zergflyerarmor3.png, %A_Temp%\UnitPanelMacroTrainer\zergflyerarmor3.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Zerg\zergflyerattack1.png, %A_Temp%\UnitPanelMacroTrainer\zergflyerattack1.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Zerg\zergflyerattack2.png, %A_Temp%\UnitPanelMacroTrainer\zergflyerattack2.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Zerg\zergflyerattack3.png, %A_Temp%\UnitPanelMacroTrainer\zergflyerattack3.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Zerg\zerggroundarmor1.png, %A_Temp%\UnitPanelMacroTrainer\zerggroundarmor1.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Zerg\zerggroundarmor2.png, %A_Temp%\UnitPanelMacroTrainer\zerggroundarmor2.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Zerg\zerggroundarmor3.png, %A_Temp%\UnitPanelMacroTrainer\zerggroundarmor3.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Zerg\zerglingattackspeed.png, %A_Temp%\UnitPanelMacroTrainer\zerglingattackspeed.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Zerg\zerglingmovementspeed.png, %A_Temp%\UnitPanelMacroTrainer\zerglingmovementspeed.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Zerg\zergmeleeweapons1.png, %A_Temp%\UnitPanelMacroTrainer\zergmeleeweapons1.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Zerg\zergmeleeweapons2.png, %A_Temp%\UnitPanelMacroTrainer\zergmeleeweapons2.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Zerg\zergmeleeweapons3.png, %A_Temp%\UnitPanelMacroTrainer\zergmeleeweapons3.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Zerg\zergmissileweapons1.png, %A_Temp%\UnitPanelMacroTrainer\zergmissileweapons1.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Zerg\zergmissileweapons2.png, %A_Temp%\UnitPanelMacroTrainer\zergmissileweapons2.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Zerg\zergmissileweapons3.png, %A_Temp%\UnitPanelMacroTrainer\zergmissileweapons3.png, 1
+
 	FileInstall, Included Files\ahkH\AutoHotkey.exe, %A_Temp%\AHK.exe, 1
 }

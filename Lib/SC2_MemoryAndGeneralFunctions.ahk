@@ -2485,6 +2485,8 @@ CreatepBitmaps(byref a_pBitmap, aUnitID)
 		StringReplace, FileTitle, A_LoopFileName, .%A_LoopFileExt% ;remove the .ext
 		if aUnitID[FileTitle]	;have a 2 pics which arnt in the unit array - bunkerfortified & thorsiegemode
 			a_pBitmap[aUnitID[FileTitle]] := Gdip_CreateBitmapFromFile(A_LoopFileFullPath)
+		else  ; these are upgrades and accessed by SC2 item name string
+			a_pBitmap[FileTitle] := Gdip_CreateBitmapFromFile(A_LoopFileFullPath)
 	}
 	a_pBitmap["PurpleX16"] := Gdip_CreateBitmapFromFile(A_Temp "\PurpleX16.png")
 	a_pBitmap["GreenX16"] := Gdip_CreateBitmapFromFile(A_Temp "\GreenX16.png")

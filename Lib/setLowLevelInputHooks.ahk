@@ -23,9 +23,9 @@ setLowLevelInputHooks(Install)
 	{
 		hKbd := setMTKeyboardHook(True)
 		hMse := setMTMouseHook(True)
-		if (!hKbd || !hMse)
-			return 1 ; error installing
-		else return 0
+		if (hKbd && hMse)
+			return 0 
+		else return 1 ; error installing
 	}
 	else 
 	{
@@ -46,10 +46,11 @@ setMTKeyboardHook(Install)
 		; Attempt to remove the hook if one is already present, as windows lets you install as many as you want
 		if hook
 			UnhookWindowsHookEx(hook)
-		hook := SetWindowsHookEx(13, CallBack) ; WH_KEYBOARD_LL := 13
+		return hook := SetWindowsHookEx(13, CallBack) ; WH_KEYBOARD_LL := 13
 	}
-	else return UnhookWindowsHookEx(hook)
-	return hook
+	if hook
+		return UnhookWindowsHookEx(hook), hook := 0
+	else return -1
 }
 
 setMTMouseHook(Install)
@@ -59,10 +60,11 @@ setMTMouseHook(Install)
 	{
 		if hook
 			UnhookWindowsHookEx(hook)
-		hook := SetWindowsHookEx(14, CallBack) 	; WH_MOUSE_LL := 14 
+		return hook := SetWindowsHookEx(14, CallBack) 	; WH_MOUSE_LL := 14 
 	}
-	else return UnhookWindowsHookEx(hook)
-	return hook
+	if hook
+		return UnhookWindowsHookEx(hook), hook := 0
+	else return -1
 }
 
 
@@ -90,8 +92,7 @@ MT_InputIdleTime(NewInputTickCount := 0)
 KeyboardHook(nCode, wParam, lParam)
 {	
 	Critical 1000
-	static WM_KEYUP := 0x101
-	Global MT_HookBlock
+
 	If !nCode ; if this var contains some info about a keyboard event, then process it
 	{
 		MT_InputIdleTime(A_TickCount)
@@ -106,6 +107,7 @@ KeyboardHook(nCode, wParam, lParam)
 MouseHook(nCode, wParam, lParam)
 {
 	Critical 1000
+
 	If (!nCode && wParam != 0x200)  ;WM_MOUSEMOVE := 0x200
 	{
 		MT_InputIdleTime(A_TickCount)

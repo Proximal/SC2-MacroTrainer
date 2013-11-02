@@ -10,11 +10,13 @@ Class BufferInputFast
 	; As the EmergencyRestart has no #if i.e. it is global, it will take precedence 
 	; over any of the keys listed in the blocking routine.
 
-	setEmergencyRestartKey(Key, Label, Options := "")
-	{	static EmergencyRestartKey
+	setEmergencyRestartKey(Key := "", Label := "", Options := "")
+	{	static EmergencyRestartKey, EmergencyRestartLabel, EmergencyRestartOptions
 		Hotkey, If 	;	just in case there is an active Hotkey, if somewhere above
 		#If
-		if (Key != EmergencyRestartKey)
+		if (key = "" && EmergencyRestartOptions)
+			Try Hotkey, *%EmergencyRestartKey%, %EmergencyRestartLabel%, On, %EmergencyRestartOptions%
+		else if (Key != EmergencyRestartKey)
 		{
 			Try Hotkey, *%EmergencyRestartKey%, Off 	; disable the previous key if it exists
 													; note, this may disable some other function hotkey
@@ -24,43 +26,50 @@ Class BufferInputFast
 													; overwritten by another function hotkey
 			; use * incase a key gets stuck down										
 			Try Hotkey, *%Key%, %Label%, On, %Options%
+			EmergencyRestartKey := Key
+			EmergencyRestartLabel := Label
+			EmergencyRestartOptions := Options
 		}
-		EmergencyRestartKey := Key
 		return
 	}
+
 	createHotkeys(aKeys)
 	{	GLOBAL GameIdentifier
 		
 	;	modifiers := "*Shift|*Control|*Alt""
 		this.aBlockedKeys := aKeys
 		
-		#If, BufferInputFast.isInputBuffered() && WinActive(GameIdentifier)
-		Hotkey, If, BufferInputFast.isInputBuffered() && WinActive(GameIdentifier)
+	;	#If, BufferInputFast.isInputBuffered() && WinActive(GameIdentifier)
+	;	Hotkey, If, BufferInputFast.isInputBuffered() && WinActive(GameIdentifier)
+	;	for index, Button in aKeys
+	;		Try Hotkey, %Button%, g_BufferInputFastLabel, On
 
-		for index, Button in aKeys
-			Try Hotkey, %Button%, g_BufferInputFastLabel, On
-	;	loop, parse, modifiers
-	;		Try Hotkey, %A_LoopField% up, g_BufferInputFastLabel, On
 		; for added safet allow modifier ups to be recorded and then sent
 		; so if the modifier is somehow down its release will be recorded then sent to game
-		try	Hotkey, *LShift up, g_BufferInputFastLabel, On
-		try Hotkey, *LCtrl up, g_BufferInputFastLabel, On
-		try Hotkey, *LAlt up, g_BufferInputFastLabel, On
+	;	try	Hotkey, *LShift up, g_BufferInputFastLabel, On
+	;	try Hotkey, *LCtrl up, g_BufferInputFastLabel, On
+	;	try Hotkey, *LAlt up, g_BufferInputFastLabel, On
 
 		#If, BufferInputFast.isInputBlocked() && WinActive(GameIdentifier)
 		Hotkey, If, BufferInputFast.isInputBlocked() && WinActive(GameIdentifier)
 		for index, Button in aKeys
 			Try Hotkey, %Button%, g_ReturnFastLabel, On
 		#If
+		; remake the emergency hotkey in case it got overwritten
+		this.setEmergencyRestartKey()
 		return			
 	}
+
+	; Interestingly the first time this is called takes ~75% longer
+	; than any subsequent call e.g. 45ms vs 25ms.
+	; create hotkeys always takes ~25ms
 	disableHotkeys()
 	{ 	GLOBAL GameIdentifier
 		if this.aBlockedKeys.MaxIndex()
 		{
-			Hotkey, If, BufferInputFast.isInputBuffered() && WinActive(GameIdentifier)
-			for index, Button in this.aBlockedKeys
-				Try Hotkey, %Button%, Off
+		;	Hotkey, If, BufferInputFast.isInputBuffered() && WinActive(GameIdentifier)
+		;	for index, Button in this.aBlockedKeys
+		;		Try Hotkey, %Button%, Off
 
 			Hotkey, If, BufferInputFast.isInputBlocked() && WinActive(GameIdentifier)
 			for index, Button in this.aBlockedKeys

@@ -8,7 +8,7 @@
 
 #persistent
 #NoEnv  ; think this is default with AHK_H
-#NoTrayIcon
+;#NoTrayIcon
 SetBatchLines, -1
 ListLines(False) 
 OnExit, ShutdownProcedure
@@ -17,6 +17,7 @@ OnExit, ShutdownProcedure
 pObject := "1", pObject := %pObject%	
 pCriticalSection := "2", pCriticalSection := %pCriticalSection%
 aThreads := CriticalObject(pObject, pCriticalSection)
+
 
 l_GameType := "1v1,2v2,3v3,4v4,FFA"
 l_Races := "Terran,Protoss,Zerg"
@@ -270,7 +271,6 @@ DrawMiniMap()
 	SelectObject(hdc, obm) ; needed else eats ram ; Select the object back into the hdc
 	DeleteObject(hbm)   ; needed else eats ram 	; Now the bitmap may be deleted
 	DeleteDC(hdc) ; Also the device context related to the bitmap may be deleted
-
 
 Return
 }
