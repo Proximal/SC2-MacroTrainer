@@ -21,6 +21,8 @@ bugReportPoster(email := "", message := "", files := "", byRef bugResponseTicket
 		if (hnd := cURL_Easy_Init()) 
 		{
 			URL := "http://mt.9xq.ru/issue/create"
+			fallbackURL := "http://mt.9xq.ru/issue/fb?m="
+
 			httpAgent := cURL_Version() " MacroTrainer/2.983"
 			curl_formadd(fpost, lpost, "CURLFORM_COPYNAME,email,CURLFORM_COPYCONTENTS," email ",CURLFORM_END")
 			curl_formadd(fpost, lpost, "CURLFORM_COPYNAME,text,CURLFORM_COPYCONTENTS," message ",CURLFORM_END")
@@ -43,7 +45,11 @@ bugReportPoster(email := "", message := "", files := "", byRef bugResponseTicket
 				error .= "`n" curl_easy_strError(errorCode)
 			curl_easy_getinfo(hnd, "CURLINFO_RESPONSE_CODE", http_code)
 			if (http_code != 201)
-				error .= "`nHttp response error. Server Responded with code: " http_code
+			{
+				if instr(fallbackTicket := httpGet(fallbackURL "Http_response_error._Server_Responded_with_code:_" http_code), "OK")
+					cURLLog(True), cURLLog(False, fallbackTicket) ; clear the log then write new ticket to log
+				else error .= "`nHttp response error. Server Responded with code: " http_code "`nFallback Ticket failed too."
+			}
 			cURL_Easy_Cleanup(hnd)	
 
 			if !InStr(bugTicket := cURLLog(), "OK")
@@ -72,5 +78,3 @@ cURLLog(clear := True, text := "")
 		log .= (StrLen(log) ? "`n" : "") . text
 	return clear ? (copy := log, log := "") : log 
 }
-
-

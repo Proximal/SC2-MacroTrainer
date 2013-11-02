@@ -2014,7 +2014,7 @@ Return
 g_unitPanelOverlay_timer: 
 	If (DrawUnitOverlay && (WinActive(GameIdentifier) || Dragoverlay))
 	{
-		getEnemyUnitCount(aEnemyUnits, aEnemyUnitConstruction, aUnitID)
+		getEnemyUnitCount(aEnemyUnits, aEnemyUnitConstruction, aEnemyCurrentUpgrades, aUnitID)
 		FilterUnits(aEnemyUnits, aEnemyUnitConstruction, aUnitPanelUnits, aUnitID, aPlayer)
 	;	if DrawUnitOverlay
 		DrawUnitOverlay(RedrawUnit, UnitOverlayScale, OverlayIdent, Dragoverlay)
@@ -8462,10 +8462,10 @@ getEnemyUnitCountOld(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aUni
 	Return
 }
 
-getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aUnitID, byref aCurrentUpgrades := "")
+getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyCurrentUpgrades, byref aUnitID)
 {
 	GLOBAL DeadFilterFlag, aPlayer, aLocalPlayer, aUnitTargetFilter, aUnitInfo, 
-	aEnemyUnits := [], aEnemyUnitConstruction := [], aCurrentUpgrades := []
+	aEnemyUnits := [], aEnemyUnitConstruction := [], aEnemyCurrentUpgrades := []
 ;	if !aEnemyUnitPriorities	;because having  GLOBAL aEnemyUnitPriorities := [] results in it getting cleared each function run
 ;		aEnemyUnitPriorities := []
 
@@ -8509,7 +8509,7 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aUnitID
 								aEnemyUnitConstruction[Owner, QueuedPriority, QueuedType] := aEnemyUnitConstruction[Owner, QueuedPriority, QueuedType] ? aEnemyUnitConstruction[Owner, QueuedPriority, QueuedType] + 1 : 1 	
 							}
 							else if a_pBitmap.haskey(aProduction.Item) ; upgrade/research item
-								aCurrentUpgrades[Owner, aProduction.Item] := aProduction.progress
+								aEnemyCurrentUpgrades[Owner, aProduction.Item] := aProduction.progress
 						}
 					}
 					; priority - CC = PF = 3, Orbital = 4
@@ -8752,7 +8752,7 @@ getLongestEnemyPlayerName(aPlayer)
 DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 {
 	GLOBAL aEnemyUnits, aEnemyUnitConstruction, a_pBitmap, aPlayer, aLocalPlayer, aHexColours, GameIdentifier, config_file, UnitOverlayX, UnitOverlayY, MatrixColour 
-		, aUnitInfo, SplitUnitPanel
+		, aUnitInfo, SplitUnitPanel, aEnemyCurrentUpgrades
 	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0
 
 	DestX := i := 0
@@ -8828,8 +8828,8 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 			Gdip_DrawImage(G, pBitmap, 12*UserScale, DestY + Height/5, Width, Height, 0, 0, SourceWidth, SourceHeight, MatrixColour[aPlayer[slot_number, "Colour"]])
 			DestX := Width+15*UserScale 
 		}
-		
-		destUnitSplitX := firstPictureX := DestX
+
+		destUpgradesX := destUnitSplitX := firstPictureX := DestX
 		destUnitSplitY := DestY
 
 		for priority, object in priorityObject
@@ -8921,6 +8921,23 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 				}
 			}
 		}
+	
+		if 0
+		{
+			DestY += Height * 1.1
+			;destUpgradesX
+			for Upgrade, aUpgradeItem in aEnemyCurrentUpgrades
+			{
+				;msgbox % Upgrade " " aUpgradeItem
+				var := 1
+
+			}
+
+		}
+
+
+
+
 		; This is here to find the longest unit panel (as they will be different size for different players)
 		if (DestX + Width > WindowWidth)
 			WindowWidth := DestX
@@ -8937,8 +8954,6 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 	DeleteDC(hdc)
 	Return
 }
-
-
 
 ; This is used by the auto worker macro to check if a real one, or a extra/macro one
 getMapInfoMineralsAndGeysers() 
@@ -9309,7 +9324,7 @@ class SC2
 
 } 
 
-
+; speed test.
 ;f1::
 thread, Interrupt, off
 v := v2 := 0
