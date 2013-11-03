@@ -275,19 +275,20 @@ msgbox(t:="")
 curl_formadd(Byref fPost, Byref lPost, Params){
     
     (!fpost || !lpost) ? (VarSetCapacity(fpost, 4, 0), VarSetCapacity(lpost, 4, 0)) ; 52 is the size of the curl_httppost struct
-    Loop, parse, params, `,
-    {
-        if (mod(a_index, 2)) {
-            Fopt%a_index%:=CURL(a_loopfield)
+    for index, field in Params {
+        msgbox % field
+        if (mod(index, 2)) {
+            Fopt%index%:=CURL(field)
         } else {
-            Fval%a_index%:=a_loopfield
-
+            Fval%index%:=field
+MsgBox % field
             if (a_isunicode) {
-                VarSetCapacity(Fval%a_index%A, StrPut(Fval%a_index%, "CP0"))
-                StrPut(Fval%a_index%, &Fval%a_index%A, "CP0")
+                VarSetCapacity(Fval%index%A, StrPut(Fval%index%, "CP0"))
+                StrPut(Fval%index%, &Fval%index%A, "CP0")
             }
         }        
     }
+
     val_type := "Str"
     return DllCall("libcurl\curl_formadd"
                   ,"UInt*",fpost

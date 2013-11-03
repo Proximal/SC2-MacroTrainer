@@ -50,6 +50,7 @@ bugReportPoster(email := "", message := "", files := "", byRef bugResponseTicket
 			if !InStr(bugTicket := cURLLog(), "OK")
 				error .= "`nSever bug Ticket invalid"
 			else bugResponseTicket := Trim(bugTicket, " `t|OK")
+			msgbox % bugResponseTicket
 		}
 		else error .= "`nFailed to retrieve handle from cURL_Easy_Init()"
 	}

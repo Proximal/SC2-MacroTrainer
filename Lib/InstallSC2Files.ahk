@@ -176,7 +176,11 @@ InstallSC2Files()
 	FileInstall, Included Files\Used_Icons\Units\Zerg\ultralisk.png, %A_Temp%\UnitPanelMacroTrainer\ultralisk.png, 1
 	FileInstall, Included Files\Used_Icons\Units\Zerg\viper.png, %A_Temp%\UnitPanelMacroTrainer\viper.png, 1
 	FileInstall, Included Files\Used_Icons\Units\Zerg\zergling.png, %A_Temp%\UnitPanelMacroTrainer\zergling.png, 1
-
+	
+	FileInstall, Included Files\Used_Icons\Upgrades\Protoss\ResearchWarpGate.png, %A_Temp%\UnitPanelMacroTrainer\ResearchWarpGate.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Protoss\ResearchCharge.png, %A_Temp%\UnitPanelMacroTrainer\ResearchCharge.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Protoss\ResearchPsiStorm.png, %A_Temp%\UnitPanelMacroTrainer\ResearchPsiStorm.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Protoss\ResearchStalkerTeleport.png, %A_Temp%\UnitPanelMacroTrainer\ResearchStalkerTeleport.png, 1
 	FileInstall, Included Files\Used_Icons\Upgrades\Protoss\PhoenixRangeUpgrade.png, %A_Temp%\UnitPanelMacroTrainer\PhoenixRangeUpgrade.png, 1
 	FileInstall, Included Files\Used_Icons\Upgrades\Protoss\ProtossAirArmorLevel1.png, %A_Temp%\UnitPanelMacroTrainer\ProtossAirArmorLevel1.png, 1
 	FileInstall, Included Files\Used_Icons\Upgrades\Protoss\ProtossAirArmorLevel2.png, %A_Temp%\UnitPanelMacroTrainer\ProtossAirArmorLevel2.png, 1
@@ -198,6 +202,12 @@ InstallSC2Files()
 	FileInstall, Included Files\Used_Icons\Upgrades\Protoss\ResearchGraviticDrive.png, %A_Temp%\UnitPanelMacroTrainer\ResearchGraviticDrive.png, 1
 	FileInstall, Included Files\Used_Icons\Upgrades\Protoss\ResearchInterceptorLaunchSpeedUpgrade.png, %A_Temp%\UnitPanelMacroTrainer\ResearchInterceptorLaunchSpeedUpgrade.png, 1
 	FileInstall, Included Files\Used_Icons\Upgrades\Terran\ResearchBattlecruiserEnergyUpgrade.png, %A_Temp%\UnitPanelMacroTrainer\ResearchBattlecruiserEnergyUpgrade.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Terran\NukeArm.png, %A_Temp%\UnitPanelMacroTrainer\NukeArm.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Terran\ResearchBansheeCloak.png, %A_Temp%\UnitPanelMacroTrainer\ResearchBansheeCloak.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Terran\ResearchPersonalCloaking.png, %A_Temp%\UnitPanelMacroTrainer\ResearchPersonalCloaking.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Terran\ResearchPunisherGrenades.png, %A_Temp%\UnitPanelMacroTrainer\ResearchPunisherGrenades.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Terran\ResearchShieldWall.png, %A_Temp%\UnitPanelMacroTrainer\ResearchShieldWall.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Terran\Stimpack.png, %A_Temp%\UnitPanelMacroTrainer\Stimpack.png, 1
 	FileInstall, Included Files\Used_Icons\Upgrades\Terran\ResearchBattlecruiserSpecializations.png, %A_Temp%\UnitPanelMacroTrainer\ResearchBattlecruiserSpecializations.png, 1
 	FileInstall, Included Files\Used_Icons\Upgrades\Terran\ResearchDurableMaterials.png, %A_Temp%\UnitPanelMacroTrainer\ResearchDurableMaterials.png, 1
 	FileInstall, Included Files\Used_Icons\Upgrades\Terran\ResearchGhostEnergyUpgrade.png, %A_Temp%\UnitPanelMacroTrainer\ResearchGhostEnergyUpgrade.png, 1
@@ -222,6 +232,10 @@ InstallSC2Files()
 	FileInstall, Included Files\Used_Icons\Upgrades\Terran\TerranVehicleWeaponsLevel2.png, %A_Temp%\UnitPanelMacroTrainer\TerranVehicleWeaponsLevel2.png, 1
 	FileInstall, Included Files\Used_Icons\Upgrades\Terran\TerranVehicleWeaponsLevel3.png, %A_Temp%\UnitPanelMacroTrainer\TerranVehicleWeaponsLevel3.png, 1
 	FileInstall, Included Files\Used_Icons\Upgrades\Terran\UpgradeBuildingArmorLevel1.png, %A_Temp%\UnitPanelMacroTrainer\UpgradeBuildingArmorLevel1.png, 1
+
+	FileInstall, Included Files\Used_Icons\Upgrades\Zerg\ResearchLocustLifetimeIncrease.png, %A_Temp%\UnitPanelMacroTrainer\ResearchLocustLifetimeIncrease.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Zerg\ResearchBurrow.png, %A_Temp%\UnitPanelMacroTrainer\ResearchBurrow.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Zerg\ResearchNeuralParasite.png, %A_Temp%\UnitPanelMacroTrainer\ResearchNeuralParasite.png, 1
 	FileInstall, Included Files\Used_Icons\Upgrades\Zerg\EvolveCentrificalHooks.png, %A_Temp%\UnitPanelMacroTrainer\EvolveCentrificalHooks.png, 1
 	FileInstall, Included Files\Used_Icons\Upgrades\Zerg\EvolveChitinousPlating.png, %A_Temp%\UnitPanelMacroTrainer\EvolveChitinousPlating.png, 1
 	FileInstall, Included Files\Used_Icons\Upgrades\Zerg\EvolveGlialRegeneration.png, %A_Temp%\UnitPanelMacroTrainer\EvolveGlialRegeneration.png, 1
