@@ -46,11 +46,19 @@
 cURL_Global_Init(DllPath="", Flags="CURL_GLOBAL_DEFAULT"){
 
     DllPath := !DllPath ? "libcurl.dll" : inStr(DllPath, "libcurl.dll") ? DllPath : DllPath "\libcurl.dll"
-	if !hCurlModule:=DllCall("LoadLibrary", "Str", DllPath)
+	if !cURL_LoadOrFreeLibrary(DllPath)
 		return A_ThisFunc "> Could not load library: " DllPath
     
     ; Initialize the program environment
 	return DllCall("libcurl\curl_global_init", "UInt", CURL(Flags))
+}
+
+cURL_LoadOrFreeLibrary(DllPath := "")
+{
+    static hCurlModule
+    if DllPath ; load library 
+        return hCurlModule := DllCall("LoadLibrary", "Str", DllPath) ; returns hCurlModule
+    else return  DllCall("FreeLibrary", "UInt", hCurlModule)
 }
 
 /*
@@ -77,7 +85,7 @@ cURL_Global_Init(DllPath="", Flags="CURL_GLOBAL_DEFAULT"){
 */
 cURL_Global_Cleanup(){
 
-    return DllCall( "FreeLibrary", "UInt", hCurlModule ), DllCall("libcurl\curl_global_cleanup")
+    return cURL_LoadOrFreeLibrary(False), DllCall("libcurl\curl_global_cleanup")
 }
 
 /*
@@ -276,15 +284,14 @@ curl_formadd(Byref fPost, Byref lPost, Params){
     
     (!fpost || !lpost) ? (VarSetCapacity(fpost, 4, 0), VarSetCapacity(lpost, 4, 0)) ; 52 is the size of the curl_httppost struct
     for index, field in Params {
-        msgbox % field
         if (mod(index, 2)) {
             Fopt%index%:=CURL(field)
         } else {
             Fval%index%:=field
-MsgBox % field
+
             if (a_isunicode) {
-                VarSetCapacity(Fval%index%A, StrPut(Fval%index%, "CP0"))
-                StrPut(Fval%index%, &Fval%index%A, "CP0")
+                VarSetCapacity(Fval%index%A, StrPut(Fval%index%, "UTF-8"))
+                StrPut(Fval%index%, &Fval%index%A, "UTF-8")
             }
         }        
     }

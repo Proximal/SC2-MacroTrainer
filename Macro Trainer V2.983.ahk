@@ -707,9 +707,9 @@ Return
 Overlay_Toggle:
 	if (A_ThisHotkey = CycleOverlayKey)
 	{
-		If ((ActiveOverlays := DrawIncomeOverlay + DrawResourcesOverlay + DrawArmySizeOverlay + DrawUnitOverlay) > 1)
+		If ((ActiveOverlays := DrawIncomeOverlay + DrawResourcesOverlay + DrawArmySizeOverlay + DrawUnitOverlay + DrawUnitUpgrades) > 1)
 		{
-			DrawResourcesOverlay := DrawArmySizeOverlay := DrawIncomeOverlay := DrawUnitOverlay := 0
+			DrawResourcesOverlay := DrawArmySizeOverlay := DrawIncomeOverlay := DrawUnitOverlay := DrawUnitUpgrades := 0
 			DrawResourcesOverlay(-1), DrawArmySizeOverlay(-1), DrawIncomeOverlay(-1), DrawUnitOverlay(-1)
 		}
 		Else If (ActiveOverlays = 0)
@@ -721,8 +721,8 @@ Overlay_Toggle:
 			Else If DrawResourcesOverlay
 				DrawArmySizeOverlay := !DrawResourcesOverlay := DrawUnitOverlay := 0, DrawResourcesOverlay(-1)
 			Else If DrawArmySizeOverlay
-				DrawUnitOverlay := !DrawResourcesOverlay := DrawArmySizeOverlay :=  0, DrawArmySizeOverlay(-1)
-			Else If DrawUnitOverlay 	; turn them all on
+				DrawUnitUpgrades := DrawUnitOverlay := !DrawResourcesOverlay := DrawArmySizeOverlay :=  0, DrawArmySizeOverlay(-1)
+			Else If (DrawUnitOverlay || DrawUnitUpgrades) 	; turn them all on
 				DrawResourcesOverlay := DrawArmySizeOverlay := DrawIncomeOverlay := 1 	
 		}
 		gosub, overlay_timer
@@ -755,11 +755,20 @@ Overlay_Toggle:
 	}	
 	Else If (A_ThisHotkey = ToggleUnitOverlayKey)
 	{
-		If (!DrawUnitOverlay := !DrawUnitOverlay)
+		if (!DrawUnitOverlay && !DrawUnitUpgrades)	
+			DrawUnitOverlay := True	
+		else if (DrawUnitOverlay && !DrawUnitUpgrades)
+			DrawUnitUpgrades := True
+		else if (DrawUnitOverlay && DrawUnitUpgrades)
+			DrawUnitOverlay := False, DrawUnitUpgrades := True		
+		else if (!DrawUnitOverlay && DrawUnitUpgrades)
+			DrawUnitUpgrades := False
+
+		If (!DrawUnitOverlay && !DrawUnitUpgrades)
 			DrawUnitOverlay(-1)
 		gosub, g_unitPanelOverlay_timer
 		return
-	}	
+	}
 	Else If (A_ThisHotkey = ToggleMinimapOverlayKey)
 	{
 		; Disable the minimap, but still draws detected units/non-converted gates
@@ -1938,7 +1947,7 @@ ShellMessage(wParam, lParam)
 {
 	Global
 	Static ReDrawOverlays
-return 
+
 	if (wParam = 32772 || wParam = 4) ;  HSHELL_WINDOWACTIVATED := 4 or 32772
 	{
 		if (SC2hWnd != lParam && !ReDrawOverlays && !Dragoverlay)
@@ -2012,7 +2021,7 @@ overlay_timer: 	;DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdent=0, Bac
 Return
 
 g_unitPanelOverlay_timer: 
-	If (DrawUnitOverlay && (WinActive(GameIdentifier) || Dragoverlay))
+	If ((DrawUnitOverlay || DrawUnitUpgrades) && (WinActive(GameIdentifier) || Dragoverlay))
 	{
 		getEnemyUnitCount(aEnemyUnits, aEnemyUnitConstruction, aEnemyCurrentUpgrades, aUnitID)
 		FilterUnits(aEnemyUnits, aEnemyUnitConstruction, aUnitPanelUnits, aUnitID, aPlayer)
@@ -2634,6 +2643,7 @@ ini_settings_write:
 			OverlayIdent := 3	
 	Iniwrite, %OverlayIdent%, %config_file%, %section%, OverlayIdent	
 	Iniwrite, %SplitUnitPanel%, %config_file%, %section%, SplitUnitPanel	
+	Iniwrite, %DrawUnitUpgrades%, %config_file%, %section%, DrawUnitUpgrades	
 	Iniwrite, %OverlayBackgrounds%, %config_file%, %section%, OverlayBackgrounds	
 	Iniwrite, %MiniMapRefresh%, %config_file%, %section%, MiniMapRefresh	
 	Iniwrite, %OverlayRefresh%, %config_file%, %section%, OverlayRefresh	
@@ -3860,12 +3870,14 @@ try
 			;Gui, add, text, y+20 X%XTabX%, Display Overlays:
 			Gui, Add, GroupBox, y+30 x+20  w170 h260 section, Display Overlays:
 			Gui, Add, Checkbox, xp+10 yp+25 vDrawIncomeOverlay Checked%DrawIncomeOverlay% , Income Overlay
-			Gui, Add, Checkbox, xp y+20 vDrawResourcesOverlay Checked%DrawResourcesOverlay% , Resource Overlay
-			Gui, Add, Checkbox, xp y+20 vDrawArmySizeOverlay Checked%DrawArmySizeOverlay% , Army Size Overlay
-			Gui, Add, Checkbox, xp y+20 vDrawWorkerOverlay Checked%DrawWorkerOverlay% , Local Harvester Count
-			Gui, Add, Checkbox, xp y+20 vDrawIdleWorkersOverlay Checked%DrawIdleWorkersOverlay%, Idle Worker Count
-			Gui, Add, Checkbox, xp y+20 vDrawLocalPlayerColourOverlay Checked%DrawLocalPlayerColourOverlay%, Local Player Colour
-			Gui, Add, Checkbox, xp y+20 vDrawUnitOverlay Checked%DrawUnitOverlay%, Unit Panel
+			Gui, Add, Checkbox, xp y+17 vDrawResourcesOverlay Checked%DrawResourcesOverlay% , Resource Overlay
+			Gui, Add, Checkbox, xp y+17 vDrawArmySizeOverlay Checked%DrawArmySizeOverlay% , Army Size Overlay
+			Gui, Add, Checkbox, xp y+17 vDrawWorkerOverlay Checked%DrawWorkerOverlay% , Local Harvester Count
+			Gui, Add, Checkbox, xp y+17 vDrawIdleWorkersOverlay Checked%DrawIdleWorkersOverlay%, Idle Worker Count
+			Gui, Add, Checkbox, xp y+17 vDrawLocalPlayerColourOverlay Checked%DrawLocalPlayerColourOverlay%, Local Player Colour
+			Gui, Add, Checkbox, xp y+17 vDrawUnitOverlay Checked%DrawUnitOverlay%, Unit Panel
+			Gui, Add, Checkbox, xp y+17 vDrawUnitUpgrades Checked%DrawUnitUpgrades%, Display Upgrades
+
 			
 	;		Gui, Add, Text, xp-10 y+40, Custom Unit Filter:
 			;Gui, Font, s10
@@ -3948,7 +3960,7 @@ try
 		Gui, Font, s10 norm 
 		
 	text = 
-	( 
+	( ltrim
 	Hold down (and do not release) the "Adjust Overlays" Hotkey (%AdjustOverlayKey% key).
 		
 	You will hear a beep - all the overlays are now adjustable.When you're done, release the "Adjust Overlays" Hotkey. 
@@ -4167,6 +4179,8 @@ try
 	AM_MiniMap_PixelVariance_TT := TT_AM_MiniMap_PixelVariance_TT := "A match will result if  a pixel's colour lies within the +/- variance range.`n`nThis is a percent value 0-100%"
 	TT_AGDelay_TT := AG_Delay_TT := "The program will wait this period of time before adding the select units to a control group.`nUse this if you want the function to look more 'human'.`n`nNote: This may increase the likelihood of miss-grouping units (especially on slow computers or during large battles with high APM)."
 	TempHideMiniMapKey_TT := #TempHideMiniMapKey_TT := "This will disable the minimap overlay for three seconds,`nthereby allowing you to determine if you legitimately have vision of a unit or building."
+	
+	AdjustOverlayKey_TT := #AdjustOverlayKey_TT := "Used to move and resize the overlays."
 	TT_UserMiniMapXScale_TT := TT_UserMiniMapYScale_TT := UserMiniMapYScale_TT := UserMiniMapXScale_TT := "Adjusts the relative size of units on the minimap."
 	TT_MiniMapRefresh_TT := MiniMapRefresh_TT := "Dictates how frequently the minimap is redrawn"
 	BlendUnits_TT := "This will draw the units 'blended together', like SC2 does.`nIn other words, units/buildings grouped together will only have one border around all of them"
@@ -4402,11 +4416,10 @@ Screenshots and replays may be attached below.
 		if attachments
 			attachments := Trim(attachments, " `t`,")
 
-		GuiControl, Disable, B_Report
-		if (error := bugReportPoster(Report_Email, "Bug Report:`n`n" Report_TXT, attachments, ticketNumber))
+		if ((error := bugReportPoster(Report_Email, "Bug Report:`n`n" Report_TXT, attachments, ticketNumber)) >= 1)
 		{
 			GuiControl, ,Report_TXT, %Report_TXT%`n`n`nAuto Bug Report Error:`n%error%
-			msgbox, 1, Error, % "There was an error submitting your report"
+			msgbox, % 49 + 4096, Error, % "There was an error submitting your report"
 				. "`n`nError: " error
 				. "`n`nPress OK to submit the report using your web browser"
 				. "`n`nOtherwise Press cancel"
@@ -4414,11 +4427,19 @@ Screenshots and replays may be attached below.
 				run % url.BugReport
 			else return 
 		}
+		else if (error = -1)
+		{
+			; icon exclamation + task modal
+			msgbox, % 48 + 4096, File Size Limit, % "The attached files are too large."
+				. "`n`nThe combined size of the attachments cannot be greater than 1MB."
+				. "`n`nPlease remove (or compress) some attachments and try again."
+		}
 		else 
 		{
-			msgbox, 64, , Report Sent`n`nTicket Number: %ticketNumber%, 10
+			GuiControl, Disable, B_Report
 			GuiControl, ,Report_Email,
 			GuiControl, ,Report_TXT, `n`n`n`n`n`n%a_tab%%a_tab%Thank You!
+			msgbox, 64, , Report Sent`n`nTicket Number: %ticketNumber%, 10
 		}
 	}
 	return
@@ -4428,19 +4449,6 @@ OptionsTree:
 	OptionTreeEvent := A_GuiEvent
 	OptionTreeEventInfo := A_EventInfo
 	TV_GetText(Menu_TXT, TV_GetSelection())
-
-;	if (OptionTreeEvent != "S")
-;		return 
-
-;	if (OptionTreeEvent = "F" || OptionTreeEvent = "E" || OptionTreeEvent = "K") ; so the menu doesnt get redrawn too frequenctly e.g. user key presses
-;		return  																; require altsubmit-g-label as need to monitor user right clicks
-;	if (OptionTreeEvent = "RightClick")  ; so right clicking will change the selection 
-;	{
-;		if !OptionTreeEventInfo ; there's a bug in AHK with the right click - have GUI on second monitor and right click, Menu_TXT will be blank
-;			send {click}  		; so force a left click on the item
-;		else TV_Modify(OptionTreeEventInfo, "Select") ; this will relaunch the OptionsTree-g-label and unhide the corrrect window
-;		return 
-;	}
 
 	if Menu_TXT  ; there's a bug in AHK with the right click - have GUI on second monitor and right click, Menu_TXT will be blank
 		GUIcontrol, Hide, %unhidden_menu%
@@ -4514,17 +4522,8 @@ OptionsTree:
 		GUIcontrol, Show, Bug_TAB
 		unhidden_menu := "Bug_TAB"
 	}
-	Else return  ;if (OptionTreeEvent != "D")	; due to my OCD making me allow right clicks on treeview item
-		; return 							; there seems to be some possible bug/loop which maxs  and freezes AHK until the icon is clicked
-										; i Think having a return here will break this
-
-
-	; There is some weird bug that occurs after the user clicks 'apply'
-	; After this when ever the user single clicks the treeview, the selection wont change
-	; user has to double click to get it to change, then it works fine.
-	; This is a workaround for this bug
-;	if (OptionTreeEvent = "D" && !GetKeyState("LButton", "P")) ; the gui event says its a drag when the error occurs (but its not really)
-;		send {click 2}
+	Else return  
+	
 	WinSet, Redraw,, Macro Trainer V%ProgramVersion% Settings 				; redrawing whole thing as i noticed very very rarely (when a twitch stream open?) the save/cancel/apply buttons disappear
 ; 	 GUIControl, MoveDraw, GUIListViewIdentifyingVariableForRedraw ; this is the same as redraw (but just for a control? - although it still seems to flicker the entire thing)
  	Return															; this prevents the problem where some of the icons would remain selected
@@ -4537,7 +4536,7 @@ if (A_GuiControl = "EmailAttachmentListViewID")
 	FilePath := A_GuiEvent 		; contains the names separated by `n each file has its full directory path
 else 							; this is different to the multi file select, where the directory folder is only in A_index 1
 {
-	FileSelectFile, FilePath, M1, , Attach Files 
+	FileSelectFile, FilePath, M1, , Attach Files      (The combined attachment size must be less than 1MB)
 	if (errorlevel || !FilePath) ; is set to 1 if the user dismissed the dialog without selecting a file (such as by pressing the Cancel button).
 		return 
 	Else
@@ -6659,7 +6658,6 @@ DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Dr
 				SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
 				Width *= UserScale *.5, Height *= UserScale *.5	
 				Gdip_DrawImage(G, pBitmap, 12*UserScale, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight, MatrixColour[aPlayer[slot_number, "Colour"]])
-				;Gdip_DisposeImage(pBitmap)
 				pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Mineral",Background]
 				SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
 				Width *= UserScale *.5, Height *= UserScale *.5		
@@ -7145,7 +7143,6 @@ CreateHotkeys()
 		hotkey, %ToggleWorkerOverlayKey%, Overlay_Toggle, on
 		hotkey, %ToggleUnitOverlayKey%, Overlay_Toggle, on
 		hotkey, %CycleOverlayKey%, Overlay_Toggle, on
-
 
 	if race_reading 
 		hotkey, %read_races_key%, find_races, on
@@ -8777,7 +8774,7 @@ return
 DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 {
 	GLOBAL aEnemyUnits, aEnemyUnitConstruction, a_pBitmap, aPlayer, aLocalPlayer, aHexColours, GameIdentifier, config_file, UnitOverlayX, UnitOverlayY, MatrixColour 
-		, aUnitInfo, SplitUnitPanel, aEnemyCurrentUpgrades
+		, aUnitInfo, SplitUnitPanel, aEnemyCurrentUpgrades, DrawUnitOverlay, DrawUnitUpgrades
 	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0
 
 	Options := "Center cFFFFFFFF r4 s" 17*UserScale					;these cant be static	
@@ -8819,16 +8816,13 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 	G := Gdip_GraphicsFromHDC(hdc)
 	DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0)
 	setDrawingQuality(G)	
-	Height := haveSplitThisPanel := drawUpgrades := DestY := 0
-
+	Height := DestY := 0
+	rowMultiplier := (DrawUnitOverlay ? (SplitUnitPanel ? 2 : 1) : 0) + (DrawUnitUpgrades ? 1 : 0)
+	
 	for slot_number, priorityObject in aEnemyUnits ; slotnumber = owner and slotnumber is an object
 	{
-		;DestY += Height + (haveSplitThisPanel * Height) + (drawUpgrades * Height)
 		; destY is height of each players first panel row.
-		DestY := (Height + SplitUnitPanel * Height + drawUpgrades * Height) * (A_Index - 1)
-		DestX := 0
-
-		haveSplitThisPanel := False
+		destUnitSplitY := DestY := rowMultiplier * Height * (A_Index - 1)
 
 		If (PlayerIdentifier = 1 Or PlayerIdentifier = 2 )
 		{	
@@ -8855,89 +8849,49 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 			Gdip_DrawImage(G, pBitmap, 12*UserScale, DestY + Height/5, Width, Height, 0, 0, SourceWidth, SourceHeight, MatrixColour[aPlayer[slot_number, "Colour"]])
 			DestX := Width+15*UserScale 
 		}
+		else DestX := 0
 
-		destUpgradesX := destUnitSplitX := firstPictureX := DestX
-		destUpgradesY := destUnitSplitY := DestY
+		; this moves the destionX to the right to account for the race-icon/name
+		firstColumnX  := destUnitSplitX := DestX
 
-		for priority, object in priorityObject
+
+		if DrawUnitOverlay
 		{
-			for unit, unitCount in object
+			for priority, object in priorityObject
 			{
-				if !(pBitmap := a_pBitmap[unit])
-					continue ; as i dont have a picture for that unit - not a real unit?
-				SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
-				Width *= UserScale *.5, Height *= UserScale *.5	
-				
-				; Doing like this as it's a requested feature and im too lazy to change everything to make it simpler
-				if (!aUnitInfo[unit, "isStructure"] && SplitUnitPanel)
+				for unit, unitCount in object
 				{
-					prevStructureX := DestX
-					prevStructureY := DestY
-					DestX := destUnitSplitX
-					DestY := destUnitSplitY + Height * 1.1 	; 1.1 so the tranparent backgrounds of the count and count underconstruction
-					haveSplitThisPanel := True 				; dont overlap
-				} 
-
-				Gdip_DrawImage(G, pBitmap, DestX, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
-				Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, DestX + .6*Width, DestY + .6*Height, Width/2.5, Height/2.5, 5)
-				if (unitCount >= 10)
-					gdip_TextToGraphics(G, unitCount, "x"(DestX + .5*Width + .3*Width/2) "y"(DestY + .5*Height + .35*Height/2)  " Bold cFFFFFFFF r4 s" 9*UserScale, Font)
-				Else
-					gdip_TextToGraphics(G, unitCount, "x"(DestX + .5*Width + .4*Width/2) "y"(DestY + .5*Height + .35*Height/2)  " Bold cFFFFFFFF r4 s" 9*UserScale, Font)
-
-				if (unitCount := aEnemyUnitConstruction[slot_number, priority, unit])	; so there are some of this unit being built lets draw the count on top of the completed units
-				{
-					;	Gdip_FillRoundedRectangle(G, a_pBrush[TransparentBlack], DestX, DestY + .6*Height, Width/2.5, Height/2.5, 5)
-						Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, DestX + .6*Width, DestY, Width/2.5, Height/2.5, 5)
-						if (unitCount >= 10)
-							gdip_TextToGraphics(G, unitCount, "x"(DestX + .5*Width + .3*Width/2) "y"(DestY + .15*Height/2)  " Bold Italic cFFFFFFFF r4 s" 9*UserScale, Font)
-						Else
-							gdip_TextToGraphics(G, unitCount, "x"(DestX + .5*Width + .4*Width/2) "y"(DestY + .15*Height/2)  " Bold Italic cFFFFFFFF r4 s" 9*UserScale, Font)
-						aEnemyUnitConstruction[slot_number, priority].remove(unit, "")
-				}
-				if (!aUnitInfo[unit, "isStructure"] && SplitUnitPanel)
-				{
-					destUnitSplitX += (Width+5*UserScale)
-					DestX := prevStructureX
-					DestY := prevStructureY
-				}
-				else DestX += (Width+5*UserScale)
-			}
-
-		}
-		 DestX += (Width+5*UserScale) ; to end buildings in construction appear further to the right
-		 destUnitSplitX += (Width+5*UserScale) ; to constructing units in construction appear further to the right
-		; in case no units in construction
-
-		; I think if the unit panel is split, all of these units should be structures
-		; so I dont have to worry about checking structure or not
-		; wrong! some units like morphing archons are considered underconstruction!
-
-		for ConstructionPriority, priorityConstructionObject in aEnemyUnitConstruction[slot_number]
-		{
-			for unit, unitCount in priorityConstructionObject		;	lets draw the buildings under construction (these are ones which werent already drawn above)
-			{	
-				if (unit != "TotalCount" && pBitmap := a_pBitmap[unit])				;	i.e. there are no already completed buildings of same type
-				{
+					if !(pBitmap := a_pBitmap[unit])
+						continue ; as i dont have a picture for that unit - not a real unit?
 					SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
 					Width *= UserScale *.5, Height *= UserScale *.5	
 					
+					; Doing like this as it's a requested feature and im too lazy to change everything to make it simpler
 					if (!aUnitInfo[unit, "isStructure"] && SplitUnitPanel)
 					{
 						prevStructureX := DestX
 						prevStructureY := DestY
 						DestX := destUnitSplitX
-						DestY := destUnitSplitY + Height * 1.1 	; 1.1 so the tranparent backgrounds of the count and count underconstruction
-						haveSplitThisPanel := True 				; dont overlap 
+						DestY := destUnitSplitY + Height * 1.1 	; 1.1 so the tranparent backgrounds of the count and count underconstruction dont overlap
 					} 
 
 					Gdip_DrawImage(G, pBitmap, DestX, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
-					Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, DestX + .6*Width, DestY, Width/2.5, Height/2.5, 5)
+					Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, DestX + .6*Width, DestY + .6*Height, Width/2.5, Height/2.5, 5)
 					if (unitCount >= 10)
-						gdip_TextToGraphics(G, unitCount, "x"(DestX + .5*Width + .3*Width/2) "y"(DestY + .15*Height/2)  " Bold Italic cFFFFFFFF r4 s" 9*UserScale, Font)
+						gdip_TextToGraphics(G, unitCount, "x"(DestX + .5*Width + .3*Width/2) "y"(DestY + .5*Height + .35*Height/2)  " Bold cFFFFFFFF r4 s" 9*UserScale, Font)
 					Else
-						gdip_TextToGraphics(G, unitCount, "x"(DestX + .5*Width + .4*Width/2) " y"(DestY + .15*Height/2)  " Bold Italic cFFFFFFFF r4 s" 9*UserScale, Font)
-					
+						gdip_TextToGraphics(G, unitCount, "x"(DestX + .5*Width + .4*Width/2) "y"(DestY + .5*Height + .35*Height/2)  " Bold cFFFFFFFF r4 s" 9*UserScale, Font)
+
+					if (unitCount := aEnemyUnitConstruction[slot_number, priority, unit])	; so there are some of this unit being built lets draw the count on top of the completed units
+					{
+						;	Gdip_FillRoundedRectangle(G, a_pBrush[TransparentBlack], DestX, DestY + .6*Height, Width/2.5, Height/2.5, 5)
+							Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, DestX + .6*Width, DestY, Width/2.5, Height/2.5, 5)
+							if (unitCount >= 10)
+								gdip_TextToGraphics(G, unitCount, "x"(DestX + .5*Width + .3*Width/2) "y"(DestY + .15*Height/2)  " Bold Italic cFFFFFFFF r4 s" 9*UserScale, Font)
+							Else
+								gdip_TextToGraphics(G, unitCount, "x"(DestX + .5*Width + .4*Width/2) "y"(DestY + .15*Height/2)  " Bold Italic cFFFFFFFF r4 s" 9*UserScale, Font)
+							aEnemyUnitConstruction[slot_number, priority].remove(unit, "")
+					}
 					if (!aUnitInfo[unit, "isStructure"] && SplitUnitPanel)
 					{
 						destUnitSplitX += (Width+5*UserScale)
@@ -8946,51 +8900,91 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 					}
 					else DestX += (Width+5*UserScale)
 				}
-			}
-		}
-	
-		if 1
-		{
-			destUpgradesY := DestY + (Height * 1.1) + (Height * 1.1) * SplitUnitPanel
 
-			DestX := destUpgradesX
-			drawUpgrades := True
+			
+			}
+			 destUnitSplitX := DestX += (Width+5*UserScale) ; constructing units / buildings in construction appear further to the right
+
+			; in case no units in construction
+
+			; I think if the unit panel is split, all of these units should be structures
+			; so I dont have to worry about checking structure or not
+			; wrong! some units like morphing archons are considered underconstruction!
+
+			for ConstructionPriority, priorityConstructionObject in aEnemyUnitConstruction[slot_number]
+			{
+				for unit, unitCount in priorityConstructionObject		;	lets draw the buildings under construction (these are ones which werent already drawn above)
+				{	
+					if (unit != "TotalCount" && pBitmap := a_pBitmap[unit])				;	i.e. there are no already completed buildings of same type
+					{
+						SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
+						Width *= UserScale *.5, Height *= UserScale *.5	
+						
+						if (!aUnitInfo[unit, "isStructure"] && SplitUnitPanel)
+						{
+							prevStructureX := DestX
+							prevStructureY := DestY
+							DestX := destUnitSplitX
+							DestY := destUnitSplitY + Height * 1.1 	; 1.1 so the tranparent backgrounds of the count and count underconstruction dont overlap 
+						} 
+
+						Gdip_DrawImage(G, pBitmap, DestX, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
+						Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, DestX + .6*Width, DestY, Width/2.5, Height/2.5, 5)
+						if (unitCount >= 10)
+							gdip_TextToGraphics(G, unitCount, "x"(DestX + .5*Width + .3*Width/2) "y"(DestY + .15*Height/2)  " Bold Italic cFFFFFFFF r4 s" 9*UserScale, Font)
+						Else
+							gdip_TextToGraphics(G, unitCount, "x"(DestX + .5*Width + .4*Width/2) " y"(DestY + .15*Height/2)  " Bold Italic cFFFFFFFF r4 s" 9*UserScale, Font)
+						
+						if (!aUnitInfo[unit, "isStructure"] && SplitUnitPanel)
+						{
+							destUnitSplitX += (Width+5*UserScale)
+							DestX := prevStructureX
+							DestY := prevStructureY
+						}
+						else DestX += (Width+5*UserScale)
+					}
+				}
+			}
+				; This is here to find the longest unit panel (as they will be different size for different players)
+			if (DestX + Width > WindowWidth)
+				WindowWidth := DestX
+			else if (destUnitSplitX + Width > WindowWidth)
+				WindowWidth := destUnitSplitX
+		}
+		if DrawUnitUpgrades
+		{
+			;destUpgradesY := DestY  + Height * 1.1 * (SplitUnitPanel + DrawUnitOverlay) * DrawUnitOverlay
+			destUpgradesY := DestY  + Height * 1.1 * (rowMultiplier - 1)
+			UpgradeX := firstColumnX
+
 			for item, progress in aEnemyCurrentUpgrades[slot_number]
 			{
 				if (pBitmap := a_pBitmap[item])
 				{
 					SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
 					Width *= UserScale *.5, Height *= UserScale *.5	
-					Gdip_DrawImage(G, pBitmap, DestX, destUpgradesY, Width, Height, 0, 0, SourceWidth, SourceHeight)					
+					Gdip_DrawImage(G, pBitmap, UpgradeX, destUpgradesY, Width, Height, 0, 0, SourceWidth, SourceHeight)					
 
 ;					Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, DestX, destUpgradesY+5+Height, Width, Height/10, 3)
 ;					Gdip_FillRoundedRectangle(G, a_pBrushes.Green, DestX, destUpgradesY+5+Height, Width*progress, Height/10, progress < 3 ? progress : 3)
-					; all the icons (even unit ones) have an invisible border around them. Hence deduct 5 pixels from the width so
+					; all the icons (even unit ones) have an invisible border around them. Hence deduct 10 pixels from the width and and 5 to destX
 					; the progress bar doest start too far to the left of the icon, and doesn't finish too far to the right
-					Gdip_FillRectangle(G, a_pBrushes.TransparentBlack, DestX + 5 * UserScale *.5, destUpgradesY+5+Height, Width - 5 * UserScale *.5, Height/15)
-					Gdip_FillRectangle(G, a_pBrushes.Green, DestX + 5 * UserScale *.5, destUpgradesY+5+Height, Width*progress - progress * 5 * UserScale *.5, Height/15)
+					Gdip_FillRectangle(G, a_pBrushes.TransparentBlack, UpgradeX + 5 * UserScale *.5, destUpgradesY+Height, Width - 10 * UserScale *.5, Height/15)
+					Gdip_FillRectangle(G, a_pBrushes.Green, UpgradeX + 5 * UserScale *.5, destUpgradesY+Height, Width*progress - progress * 10 * UserScale *.5, Height/15)
 
-
-					DestX += (Width+5*UserScale)
+					UpgradeX += (Width+5*UserScale)
 				}
 
 			}
-
-
+			; This is here to find the longest unit panel (as they will be different size for different players)
+			if (UpgradeX + Width > WindowWidth)
+				WindowWidth := UpgradeX
 		}
-
-
-
-
-		; This is here to find the longest unit panel (as they will be different size for different players)
-		if (DestX + Width > WindowWidth)
-			WindowWidth := DestX
 		Height += 10*userscale	;needed to stop the edge of race pic overlap'n due to Supply pic -prot then zerg
 	}
 
 	; 2*height easy way to ensure the last split unit panel doesn't get cut off
-;	WindowHeight := DestY + 2*Height
-	WindowHeight := DestY + 2*Height *2
+	WindowHeight := DestY + 3*Height
 
 	Gdip_DeleteGraphics(G)
 	UpdateLayeredWindow(hwnd1, hdc,,,WindowWidth,WindowHeight)
