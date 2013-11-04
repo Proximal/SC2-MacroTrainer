@@ -37,6 +37,43 @@ setLowLevelInputHooks(Install)
 	}
 }
 
+swapMonitoringForBlockingHooks(Install)
+{
+	static kHook, mHook
+	, kBlockCallBack := RegisterCallback("KeyboardBlockHook")
+	, mBlockCallBack := RegisterCallback("MouseBlockHook")
+	
+	if install
+	{
+		setLowLevelInputHooks(False)
+		if kHook
+			UnhookWindowsHookEx(kHook)
+		kHook := SetWindowsHookEx(13, kBlockCallBack)
+		if mHook
+			UnhookWindowsHookEx(mHook)
+		mHook := SetWindowsHookEx(14, mBlockCallBack)
+		; emergency restart key wont work while input blocked
+		; so this is a safety timer if the hook still exits
+		; after 15 seconds
+		SetTimer, safetyBlockingHookTimeOut, -15000
+	}
+	else 
+	{
+		UnhookWindowsHookEx(kHook), kHook := 0
+		UnhookWindowsHookEx(mHook), mHook := 0
+		SetTimer, safetyBlockingHookTimeOut, off
+		setLowLevelInputHooks(False) ;so cant double up on hooks if call false on install twice in a row (though the hook function would remove any existing hooks anyway)
+		setLowLevelInputHooks(True)
+	}
+	return
+
+	safetyBlockingHookTimeOut:
+	swapMonitoringForBlockingHooks(false)
+	return
+}
+
+
+
 ; only lookup the callback once for each function
 setMTKeyboardHook(Install)
 {
@@ -115,6 +152,27 @@ MouseHook(nCode, wParam, lParam)
 		if (input.isMouseBlocked() && !(NumGet(lParam+12) & 0x10))  ; LLKHF_INJECTED
 			return -1
 	}
+   	Return CallNextHookEx(nCode, wParam, lParam) ; make sure other hooks in the chain receive this event if we didn't process it
+}
+
+KeyboardBlockHook(nCode, wParam, lParam)
+{	
+	static WM_KEYUP := 0x101
+	Critical 1000
+
+	If (!nCode && wParam != WM_KEYUP && !(NumGet(lParam+8) & 0x10)) 
+  		return -1 
+   	Return CallNextHookEx(nCode, wParam, lParam) ; make sure other hooks in the chain receive this event if we didn't process it
+}
+
+MouseBlockHook(nCode, wParam, lParam)
+{
+	static WM_KEYUP := 0x101
+	Critical 1000
+	; if this var contains some info about a keyboard event
+	; and its not a key up or LLKHF_INJECTED key or mouse move event
+	If (!nCode && wParam != 0x200 && wParam != WM_KEYUP && !(NumGet(lParam+8) & 0x10))  ;WM_MOUSEMOVE := 0x200
+		return -1
    	Return CallNextHookEx(nCode, wParam, lParam) ; make sure other hooks in the chain receive this event if we didn't process it
 }
 

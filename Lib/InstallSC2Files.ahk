@@ -201,6 +201,9 @@ InstallSC2Files()
 	FileInstall, Included Files\Used_Icons\Upgrades\Protoss\ResearchGraviticBooster.png, %A_Temp%\UnitPanelMacroTrainer\ResearchGraviticBooster.png, 1
 	FileInstall, Included Files\Used_Icons\Upgrades\Protoss\ResearchGraviticDrive.png, %A_Temp%\UnitPanelMacroTrainer\ResearchGraviticDrive.png, 1
 	FileInstall, Included Files\Used_Icons\Upgrades\Protoss\ResearchInterceptorLaunchSpeedUpgrade.png, %A_Temp%\UnitPanelMacroTrainer\ResearchInterceptorLaunchSpeedUpgrade.png, 1
+	
+	FileInstall, Included Files\Used_Icons\Upgrades\Terran\ResearchTransformationServos.png, %A_Temp%\UnitPanelMacroTrainer\ResearchTransformationServos.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Terran\ResearchDrillClaws.png, %A_Temp%\UnitPanelMacroTrainer\ResearchDrillClaws.png, 1
 	FileInstall, Included Files\Used_Icons\Upgrades\Terran\ResearchBattlecruiserEnergyUpgrade.png, %A_Temp%\UnitPanelMacroTrainer\ResearchBattlecruiserEnergyUpgrade.png, 1
 	FileInstall, Included Files\Used_Icons\Upgrades\Terran\NukeArm.png, %A_Temp%\UnitPanelMacroTrainer\NukeArm.png, 1
 	FileInstall, Included Files\Used_Icons\Upgrades\Terran\ResearchBansheeCloak.png, %A_Temp%\UnitPanelMacroTrainer\ResearchBansheeCloak.png, 1

@@ -1,3 +1,5 @@
+ ; Get the name of the system's default language.
+ ; not the current keyboard/input language!
 getSystemLanguage()
 {
 	languageCode_0436 = Afrikaans

@@ -271,11 +271,11 @@ if (MTCustomProgramName && A_ScriptName != MTCustomProgramName && A_IsCompiled)
 	ExitApp
 }
 
-if (!instr(getSystemLanguage(), "English") && !MT_HasWarnedLanguage)
+if (!isInputLanguageEnglish() && !MT_HasWarnedLanguage)
 {
 	IniWrite, 1, %config_file%, Misc Info, MT_HasWarnedLanguage
-	msgbox % "It seems you are using a non-English language/character-set.`nThis program may not function correctly with non-English keyboard layouts."
-			. "`n`nIf you experience problems, perhaps try changing your keyboard layout/language to English."
+	msgbox, % 32 + 4096, Non-English Input Language, % "It seems you are using a non-English language/character-set.`nThis program may not function correctly with non-English keyboard layouts."
+			. "`n`nIf you experience problems, perhaps try changing your keyboard-input layout/language to English."
 			. "`n`nYou will not see this warning again."
 }
 
@@ -405,7 +405,7 @@ g_EmergencyRestart:
 		EmergencyInputCount++		 
 		If (EmergencyInputCount = 1)
 		{
-			BufferInputFast.disableHotkeys()
+		;	BufferInputFast.disableHotkeys()
 			CreateHotkeys()
 		}
 		else If (EmergencyInputCount >= 3)
@@ -916,7 +916,7 @@ clock:
 		CreateHotkeys()
 		if !A_IsCompiled
 		{
-			Hotkey, If, WinActive(GameIdentifier) && time && !BufferInputFast.isInputBlockedOrBuffered()
+			Hotkey, If, WinActive(GameIdentifier) && time
 			hotkey, >!g, g_GLHF
 			Hotkey, If
 		}	
@@ -949,8 +949,9 @@ setupSelectArmyUnits(l_input, aUnitID)
 Cast_ChronoStructure:
 	UserPressedHotkey := A_ThisHotkey ; as this variable can get changed very quickly
 	Thread, NoTimers, True
-	BufferInputFast.createHotkeys(aButtons.List)
-	BufferInputFast.BlockInput()
+;	BufferInputFast.createHotkeys(aButtons.List)
+;	BufferInputFast.BlockInput()
+	swapMonitoringForBlockingHooks(True)
 	if (UserPressedHotkey = Cast_ChronoStargate_Key)
 		Cast_ChronoStructure(aUnitID.Stargate)
 	Else if (UserPressedHotkey = Cast_ChronoForge_Key)
@@ -961,8 +962,9 @@ Cast_ChronoStructure:
 		Cast_ChronoStructure(aUnitID.WarpGate) ; this will also do gateways	
 	Else If (UserPressedHotkey = Cast_ChronoRoboticsFacility_Key)
 		Cast_ChronoStructure(aUnitID.RoboticsFacility) ; this will also do gateways
-	BufferInputFast.disableBufferingAndBlocking()
-	BufferInputFast.disableHotkeys()
+;	BufferInputFast.disableBufferingAndBlocking()
+;	BufferInputFast.disableHotkeys()
+	swapMonitoringForBlockingHooks(False)
 return
 
 
@@ -1296,13 +1298,16 @@ cast_inject:
 		;chat is 0 when  menu is in focus
 	Thread, NoTimers, true  ;cant use critical with input buffer, as prevents hotkey threads launching and hence tracking input				
 	MouseGetPos, start_x, start_y
-	BufferInputFast.createHotkeys(aButtons.List)
-	BufferInputFast.BlockInput()
+;	BufferInputFast.createHotkeys(aButtons.List)
+;	BufferInputFast.BlockInput()
+	swapMonitoringForBlockingHooks(True)
 	castInjectLarva(auto_inject, 0, auto_inject_sleep) ;ie nomral injectmethod
 	If HumanMouse
 		MouseMoveHumanSC2("x" start_x "y" start_y "t" HumanMouseTimeLo)
-	BufferInputFast.disableBufferingAndBlocking()
-	BufferInputFast.disableHotkeys()
+	swapMonitoringForBlockingHooks(False)
+	;BufferInputFast.disableBufferingAndBlocking()
+	;BufferInputFast.disableHotkeys()
+	
 	Thread, NoTimers, false
 	inject_set := getTime()  
 	if auto_inject_alert
@@ -2224,7 +2229,7 @@ ini_settings_write:
 
 		Try 
 		{
-			Hotkey, If, WinActive(GameIdentifier) && !BufferInputFast.isInputBlockedOrBuffered() 						
+			Hotkey, If, WinActive(GameIdentifier)						
 			hotkey, %warning_toggle_key%, off			; 	deactivate the hotkeys
 														; 	so they can be updated with their new keys
 														;	
@@ -2234,7 +2239,7 @@ ini_settings_write:
 														; still left the overall try just incase i missed something
 														; gives the user a friendlier error
 
-			Hotkey, If, WinActive(GameIdentifier) && time && !BufferInputFast.isInputBlockedOrBuffered()	
+			Hotkey, If, WinActive(GameIdentifier) && time	
 			hotkey, %worker_count_local_key%, off
 			hotkey, %worker_count_enemy_key%, off
 			hotkey, %Playback_Alert_Key%, off
@@ -2252,28 +2257,28 @@ ini_settings_write:
 		try	hotkey, %inject_start_key%, off
 		try	hotkey, %inject_reset_key%, off	
 
-			Hotkey, If, WinActive(GameIdentifier) && time && !isMenuOpen() && SelectArmyEnable && !BufferInputFast.isInputBlockedOrBuffered()
+			Hotkey, If, WinActive(GameIdentifier) && time && !isMenuOpen() && SelectArmyEnable
 			hotkey, %castSelectArmy_key%, off
-			Hotkey, If, WinActive(GameIdentifier) && time && !isMenuOpen() && SplitUnitsEnable && !BufferInputFast.isInputBlockedOrBuffered()
+			Hotkey, If, WinActive(GameIdentifier) && time && !isMenuOpen() && SplitUnitsEnable
 			hotkey, %castSplitUnit_key%, off
-			Hotkey, If, WinActive(GameIdentifier) && time && !isMenuOpen() && RemoveUnitEnable && !BufferInputFast.isInputBlockedOrBuffered()
+			Hotkey, If, WinActive(GameIdentifier) && time && !isMenuOpen() && RemoveUnitEnable
 			hotkey, %castRemoveUnit_key%, off
-			Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Zerg") && (auto_inject <> "Disabled") && time && !BufferInputFast.isInputBlockedOrBuffered()
+			Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Zerg") && (auto_inject <> "Disabled") && time
 			hotkey, %cast_inject_key%, off
 			hotkey, %F_InjectOff_Key%, Cast_DisableInject, on	
-			Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && CG_Enable && time && !BufferInputFast.isInputBlockedOrBuffered()
+			Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && CG_Enable && time
 			hotkey, %Cast_ChronoGate_Key%, off
-			Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableForge && time && !BufferInputFast.isInputBlockedOrBuffered()
+			Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableForge && time
 			hotkey, %Cast_ChronoForge_Key%, off
-			Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableStargate && time && !BufferInputFast.isInputBlockedOrBuffered()
+			Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableStargate && time
 			hotkey, %Cast_ChronoStargate_Key%, off		
-			Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableNexus && time && !BufferInputFast.isInputBlockedOrBuffered()
+			Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableNexus && time
 			hotkey, %Cast_ChronoNexus_Key%, off
-			Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableRoboticsFacility && time && !BufferInputFast.isInputBlockedOrBuffered()
+			Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableRoboticsFacility && time
 			hotkey, %Cast_ChronoRoboticsFacility_Key%, off
-			Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Terran" || aLocalPlayer["Race"] = "Protoss")  && time && !BufferInputFast.isInputBlockedOrBuffered()	
+			Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Terran" || aLocalPlayer["Race"] = "Protoss")  && time
 			hotkey, %ToggleAutoWorkerState_Key%, off		
-			Hotkey, If, WinActive(GameIdentifier) && !isMenuOpen() && time && !BufferInputFast.isInputBlockedOrBuffered()
+			Hotkey, If, WinActive(GameIdentifier) && !isMenuOpen() && time
 			Hotkey, %ping_key%, off		
 			while (10 > i := A_index - 1)
 			{
@@ -3317,8 +3322,8 @@ try
 		Gui, Add, Text, xp y+10, Problem Description:
 
 
-		BugText =  
-	(
+	BugText =  
+	(ltrim
 
 	A return email address is REQUIRED if you are looking for a follow up to your query.
 
@@ -3868,26 +3873,22 @@ try
 
 	Gui, Tab, Overlays
 			;Gui, add, text, y+20 X%XTabX%, Display Overlays:
-			Gui, Add, GroupBox, y+30 x+20  w170 h260 section, Display Overlays:
+			Gui, Add, GroupBox, y+20 x+20  w170 h230 section, Display Overlays:
 			Gui, Add, Checkbox, xp+10 yp+25 vDrawIncomeOverlay Checked%DrawIncomeOverlay% , Income Overlay
-			Gui, Add, Checkbox, xp y+17 vDrawResourcesOverlay Checked%DrawResourcesOverlay% , Resource Overlay
-			Gui, Add, Checkbox, xp y+17 vDrawArmySizeOverlay Checked%DrawArmySizeOverlay% , Army Size Overlay
-			Gui, Add, Checkbox, xp y+17 vDrawWorkerOverlay Checked%DrawWorkerOverlay% , Local Harvester Count
-			Gui, Add, Checkbox, xp y+17 vDrawIdleWorkersOverlay Checked%DrawIdleWorkersOverlay%, Idle Worker Count
-			Gui, Add, Checkbox, xp y+17 vDrawLocalPlayerColourOverlay Checked%DrawLocalPlayerColourOverlay%, Local Player Colour
-			Gui, Add, Checkbox, xp y+17 vDrawUnitOverlay Checked%DrawUnitOverlay%, Unit Panel
-			Gui, Add, Checkbox, xp y+17 vDrawUnitUpgrades Checked%DrawUnitUpgrades%, Display Upgrades
-
+			Gui, Add, Checkbox, xp y+20 vDrawResourcesOverlay Checked%DrawResourcesOverlay% , Resource Overlay
+			Gui, Add, Checkbox, xp y+20 vDrawArmySizeOverlay Checked%DrawArmySizeOverlay% , Army Size Overlay
+			Gui, Add, Checkbox, xp y+20 vDrawWorkerOverlay Checked%DrawWorkerOverlay% , Local Harvester Count
+			Gui, Add, Checkbox, xp y+20 vDrawIdleWorkersOverlay Checked%DrawIdleWorkersOverlay%, Idle Worker Count
+			Gui, Add, Checkbox, xp y+20 vDrawLocalPlayerColourOverlay Checked%DrawLocalPlayerColourOverlay%, Local Player Colour
 			
-	;		Gui, Add, Text, xp-10 y+40, Custom Unit Filter:
-			;Gui, Font, s10
-			Gui, Add, Button, center xp-10 y+60 w120 h40 Gg_GUICustomUnitPanel, UnitPanel Filter
-			;Gui, Font,
+			Gui, Add, GroupBox, xs ys+245 w170 h160, Match Overlay:
+			Gui, Add, Checkbox, xp+10 yp+25 vDrawUnitUpgrades Checked%DrawUnitUpgrades%, Show Upgrades
+			Gui, Add, Checkbox, xp y+15 vDrawUnitOverlay Checked%DrawUnitOverlay%, Show Unit Count/Production
+			Gui, Add, Checkbox, xp y+15 vSplitUnitPanel Checked%SplitUnitPanel% , Split Units/Buildings
+			Gui, Add, Button, center xp+15 y+15 w100 h35 vUnitPanelFilterButton Gg_GUICustomUnitPanel, Unit Panel Filter
 
-
-			Gui, Add, GroupBox, ys XS+205 w170 h260, Overlays Misc:
-			Gui, Add, Checkbox, yp+25 xp+10 vOverlayBackgrounds Checked%OverlayBackgrounds% , Show Icon Background		
-			Gui, Add, Checkbox, xp y+15 vSplitUnitPanel Checked%SplitUnitPanel% , Split Unit Panel		
+			Gui, Add, GroupBox, ys XS+205 w170 h230, Overlays Misc:
+			Gui, Add, Checkbox, yp+25 xp+10 vOverlayBackgrounds Checked%OverlayBackgrounds% , Show Icon Background						
 			Gui, Add, Text, yp+25 w80, Player Identifier:
 			if OverlayIdent in 0,1,2,3
 				droplist3_var := OverlayIdent + 1
@@ -4071,7 +4072,9 @@ try
 
 	DrawWorkerOverlay_TT := "Displays your current harvester count with a worker icon"
 	DrawIdleWorkersOverlay_TT := "While idle workers exist, a worker icon will be displayed with the current idle count.`n`nThe size and position can be changed easily so that it grabs your attention."
-	DrawUnitOverlay_TT := "Displays the enemies current units.`nThis is similar to the 'observer' panel.`n`nUse the 'unit panel filter' to selectively remove/display units."
+	DrawUnitOverlay_TT := "Displays an overlay similar to the 'observer panel', listing the current and in-production unit counts.`n`nUse the 'unit panel filter' to selectively remove/display units."
+	DrawUnitUpgrades_TT := "Displays the current enemy upgrades."
+	UnitPanelFilterButton_TT := "Allows units to be selectively removed from the overlay."
 
 	ToggleAutoWorkerState_Key_TT := #ToggleAutoWorkerState_Key_TT := "Toggles (enables/disables) this function for the CURRENT match.`n`nWill only work during a match"
 	AutoWorkerProtectionDelay_TT := TT_AutoWorkerProtectionDelay_TT := "After a round a of workers has been made the function will sleep for this period of time (ms).`nThis helps prevent queueing too many workers.`n`n"
@@ -4112,7 +4115,7 @@ try
 	MI_Queen_Group_TT := #MI_Queen_Group_TT := "The queens in this control are used to inject hatcheries.`n`nHence you must add your injecting queens to this control group!"
 	F_InjectOff_Key_TT := #F_InjectOff_Key_TT := "During a match this hotkey will toggle (either disable or enable) automatic injects."
 
-	SplitUnitPanel_TT := "When enabled, the unit panel will display units on separate a line to structures."
+	SplitUnitPanel_TT := "When enabled, the overlay will display units on separate a line to structures."
 	OverlayIdent_TT := "Changes or disables the method of identifying players in the overlays."
 
 	Playback_Alert_Key_TT := #Playback_Alert_Key_TT := "Repeats the previous alert"
@@ -4180,6 +4183,11 @@ try
 	TT_AGDelay_TT := AG_Delay_TT := "The program will wait this period of time before adding the select units to a control group.`nUse this if you want the function to look more 'human'.`n`nNote: This may increase the likelihood of miss-grouping units (especially on slow computers or during large battles with high APM)."
 	TempHideMiniMapKey_TT := #TempHideMiniMapKey_TT := "This will disable the minimap overlay for three seconds,`nthereby allowing you to determine if you legitimately have vision of a unit or building."
 	
+	ToggleUnitOverlayKey_TT := #ToggleUnitOverlayKey_TT := "Toggles the unit panel between the following states:"
+						. "`n`n  -Units/structures"
+						. "`n  -Units/structures + Upgrades"
+						. "`n  -Upgrades."
+
 	AdjustOverlayKey_TT := #AdjustOverlayKey_TT := "Used to move and resize the overlays."
 	TT_UserMiniMapXScale_TT := TT_UserMiniMapYScale_TT := UserMiniMapYScale_TT := UserMiniMapXScale_TT := "Adjusts the relative size of units on the minimap."
 	TT_MiniMapRefresh_TT := MiniMapRefresh_TT := "Dictates how frequently the minimap is redrawn"
@@ -4523,7 +4531,7 @@ OptionsTree:
 		unhidden_menu := "Bug_TAB"
 	}
 	Else return  
-	
+
 	WinSet, Redraw,, Macro Trainer V%ProgramVersion% Settings 				; redrawing whole thing as i noticed very very rarely (when a twitch stream open?) the save/cancel/apply buttons disappear
 ; 	 GUIControl, MoveDraw, GUIListViewIdentifyingVariableForRedraw ; this is the same as redraw (but just for a control? - although it still seems to flicker the entire thing)
  	Return															; this prevents the problem where some of the icons would remain selected
@@ -7102,34 +7110,34 @@ CreateHotkeys()
  	input.pClickDelay(pClickDelay)
  	EventKeyDelay := -1
 
-	#If, WinActive(GameIdentifier) && !BufferInputFast.isInputBlockedOrBuffered()
+	#If, WinActive(GameIdentifier)
 	#If, WinActive(GameIdentifier) && LwinDisable && getTime()	
-	#If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Zerg") && !isMenuOpen() && time && !BufferInputFast.isInputBlockedOrBuffered()
-	#If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Zerg") && (auto_inject <> "Disabled") && time && !BufferInputFast.isInputBlockedOrBuffered()
-	#If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && CG_Enable && time && !BufferInputFast.isInputBlockedOrBuffered()
-	#If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableForge && time && !BufferInputFast.isInputBlockedOrBuffered()
-	#If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableStargate && time && !BufferInputFast.isInputBlockedOrBuffered()
-	#If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableNexus && time && !BufferInputFast.isInputBlockedOrBuffered()
-	#If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableRoboticsFacility && time && !BufferInputFast.isInputBlockedOrBuffered()
-	#If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Terran" || aLocalPlayer["Race"] = "Protoss")  && time && !BufferInputFast.isInputBlockedOrBuffered()
-	#If, WinActive(GameIdentifier) && time && !isMenuOpen() && EnableAutoWorker%LocalPlayerRace% && !BufferInputFast.isInputBlockedOrBuffered()
-	#If, WinActive(GameIdentifier) && time && !isMenuOpen() && SelectArmyEnable && !BufferInputFast.isInputBlockedOrBuffered()
-	#If, WinActive(GameIdentifier) && time && !isMenuOpen() && SplitUnitsEnable && !BufferInputFast.isInputBlockedOrBuffered()
-	#If, WinActive(GameIdentifier) && time && !isMenuOpen() && RemoveUnitEnable && !BufferInputFast.isInputBlockedOrBuffered()
-	#If, WinActive(GameIdentifier) && !isMenuOpen() && time && !BufferInputFast.isInputBlockedOrBuffered()
-	#If, WinActive(GameIdentifier) && time && !BufferInputFast.isInputBlockedOrBuffered()
+	#If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Zerg") && !isMenuOpen() && time
+	#If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Zerg") && (auto_inject <> "Disabled") && time
+	#If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && CG_Enable && time
+	#If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableForge && time
+	#If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableStargate && time
+	#If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableNexus && time
+	#If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableRoboticsFacility && time
+	#If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Terran" || aLocalPlayer["Race"] = "Protoss")  && time
+	#If, WinActive(GameIdentifier) && time && !isMenuOpen() && EnableAutoWorker%LocalPlayerRace%
+	#If, WinActive(GameIdentifier) && time && !isMenuOpen() && SelectArmyEnable
+	#If, WinActive(GameIdentifier) && time && !isMenuOpen() && SplitUnitsEnable
+	#If, WinActive(GameIdentifier) && time && !isMenuOpen() && RemoveUnitEnable
+	#If, WinActive(GameIdentifier) && !isMenuOpen() && time
+	#If, WinActive(GameIdentifier) && time
 	#If, WinActive(GameIdentifier) && !isMenuOpen() && EasyUnload%LocalPlayerRace%Enable && time
 	#If
-	Hotkey, If, WinActive(GameIdentifier) && !BufferInputFast.isInputBlockedOrBuffered() 														
+	Hotkey, If, WinActive(GameIdentifier)
 		hotkey, %warning_toggle_key%, mt_pause_resume, on		
 		hotkey, *~LButton, g_LbuttonDown, on
 
 	Hotkey, If, WinActive(GameIdentifier) && LwinDisable && getTime()
 			hotkey, *Lwin, g_DoNothing, on		
 
-	Hotkey, If, WinActive(GameIdentifier) && !isMenuOpen() && time && !BufferInputFast.isInputBlockedOrBuffered()
+	Hotkey, If, WinActive(GameIdentifier) && !isMenuOpen() && time
 		hotkey, %ping_key%, ping, on									;on used to re-enable hotkeys as were 
-	Hotkey, If, WinActive(GameIdentifier) && time && !BufferInputFast.isInputBlockedOrBuffered()		;turned off during save to allow for swaping of keys
+	Hotkey, If, WinActive(GameIdentifier) && time	;turned off during save to allow for swaping of keys
 		hotkey, %worker_count_local_key%, worker_count, on
 		hotkey, %worker_count_enemy_key%, worker_count, on
 		hotkey, %Playback_Alert_Key%, g_PrevWarning, on					
@@ -7158,31 +7166,31 @@ CreateHotkeys()
 	Hotkey, If, WinActive(GameIdentifier) && !isMenuOpen() && EasyUnload`%LocalPlayerRace`%Enable && time
 		hotkey, %EasyUnloadHotkey%, gEasyUnload, on
 
-	Hotkey, If, WinActive(GameIdentifier) && time && !isMenuOpen() && SelectArmyEnable && !BufferInputFast.isInputBlockedOrBuffered()
+	Hotkey, If, WinActive(GameIdentifier) && time && !isMenuOpen() && SelectArmyEnable
 		hotkey, %castSelectArmy_key%, g_SelectArmy, on  ; buffer to make double tap better remove 50ms delay
-	Hotkey, If, WinActive(GameIdentifier) && time && !isMenuOpen() && SplitUnitsEnable && !BufferInputFast.isInputBlockedOrBuffered()
+	Hotkey, If, WinActive(GameIdentifier) && time && !isMenuOpen() && SplitUnitsEnable
 		hotkey, %castSplitUnit_key%, g_SplitUnits, on	
-	Hotkey, If, WinActive(GameIdentifier) && time && !isMenuOpen() && RemoveUnitEnable && !BufferInputFast.isInputBlockedOrBuffered()
+	Hotkey, If, WinActive(GameIdentifier) && time && !isMenuOpen() && RemoveUnitEnable
 		hotkey, %castRemoveUnit_key%, g_DeselectUnit, on	
-	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Zerg") && (auto_inject <> "Disabled") && time && !BufferInputFast.isInputBlockedOrBuffered()
+	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Zerg") && (auto_inject <> "Disabled") && time
 		hotkey, %cast_inject_key%, cast_inject, on	
 		hotkey, %F_InjectOff_Key%, Cast_DisableInject, on			
-	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && CG_Enable && time && !BufferInputFast.isInputBlockedOrBuffered()
+	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && CG_Enable && time
 		hotkey, %Cast_ChronoGate_Key%, Cast_ChronoStructure, on	
-	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableForge && time && !BufferInputFast.isInputBlockedOrBuffered()
+	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableForge && time
 		hotkey, %Cast_ChronoForge_Key%, Cast_ChronoStructure, on	
-	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableStargate && time && !BufferInputFast.isInputBlockedOrBuffered()
+	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableStargate && time
 		hotkey, %Cast_ChronoStargate_Key%, Cast_ChronoStructure, on
-	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableNexus && time && !BufferInputFast.isInputBlockedOrBuffered()
+	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableNexus && time
 		hotkey, %Cast_ChronoNexus_Key%, Cast_ChronoStructure, on	
-	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableRoboticsFacility && time && !BufferInputFast.isInputBlockedOrBuffered()
+	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableRoboticsFacility && time
 		hotkey, %Cast_ChronoRoboticsFacility_Key%, Cast_ChronoStructure, on	
-	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Terran" || aLocalPlayer["Race"] = "Protoss")  && time && !BufferInputFast.isInputBlockedOrBuffered()	
+	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Terran" || aLocalPlayer["Race"] = "Protoss")  && time
 		hotkey, %ToggleAutoWorkerState_Key%, g_UserToggleAutoWorkerState, on	
 	
-	Hotkey, If, WinActive(GameIdentifier) && time && !isMenuOpen() && EnableAutoWorker`%LocalPlayerRace`% && !BufferInputFast.isInputBlockedOrBuffered() ; cant use !ischatopen() - as esc will close chat before memory reads value so wont see chat was open
+	Hotkey, If, WinActive(GameIdentifier) && time && !isMenuOpen() && EnableAutoWorker`%LocalPlayerRace`% ; cant use !ischatopen() - as esc will close chat before memory reads value so wont see chat was open
 		hotkey, *~Esc, g_temporarilyDisableAutoWorkerProduction, on	
-	Hotkey, If, WinActive(GameIdentifier) && !isMenuOpen() && time && !BufferInputFast.isInputBlockedOrBuffered()
+	Hotkey, If, WinActive(GameIdentifier) && !isMenuOpen() && time
 	while (10 > i := A_index - 1)
 	{
 		if A_UnitGroupSettings["LimitGroup", aLocalPlayer["Race"], i,"Enabled"] 
@@ -7201,8 +7209,8 @@ CreateHotkeys()
 ;	Examples include MButton (mouse hook) and LWin & Space
 ;	 ***(KEYBOARD HOOK WITH EXPLICIT PREFIX RATHER THAN MODIFIERS "$#")***.
 ;	hence <#Space wont work
-
-	BufferInputFast.setEmergencyRestartKey(key_EmergencyRestart, "g_EmergencyRestart", "B P2147483647" ) ;buffers the hotkey and give it the highest possible priority
+	hotkey, %key_EmergencyRestart%, g_EmergencyRestart, B P2147483647
+;	BufferInputFast.setEmergencyRestartKey(key_EmergencyRestart, "g_EmergencyRestart", "B P2147483647" ) ;buffers the hotkey and give it the highest possible priority
 	Return
 }
 
@@ -8757,20 +8765,6 @@ getLongestEnemyPlayerName(aPlayer)
 }
 
 
-f1::
-getBuildStats(getSelectedUnitIndex(), , item)
-msgbox % clipboard := item 
-return
-
-f2::
-objtree(aEnemyCurrentUpgrades)
-
-for Upgrade, aUpgradeItem in aEnemyCurrentUpgrades[4]
-	msgbox % Upgrade " " aUpgradeItem
-
-return 
-
-
 DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 {
 	GLOBAL aEnemyUnits, aEnemyUnitConstruction, a_pBitmap, aPlayer, aLocalPlayer, aHexColours, GameIdentifier, config_file, UnitOverlayX, UnitOverlayY, MatrixColour 
@@ -8821,6 +8815,7 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 	
 	for slot_number, priorityObject in aEnemyUnits ; slotnumber = owner and slotnumber is an object
 	{
+		Height += 7*userscale	;easy way to increase different players next line
 		; destY is height of each players first panel row.
 		destUnitSplitY := DestY := rowMultiplier * Height * (A_Index - 1)
 
@@ -8980,7 +8975,6 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 			if (UpgradeX + Width > WindowWidth)
 				WindowWidth := UpgradeX
 		}
-		Height += 10*userscale	;needed to stop the edge of race pic overlap'n due to Supply pic -prot then zerg
 	}
 
 	; 2*height easy way to ensure the last split unit panel doesn't get cut off
@@ -9362,8 +9356,6 @@ class SC2
           }
 
 } 
-
-
 
 /*
 
