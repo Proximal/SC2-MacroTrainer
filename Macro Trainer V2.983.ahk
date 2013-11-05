@@ -942,7 +942,10 @@ setupSelectArmyUnits(l_input, aUnitID)
 		l_army .= aUnitID[A_LoopField] ","
 	return 	l_army := Trim(l_army, " `t , |")
 }
-
+f1::
+releaseKeyspSend()
+soundplay *-1
+return
 
 ;-------------------------
 ;	End of Game 'Setup'
@@ -954,6 +957,7 @@ Cast_ChronoStructure:
 ;	BufferInputFast.createHotkeys(aButtons.List)
 ;	BufferInputFast.BlockInput()
 	swapMonitoringForBlockingHooks(True)
+	releaseKeyspSend()
 	if (UserPressedHotkey = Cast_ChronoStargate_Key)
 		Cast_ChronoStructure(aUnitID.Stargate)
 	Else if (UserPressedHotkey = Cast_ChronoForge_Key)
@@ -1303,6 +1307,7 @@ cast_inject:
 ;	BufferInputFast.createHotkeys(aButtons.List)
 ;	BufferInputFast.BlockInput()
 	swapMonitoringForBlockingHooks(True)
+	releaseKeyspSend()
 	castInjectLarva(auto_inject, 0, auto_inject_sleep) ;ie nomral injectmethod
 	If HumanMouse
 		MouseMoveHumanSC2("x" start_x "y" start_y "t" HumanMouseTimeLo)
@@ -3249,7 +3254,7 @@ try
 		;	Gui, Add, Checkbox, y+10 vBlockingMultimedia checked%BlockingMultimedia%, Mutimedia Buttons	
 			
 
-		Gui, Add, GroupBox, xs ys+285 w161 h60, Updates
+		Gui, Add, GroupBox, xs ys+290 w161 h60, Updates
 			Gui, Add, Checkbox,xs+10 yp+25 Vauto_update checked%auto_update%, Auto Check For Updates
 
 	/*
