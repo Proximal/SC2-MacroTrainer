@@ -3232,7 +3232,7 @@ readConfigFile()
 	IniRead, MiniMapRefresh, %config_file%, %section%, MiniMapRefresh, 300
 	IniRead, OverlayRefresh, %config_file%, %section%, OverlayRefresh, 1000
 	IniRead, UnitOverlayRefresh, %config_file%, %section%, UnitOverlayRefresh, 4500
-
+	IniRead, OvlerayTransparency, %config_file%, %section%, OvlerayTransparency, 255
 
 	; [UnitPanelFilter]
 	section := "UnitPanelFilter"

@@ -707,7 +707,9 @@ Return
 Overlay_Toggle:
 	if (A_ThisHotkey = CycleOverlayKey)
 	{
-		If ((ActiveOverlays := DrawIncomeOverlay + DrawResourcesOverlay + DrawArmySizeOverlay + DrawUnitOverlay + DrawUnitUpgrades) > 1)
+		; if more than one overlays on. Turn then all off. Then cycle
+		; DrawIncomeOverlay, DrawResourcesOverlay, DrawArmySizeOverlay, DrawUnitOverlay, All
+		If ((ActiveOverlays := DrawIncomeOverlay + DrawResourcesOverlay + DrawArmySizeOverlay + ((DrawUnitOverlay || DrawUnitUpgrades) ? 1 : 0)) > 1)
 		{
 			DrawResourcesOverlay := DrawArmySizeOverlay := DrawIncomeOverlay := DrawUnitOverlay := DrawUnitUpgrades := 0
 			DrawResourcesOverlay(-1), DrawArmySizeOverlay(-1), DrawIncomeOverlay(-1), DrawUnitOverlay(-1)
@@ -2028,8 +2030,8 @@ Return
 g_unitPanelOverlay_timer: 
 	If ((DrawUnitOverlay || DrawUnitUpgrades) && (WinActive(GameIdentifier) || Dragoverlay))
 	{
-		getEnemyUnitCount(aEnemyUnits, aEnemyUnitConstruction, aEnemyCurrentUpgrades, aUnitID)
-		FilterUnits(aEnemyUnits, aEnemyUnitConstruction, aUnitPanelUnits, aUnitID, aPlayer)
+		getEnemyUnitCount(aEnemyUnits, aEnemyUnitConstruction, aEnemyCurrentUpgrades)
+		FilterUnits(aEnemyUnits, aEnemyUnitConstruction, aUnitPanelUnits)
 	;	if DrawUnitOverlay
 		DrawUnitOverlay(RedrawUnit, UnitOverlayScale, OverlayIdent, Dragoverlay)
 	}
@@ -2654,6 +2656,12 @@ ini_settings_write:
 	Iniwrite, %OverlayRefresh%, %config_file%, %section%, OverlayRefresh	
 	Iniwrite, %UnitOverlayRefresh%, %config_file%, %section%, UnitOverlayRefresh
 
+	; convert from 0-100 to 0-255
+	OvlerayTransparency := ceil(OvlerayTransparency * 2.55)
+	if (OvlerayTransparency > 255) ; I dont think this can happen
+		OvlerayTransparency := 255
+	Iniwrite, %OvlerayTransparency%, %config_file%, %section%, OvlerayTransparency
+
 	
 	;[MiniMap]
 	section := "MiniMap" 
@@ -3220,8 +3228,8 @@ try
 
 
 	Gui, Add, Tab2,w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vSettings_TAB, Settings				
-		Gui, Add, GroupBox, xs ys+5 w161 h110 section, Input Settings
-
+		Gui, Add, GroupBox, xs ys+5 w161 h110 section, Empty
+/*
 			Gui, Add, Text, xs+10 yp+35 w60, Send Delay:
 			Gui, Add, Edit, Number Right x+30 yp-2 w45 vTT_pSendDelay
 				Gui, Add, UpDown,  Range-1-300 vpSendDelay, %pSendDelay%
@@ -3229,18 +3237,19 @@ try
 			Gui, Add, Text, xs+10 yp+40 w60, Click Delay:
 			Gui, Add, Edit, Number Right x+30 yp-2 w45 vTT_pClickDelay
 				Gui, Add, UpDown,  Range-1-300 vpClickDelay, %pClickDelay%
-
+*/
 			;yp+30
 
-		Gui, Add, GroupBox, xs yp+45 w161 h170, Key Blocking
-			Gui, Add, Checkbox,xp+10 yp+25 vBlockingStandard checked%BlockingStandard%, Standard Keys	
-			Gui, Add, Checkbox, y+10 vBlockingFunctional checked%BlockingFunctional%, Functional F-Keys 	
-			Gui, Add, Checkbox, y+10 vBlockingNumpad checked%BlockingNumpad%, Numpad Keys	
-			Gui, Add, Checkbox, y+10 vBlockingMouseKeys checked%BlockingMouseKeys%, Mouse Buttons	
-			Gui, Add, Checkbox, y+10 vBlockingMultimedia checked%BlockingMultimedia%, Mutimedia Buttons	
-			Gui, Add, Checkbox, y+10 vLwinDisable checked%LwinDisable%, Disable Left Windows Key
+		Gui, Add, GroupBox, xs ys+115 w161 h170, Key Blocking
+			Gui, Add, Checkbox, xp+10 yp+25 vLwinDisable checked%LwinDisable%, Disable Left Windows Key
+		;	Gui, Add, Checkbox,xp+10 yp+25 vBlockingStandard checked%BlockingStandard%, Standard Keys	
+		;	Gui, Add, Checkbox, y+10 vBlockingFunctional checked%BlockingFunctional%, Functional F-Keys 	
+		;	Gui, Add, Checkbox, y+10 vBlockingNumpad checked%BlockingNumpad%, Numpad Keys	
+		;	Gui, Add, Checkbox, y+10 vBlockingMouseKeys checked%BlockingMouseKeys%, Mouse Buttons	
+		;	Gui, Add, Checkbox, y+10 vBlockingMultimedia checked%BlockingMultimedia%, Mutimedia Buttons	
+			
 
-		Gui, Add, GroupBox, xs yp+35 w161 h60, Updates
+		Gui, Add, GroupBox, xs ys+285 w161 h60, Updates
 			Gui, Add, Checkbox,xs+10 yp+25 Vauto_update checked%auto_update%, Auto Check For Updates
 
 	/*
@@ -3748,15 +3757,16 @@ try
 			Gui, Add, Picture, x+50  yp+20 h90 w90 gP_zerg_Joke vZergPic, %A_Temp%\Zerg90.png
 
 	Gui, Tab, Emergency	
-		Gui, Font, S16 CDefault bold UNDERLINE, Verdana
-		Gui, Add, Text, x+20 y+30 center cRed, IMPORTANT
+		Gui, Font, S14 CDefault bold UNDERLINE, Verdana
+		Gui, Add, Text, x+20 y+20 center cRed, IMPORTANT
 		Gui, Font, s10 norm 
-		Gui, Add, Text, xp y+30 w405, This program blocks user input and simulates keystrokes.`nOn RARE occasions it is possible that you will lose keyboard and mouse input OR a key e.g. ctrl, shift, or alt becomes 'stuck' down.`n`nIn this event, use the EMERGENCY HOTKEY!`nWhen pressed it should release any 'stuck' key and restore user input.`n`nIf this fails, press the hotkey THREE times in quick succession to have the program restart.`nIf you're still having a problem, then the key is likely physically stuck down.
-		Gui, Font, S18 CDefault bold, Verdana
-		Gui, Add, Text,xp+10 y+25 cRed, Windows Key && Spacebar`n        (Right)
+		Gui, Add, Text, xp y+20 w405, This program blocks user input and simulates keystrokes.`nOn RARE occasions it is possible that you will lose keyboard and mouse input OR a key e.g. ctrl, shift, or alt becomes 'stuck' down.`n`nIn this event, use the EMERGENCY HOTKEY!`nWhen pressed it should release any 'stuck' key and restore user input.`n`nIf this fails, press the hotkey THREE times in quick succession to have the program restart.`nIf you're still having a problem, then the key is likely physically stuck down.
+		Gui, Font, S14 CDefault bold, Verdana
+		Gui, Add, Text,xp+10 y+20 cRed, Windows Key && Spacebar`n        (Right)
 		Gui, Font, norm 
 		Gui, Font,
-		Gui, Add, Text, xp y+25 w405, The deult key can be changed via the 'settings' Tab on the left.
+		Gui, Add, Text, xp y+15 w405, The deult key can be changed via the 'settings' Tab on the left.
+		Gui, Add, Text, xp y+20 w405, Note: The windows key must not be disabled within the SC options.`nThis program is capable of blocking the Left windows key (check settings tab).
 
 	Gui, Add, Tab2, w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vMiniMap_TAB, MiniMap||MiniMap2|Overlays|Hotkeys|Info
 
@@ -3873,21 +3883,21 @@ try
 
 	Gui, Tab, Overlays
 			;Gui, add, text, y+20 X%XTabX%, Display Overlays:
-			Gui, Add, GroupBox, y+20 x+20  w170 h230 section, Display Overlays:
+			Gui, Add, GroupBox, y+20 x+20  w170 h190 section, Display Overlays:
 			Gui, Add, Checkbox, xp+10 yp+25 vDrawIncomeOverlay Checked%DrawIncomeOverlay% , Income Overlay
-			Gui, Add, Checkbox, xp y+20 vDrawResourcesOverlay Checked%DrawResourcesOverlay% , Resource Overlay
-			Gui, Add, Checkbox, xp y+20 vDrawArmySizeOverlay Checked%DrawArmySizeOverlay% , Army Size Overlay
-			Gui, Add, Checkbox, xp y+20 vDrawWorkerOverlay Checked%DrawWorkerOverlay% , Local Harvester Count
-			Gui, Add, Checkbox, xp y+20 vDrawIdleWorkersOverlay Checked%DrawIdleWorkersOverlay%, Idle Worker Count
-			Gui, Add, Checkbox, xp y+20 vDrawLocalPlayerColourOverlay Checked%DrawLocalPlayerColourOverlay%, Local Player Colour
+			Gui, Add, Checkbox, xp y+15 vDrawResourcesOverlay Checked%DrawResourcesOverlay% , Resource Overlay
+			Gui, Add, Checkbox, xp y+15 vDrawArmySizeOverlay Checked%DrawArmySizeOverlay% , Army Size Overlay
+			Gui, Add, Checkbox, xp y+15 vDrawWorkerOverlay Checked%DrawWorkerOverlay% , Local Harvester Count
+			Gui, Add, Checkbox, xp y+15 vDrawIdleWorkersOverlay Checked%DrawIdleWorkersOverlay%, Idle Worker Count
+			Gui, Add, Checkbox, xp y+15 vDrawLocalPlayerColourOverlay Checked%DrawLocalPlayerColourOverlay%, Local Player Colour
 			
-			Gui, Add, GroupBox, xs ys+245 w170 h160, Match Overlay:
+			Gui, Add, GroupBox, xs ys+210 w170 h160, Match Overlay:
 			Gui, Add, Checkbox, xp+10 yp+25 vDrawUnitUpgrades Checked%DrawUnitUpgrades%, Show Upgrades
 			Gui, Add, Checkbox, xp y+15 vDrawUnitOverlay Checked%DrawUnitOverlay%, Show Unit Count/Production
 			Gui, Add, Checkbox, xp y+15 vSplitUnitPanel Checked%SplitUnitPanel% , Split Units/Buildings
-			Gui, Add, Button, center xp+15 y+15 w100 h35 vUnitPanelFilterButton Gg_GUICustomUnitPanel, Unit Panel Filter
+			Gui, Add, Button, center xp+15 y+15 w100 h35 vUnitPanelFilterButton Gg_GUICustomUnitPanel, Unit Filter
 
-			Gui, Add, GroupBox, ys XS+205 w170 h230, Overlays Misc:
+			Gui, Add, GroupBox, ys XS+205 w170 h190 section, Overlays Misc:
 			Gui, Add, Checkbox, yp+25 xp+10 vOverlayBackgrounds Checked%OverlayBackgrounds% , Show Icon Background						
 			Gui, Add, Text, yp+25 w80, Player Identifier:
 			if OverlayIdent in 0,1,2,3
@@ -3896,14 +3906,19 @@ try
 
 			Gui, Add, DropDownList, xp+20 yp+25 vOverlayIdent Choose%droplist3_var%, Hidden|Name (White)|Name (Coloured)|Coloured Race Icon
 			
-			Gui, Add, Text, yp+35 xp-20, Refresh Rates (ms):
-			Gui, Add, Text, y+15  XS+215, General:
+			; transparency is max 255/0xFF
+			Gui, Add, Text, yp+35 xp-20, Opacity:
+				Gui, Add, Slider, ToolTip  NoTicks w140 xp y+10  VOvlerayTransparency, % ceil(OvlerayTransparency / 2.55) 
+
+
+			Gui, Add, GroupBox, xs ys+210 w170 h160, Refresh Rates:
+			Gui, Add, Text, XS+20  yp+25, General:
 				Gui, Add, Edit, Number Right xp+80 yp-2 w55 vTT_OverlayRefresh
 					Gui, Add, UpDown,  Range50-5000 vOverlayRefresh, %OverlayRefresh%
-			Gui, Add, Text, yp+35 XS+215, Unit Panel:
+			Gui, Add, Text, XS+20 yp+35, Unit Panel:
 				Gui, Add, Edit, Number Right xp+80 yp-2 w55 vTT_UnitOverlayRefresh
 					Gui, Add, UpDown,  Range150-15000 vUnitOverlayRefresh, %UnitOverlayRefresh%
-			Gui, Add, Text, XS+215 yp+35, MiniMap:
+			Gui, Add, Text, XS+20 yp+35, MiniMap:
 				Gui, Add, Edit, Number Right xp+80 yp-2 w55 vTT_MiniMapRefresh
 					Gui, Add, UpDown,  Range150-1500 vMiniMapRefresh, %MiniMapRefresh%					
 
@@ -4183,10 +4198,14 @@ try
 	TT_AGDelay_TT := AG_Delay_TT := "The program will wait this period of time before adding the select units to a control group.`nUse this if you want the function to look more 'human'.`n`nNote: This may increase the likelihood of miss-grouping units (especially on slow computers or during large battles with high APM)."
 	TempHideMiniMapKey_TT := #TempHideMiniMapKey_TT := "This will disable the minimap overlay for three seconds,`nthereby allowing you to determine if you legitimately have vision of a unit or building."
 	
+	OvlerayTransparency_TT := "Sets the transparency of all overlays, excluding the minimap."
+						. "`n`n100 = Fully opaque"
+						. "`n0 = Fully transparent"
 	ToggleUnitOverlayKey_TT := #ToggleUnitOverlayKey_TT := "Toggles the unit panel between the following states:"
 						. "`n`n  -Units/structures"
 						. "`n  -Units/structures + Upgrades"
 						. "`n  -Upgrades."
+						. "`n  -Off."
 
 	AdjustOverlayKey_TT := #AdjustOverlayKey_TT := "Used to move and resize the overlays."
 	TT_UserMiniMapXScale_TT := TT_UserMiniMapYScale_TT := UserMiniMapYScale_TT := UserMiniMapXScale_TT := "Adjusts the relative size of units on the minimap."
@@ -6527,7 +6546,7 @@ OverlayMove_LButtonDown()
 }
 
 DrawIdleWorkersOverlay(ByRef Redraw, UserScale=1,Drag=0, expand=1)
-{	global aLocalPlayer, GameIdentifier, config_file, IdleWorkersOverlayX, IdleWorkersOverlayY, a_pBitmap
+{	global aLocalPlayer, GameIdentifier, config_file, IdleWorkersOverlayX, IdleWorkersOverlayY, a_pBitmap, OvlerayTransparency
 	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0				
 
 	DestX := DestY := 0
@@ -6586,14 +6605,14 @@ DrawIdleWorkersOverlay(ByRef Redraw, UserScale=1,Drag=0, expand=1)
 	Gdip_DrawImage(G, pBitmap, DestX, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)	
 	Gdip_TextToGraphics(G, idleCount, "x"(DestX+Width+2*UserScale) "y"(DestY+(Height//4)) Options, Font, TextWidthHeight, TextWidthHeight)
 	Gdip_DeleteGraphics(G)	
-	UpdateLayeredWindow(hwnd1, hdc)
+	UpdateLayeredWindow(hwnd1, hdc,,,,, OvlerayTransparency)
 	SelectObject(hdc, obm) 
 	DeleteObject(hbm)  
 	DeleteDC(hdc) 
 	Return
 }
 DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Drag=0)
-{	global aLocalPlayer, aHexColours, aPlayer, GameIdentifier, IncomeOverlayX, IncomeOverlayY, config_file, MatrixColour, a_pBitmap
+{	global aLocalPlayer, aHexColours, aPlayer, GameIdentifier, IncomeOverlayX, IncomeOverlayY, config_file, MatrixColour, a_pBitmap, OvlerayTransparency
 	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0
 
 	DestX := i := 0
@@ -6700,7 +6719,7 @@ DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Dr
 	}
 	WindowHeight := DestY+Height
 	Gdip_DeleteGraphics(G)
-	UpdateLayeredWindow(hwnd1, hdc,,,WindowWidth,WindowHeight)
+	UpdateLayeredWindow(hwnd1, hdc,,,WindowWidth,WindowHeight, OvlerayTransparency)
 	SelectObject(hdc, obm) ; needed else eats ram ; Select the object back into the hdc
 	DeleteObject(hbm)   ; needed else eats ram 	; Now the bitmap may be deleted
 	DeleteDC(hdc) ; Also the device context related to the bitmap may be deleted
@@ -6708,7 +6727,7 @@ DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Dr
 }	
 
 DrawResourcesOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Drag=0)
-{	global aLocalPlayer, aHexColours, aPlayer, GameIdentifier, config_file, ResourcesOverlayX, ResourcesOverlayY, MatrixColour, a_pBitmap
+{	global aLocalPlayer, aHexColours, aPlayer, GameIdentifier, config_file, ResourcesOverlayX, ResourcesOverlayY, MatrixColour, a_pBitmap, OvlerayTransparency
 	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0		
 
 	DestX := i := 0
@@ -6820,7 +6839,7 @@ DrawResourcesOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0
 	}
 	WindowHeight := DestY+Height
 	Gdip_DeleteGraphics(G)
-	UpdateLayeredWindow(hwnd1, hdc,,,WindowWidth,WindowHeight)
+	UpdateLayeredWindow(hwnd1, hdc,,,WindowWidth,WindowHeight, OvlerayTransparency)
 	SelectObject(hdc, obm)
 	DeleteObject(hbm)
 	DeleteDC(hdc)
@@ -6828,7 +6847,7 @@ DrawResourcesOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0
 }
 
 DrawArmySizeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Drag=0)
-{	global aLocalPlayer, aHexColours, aPlayer, GameIdentifier, config_file, ArmySizeOverlayX, ArmySizeOverlayY, MatrixColour, a_pBitmap
+{	global aLocalPlayer, aHexColours, aPlayer, GameIdentifier, config_file, ArmySizeOverlayX, ArmySizeOverlayY, MatrixColour, a_pBitmap, OvlerayTransparency
 	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0	
 		
 	DestX := i := 0
@@ -6939,14 +6958,14 @@ DrawArmySizeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,
 	}
 	WindowHeight := DestY+Height	
 	Gdip_DeleteGraphics(G)
-	UpdateLayeredWindow(hwnd1, hdc,,, WindowWidth, WindowHeight)
+	UpdateLayeredWindow(hwnd1, hdc,,, WindowWidth, WindowHeight, OvlerayTransparency)
 	SelectObject(hdc, obm) 
 	DeleteObject(hbm)  
 	DeleteDC(hdc) 
 	Return
 }
 DrawWorkerOverlay(ByRef Redraw, UserScale=1,Drag=0)
-{	global aLocalPlayer, GameIdentifier, config_file, WorkerOverlayX, WorkerOverlayY, a_pBitmap
+{	global aLocalPlayer, GameIdentifier, config_file, WorkerOverlayX, WorkerOverlayY, a_pBitmap, OvlerayTransparency
 	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := False				
 	Options := " cFFFFFFFF r4 s" 18*UserScale
 
@@ -6997,7 +7016,7 @@ DrawWorkerOverlay(ByRef Redraw, UserScale=1,Drag=0)
 	Gdip_DrawImage(G, pBitmap, DestX, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)	
 	Gdip_TextToGraphics(G, getPlayerWorkerCount(aLocalPlayer["Slot"]), "x"(DestX+Width+2*UserScale) "y"(DestY+(Height//4)) Options, Font, TextWidthHeight, TextWidthHeight)
 	Gdip_DeleteGraphics(G)	
-	UpdateLayeredWindow(hwnd1, hdc)
+	UpdateLayeredWindow(hwnd1, hdc,,,,,OvlerayTransparency)
 	SelectObject(hdc, obm) 
 	DeleteObject(hbm)  
 	DeleteDC(hdc) 
@@ -7006,7 +7025,7 @@ DrawWorkerOverlay(ByRef Redraw, UserScale=1,Drag=0)
 
 
 DrawLocalPlayerColour(ByRef Redraw, UserScale=1,Drag=0)
-{	global aLocalPlayer, GameIdentifier, config_file, LocalPlayerColourOverlayX, LocalPlayerColourOverlayY, a_pBitmap, aHexColours
+{	global aLocalPlayer, GameIdentifier, config_file, LocalPlayerColourOverlayX, LocalPlayerColourOverlayY, a_pBitmap, aHexColours, OvlerayTransparency
 	static overlayCreated, hwnd1, DragPrevious := 0,  PreviousPlayerColours := 0 			
 
 	playerColours := arePlayerColoursEnabled()
@@ -7071,7 +7090,7 @@ DrawLocalPlayerColour(ByRef Redraw, UserScale=1,Drag=0)
 	Gdip_FillEllipse(G, a_pBrushes[colour], 0, 0, Radius, Radius)
 
 	Gdip_DeleteGraphics(G)	
-	UpdateLayeredWindow(hwnd1, hdc)
+	UpdateLayeredWindow(hwnd1, hdc,,,,,OvlerayTransparency)
 	SelectObject(hdc, obm) 
 	DeleteObject(hbm)  
 	DeleteDC(hdc) 
@@ -7106,8 +7125,8 @@ CreateHotkeys()
 ;		SendMode Play	; causes problems 
 ;	Else SendMode Input
 
-	input.pSendDelay(pSendDelay)
- 	input.pClickDelay(pClickDelay)
+	input.pSendDelay(-1)
+ 	input.pClickDelay(-1)
  	EventKeyDelay := -1
 
 	#If, WinActive(GameIdentifier)
@@ -8477,10 +8496,11 @@ getEnemyUnitCountOld(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aUni
 	Return
 }
 
-getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyCurrentUpgrades, byref aUnitID)
+getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyCurrentUpgrades)
 {
-	GLOBAL DeadFilterFlag, aPlayer, aLocalPlayer, aUnitTargetFilter, aUnitInfo, 
-	aEnemyUnits := [], aEnemyUnitConstruction := [], aEnemyCurrentUpgrades := []
+	GLOBAL DeadFilterFlag, aPlayer, aLocalPlayer, aUnitTargetFilter, aUnitInfo, aMiscUnitPanelInfo
+	aEnemyUnits := [], aEnemyUnitConstruction := [], aEnemyCurrentUpgrades := [], aMiscUnitPanelInfo := []
+	 
 ;	if !aEnemyUnitPriorities	;because having  GLOBAL aEnemyUnitPriorities := [] results in it getting cleared each function run
 ;		aEnemyUnitPriorities := []
 
@@ -8522,11 +8542,20 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 							{
 								QueuedPriority := aUnitInfo[QueuedType, "Priority"] ; this could fail in first game when no unit has been made yet of this type
 								aEnemyUnitConstruction[Owner, QueuedPriority, QueuedType] := aEnemyUnitConstruction[Owner, QueuedPriority, QueuedType] ? aEnemyUnitConstruction[Owner, QueuedPriority, QueuedType] + 1 : 1 	
-							}
+							} ; this count for upgrades allows the number of nukes being produced to be displayed
 							else if a_pBitmap.haskey(aProduction.Item) ; upgrade/research item
-								aEnemyCurrentUpgrades[Owner, aProduction.Item] := aProduction.progress
+								aEnemyCurrentUpgrades[Owner, aProduction.Item] := {"progress": aProduction.progress, "count": aEnemyCurrentUpgrades[Owner, aProduction.Item] ? aEnemyCurrentUpgrades[Owner, aProduction.Item].count + 1 : 1}
 						}
 					}
+					if (aPlayer[owner, "Race"] = "Protoss" && isUnitChronoed(unit))
+					{
+						aMiscUnitPanelInfo["chrono", owner, Type] := aMiscUnitPanelInfo["chrono", owner, Type] ? aMiscUnitPanelInfo["chrono", owner, Type] + 1 : 1
+					}
+					else if (aPlayer[owner, "Race"] = "Terran") && (Type = aUnitID["OrbitalCommand"] || Type = aUnitID["OrbitalCommandFlying"])
+					{
+						if (scanCount := floor(getUnitEnergy(unit)/50))
+							aMiscUnitPanelInfo["Scans", owner] := aMiscUnitPanelInfo["chrono", owner] ? aMiscUnitPanelInfo["chrono", owner] + scanCount : scanCount
+					} 
 					; priority - CC = PF = 3, Orbital = 4
 					; this allows the orbital to show as a 'under construction' unit on the right
 					if (Type = aUnitID["CommandCenter"] && MorphingType := isCommandCenterMorphing(unit))
@@ -8555,6 +8584,7 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 	}
 	Return
 }
+
 
 /*
 	object looks like this
@@ -8596,7 +8626,7 @@ getStructureProductionInfo(unit, byRef aInfo)
 }
 
 
-FilterUnits(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aUnitPanelUnits, byref aUnitID, aPlayer)	;care have used aUnitID everywhere else!!
+FilterUnits(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aUnitPanelUnits)	;care have used aUnitID everywhere else!!
 {	global aUnitInfo
 	;	aEnemyUnits[Owner, Type]
 	STATIC aRemovedUnits := {"Terran": ["BarracksTechLab","BarracksReactor","FactoryTechLab","FactoryReactor","StarportTechLab","StarportReactor"]
@@ -8764,11 +8794,12 @@ getLongestEnemyPlayerName(aPlayer)
 	return player.name
 }
 
+;One Issue with the upgrades is only 1 nuke will be displayed no mater how many are building
 
 DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 {
 	GLOBAL aEnemyUnits, aEnemyUnitConstruction, a_pBitmap, aPlayer, aLocalPlayer, aHexColours, GameIdentifier, config_file, UnitOverlayX, UnitOverlayY, MatrixColour 
-		, aUnitInfo, SplitUnitPanel, aEnemyCurrentUpgrades, DrawUnitOverlay, DrawUnitUpgrades
+		, aUnitInfo, SplitUnitPanel, aEnemyCurrentUpgrades, DrawUnitOverlay, DrawUnitUpgrades, aMiscUnitPanelInfo, aUnitID, OvlerayTransparency
 	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0
 
 	Options := "Center cFFFFFFFF r4 s" 17*UserScale					;these cant be static	
@@ -8867,7 +8898,7 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 						prevStructureX := DestX
 						prevStructureY := DestY
 						DestX := destUnitSplitX
-						DestY := destUnitSplitY + Height * 1.1 	; 1.1 so the tranparent backgrounds of the count and count underconstruction dont overlap
+						DestY := destUnitSplitY + Height * 1.1 	; 1.1 so the transparent backgrounds of the count and count underconstruction dont overlap
 					} 
 
 					Gdip_DrawImage(G, pBitmap, DestX, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
@@ -8876,6 +8907,16 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 						gdip_TextToGraphics(G, unitCount, "x"(DestX + .5*Width + .3*Width/2) "y"(DestY + .5*Height + .35*Height/2)  " Bold cFFFFFFFF r4 s" 9*UserScale, Font)
 					Else
 						gdip_TextToGraphics(G, unitCount, "x"(DestX + .5*Width + .4*Width/2) "y"(DestY + .5*Height + .35*Height/2)  " Bold cFFFFFFFF r4 s" 9*UserScale, Font)
+
+					; Draws in top Left corner of picture scan count for orbitals or chrono count for protoss structures
+					if ((chronoScanCount := aMiscUnitPanelInfo["chrono", slot_number, unit]) || (unit = aUnitID.OrbitalCommand  && (chronoScanCount := aMiscUnitPanelInfo["Scans", slot_number])))
+					{
+						Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, DestX, DestY, Width/2.5, Height/2.5, 5)
+						if (chronoCount >= 10)
+							gdip_TextToGraphics(G, chronoScanCount, "x"(DestX + .1*Width/2) "y"(DestY + .15*Height/2)  " Bold Italic cFFFF00B3 r4 s" 9*UserScale, Font)
+						Else
+							gdip_TextToGraphics(G, chronoScanCount, "x"(DestX + .2*Width/2) "y"(DestY + .15*Height/2) " Bold Italic cFFFF00B3 r4 s" 9*UserScale, Font)
+					}
 
 					if (unitCount := aEnemyUnitConstruction[slot_number, priority, unit])	; so there are some of this unit being built lets draw the count on top of the completed units
 					{
@@ -8887,6 +8928,7 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 								gdip_TextToGraphics(G, unitCount, "x"(DestX + .5*Width + .4*Width/2) "y"(DestY + .15*Height/2)  " Bold Italic cFFFFFFFF r4 s" 9*UserScale, Font)
 							aEnemyUnitConstruction[slot_number, priority].remove(unit, "")
 					}
+
 					if (!aUnitInfo[unit, "isStructure"] && SplitUnitPanel)
 					{
 						destUnitSplitX += (Width+5*UserScale)
@@ -8952,20 +8994,25 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 			destUpgradesY := DestY  + Height * 1.1 * (rowMultiplier - 1)
 			UpgradeX := firstColumnX
 
-			for item, progress in aEnemyCurrentUpgrades[slot_number]
+			for itemName, item in aEnemyCurrentUpgrades[slot_number]
 			{
-				if (pBitmap := a_pBitmap[item])
+				if (pBitmap := a_pBitmap[itemName])
 				{
 					SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
 					Width *= UserScale *.5, Height *= UserScale *.5	
 					Gdip_DrawImage(G, pBitmap, UpgradeX, destUpgradesY, Width, Height, 0, 0, SourceWidth, SourceHeight)					
 
+					if (item.count > 1) ; This is for nukes - think its the only upgrade which can have a count > 1
+					{
+						Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, UpgradeX + .6*Width, destUpgradesY, Width/2.5, Height/2.5, 5)
+						gdip_TextToGraphics(G, item.count, "x"(UpgradeX + .5*Width + .4*Width/2) "y"(destUpgradesY + .15*Height/2)  " Bold Italic cFFFFFFFF r4 s" 9*UserScale, Font)
+					}
 ;					Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, DestX, destUpgradesY+5+Height, Width, Height/10, 3)
 ;					Gdip_FillRoundedRectangle(G, a_pBrushes.Green, DestX, destUpgradesY+5+Height, Width*progress, Height/10, progress < 3 ? progress : 3)
 					; all the icons (even unit ones) have an invisible border around them. Hence deduct 10 pixels from the width and and 5 to destX
 					; the progress bar doest start too far to the left of the icon, and doesn't finish too far to the right
 					Gdip_FillRectangle(G, a_pBrushes.TransparentBlack, UpgradeX + 5 * UserScale *.5, destUpgradesY+Height, Width - 10 * UserScale *.5, Height/15)
-					Gdip_FillRectangle(G, a_pBrushes.Green, UpgradeX + 5 * UserScale *.5, destUpgradesY+Height, Width*progress - progress * 10 * UserScale *.5, Height/15)
+					Gdip_FillRectangle(G, a_pBrushes.Green, UpgradeX + 5 * UserScale *.5, destUpgradesY+Height, Width*item.progress - item.progress * 10 * UserScale *.5, Height/15)
 
 					UpgradeX += (Width+5*UserScale)
 				}
@@ -8977,11 +9024,11 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 		}
 	}
 
-	; 2*height easy way to ensure the last split unit panel doesn't get cut off
-	WindowHeight := DestY + 3*Height
+	; 4*height easy way to ensure the last split unit panel or upgrade doesn't get cut off
+	WindowHeight := DestY + 4*Height
 
 	Gdip_DeleteGraphics(G)
-	UpdateLayeredWindow(hwnd1, hdc,,,WindowWidth,WindowHeight)
+	UpdateLayeredWindow(hwnd1, hdc,,,WindowWidth,WindowHeight, OvlerayTransparency)
 	SelectObject(hdc, obm)
 	DeleteObject(hbm)
 	DeleteDC(hdc)
