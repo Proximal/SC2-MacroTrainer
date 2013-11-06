@@ -942,10 +942,6 @@ setupSelectArmyUnits(l_input, aUnitID)
 		l_army .= aUnitID[A_LoopField] ","
 	return 	l_army := Trim(l_army, " `t , |")
 }
-f1::
-releaseKeyspSend()
-soundplay *-1
-return
 
 ;-------------------------
 ;	End of Game 'Setup'
@@ -8538,6 +8534,18 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 			{
 				if (TargetFilter & aUnitTargetFilter.Structure)
 				{
+					chronoed := False
+					if (aPlayer[owner, "Race"] = "Protoss" && numgetIsUnitChronoed(MemDump, unit))
+					{
+						chronoed := True
+						aMiscUnitPanelInfo["chrono", owner, Type] := aMiscUnitPanelInfo["chrono", owner, Type] ? aMiscUnitPanelInfo["chrono", owner, Type] + 1 : 1
+					}
+					else if (aPlayer[owner, "Race"] = "Terran") && (Type = aUnitID["OrbitalCommand"] || Type = aUnitID["OrbitalCommandFlying"])
+					{
+						if (scanCount := floor(numgetUnitEnergy(MemDump, unit)/50))
+							aMiscUnitPanelInfo["Scans", owner] := aMiscUnitPanelInfo["chrono", owner] ? aMiscUnitPanelInfo["chrono", owner] + scanCount : scanCount
+					} 
+
 					if (queueSize := getStructureProductionInfo(unit, aQueueInfo))
 					{
 						for i, aProduction in aQueueInfo
@@ -8549,18 +8557,13 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 								aEnemyUnitConstruction[Owner, QueuedPriority, QueuedType] := aEnemyUnitConstruction[Owner, QueuedPriority, QueuedType] ? aEnemyUnitConstruction[Owner, QueuedPriority, QueuedType] + 1 : 1 	
 							} ; this count for upgrades allows the number of nukes being produced to be displayed
 							else if a_pBitmap.haskey(aProduction.Item) ; upgrade/research item
+							{
 								aEnemyCurrentUpgrades[Owner, aProduction.Item] := {"progress": aProduction.progress, "count": aEnemyCurrentUpgrades[Owner, aProduction.Item] ? aEnemyCurrentUpgrades[Owner, aProduction.Item].count + 1 : 1}
+								if chronoed
+									aMiscUnitPanelInfo[owner, "ChronoUpgrade", aProduction.Item] := True
+							}
 						}
 					}
-					if (aPlayer[owner, "Race"] = "Protoss" && isUnitChronoed(unit))
-					{
-						aMiscUnitPanelInfo["chrono", owner, Type] := aMiscUnitPanelInfo["chrono", owner, Type] ? aMiscUnitPanelInfo["chrono", owner, Type] + 1 : 1
-					}
-					else if (aPlayer[owner, "Race"] = "Terran") && (Type = aUnitID["OrbitalCommand"] || Type = aUnitID["OrbitalCommandFlying"])
-					{
-						if (scanCount := floor(getUnitEnergy(unit)/50))
-							aMiscUnitPanelInfo["Scans", owner] := aMiscUnitPanelInfo["chrono", owner] ? aMiscUnitPanelInfo["chrono", owner] + scanCount : scanCount
-					} 
 					; priority - CC = PF = 3, Orbital = 4
 					; this allows the orbital to show as a 'under construction' unit on the right
 					if (Type = aUnitID["CommandCenter"] && MorphingType := isCommandCenterMorphing(unit))
@@ -8916,11 +8919,16 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 					; Draws in top Left corner of picture scan count for orbitals or chrono count for protoss structures
 					if ((chronoScanCount := aMiscUnitPanelInfo["chrono", slot_number, unit]) || (unit = aUnitID.OrbitalCommand  && (chronoScanCount := aMiscUnitPanelInfo["Scans", slot_number])))
 					{
-						Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, DestX, DestY, Width/2.5, Height/2.5, 5)
-						if (chronoCount >= 10)
-							gdip_TextToGraphics(G, chronoScanCount, "x"(DestX + .1*Width/2) "y"(DestY + .15*Height/2)  " Bold Italic cFFFF00B3 r4 s" 9*UserScale, Font)
+						if (chronoScanCount = 1 && unit != aUnitID.OrbitalCommand)
+							Gdip_FillEllipse(G, a_pBrushes["ScanChrono"], DestX + .2*Width/2, DestY + .15*Height/2, 5*UserScale, 5*UserScale)
 						Else
-							gdip_TextToGraphics(G, chronoScanCount, "x"(DestX + .2*Width/2) "y"(DestY + .15*Height/2) " Bold Italic cFFFF00B3 r4 s" 9*UserScale, Font)
+						{
+							Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, DestX, DestY, Width/2.5, Height/2.5, 5)
+							if (chronoCount >= 10)
+								gdip_TextToGraphics(G, chronoScanCount, "x"(DestX + .1*Width/2) "y"(DestY + .15*Height/2)  " Bold Italic cFFFF00B3 r4 s" 9*UserScale, Font)
+							else
+								gdip_TextToGraphics(G, chronoScanCount, "x"(DestX + .2*Width/2) "y"(DestY + .15*Height/2) " Bold Italic cFFFF00B3 r4 s" 9*UserScale, Font)
+						}
 					}
 
 					if (unitCount := aEnemyUnitConstruction[slot_number, priority, unit])	; so there are some of this unit being built lets draw the count on top of the completed units
@@ -9018,8 +9026,9 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 					; the progress bar doest start too far to the left of the icon, and doesn't finish too far to the right
 					Gdip_FillRectangle(G, a_pBrushes.TransparentBlack, UpgradeX + 5 * UserScale *.5, destUpgradesY+Height, Width - 10 * UserScale *.5, Height/15)
 					Gdip_FillRectangle(G, a_pBrushes.Green, UpgradeX + 5 * UserScale *.5, destUpgradesY+Height, Width*item.progress - item.progress * 10 * UserScale *.5, Height/15)
-
-					UpgradeX += (Width+5*UserScale)
+					if aMiscUnitPanelInfo[slot_number, "ChronoUpgrade", itemName] ; its chronoed
+						Gdip_FillEllipse(G, a_pBrushes["ScanChrono"], UpgradeX + .2*Width/2, destUpgradesY + .2*Height/2, 5*UserScale, 5*UserScale)
+					;UpgradeX += (Width+5*UserScale)
 				}
 
 			}

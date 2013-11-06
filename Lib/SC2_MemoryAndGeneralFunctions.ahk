@@ -747,6 +747,11 @@ getUnitEnergy(unit)
 	Return Floor(ReadMemory(B_uStructure + (unit * S_uStructure) + O_uEnergy, GameIdentifier) / 4096)
 }
 
+numgetUnitEnergy(ByRef unitDump, unit)
+{	global
+	Return Floor(numget(unitDump, unit * S_uStructure + O_uEnergy, "Uint") / 4096)
+}
+
 ; Damage which has been delt to the unit
 ; need to substract max hp in unit to find actual health value/percentage
 getUnitHpDamage(unit)
@@ -1127,6 +1132,15 @@ isUnitChronoed(unit)
 		return 1
 	else return 0
 }
+
+numgetIsUnitChronoed(byref unitDump, unit)
+{	global	
+	if (128 = numget(unitDump, unit * S_uStructure + O_uChronoState, "UChar"))	
+		return 1
+	else return 0
+}
+
+
 ; pre patch 2.10
 ; 16 dec / 0x10 when not injected
 ; 48 dec / 0x30 when injected
@@ -2219,7 +2233,7 @@ initialiseBrushColours(aHexColours, byRef a_pBrushes)
 		a_pBrushes[colour] := Gdip_BrushCreateSolid(0xcFF hexValue)
 	; Used in the unit overlay	
 	a_pBrushes["TransparentBlack"] := Gdip_BrushCreateSolid(0x78000000)
-	
+	a_pBrushes["ScanChrono"] := Gdip_BrushCreateSolid(0xFFFF00B3)
 	a_pBrushes["UnitHighlightHallucinationsColour"] := Gdip_BrushCreateSolid(UnitHighlightHallucinationsColour)
 	a_pBrushes["UnitHighlightInvisibleColour"] := Gdip_BrushCreateSolid(UnitHighlightInvisibleColour)
 	a_pBrushes["UnitHighlightList1Colour"] := Gdip_BrushCreateSolid(UnitHighlightList1Colour)
