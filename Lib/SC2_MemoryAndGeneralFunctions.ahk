@@ -2233,7 +2233,7 @@ initialiseBrushColours(aHexColours, byRef a_pBrushes)
 		a_pBrushes[colour] := Gdip_BrushCreateSolid(0xcFF hexValue)
 	; Used in the unit overlay	
 	a_pBrushes["TransparentBlack"] := Gdip_BrushCreateSolid(0x78000000)
-	a_pBrushes["ScanChrono"] := Gdip_BrushCreateSolid(0xFFFF00B3)
+	a_pBrushes["ScanChrono"] := Gdip_BrushCreateSolid(0xCCFF00B3)
 	a_pBrushes["UnitHighlightHallucinationsColour"] := Gdip_BrushCreateSolid(UnitHighlightHallucinationsColour)
 	a_pBrushes["UnitHighlightInvisibleColour"] := Gdip_BrushCreateSolid(UnitHighlightInvisibleColour)
 	a_pBrushes["UnitHighlightList1Colour"] := Gdip_BrushCreateSolid(UnitHighlightList1Colour)

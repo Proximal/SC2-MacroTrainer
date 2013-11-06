@@ -2906,14 +2906,12 @@ try
 			gui, Add, Text, w410 y+15, If a queen has inadequate energy (or is too far from her hatchery), her hatchery will not be injected.
 			gui, Add, Text, w410 y+20, The Minimap && Backspace CtrlGroup methods require queens to be hotkeyd. In other words, hatches without a nearby HOTKEYED queen will not be injected.
 			gui, Add, Text, w410 y+20, Both Backspace methods require the camera hotkeys be set.
-			gui, Add, Text, w410 y+20, If a control, alt, shift, or windows key is held down at the start of the macro you will hear a warning sound.  Release the key(s) and the injects will begin.
-			Gui, Font, underline
-			Gui, Add, Text,  x300 y262 cBlue gg_PlayModifierWarningSound, Warning Sound
+			gui, Add, Text, w410 y+20, Auto-Injects will not occur while the modifier keys are pressed.
 			gui, font, norm s11
 
 			gui, Add, Text, X%OriginTabX% w410 y+15, The Backspace CtrlGroup method is actually the minimap method, but made to look as if the user is pressing 'backspace'.
 			gui, font, norm bold s10
-			Gui, Add, Text, X%OriginTabX% y+10 cFF0000, Problems:
+			Gui, Add, Text, X%OriginTabX% y+20 cFF0000, Problems:
 			gui, font, norm s11
 			gui, Add, Text, w410 y+15, If you are consistently missing hatcheries, try increasing the sleep time. 
 			gui, Add, Text, w410 y+15, If something really goes wrong, you can reload the program by pressing "Lwin && space" three times.
