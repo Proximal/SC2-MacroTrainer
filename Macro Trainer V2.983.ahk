@@ -71,8 +71,8 @@ ListLines(False)
 SetControlDelay -1 	; make this global so buttons dont get held down during controlclick
 SetKeyDelay, -1	 	; Incase SendInput reverts to Event - and for controlsend delay
 SetMouseDelay, -1
-SendMode Input 
 SetBatchLines, -1
+SendMode Input 
 Menu, Tray, Icon 
 if !A_IsAdmin 
 {
@@ -2033,7 +2033,6 @@ g_unitPanelOverlay_timer:
 	{
 		getEnemyUnitCount(aEnemyUnits, aEnemyUnitConstruction, aEnemyCurrentUpgrades)
 		FilterUnits(aEnemyUnits, aEnemyUnitConstruction, aUnitPanelUnits)
-	;	if DrawUnitOverlay
 		DrawUnitOverlay(RedrawUnit, UnitOverlayScale, OverlayIdent, Dragoverlay)
 	}
 return
@@ -8551,7 +8550,9 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 
 							if (QueuedType := aUnitID[aProduction.Item])
 							{
-								QueuedPriority := aUnitInfo[QueuedType, "Priority"] ; this could fail in first game when no unit has been made yet of this type
+								; this could fail in first game when no unit has been made yet of this type (QueuedPriority will be blank)
+								; But thats a good thing! as it will allow the prioritys to match when then filter trys to remove units (hence it allows the filter to work)
+								QueuedPriority := aUnitInfo[QueuedType, "Priority"]  
 								aEnemyUnitConstruction[Owner, QueuedPriority, QueuedType] := aEnemyUnitConstruction[Owner, QueuedPriority, QueuedType] ? aEnemyUnitConstruction[Owner, QueuedPriority, QueuedType] + 1 : 1 	
 							} ; this count for upgrades allows the number of nukes being produced to be displayed
 							else if a_pBitmap.haskey(aProduction.Item) ; upgrade/research item
@@ -8963,6 +8964,7 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 			{
 				for unit, unitCount in priorityConstructionObject		;	lets draw the buildings under construction (these are ones which werent already drawn above)
 				{	
+
 					if (unit != "TotalCount" && pBitmap := a_pBitmap[unit])				;	i.e. there are no already completed buildings of same type
 					{
 						SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
@@ -9025,7 +9027,7 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 					Gdip_FillRectangle(G, a_pBrushes.TransparentBlack, UpgradeX + 5 * UserScale *.5, destUpgradesY+Height, Width - 10 * UserScale *.5, Height/15)
 					Gdip_FillRectangle(G, a_pBrushes.Green, UpgradeX + 5 * UserScale *.5, destUpgradesY+Height, Width*item.progress - item.progress * 10 * UserScale *.5, Height/15)
 					if aMiscUnitPanelInfo[slot_number, "ChronoUpgrade", itemName] ; its chronoed
-						Gdip_FillEllipse(G, a_pBrushes["ScanChrono"], UpgradeX + .2*Width/2, destUpgradesY + .2*Height/2, 5*UserScale, 5*UserScale)
+						Gdip_FillEllipse(G, a_pBrushes["ScanChrono"], UpgradeX + .2*Width/2, destUpgradesY + .2*Height/2, ceil(5*UserScale), ceil(5*UserScale)) ; ceil seems to make it rounder/crisper
 					;UpgradeX += (Width+5*UserScale)
 				}
 
@@ -9038,6 +9040,7 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 
 	; 4*height easy way to ensure the last split unit panel or upgrade doesn't get cut off
 	WindowHeight := DestY + 4*Height
+	WindowWidth += width *2 ; because x begins on the left side of where the icon is drawn hence need to add 1 extra icon width to maximum width
 
 	Gdip_DeleteGraphics(G)
 	UpdateLayeredWindow(hwnd1, hdc,,,WindowWidth,WindowHeight, OvlerayTransparency)
@@ -9197,7 +9200,7 @@ castEasyUnload(hotkey, queueUnload)
 						if unitIndex not in %lClickedUnits%
 						{
 							lClickedUnits .= unitIndex ","
-							soundplay *-1
+							soundplay, %A_Temp%\gentleBeep.wav
 						}
 					}
 				}
@@ -9210,13 +9213,13 @@ castEasyUnload(hotkey, queueUnload)
 					if unitIndex not in %lClickedUnits%
 					{
 						lClickedUnits .= unitIndex ","
-						soundplay *-1
+						soundplay, %A_Temp%\gentleBeep.wav
 					}
 				}
 				else 
 				{
 					if !setCtrlGroup
-						soundplay *-1
+						soundplay, %A_Temp%\gentleBeep.wav
 					; play sound to indicate that function has activated i.e. if hotkey let go transports will be selected
 					; e.g. they let go of the hotkey, then pressed it again and waved it over one of the already processed transports
 					; in other words user is waving mouse over medivacs which are empty or have begun unloading and are in the ctrl group
