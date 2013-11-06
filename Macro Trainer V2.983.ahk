@@ -844,7 +844,7 @@ clock:
 			if !aThreads.MiniMap.ahkReady()
 				launchMiniMapThread()
 			else
-				aThreads.MiniMap.ahkFunction("gameChange")
+				aThreads.MiniMap.ahkFunction("gameChange", UserSavedAppliedSettings)
 		}
 		Else if aThreads.MiniMap.ahkReady()
 			aThreads.MiniMap.ahkFunction("exitApp") 
@@ -930,8 +930,6 @@ clock:
 		UserSavedAppliedSettings := 0
 	}
 return
-
-
 
 setupSelectArmyUnits(l_input, aUnitID)
 {
@@ -1964,7 +1962,7 @@ ShellMessage(wParam, lParam)
 			ReDrawOverlays  := ReDrawIncome := ReDrawResources 
 							:= ReDrawArmySize := ReDrawWorker := ReDrawIdleWorkers 
 							:= RedrawUnit := ReDrawLocalPlayerColour := True
-			aThreads.MiniMap.ahkassign.ReDrawMiniMap := true ; *** New line as ahkassign returns 0 on success
+			aThreads.MiniMap.ahkassign.ReDrawMiniMap := 1 ; *** New line as ahkassign returns 0 on success - also ahkassing/and functions cant handle var false/true
 			DestroyOverlays()
 			aThreads.MiniMap.ahkFunction("DestroyOverlays")
 			setLowLevelInputHooks(False)

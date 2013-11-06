@@ -89,9 +89,7 @@ updateUserSettings()
 	hasReadConfig := True
 }
 
-
-
-gameChange()
+gameChange(UserSavedAppliedSettings := False)
 {
 	global
 	if !hasReadConfig
