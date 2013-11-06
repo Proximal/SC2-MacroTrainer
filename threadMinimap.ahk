@@ -378,6 +378,8 @@ drawUnitDestinations(pGraphics, byRef A_MiniMapUnits)
 			{
 				if (command.State = aUnitMoveStates.Patrol)
 					colour := "Blue"
+				else colour := "Green"
+
 			}
 			else if (command.ability = "MedivacTransport"
 			|| command.ability = "WarpPrismTransport"
@@ -387,14 +389,16 @@ drawUnitDestinations(pGraphics, byRef A_MiniMapUnits)
 			}
 			; as destinations are drawn first, the picture gets drawn over by unit boxes
 			else if (command.ability = "TacNukeStrike")
-			{
-				pBitmap := a_pBitmap["RedX16"]
+			{	
 				convertCoOrdindatesToMiniMapPos(x := command.targetX, y := command.targetY)
-				Width := Gdip_GetImageWidth(pBitmap), Height := Gdip_GetImageHeight(pBitmap)	
+				Width := Gdip_GetImageWidth(pBitmap := a_pBitmap["pingNuke"]), Height := Gdip_GetImageHeight(pBitmap)	
 				Gdip_DrawImage(pGraphics, pBitmap, (X - Width/2), (Y - Height/2), Width, Height, 0, 0, Width, Height)
-				continue
+				colour := "Yellow"
+				; better to actually just let it draw a yellow line so if not shift queued, can see units move path
+				;continue 
 			}
 			else colour := "Green"
+
 			; some commands will have x,y,z targets of 0 (causing them to be drawn off the map)
 			if !command.targetX
 				break

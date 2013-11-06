@@ -8557,7 +8557,9 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 							} ; this count for upgrades allows the number of nukes being produced to be displayed
 							else if a_pBitmap.haskey(aProduction.Item) ; upgrade/research item
 							{
-								aEnemyCurrentUpgrades[Owner, aProduction.Item] := {"progress": aProduction.progress, "count": aEnemyCurrentUpgrades[Owner, aProduction.Item] ? aEnemyCurrentUpgrades[Owner, aProduction.Item].count + 1 : 1}
+								; list the highest progress if more than 1
+								aEnemyCurrentUpgrades[Owner, aProduction.Item] := aEnemyCurrentUpgrades[Owner, aProduction.Item] ? {"progress":  (aEnemyCurrentUpgrades[Owner, aProduction.Item].progress > aProduction.progress ? aEnemyCurrentUpgrades[Owner, aProduction.Item].progress : aProduction.progress), "count": aEnemyCurrentUpgrades[Owner, aProduction.Item].count + 1} 
+																																 : {"progress": aProduction.progress, "count": 1}
 								if chronoed
 									aMiscUnitPanelInfo[owner, "ChronoUpgrade", aProduction.Item] := True
 							}
