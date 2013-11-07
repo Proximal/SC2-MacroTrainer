@@ -17,7 +17,7 @@
 ; 	as <   Macro Trainer.exe    >
 ; 	and ***set the correct update version here:****
 
-	updatedVersion := 2.983
+	updatedVersion := 2.984
 
 ; 	This needs to be compilled using a non-MD
 ; 	version of AHK

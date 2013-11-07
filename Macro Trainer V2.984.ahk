@@ -150,7 +150,7 @@ MT_CurrentInstance := [] ; Used to store random info about the current run
 program := []
 program.info := {"IsUpdating": 0} ; program.Info.IsUpdating := 0 ;has to stay here as first instance of creating infor object
 
-ProgramVersion := 2.983
+ProgramVersion := 2.984
 
 l_GameType := "1v1,2v2,3v3,4v4,FFA"
 l_Races := "Terran,Protoss,Zerg"
@@ -4216,8 +4216,14 @@ try
 	HostileColourAssist_TT := "During team games while using hostile colours (green, yellow, and red) enemy bases will still be displayed using player colours.`n`n"
 							. "This helps when co-ordinating attacks e.g. Let's attack yellow!"
 
-	DrawUnitDestinations_TT := "Draws blue, green, orange, and red lines on the minimap to indicate an enemy unit's current move state and destination."
-							. "`nAlso draws an alert cross for nukes."
+	DrawUnitDestinations_TT := "Draws blue, green, orange, yellow and red lines on the minimap to indicate an enemy unit's current move state and destination."
+							. "`nAlso draws an alert icon at the destination of nuclear strikes."
+							. "`n`nBlue - Patrol"
+							. "`nGreen - Move"
+							. "`nOrange - Transport unload"
+							. "`nYellow - Nuclear strike"
+							. "`nRed - Attack move"
+
 	DrawPlayerCameras_TT := "Draws the enemy's camera on the minimap, i.e. it indicates the map area the player is currently looking at."
 
 	SleepSplitUnit_TT := TT_SleepSplitUnits_TT := TT_SleepSelectArmy_TT := SleepSelectArmy_TT := "Increase this value if the function doesn't work properly`nThis time is required to update the selection buffer."
@@ -6016,16 +6022,7 @@ autoWorkerProductionCheck()
 			; with its default priority
 
 			Thread, Priority, -2147483648
-			if !A_IsCompiled ; testing
-			{
-				loop, 4 
-				{
-					soundplay *-1
-					sleep 200
-				}
-				sleep 10200 ;11000
-			}
-			else sleep, 11000
+			sleep, 11000
 			return
 		}
 	}
@@ -9028,7 +9025,7 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 					Gdip_FillRectangle(G, a_pBrushes.Green, UpgradeX + 5 * UserScale *.5, destUpgradesY+Height, Width*item.progress - item.progress * 10 * UserScale *.5, Height/15)
 					if aMiscUnitPanelInfo[slot_number, "ChronoUpgrade", itemName] ; its chronoed
 						Gdip_FillEllipse(G, a_pBrushes["ScanChrono"], UpgradeX + .2*Width/2, destUpgradesY + .2*Height/2, ceil(5*UserScale), ceil(5*UserScale)) ; ceil seems to make it rounder/crisper
-					;UpgradeX += (Width+5*UserScale)
+					UpgradeX += (Width+5*UserScale)
 				}
 
 			}
