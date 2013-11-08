@@ -1439,6 +1439,43 @@ getBuildStats(building, byref QueueSize := "", byRef item := "")
 }
 
 
+getStructureProductionInfo(unit, byRef aInfo)
+{
+	STATIC O_pQueueArray := 0x34, O_IndexParentTypes := 0x18, O_unitsQueued := 0x28
+	aInfo := []
+	if (!pAbilities := getUnitAbilityPointer(unit))
+		return 0
+	if (-1 = CAbilQueueIndex := getCAbilQueueIndex(pAbilities, getAbilitiesCount(pAbilities)))
+		return 0 ; refinery,reactor, depot, spine, extractor
+	CAbilQueue := readmemory(pAbilities + O_IndexParentTypes + 4 * CAbilQueueIndex, GameIdentifier)
+	QueueSize := readmemory(CAbilQueue + O_unitsQueued, GameIdentifier)
+	queuedArray := readmemory(CAbilQueue + O_pQueueArray, GameIdentifier)
+
+	while (A_Index <= QueueSize && B_QueuedUnitInfo := readmemory(queuedArray + 4 * (A_index-1), GameIdentifier) )   ; A_index-1 = queue position ;progress = 0 not being built, but is in queue
+	{
+		if !aStringTable.hasKey(pString := readMemory(B_QueuedUnitInfo + 0xD0, GameIdentifier))
+			aStringTable[pString] := ReadMemory_Str(readMemory(pString + 0x4, GameIdentifier), GameIdentifier)
+		item := aStringTable[pString]
+		if progress := getPercentageUnitCompleted(B_QueuedUnitInfo) ; 0.0 will be seen as false 
+			aInfo.insert({ "Item": item, "progress": progress})
+		else break 
+	} 
+	return round(aInfo.maxIndex())  ;? aInfo.maxIndex() : 0
+}
+
+
+getZergProductionFromEgg(eggUnitIndex)
+{
+	p := readmemory(getUnitAbilityPointer(eggUnitIndex) + 0x1C, GameIdentifier)
+	p := readmemory(p + 0x34, GameIdentifier) 		; cAbilQueueUse
+	p := readmemory(p, GameIdentifier) 				; LarvaTrain
+	p := readmemory(p + 0xf4, GameIdentifier)
+	if !aStringTable.haskey(pString := readmemory(p, GameIdentifier) ) ; pString
+		return aStringTable[pString] := ReadMemory_Str(readMemory(pString + 0x4, GameIdentifier), GameIdentifier)
+	return aStringTable[pString]
+}
+
+
 /*
 	Queued Unit info (B_QueuedUnitInfo)
 	+0x1c = pString Action e.g. barracks train

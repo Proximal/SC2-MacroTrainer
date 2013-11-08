@@ -6338,35 +6338,6 @@ critical off
 return
 
 */
-F1::
-
-getZergProduction(getSelectedUnitIndex())
-return 
-
-msgbox % chex(getUnitAbilityPointer(getSelectedUnitIndex()))
-getBuildStatstEST(getSelectedUnitIndex(), q, i)
-
-return 
-
-
-
-
-getZergProduction(EggUnitIndex)
-{
-	pAbilities := getUnitAbilityPointer(EggUnitIndex)
-	msgbox % chex(pAbilities)
-
-	base := readmemory(pAbilities + 0x1C, GameIdentifier)
-	p := readmemory(base + 0x34, GameIdentifier) ; cAbilQueueUse
-	p := readmemory(p, GameIdentifier)
-	p := readmemory(p + 0xf4, GameIdentifier)
-	p := readmemory(p, GameIdentifier)
-	p := readmemory(p+4, GameIdentifier)
-	s := ReadMemory_Str(p, GameIdentifier)
-	msgbox % chex(p) " " s
-	return
-
-}
 
 
 /*
@@ -6388,37 +6359,6 @@ getZergProduction(EggUnitIndex)
 
 
 */
-
-
-getBuildStatstEST(unitIndex, byref QueueSize := "", byRef item := "")
-{
-	static O_IndexParentTypes := 0x18, cAbilRally := 0x1a
-
-	aRallyPoints := []
-	pAbilities := getUnitAbilityPointer(unitIndex)
-	msgbox % chex(pAbilities)
-	abilitiesCount := getAbilitiesCount(pAbilities)	
-	ByteArrayAddress := ReadMemory(pAbilities, GameIdentifier) + 0x3  ; gets the address of a byte array which contains the ID list of the units abilities
-	msgbox % chex(ByteArrayAddress)
-
-	cAbilRallyIndex := getAbilityIndex(0x21, abilitiesCount, ByteArrayAddress) ;find the position/index of the rally ability in the ID list
-	msgbox % cAbilRallyIndex
-	pCAbillityStruct := readmemory(pAbilities + O_IndexParentTypes + 4 * cAbilRallyIndex, GameIdentifier)
-
-	msgbox % chex(pCAbillityStruct)
-
-}
-
-
-
-
-
-
-
-
-
-
-
 
 
 isSelectionGroupable(ByRef oSelection)
@@ -8663,8 +8603,16 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 					else
 						aEnemyUnits[Owner, Priority, Type] := round(aEnemyUnits[Owner, Priority, Type]) + 1 ; ? aEnemyUnits[Owner, Priority, Type] + 1 : 1 ;note +1 (++ will not work!!!)			
 				}
-				else 
-					aEnemyUnits[Owner, Priority, Type] := round(aEnemyUnits[Owner, Priority, Type]) + 1 ; ? aEnemyUnits[Owner, Priority, Type] + 1 : 1
+				else ; Non-structure/unit
+				{
+					if (Type = aUnitId.Egg)
+					{
+						unitString := getZergProductionFromEgg(unit)				
+						QueuedPriority := aUnitInfo[QueuedType := aUnitID[unitString], "Priority"]  
+						aEnemyUnitConstruction[Owner, QueuedPriority, QueuedType] := round(aEnemyUnitConstruction[Owner, QueuedPriority, QueuedType]) + (QueuedType = aUnitId.Zergling ? 2 : 1)
+					}
+					else aEnemyUnits[Owner, Priority, Type] := round(aEnemyUnits[Owner, Priority, Type]) + 1 ; ? aEnemyUnits[Owner, Priority, Type] + 1 : 1
+				}
 			}
 	   	}
 	}
@@ -8687,31 +8635,6 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 ; so i would rather do it without sorting the array
 
 
-getStructureProductionInfo(unit, byRef aInfo)
-{
-	STATIC O_pQueueArray := 0x34, O_IndexParentTypes := 0x18, O_unitsQueued := 0x28
-	aInfo := []
-	if (!pAbilities := getUnitAbilityPointer(unit))
-		return 0
-	if (-1 = CAbilQueueIndex := getCAbilQueueIndex(pAbilities, getAbilitiesCount(pAbilities)))
-		return 0 ; refinery,reactor, depot, spine, extractor
-	CAbilQueue := readmemory(pAbilities + O_IndexParentTypes + 4 * CAbilQueueIndex, GameIdentifier)
-	QueueSize := readmemory(CAbilQueue + O_unitsQueued, GameIdentifier)
-	queuedArray := readmemory(CAbilQueue + O_pQueueArray, GameIdentifier)
-
-	while (A_Index <= QueueSize && B_QueuedUnitInfo := readmemory(queuedArray + 4 * (A_index-1), GameIdentifier) )   ; A_index-1 = queue position ;progress = 0 not being built, but is in queue
-	{
-		if !aStringTable.hasKey(pString := readMemory(B_QueuedUnitInfo + 0xD0, GameIdentifier))
-			aStringTable[pString] := ReadMemory_Str(readMemory(pString + 0x4, GameIdentifier), GameIdentifier)
-		item := aStringTable[pString]
-		if progress := getPercentageUnitCompleted(B_QueuedUnitInfo) ; 0.0 will be seen as false 
-			aInfo.insert({ "Item": item, "progress": progress})
-		else break 
-	} 
-	return round(aInfo.maxIndex())  ;? aInfo.maxIndex() : 0
-}
-
-
 FilterUnits(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aUnitPanelUnits)	;care have used aUnitID everywhere else!!
 {	global aUnitInfo
 	;	aEnemyUnits[Owner, Type]
@@ -8730,6 +8653,8 @@ FilterUnits(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aUnitPanelUni
 	STATIC aUnitOrder := 	{"Terran": ["SCV", "OrbitalCommand", "PlanetaryFortress", "CommandCenter"]
 							, "Protoss": ["Probe", "Nexus"]
 							, "Zerg": ["Drone","Hive","Lair", "Hatchery"]}
+
+	STATIC aAddMorphing := {"Zerg": {BanelingCocoon: "Baneling"}}
 
 	; aUnitPanelUnits is an object which contains the custom filtered (removed) user selected units
 	;	aUnitPanelUnits ----Race
@@ -8792,14 +8717,31 @@ FilterUnits(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aUnitPanelUni
 				if (aUnitInfo[mainUnit, "isStructure"] = "")
 					aUnitInfo[mainUnit, "isStructure"] := aUnitInfo[subUnit, "isStructure"]
 
-
-				if priorityObject[priority, mainUnit]
-					priorityObject[priority, mainUnit] += total
-				else priorityObject[priority, mainUnit] := total
+				priorityObject[priority, mainUnit] := round(priorityObject[priority, mainUnit]) + total
+				;if priorityObject[priority, mainUnit]
+				;	priorityObject[priority, mainUnit] += total
+				;else priorityObject[priority, mainUnit] := total
 				priorityObject[subPriority].remove(subunit, "")
 			;	aEnemyUnits[owner, priority, subunit] := ""
 			;	aEnemyUnits[owner, priority].remove(subunit, "")
 			}	
+		}
+
+
+		; this is just so banelings wont show up in
+		for subUnit, mainUnit in aAddMorphing[Race]
+		{
+			subunit := aUnitID[subUnit]
+			subPriority := aUnitInfo[subunit, "Priority"]
+			if (total := priorityObject[subPriority, subunit])
+			{
+				; baneling priority = 16, morphing bane = 1
+				mainUnit := aUnitID[mainUnit]
+				if !priority := aUnitInfo[mainUnit, "Priority"]
+					priority := 16		; just for baneling
+				aEnemyUnitConstruction[owner, Priority, mainUnit] :=  round(aEnemyUnitConstruction[owner, Priority, mainUnit]) + total
+				priorityObject[subPriority].remove(subunit, "") ; remove the baneling cocoon
+			}
 		}
 
 		for index, removeUnit in aUnitPanelUnits[race, "FilteredCompleted"]
@@ -8810,13 +8752,15 @@ FilterUnits(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aUnitPanelUni
 		}
 
 		for index, unit in aUnitOrder[race]
+		{
 			if (count := priorityObject[aUnitInfo[aUnitID[unit], "Priority"], aUnitID[unit]])
 			{
 				index := 0 - aUnitOrder[race].maxindex() + A_index ; hence so the first unit in array eg SCV will be on the left - last unit will have priority 0
 			 	priorityObject[index, aUnitID[unit]] := count 		;change priority to fake ones - so that Obital is on far left, followed by
 			 	priority := aUnitInfo[aUnitID[unit], "Priority"]		; PF and then CC
 			 	priorityObject[priority].remove(aUnitID[unit], "")	
-			}		
+			}
+		}		
 
 
 ;		for index, unit in aDeleteKeys												; **********	remove(unit, "") Removes an integer key and returns its value, but does NOT affect other integer keys.
