@@ -1507,6 +1507,7 @@ getStructureRallyPoints(unitIndex, byRef aRallyPoints := "")
 	abilitiesCount := getAbilitiesCount(pAbilities)	
 	ByteArrayAddress := ReadMemory(pAbilities, GameIdentifier) + 0x3  ; gets the address of a byte array which contains the ID list of the units abilities
 	cAbilRallyIndex := getAbilityIndex(cAbilRally, abilitiesCount, ByteArrayAddress) ;find the position/index of the rally ability in the ID list
+	
 	if (cAbilRallyIndex >= 0)
 	{
 		pCAbillityStruct := readmemory(pAbilities + O_IndexParentTypes + 4 * cAbilRallyIndex, GameIdentifier)

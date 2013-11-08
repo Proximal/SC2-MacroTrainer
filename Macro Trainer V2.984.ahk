@@ -6338,6 +6338,88 @@ critical off
 return
 
 */
+F1::
+
+getZergProduction(getSelectedUnitIndex())
+return 
+
+msgbox % chex(getUnitAbilityPointer(getSelectedUnitIndex()))
+getBuildStatstEST(getSelectedUnitIndex(), q, i)
+
+return 
+
+
+
+
+getZergProduction(EggUnitIndex)
+{
+	pAbilities := getUnitAbilityPointer(EggUnitIndex)
+	msgbox % chex(pAbilities)
+
+	base := readmemory(pAbilities + 0x1C, GameIdentifier)
+	p := readmemory(base + 0x34, GameIdentifier) ; cAbilQueueUse
+	p := readmemory(p, GameIdentifier)
+	p := readmemory(p + 0xf4, GameIdentifier)
+	p := readmemory(p, GameIdentifier)
+	p := readmemory(p+4, GameIdentifier)
+	s := ReadMemory_Str(p, GameIdentifier)
+	msgbox % chex(p) " " s
+	return
+
+}
+
+
+/*
+
+getZergProduction(EggUnitIndex)
+{
+	pAbilities := getUnitAbilityPointer(EggUnitIndex)
+	base := readmemory(pAbilities + 0x20, GameIdentifier)
+	p := readmemory(base - 0x48, GameIdentifier)
+	p := readmemory(p, GameIdentifier)
+	p := readmemory(p + 0xf4, GameIdentifier)
+	p := readmemory(p, GameIdentifier)
+	p := readmemory(p+4, GameIdentifier)
+	s := ReadMemory_Str(p, GameIdentifier)
+	msgbox % chex(p) " " s
+	return
+
+}
+
+
+*/
+
+
+getBuildStatstEST(unitIndex, byref QueueSize := "", byRef item := "")
+{
+	static O_IndexParentTypes := 0x18, cAbilRally := 0x1a
+
+	aRallyPoints := []
+	pAbilities := getUnitAbilityPointer(unitIndex)
+	msgbox % chex(pAbilities)
+	abilitiesCount := getAbilitiesCount(pAbilities)	
+	ByteArrayAddress := ReadMemory(pAbilities, GameIdentifier) + 0x3  ; gets the address of a byte array which contains the ID list of the units abilities
+	msgbox % chex(ByteArrayAddress)
+
+	cAbilRallyIndex := getAbilityIndex(0x21, abilitiesCount, ByteArrayAddress) ;find the position/index of the rally ability in the ID list
+	msgbox % cAbilRallyIndex
+	pCAbillityStruct := readmemory(pAbilities + O_IndexParentTypes + 4 * cAbilRallyIndex, GameIdentifier)
+
+	msgbox % chex(pCAbillityStruct)
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
 
 isSelectionGroupable(ByRef oSelection)
 {	GLOBAl aLocalPlayer
@@ -10319,6 +10401,14 @@ getLarvaPointer(Hatch, Larva)
 	return ReadMemory((B_hStructure + S_hStructure * Hatch) + (O_hUnitIndexPointer + S_hLarva * Larva), GameIdentifier)
 }
 
+; How to Create a string array
+string:="CH2001" ; define a string, its address will be saved in array
+VarSetCapacity(array,10 * A_PtrSize) ; create a string array (simply a block of memory)
+NumPut(&string,array,"PTR") ; Save pointer to our string in first element/field of array (each field is as big as A_PtrSize)
+_handle := DllCall("MyDll\StartReceiver", "Ptr", &array)
+
+; To read the data later use:
+MsgBox % StrGet(NumGet(array,0,"PTR"))
 
 /*
 
