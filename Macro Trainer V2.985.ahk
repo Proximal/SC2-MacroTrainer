@@ -150,7 +150,7 @@ MT_CurrentInstance := [] ; Used to store random info about the current run
 program := []
 program.info := {"IsUpdating": 0} ; program.Info.IsUpdating := 0 ;has to stay here as first instance of creating infor object
 
-ProgramVersion := 2.984
+ProgramVersion := 2.985
 
 l_GameType := "1v1,2v2,3v3,4v4,FFA"
 l_Races := "Terran,Protoss,Zerg"
@@ -4460,7 +4460,8 @@ Screenshots and replays may be attached below.
 		{
 			; icon exclamation + task modal
 			msgbox, % 48 + 4096, File Size Limit, % "The attached files are too large."
-				. "`n`nThe combined size of the attachments cannot be greater than 1MB."
+				. "`n`nIndividual attachments cannot be greater than 1MB."
+				. "`nThe combined size of the attachments cannot be greater than 7MB."
 				. "`n`nPlease remove (or compress) some attachments and try again."
 		}
 		else 
@@ -4565,7 +4566,7 @@ if (A_GuiControl = "EmailAttachmentListViewID")
 	FilePath := A_GuiEvent 		; contains the names separated by `n each file has its full directory path
 else 							; this is different to the multi file select, where the directory folder is only in A_index 1
 {
-	FileSelectFile, FilePath, M1, , Attach Files      (The combined attachment size must be less than 1MB)
+	FileSelectFile, FilePath, M1, , Attach Files      (Individual attachments must be less than 1MB)
 	if (errorlevel || !FilePath) ; is set to 1 if the user dismissed the dialog without selecting a file (such as by pressing the Cancel button).
 		return 
 	Else
@@ -9340,9 +9341,30 @@ castEasySelectLoadedTransport()
 
 
 
+/*
+Terran build structure
+has a remaining time counter (ie decrease as being built) (really +0x2c)
+
+has a pointer1 + 0x28 to info structure (Relative to the timeer counting down)
+(also another pointer at +0x2c which contains alittle less info)
+
+in strcuture pointed by p1 
+
++0x3C = pointer to ability string (+0xc from there = Abil/TerranBuild)
++0x4c = Identical pointer to above
++0x5c = Pointer to string table (table +0x4 points to) which results in string Item being built eg SupplyDepot
++0x98 = pointer to string table (table +0x4) and points to TerranBuild string
+; seems like there are some have checks - probably exist for upgrades too
+;HaveBarracks
+;HaveEngineeringBay 
 
 
+; nother structure 
 
+02A when no scv bulding it
+12A when building it
+
+*/
 
 
 ; converts the unit data (extracted from SC2 MPQ files) into an AHK object

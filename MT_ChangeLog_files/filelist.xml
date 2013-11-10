@@ -2,11 +2,13 @@
  <o:MainFile HRef="../MT_ChangeLog.html"/>
  <o:File HRef="themedata.thmx"/>
  <o:File HRef="colorschememapping.xml"/>
+ <o:File HRef="image007.png"/>
+ <o:File HRef="image008.jpg"/>
  <o:File HRef="image002.png"/>
- <o:File HRef="image005.gif"/>
+ <o:File HRef="image010.gif"/>
  <o:File HRef="image001.png"/>
- <o:File HRef="image006.gif"/>
+ <o:File HRef="image011.gif"/>
  <o:File HRef="image003.png"/>
- <o:File HRef="image009.gif"/>
+ <o:File HRef="image013.gif"/>
  <o:File HRef="filelist.xml"/>
 </xml>

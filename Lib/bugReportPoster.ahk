@@ -14,19 +14,15 @@ bugReportPoster(email := "", message := "", files := "", byRef bugResponseTicket
 				aFileNames.insert(A_LoopField)
 				FileGetSize, fileSizeBytes, %A_LoopField%
 				uploadSize += fileSizeBytes
+				if (fileSizeBytes > 1048576) ; max 1mb/file
+					return -1
 			}
 		}
-		if (uploadSize > 1048576) ; 1MB upload limit
+		if (uploadSize > 1048576 * 7) ; 7MB upload limit (think 8 but lets be safe - its heaps anyway)
 			return -1 ; -1 indicating file size error
 	}
 
-	TRY FileInstall, Included Files\libcurl.dll, %A_Temp%\libcurl.dll, 1
-	catch e  ; Handles the first error/exception raised by the block above.
-	{
-		MsgBox, % e.what "`n" e.file "`n" e.message "`n" e.extra
-		return -1
-	}
-
+	FileInstall, Included Files\libcurl.dll, %A_Temp%\libcurl.dll, 1
 	if (ErrorLevel)	
 		return fallback("FileInstall error while load libcurl.dll")
 

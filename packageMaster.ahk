@@ -17,7 +17,7 @@
 ; 	as <   Macro Trainer.exe    >
 ; 	and ***set the correct update version here:****
 
-	updatedVersion := 2.984
+	updatedVersion := 2.985
 
 ; 	This needs to be compilled using a non-MD
 ; 	version of AHK
@@ -48,6 +48,7 @@ if !A_IsAdmin
 }
 
 FileInstall, Macro Trainer.exe, %A_Temp%\Macro Trainer V%updatedVersion%.exe, 1
+dllExists := FileExist("msvcr100.dll")
 FileInstall, msvcr100.dll, msvcr100.dll, 1
 
 FileAppend,
@@ -62,8 +63,17 @@ del "%A_Temp%\Macro Trainer V%updatedVersion%.exe"
 del c:\tempDelete.bat
 ), c:\tempDelete.bat
 
-msgbox % "This and future versions require msvcr100.dll to be in the same "
-	. "`ndirectory as the program exe.`n`nThis dll has been installed. Please don't delete it!"
+if !dllExists
+	msgbox % "This and future versions require msvcr100.dll to be in the same "
+		. "`ndirectory as the program exe.`n`nThis dll has been installed. Please don't delete it!"
+
+SplashTextOn, , 70, Launcher, % "`nLaunching Trainer From Downloaded Package in " 5
+Loop 5 
+{
+	ControlSetText, Static1,  % "`nLaunching Trainer From Downloaded Package in " 6 - A_Index , Launcher
+	Sleep, 1000
+}
+ 
 Run, %COMSPEC% /c c:\tempDelete.bat,,hide 
 ExitApp
 

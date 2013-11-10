@@ -1468,7 +1468,7 @@ getZergProductionFromEgg(eggUnitIndex)
 {
 	p := readmemory(getUnitAbilityPointer(eggUnitIndex) + 0x1C, GameIdentifier)
 	p := readmemory(p + 0x34, GameIdentifier) 		; cAbilQueueUse
-	p := readmemory(p, GameIdentifier) 				; LarvaTrain
+	p := readmemory(p, GameIdentifier) 				; LarvaTrain  - this pointer structure will also have the production time/total
 	p := readmemory(p + 0xf4, GameIdentifier)
 	if !aStringTable.haskey(pString := readmemory(p, GameIdentifier) ) ; pString
 		return aStringTable[pString] := ReadMemory_Str(readMemory(pString + 0x4, GameIdentifier), GameIdentifier)
