@@ -11,7 +11,8 @@
 
 class Input 
 {
-	static keys := ["LControl", "RControl", "LAlt", "RAlt", "LShift", "RShift", "LWin", "RWin"
+;	static keys := ["LControl", "RControl", "LAlt", "RAlt", "LShift", "RShift", "LWin", "RWin"
+	static keys := ["Control", "Alt", "Shift", "LWin", "RWin"  ; use neurtral modifiers as postmessage cant release left/right
 				, "AppsKey", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12"
 				, "Left", "Right", "Up", "Down", "Home", "End", "PgUp", "PgDn", "Del", "Ins", "BS", "Capslock", "Numlock", "PrintScreen" 
 				, "Pause", "Space", "Enter", "Tab", "Esc", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "B", "C", "D", "E", "F", "G"
@@ -48,6 +49,38 @@ class Input
 		if upsequence
 		{
 			SendInput, {BLIND}%upsequence%
+			return upsequence 	; This will indicate that we should sleep for 15ms (after activating critical)
+		}	 					; to prevent out of order command sequence with sendinput vs. post message
+		return 
+	}
+
+	; If not blocking input, i.e. just buffering/placing thread in critical then can release 
+	; pressed keys using postmessage without fear of getting stuck keys outside of sc 
+
+	pReleaseKeys(checkMouse := False)
+	{
+		this.downSequence := ""
+		for index, key in this.keys 
+			if GetKeyState(key) 	; check the logical state (as AHK will block the physical)
+				upsequence .= "{" key " Up}", this.downSequence .= "{" key " Down}" 
+		if checkMouse
+		{
+			for index, key in this.MouseButtons 
+			{
+				if GetKeyState(key) 	; check the logical state
+				{
+					upsequence .= "{click " key " Up}"
+					if instr(key, "l") ; for left button drag click
+						getLastLeftClickPos(x, y), this.downSequence .= "{click " x " " y " " key " Down}" 	
+					else this.downSequence .= "{click " key " Down}"
+					
+				}
+					
+			}
+		}
+		if upsequence
+		{
+			this.pSend(upsequence)
 			return upsequence 	; This will indicate that we should sleep for 15ms (after activating critical)
 		}	 					; to prevent out of order command sequence with sendinput vs. post message
 		return 
@@ -152,6 +185,7 @@ class Input
 								
 					if instr(key, "click")
 					{
+						StringReplace, key, key, click ; remove the word click
 					   	StringSplit, clickOutput, key, %A_space%, %A_Space%%A_Tab%`,
 					    numbers := []
 					    SetFormat, IntegerFast, d ; otherwise A_Index is 0x and doesnt work with var%A_Index%
@@ -176,7 +210,6 @@ class Input
 					    	continue ; error
 					    }	 
 					    SetFormat, IntegerFast, hex
-
 				;	  	 msgbox % key "`n" x ", " y "`n" clickCount
 					    this.insertpClickObject(aSend, x, y, key, clickCount, CurrentmodifierString, instr(key, "MM")) ; MM - Insert MouseMove
 					}
@@ -330,7 +363,8 @@ class Input
 			return	
 		}
 		else message := "WM_LBUTTON", WParam |= MK_LBUTTON
-
+		; remove the word button eg Lbutton as the U will cause an UP-event to be sent
+		StringReplace, button, button, button, %A_Space%, All
 		if button contains up,U
 			message .= "UP"
 		else if button contains down,D 
@@ -416,7 +450,9 @@ class Input
 			return	
 		}
 		else message := "WM_LBUTTON", WParam |= MK_LBUTTON
-
+		; remove the word button eg Lbutton as the U will cause an UP-event to be sent
+		StringReplace, button, button, button, %A_Space%, All
+		
 		if button contains up,U
 			message .= "UP"
 		else if button contains down,D 

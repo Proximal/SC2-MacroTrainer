@@ -10,7 +10,9 @@ releaseKeyspSend()
 		aKeys := getAllKeyboardAndMouseKeys()
 	for index, key in aKeys
 	{
-		if (getkeystate(key) ) ;|| getkeystate(key))
+		; Have to use P - as AHK blocking of its own hotkey modifers doesnt always work 
+		; and these modify the in game commands.
+		if (getkeystate(key, "P") || getkeystate(key))
 		{
 			if isKeyMouseButton(key)
 				upSequence .= "{ click " key " up}"

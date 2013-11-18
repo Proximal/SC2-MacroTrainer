@@ -58,15 +58,9 @@ return
 
 gClock:
 if (!time := getTime())
-{
-		SetTimer, MiniMap_Timer, off
-		SetTimer, unit_bank_read, off
-		SetTimer, worker, off
-		SetTimer, supply, off
-		SetTimer, gClock, off
-		DestroyOverlays()
-}
+	gameChange()
 return 
+
 
 toggleMinimap()
 {
@@ -104,6 +98,7 @@ gameChange(UserSavedAppliedSettings := False)
 	if (Time := getTime())
 	{
 		game_status := "game", warpgate_status := "not researched", gateway_count := warpgate_warning_set := 0
+		TimeReadRacesSet := 0
 		; aStringTable and aUnitModel are super global declared in memory and general functions
 		aUnitModel := [] 		
 		aStringTable := []

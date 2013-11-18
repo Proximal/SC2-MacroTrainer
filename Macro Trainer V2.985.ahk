@@ -471,21 +471,12 @@ g_LbuttonDown:	;Get the location of a dragbox
 	MouseGetPos, MLDownX, MLDownY
 return 
 
-; Not currently Used
-/*
-g_RbuttonDown:
-LastMousePress(A_TickCount)
-Return
-
-LastMousePress(newTick := 0)
+getLastLeftClickPos(ByRef x, ByRef y)
 {
-	static LastPressTick
-	if !newTick
-		return A_TickCount - LastPressTick
-	LastPressTick := newTick
+	global MLDownX, MLDownY
+	x := MLDownX, y := MLDownY
 	return
-}	
-*/
+}
 
 g_GiveLocalPalyerResources:
 	SetPlayerMinerals()
@@ -811,7 +802,10 @@ clock:
 		timeroff("money", "gas", "scvidle", "supply", "worker", "inject", "unit_bank_read", "Auto_mine", "Auto_Group", "AutoGroupIdle", "overlay_timer", "g_unitPanelOverlay_timer", "g_autoWorkerProductionCheck", "cast_ForceInject", "find_races_timer")
 		inject_timer := TimeReadRacesSet := UpdateTimers := PrevWarning := WinNotActiveAtStart := ResumeWarnings := 0 ;ie so know inject timer is off
 		if aThreads.MiniMap.ahkReady()
+		{
+			aThreads.MiniMap.ahkassign.TimeReadRacesSet := 0
 			aThreads.MiniMap.ahkFunction("gameChange")
+		}
 		Try DestroyOverlays()
 		setLowLevelInputHooks(False)
 	}
@@ -979,12 +973,6 @@ Cast_ChronoStructure(StructureToChrono)
 	{
 		if (unit.type = aUnitID.Nexus && !isUnderConstruction(unit.unitIndex))
 			nexus_chrono_count += Floor(unit.energy/25)
-;		cant really do this check with a control group
-;		if !isUnitAStructure(object.unitIndex) ; as units will have higher priority and appear in group 0/top left control card - and this isnt compatible with this macro
-;		{
-;			tSpeak("Error in Base Control Group.")
-;			return 
-;		}
 	}
 
 	IF !nexus_chrono_count
@@ -1092,9 +1080,6 @@ Cast_ChronoStructure(StructureToChrono)
 	Return 
 }
 AutoGroupIdle:
-	AutoGroup(A_AutoGroup, AG_Delay)
-	Return
-
 Auto_Group:
 	AutoGroup(A_AutoGroup, AG_Delay)
 	Return
@@ -1156,7 +1141,7 @@ AutoGroup(byref A_AutoGroup, AGDelay = 0)
 		&& getkeystate("LWin", "L") && getkeystate("RWin", "L")		
 		&& getkeystate("Shift") && getkeystate("Control") && getkeystate("Alt")
 		|| readModifierState() 
-		|| MT_InputIdleTime() <= 30)
+		|| MT_InputIdleTime() <= 50)
 
 		;&& !getkeystate("LWin") && !getkeystate("RWin")
 		;&& !(getkeystate("Shift", "P") || getkeystate("Control", "P") || getkeystate("Alt", "P")
@@ -1166,12 +1151,15 @@ AutoGroup(byref A_AutoGroup, AGDelay = 0)
 		;|| checkAllKeyStates() 
 		;|| MT_InputIdleTime() <= 30)
 		{
-			input.hookBlock(True, True)
-			sleep := Input.releaseKeys()
+		;	input.hookBlock(True, True)
+		;	sleep := Input.releaseKeys()
+		;	critical, 1000
+		;	input.hookBlock(False, False)
+		;	if sleep
+		;		dSleep(15) ;  sleep, 5
 			critical, 1000
-			input.hookBlock(False, False)
-			if sleep
-				dSleep(15) ;  sleep, 5
+			input.pReleaseKeys()
+
 			; if the user has a delay for grouping, this increases the risk of the unit selection changing before the
 			; sent ctrl+group command is received/processed. Therefore a small sleep here should make it more robust
 			; in theory this should not be required with a delay of 0 (for the most part), as there is the idle grouping
@@ -1181,7 +1169,7 @@ AutoGroup(byref A_AutoGroup, AGDelay = 0)
 			if AGDelay ; the MTDelay should prevent the need for a sleep
 			{
 				if !sleep 
-					dSleep(5)
+					dSleep(10)
 				;sleep 5 ; so rounds to no more than 10ms.
 				;Sleep(2) ; give time for selection buffer to update. This along with blocking input should cover pre- and post-selection delay buffer changes
 				numGetUnitSelectionObject(oSelection)
@@ -1190,7 +1178,6 @@ AutoGroup(byref A_AutoGroup, AGDelay = 0)
 			}
 			if (!AGDelay || CurrentlySelected = PostDelaySelected)
 			{
-			;	send, +%Player_Ctrl_GroupSet%
 				MTsend("+" Player_Ctrl_GroupSet)
 				sleepOnExit := True
 				settimer, AutoGroupIdle, Off
@@ -1234,12 +1221,14 @@ LimitGroup(byref UnitList, Hotkey)
 				Return
 		}
 	}
-	input.hookBlock(True, True)
-	sleep := Input.releaseKeys()
+	;input.hookBlock(True, True)
+	;sleep := Input.releaseKeys()
+	;critical 1000
+	;input.hookBlock(False, False)
+	;if sleep
+	;	dSleep(10) 
 	critical 1000
-	input.hookBlock(False, False)
-	if sleep
-		dSleep(10) 
+	input.pReleaseKeys()
 	MTsend(Hotkey)
 	Input.revertKeyState()
 	Return
@@ -1337,15 +1326,15 @@ cast_ForceInject:
 					sleep % rand(0, 1000)
 					Thread, Priority, 0	
 					startInjectWait := A_TickCount
-					while getkeystate("LWin", "P") || getkeystate("RWin", "P")	
-					|| getkeystate("LWin") || getkeystate("RWin")	
-					|| getkeystate("LButton", "P") || getkeystate("RButton", "P")
-					|| getkeystate("LButton") || getkeystate("RButton")
-					|| getkeystate("Shift") || getkeystate("Ctrl") || getkeystate("Alt")
-					|| getkeystate("Shift", "P") || getkeystate("Ctrl", "P") || getkeystate("Alt", "P")	
-					|| getkeystate("Enter") ; required so chat box doesnt get reopened when user presses enter to close the chatbox
-					|| isUserPerformingAction()
-					|| MT_InputIdleTime() < 50  ;probably best to leave this in, as every now and then the next command wont be shift modified
+				;	while getkeystate("LWin", "P") || getkeystate("RWin", "P")	
+				;	|| getkeystate("LWin") || getkeystate("RWin")	
+				;	getkeystate("LButton", "P") || getkeystate("RButton", "P")
+				;	|| getkeystate("LButton") || getkeystate("RButton")
+				;	|| getkeystate("Shift") || getkeystate("Ctrl") || getkeystate("Alt")
+				;	|| getkeystate("Shift", "P") || getkeystate("Ctrl", "P") || getkeystate("Alt", "P")	
+					while	getkeystate("Enter") ; required so chat box doesnt get reopened when user presses enter to close the chatbox
+				;	|| isUserPerformingAction()
+				;	|| MT_InputIdleTime() < 50  ;probably best to leave this in, as every now and then the next command wont be shift modified
 					|| getPlayerCurrentAPM() > FInjectAPMProtection
 					{
 						if (A_TickCount - startInjectWait > 500)
@@ -1356,21 +1345,32 @@ cast_ForceInject:
 					}
 					if (!WinActive(GameIdentifier) || isGamePaused() || isMenuOpen() || !isSelectionGroupable(oSelection)) 
 						return
-					input.hookBlock(True, True)
-					Sleep := Input.releaseKeys()
+					;input.hookBlock(True, True)
+					;Sleep := Input.releaseKeys()
+					;critical 1000
+					;input.hookBlock(False, False)
+					;if sleep
+					;	dSleep(15) ;  sleep, 5
+					;else 
+					;	dSleep(10)  ; give 10 ms to allow for selection buffer to fully update so we are extra safe. 
+					lButtonInjectState := False
 					critical 1000
-					input.hookBlock(False, False)
-					if sleep
-						dSleep(15) ;  sleep, 5
-					else 
-						dSleep(10)  ; give 10 ms to allow for selection buffer to fully update so we are extra safe. 
+					if (getkeystate("LButton") || getkeystate("LButton", "P")) 
+						lButtonInjectState := True
+					input.pReleaseKeys(True)
+					dSleep(20)  ; give 10 ms to allow for selection buffer to fully update so we are extra safe. 
 					if isSelectionGroupable(oSelection) ; in case it somehow changed/updated 
-						castInjectLarva("MiniMap", 1, 0)	
+						castInjectLarva("MiniMap", 1, 0)
 					Input.revertKeyState()						
 					return
 				}
 	}
 	return
+f1::
+input.psend("{click lbutton down}")
+click lbutton down
+return 
+
 
 
 /* ; Shouldnt need this anymore
@@ -1964,7 +1964,7 @@ ShellMessage(wParam, lParam)
 							:= RedrawUnit := ReDrawLocalPlayerColour := True
 			aThreads.MiniMap.ahkassign.ReDrawMiniMap := 1 ; *** New line as ahkassign returns 0 on success - also ahkassing/and functions cant handle var false/true
 			DestroyOverlays()
-			aThreads.MiniMap.ahkFunction("DestroyOverlays")
+			aThreads.MiniMap.ahkPostFunction("DestroyOverlays")
 			setLowLevelInputHooks(False)
 
 		}
@@ -2606,7 +2606,6 @@ ini_settings_write:
 ;	Iniwrite, %A_Space%, %config_file%, %section%, MTCustomProgramName	
 
 	
-
 	;[Key Blocking]
 	section := "Key Blocking"
 	IniWrite, %BlockingStandard%, %config_file%, %section%, BlockingStandard
@@ -2699,9 +2698,7 @@ ini_settings_write:
 	loop, parse, l_GameType, `,
 	{
 		alert_array[A_LoopField, "Enabled"] := BAS_on_%A_LoopField%
-		alert_array[A_LoopField, "Clipboard"] := BAS_copy2clipboard_%A_LoopField%
 		IniWrite, % alert_array[A_LoopField, "Enabled"], %config_file%, Building & Unit Alert %A_LoopField%, enable	;alert system on/off
-		IniWrite, % alert_array[A_LoopField, "Clipboard"], %config_file%, Building & Unit Alert %A_LoopField%, copy2clipboard
 	}
 
 	if (program.Info.IsUpdating && A_IsCompiled)	;as both of these have there own write routines which activate on clicking 'save' in their on guis
@@ -3234,6 +3231,7 @@ try
 			Gui, Add, Edit, Number Right x+30 yp-2 w45 vTT_pClickDelay
 				Gui, Add, UpDown,  Range-1-300 vpClickDelay, %pClickDelay%
 */
+			
 			;yp+30
 
 		Gui, Add, GroupBox, xs ys+115 w161 h170, Key Blocking
@@ -3297,28 +3295,20 @@ try
 			BAS_on_%A_LoopField% := alert_array[A_LoopField, "Enabled"]
 			BAS_copy2clipboard_%A_LoopField% := alert_array[A_LoopField, "Clipboard"]
 		}
-		Gui, Add, GroupBox, w130 h65 section, 1v1
-			Gui, Add, Checkbox, X%XTabX% yp+20 vBAS_on_1v1 checked%BAS_on_1v1%, Enable Warnings
-			Gui, Add, Checkbox, y+10 vBAS_copy2clipboard_1v1 checked%BAS_copy2clipboard_1v1%, Copy To Clipboard		
-		Gui, Add, GroupBox, xs yp+45 w130 h65, 2v2
-			Gui, Add, Checkbox, X%XTabX% yp+20 vBAS_on_2v2 checked%BAS_on_2v2%, Enable Warnings
-			Gui, Add, Checkbox, y+10 vBAS_copy2clipboard_2v2 checked%BAS_copy2clipboard_2v2%, Copy To Clipboard
-		Gui, Add, GroupBox, ys x+25 w130 h65 section, 3v3	
-			Gui, Add, Checkbox, xp+10 yp+20 vBAS_on_3v3 checked%BAS_on_3v3%, Enable Warnings	 
-			Gui, Add, Checkbox, y+10 vBAS_copy2clipboard_3v3 checked%BAS_copy2clipboard_3v3%, Copy To Clipboard
-		Gui, Add, GroupBox, xs yp+45 w130 h65, 4v4
-			Gui, Add, Checkbox,xp+10 yp+20 vBAS_on_4v4 checked%BAS_on_4v4%, Enable Warnings	
-			Gui, Add, Checkbox, y+10 vBAS_copy2clipboard_4v4 checked%BAS_copy2clipboard_4v4%, Copy To Clipboard
-		Gui, Add, GroupBox, ys x+25 w130 h65, FFA	
-			Gui, Add, Checkbox, xp+10 yp+20 vBAS_on_FFA checked%BAS_on_FFA%, Enable Warnings	 
-			Gui, Add, Checkbox, y+10 vBAS_copy2clipboard_FFA checked%BAS_copy2clipboard_FFA%, Copy To Clipboard
-			tmp_xGUIlocation := XTabX - 10
-		Gui, Add, GroupBox, X%tmp_xGUIlocation% y+120 w275 h55, Playback Last Alert			
+		
+		Gui, Add, GroupBox, x+45 y+60 w100 h160 section, Enable Warnings
+			Gui, Add, Checkbox, xp+15 yp+25 vBAS_on_1v1 checked%BAS_on_1v1%, 1v1
+			Gui, Add, Checkbox, y+15 vBAS_on_2v2 checked%BAS_on_2v2%, 2v2
+			Gui, Add, Checkbox, y+15 vBAS_on_3v3 checked%BAS_on_3v3%, 3v3
+			Gui, Add, Checkbox, y+15 vBAS_on_4v4 checked%BAS_on_4v4%, 4v4
+			Gui, Add, Checkbox, y+15 vBAS_on_FFA checked%BAS_on_FFA%, FFA 
+		
+		Gui, Add, GroupBox, Xs+120 ys w200 h55, Playback Last Alert			
 			Gui, Add, Text, xp+10 yp+25 w40,Hotkey:
 				Gui, Add, Edit, Readonly yp-2 x+5 w100  center vPlayback_Alert_Key , %Playback_Alert_Key%
 					Gui, Add, Button, yp-2 x+5 gEdit_hotkey v#Playback_Alert_Key,  Edit	
 		Gui, Font, s10
-		Gui, Add, Button, center xs-145 yp+50 w275 h60 gAlert_List_Editor vAlert_List_Editor, Launch Alert List Editor
+		Gui, Add, Button, center Xs+120 ys+100 w200 h60 gAlert_List_Editor vAlert_List_Editor, Launch Alert List Editor
 		Gui, Font,
 
 	Gui, Add, Tab2,w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vBug_TAB, Report Bug
@@ -6073,11 +6063,15 @@ autoWorkerProductionCheck()
 		if (!isSelectionGroupable(oSelection) || isGamePaused() || isMenuOpen())
 			return
 		Thread, NoTimers, true
-		input.hookBlock(True, True)
-		upsequence := Input.releaseKeys()
+		;input.hookBlock(True, True)
+		;upsequence := Input.releaseKeys()
+		;critical, 1000
+		;input.hookBlock(False, False)
+
 		critical, 1000
-		input.hookBlock(False, False)
-		dSleep(15) ; increase safety ensure selection buffer fully updated
+		input.pReleaseKeys()
+
+		dSleep(25) ; increase safety ensure selection buffer fully updated
 
 		HighlightedGroup := getSelectionHighlightedGroup()
 		If numGetSelectionSorted(oSelection) ; = 0 as nothing is selected so cant restore this/control group it
@@ -6306,6 +6300,7 @@ ResumeProcess(hwnd)
 {
 	return DllCall("ntdll\NtResumeProcess","uint",hwnd)
 }
+
 
 
 
@@ -7269,7 +7264,7 @@ getCamCenteredUnit(UnitList) ; |delimited ** ; needs a minimum of 70+ ms to upda
 
 
 
-castInjectLarva(Method="Backspace", ForceInject=0, sleepTime=80)	;SendWhileBlocked("^" CG_control_group)
+castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendWhileBlocked("^" CG_control_group)
 {	global
 	LOCAL 	click_x, click_y, BaseCount, oSelection, SkipUsedQueen, MissedHatcheries, QueenCount, FoundQueen
 			, start_x, start_y
@@ -7278,6 +7273,9 @@ castInjectLarva(Method="Backspace", ForceInject=0, sleepTime=80)	;SendWhileBlock
 			, stopWatchCtrlID 
 
 	LOCAL HighlightedGroup := getSelectionHighlightedGroup()
+
+	if ForceInject
+		sleepTime := 0
 
 	if (Method = "MiniMap" OR ForceInject)
 	{
@@ -7293,12 +7291,55 @@ castInjectLarva(Method="Backspace", ForceInject=0, sleepTime=80)	;SendWhileBlock
 																		
 		; use check the ctrl group, rather than the selection buffer, then wont have to sleep for selection buffer
 		; getSelectedQueensWhichCanInject(oSelection, ForceInject)) 
+		
+		; there is an issue with multi injects causing patrolling queens to inject.
+		; its because im not removing patrolling queens from the inject group for an auto inject
+		; so while moving between hatches to do a multi inject, this queen will be seen as able to inject so cause 
+		; injects to occur by other queens on next run through of the timer.
+
 		If (Local QueenCount := getGroupedQueensWhichCanInject(oSelection, ForceInject)) ; this wont fetch burrowed queens!! so dont have to do a check below - as burrowed queens can make cameramove when clicking their hatch
 		{
 			if (ForceInject || Inject_RestoreSelection)
 				MTsend("^" Inject_control_group), stopWatchCtrlID := stopwatch()
 			MTsend(MI_Queen_Group)
-			dsleep(10)
+			dsleep(20)
+
+			if ForceInject
+			{
+				local lRemoveQueens, removedCount := 0
+				; some queens shouldnt inject and this deselects them from the selection panel
+				; this will remove queens which are patrolling or laying a tumour or doing other things
+				; as since they are in the ctrl group if they are closer than a queen who should be doing the inject
+				; then they will do the inject instead!
+
+				if (oSelection.Queens.MaxIndex() != oSelection.AllQueens.MaxIndex())
+				{
+					for index, groupedQueens in oSelection.AllQueens
+					{
+						local flag := False
+						for index, injectingQueens in oSelection.Queens
+						{
+							if (groupedQueens.unit = injectingQueens.unit)
+							{
+								flag := True
+								break 
+							}
+						}
+						if !flag
+							lRemoveQueens .= groupedQueens.unit ",", removedCount++	
+					}
+					if (lRemoveQueens := SubStr(lRemoveQueens, 1, -1))
+					{
+						local selectionCount := getSelectionCount()
+						ClickSelectUnitsPortriat(lRemoveQueens, "+", True)
+						qpx(true)
+						while (getSelectionCount() != selectionCount - removedCount && A_Index <= 20)
+							dSleep(1)
+						dsleep(3)
+					}
+				}
+			}
+
 			For Index, CurrentHatch in oHatcheries
 			{
 				Local := FoundQueen := 0
@@ -7315,7 +7356,6 @@ castInjectLarva(Method="Backspace", ForceInject=0, sleepTime=80)	;SendWhileBlock
 						click_x := CurrentHatch.MiniMapX, click_y := CurrentHatch.MiniMapY
 						If HumanMouse
 							MouseMoveHumanSC2("x" click_x "y" click_y "t" rand(HumanMouseTimeLo, HumanMouseTimeHi))
-					;	MTclick(click_x, click_y, , , , , False)
 						MTclick(click_x, click_y)
 						if sleepTime
 							sleep % ceil(sleepTime * rand(1, Inject_SleepVariance)) ; eg rand(1, 1.XXXX) as the second parameter will always have a decimal point, dont have to worry about it returning just full integers eg 1 or 2 or 3
@@ -7331,6 +7371,7 @@ castInjectLarva(Method="Backspace", ForceInject=0, sleepTime=80)	;SendWhileBlock
 					MissedHatcheries.insert(CurrentHatch)
 			}
 		;	/* ; THIS Is trying to do multi injects
+			; just realised that can only do one multi inject per inject round
 			if (MissedHatcheries.maxindex() && CanQueenMultiInject)
 			{
 				local QueenMultiInjects := []
@@ -7346,35 +7387,44 @@ castInjectLarva(Method="Backspace", ForceInject=0, sleepTime=80)	;SendWhileBlock
 								QueenMultiInjects[Queen.unit] := []
 							QueenMultiInjects[Queen.unit].insert(CurrentHatch)
 							Queen.Energy -= 25
-							CurrentQueenInjectCount ++
-							if (CurrentQueenInjectCount = MaxInjects)
+							CurrentQueenInjectCount++
+							if (CurrentQueenInjectCount >= MaxInjects)
 								break
 						}
 
 					}
 				}
+
 				For QueenIndex, QueenObject in QueenMultiInjects
 				{
 					for index, CurrentHatch in QueenObject
 					{
-						if (A_index = 1)
+						if (index = QueenObject.MinIndex())
 						{
-							ClickSelectUnitsPortriat(QueenIndex, 0) 
-							dSleep(10) 
+							ClickSelectUnitsPortriat(QueenIndex) 
+							while (getSelectionCount() != 1 && A_Index <= 15)
+								dSleep(1) 
+							dSleep(2) 
 						}
 						MTsend(Inject_spawn_larva) ;always need to send this, otherwise might left click minimap for somereason
 						click_x := CurrentHatch.MiniMapX, click_y := CurrentHatch.MiniMapY
 						If HumanMouse
 							MouseMoveHumanSC2("x" click_x "y" click_y "t" rand(HumanMouseTimeLo, HumanMouseTimeHi))
-					;	MTclick(click_x, click_y, "Left", "+", , , False)
-						MTclick(click_x, click_y, "Left", "+")
+					;	MTclick(click_x, click_y, "Left", "+")
+
 						if sleepTime
 							sleep % ceil(sleepTime * rand(1, Inject_SleepVariance))
-					;	else dSleep(2)
-						if (A_Index = QueenUnit.maxIndex())
+
+						if (index = QueenObject.maxIndex())
 						{
-							MTsend(MI_Queen_Group)
-							dSleep(5) 
+							break, 2
+							; cant do multi inject on more than one hatch as sending the queen ctrl group key
+							; more than 1 within a second (even after other buttons) will cause the camera to jump/focus
+							; on the queens
+							; could send another ctrl group then the queen group key
+
+							;MTsend(MI_Queen_Group)
+							;dSleep(8) 
 						}
 						injectedHatches++
 						if (injectedHatches >= FInjectHatchMaxHatches && ForceInject)
@@ -7515,7 +7565,6 @@ castInjectLarva(Method="Backspace", ForceInject=0, sleepTime=80)	;SendWhileBlock
 	}
 }
 
-
 OldBackSpaceCtrlGroupInject()
 {
  if  (1 = 2) ; I.E. I have disabled this feature until i get around to finding the centred hatch better ((Method="Backspace Adv") || (Method = "Backspace CtrlGroup")) ;cos i changed the name in an update
@@ -7560,8 +7609,6 @@ OldBackSpaceCtrlGroupInject()
 	;	send % BI_camera_pos_x
 	}
 }
-
-
 
  zergGetHatcheriesToInject(byref Object)
  { 	global aUnitID
@@ -7645,18 +7692,20 @@ ParseWarningArrays() ;synchs the warning arrays from the config file after a rel
 }
 
 g_SplitUnits:
-	input.hookBlock(True, True)
-	sleep := Input.releaseKeys()
+;	input.hookBlock(True, True)
+;	sleep := Input.releaseKeys()
+;	critical, 1000
+;	input.hookBlock(False, False)
+;	if sleep
+;		dSleep(15) ;
 	critical, 1000
-	input.hookBlock(False, False)
-	if sleep
-		dSleep(15) ;
+	input.pReleaseKeys()
 	SplitUnits(SplitctrlgroupStorage_key)
 return
 
 
 ; 	22/9/13 
-;	Using a hookblock doesn't increase ropbustness when user is constantly holding down the hotkey
+;	Using a hookblock doesn't increase robustness when user is constantly holding down the hotkey
 ;	But this isn't a real issue anyway (and it works well even if they are)
 
 
@@ -7669,17 +7718,39 @@ for a 146 terran army deslecting all but 1 unit
 */
 
 g_SelectArmy:
+	if !getArmyUnitCount()
+		return 
 	while (GetKeyState("Lbutton", "P") || GetKeyState("Rbutton", "P"))
 	{
 		sleep 1
 		MouseDown := True
 	}
-	sleep := Input.releaseKeys()
+;	sleep := Input.releaseKeys()
+;	critical, 1000
 	critical, 1000
+	input.pReleaseKeys()
+	sleep := 0
+
 	if (sleep || MouseDown)
 		dSleep(15)
-	MTsend(Sc2SelectArmy_Key)
-	dSleep(25)
+
+	if (getArmyUnitCount() != getSelectionCount())
+	{
+		MTsend(Sc2SelectArmy_Key)
+		timerArmyID := stopwatch()
+		; waits for selection count to match army count 
+		; times out after 50 ms - small static sleep afterwards
+		; A_Index check is just in case stopwatch fails (it should work on every computer) - get stuck in infinite loop with input blocked
+		while (getSelectionCount() != getArmyUnitCount() && stopwatch(timerArmyID, False) < 70 && A_Index < 80)
+			dsleep(1)
+		dsleep(12)
+	} 
+	else 
+	{
+		MTsend(Sc2SelectArmy_Key)
+		dSleep(40) 
+	}
+
 	aUnitPortraitLocations := []
 	aUnitPortraitLocations := findPortraitsToRemoveFromArmy("", SelectArmyDeselectXelnaga, SelectArmyDeselectPatrolling
 									, SelectArmyDeselectHoldPosition, SelectArmyDeselectFollowing, SelectArmyDeselectLoadedTransport 
@@ -7857,9 +7928,9 @@ clickUnitPortraits(aUnitPortraitLocations, Modifers := "+")
 			{	
 				currentPage := getUnitSelectionPage()
 				MTclick(Xpage, Ypage)
-				pageTick := A_TickCount
-				while (getUnitSelectionPage() = currentPage && A_TickCount - pageTick < 25)
+				while (getUnitSelectionPage() = currentPage && A_Index < 25)
 					dsleep(1)
+				dsleep(7) ; small static delay
 			}
 			MTsend("{click " x " " y "}")			
 		}
@@ -7872,63 +7943,49 @@ clickUnitPortraits(aUnitPortraitLocations, Modifers := "+")
 		currentPage := getUnitSelectionPage()
 		ClickUnitPortrait(0, X, Y, Xpage, Ypage, startPage + 1) ; for this page numbers start at 1, hence +1
 		MTclick(Xpage, Ypage)
-		while (getUnitSelectionPage() = currentPage && A_TickCount - pageTick < 25)
+		while (getUnitSelectionPage() = currentPage && A_Index < 25)
 			dsleep(1)
 	}
 	return	
 }
+; unitIndex is a comma delimited list
 
-clickUnitPortraitsOld(aUnitPortraitLocations, Modifers := "+")
+ClickSelectUnitsPortriat(unitIndexList, Modifers := "", restoreStartPage := False)	;can put ^ to do a control click
 {
 	startPage := getUnitSelectionPage()
-	for i, portrait in aUnitPortraitLocations
+	numGetSelectionSorted(aSelected, True) ; reversed
+	if (unitIndexList && downModifers := getModifierDownSequenceFromString(Modifers))
+		MTsend(downModifers)
+
+	for i, unit in aSelected.units
 	{
-		if (portrait <= 143)
+		if (unit.unitPortrait >= 144) 
+			continue 
+		unitIndex := unit.UnitIndex
+		if unitIndex in %unitIndexList% ;can only deselect up to unitselectionindex 143 (as thats the maximun on the card)
 		{
-			if ClickUnitPortrait(portrait, X, Y, Xpage, Ypage) 
+			if ClickUnitPortrait(unit.unitPortrait, X, Y, Xpage, Ypage) ; -1 as selection index begins at 0 i.e 1st unit at pos 0 top left
 			{
 				currentPage := getUnitSelectionPage()
-				MTclick(Xpage, Ypage)
-				pageTick := A_TickCount
-				while (getUnitSelectionPage() = currentPage && A_TickCount - pageTick < 20)
+				MTclick(Xpage, Ypage)	 ;clicks on the page number
+				while (getUnitSelectionPage() = currentPage && A_Index < 25)
 					dsleep(1)
+				dsleep(7) ; small static delay			
 			}
-			MTsend(Modifers "{click " x " " y "}")	
-			
+			MTsend("{click " x " " y "}")	
 		}
 	}
-	if (startPage != getUnitSelectionPage())
+
+	if downModifers
+		MTsend(getModifierUpSequenceFromString(Modifers))
+	if (restoreStartPage && startPage != getUnitSelectionPage())
 	{
 		currentPage := getUnitSelectionPage()
 		ClickUnitPortrait(0, X, Y, Xpage, Ypage, startPage + 1) ; for this page numbers start at 1, hence +1
 		MTclick(Xpage, Ypage)
-		while (getUnitSelectionPage() = currentPage && A_TickCount - pageTick < 20)
+		while (getUnitSelectionPage() = currentPage && A_Index < 25)
 			dsleep(1)
 	}
-	return	
-}
-
-ClickSelectUnitsPortriat(unitIndex, sleep := 10, ClickModifier="")	;can put ^ to do a control click
-{
-	numGetSelectionSorted(aSelected, True) ; reversed
-	for i, unit in aSelected.units
-	{
-		if (unitIndex = unit.UnitIndex && unit.unitPortrait < 144 ) ;can only deselect up to unitselectionindex 143 (as thats the maximun on the card)
-		{
-			if ClickUnitPortrait(unit.unitPortrait, X, Y, Xpage, Ypage) ; -1 as selection index begins at 0 i.e 1st unit at pos 0 top left
-				MTclick(Xpage, Ypage)	 ;clicks on the page number
-			if ClickModifier
-				MTclick(x, y, "Left", ClickModifier) ;shift clicks the unit
-			else MTclick(x, y)
-			if (sleep != -1)
-				dSleep(sleep)
-		}
-	}
-	if getUnitSelectionPage()	;ie slection page is not 0 (hence its not on 1 (1-1))
-	{
-		ClickUnitPortrait(blank,X,Y, Xpage, Ypage, 1) ; this selects page 1 when done
-		MTclick(Xpage, Ypage)
-	}	
 	return
 }
 ; portrait numbers begin at 0 i.e. first page contains portraits 0-23
@@ -9341,6 +9398,37 @@ castEasySelectLoadedTransport()
 
 
 
+;castBlinkStalker()
+if 1
+{
+	numGetSelectionSorted(aSelection)
+	aVitality := []
+	for i, unit in aSelection.units
+	{
+		getCurrentHpAndShields(unit.unitIndex, aHealthAndShields)
+		if (unit.UnitID = aUnitId.Stalker)
+		{
+			unit.Health := aHealthAndShields.Health 
+			unit.Shields := aHealthAndShields.Shields
+			aVitality.insert(unit)
+		}
+	}
+	sort2DArray(aVitality, "Shields", False)
+	msgbox % objtree(aVitality)
+	aBlink := []
+	for i, unit in aVitality
+	{
+		gameTime := getTime()
+		if (unit.shields <= 15 && )
+			aBlink.insert({unitIndex: unit.UnitIndex, lastBlink: ignore })
+	}
+
+}
+return 
+
+
+
+
 /*
 Terran build structure
 has a remaining time counter (ie decrease as being built) (really +0x2c)
@@ -9463,6 +9551,7 @@ class SC2
           }
 
 } 
+
 
 /*
 

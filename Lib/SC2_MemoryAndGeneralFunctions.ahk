@@ -62,6 +62,7 @@ Global B_LocalCharacterNameID
 , O_uChronoState
 , O_uInjectState
 , O_uHpDamage
+, O_uShieldDamage
 , O_uEnergy
 , O_uTimer
 , O_cqState
@@ -77,6 +78,9 @@ Global B_LocalCharacterNameID
 , O_scTypeHighlighted
 , O_scUnitIndex
 
+, B_localArmyUnitCount
+, O1_localArmyUnitCount
+, O2_localArmyUnitCount
 , B_TeamColours
 , P_SelectionPage
 , O1_SelectionPage
@@ -214,6 +218,7 @@ loadMemoryAddresses(base)
 		 O_uInjectState := 0xE7 ; +5 Weird this was 5 not 4 (and its values changed) chrono state just +4
 
 		 O_uHpDamage := 0x114
+		 O_uShieldDamage := 0x118
 		 O_uEnergy := 0x11c 
 		 O_uTimer := 0x16C ;+4
 		
@@ -243,6 +248,11 @@ loadMemoryAddresses(base)
 ;	P_PlayerColours := base + 0x03D28A84 ; 0 when enemies red  1 when player colours
 ;		O1_PlayerColours := 0x4
 ;		O2_PlayerColours := 0x17c
+
+	; give the army unit count (i.e. same as in the select army icon) - unit count not supply
+	B_localArmyUnitCount := base + 0x031073C0
+		O1_localArmyUnitCount := 0x36c
+		O2_localArmyUnitCount := 0x248
 
 	 B_TeamColours := base + 0x03108504 ; 2 when team colours is on 
 	; another one at + 0x4FA7800
@@ -759,6 +769,11 @@ getUnitHpDamage(unit)
 	Return Floor(ReadMemory(B_uStructure + (unit * S_uStructure) + O_uHpDamage, GameIdentifier) / 4096)
 }
 
+getUnitShieldDamage(unit)
+{	global
+	Return Floor(ReadMemory(B_uStructure + (unit * S_uStructure) + O_uShieldDamage, GameIdentifier) / 4096)
+}
+
 getUnitPositionX(unit)
 {	global
 	Return ReadMemory(B_uStructure + (unit * S_uStructure) + O_uX, GameIdentifier) /4096
@@ -924,6 +939,12 @@ arePlayerColoursEnabled()
 {	global
 	return !ReadMemory(B_TeamColours, GameIdentifier) ; inverse as this is true when player colours are off
 	;Return pointer(GameIdentifier, P_PlayerColours, O1_PlayerColours, O2_PlayerColours) ; this true when they are on
+}
+
+; give the army unit count (i.e. same as in the select army icon) - unit count not supply
+getArmyUnitCount()
+{
+	return Round(pointer(GameIdentifier, B_localArmyUnitCount, O1_localArmyUnitCount, O2_localArmyUnitCount))
 }
 
 isGamePaused()
@@ -1954,31 +1975,39 @@ numgetUnitModelPointer(ByRef Memory, Unit)
 	aControlGroup["Types"]	:= numget(MemDump, O_scTypeCount, "Short")
 ;	aControlGroup["HighlightedGroup"]	:= numget(MemDump, O_scTypeHighlighted, "Short")
 	aControlGroup.Queens := []
+	aControlGroup.AllQueens := []
 
 	loop % groupCount
 	{
 		unit := numget(MemDump,(A_Index-1) * S_scStructure + O_scUnitIndex , "Int") >> 18
-		if isUnitDead(unit) ; as this is being reead from control group buffer so dead units can still be included!
+		if (isUnitDead(unit) || !isUnitLocallyOwned(Unit)) ; as this is being reead from control group buffer so dead units can still be included!
 			continue 
-		type := getUnitType(unit)
-		if (isUnitLocallyOwned(Unit) && aUnitID["Queen"] = type && ((energy := getUnitEnergy(unit)) >= 25)) 
+		
+		if (aUnitID["Queen"] = type := getUnitType(unit)) 
 		{
+			; this is used to keep track of if some queens shouldnt inject 
+			aControlGroup.AllQueens.insert({ "unit": unit})
+
 			; I do this because my blocking of keys isnt 100% and if the user is pressing H e.g. hold posistion army or make hydras 
 			; and so can accidentally put queen on hold position thereby stopping injects!!!
 			; so queen is not moving/patrolling/a-moving ; also if user right clicks queen to catsh, that would put her on a never ending follow command
 			; QueenBuild = make creepTumour (or on way to making it) - state = 0
-			if CheckMoveState
+			if (energy := getUnitEnergy(unit) >= 25)
 			{
-				commandString := getUnitQueuedCommandString(unit)
-				if !(InStr(commandString, "Patrol") || InStr(commandString, "Move") || InStr(commandString, "Attack")
-				|| InStr(commandString, "QueenBuild") || InStr(commandString, "Transfusion"))
+				if CheckMoveState
+				{
+					commandString := getUnitQueuedCommandString(unit)
+					if !(InStr(commandString, "SpawnLarva") || InStr(commandString, "Patrol") || InStr(commandString, "Move") || InStr(commandString, "Attack")
+					|| InStr(commandString, "QueenBuild") || InStr(commandString, "Transfusion"))
+						aControlGroup.Queens.insert(objectGetUnitXYZAndEnergy(unit)), aControlGroup.Queens[aControlGroup.Queens.MaxIndex(), "Type"] := Type
+				}
+				else 
 					aControlGroup.Queens.insert(objectGetUnitXYZAndEnergy(unit)), aControlGroup.Queens[aControlGroup.Queens.MaxIndex(), "Type"] := Type
 			}
-			else 
-				aControlGroup.Queens.insert(objectGetUnitXYZAndEnergy(unit)), aControlGroup.Queens[aControlGroup.Queens.MaxIndex(), "Type"] := Type
 		}
+
 	} 																																					
-	aControlGroup["QueenCount"] := 	aControlGroup.Queens.maxIndex() ? aControlGroup.Queens.maxIndex() : 0 ; as "SelectedUnitCount" will contain total selected queens + other units in group
+	aControlGroup["QueenCount"] := round(aControlGroup.Queens.maxIndex()) ; as "SelectedUnitCount" will contain total selected queens + other units in group
 	return 	aControlGroup.Queens.maxindex()
  }
 
@@ -2011,7 +2040,7 @@ numgetUnitModelPointer(ByRef Memory, Unit)
 				aSelection.Queens.insert(objectGetUnitXYZAndEnergy(unit)), aSelection.Queens[aSelection.Queens.MaxIndex(), "Type"] := Type
 		}
 	} 																								; also if user right clicks queen to catsh, that would put her on a never ending follow command
-	aSelection["Count"] :=  aSelection.Queens.maxIndex() ? aSelection.Queens.maxIndex() : 0 		; as "SelectedUnitCount" will contain total selected queens + other units in group
+	aSelection["Count"] := round(aSelection.Queens.maxIndex())		; as "SelectedUnitCount" will contain total selected queens + other units in group
 	return 	aSelection.Queens.maxindex()
  }
 
@@ -2741,9 +2770,7 @@ createAlertArray()
 	loop, parse, l_GameType, `, ;comma is the separator
 	{
 		IniRead, BAS_on_%A_LoopField%, %config_file%, Building & Unit Alert %A_LoopField%, enable, 1	;alert system on/off
-		IniRead, BAS_copy2clipboard_%A_LoopField%, %config_file%, Building & Unit Alert %A_LoopField%, copy2clipboard, 1
 		alert_array[A_LoopField, "Enabled"] := BAS_on_%A_LoopField% ;this style name, so it matches variable name for update
-		alert_array[A_LoopField, "Clipboard"] := BAS_copy2clipboard_%A_LoopField%
 		loop,	;loop thru the building list sequentialy
 		{
 			IniRead, temp_name, %config_file%, Building & Unit Alert %A_LoopField%, %A_Index%_name_warning
@@ -2904,8 +2931,6 @@ doUnitDetection(unit, type, owner, mode = "")
 				}										
 				MiniMapWarning.insert({"Unit": unit, "Time": Time})
 
-				If ( alert_array[GameType, "Clipboard"] && WinActive(GameIdentifier))
-					clipboard := alert_array[GameType, A_Index, "Name"] " Detected - " aPlayer[owner, "Colour"] " - " aPlayer[owner, "Name"]
 				PrevWarning := []
 				PrevWarning.speech := alert_array[GameType, A_Index, "Name"]
 				PrevWarning.unitIndex := unit
@@ -3424,10 +3449,10 @@ isTransportUnloading(unit)
 /*
 	There is some other information within the pCurrentModel 
 	for example: 
-		+ 0x2C 	- Max Hp /4096
+		+ 0x2C 	- Max Hp /4096 (there are two of these next to each other))
 		+ 0x34 	- Total armour (unit base armour + armour upgrade) /4096
 		+ 0x6C	- Current armour Upgrade
-		+ 0xA8  - Total Shields /4096
+		+ 0xA0  - Total Shields /4096 (there are two of these next to each other)
 		+ 0xE0 	- Shield Upgrades
 	
 */
@@ -3438,4 +3463,35 @@ getUnitMaxHp(unit)
     addressArray := readMemory(mp + 0xC, GameIdentifier, 4)
     pCurrentModel := readMemory(addressArray + 0x4, GameIdentifier, 4) 		
     return round(readMemory(pCurrentModel + 0x2C, GameIdentifier) / 4096)
+}
+
+getUnitMaxShield(unit)
+{   global B_uStructure, S_uStructure, O_uModelPointer
+    mp := readMemory(B_uStructure + unit * S_uStructure + O_uModelPointer, GameIdentifier) << 5 & 0xFFFFFFFF
+    addressArray := readMemory(mp + 0xC, GameIdentifier, 4)
+    pCurrentModel := readMemory(addressArray + 0x4, GameIdentifier, 4) 		
+    return round(readMemory(pCurrentModel + 0xA0, GameIdentifier) / 4096)
+}
+
+getUnitCurrentHp(unit)
+{
+	return getUnitMaxHp(unit) - getUnitHpDamage(unit)
+}
+; will be 0 for units which dont have shields
+getUnitCurrentShields(unit)
+{
+	return getUnitMaxShield(unit) - getUnitShieldDamage(unit)
+}
+
+getCurrentHpAndShields(unit, byRef result)
+{
+	global B_uStructure, S_uStructure, O_uModelPointer
+    result := []
+    mp := readMemory(B_uStructure + unit * S_uStructure + O_uModelPointer, GameIdentifier) << 5 & 0xFFFFFFFF
+    addressArray := readMemory(mp + 0xC, GameIdentifier, 4)
+    pCurrentModel := readMemory(addressArray + 0x4, GameIdentifier, 4) 		
+    result.health := round(readMemory(pCurrentModel + 0x2C, GameIdentifier) / 4096) - getUnitHpDamage(unit)
+    result.shields :=  round(readMemory(pCurrentModel + 0xA0, GameIdentifier) / 4096) - getUnitShieldDamage(unit)
+    result.unitIndex := unit 
+    return
 }
