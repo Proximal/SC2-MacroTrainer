@@ -23,6 +23,7 @@ class Input
 		,	KybdBlocked := False
 		, 	pCurrentClickDelay := -1
 		, 	pCurrentSendDelay := -1
+		, 	dragLeftClick := False
 
 	; Very Important Note about logical and physical hotkey states
 	; if the hotkey has no modifiers, then physical state will be down
@@ -32,20 +33,26 @@ class Input
 
 	releaseKeys(checkMouse := False)
 	{
-		this.downSequence := ""
+		this.downSequence := this.dragLeftClick := ""
 		SetFormat, IntegerFast, hex
 		for index, key in this.keys 
 			if GetKeyState(key) 	; check the logical state (as AHK will block the physical)
 				upsequence .= "{VK" GetKeyVK(key) " Up}", this.downSequence .= "{" key " Down}" 
+		SetFormat, IntegerFast, d
 		if checkMouse
 		{
 			for index, key in this.MouseButtons 
 			{
 				if GetKeyState(key) 	; check the logical state
-					upsequence .= "{VK" GetKeyVK(key) " Up}", this.downSequence .= "{" key " Down}" 
+				{
+					upsequence .= "{click " key " Up}"
+					if instr(key, "l") ; for left button drag click
+						this.dragLeftClick := True, getLastLeftClickPos(x, y), this.downSequence .= "{click " x " " y " " key " Down}" 	
+					else this.downSequence .= "{click " key " Down}"
+				}
 			}
 		}
-		SetFormat, IntegerFast, d
+		
 		if upsequence
 		{
 			SendInput, {BLIND}%upsequence%
@@ -59,7 +66,7 @@ class Input
 
 	pReleaseKeys(checkMouse := False)
 	{
-		this.downSequence := ""
+		this.downSequence := this.dragLeftClick := ""
 		for index, key in this.keys 
 			if GetKeyState(key) 	; check the logical state (as AHK will block the physical)
 				upsequence .= "{" key " Up}", this.downSequence .= "{" key " Down}" 
@@ -71,7 +78,7 @@ class Input
 				{
 					upsequence .= "{click " key " Up}"
 					if instr(key, "l") ; for left button drag click
-						getLastLeftClickPos(x, y), this.downSequence .= "{click " x " " y " " key " Down}" 	
+						this.dragLeftClick := True, getLastLeftClickPos(x, y), this.downSequence .= "{click " x " " y " " key " Down}" 	
 					else this.downSequence .= "{click " key " Down}"
 					
 				}
@@ -89,7 +96,16 @@ class Input
 	revertKeyState()
 	{
 		if this.downSequence
+		{
 			this.pSend(this.downSequence)
+			if this.dragLeftClick
+			{
+				; this is so the green box drag will appear in SC.
+				; otherwise the box drag wont appear until the user moves the mouse 
+				MouseGetPos, x, y
+				dllcall("SetCursorPos", "int", x, "int", y)
+			}	
+		}
 		return							
 	}
 	userInputModified()

@@ -1328,13 +1328,17 @@ cast_ForceInject:
 					startInjectWait := A_TickCount
 				;	while getkeystate("LWin", "P") || getkeystate("RWin", "P")	
 				;	|| getkeystate("LWin") || getkeystate("RWin")	
-				;	getkeystate("LButton", "P") || getkeystate("RButton", "P")
+				;	|| getkeystate("LButton", "P") || getkeystate("RButton", "P")
 				;	|| getkeystate("LButton") || getkeystate("RButton")
 				;	|| getkeystate("Shift") || getkeystate("Ctrl") || getkeystate("Alt")
 				;	|| getkeystate("Shift", "P") || getkeystate("Ctrl", "P") || getkeystate("Alt", "P")	
-					while	getkeystate("Enter") ; required so chat box doesnt get reopened when user presses enter to close the chatbox
+				;	|| getkeystate("Enter") ; required so chat box doesnt get reopened when user presses enter to close the chatbox
 				;	|| isUserPerformingAction()
 				;	|| MT_InputIdleTime() < 50  ;probably best to leave this in, as every now and then the next command wont be shift modified
+				;	|| getPlayerCurrentAPM() > FInjectAPMProtection
+				
+					While getkeystate("Enter") 
+					|| isUserBusyBuilding() || isCastingReticleActive() 
 					|| getPlayerCurrentAPM() > FInjectAPMProtection
 					{
 						if (A_TickCount - startInjectWait > 500)
@@ -1353,10 +1357,8 @@ cast_ForceInject:
 					;	dSleep(15) ;  sleep, 5
 					;else 
 					;	dSleep(10)  ; give 10 ms to allow for selection buffer to fully update so we are extra safe. 
-					lButtonInjectState := False
+				
 					critical 1000
-					if (getkeystate("LButton") || getkeystate("LButton", "P")) 
-						lButtonInjectState := True
 					input.pReleaseKeys(True)
 					dSleep(20)  ; give 10 ms to allow for selection buffer to fully update so we are extra safe. 
 					if isSelectionGroupable(oSelection) ; in case it somehow changed/updated 
@@ -1366,12 +1368,6 @@ cast_ForceInject:
 				}
 	}
 	return
-f1::
-input.psend("{click lbutton down}")
-click lbutton down
-return 
-
-
 
 /* ; Shouldnt need this anymore
 	
@@ -1395,88 +1391,25 @@ return
 		Thread, NoTimers, false
 	}
 	else TooManyBurrowedQueens := 0
+
+	getBurrowedQueenCountInControlGroup(Group, ByRef UnburrowedCount="")
+	{	GLOBAL aUnitID
+		UnburrowedCount := BurrowedCount := 0
+		numGetControlGroupObject(oControlGroup, Group)
+		for index, unit in oControlGroup.units
+			if (unit.type = aUnitID.QueenBurrowed)
+				BurrowedCount ++
+			else if (unit.type = aUnitID.Queen)
+				UnburrowedCount++
+		return BurrowedCount
+	}
 */
  
 
-getBurrowedQueenCountInControlGroup(Group, ByRef UnburrowedCount="")
-{	GLOBAL aUnitID
-	UnburrowedCount := BurrowedCount := 0
-	numGetControlGroupObject(oControlGroup, Group)
-	for index, unit in oControlGroup.units
-		if (unit.type = aUnitID.QueenBurrowed)
-			BurrowedCount ++
-		else if (unit.type = aUnitID.Queen)
-			UnburrowedCount++
-	return BurrowedCount
-}
-
-getCurrentlyHighlightedUnitType(ByRef SampleTargetFilter="")
-{
-;	PreviousCritical := A_IsCritical 	
-
-	Thread, NoTimers, true 	;shouldn't use critical here, incase i'm trying to track user input
-;	critical, on ;otherwise takes too long! still takes a a bit of time for lots of selected units! 16ms for 295 and 63ms for 540 supply selected units when sorting them
-
-	CurrentGroup := -1 ; so 1st timein for loop != ++ will be 0
-	if numGetUnitSelectionObject(oSelection, "Sort") ; returns selection count
-		for index, Unit in oSelection.Units
-		{
-			if (unit.type != previousType)
-			{
-				CurrentGroup++	
-				previousType := unit.type
-				if (CurrentGroup = oSelection.HighlightedGroup)
-				{
-					SampleTargetFilter := getUnitTargetFilterFast(unit.UnitIndex) ; so can be used as a basic test of unit type eg is it a structure
-					return Unit.Type
-				}
-			}
-		}
-	Return 0 ;either error or no units selected
-}
-
-;not sure if this works
-findunitTypeTabPosition(l_searchType, ByRef SampleTargetFilter="") ; l_searchType a commo delimited list
-{
-;	PreviousCritical := A_IsCritical
-;	critical, on ;otherwise takes too long! still takes a a bit of time for lots of selected units! 16ms for 295 and 63ms for 540 supply selected units when sorting them
-	Thread, NoTimers, true 	;shouldn't use critical here, incase i'm trying to track user input
-	CurrentGroup := -1 ; so 1st timein for loop != ++ will be 0
-	if numGetUnitSelectionObject(oSelection, "Sort") ; returns selection count
-		for index, Unit in oSelection.Units
-		{
-			if (unit.type != previousType)
-			{
-				CurrentGroup++	
-				previousType := unit.type
-				type := unit.type
-				if type in %l_searchType%
-				{
-					SampleTargetFilter := getUnitTargetFilterFast(unit.UnitIndex) ; so can be used as a basic test of unit type eg is it a structure
-					return CurrentGroup
-				}
-			}
-		}
-	Return 0 ;either error or no units selected
-}
-
-
 isUserPerformingAction()
-{	GLOBAL
-;	Local Type, worker
-;	type := getCurrentlyHighlightedUnitType()
-;	if aUnitTargetFilter.Structure & TargetFilter
-;		return 0 ; as it's a building and the user cant really be doing anything - perhaps set rally point for hatches via 'y'... Dont need to do this anymore
-;	If (aLocalPlayer["Race"] = "Terran")
-;		worker := "SCV"	
-;	Else If (aLocalPlayer["Race"] = "Protoss")
-;		worker := "Probe"
-;	Else Worker := "Drone"
-
-;	if ( type = aUnitID[Worker] && isUserBusyBuilding() )  || IsUserMovingCamera() || IsMouseButtonActive() ; so it wont do anything if user is holding down a mousebutton! eg dragboxing
-
+{	
 	if ( isUserBusyBuilding() || IsUserMovingCamera() || IsMouseButtonActive() 	; so it wont do anything if user is holding down a mousebutton! eg dragboxing
-	||  pointer(GameIdentifier, P_IsUserPerformingAction, O1_IsUserPerformingAction) ) ; this gives 256 when reticle/cast cursor is present
+	||  isCastingReticleActive() ) ; this gives 256 when reticle/cast cursor is present
 		return 1
 	else return 0
 }
@@ -1484,7 +1417,7 @@ isUserPerformingAction()
 isUserPerformingActionIgnoringCamera()
 {	GLOBAL
 	if ( isUserBusyBuilding() || IsMouseButtonActive() 	; so it wont do anything if user is holding down a mousebutton! eg dragboxing
-	||  pointer(GameIdentifier, P_IsUserPerformingAction, O1_IsUserPerformingAction) ) ; this gives 256 when reticle/cast cursor is present
+	||  isCastingReticleActive() ) ; this gives 256 when reticle/cast cursor is present
 		return 1
 	else return 0
 }
@@ -1494,7 +1427,6 @@ isCastingReticleActive()
 {	GLOBAL
 	return pointer(GameIdentifier, P_IsUserPerformingAction, O1_IsUserPerformingAction)
 }
-
 
 ; for the second old pointer
 ; This will return 1 if the basic or advanced building selection card is up (even if all structures greyed out)
@@ -6043,22 +5975,26 @@ autoWorkerProductionCheck()
 
 	if (MaxWokersTobeMade >= 1) && (idleBases || almostComplete || (halfcomplete && !nearHalfComplete)  ) ; i have >= 1 in case i stuffed the math and end up with a negative number or a fraction
 	{
-		While (isUserPerformingActionIgnoringCamera() || getKeyState("LButton") ||   getKeyState("LButton", "P")
-			||  getKeyState("RButton") || getKeyState("RButton", "P") ||  getKeyState("MButton") || getKeyState("MButton", "P")
-			|| getkeystate("Shift") || getkeystate("Ctrl") || getkeystate("Alt")
-		;	|| getkeystate("Alt") || getkeystate("Alt", "P")
-			|| getkeystate("Shift", "P") || getkeystate("Ctrl", "P") || getkeystate("Alt", "P")
-			|| getkeystate("LWin") || getkeystate("RWin")
-			|| getkeystate("Enter") ; required so chat box doesnt get repoened when user presses enter to close the chat box
-			||  MT_InputIdleTime() < 50
-			|| getPlayerCurrentAPM() > AutoWorkerAPMProtection) ; probably dont need this anymore
-			{
-				if (A_index > 24)
-					return ; (actually could be 480 ms - sleep 1 usually = 20ms)
-				Thread, Priority, -2147483648	
-				sleep 1
-				Thread, Priority, 0	
-			}
+	;	While (isUserPerformingActionIgnoringCamera() || getKeyState("LButton") ||   getKeyState("LButton", "P")
+	;		||  getKeyState("RButton") || getKeyState("RButton", "P") ||  getKeyState("MButton") || getKeyState("MButton", "P")
+	;		|| getkeystate("Shift") || getkeystate("Ctrl") || getkeystate("Alt")
+	;		|| getkeystate("Shift", "P") || getkeystate("Ctrl", "P") || getkeystate("Alt", "P")
+	;		|| getkeystate("LWin") || getkeystate("RWin")
+	;		|| getkeystate("Enter") ; required so chat box doesnt get repoened when user presses enter to close the chat box
+	;		||  MT_InputIdleTime() < 50
+	;		|| getPlayerCurrentAPM() > AutoWorkerAPMProtection) ; probably dont need this anymore
+
+		While ( isUserBusyBuilding() || isCastingReticleActive() 
+		|| getkeystate("Shift") || getkeystate("Shift", "P") ; so user can prevent auto-worker when wanting to build something 	
+		|| getkeystate("Enter") 
+		|| getPlayerCurrentAPM() > AutoWorkerAPMProtection)
+		{
+			if (A_index > 24)
+				return ; (actually could be 480 ms - sleep 1 usually = 20ms)
+			Thread, Priority, -2147483648	
+			sleep 1
+			Thread, Priority, 0	
+		}
 		
 		if (!isSelectionGroupable(oSelection) || isGamePaused() || isMenuOpen())
 			return
@@ -6069,7 +6005,7 @@ autoWorkerProductionCheck()
 		;input.hookBlock(False, False)
 
 		critical, 1000
-		input.pReleaseKeys()
+		input.pReleaseKeys(True)
 
 		dSleep(25) ; increase safety ensure selection buffer fully updated
 
