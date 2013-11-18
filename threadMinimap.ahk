@@ -167,7 +167,7 @@ Return
 DrawMiniMap()
 {	global
 	local UnitRead_i, unit, type, Owner, Radius, Filter, EndCount, colour, ResourceOverlay_i, unitcount
-	, DrawX, DrawY, Width, height, i, hbm, hdc, obm, G,  pBitmap, PlayerColours, A_MiniMapUnits, hwnd1
+	, DrawX, DrawY, Width, height, i, hbm, hdc, obm, G,  pBitmap, PlayerColours, A_MiniMapUnits, hwnd1, unit, x, y
 	static overlayCreated := 0
 
 	if (ReDrawMiniMap and WinActive(GameIdentifier))
@@ -239,11 +239,21 @@ DrawMiniMap()
 	{
 		While (A_index <= MiniMapWarning.MaxIndex())
 		{	
-			If (Time - MiniMapWarning[A_index,"Time"] >= 20) ;display for 20 seconds
-			{	MiniMapWarning.Remove(A_index)
+			; this will remove warnings when they time out or if the unit had died 
+			; or been cancelled and replaced with another one 
+
+			unit := MiniMapWarning[A_index, "Unit"]
+			owner := getUnitOwner(MiniMapWarning[A_index,"Unit"])	
+
+			If (Time - MiniMapWarning[A_index, "Time"] >= 20 ;display for 20 seconds
+			|| getUnitTimer(unit) < MiniMapWarning[A_index, "UnitTimer"]
+			|| owner != MiniMapWarning[A_index, "Owner"]
+			|| getUnitType(unit) != MiniMapWarning[A_index, "Type"])
+			{	
+				MiniMapWarning.Remove(A_index, "")
 				continue
 			}
-			owner := getUnitOwner(MiniMapWarning[A_index,"Unit"])	
+			
 			If (aPlayer[owner, "Team"] <> aLocalPlayer["Team"])
 			{
 				If (arePlayerColoursEnabled() AND aPlayer[Owner, "Colour"] = "Green")
@@ -253,7 +263,9 @@ DrawMiniMap()
 			Else 
 				pBitmap := a_pBitmap["RedX16"]
 			getUnitMiniMapMousePos(MiniMapWarning[A_index,"Unit"], X, Y)
+
 			Width := Gdip_GetImageWidth(pBitmap), Height := Gdip_GetImageHeight(pBitmap)	
+		;	Gdip_DrawImage(G, pBitmap, (X - Width/2), (Y - Height/2), Width, Height, 0, 0, Width, Height)	
 			Gdip_DrawImage(G, pBitmap, (X - Width/2), (Y - Height/2), Width, Height, 0, 0, Width, Height)	
 		} 
 	}
@@ -518,7 +530,11 @@ while (A_Index <= UnitBankCount)
 						}		
 					}
 					if !isinlist
-						aGatewayWarnings.insert({"Unit": u_iteration, "Time": Time})
+						aGatewayWarnings.insert({ "Unit": u_iteration 
+												, "Time": Time
+												, "UnitTimer": getUnitTimer(u_iteration)
+												, "Type": unit_type
+												, "Owner":  unit_owner})
 				} 
 			}
 			Else if (unit_type = aUnitID["WarpGate"] && warpgate_status <> "researched") ; as unit_type must = warpgate_id

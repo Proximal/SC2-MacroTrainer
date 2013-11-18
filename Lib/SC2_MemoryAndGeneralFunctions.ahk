@@ -2928,8 +2928,12 @@ doUnitDetection(unit, type, owner, mode = "")
 					For index, warned_unit in Alerted_Buildings_Base  ; this list contains all the exact units which have already been warned				
 						if ( unit = warned_unit[owner] ) ;checks if type is in the list already				
 							break loop_AlertList ; this warning is for the exact unitbase Address																				
-				}										
-				MiniMapWarning.insert({"Unit": unit, "Time": Time})
+				}								
+				MiniMapWarning.insert({ "Unit": unit 
+										, "Time": Time
+										, "UnitTimer": getUnitTimer(unit) 
+										, "Type": type
+										, "Owner":  owner})
 
 				PrevWarning := []
 				PrevWarning.speech := alert_array[GameType, A_Index, "Name"]
