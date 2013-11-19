@@ -7054,16 +7054,6 @@ CreateHotkeys()
 {	global
 	Hotkeys:	 
 
-	; The other sendmode is 'PostMessage'. When this is in effect, SendInput will be used
-	; for some keystrokes e.g. to release modifiers
-
-;	Is now always SendInput
-;	If (input_method = "Event")
-;		SendMode Event
-;	Else If (input_method = "play")
-;		SendMode Play	; causes problems 
-;	Else SendMode Input
-
 	input.pSendDelay(-1)
  	input.pClickDelay(-1)
  	EventKeyDelay := -1
@@ -7091,7 +7081,7 @@ CreateHotkeys()
 		hotkey, *~LButton, g_LbuttonDown, on
 
 	Hotkey, If, WinActive(GameIdentifier) && LwinDisable && getTime()
-			hotkey, *Lwin, g_DoNothing, on		
+			hotkey, Lwin, g_DoNothing, on		
 
 	Hotkey, If, WinActive(GameIdentifier) && !isMenuOpen() && time
 		hotkey, %ping_key%, ping, on									;on used to re-enable hotkeys as were 
