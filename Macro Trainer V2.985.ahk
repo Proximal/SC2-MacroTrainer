@@ -942,10 +942,10 @@ setupSelectArmyUnits(l_input, aUnitID)
 Cast_ChronoStructure:
 	UserPressedHotkey := A_ThisHotkey ; as this variable can get changed very quickly
 	Thread, NoTimers, True
-;	BufferInputFast.createHotkeys(aButtons.List)
-;	BufferInputFast.BlockInput()
-	swapMonitoringForBlockingHooks(True)
-	releaseKeyspSend()
+
+	input.hookBlock(True, True)
+	if input.releaseKeys(True)
+		dsleep(20)
 	if (UserPressedHotkey = Cast_ChronoStargate_Key)
 		Cast_ChronoStructure(aUnitID.Stargate)
 	Else if (UserPressedHotkey = Cast_ChronoForge_Key)
@@ -956,9 +956,7 @@ Cast_ChronoStructure:
 		Cast_ChronoStructure(aUnitID.WarpGate) ; this will also do gateways	
 	Else If (UserPressedHotkey = Cast_ChronoRoboticsFacility_Key)
 		Cast_ChronoStructure(aUnitID.RoboticsFacility) ; this will also do gateways
-;	BufferInputFast.disableBufferingAndBlocking()
-;	BufferInputFast.disableHotkeys()
-	swapMonitoringForBlockingHooks(False)
+	input.hookBlock()
 return
 
 
@@ -1136,12 +1134,12 @@ AutoGroup(byref A_AutoGroup, AGDelay = 0)
 		Loop, Parse, CtrlGroupSet, |
 			AG_Temp_count := A_Index	;this counts the number of different ctrl groups ie # 1's  and 2's etc - must be only 1
 		If (AG_Temp_count = 1) && !isMenuOpen()
-		&& !(getkeystate("Shift", "P") && getkeystate("Control", "P") && getkeystate("Alt", "P")
+		&& !(getkeystate("Shift", "P") && getkeystate("Control", "P")
 		&& getkeystate("LWin", "P") && getkeystate("RWin", "P")		
 		&& getkeystate("LWin", "L") && getkeystate("RWin", "L")		
-		&& getkeystate("Shift") && getkeystate("Control") && getkeystate("Alt")
+		&& getkeystate("Shift") && getkeystate("Control")
 		|| readModifierState() 
-		|| MT_InputIdleTime() <= 50)
+		|| MT_InputIdleTime() <= 80)
 
 		;&& !getkeystate("LWin") && !getkeystate("RWin")
 		;&& !(getkeystate("Shift", "P") || getkeystate("Control", "P") || getkeystate("Alt", "P")
@@ -1168,10 +1166,9 @@ AutoGroup(byref A_AutoGroup, AGDelay = 0)
 
 			if AGDelay ; the MTDelay should prevent the need for a sleep
 			{
-				if !sleep 
-					dSleep(10)
-				;sleep 5 ; so rounds to no more than 10ms.
-				;Sleep(2) ; give time for selection buffer to update. This along with blocking input should cover pre- and post-selection delay buffer changes
+			;	if !sleep 
+			;		dSleep(20)
+				dSleep(20)
 				numGetUnitSelectionObject(oSelection)
 				for index, Unit in oSelection.Units
 					PostDelaySelected .= "," unit.UnitIndex
@@ -1279,6 +1276,7 @@ Cast_DisableInject:
 ;	one-button inject. As Users may have really high internal sleep times which could cause the installed hooks to 
 ; 	be removed by windows. Also, since the user is invoking this action, they shouldnt be pressing any other keys anyway.
 ;	also using AHK internal sleep for this function.
+; 	the blocking hook allows keyups to pass through anyway so dont have to worry about stuck keys outside windows
 
 cast_inject:
 	If (isGamePaused() || isMenuOpen())
@@ -1287,17 +1285,13 @@ cast_inject:
 		;chat is 0 when  menu is in focus
 	Thread, NoTimers, true  ;cant use critical with input buffer, as prevents hotkey threads launching and hence tracking input				
 	MouseGetPos, start_x, start_y
-;	BufferInputFast.createHotkeys(aButtons.List)
-;	BufferInputFast.BlockInput()
-	swapMonitoringForBlockingHooks(True)
-	releaseKeyspSend()
+	input.hookBlock(True, True)
+	if clipboard := input.releaseKeys(True)
+		dsleep(20)
 	castInjectLarva(auto_inject, 0, auto_inject_sleep) ;ie nomral injectmethod
 	If HumanMouse
 		MouseMoveHumanSC2("x" start_x "y" start_y "t" HumanMouseTimeLo)
-	swapMonitoringForBlockingHooks(False)
-	;BufferInputFast.disableBufferingAndBlocking()
-	;BufferInputFast.disableHotkeys()
-	
+	input.hookBlock()
 	Thread, NoTimers, false
 	inject_set := getTime()  
 	if auto_inject_alert
@@ -1349,15 +1343,6 @@ cast_ForceInject:
 					}
 					if (!WinActive(GameIdentifier) || isGamePaused() || isMenuOpen() || !isSelectionGroupable(oSelection)) 
 						return
-					;input.hookBlock(True, True)
-					;Sleep := Input.releaseKeys()
-					;critical 1000
-					;input.hookBlock(False, False)
-					;if sleep
-					;	dSleep(15) ;  sleep, 5
-					;else 
-					;	dSleep(10)  ; give 10 ms to allow for selection buffer to fully update so we are extra safe. 
-				
 					critical 1000
 					input.pReleaseKeys(True)
 					dSleep(20)  ; give 10 ms to allow for selection buffer to fully update so we are extra safe. 
@@ -1888,15 +1873,23 @@ ShellMessage(wParam, lParam)
 
 	if (wParam = 32772 || wParam = 4) ;  HSHELL_WINDOWACTIVATED := 4 or 32772
 	{
+
 		if (SC2hWnd != lParam && !ReDrawOverlays && !Dragoverlay)
 		{
-
 			ReDrawOverlays  := ReDrawIncome := ReDrawResources 
 							:= ReDrawArmySize := ReDrawWorker := ReDrawIdleWorkers 
 							:= RedrawUnit := ReDrawLocalPlayerColour := True
-			aThreads.MiniMap.ahkassign.ReDrawMiniMap := 1 ; *** New line as ahkassign returns 0 on success - also ahkassing/and functions cant handle var false/true
 			DestroyOverlays()
-			aThreads.MiniMap.ahkPostFunction("DestroyOverlays")
+			if aThreads.miniMap.ahkReady() 	
+			{
+				; sometimes AHK_H function calls fail if busy
+				; -1 indicates ahkassign failed 
+				while (A_Index <= 5 && -1 = (aThreads.MiniMap.ahkassign.ReDrawMiniMap := 1)) ; *** New line as ahkassign returns 0 on success - also ahkassing/and functions cant handle var false/true
+					sleep 50 
+				; return value for function is 1 
+				while ( A_Index <= 5 && !(VAR := aThreads.MiniMap.ahkFunction("DestroyOverlays")))
+					sleep 50
+			}
 			setLowLevelInputHooks(False)
 
 		}
@@ -6271,7 +6264,6 @@ return
 
 */
 
-
 /*
 
 getZergProduction(EggUnitIndex)
@@ -7664,10 +7656,10 @@ g_SelectArmy:
 ;	sleep := Input.releaseKeys()
 ;	critical, 1000
 	critical, 1000
-	input.pReleaseKeys()
+	input.pReleaseKeys(True)
 	sleep := 0
 
-	if (sleep || MouseDown)
+	if MouseDown
 		dSleep(15)
 
 	if (getArmyUnitCount() != getSelectionCount())

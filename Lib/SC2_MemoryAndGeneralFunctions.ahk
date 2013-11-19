@@ -1401,12 +1401,12 @@ isGatewayConvertingToWarpGate(Gateway)
 
 SetPlayerMinerals(amount=99999)
 { 	global
-	player := 1
+	player := getLocalPlayerNumber()
 	Return WriteMemory(B_pStructure + O_pMinerals + (player-1) * S_pStructure, GameIdentifier, amount,"ushort")   	 
 }
 SetPlayerGas(amount=99999)
 { 	global
-	player := 1	
+	player := getLocalPlayerNumber()
 	Return WriteMemory(B_pStructure + O_pGas + (player-1) * S_pStructure, GameIdentifier, amount,"ushort")   
 }
 
@@ -2663,6 +2663,7 @@ DestroyOverlays()
 	Try Gui, idleWorkersOverlay: Destroy			
 	Try Gui, LocalPlayerColourOverlay: Destroy			
 	Try Gui, UnitOverlay: Destroy	
+	return True ; used by shell to check thread actually ran the function
 }
 
 setDrawingQuality(G)

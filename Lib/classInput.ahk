@@ -36,8 +36,19 @@ class Input
 		this.downSequence := this.dragLeftClick := ""
 		SetFormat, IntegerFast, hex
 		for index, key in this.keys 
+		{
 			if GetKeyState(key) 	; check the logical state (as AHK will block the physical)
+			{
+				; This masks the windows keyup - if its seen as coming up by itself it will make the win bar appear
+				; i.e. just as if you pressed it by itself. (This is how AHK does it)
+				; This isn't needed when releasing vis postmessage.
+
+				if (key = "LWin" || key = "RWin")
+					upsequence .= "{LControl Down}{LControl Up}"
+
 				upsequence .= "{VK" GetKeyVK(key) " Up}", this.downSequence .= "{" key " Down}" 
+			}
+		}
 		SetFormat, IntegerFast, d
 		if checkMouse
 		{
@@ -45,14 +56,18 @@ class Input
 			{
 				if GetKeyState(key) 	; check the logical state
 				{
+					key := this.convertMouseButtonToClickButton(key)
 					upsequence .= "{click " key " Up}"
 					if instr(key, "l") ; for left button drag click
-						this.dragLeftClick := True, getLastLeftClickPos(x, y), this.downSequence .= "{click " x " " y " " key " Down}" 	
+					{
+						this.dragLeftClick := True
+						getLastLeftClickPos(x, y)
+						this.downSequence .= "{click " x " " y " " key " Down}"
+					}
 					else this.downSequence .= "{click " key " Down}"
 				}
 			}
 		}
-		
 		if upsequence
 		{
 			SendInput, {BLIND}%upsequence%
@@ -76,6 +91,7 @@ class Input
 			{
 				if GetKeyState(key) 	; check the logical state
 				{
+					key := this.convertMouseButtonToClickButton(key)
 					upsequence .= "{click " key " Up}"
 					if instr(key, "l") ; for left button drag click
 						this.dragLeftClick := True, getLastLeftClickPos(x, y), this.downSequence .= "{click " x " " y " " key " Down}" 	
@@ -108,6 +124,18 @@ class Input
 		}
 		return							
 	}
+
+	; converts Lbutton or xbutton2 etc into L, x2
+	convertMouseButtonToClickButton(button)
+	{
+		static aButtons := {  "LButton": "L"
+							, "RButton": "R"
+							, "MButton": "M"
+							, "XButton1": "X1"
+							, "XButton2": "X2" }
+		return aButtons[button]
+	}
+
 	userInputModified()
 	{
 		return this.downSequence
