@@ -170,10 +170,11 @@ class Input
 	}
 
 	; This command can be used with the same syntax as AHKs sendInput command
-	; pSend("^+ap") 		Result:	Control+Shift+a, p
+	; pSend("^+ap") 		Result:	Control+Shift+a p
 	; pSend("+{click}")		Result: Shift Left click the mouse (down and up event)
 	; pSend("{click D " x1 " " y1 "}{Click U " x2 " " y2 "}") ; Result: Box drag the mouse with the LButton
-
+	; pSend("+{click MM}")		Result: Shift Left click the mouse (down and up event) at location and also sends a WM_MouseMove event
+	
 	pSend(Sequence := "")
 	{
 		Global 	GameIdentifier
@@ -204,7 +205,7 @@ class Input
 					Modifier := "Shift"
 				else if (char = "^")
 					Modifier := "Ctrl"
-				else if (char = "!")
+				else 
 					Modifier :="Alt"
 
 				CurrentmodifierString .= char
@@ -224,7 +225,7 @@ class Input
 				{
 					key := trim(substr(Sequence, C_Index+1, Position -  C_Index - 1))
 					C_Index := Position ;PositionOfClosingBracket
-					while (if instr(key, A_space A_space))
+					while instr(key, A_space A_space) ; loops needed to ensure only 1 space eg "ab           ba"
 						StringReplace, key, key, %A_space%%A_space%, %A_space%, All
 								
 					if instr(key, "click")
@@ -235,7 +236,6 @@ class Input
 					    SetFormat, IntegerFast, d ; otherwise A_Index is 0x and doesnt work with var%A_Index%
 					    loop, % clickOutput0
 					    {
-					    
 					    	command := clickOutput%A_index% 
 					        if command is number
 					            numbers.insert(command)    
@@ -244,7 +244,7 @@ class Input
 					    if (!numbers.maxindex() || numbers.maxindex() = 1)
 					    {
 					        MouseGetPos, x, y  ; will cause problems if send hex number to insertpClickObject
-					        clickCount := numbers.maxindex() = 1 ? numbers.1 : 1
+					        clickCount := numbers.maxindex() ? numbers.1 : 1
 					    }
 					    else if (numbers.maxindex() = 2 || numbers.maxindex() = 3)
 					        x := numbers.1, y := numbers.2, clickCount := numbers.maxindex() = 3 ? numbers.3 : 1
@@ -254,49 +254,36 @@ class Input
 					    	continue ; error
 					    }	 
 					    SetFormat, IntegerFast, hex
-				;	  	 msgbox % key "`n" x ", " y "`n" clickCount
 					    this.insertpClickObject(aSend, x, y, key, clickCount, CurrentmodifierString, instr(key, "MM")) ; MM - Insert MouseMove
+						skip := True ; as already inserted a mouse click event
 					}
 					else 
 					{
 						StringSplit, outputKey, key, %A_Space%
 						if (outputKey0 = 2)
 						{
-
-							if instr(outputKey2, "Down")
-								aSend.insert({	  "message": WM_KEYDOWN
-												, "sc": GetKeySC(outputKey1)
-												, "wParam": GetKeyVK(outputKey1)})
-							else if instr(outputKey2, "Up")
-								aSend.insert({	  "message": WM_KEYUP
-												, "sc": GetKeySC(outputKey1)
-												, "wParam": GetKeyVK(outputKey1)})					
+							aSend.insert({	  "message": instr(outputKey2, "Down") ? WM_KEYDOWN : WM_KEYUP
+											, "sc": GetKeySC(outputKey1)
+											, "wParam": GetKeyVK(outputKey1)})
+							skip := True  ; as already inserted the key			
 						}
 						else 
-						{				
-							aSend.insert({	  "message": WM_KEYDOWN
-											, "sc": GetKeySC(outputKey1)
-											, "wParam": GetKeyVK(outputKey1)})
-
-							aSend.insert({	  "message": WM_KEYUP
-											, "sc": GetKeySC(outputKey1)
-											, "wParam": GetKeyVK(outputKey1)})
-						}
+							char := outputKey1
 					}
 				}
+				else skip := True ; something went wrong
 			}
-			Else
+
+			if skip
+				skip := False
+			else 
 			{
-				aSend.insert({	  "message": WM_KEYDOWN
-								, "sc": GetKeySC(char)
-								, "wParam": GetKeyVK(char)})
-
-
-				aSend.insert({	  "message": WM_KEYUP
-								, "sc": GetKeySC(char)
-								, "wParam": GetKeyVK(char)})
+				loop, 2
+					aSend.insert({	  "message": A_Index = 1 ? WM_KEYDOWN : WM_KEYUP
+									, "sc": GetKeySC(char)
+									, "wParam": GetKeyVK(char)})
 			}
-		
+
 			if Modifier
 			{
 				for index, modifier in Currentmodifiers

@@ -459,9 +459,10 @@ g_PlayModifierWarningSound:
 	SoundPlay, %A_Temp%\ModifierDown.wav
 return
 ping:
-	send, !g
-	sleep 10
-	Click
+	critical, 1000
+	input.pReleaseKeys(True)
+	input.psend("!g{click}")
+	Input.revertKeyState()
 	Return
 
 g_DoNothing:
@@ -484,13 +485,21 @@ g_GiveLocalPalyerResources:
 return	
 
 g_GLHF:
-	ReleaseModifiers(0)
+ 	; shouldn't really use sendinput while in critical but it seems to work fine here
+ 	; would probably give issues for more complex send commands though
+ 	; the reason it works is because the keys can be released, input sent, then keys reverted
+ 	; before the user releases the keys 
+
+;	critical, 1000 ; this probably doesnt have an affect as its such a small macro anyway
+
+	input.releaseKeys()
 	SetStoreCapslockMode, On ;as I turned it off in the auto Exec section
 	if !isChatOpen()
-		send, +{Enter}
-	send, GL{ASC 3}HF{!}
+		send, {BLIND}+{Enter} ; blind is required when im manually releasing keys
+	send, {BLIND}GL{ASC 3}HF{!} ;♥
 	SetStoreCapslockMode, Off ; this isn't really needed as it is no off by default for new threads
-return
+	Input.revertKeyState()
+return 
 
 g_DeselectUnit:
 if (getSelectionCount() > 1)
