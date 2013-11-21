@@ -158,6 +158,7 @@ GLOBAL GameWindowTitle := "StarCraft II"
 GLOBAL GameIdentifier := "ahk_exe SC2.exe"
 GLOBAL GameExe := "SC2.exe"
 
+input.setTarget("", GameIdentifier)
 ; For some reason this has to come before Gdip_Startup() for reliability 
 DllCall("RegisterShellHookWindow", UInt, getScriptHandle())
 
@@ -458,12 +459,16 @@ Stealth_Exit:
 g_PlayModifierWarningSound:
 	SoundPlay, %A_Temp%\ModifierDown.wav
 return
+
 ping:
 	critical, 1000
 	input.pReleaseKeys(True)
-	input.psend("!g{click}")
+	if isChatOpen()
+		input.psend("{click M}!g{click}{Enter}")
+	else 
+		input.psend("!g{click}")
 	Input.revertKeyState()
-	Return
+Return
 
 g_DoNothing:
 Return			
@@ -490,8 +495,7 @@ g_GLHF:
  	; the reason it works is because the keys can be released, input sent, then keys reverted
  	; before the user releases the keys 
 
-;	critical, 1000 ; this probably doesnt have an affect as its such a small macro anyway
-
+	critical, 1000 ; THIS is needed otherwise alt gets left down (due to revert)
 	input.releaseKeys()
 	SetStoreCapslockMode, On ;as I turned it off in the auto Exec section
 	if !isChatOpen()
@@ -2212,8 +2216,9 @@ ini_settings_write:
 			hotkey, %Cast_ChronoRoboticsFacility_Key%, off
 			Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Terran" || aLocalPlayer["Race"] = "Protoss")  && time
 			hotkey, %ToggleAutoWorkerState_Key%, off		
-			Hotkey, If, WinActive(GameIdentifier) && !isMenuOpen() && time
+			Hotkey, If, WinActive(GameIdentifier) && (!isMenuOpen() || (isMenuOpen() && isChatOpen())) && time
 			Hotkey, %ping_key%, off		
+			Hotkey, If, WinActive(GameIdentifier) && !isMenuOpen() && time
 			while (10 > i := A_index - 1)
 			{
 				try hotkey, ^%i%, off
@@ -7082,6 +7087,7 @@ CreateHotkeys()
 	#If, WinActive(GameIdentifier) && time && !isMenuOpen() && SplitUnitsEnable
 	#If, WinActive(GameIdentifier) && time && !isMenuOpen() && RemoveUnitEnable
 	#If, WinActive(GameIdentifier) && !isMenuOpen() && time
+	#If, WinActive(GameIdentifier) && (!isMenuOpen() || (isMenuOpen() && isChatOpen())) && time
 	#If, WinActive(GameIdentifier) && time
 	#If, WinActive(GameIdentifier) && !isMenuOpen() && EasyUnload%LocalPlayerRace%Enable && time
 	#If
@@ -7092,7 +7098,7 @@ CreateHotkeys()
 	Hotkey, If, WinActive(GameIdentifier) && LwinDisable && getTime()
 			hotkey, Lwin, g_DoNothing, on		
 
-	Hotkey, If, WinActive(GameIdentifier) && !isMenuOpen() && time
+	Hotkey, If, WinActive(GameIdentifier) && (!isMenuOpen() || (isMenuOpen() && isChatOpen())) && time
 		hotkey, %ping_key%, ping, on									;on used to re-enable hotkeys as were 
 	Hotkey, If, WinActive(GameIdentifier) && time	;turned off during save to allow for swaping of keys
 		hotkey, %worker_count_local_key%, worker_count, on

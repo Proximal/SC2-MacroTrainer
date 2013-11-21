@@ -2929,16 +2929,16 @@ doUnitDetection(unit, type, owner, mode = "")
 					For index, warned_unit in Alerted_Buildings_Base  ; this list contains all the exact units which have already been warned				
 						if ( unit = warned_unit[owner] ) ;checks if type is in the list already				
 							break loop_AlertList ; this warning is for the exact unitbase Address																				
-				}								
-				MiniMapWarning.insert({ "Unit": unit 
+				}	
+				PrevWarning := []							
+				MiniMapWarning.insert({ "Unit": PrevWarning.unitIndex := unit 
 										, "Time": Time
-										, "UnitTimer": getUnitTimer(unit) 
-										, "Type": type
-										, "Owner":  owner})
-
-				PrevWarning := []
+										, "UnitTimer": PrevWarning.UnitTimer := getUnitTimer(unit) 
+										, "Type": PrevWarning.Type := type
+										, "Owner":  PrevWarning.Owner := owner})
+		
 				PrevWarning.speech := alert_array[GameType, A_Index, "Name"]
-				PrevWarning.unitIndex := unit
+				
 				tSpeak(alert_array[GameType, A_Index, "Name"])
 				if (!alert_array[GameType, A_Index, "Repeat"])	; =0 these below setup a list like above, but contins the type - to prevent rewarning
 					Alerted_Buildings.insert({(owner): Alert_Index})
@@ -2957,12 +2957,27 @@ announcePreviousUnitWarning()
 	global
 	If PrevWarning
 	{
-		tSpeak(PrevWarning.speech)
-		MiniMapWarning.insert({"Unit": PrevWarning.unitIndex, "Time": Time})
+		if (getUnitTimer(PrevWarning.unitIndex) < PrevWarning.UnitTimer
+		|| getUnitOwner(PrevWarning.unitIndex) != PrevWarning.Owner
+		|| getUnitType(PrevWarning.unitIndex) != PrevWarning.Type)
+		{
+			tSpeak(PrevWarning.speech " is dead.")
+		}
+		else 
+		{
+			tSpeak(PrevWarning.speech)
+			MiniMapWarning.insert({ "Unit": PrevWarning.unitIndex
+							, "Time":  getTime()
+							, "UnitTimer": PrevWarning.UnitTimer
+							, "Type": PrevWarning.Type 
+							, "Owner":  PrevWarning.Owner})
+		}
 	}
 	Else tSpeak("There have been no alerts")
 	return 
 }
+
+
 
 
 readConfigFile()

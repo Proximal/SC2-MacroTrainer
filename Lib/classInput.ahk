@@ -24,6 +24,7 @@ class Input
 		, 	pCurrentClickDelay := -1
 		, 	pCurrentSendDelay := -1
 		, 	dragLeftClick := False
+		, 	Control, WinTitle, WinText,	ExcludeTitle, ExcludeText
 
 	; Very Important Note about logical and physical hotkey states
 	; if the hotkey has no modifiers, then physical state will be down
@@ -135,6 +136,17 @@ class Input
 							, "XButton2": "X2" }
 		return aButtons[button]
 	}
+
+	; used to set the target/destination of the input
+	setTarget(Control := "", winTitle := "", winText := "", excludeTitle := "", excludeText := "")
+	{
+		this.Control := control 
+		this.WinTitle := winTitle 
+		this.WinText := winText
+		this.ExcludeTitle := excludeTitle 
+		this.ExcludeText := excludeText
+		return
+	}	
 
 	userInputModified()
 	{
@@ -305,18 +317,18 @@ class Input
 			{
 				 ; repeat code | (scan code << 16)
 				lparam := 1 | (message.sc << 16)
-				postmessage, message.message, message.wParam, lparam,, % GameIdentifier
+				postmessage, message.message, message.wParam, lparam, % this.Control, % this.WinTitle, % this.WinText, % this.ExcludeTitle, % this.ExcludeText
 
 			}
 			else if (WM_KEYUP = message.message)
 			{
 				lparam := 1 | (message.sc << 16) | (1 << 31) ; transition state
-				postmessage, message.message, message.wParam, lparam,, % GameIdentifier
+				postmessage, message.message, message.wParam, lparam, % this.Control, % this.WinTitle, % this.WinText, % this.ExcludeTitle, % this.ExcludeText
 			}
 			else 
 			{
 				; If mouse move is included it actually strangles moves the mouse!!
-				postmessage, message.message, message.wParam, message.lparam,, % GameIdentifier
+				postmessage, message.message, message.wParam, message.lparam, % this.Control, % this.WinTitle, % this.WinText, % this.ExcludeTitle, % this.ExcludeText
 				if (pClickDelay != -1)
 					DllCall("Sleep", Uint, pClickDelay)
 				continue
@@ -374,7 +386,7 @@ class Input
 		if instr(Modifiers, "x2")
 			WParam |= MK_XBUTTON2
 		if MouseMove
-			PostMessage, %WM_MOUSEMOVE%, , %lParam%, , %GameIdentifier%
+			PostMessage, %WM_MOUSEMOVE%, , %lParam%, % this.Control, % this.WinTitle, % this.WinText, % this.ExcludeTitle, % this.ExcludeText
 
 		if button contains r
 			message := "WM_RBUTTON", WParam |= MK_RBUTTON
@@ -390,7 +402,7 @@ class Input
 				direction := 1
 			else direction := -1
 			WParam |= (direction * count * 120)  << 16
-			PostMessage, %WM_MOUSEWHEEL%, %WParam%, %lParam%, , %GameIdentifier%  
+			PostMessage, %WM_MOUSEWHEEL%, %WParam%, %lParam%, % this.Control, % this.WinTitle, % this.WinText, % this.ExcludeTitle, % this.ExcludeText
 			return	
 		}
 		else message := "WM_LBUTTON", WParam |= MK_LBUTTON
@@ -408,15 +420,15 @@ class Input
 			mup := %mup%
 			loop % count 
 			{
-				PostMessage, %mdown%, %WParam%, %lParam%, , %GameIdentifier%  
+				PostMessage, %mdown%, %WParam%, %lParam%, % this.Control, % this.WinTitle, % this.WinText, % this.ExcludeTitle, % this.ExcludeText
 				if (pKeyDelay != -1)
 					DllCall("Sleep", Uint, pKeyDelay)
-				PostMessage, %mup%, %WParam%, %lParam%, ,  %GameIdentifier% 
+				PostMessage, %mup%, %WParam%, %lParam%, % this.Control, % this.WinTitle, % this.WinText, % this.ExcludeTitle, % this.ExcludeText
 			}	
 			return	
 		}
 		message := %message%
-		PostMessage, %message%, %WParam% , %lParam%, , %GameIdentifier%
+		PostMessage, %message%, %WParam% , %lParam%, % this.Control, % this.WinTitle, % this.WinText, % this.ExcludeTitle, % this.ExcludeText
 		return
 	}
 
