@@ -1804,6 +1804,7 @@ numGetSelectionSorted(ByRef aSelection, ReverseOrder := False)
 	; The index value will be 1 more than the unit portrait location
 	aSelection.units := []
 	aSelection.TabPositions := []
+	aSelection.TabSizes := []
 	TabPosition := unitPortrait := 0
 	for priority, object in aStorage
 	{
@@ -1817,7 +1818,7 @@ numGetSelectionSorted(ByRef aSelection, ReverseOrder := False)
 			; so can just look up the tab location of unit type directly with no looping
 			; cant use .insert(key, tabposition) as that adjusts higher keys (adds 1 to them)!
 			aSelection.TabPositions[object2[object2.minIndex()].unitId] := TabPosition
-
+			tabSize := 0
 			for index, unit in object2 ; (unit is an object)
 			{
 				aSelection.units.insert({ "priority": -1*priority ; convert back to positive
@@ -1827,7 +1828,9 @@ numGetSelectionSorted(ByRef aSelection, ReverseOrder := False)
 										, "tabPosition": TabPosition
 										, "unitPortrait": unitPortrait++}) ; will be 1 less than A_index when iterated
 										; Note unitPortrait++ increments after assigning value to unitPortrait
-			}										
+				tabSize++ ; how many unitsa re in each tab
+			}
+			aSelection.TabSizes[object2[object2.minIndex()].unitId] := tabSize								
 			TabPosition++	
 		}
 	}

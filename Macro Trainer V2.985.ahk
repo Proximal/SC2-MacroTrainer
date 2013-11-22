@@ -2682,6 +2682,11 @@ l_UnitNamesTerran := "TechLab|Reactor|PointDefenseDrone|CommandCenter|SupplyDepo
 l_UnitNamesProtoss := "Colossus|Mothership|Nexus|Pylon|Assimilator|Gateway|Forge|FleetBeacon|TwilightCouncil|PhotonCannon|Stargate|TemplarArchive|DarkShrine|RoboticsBay|RoboticsFacility|CyberneticsCore|Zealot|Stalker|HighTemplar|DarkTemplar|Sentry|Phoenix|Carrier|VoidRay|WarpPrism|Observer|Immortal|Probe|Interceptor|WarpGate|WarpPrismPhasing|Archon|MothershipCore|Oracle|Tempest"
 l_UnitNamesZerg := "InfestorTerran|BanelingCocoon|Baneling|Changeling|ChangelingZealot|ChangelingMarineShield|ChangelingMarine|ChangelingZerglingWings|ChangelingZergling|InfestedTerran|Hatchery|CreepTumor|Extractor|SpawningPool|EvolutionChamber|HydraliskDen|Spire|UltraliskCavern|InfestationPit|NydusNetwork|BanelingNest|RoachWarren|SpineCrawler|SporeCrawler|Lair|Hive|GreaterSpire|Egg|Drone|Zergling|Overlord|Hydralisk|Mutalisk|Ultralisk|Roach|Infestor|Corruptor|BroodLordCocoon|BroodLord|BanelingBurrowed|DroneBurrowed|HydraliskBurrowed|RoachBurrowed|ZerglingBurrowed|InfestorTerranBurrowed|QueenBurrowed|Queen|InfestorBurrowed|OverlordCocoon|Overseer|UltraliskBurrowed|CreepTumorBurrowed|SpineCrawlerUprooted|SporeCrawlerUprooted|NydusCanal|BroodlingEscort|Larva|Locust|SwarmHostBurrowed|SwarmHost|Viper"
 
+l_UnitNamesTerranArmy := "SiegeTankSieged|SiegeTank|VikingAssault|VikingFighter|Marine|Reaper|Ghost|Marauder|Thor|Hellion|Medivac|Banshee|Raven|Battlecruiser|HellBat|WidowMine|WidowMineBurrowed"
+l_UnitNamesProtossArmy := "Colossus|Mothership|Zealot|Stalker|HighTemplar|DarkTemplar|Sentry|Phoenix|Carrier|VoidRay|WarpPrism|Observer|Immortal|WarpPrismPhasing|Archon|MothershipCore|Oracle|Tempest"
+l_UnitNamesZergArmy := "InfestorTerran|BanelingCocoon|Baneling|InfestedTerran|Zergling|Hydralisk|Mutalisk|Ultralisk|Roach|Infestor|Corruptor|BroodLordCocoon|BroodLord|BanelingBurrowed|HydraliskBurrowed|RoachBurrowed|ZerglingBurrowed|InfestorTerranBurrowed|InfestorBurrowed|OverlordCocoon|Overseer|UltraliskBurrowed|SwarmHostBurrowed|SwarmHost|Viper"
+l_UnitNamesArmy := l_UnitNamesTerranArmy "|" l_UnitNamesProtossArmy "|" l_UnitNamesZergArmy
+
 l_UnitPanelTerran := "TechLab|Reactor|PointDefenseDrone|CommandCenter|SupplyDepot|Refinery|Barracks|EngineeringBay|MissileTurret|Bunker|SensorTower|GhostAcademy|Factory|Starport|Armory|FusionCore|AutoTurret|SiegeTank|VikingFighter|SCV|Marine|Reaper|Ghost|Marauder|Thor|Hellion|Medivac|Banshee|Raven|Battlecruiser|Nuke|PlanetaryFortress|OrbitalCommand|MULE|HellBat|WidowMine"
 l_UnitPanelZerg := "BanelingCocoon|Baneling|Changeling|InfestedTerran|Hatchery|CreepTumor|Extractor|SpawningPool|EvolutionChamber|HydraliskDen|Spire|UltraliskCavern|InfestationPit|NydusNetwork|BanelingNest|RoachWarren|SpineCrawler|SporeCrawler|Lair|Hive|GreaterSpire|Egg|Drone|Zergling|Overlord|Hydralisk|Mutalisk|Ultralisk|Roach|Infestor|Corruptor|BroodLordCocoon|BroodLord|Queen|OverlordCocoon|Overseer|NydusCanal|Larva|SwarmHost|Viper"
 l_UnitPanelProtoss := "Colossus|Mothership|Nexus|Pylon|Assimilator|Gateway|Forge|FleetBeacon|TwilightCouncil|PhotonCannon|Stargate|TemplarArchive|DarkShrine|RoboticsBay|RoboticsFacility|CyberneticsCore|Zealot|Stalker|HighTemplar|DarkTemplar|Sentry|Phoenix|Carrier|VoidRay|WarpPrism|Observer|Immortal|Probe|WarpGate|WarpPrismPhasing|Archon|MothershipCore|Oracle|Tempest"
@@ -2714,13 +2719,13 @@ IfWinExist, Macro Trainer V%ProgramVersion% Settings
 ; gui variables 
 ; because there computer was to slow to load the gui window the first time
 
-try 
+;try 
 {
 	Gui, Options:New
 	gui, font, norm s9	;here so if windows user has +/- font size this standardises it. But need to do other menus one day
 	;Gui, +ToolWindow  +E0x40000 ; E0x40000 gives it a icon on taskbar (+ToolWindow doesn't have an icon)
-	options_menu := "home32.png|radarB32.png|map32.png|Inject32.png|Group32.png|Worker32.png|reticule32.png|Robot32.png|key.png|warning32.ico|miscB32.png|bug32.png|settings.ico"
-	optionsMenuTitles := "Home|Detection List|MiniMap/Overlays|Injects|Unit Grouping|Auto Worker|Chrono Boost|Misc Automation|SC2 Keys|Warnings|Misc Abilities|Report Bug|Settings"
+	options_menu := "home32.png|radarB32.png|map32.png|Inject32.png|Group32.png|QuickGroup32.png|Worker32.png|reticule32.png|Robot32.png|key.png|warning32.ico|miscB32.png|bug32.png|settings.ico"
+	optionsMenuTitles := "Home|Detection List|MiniMap/Overlays|Injects|Auto Grouping|Quick Select|Auto Worker|Chrono Boost|Misc Automation|SC2 Keys|Warnings|Misc Abilities|Report Bug|Settings"
 	Gosub, g_CreateUnitListsAndObjects ; used for some menu items, and for the custom unit filter gui
 
 	ImageListID := IL_Create(10, 5, 1)  ; Create an ImageList with initial capacity for 10 icons, grows it by 5 if need be, and 1=large icons
@@ -3396,6 +3401,56 @@ try
 		Gui, Add, UpDown,  Range0-1500 vAG_Delay, %AG_Delay%
 
 
+
+	Gui, Add, Tab2,w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vQuickSelect_TAB, Terran||Protoss|Zerg|Info
+
+	if !isObject(aQuickSelectCopy)
+		aQuickSelectCopy := []
+	loop, parse, l_Races, `,
+	{	
+
+		Gui, Tab, %A_LoopField%
+
+		if !aQuickSelectCopy[A_LoopField, "IndexGUI"]
+			aQuickSelectCopy[A_LoopField, "IndexGUI"] := 1
+		if !aQuickSelectCopy[A_LoopField, "MaxIndexGUI"]
+			aQuickSelectCopy[A_LoopField, "MaxIndexGUI"] := 1
+
+		Gui, Add, GroupBox, x+25 Y+25 w380 h65 section vGroupBox%A_LoopField%QuickSelect, % " Quick Select Navigation " aQuickSelectCopy[A_LoopField].IndexGUI " of " aQuickSelectCopy[A_LoopField, "MaxIndexGUI"]
+			 Gui, Add, Button, xp+15 yp+25 w65 h25 vPrevious%A_LoopField%QuickSelect gg_QuickSelectGui, Previous
+			 Gui, Add, Button, x+20 w65 h25 vNext%A_LoopField%QuickSelect gg_QuickSelectGui, Next
+			 Gui, Add, Button, x+45 w65 h25 vNew%A_LoopField%QuickSelect gg_QuickSelectGui, New
+			 Gui, Add, Button, x+20 w65 h25 vDelete%A_LoopField%QuickSelect gg_QuickSelectGui, Delete
+
+		Gui, Add, GroupBox, xs Ys+85 w380 h260 section vGroupBoxItem%A_LoopField%QuickSelect, % "Quick  Select Item " aQuickSelectCopy[A_LoopField].IndexGUI
+
+			Gui, Add, Checkbox, xs+15 yp+25 vquickSelect%A_LoopField%Enabled Checked%Checked%, Enable
+			Gui, Add, Text, yp+40, Hotkey:
+				Gui, Add, Edit, Readonly yp-2 x+10 center w65 vquickSelect%A_LoopField%_Key gedit_hotkey, %quickSelectT_Key%
+			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#quickSelect%A_LoopField%_Key,  Edit	
+
+			Gui, Add, Text, xs+15 y+10, Units
+			Gui, Add, Edit, y+5 w160  r6 vquickSelect%A_LoopField%UnitsArmy, %quickSelectT1Units%
+			Gui, Add, Button, y+5 gEdit_AG v#quickSelect%A_LoopField%UnitsArmy w160 h25,  Add
+
+			Gui, Add, Text, xs+200 ys+25, Store Selection:
+
+			Gui, Add, DropDownList,  x+15 yp-3 w45 center vQuickSelect%A_LoopField%StoreSelection Choose%droplist_var%, Off||1|2|3|4|5|6|7|8|9|0
+
+
+			Gui, add, GroupBox, xs+200 ys+55 w165 h175, Remove
+			Gui, Add, Checkbox, Xp+10 yp+25  vquickSelect%A_LoopField%DeselectXelnaga Checked%Checked%, Xelnaga (tower) units
+			Gui, Add, Checkbox, Xp yp+24 vquickSelect%A_LoopField%DeselectPatrolling Checked%Checked%, Patrolling units
+			Gui, Add, Checkbox, Xp yp+24 vquickSelect%A_LoopField%DeselectLoadedTransport Checked%Checked%, Loaded transports
+			Gui, Add, Checkbox, Xp yp+24 vquickSelect%A_LoopField%DeselectQueuedDrops Checked%Checked%, Transports queued to drop
+			Gui, Add, Checkbox, Xp yp+24 vquickSelect%A_LoopField%DeselectHoldPosition Checked%Checked%, On hold position
+			Gui, Add, Checkbox, Xp yp+24 vquickSelect%A_LoopField%DeselectFollowing Checked%Checked%, On follow command
+		
+		state := aQuickSelectCopy[A_LoopField, "MaxIndexGUI"] > 1 ? True : False
+		GUIControl, Enable%state%, Next%A_LoopField%QuickSelect
+		GUIControl,  Enable%state%, Previous%A_LoopField%QuickSelect
+	}
+
 	Gui, Add, Tab2,w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vAutoWorker_TAB, Auto||Info		
 	Gui, Tab, Auto
 		Gui, Add, Text, x+25 y+35 section, Toggle State:
@@ -3925,6 +3980,7 @@ try
 	GuiControl, Hide, Home_TAB 
 	GuiControl, Hide, Injects_TAB 
 	GuiControl, Hide, AutoGroup_TAB 
+	GuiControl, Hide, QuickSelect_TAB 
 	GuiControl, Hide, AutoWorker_TAB 
 	GuiControl, Hide, ChronoBoost_TAB 
 	GuiControl, Hide, AutoMine_TAB 
@@ -4217,6 +4273,15 @@ Return
 
 
 
+
+#include %A_ScriptDir%\guimenu.ahk 
+
+
+
+
+
+
+
 g_GuiSetupDrawMiniMapDisable:
 	
 	; the commented out controls here are ones which can still be active 
@@ -4431,10 +4496,15 @@ OptionsTree:
 		GUIcontrol, Show, Injects_TAB
 		unhidden_menu := "Injects_TAB"
 	}	
-	ELSE IF ( Menu_TXT = "Unit Grouping" )
+	ELSE IF ( Menu_TXT = "Auto Grouping" )
 	{
 		GUIcontrol, Show, AutoGroup_TAB
 		unhidden_menu := "AutoGroup_TAB"
+	}	
+	ELSE IF ( Menu_TXT = "Quick Select" )
+	{
+		GUIcontrol, Show, quickSelect_TAB
+		unhidden_menu := "quickSelect_TAB"
 	}	
 	ELSE IF ( Menu_TXT = "Auto Worker" )
 	{
@@ -5561,8 +5631,8 @@ filterSlectionTypeByEnergy(EnergyFilter="", F_utype*) ;Returns the [Unit] index 
 
 Edit_AG:	;AutoGroup and Unit include/exclude come here
 	TMP_AG_ControlName := SubStr(A_GuiControl, 2)
-	GuiControlGet, TMP_EditAG_Units,, %TMP_AG_ControlName%
-
+	GuiControlGet, TMP_EditAG_Units,, %TMP_AG_ControlName% ;checks if field is empty for delimiter 
+	list := ""
 	IfInString, A_GuiControl, Terran
 		Race := "Terran"
 	else IfInString, A_GuiControl, Protoss
@@ -5570,29 +5640,37 @@ Edit_AG:	;AutoGroup and Unit include/exclude come here
 	else IfInString, A_GuiControl, Zerg
 		Race := "Zerg"
 	Else
-		Race := "All"
+	{
+		IfInString, A_GuiControl, Army
+			list := "l_UnitNamesArmy"
+		else 
+			list := "l_UnitNames"
+	}
+	if !list 
+	{	IfInString, A_GuiControl, Army
+			list := "l_UnitNames" Race "Army"
+		else 
+			list := "l_UnitNames" Race
+	}
+	
+	list := %list%
+
 	IfInString, A_GuiControl, UnitHighlight
-		TMP_EditAG_Units .= AG_GUI_ADD("", TMP_EditAG_Units ? 1 : 0, Race)
+		TMP_EditAG_Units .= AG_GUI_ADD("", TMP_EditAG_Units ? ", " : "", list)
+	Else IfInString, A_GuiControl, quickSelect
+		TMP_EditAG_Units .= AG_GUI_ADD("", TMP_EditAG_Units ? "`n" : "", list)
 	Else
-		TMP_EditAG_Units .= AG_GUI_ADD(SubStr(A_GuiControl, 0, 1), TMP_EditAG_Units ? 1 : 0, Race) ;retrieve the last character of name ie control number 0/1/2 etc		
+		TMP_EditAG_Units .= AG_GUI_ADD(SubStr(A_GuiControl, 0, 1), TMP_EditAG_Units ? ", " : "", list) ;retrieve the last character of name ie control number 0/1/2 etc		
 	GUIControl,, %TMP_AG_ControlName%, %TMP_EditAG_Units%
 Return
 
-AG_GUI_ADD(Control_Group = "", comma := True, Race=1)
+AG_GUI_ADD(Control_Group = "", delimiter := ",", list := "Error")
 {
 	static F_drop_Name 	; as a controls variable must by global or static
-	global l_UnitNames, l_UnitNamesTerran, l_UnitNamesProtoss, l_UnitNamesZerg
 
 	If (Control_Group = "")
 		Title := "Select Unit"
 	else Title := "Auto Group " Control_Group
-	if (race = "Terran")
-		list := l_UnitNamesTerran
-	else if (race = "Protoss")
-		list := l_UnitNamesProtoss
-	else if (race = "Zerg")
-		list := l_UnitNamesZerg
-	else list := l_UnitNames
 
 	Gui, Add2AG:+LastFound
 	GuiHWND := WinExist() 
@@ -5617,7 +5695,7 @@ AG_GUI_ADD(Control_Group = "", comma := True, Race=1)
 	;pause off
 
 	if !close
-		Return comma ? ", " F_drop_Name : F_drop_Name
+		Return delimiter != False ? delimiter F_drop_Name : F_drop_Name
 	Return 
 
 	B_closeAdd2AG:
@@ -5982,19 +6060,18 @@ autoWorkerProductionCheck()
 
 	if (MaxWokersTobeMade >= 1) && (idleBases || almostComplete || (halfcomplete && !nearHalfComplete)  ) ; i have >= 1 in case i stuffed the math and end up with a negative number or a fraction
 	{
-	;	While (isUserPerformingActionIgnoringCamera() || getKeyState("LButton") ||   getKeyState("LButton", "P")
-	;		||  getKeyState("RButton") || getKeyState("RButton", "P") ||  getKeyState("MButton") || getKeyState("MButton", "P")
-	;		|| getkeystate("Shift") || getkeystate("Ctrl") || getkeystate("Alt")
-	;		|| getkeystate("Shift", "P") || getkeystate("Ctrl", "P") || getkeystate("Alt", "P")
-	;		|| getkeystate("LWin") || getkeystate("RWin")
-	;		|| getkeystate("Enter") ; required so chat box doesnt get repoened when user presses enter to close the chat box
-	;		||  MT_InputIdleTime() < 50
-	;		|| getPlayerCurrentAPM() > AutoWorkerAPMProtection) ; probably dont need this anymore
+		While (isUserPerformingActionIgnoringCamera()
+			|| getkeystate("Shift") || getkeystate("Ctrl") || getkeystate("Alt")
+			|| getkeystate("Shift", "P") || getkeystate("Ctrl", "P") || getkeystate("Alt", "P")
+			|| getkeystate("LWin") || getkeystate("RWin")
+			|| getkeystate("Enter") ; required so chat box doesnt get repoened when user presses enter to close the chat box
+			||  MT_InputIdleTime() < 50
+			|| getPlayerCurrentAPM() > AutoWorkerAPMProtection) ; probably dont need this anymore
 
-		While ( isUserBusyBuilding() || isCastingReticleActive() 
-		|| getkeystate("Shift") || getkeystate("Shift", "P") ; so user can prevent auto-worker when wanting to build something 	
-		|| getkeystate("Enter") 
-		|| getPlayerCurrentAPM() > AutoWorkerAPMProtection)
+	;	While ( isUserBusyBuilding() || isCastingReticleActive() 
+	;	|| getkeystate("Shift") || getkeystate("Shift", "P") ; so user can prevent auto-worker when wanting to build something 	
+	;	|| getkeystate("Enter") 
+	;	|| getPlayerCurrentAPM() > AutoWorkerAPMProtection)
 		{
 			if (A_index > 24)
 				return ; (actually could be 480 ms - sleep 1 usually = 20ms)
@@ -7676,6 +7753,7 @@ g_SelectArmy:
 		; A_Index check is just in case stopwatch fails (it should work on every computer) - get stuck in infinite loop with input blocked
 		while (getSelectionCount() != getArmyUnitCount() && stopwatch(timerArmyID, False) < 70 && A_Index < 80)
 			dsleep(1)
+		stopwatch(timerArmyID) ; remove the timer
 		dsleep(12)
 	} 
 	else 
@@ -7709,7 +7787,118 @@ g_SelectArmy:
 	;	Also seems to give time for any input to clear so reduces chance of interrupting automation
 	;	on next loop through 20ms was enough for 146 army
 
+return 
+aQuickSelect := []
+aQuickSelect.1 := [aUnitId.Marine] ;aUnitId.Marauder : true}
+aQuickSelect.1 := [aUnitId.Marine, aUnitId.Marauder] ;aUnitId.Marauder : true}
+gosub g_QuickSelect1
+return 
 
+g_QuickSelect0:
+g_QuickSelect1:
+g_QuickSelect2:
+group := substr(A_ThisLabel, 0, 1)
+settimer, testrecpver, -10000
+quickSelect(group, aQuickSelect[group])
+settimer, testrecpver, off
+return 
+
+testrecpver:
+input.RevertKeyState()
+return 
+
+quickSelect(group, byref aQuickSelect)
+{
+	global Sc2SelectArmy_Key
+
+	if !getArmyUnitCount()
+		return 
+	while (GetKeyState("Lbutton", "P") || GetKeyState("Rbutton", "P"))
+	{
+		sleep 1
+		MouseDown := True
+	}
+	critical, 1000
+	input.pReleaseKeys(True)
+	if MouseDown
+		dSleep(15)
+
+	if (getArmyUnitCount() != getSelectionCount())
+	{
+		MTsend(Sc2SelectArmy_Key)
+		timerQuickID := stopwatch()
+		; waits for selection count to match army count 
+		; times out after 50 ms - small static sleep afterwards
+		; A_Index check is just in case stopwatch fails (it should work on every computer) - get stuck in infinite loop with input blocked
+		while (getSelectionCount() != getArmyUnitCount() && stopwatch(timerQuickID, False) < 70 && A_Index < 80)
+			dsleep(1)
+		dsleep(12)
+	} 
+	else  
+	{
+		MTsend(Sc2SelectArmy_Key)
+		dSleep(40) 
+	}
+
+	numGetSelectionSorted(aSelected)
+	clickPortraits := []
+
+	if (aQuickSelect.MaxIndex() = 1)
+	{
+		clickUnitType := aQuickSelect[1]
+		if aSelected.TabPositions.HasKey(clickUnitType)
+		{
+			for i, unit in aSelected.units
+			{
+				if (unit.unitId = clickUnitType) 
+				{
+					clickPortraits.insert(unit.unitPortrait)
+					break
+				}
+			}
+			clickUnitPortraits([clickPortrait], "^")
+		}
+	}
+	else 
+	{
+		aLookup := []
+		for i, clickUnitType in aQuickSelect
+			aLookup[clickUnitType] := True
+
+		if aSelected.TabPositions.HasKey(clickUnitType)
+		{
+			for i, unit in aSelected.units
+			{
+				if unit.unitId = prevID 
+					continue 
+				prevID := unit.unitId
+				if !aLookup.haskey(unit.unitId)
+					clickPortraits.insert(unit.unitPortrait)
+				else selectedCount += aSelected.TabSizes[unit.unitId]
+			}
+			if clickPortraits.MaxIndex()
+				clickUnitPortraits(clickPortraits, "^+")
+		}
+			
+	}
+	if clickPortraits.MaxIndex()
+	{
+
+		timerQuickID := stopwatch()
+		while (getSelectionCount() != selectedCount && stopwatch(timerQuickID, False) < 70 && A_Index < 80)
+			dsleep(1)
+		stopwatch(timerQuickID) ; remove the timer
+		dsleep(12)
+		aUnitPortraitLocations := []
+		aUnitPortraitLocations := findPortraitsToRemoveFromArmy("", True, True
+										, True, True, SelectArmyDeselectLoadedTransport 
+										, True, "")
+		clickUnitPortraits(aUnitPortraitLocations)
+	}
+	clipboard := selectedCount
+	input.RevertKeyState()
+	return
+}
 
 ; aSelected can be used to pass an already SORTED selected array
 ; if no array, or an empty array is passed then it will retrieve one
