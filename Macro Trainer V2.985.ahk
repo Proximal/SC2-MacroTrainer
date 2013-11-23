@@ -160,7 +160,7 @@ GLOBAL GameExe := "SC2.exe"
 
 input.setTarget("", GameIdentifier)
 ; For some reason this has to come before Gdip_Startup() for reliability 
-DllCall("RegisterShellHookWindow", UInt, getScriptHandle())
+;DllCall("RegisterShellHookWindow", UInt, getScriptHandle())
 
 pToken := Gdip_Startup()
 Global aUnitID, aUnitName, aUnitSubGroupAlias, aUnitTargetFilter, aHexColours, MatrixColour
@@ -308,7 +308,7 @@ if !MT_CurrentInstance.SCWasRunning
 while (!(B_SC2Process := getProcessBaseAddress(GameIdentifier)) || B_SC2Process < 0)		;using just the window title could cause problems if a folder had the same name e.g. sc2 folder
 	sleep 400				; required to prevent memory read error - Handle closed: error 		
 SC2hWnd := WinExist(GameIdentifier)
-OnMessage(DllCall("RegisterWindowMessage", Str,"SHELLHOOK" ), "ShellMessage")
+;OnMessage(DllCall("RegisterWindowMessage", Str,"SHELLHOOK" ), "ShellMessage")
 
 loadMemoryAddresses(B_SC2Process)	
 
@@ -318,7 +318,7 @@ loadMemoryAddresses(B_SC2Process)
 settimer, clock, 250
 settimer, timer_exit, 5000, -100
 ; no using a shell monitor to keep destroy overlays
-;SetTimer, OverlayKeepOnTop, 1000, -20	;better here, as since WOL 2.0.4 having it in the "clock" section isn't reliable 	
+SetTimer, OverlayKeepOnTop, 2000, -2000	;better here, as since WOL 2.0.4 having it in the "clock" section isn't reliable 	
 
 l_Changeling := aUnitID["ChangelingZealot"] "," aUnitID["ChangelingMarineShield"] ","  aUnitID["ChangelingMarine"] 
 				. ","  aUnitID["ChangelingZerglingWings"] "," aUnitID["ChangelingZergling"]
@@ -681,7 +681,7 @@ Adjust_overlay:
 		gosub overlay_timer
 		if DrawUnitOverlay
 			gosub g_unitPanelOverlay_timer
-	;	SetTimer, OverlayKeepOnTop, off	
+		SetTimer, OverlayKeepOnTop, off	
 		SetTimer, overlay_timer, 50, 0		; make normal priority so it can interupt this thread to move
 		SetTimer, g_unitPanelOverlay_timer, 50, 0
 		SoundPlay, %A_Temp%\On.wav
@@ -690,7 +690,7 @@ Adjust_overlay:
 	KeyWait, %AdjustOverlayKey%, T40
 	Dragoverlay := False	 	
 	{
-	;	SetTimer, OverlayKeepOnTop, 1000, -20
+		SetTimer, OverlayKeepOnTop, 2000, -2000
 		SetTimer, overlay_timer, %OverlayRefresh%, -8
 		SetTimer, g_unitPanelOverlay_timer, %UnitOverlayRefresh%, -9
 		SoundPlay, %A_Temp%\Off.wav
@@ -1974,6 +1974,8 @@ worker_count:
 		tSpeak(newcount "Workers")
 return	
 
+; Not using this anymore although I think it works 100%
+; safer just to use a slow timer, as dont wont to be in the game and not have the input hooks installed!
 
 ; used to monitor the activation/min of the sc2 window
 ; Also for removing and reinstalling hooks
@@ -1991,20 +1993,8 @@ ShellMessage(wParam, lParam)
 
 		if (SC2hWnd != lParam && !ReDrawOverlays && !Dragoverlay)
 		{
-			ReDrawOverlays  := ReDrawIncome := ReDrawResources 
-							:= ReDrawArmySize := ReDrawWorker := ReDrawIdleWorkers 
-							:= RedrawUnit := ReDrawLocalPlayerColour := True
+			ReDrawOverlays  := True
 			DestroyOverlays()
-			if aThreads.miniMap.ahkReady() 	
-			{
-				; sometimes AHK_H function calls fail if busy
-				; -1 indicates ahkassign failed 
-				while (A_Index <= 5 && -1 = (aThreads.MiniMap.ahkassign.ReDrawMiniMap := 1)) ; *** New line as ahkassign returns 0 on success - also ahkassing/and functions cant handle var false/true
-					sleep 50 
-				; return value for function is 1 
-				while ( A_Index <= 5 && !(VAR := aThreads.MiniMap.ahkFunction("DestroyOverlays")))
-					sleep 50
-			}
 			setLowLevelInputHooks(False)
 
 		}
@@ -2019,10 +2009,6 @@ ShellMessage(wParam, lParam)
 			;mt_Paused otherwise will redisplay the hidden and frozen overlays
 			if (ReDrawOverlays  && !mt_Paused && !IsInList(aLocalPlayer.Type, "Referee", "Spectator")) ; This will redraw immediately - but this isn't needed at all
 			{  		
-				; need time to check if in game
-				; also need to check player type
-				If (DrawMiniMap || DrawAlerts || DrawSpawningRaces)
-					aThreads.MiniMap.ahkFunction("DrawMiniMap") 
 				gosub, overlay_timer
 				gosub, g_unitPanelOverlay_timer
 				ReDrawOverlays := False
@@ -2032,15 +2018,23 @@ ShellMessage(wParam, lParam)
 	return
 }
 
-; Shell is used instead of this timer now 
+
 OverlayKeepOnTop:
-	if (!ReDrawOverlays  && !WinActive(GameIdentifier))
+	if (!OverlayKeepOnTopFlag  && !WinActive(GameIdentifier))
 	{	
-		ReDrawOverlays := ReDrawMiniMap := ReDrawIncome := ReDrawResources := ReDrawArmySize := ReDrawWorker := ReDrawIdleWorkers 
-				:= RedrawUnit := ReDrawLocalPlayerColour := 1
 		DestroyOverlays()
+		setLowLevelInputHooks(False)
+		OverlayKeepOnTopFlag := True
 	}
-	else ReDrawOverlays := 0
+	else if (OverlayKeepOnTopFlag && WinActive(GameIdentifier) && getTime() && !mt_Paused && !IsInList(aLocalPlayer.Type, "Referee", "Spectator"))
+	{
+		; remove hooks so ahk list box doesnt lag
+		setLowLevelInputHooks(False)
+		setLowLevelInputHooks(True)
+		gosub, overlay_timer
+		gosub, g_unitPanelOverlay_timer
+		OverlayKeepOnTopFlag := False
+	}
 Return
 
 ; This will temporarily disable the minimap, but still draw detected units/non-converted gates
@@ -2064,6 +2058,11 @@ overlay_timer: 	;DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdent=0, Bac
 		if (DrawLocalPlayerColourOverlay && (GameType != "1v1" && GameType != "FFA"))   ;easier just to redraw it each time as otherwise have to change internal for when dragging
 			DrawLocalPlayerColour(ReDrawLocalPlayerColour, LocalPlayerColourOverlayScale, DragOverlay)
 	}
+	; sometimes the overlay timer doesnt work, so this is a backup which ensure theyre destroyed
+	; I think it fails sometimes because its inside an overlay function or something
+	else if (!WinActive(GameIdentifier) && !Dragoverlay && !areOverlaysWaitingToRedraw())
+		DestroyOverlays()
+
 Return
 
 g_unitPanelOverlay_timer: 
@@ -2073,6 +2072,8 @@ g_unitPanelOverlay_timer:
 		FilterUnits(aEnemyUnits, aEnemyUnitConstruction, aUnitPanelUnits)
 		DrawUnitOverlay(RedrawUnit, UnitOverlayScale, OverlayIdent, Dragoverlay)
 	}
+	else if (!WinActive(GameIdentifier) && !Dragoverlay && !areOverlaysWaitingToRedraw())
+		DestroyOverlays()
 return
 
 gYoutubeEasyUnload:

@@ -146,6 +146,8 @@ gameChange(UserSavedAppliedSettings := False)
 MiniMap_Timer:
 	if WinActive(GameIdentifier)
 		DrawMiniMap()
+	else if !ReDrawMiniMap
+		DestroyOverlays()
 Return
 
 timer_Exit:
@@ -176,6 +178,7 @@ DrawMiniMap()
 		overlayCreated := False
 		ReDrawMiniMap := 0
 	}
+
 	If (!overlayCreated)
 	{
 		; Set the width and height we want as our drawing area, to draw everything in. This will be the dimensions of our bitmap

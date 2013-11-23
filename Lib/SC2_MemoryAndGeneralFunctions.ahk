@@ -2652,10 +2652,18 @@ ParseEnemyUnits(ByRef a_EnemyUnits, ByRef aPlayer)
 }
 
 
-
+areOverlaysWaitingToRedraw()
+{
+	global 
+	if (!ReDrawIncome || !ReDrawResources || !ReDrawArmySize || !ReDrawWorker 
+	|| !ReDrawIdleWorkers || !RedrawUnit || !ReDrawLocalPlayerColour || !ReDrawMiniMap)
+		return False 
+	return True 
+}
 
 DestroyOverlays()
 {	
+	global
 	; destroy minimap when alttabed out
 	; and at end of game
 	Try Gui, MiniMapOverlay: Destroy 
@@ -2666,6 +2674,19 @@ DestroyOverlays()
 	Try Gui, idleWorkersOverlay: Destroy			
 	Try Gui, LocalPlayerColourOverlay: Destroy			
 	Try Gui, UnitOverlay: Destroy	
+	
+	; as these arent in the minimap thread, if that call it, it will jump out
+	local lOverlayFunctions := "DrawIncomeOverlay,DrawUnitOverlay,DrawResourcesOverlay"
+				. ",DrawArmySizeOverlay,DrawWorkerOverlay,DrawIdleWorkersOverlay"
+	loop, parse, lOverlayFunctions, `,
+	{
+		; telling the function to destroy itself is more reliable that just using gui destroy
+		if IsFunc(A_LoopField)
+			%A_LoopField%(-1)
+	}
+	ReDrawOverlays := ReDrawIncome := ReDrawResources 
+				:= ReDrawArmySize := ReDrawWorker := ReDrawIdleWorkers 
+				:= RedrawUnit := ReDrawLocalPlayerColour := ReDrawMiniMap := True
 	return True ; used by shell to check thread actually ran the function
 }
 
