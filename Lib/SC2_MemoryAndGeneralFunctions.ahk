@@ -3009,6 +3009,13 @@ readConfigFile()
 	IniRead, inject_start_key, %config_file%, Manual Inject Timer, start_stop_key, Lwin & RButton
 	IniRead, inject_reset_key, %config_file%, Manual Inject Timer, reset_key, Lwin & LButton
 	
+
+	IniRead, InjectTimerAdvancedEnable, %config_file%, Manual Inject Timer, InjectTimerAdvancedEnable, 0
+	IniRead, InjectTimerAdvancedTime, %config_file%, Manual Inject Timer, InjectTimerAdvancedTime, 43
+	IniRead, InjectTimerAdvancedLarvaKey, %config_file%, Manual Inject Timer, InjectTimerAdvancedLarvaKey, e
+
+	
+
 	;[Inject Warning]
 	IniRead, W_inject_ding_on, %config_file%, Inject Warning, ding_on, 1
 	IniRead, W_inject_speech_on, %config_file%, Inject Warning, speech_on, 0

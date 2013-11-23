@@ -788,7 +788,7 @@ mt_pause_resume:
 	if (mt_Paused := !mt_Paused)
 	{
 		game_status := "lobby" ; with this clock = 0 when not in game 
-		timeroff("clock", "money", "gas", "scvidle", "supply", "worker", "inject", "unit_bank_read", "Auto_mine", "Auto_Group", "AutoGroupIdle", "overlay_timer", "g_unitPanelOverlay_timer", "g_autoWorkerProductionCheck", "cast_ForceInject", "find_races_timer")
+		timeroff("clock", "money", "gas", "scvidle", "supply", "worker", "inject", "unit_bank_read", "Auto_mine", "Auto_Group", "AutoGroupIdle", "overlay_timer", "g_unitPanelOverlay_timer", "g_autoWorkerProductionCheck", "cast_ForceInject", "find_races_timer", "advancedInjectTimerFunctionLabel")
 		inject_timer := 0	;ie so know inject timer is off
 		Try DestroyOverlays()
 		Try aThreads.MiniMap.ahkPostFunction("DestroyOverlays")
@@ -812,7 +812,7 @@ clock:
 	if (!time && game_status = "game") || (UpdateTimers) ; time=0 outside game
 	{	
 		game_status := "lobby" ; with this clock = 0 when not in game (while in game at 0s clock = 44)	
-		timeroff("money", "gas", "scvidle", "supply", "worker", "inject", "unit_bank_read", "Auto_mine", "Auto_Group", "AutoGroupIdle", "overlay_timer", "g_unitPanelOverlay_timer", "g_autoWorkerProductionCheck", "cast_ForceInject", "find_races_timer")
+		timeroff("money", "gas", "scvidle", "supply", "worker", "inject", "unit_bank_read", "Auto_mine", "Auto_Group", "AutoGroupIdle", "overlay_timer", "g_unitPanelOverlay_timer", "g_autoWorkerProductionCheck", "cast_ForceInject", "find_races_timer", "advancedInjectTimerFunctionLabel")
 		inject_timer := TimeReadRacesSet := UpdateTimers := PrevWarning := WinNotActiveAtStart := ResumeWarnings := 0 ;ie so know inject timer is off
 		if aThreads.MiniMap.ahkReady()
 		{
@@ -1804,7 +1804,109 @@ auto_inject:
 	return
 
 Return
-	
+
+g_InjectTimerAdvanced:
+advancedInjectTimer()
+return 
+
+
+advancedInjectTimer()
+{
+	global injectTimerAdvancedTime, W_inject_ding_on, W_inject_speech_on, w_inject_spoken
+	static injectTime 
+
+	; when tapping the mouse button (while hand off the mouse in order to click for the least possible time) 
+	; the lowest I could get for time spent with the button down was 32 ms (did get one 22ms but couldnt repeat it and that one was with
+	; A_Tickcount not QPX, so could have been a granularity/resolution thing)
+	; clicking normally its around 70 100 ms
+
+	numGetSelectionSorted(aSelection)
+	if (aSelection.IsGroupable && aSelection.HighlightedId = aUnitID.Queen)
+	{
+		prevSelections := aSelection.IndicesString
+		while isGamePaused() ; shouldnt ever occur as hotkey expression contains this check
+		{
+			Thread, Priority, -2147483648
+			sleep 50
+		}
+		Thread, Priority, 0
+		loopTick := A_Tickcount
+		loop 
+		{
+			if getkeystate("Lbutton")
+			{
+				; possible for the user to not click on the hatch miss or click menu/friends/options (which would arrive here) or , then to hit esc or rbutton to cancel 
+				; but this loop will then either time out or catch the next inject, so it doesn't really matter.
+
+				loopTick := A_Tickcount
+				; If inject against Ai the below loop finds the larva command after ~15/30 OS_Ticks and on the second loop
+				; For a queen which is right next to a hatch, she will have the 'spawnLarva' ability queued for ~1670 ms! 
+				; Hence heaps of time for a loop to catch it even with generous sleeps
+				loop 
+				{
+					for i, unit in aSelection.units 
+					{
+						if (unit.unitID = aUnitID.Queen)
+						{
+
+							if instr(getUnitQueuedCommandString(unit.unitIndex), "SpawnLarva")
+							{
+								injectTime := getTime()
+								settimer, advancedInjectTimerFunctionLabel, 1000	
+								return				
+							}
+						}
+					}
+
+					Thread, Priority, -2147483648
+					sleep 200
+					Thread, Priority, 0
+					if (A_Tickcount - loopTick > 5000)
+						return
+				}
+			}
+			else if (getkeystate("Esc") || getkeystate("RButton"))
+				return 
+			else if (A_Tickcount - loopTick > 3000)
+			{
+				loopTick := A_Tickcount
+				numGetSelectionSorted(aSelection)
+				if (!aSelection.IsGroupable || aSelection.HighlightedId != aUnitID.Queen || prevSelections != aSelection.IndicesString)
+					return
+			}
+			Thread, Priority, -2147483648
+			sleep 1
+			Thread, Priority, 0
+		}
+
+	}
+	return 
+
+	; I was going put this outside as these commands take a few ms, so it might be possible for function call for a new inject to fail
+	; as its waiting for the sound section to finish
+	; after other testing, if a function call arrives while a timer inside the function is running the timer will be interrupted! 
+	; so its fine to have it here (though it wouldnt really matter either way)
+
+	advancedInjectTimerFunctionLabel:
+	if (getTime() >= injectTime + InjectTimerAdvancedTime)
+	{
+		settimer, %A_ThisLabel%, off 
+		If W_inject_ding_on
+		{
+			loop, 2
+			{
+				SoundPlay, %A_Temp%\Windows Ding.wav  ;SoundPlay *-1
+				sleep 150
+			}	
+		}
+		If W_inject_speech_on
+			tSpeak(w_inject_spoken)
+	}
+	return 
+
+}
+
+
 ;----------------
 ;	User Idle
 ;----------------
@@ -2168,7 +2270,7 @@ ini_settings_write:
 		Try 
 		{
 			Hotkey, If, WinActive(GameIdentifier)						
-			hotkey, %warning_toggle_key%, off			; 	deactivate the hotkeys
+				try hotkey, %warning_toggle_key%, off			; 	deactivate the hotkeys
 														; 	so they can be updated with their new keys
 														;	
 														; 
@@ -2178,46 +2280,51 @@ ini_settings_write:
 														; gives the user a friendlier error
 
 			Hotkey, If, WinActive(GameIdentifier) && time	
-			hotkey, %worker_count_local_key%, off
-			hotkey, %worker_count_enemy_key%, off
-			hotkey, %Playback_Alert_Key%, off
-			hotkey, %TempHideMiniMapKey%, off
-			hotkey, %AdjustOverlayKey%, off
-			hotkey, %ToggleIdentifierKey%, off
-			hotkey, %ToggleMinimapOverlayKey%, off
-			hotkey, %ToggleIncomeOverlayKey%, off
-			hotkey, %ToggleResourcesOverlayKey%, off
-			hotkey, %ToggleArmySizeOverlayKey%, off			
-			hotkey, %ToggleWorkerOverlayKey%, off	
-			hotkey, %ToggleUnitOverlayKey%, off						
-			hotkey, %CycleOverlayKey%, off		
-		Try	hotkey, %read_races_key%, off
-		try	hotkey, %inject_start_key%, off
-		try	hotkey, %inject_reset_key%, off	
+				try hotkey, %worker_count_local_key%, off
+				try hotkey, %worker_count_enemy_key%, off
+				try hotkey, %Playback_Alert_Key%, off
+				try hotkey, %TempHideMiniMapKey%, off
+				try hotkey, %AdjustOverlayKey%, off
+				try hotkey, %ToggleIdentifierKey%, off
+				try hotkey, %ToggleMinimapOverlayKey%, off
+				try hotkey, %ToggleIncomeOverlayKey%, off
+				try hotkey, %ToggleResourcesOverlayKey%, off
+				try hotkey, %ToggleArmySizeOverlayKey%, off			
+				try hotkey, %ToggleWorkerOverlayKey%, off	
+				try hotkey, %ToggleUnitOverlayKey%, off						
+				try hotkey, %CycleOverlayKey%, off		
+				Try	hotkey, %read_races_key%, off
+				try	hotkey, %inject_start_key%, off
+				try	hotkey, %inject_reset_key%, off	
+
+			Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Zerg") && InjectTimerAdvancedEnable && !isMenuOpen() && time		
+					try hotkey,  ~^%InjectTimerAdvancedLarvaKey%, off
+					try hotkey,  ~+%InjectTimerAdvancedLarvaKey%, off
+					try hotkey,  ~%InjectTimerAdvancedLarvaKey%, off
 
 			Hotkey, If, WinActive(GameIdentifier) && time && !isMenuOpen() && SelectArmyEnable
-			hotkey, %castSelectArmy_key%, off
+				try hotkey, %castSelectArmy_key%, off
 			Hotkey, If, WinActive(GameIdentifier) && time && !isMenuOpen() && SplitUnitsEnable
-			hotkey, %castSplitUnit_key%, off
+				try hotkey, %castSplitUnit_key%, off
 			Hotkey, If, WinActive(GameIdentifier) && time && !isMenuOpen() && RemoveUnitEnable
-			hotkey, %castRemoveUnit_key%, off
+				try hotkey, %castRemoveUnit_key%, off
 			Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Zerg") && (auto_inject <> "Disabled") && time
-			hotkey, %cast_inject_key%, off
-			hotkey, %F_InjectOff_Key%, Cast_DisableInject, on	
+				try hotkey, %cast_inject_key%, off
+				try hotkey, %F_InjectOff_Key%, off	
 			Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && CG_Enable && time
-			hotkey, %Cast_ChronoGate_Key%, off
+				try hotkey, %Cast_ChronoGate_Key%, off
 			Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableForge && time
-			hotkey, %Cast_ChronoForge_Key%, off
+				try hotkey, %Cast_ChronoForge_Key%, off
 			Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableStargate && time
-			hotkey, %Cast_ChronoStargate_Key%, off		
+				try hotkey, %Cast_ChronoStargate_Key%, off		
 			Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableNexus && time
-			hotkey, %Cast_ChronoNexus_Key%, off
+				try hotkey, %Cast_ChronoNexus_Key%, off
 			Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableRoboticsFacility && time
-			hotkey, %Cast_ChronoRoboticsFacility_Key%, off
+				try hotkey, %Cast_ChronoRoboticsFacility_Key%, off
 			Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Terran" || aLocalPlayer["Race"] = "Protoss")  && time
-			hotkey, %ToggleAutoWorkerState_Key%, off		
+				try hotkey, %ToggleAutoWorkerState_Key%, off		
 			Hotkey, If, WinActive(GameIdentifier) && (!isMenuOpen() || (isMenuOpen() && isChatOpen())) && time
-			Hotkey, %ping_key%, off		
+				try Hotkey, %ping_key%, off		
 			Hotkey, If, WinActive(GameIdentifier) && !isMenuOpen() && time
 			while (10 > i := A_index - 1)
 			{
@@ -2254,6 +2361,10 @@ ini_settings_write:
 	IniWrite, %manual_inject_time%, %config_file%, Manual Inject Timer, manual_inject_time
 	IniWrite, %inject_start_key%, %config_file%, Manual Inject Timer, start_stop_key
 	IniWrite, %inject_reset_key%, %config_file%, Manual Inject Timer, reset_key
+
+	IniWrite, %InjectTimerAdvancedEnable%, %config_file%, Manual Inject Timer, InjectTimerAdvancedEnable
+	IniWrite, %InjectTimerAdvancedTime%, %config_file%, Manual Inject Timer, InjectTimerAdvancedTime
+	IniWrite, %InjectTimerAdvancedLarvaKey%, %config_file%, Manual Inject Timer, InjectTimerAdvancedLarvaKey
 	
 	;[Inject Warning]
 	IniWrite, %W_inject_ding_on%, %config_file%, Inject Warning, ding_on
@@ -2857,7 +2968,7 @@ IfWinExist, Macro Trainer V%ProgramVersion% Settings
 			gui, font, 		
 
 	Gui, Tab,  Manual
-			Gui, Add, GroupBox,  w295 h165, Manual Inject Timer	;h185
+			Gui, Add, GroupBox,  w295 h165 section, Manual Inject Timer	;h185
 					Gui, Add, Checkbox,xp+10 yp+30 vmanual_inject_timer checked%manual_inject_timer%, Enable
 					Gui, Add, Text,y+15, Alert After (s): 
 					Gui, Add, Edit, Number Right x+5 yp-2 w45 
@@ -2869,7 +2980,16 @@ IfWinExist, Macro Trainer V%ProgramVersion% Settings
 					Gui, Add, Text, x%settings2RX% yp+35 w90, Reset Hotkey:
 					Gui, Add, Edit, Readonly yp x+20 w120  vinject_reset_key center gedit_hotkey, %inject_reset_key%
 					Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#inject_reset_key,  Edit
-					Gui, Add, Text,yp+75 x%settings2RX% w340,  This is a very basic timer. It will simply beep every x seconds
+					Gui, Add, Text,yp+60 x%settings2RX% w340,  This is a very basic timer. It will simply beep every x seconds
+			
+			Gui, Add, GroupBox,  w295 h140  xs ys+230, Advanced Inject Timer
+				Gui, Add, Checkbox, xp+10 yp+30 vInjectTimerAdvancedEnable checked%InjectTimerAdvancedEnable%, Enable
+				Gui, Add, Text, y+15, Alert After (s): 
+				Gui, Add, Edit, Number Right x+13 yp-2 w45 
+					Gui, Add, UpDown, Range1-100000 vInjectTimerAdvancedTime, %InjectTimerAdvancedTime%
+				Gui, Add, Text, x%settings2RX% yp+35 w90, SC2 Spawn`nLarva Key:	
+					Gui, Add, Edit, Readonly yp+2 xs+85 w120 center vInjectTimerAdvancedLarvaKey, %InjectTimerAdvancedLarvaKey%
+					Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#InjectTimerAdvancedLarvaKey,  Edit
 
 
 	Gui, Tab,  Auto
@@ -5652,7 +5772,7 @@ Edit_AG:	;AutoGroup and Unit include/exclude come here
 		else 
 			list := "l_UnitNames" Race
 	}
-	
+
 	list := %list%
 
 	IfInString, A_GuiControl, UnitHighlight
@@ -7152,6 +7272,7 @@ CreateHotkeys()
 	#If, WinActive(GameIdentifier)
 	#If, WinActive(GameIdentifier) && LwinDisable && getTime()	
 	#If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Zerg") && !isMenuOpen() && time
+	#If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Zerg") && InjectTimerAdvancedEnable && !isMenuOpen() && time
 	#If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Zerg") && (auto_inject <> "Disabled") && time
 	#If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && CG_Enable && time
 	#If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableForge && time
@@ -7173,7 +7294,15 @@ CreateHotkeys()
 		hotkey, *~LButton, g_LbuttonDown, on
 
 	Hotkey, If, WinActive(GameIdentifier) && LwinDisable && getTime()
-			hotkey, Lwin, g_DoNothing, on		
+			hotkey, Lwin, g_DoNothing, on
+
+	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Zerg") && InjectTimerAdvancedEnable && !isMenuOpen() && time		
+	if InjectTimerAdvancedEnable
+	{	
+		hotkey,  ~^%InjectTimerAdvancedLarvaKey%, g_InjectTimerAdvanced, on
+		hotkey,  ~+%InjectTimerAdvancedLarvaKey%, g_InjectTimerAdvanced, on
+		hotkey,  ~%InjectTimerAdvancedLarvaKey%, g_InjectTimerAdvanced, on
+	}
 
 	Hotkey, If, WinActive(GameIdentifier) && (!isMenuOpen() || (isMenuOpen() && isChatOpen())) && time
 		hotkey, %ping_key%, ping, on									;on used to re-enable hotkeys as were 
