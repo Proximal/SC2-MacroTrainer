@@ -17,8 +17,13 @@
 
 ; Just easy way to install/remove both hooks with one function
 
-setLowLevelInputHooks(Install)
+setLowLevelInputHooks(Install, getState := 0)
 {
+	static hKbd := 0, hMse := 0
+	
+	if getState ; for testing 
+		return "Keyboard: " hKbd "`nMouse: " hMse
+
 	if install 
 	{
 		hKbd := setMTKeyboardHook(True)
@@ -27,12 +32,15 @@ setLowLevelInputHooks(Install)
 			return 0 
 		else return 1 ; error installing
 	}
-	else 
+	else
 	{
 		KbdRemoved := setMTKeyboardHook(False)
 		MseRemoved := setMTMouseHook(False)	 ; returns Non-zero on success
 		if (KbdRemoved && MseRemoved)
+		{
+			hKbd := hMse := 0 ; just doing this for testing 
 			return 0 	; success 
+		}
 		else return 1 	; error
 	}
 }

@@ -160,7 +160,7 @@ GLOBAL GameExe := "SC2.exe"
 
 input.setTarget("", GameIdentifier)
 ; For some reason this has to come before Gdip_Startup() for reliability 
-;DllCall("RegisterShellHookWindow", UInt, getScriptHandle())
+DllCall("RegisterShellHookWindow", UInt, getScriptHandle())
 
 pToken := Gdip_Startup()
 Global aUnitID, aUnitName, aUnitSubGroupAlias, aUnitTargetFilter, aHexColours, MatrixColour
@@ -308,7 +308,7 @@ if !MT_CurrentInstance.SCWasRunning
 while (!(B_SC2Process := getProcessBaseAddress(GameIdentifier)) || B_SC2Process < 0)		;using just the window title could cause problems if a folder had the same name e.g. sc2 folder
 	sleep 400				; required to prevent memory read error - Handle closed: error 		
 SC2hWnd := WinExist(GameIdentifier)
-;OnMessage(DllCall("RegisterWindowMessage", Str,"SHELLHOOK" ), "ShellMessage")
+OnMessage(DllCall("RegisterWindowMessage", Str,"SHELLHOOK" ), "ShellMessage")
 
 loadMemoryAddresses(B_SC2Process)	
 
@@ -318,7 +318,7 @@ loadMemoryAddresses(B_SC2Process)
 settimer, clock, 250
 settimer, timer_exit, 5000, -100
 ; no using a shell monitor to keep destroy overlays
-SetTimer, OverlayKeepOnTop, 2000, -2000	;better here, as since WOL 2.0.4 having it in the "clock" section isn't reliable 	
+;SetTimer, OverlayKeepOnTop, 2000, -2000	;better here, as since WOL 2.0.4 having it in the "clock" section isn't reliable 	
 
 l_Changeling := aUnitID["ChangelingZealot"] "," aUnitID["ChangelingMarineShield"] ","  aUnitID["ChangelingMarine"] 
 				. ","  aUnitID["ChangelingZerglingWings"] "," aUnitID["ChangelingZergling"]
@@ -490,19 +490,15 @@ g_GiveLocalPalyerResources:
 return	
 
 g_GLHF:
- 	; shouldn't really use sendinput while in critical but it seems to work fine here
- 	; would probably give issues for more complex send commands though
- 	; the reason it works is because the keys can be released, input sent, then keys reverted
- 	; before the user releases the keys 
-
-	critical, 1000 ; THIS is needed otherwise alt gets left down (due to revert)
-	input.releaseKeys()
+	setLowLevelInputHooks(False)
 	SetStoreCapslockMode, On ;as I turned it off in the auto Exec section
 	if !isChatOpen()
-		send, {BLIND}+{Enter} ; blind is required when im manually releasing keys
-	send, {BLIND}GL{ASC 3}HF{!} ;♥
+	{
+		send, +{Enter}
+	}
+	send, GL{ASC 3}HF{!} ;♥
 	SetStoreCapslockMode, Off ; this isn't really needed as it is no off by default for new threads
-	Input.revertKeyState()
+	setLowLevelInputHooks(True)
 return 
 
 g_DeselectUnit:
@@ -681,7 +677,7 @@ Adjust_overlay:
 		gosub overlay_timer
 		if DrawUnitOverlay
 			gosub g_unitPanelOverlay_timer
-		SetTimer, OverlayKeepOnTop, off	
+	;	SetTimer, OverlayKeepOnTop, off	
 		SetTimer, overlay_timer, 50, 0		; make normal priority so it can interupt this thread to move
 		SetTimer, g_unitPanelOverlay_timer, 50, 0
 		SoundPlay, %A_Temp%\On.wav
@@ -690,7 +686,7 @@ Adjust_overlay:
 	KeyWait, %AdjustOverlayKey%, T40
 	Dragoverlay := False	 	
 	{
-		SetTimer, OverlayKeepOnTop, 2000, -2000
+	;	SetTimer, OverlayKeepOnTop, 2000, -2000
 		SetTimer, overlay_timer, %OverlayRefresh%, -8
 		SetTimer, g_unitPanelOverlay_timer, %UnitOverlayRefresh%, -9
 		SoundPlay, %A_Temp%\Off.wav
@@ -3482,16 +3478,16 @@ try
 
 			Gui, Add, Checkbox, xs+15 yp+25 vquickSelect%A_LoopField%Enabled Checked%Checked%, Enable
 			Gui, Add, Text, yp+40, Hotkey:
-				Gui, Add, Edit, Readonly yp-2 x+10 center w65 vquickSelect%A_LoopField%_Key gedit_hotkey, %quickSelectT_Key%
+				Gui, Add, Edit, Readonly yp-2 x+10 center w65 vquickSelect%A_LoopField%_Key gedit_hotkey, %A_Space%
 			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#quickSelect%A_LoopField%_Key,  Edit	
 
 			Gui, Add, Text, xs+15 y+10, Units
-			Gui, Add, Edit, y+5 w160  r6 vquickSelect%A_LoopField%UnitsArmy, %quickSelectT1Units%
+			Gui, Add, Edit, y+5 w160  r6 vquickSelect%A_LoopField%UnitsArmy, %A_Space%
 			Gui, Add, Button, y+5 gEdit_AG v#quickSelect%A_LoopField%UnitsArmy w160 h25,  Add
 
 			Gui, Add, Text, xs+200 ys+25, Store Selection:
 
-			Gui, Add, DropDownList,  x+15 yp-3 w45 center vQuickSelect%A_LoopField%StoreSelection Choose%droplist_var%, Off||1|2|3|4|5|6|7|8|9|0
+			Gui, Add, DropDownList,  x+15 yp-3 w45 center vQuickSelect%A_LoopField%StoreSelection Choose1, Off||1|2|3|4|5|6|7|8|9|0
 
 
 			Gui, add, GroupBox, xs+200 ys+55 w165 h175, Remove
@@ -4282,6 +4278,24 @@ try
 	SelectArmyDeselectLoadedTransport_TT := "Removes loaded medivacs and warp prisms"
 	SelectArmyDeselectQueuedDrops_TT := "Removes transports which have a drop command queued`n`nDoesn't include tranports which have begun unloading."
 
+
+	loop, parse, l_Races, `,
+	{
+		New%A_LoopField%QuickSelect_TT := "Create a new quick select item."
+		Delete%A_LoopField%QuickSelect_TT := "Delte the currently displayed item."
+		quickSelect%A_LoopField%Enabled_TT := "Enables this item during a match"
+		#quickSelect%A_LoopField%_Key_TT := quickSelect%A_LoopField%_Key_TT := "The hotkey used to invoke this quick select item."
+		quickSelect%A_LoopField%UnitsArmy_TT := #quickSelect%A_LoopField%UnitsArmy_TT := "These unit types will be selected."
+
+		quickSelect%A_LoopField%DeselectXelnaga_TT := SelectArmyDeselectXelnaga_TT
+		quickSelect%A_LoopField%DeselectPatrolling_TT := SelectArmyDeselectPatrolling_TT
+		quickSelect%A_LoopField%DeselectHoldPosition_TT := SelectArmyDeselectHoldPosition_TT
+		quickSelect%A_LoopField%DeselectFollowing_TT :=SelectArmyDeselectFollowing_TT		
+		quickSelect%A_LoopField%DeselectLoadedTransport_TT := SelectArmyDeselectLoadedTransport_TT
+		quickSelect%A_LoopField%DeselectQueuedDrops_TT := SelectArmyDeselectQueuedDrops_TT
+	}
+
+
 	castRemoveUnit_key_TT := #castRemoveUnit_key_TT := castSplitUnit_key_TT := #castSplitUnit_key_TT := "The hotkey used to invoke this function."
 	SplitctrlgroupStorage_key_TT := #SplitctrlgroupStorage_key_TT := "This ctrl group is used during the function.`nAssign it to a control group you DON'T use!"
 	TT_DeselectSleepTime_TT :=  DeselectSleepTime_TT := "Time between deselecting units from the unit panel.`nThis is used by the split and select army, and deselect unit functions"
@@ -4532,7 +4546,7 @@ iniReadQuickSelect(byRef aQuickSelectCopy, byRef aQuickSelect)
 
 blankQuickSelectGUI(race)
 {
-	GUIControl, , quickSelect%Race%Enable, 0
+	GUIControl, , quickSelect%Race%Enabled, 0
 	GUIControl, , quickSelect%Race%_Key,
 	GUIControl, , quickSelect%Race%UnitsArmy,
 	GUIControl, , quickSelect%Race%UnitsArmy,
@@ -4608,12 +4622,14 @@ saveCurrentQuickSelect(Race, byRef aQuickSelectCopy)
 				includesTransport := True
 		}
 	}
-	if !aQuickSelectCopy[Race, arrayPosition, "units"].maxIndex()
-	{
-		GUIControl, , quickSelect%Race%UnitsArmy,
-		aQuickSelectCopy[Race].remove(arrayPosition)
-		return 1 ; No real units were in the text field
-	}
+	; lets just save it anyway so that if the click previous to go back and they havent filled in the units part, 
+	; they wont lose what they just entered
+;	if !aQuickSelectCopy[Race, arrayPosition, "units"].maxIndex()
+;	{
+;		GUIControl, , quickSelect%Race%UnitsArmy,
+;		aQuickSelectCopy[Race].remove(arrayPosition)
+;		return 1 ; No real units were in the text field
+;	}
 	if !includesTransport
 		DeselectLoadedTransport := DeselectQueuedDrops := False
 
@@ -5091,7 +5107,19 @@ edit_hotkey:
 			; Force at least one Right side modifiers and force the wildcard option (disable and check)
 			; this is done as if have stuck modifier then this could prevent the hotkey firing.
 			hotkey_var := HotkeyGUI("Options",%hotkey_name%, 1, "Select Hotkey:   " hotkey_name, 0, 0, 10, 14) ;the hotkey
-		Else hotkey_var := HotkeyGUI("Options",%hotkey_name%,, "Select Hotkey:   " hotkey_name) ;the hotkey
+		else if instr(hotkey_name, "quickSelect")
+		{
+			if instr(hotkey_name, "Terran")
+				race := "Terran"
+			else if instr(hotkey_name, "Protoss")
+				race := "Protoss"
+			else 
+				race := "Zerg"
+			GuiControlGet, hotkey, , quickSelect%Race%_Key
+			hotkey_var := HotkeyGUI("Options", hotkey,, "Select Hotkey:   " hotkey_name) ;the hotkey
+		}
+		Else 
+			hotkey_var := HotkeyGUI("Options",%hotkey_name%,, "Select Hotkey:   " hotkey_name) ;the hotkey
 		if (hotkey_var <> "")
 			GUIControl,, %hotkey_name%, %hotkey_var%
 	}
@@ -6406,18 +6434,18 @@ autoWorkerProductionCheck()
 
 	if (MaxWokersTobeMade >= 1) && (idleBases || almostComplete || (halfcomplete && !nearHalfComplete)  ) ; i have >= 1 in case i stuffed the math and end up with a negative number or a fraction
 	{
-		While (isUserPerformingActionIgnoringCamera()
-			|| getkeystate("Shift") || getkeystate("Ctrl") || getkeystate("Alt")
-			|| getkeystate("Shift", "P") || getkeystate("Ctrl", "P") || getkeystate("Alt", "P")
-			|| getkeystate("LWin") || getkeystate("RWin")
-			|| getkeystate("Enter") ; required so chat box doesnt get repoened when user presses enter to close the chat box
-			||  MT_InputIdleTime() < 50
-			|| getPlayerCurrentAPM() > AutoWorkerAPMProtection) ; probably dont need this anymore
+	;	While (isUserPerformingActionIgnoringCamera()
+	;		|| getkeystate("Shift") || getkeystate("Ctrl") || getkeystate("Alt")
+	;		|| getkeystate("Shift", "P") || getkeystate("Ctrl", "P") || getkeystate("Alt", "P")
+	;		|| getkeystate("LWin") || getkeystate("RWin")
+	;		|| getkeystate("Enter") ; required so chat box doesnt get repoened when user presses enter to close the chat box
+	;		||  MT_InputIdleTime() < 50
+	;		|| getPlayerCurrentAPM() > AutoWorkerAPMProtection) ; probably dont need this anymore
 
-	;	While ( isUserBusyBuilding() || isCastingReticleActive() 
-	;	|| getkeystate("Shift") || getkeystate("Shift", "P") ; so user can prevent auto-worker when wanting to build something 	
-	;	|| getkeystate("Enter") 
-	;	|| getPlayerCurrentAPM() > AutoWorkerAPMProtection)
+		While ( isUserBusyBuilding() || isCastingReticleActive() 
+		|| getkeystate("Shift") || getkeystate("Shift", "P") ; so user can prevent auto-worker when wanting to build something 	
+		|| getkeystate("Enter") 
+		|| getPlayerCurrentAPM() > AutoWorkerAPMProtection)
 		{
 			if (A_index > 24)
 				return ; (actually could be 480 ms - sleep 1 usually = 20ms)
@@ -8294,7 +8322,7 @@ quickSelect(aDeselect)
 	}
 
 	numGetSelectionSorted(aSelected)
-	clickPortraits := []
+	global clickPortraits := []
 
 	if (aDeselect.Units.MaxIndex() = 1)
 	{
@@ -8309,7 +8337,7 @@ quickSelect(aDeselect)
 					break
 				}
 			}
-			clickUnitPortraits([clickPortrait], "^")
+			clickUnitPortraits(clickPortraits, "^")
 		}
 	}
 	else 
@@ -8328,26 +8356,34 @@ quickSelect(aDeselect)
 			else 
 				selectedCount += aSelected.TabSizes[unit.unitId]
 		}
+		; reversing the array here (rather than via numgetselection function) allows the clicks to occur on the
+		; lowest portraits i.e. on the left side of a selection group
+
 		if clickPortraits.MaxIndex()
-			clickUnitPortraits(clickPortraits, "^+")	
+			reverseArray(clickPortraits), clickUnitPortraits(clickPortraits, "^+")	
 	}
 
-	if clickPortraits.MaxIndex()
+	if (clickPortraits.MaxIndex() && (aDeselect.DeselectXelnaga || aDeselect.DeselectPatrolling || aDeselect.DeselectHoldPosition || aDeselect.DeselectFollowing
+		|| aDeselect.DeselectLoadedTransport|| aDeselect.DeselectQueuedDrops))
 	{
 
 		timerQuickID := stopwatch()
 		while (getSelectionCount() != selectedCount && stopwatch(timerQuickID, False) < 70 && A_Index < 80)
 			dsleep(1)
+
 		stopwatch(timerQuickID) ; remove the timer
 		dsleep(12)
+
 		aUnitPortraitLocations := []
 		aUnitPortraitLocations := findPortraitsToRemoveFromArmy("", aDeselect.DeselectXelnaga, aDeselect.DeselectPatrolling
 										, aDeselect.DeselectHoldPosition, aDeselect.DeselectFollowing, aDeselect.DeselectLoadedTransport 
 										, aDeselect.DeselectQueuedDrops, "")
 		clickUnitPortraits(aUnitPortraitLocations)
+
 	}
 	if (aDeselect.StoreSelection != "Off")
 		input.pSend("^" aDeselect.StoreSelection)
+	dsleep(15)
 	input.RevertKeyState()
 	critical, off 
 	sleep, -1
@@ -8526,6 +8562,39 @@ clickUnitPortraits(aUnitPortraitLocations, Modifers := "+")
 	}
 	return	
 }
+
+
+; this is used to visualise and check the click locations are correct 
+clickUnitPortraitsDemo(aUnitPortraitLocations, Modifers := "+")
+{
+	startPage := getUnitSelectionPage()
+	; Send modifiers down once at start so don't needlessly send up/down for each click 
+	; though i dont think it really matters
+	; Also, page numbers can be clicked with the shift/ctrl/alt keys down
+
+	for i, portrait in aUnitPortraitLocations
+	{
+		if (portrait <= 143)
+		{
+			if ClickUnitPortrait(portrait, X, Y, Xpage, Ypage) 
+			{	
+				currentPage := getUnitSelectionPage()
+				mousemove, %Xpage%, %Ypage%
+				sleep 2000
+				send, {click %Xpage%, %Ypage%}
+				while (getUnitSelectionPage() = currentPage && A_Index < 25)
+					dsleep(1)
+				dsleep(7) ; small static delay
+			}
+			mousemove, %x%, %y%		
+			sleep 2000
+			send, %Modifers%{click %x%, %y%}
+		}
+	}
+	soundplay *-1
+	return	
+}
+
 ; unitIndex is a comma delimited list
 
 ClickSelectUnitsPortriat(unitIndexList, Modifers := "", restoreStartPage := False)	;can put ^ to do a control click
