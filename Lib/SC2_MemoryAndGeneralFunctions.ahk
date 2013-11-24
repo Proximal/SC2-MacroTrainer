@@ -3428,12 +3428,16 @@ readConfigFile()
 		IniWrite, 0, %config_file%, %section%, RestartMethod ; set the value back to 0	
 	IniRead, MT_DWMwarned, %config_file%, %section%, MT_DWMwarned, 0
 	
+	if IsFunc(FunctionName := "iniReadQuickSelect") ; function not in minimapthread
+		%FunctionName%(aQuickSelectCopy, aQuickSelect)
+
 	; So custom colour highlights are updated
 	initialiseBrushColours(aHexColours, a_pBrushes)
 
-
 	return
 }
+
+
 
 stripModifiers(pressedKey)
 {

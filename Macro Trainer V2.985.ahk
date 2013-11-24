@@ -134,7 +134,7 @@ aThreads.Speech.ahktextdll(generateSpeechScript())
 
 
 start:
-config_file := "MT_Config.ini"
+global config_file := "MT_Config.ini"
 old_backup_DIR := "Old Macro Trainers"
 url := []
 url.vr := "http://www.users.on.net/~jb10/macro_trainer_version.txt"
@@ -922,6 +922,7 @@ clock:
 																		; and so wont prevent the minimap or overlay being drawn
 																		; note may delay some timers from launching for a fraction of a ms while its in thread, no timers interupt mode (but it takes less than 1 ms to run anyway)
 		} 																; Hence with these two timers running autogroup will occur at least once every 30 ms, but generally much more frequently
+		disableAllHotkeys()
 		CreateHotkeys()
 		if !A_IsCompiled
 		{
@@ -2023,12 +2024,12 @@ OverlayKeepOnTop:
 	if (!OverlayKeepOnTopFlag  && !WinActive(GameIdentifier))
 	{	
 		DestroyOverlays()
+		; remove hooks so ahk list box doesnt lag
 		setLowLevelInputHooks(False)
 		OverlayKeepOnTopFlag := True
 	}
 	else if (OverlayKeepOnTopFlag && WinActive(GameIdentifier) && getTime() && !mt_Paused && !IsInList(aLocalPlayer.Type, "Referee", "Spectator"))
 	{
-		; remove hooks so ahk list box doesnt lag
 		setLowLevelInputHooks(False)
 		setLowLevelInputHooks(True)
 		gosub, overlay_timer
@@ -2268,78 +2269,13 @@ ini_settings_write:
 		; coulde use the errorlevel setting in hotkey command
 		; or just relay on conditional #if hotkey-on variants 
 
-		Try 
-		{
-			Hotkey, If, WinActive(GameIdentifier)						
-				try hotkey, %warning_toggle_key%, off			; 	deactivate the hotkeys
-														; 	so they can be updated with their new keys
-														;	
-														; 
-														; Anything with a try command has an 'if setting is on' section in the
-														; create hotkeys section
-														; still left the overall try just incase i missed something
-														; gives the user a friendlier error
-
-			Hotkey, If, WinActive(GameIdentifier) && time	
-				try hotkey, %worker_count_local_key%, off
-				try hotkey, %worker_count_enemy_key%, off
-				try hotkey, %Playback_Alert_Key%, off
-				try hotkey, %TempHideMiniMapKey%, off
-				try hotkey, %AdjustOverlayKey%, off
-				try hotkey, %ToggleIdentifierKey%, off
-				try hotkey, %ToggleMinimapOverlayKey%, off
-				try hotkey, %ToggleIncomeOverlayKey%, off
-				try hotkey, %ToggleResourcesOverlayKey%, off
-				try hotkey, %ToggleArmySizeOverlayKey%, off			
-				try hotkey, %ToggleWorkerOverlayKey%, off	
-				try hotkey, %ToggleUnitOverlayKey%, off						
-				try hotkey, %CycleOverlayKey%, off		
-				Try	hotkey, %read_races_key%, off
-				try	hotkey, %inject_start_key%, off
-				try	hotkey, %inject_reset_key%, off	
-
-			Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Zerg") && InjectTimerAdvancedEnable && !isMenuOpen() && time		
-					try hotkey,  ~^%InjectTimerAdvancedLarvaKey%, off
-					try hotkey,  ~+%InjectTimerAdvancedLarvaKey%, off
-					try hotkey,  ~%InjectTimerAdvancedLarvaKey%, off
-
-			Hotkey, If, WinActive(GameIdentifier) && time && !isMenuOpen() && SelectArmyEnable
-				try hotkey, %castSelectArmy_key%, off
-			Hotkey, If, WinActive(GameIdentifier) && time && !isMenuOpen() && SplitUnitsEnable
-				try hotkey, %castSplitUnit_key%, off
-			Hotkey, If, WinActive(GameIdentifier) && time && !isMenuOpen() && RemoveUnitEnable
-				try hotkey, %castRemoveUnit_key%, off
-			Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Zerg") && (auto_inject <> "Disabled") && time
-				try hotkey, %cast_inject_key%, off
-				try hotkey, %F_InjectOff_Key%, off	
-			Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && CG_Enable && time
-				try hotkey, %Cast_ChronoGate_Key%, off
-			Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableForge && time
-				try hotkey, %Cast_ChronoForge_Key%, off
-			Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableStargate && time
-				try hotkey, %Cast_ChronoStargate_Key%, off		
-			Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableNexus && time
-				try hotkey, %Cast_ChronoNexus_Key%, off
-			Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableRoboticsFacility && time
-				try hotkey, %Cast_ChronoRoboticsFacility_Key%, off
-			Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Terran" || aLocalPlayer["Race"] = "Protoss")  && time
-				try hotkey, %ToggleAutoWorkerState_Key%, off		
-			Hotkey, If, WinActive(GameIdentifier) && (!isMenuOpen() || (isMenuOpen() && isChatOpen())) && time
-				try Hotkey, %ping_key%, off		
-			Hotkey, If, WinActive(GameIdentifier) && !isMenuOpen() && time
-			while (10 > i := A_index - 1)
-			{
-				try hotkey, ^%i%, off
-				try hotkey, +%i%, off
-				try hotkey, ^+%i%, off
-			}			
-			Hotkey, If	
-		}
+		Try disableAllHotkeys()
 		Catch, Error	;error is an object
 		{
 			clipboard := "Error: " error.message "`nLine: " error.line "`nExtra: "error.Extra
 			msgbox % "There was an error while updating the hotkey state.`n`nYour previous hotkeys may still be active until you restart the program.`n`nIf you have just edited the options, then this error is NOT very important, but it has been copied to the clipboard if you wish to report it.`n`nNote:`nIf you have just started the program and are receiving this error, then either your hotkeys in your MT_config.ini are corrupted or you are using a non-English keyboard layout. If the latter, you can try changing your keyboard layout to ""English"".`n`nError: " error.message "`nLine: " error.line "`nSpecifically: " error.Extra
 		}
+		saveCurrentDisplayedItemsQuickSelect(aQuickSelectCopy)
 		IF (Tmp_GuiControl = "save")
 		{
 			Gui, Submit
@@ -2744,6 +2680,8 @@ ini_settings_write:
 	IniWrite, %DrawPlayerCameras%, %config_file%, %section%, DrawPlayerCameras
 	IniWrite, %HostileColourAssist%, %config_file%, %section%, HostileColourAssist
 
+	iniWriteAndUpdateQuickSelect(aQuickSelectCopy, aQuickSelect)
+
 	;this writes back the unit detection lists and settings
 
 	loop, parse, l_GameType, `,
@@ -2778,7 +2716,7 @@ ini_settings_write:
 		if (time && alert_array[GameType, "Enabled"])
 			 aThreads.MiniMap.ahkFunction("doUnitDetection", 0, 0, 0, "Save")
 		Tmp_GuiControl := ""
-		CreateHotkeys()	; to reactivate the hotkeys
+		CreateHotkeys()	; to reactivate the hotkeys that were disabled by disableAllHotkeys()
 		UserSavedAppliedSettings := 1
 		If (game_status = "game") ; so if they change settings during match will update timers
 			UpdateTimers := 1
@@ -3532,18 +3470,17 @@ IfWinExist, Macro Trainer V%ProgramVersion% Settings
 
 		Gui, Tab, %A_LoopField%
 
-		if !aQuickSelectCopy[A_LoopField, "IndexGUI"]
-			aQuickSelectCopy[A_LoopField, "IndexGUI"] := 1
-		if !aQuickSelectCopy[A_LoopField, "MaxIndexGUI"]
-			aQuickSelectCopy[A_LoopField, "MaxIndexGUI"] := 1
+		aQuickSelectCopy[A_LoopField "IndexGUI"] := 1
+		if !aQuickSelectCopy[A_LoopField "MaxIndexGUI"]
+			aQuickSelectCopy[A_LoopField "MaxIndexGUI"]
 
-		Gui, Add, GroupBox, x+25 Y+25 w380 h65 section vGroupBox%A_LoopField%QuickSelect, % " Quick Select Navigation " aQuickSelectCopy[A_LoopField].IndexGUI " of " aQuickSelectCopy[A_LoopField, "MaxIndexGUI"]
+		Gui, Add, GroupBox, x+25 Y+25 w380 h65 section vGroupBox%A_LoopField%QuickSelect, % " Quick Select Navigation " aQuickSelectCopy[A_LoopField "IndexGUI"] " of " aQuickSelectCopy[A_LoopField "MaxIndexGUI"]
 			 Gui, Add, Button, xp+15 yp+25 w65 h25 vPrevious%A_LoopField%QuickSelect gg_QuickSelectGui, Previous
 			 Gui, Add, Button, x+20 w65 h25 vNext%A_LoopField%QuickSelect gg_QuickSelectGui, Next
 			 Gui, Add, Button, x+45 w65 h25 vNew%A_LoopField%QuickSelect gg_QuickSelectGui, New
 			 Gui, Add, Button, x+20 w65 h25 vDelete%A_LoopField%QuickSelect gg_QuickSelectGui, Delete
 
-		Gui, Add, GroupBox, xs Ys+85 w380 h260 section vGroupBoxItem%A_LoopField%QuickSelect, % "Quick  Select Item " aQuickSelectCopy[A_LoopField].IndexGUI
+		Gui, Add, GroupBox, xs Ys+85 w380 h260 section vGroupBoxItem%A_LoopField%QuickSelect, % "Quick  Select Item " aQuickSelectCopy[A_LoopField "IndexGUI"] 
 
 			Gui, Add, Checkbox, xs+15 yp+25 vquickSelect%A_LoopField%Enabled Checked%Checked%, Enable
 			Gui, Add, Text, yp+40, Hotkey:
@@ -3567,9 +3504,12 @@ IfWinExist, Macro Trainer V%ProgramVersion% Settings
 			Gui, Add, Checkbox, Xp yp+24 vquickSelect%A_LoopField%DeselectHoldPosition Checked%Checked%, On hold position
 			Gui, Add, Checkbox, Xp yp+24 vquickSelect%A_LoopField%DeselectFollowing Checked%Checked%, On follow command
 		
-		state := aQuickSelectCopy[A_LoopField, "MaxIndexGUI"] > 1 ? True : False
+		state := aQuickSelectCopy[A_LoopField "MaxIndexGUI"] > 1 ? True : False
 		GUIControl, Enable%state%, Next%A_LoopField%QuickSelect
 		GUIControl,  Enable%state%, Previous%A_LoopField%QuickSelect
+		showQuickSelectItem(A_LoopField, aQuickSelectCopy)
+
+
 	}
 
 	Gui, Add, Tab2,w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vAutoWorker_TAB, Auto||Info		
@@ -7361,14 +7301,28 @@ CreateHotkeys()
 	Hotkey, If, WinActive(GameIdentifier) && time && !isMenuOpen() && EnableAutoWorker`%LocalPlayerRace`% ; cant use !ischatopen() - as esc will close chat before memory reads value so wont see chat was open
 		hotkey, *~Esc, g_temporarilyDisableAutoWorkerProduction, on	
 	Hotkey, If, WinActive(GameIdentifier) && !isMenuOpen() && time
+		loop, parse, l_races, `,
+		{
+			race := A_LoopField
+			if aQuickSelect[race].maxIndex()
+			{
+				for i, object in aQuickSelect[race]
+				{
+					if (object.enabled && object.Units.MaxIndex() && object.hotkey)
+						try hotkey, % object.hotkey, g_QuickSelect, on
+				}
+			}
+
+		}
+		
 	while (10 > i := A_index - 1)
 	{
 		if A_UnitGroupSettings["LimitGroup", aLocalPlayer["Race"], i,"Enabled"] 
-			status := "on"
-		else status := "off"
-		hotkey, ^%i%, g_LimitGrouping, % status
-		hotkey, +%i%, g_LimitGrouping, % status
-		hotkey, ^+%i%, g_LimitGrouping, % status
+		{
+			hotkey, ^%i%, g_LimitGrouping, on
+			hotkey, +%i%, g_LimitGrouping, on
+			hotkey, ^+%i%, g_LimitGrouping, on
+		}
 	}
 	Hotkey, If
 	; Note : I have the emergency hotkey here if the user decides to set another hotkey to <#Space, so it cant get changed
@@ -7382,6 +7336,86 @@ CreateHotkeys()
 	hotkey, %key_EmergencyRestart%, g_EmergencyRestart, B P2147483647
 ;	BufferInputFast.setEmergencyRestartKey(key_EmergencyRestart, "g_EmergencyRestart", "B P2147483647" ) ;buffers the hotkey and give it the highest possible priority
 	Return
+}
+
+disableAllHotkeys()
+{
+	global
+	Hotkey, If, WinActive(GameIdentifier)						
+		try hotkey, %warning_toggle_key%, off			; 	deactivate the hotkeys
+												; 	so they can be updated with their new keys
+												;	
+												; 
+												; Anything with a try command has an 'if setting is on' section in the
+												; create hotkeys section
+												; still left the overall try just incase i missed something
+												; gives the user a friendlier error
+
+	Hotkey, If, WinActive(GameIdentifier) && time	
+		try hotkey, %worker_count_local_key%, off
+		try hotkey, %worker_count_enemy_key%, off
+		try hotkey, %Playback_Alert_Key%, off
+		try hotkey, %TempHideMiniMapKey%, off
+		try hotkey, %AdjustOverlayKey%, off
+		try hotkey, %ToggleIdentifierKey%, off
+		try hotkey, %ToggleMinimapOverlayKey%, off
+		try hotkey, %ToggleIncomeOverlayKey%, off
+		try hotkey, %ToggleResourcesOverlayKey%, off
+		try hotkey, %ToggleArmySizeOverlayKey%, off			
+		try hotkey, %ToggleWorkerOverlayKey%, off	
+		try hotkey, %ToggleUnitOverlayKey%, off						
+		try hotkey, %CycleOverlayKey%, off		
+		Try	hotkey, %read_races_key%, off
+		try	hotkey, %inject_start_key%, off
+		try	hotkey, %inject_reset_key%, off	
+
+	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Zerg") && InjectTimerAdvancedEnable && !isMenuOpen() && time		
+			try hotkey,  ~^%InjectTimerAdvancedLarvaKey%, off
+			try hotkey,  ~+%InjectTimerAdvancedLarvaKey%, off
+			try hotkey,  ~%InjectTimerAdvancedLarvaKey%, off
+
+	Hotkey, If, WinActive(GameIdentifier) && time && !isMenuOpen() && SelectArmyEnable
+		try hotkey, %castSelectArmy_key%, off
+	Hotkey, If, WinActive(GameIdentifier) && time && !isMenuOpen() && SplitUnitsEnable
+		try hotkey, %castSplitUnit_key%, off
+	Hotkey, If, WinActive(GameIdentifier) && time && !isMenuOpen() && RemoveUnitEnable
+		try hotkey, %castRemoveUnit_key%, off
+	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Zerg") && (auto_inject <> "Disabled") && time
+		try hotkey, %cast_inject_key%, off
+		try hotkey, %F_InjectOff_Key%, off	
+	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && CG_Enable && time
+		try hotkey, %Cast_ChronoGate_Key%, off
+	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableForge && time
+		try hotkey, %Cast_ChronoForge_Key%, off
+	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableStargate && time
+		try hotkey, %Cast_ChronoStargate_Key%, off		
+	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableNexus && time
+		try hotkey, %Cast_ChronoNexus_Key%, off
+	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableRoboticsFacility && time
+		try hotkey, %Cast_ChronoRoboticsFacility_Key%, off
+	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Terran" || aLocalPlayer["Race"] = "Protoss")  && time
+		try hotkey, %ToggleAutoWorkerState_Key%, off		
+	Hotkey, If, WinActive(GameIdentifier) && (!isMenuOpen() || (isMenuOpen() && isChatOpen())) && time
+		try Hotkey, %ping_key%, off		
+	Hotkey, If, WinActive(GameIdentifier) && !isMenuOpen() && time
+		loop, parse, l_races
+		{
+			race := A_LoopField
+			if aQuickSelect[race].maxIndex()
+			{
+				for i, object in aQuickSelect[race]
+					try hotkey, % object.hotkey, off
+			}
+
+		}
+		while (10 > i := A_index - 1)
+		{
+			try hotkey, ^%i%, off
+			try hotkey, +%i%, off
+			try hotkey, ^+%i%, off
+		}			
+	Hotkey, If	
+	return 
 }
 
 getCamCenteredUnit(UnitList) ; |delimited ** ; needs a minimum of 70+ ms to update cam location
@@ -7918,18 +7952,21 @@ g_SelectArmy:
 	;	on next loop through 20ms was enough for 146 army
 
 return 
-aQuickSelect := []
-aQuickSelect.1 := [aUnitId.Marine] ;aUnitId.Marauder : true}
-aQuickSelect.1 := [aUnitId.Marine, aUnitId.Marauder] ;aUnitId.Marauder : true}
-gosub g_QuickSelect1
-return 
 
-g_QuickSelect0:
-g_QuickSelect1:
-g_QuickSelect2:
-group := substr(A_ThisLabel, 0, 1)
+g_QuickSelect:
+item := ""
+for index, object in aQuickSelect[aLocalPlayer.Race]
+{
+	if (object.hotkey = A_ThisHotkey)
+	{
+		item := index
+		break
+	}
+}
+if (item = "")
+	return 
 settimer, testrecpver, -10000
-quickSelect(group, aQuickSelect[group])
+quickSelect(aQuickSelect[aLocalPlayer.Race, item])
 settimer, testrecpver, off
 return 
 
@@ -7937,7 +7974,7 @@ testrecpver:
 input.RevertKeyState()
 return 
 
-quickSelect(group, byref aQuickSelect)
+quickSelect(aDeselect)
 {
 	global Sc2SelectArmy_Key
 
@@ -7973,9 +8010,9 @@ quickSelect(group, byref aQuickSelect)
 	numGetSelectionSorted(aSelected)
 	clickPortraits := []
 
-	if (aQuickSelect.MaxIndex() = 1)
+	if (aDeselect.Units.MaxIndex() = 1)
 	{
-		clickUnitType := aQuickSelect[1]
+		clickUnitType := aDeselect["Units", 1]
 		if aSelected.TabPositions.HasKey(clickUnitType)
 		{
 			for i, unit in aSelected.units
@@ -7992,7 +8029,7 @@ quickSelect(group, byref aQuickSelect)
 	else 
 	{
 		aLookup := []
-		for i, clickUnitType in aQuickSelect
+		for i, clickUnitType in aDeselect["Units"]
 			aLookup[clickUnitType] := True
 
 		if aSelected.TabPositions.HasKey(clickUnitType)
@@ -8020,11 +8057,13 @@ quickSelect(group, byref aQuickSelect)
 		stopwatch(timerQuickID) ; remove the timer
 		dsleep(12)
 		aUnitPortraitLocations := []
-		aUnitPortraitLocations := findPortraitsToRemoveFromArmy("", True, True
-										, True, True, SelectArmyDeselectLoadedTransport 
-										, True, "")
+		aUnitPortraitLocations := findPortraitsToRemoveFromArmy("", aDeselect.DeselectXelnaga, aDeselect.DeselectPatrolling
+										, aDeselect.DeselectHoldPosition, aDeselect.DeselectFollowing, aDeselect.DeselectLoadedTransport 
+										, aDeselect.DeselectQueuedDrops, "")
 		clickUnitPortraits(aUnitPortraitLocations)
 	}
+	if (aDeselect.StoreSelection != "Off")
+		input.pSend("^" aDeselect.StoreSelection)
 	clipboard := selectedCount
 	input.RevertKeyState()
 	return
