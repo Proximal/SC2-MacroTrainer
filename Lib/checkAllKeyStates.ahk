@@ -1,15 +1,25 @@
-checkAllKeyStates()
+checkAllKeyStates(logical := True, physical := True)
 {
 	static aKeys := []
 
 	; returns and array of unmodified keys
 	if !aKeys.maxindex()
 		aKeys := getAllKeyboardAndMouseKeys()
-
-	for index, key in aKeys
+	if logical
 	{
-		if (getkeystate(key) ) ;|| getkeystate(key))
-			return key
+		for index, key in aKeys
+		{
+			if getkeystate(key)
+				return key
+		}
 	}
+	if physical
+	{
+		for index, key in aKeys
+		{
+			if getkeystate(key, "P")
+				return key
+		}
+	}	
 	return
 }

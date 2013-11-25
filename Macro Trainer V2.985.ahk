@@ -1061,7 +1061,7 @@ Cast_ChronoStructure(StructureToChrono)
 	MouseGetPos, start_x, start_y
 	HighlightedGroup := getSelectionHighlightedGroup()
 	max_chronod := nexus_chrono_count - CG_chrono_remainder
-	MTsend("^" CG_control_group CG_nexus_Ctrlgroup_key)
+	input.pSend("^" CG_control_group CG_nexus_Ctrlgroup_key)
 	timerID := stopwatch()
 	sleep, 10 	; Can use real sleep here as not a silent automation
 	for  index, oject in oStructureToChrono
@@ -1071,7 +1071,7 @@ Cast_ChronoStructure(StructureToChrono)
 		
 		sleep, %ChronoBoostSleep%
 		getUnitMiniMapMousePos(oject.unit, click_x, click_y)
-		MTsend(chrono_key)
+		input.pSend(chrono_key)
 		If HumanMouse
 			MouseMoveHumanSC2("x" click_x "y" click_y "t" rand(HumanMouseTimeLo, HumanMouseTimeHi))
 		MTclick(click_x, click_y)
@@ -1081,10 +1081,10 @@ Cast_ChronoStructure(StructureToChrono)
 	elapsedTimeGrouping := stopwatch(timerID)	
 	if (elapsedTimeGrouping < 20)
 		sleep, % ceil(20 - elapsedTimeGrouping)	
-	MTsend(CG_control_group)
+	input.pSend(CG_control_group)
 	sleep, 15
 	if HighlightedGroup
-		MTsend(sRepeat(NextSubgroupKey, HighlightedGroup))
+		input.pSend(sRepeat(NextSubgroupKey, HighlightedGroup))
 	Return 
 }
 AutoGroupIdle:
@@ -1095,6 +1095,9 @@ Auto_Group:
 AutoGroup(byref A_AutoGroup, AGDelay = 0)
 { 	global GameIdentifier, aButtons
 	static PrevSelectedUnits, SelctedTime
+	
+	; needed to ensure the function running again while it is still running
+	;  as can arrive here from AutoGroupIdle or 
 	Thread, NoTimers, true
 
 	numGetUnitSelectionObject(oSelection)
@@ -1144,12 +1147,13 @@ AutoGroup(byref A_AutoGroup, AGDelay = 0)
 		Loop, Parse, CtrlGroupSet, |
 			AG_Temp_count := A_Index	;this counts the number of different ctrl groups ie # 1's  and 2's etc - must be only 1
 		If (AG_Temp_count = 1) && !isMenuOpen()
-		&& !(getkeystate("Shift", "P") && getkeystate("Control", "P")
-		&& getkeystate("LWin", "P") && getkeystate("RWin", "P")		
-		&& getkeystate("LWin", "L") && getkeystate("RWin", "L")		
-		&& getkeystate("Shift") && getkeystate("Control")
+	;	&& !(getkeystate("Shift", "P") && getkeystate("Control", "P")
+	;	&& getkeystate("LWin", "P") && getkeystate("RWin", "P")		
+	;	&& getkeystate("LWin", "L") && getkeystate("RWin", "L")		
+	;	&& getkeystate("Shift") && getkeystate("Control")
+		|| !( checkAllKeyStates()
 		|| readModifierState() 
-		|| MT_InputIdleTime() <= 80)
+		|| MT_InputIdleTime() <= 100)
 
 		;&& !getkeystate("LWin") && !getkeystate("RWin")
 		;&& !(getkeystate("Shift", "P") || getkeystate("Control", "P") || getkeystate("Alt", "P")
@@ -1174,18 +1178,16 @@ AutoGroup(byref A_AutoGroup, AGDelay = 0)
 			; timer which is continually running (be it with a low priority) so as soon as the units/buffer change, it
 			; will group them if required. And this should occur before anything help happens in game
 
-			if AGDelay ; the MTDelay should prevent the need for a sleep
-			{
 			;	if !sleep 
 			;		dSleep(20)
-				dSleep(20)
-				numGetUnitSelectionObject(oSelection)
-				for index, Unit in oSelection.Units
-					PostDelaySelected .= "," unit.UnitIndex
-			}
-			if (!AGDelay || CurrentlySelected = PostDelaySelected)
+			dSleep(60)
+			numGetUnitSelectionObject(oSelection)
+			for index, Unit in oSelection.Units
+				PostDelaySelected .= "," unit.UnitIndex
+
+			if (CurrentlySelected = PostDelaySelected && !checkAllKeyStates())
 			{
-				MTsend("+" Player_Ctrl_GroupSet)
+				input.pSend("+" Player_Ctrl_GroupSet)
 				sleepOnExit := True
 				settimer, AutoGroupIdle, Off
 				settimer, Auto_Group, Off				
@@ -1193,18 +1195,17 @@ AutoGroup(byref A_AutoGroup, AGDelay = 0)
 			Input.revertKeyState()
 			critical, off
 		}
-
 	}
 	; could do something like only sleep check when agdelay > 0 or when time since last check > 1ms 
-
-	Thread, NoTimers, false
+	
 	; someone said that the autogroup would make there camera jump to the building
 	; probably due to slow computer and the program reading the unit hasn't been grouped and so 
 	; sends the group command twice very quickly
 	if sleepOnExit  
 	{
+		Thread, NoTimers, false
 		Thread, Priority, -2147483648
-		sleep 60
+		sleep 80
 		settimer, AutoGroupIdle, On, -9999 ;on re-enables timers with previous period
 		settimer, Auto_Group, On		
 	}
@@ -1236,7 +1237,7 @@ LimitGroup(byref UnitList, Hotkey)
 	;	dSleep(10) 
 	critical 1000
 	input.pReleaseKeys()
-	MTsend(Hotkey)
+	input.pSend(Hotkey)
 	Input.revertKeyState()
 	Return
 }	
@@ -1381,7 +1382,7 @@ cast_ForceInject:
 			sendSequence .= NextSubgroupKey ; sleep(2) ; After restoring a control group, needs at least 1 ms so tabs will register
 	
 		sendSequence .= HotkeysZergBurrow Inject_control_group
-		MTsend(sendSequence)
+		input.pSend(sendSequence)
 		TooManyBurrowedQueens := 0
 		Thread, NoTimers, false
 	}
@@ -6558,10 +6559,10 @@ autoWorkerProductionCheck()
 				if (setControlGroup || oSelection.IndicesString != subStr(L_ControlstorageIndexes, 2))  
 				{
 					setControlGroup := True
-					MTsend("^" controlstorageGroup)
+					input.pSend("^" controlstorageGroup)
 					stopWatchCtrlID := stopwatch()
 				}
-				MTsend(mainControlGroup)
+				input.pSend(mainControlGroup)
 				dSleep(10) ; wont have that many units grouped with the buildings so 10ms should be plenty
 				numGetSelectionSorted(oSelection)
 			}
@@ -6626,7 +6627,7 @@ autoWorkerProductionCheck()
 					if !isUnitAStructure(object.unitIndex)	; as units will have higher priority and appear in group 0/top left control card - and this isnt compatible with this macro
 						BaseCtrlGroupError := 1					; as the macro will tell that unit e.g. probe to 'make a worker' and cause it to bug out
 			}
-			MTsend(sendSequence), sendSequence := ""
+			input.pSend(sendSequence), sendSequence := ""
 
 			if (BaseControlGroupNotSelected || removeRecentlyCompletedCC)
 			{
@@ -6639,13 +6640,13 @@ autoWorkerProductionCheck()
 				}
 				else dsleep(15)
 
-				MTsend(controlstorageGroup)
+				input.pSend(controlstorageGroup)
 				dSleep(15)
 				if HighlightedGroup
-					MTsend(sRepeat(NextSubgroupKey, HighlightedGroup))				
+					input.pSend(sRepeat(NextSubgroupKey, HighlightedGroup))				
 			}
 			else if tabPositionChanged ; eg the ebay or floating CC is selected is the selected tab in the already selected base control group
-				MTsend(sRepeat(NextSubgroupKey, oSelection["Types"]  - tabPosition + HighlightedGroup ))	
+				input.pSend(sRepeat(NextSubgroupKey, oSelection["Types"]  - tabPosition + HighlightedGroup ))	
 
 			WorkerMade := True
 		}
@@ -6721,9 +6722,9 @@ f1::
 input.pClickDelay(-1)
 input.pSendDelay(-1)
 critical, on
-MTsend("^2" "1" "s")
+input.pSend("^2" "1" "s")
 dsleep(15)
-mtsend(2)
+input.pSend(2)
 critical off 
 return
 
@@ -6764,7 +6765,7 @@ selectGroup(group, preSleep := -1, postSleep := 2)
 {
 	if (preSleep != -1)
 		DllCall("Sleep", "Uint", preSleep)
-	MTsend(group)
+	input.pSend(group)
 	if (postSleep != -1)
 		DllCall("Sleep", "Uint", postSleep)
 	return	
@@ -7786,8 +7787,8 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 		If (Local QueenCount := getGroupedQueensWhichCanInject(oSelection, ForceInject)) ; this wont fetch burrowed queens!! so dont have to do a check below - as burrowed queens can make cameramove when clicking their hatch
 		{
 			if (ForceInject || Inject_RestoreSelection)
-				MTsend("^" Inject_control_group), stopWatchCtrlID := stopwatch()
-			MTsend(MI_Queen_Group)
+				input.pSend("^" Inject_control_group), stopWatchCtrlID := stopwatch()
+			input.pSend(MI_Queen_Group)
 			dsleep(20)
 
 			if ForceInject
@@ -7838,7 +7839,7 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 					if (isQueenNearHatch(Queen, CurrentHatch, MI_QueenDistance) && isInControlGroup(MI_Queen_Group, Queen.unit) && Queen.Energy >= 25) ; previously queen type here (unit id/tpye) doesnt seem to work! weird
 					{
 						FoundQueen := CurrentHatch.NearbyQueen := SkipUsedQueen[Queen.unit] := 1 																		
-						MTsend(Inject_spawn_larva)
+						input.pSend(Inject_spawn_larva)
 						click_x := CurrentHatch.MiniMapX, click_y := CurrentHatch.MiniMapY
 						If HumanMouse
 							MouseMoveHumanSC2("x" click_x "y" click_y "t" rand(HumanMouseTimeLo, HumanMouseTimeHi))
@@ -7892,7 +7893,7 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 								dSleep(1) 
 							dSleep(2) 
 						}
-						MTsend(Inject_spawn_larva) ;always need to send this, otherwise might left click minimap for somereason
+						input.pSend(Inject_spawn_larva) ;always need to send this, otherwise might left click minimap for somereason
 						click_x := CurrentHatch.MiniMapX, click_y := CurrentHatch.MiniMapY
 						If HumanMouse
 							MouseMoveHumanSC2("x" click_x "y" click_y "t" rand(HumanMouseTimeLo, HumanMouseTimeHi))
@@ -7909,7 +7910,7 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 							; on the queens
 							; could send another ctrl group then the queen group key
 
-							;MTsend(MI_Queen_Group)
+							;input.pSend(MI_Queen_Group)
 							;dSleep(8) 
 						}
 						injectedHatches++
@@ -7937,10 +7938,10 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 		If(Local QueenCount := getGroupedQueensWhichCanInject(oSelection))  ; this wont fetch burrowed queens!! so dont have to do a check below - as burrowed queens can make cameramove when clicking their hatch
 		{
 			if Inject_RestoreSelection
-				MTsend("^" Inject_control_group), stopWatchCtrlID := stopwatch()
+				input.pSend("^" Inject_control_group), stopWatchCtrlID := stopwatch()
 			if Inject_RestoreScreenLocation
-				MTsend(BI_create_camera_pos_x)
-			MTsend(MI_Queen_Group)
+				input.pSend(BI_create_camera_pos_x)
+			input.pSend(MI_Queen_Group)
 			For Index, CurrentHatch in oHatcheries
 			{
 				Local := FoundQueen := 0
@@ -7960,7 +7961,7 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 					if (isQueenNearHatch(Queen, CurrentHatch, MI_QueenDistance) && isInControlGroup(MI_Queen_Group, Queen.unit) && Queen.Energy >= 25) ; previously queen type here (unit id/tpye) doesnt seem to work! weird
 					{
 						FoundQueen := CurrentHatch.NearbyQueen := SkipUsedQueen[Queen.unit] := 1 																		
-						MTsend(Inject_spawn_larva)
+						input.pSend(Inject_spawn_larva)
 						click_x := CurrentHatch.MiniMapX, click_y := CurrentHatch.MiniMapY
 					
 					;	click_x := A_ScreenWidth/2 , click_y := A_ScreenHeight/2
@@ -7977,7 +7978,7 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 			if Inject_RestoreScreenLocation
 			{
 				sleep % ceil( (sleepTime/1.5) * rand(1, Inject_SleepVariance)) ; so this will actually mean the inject will sleep longer than user specified, but make it look a bit more real
-				MTsend(BI_camera_pos_x) 										
+				input.pSend(BI_camera_pos_x) 										
 			}
 		}
 		else return ; no queens
@@ -7989,21 +7990,21 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 		;	so the subsequent left click on the hatch will actually select the hatch (as the spell wasn't cast)
 		;	this was what part of the reason queens were somtimes being cancelled
 		if  Inject_RestoreSelection
-			MTsend("^" Inject_control_group), stopWatchCtrlID := stopwatch()
+			input.pSend("^" Inject_control_group), stopWatchCtrlID := stopwatch()
 
 		HatchIndex := getBuildingList(aUnitID["Hatchery"], aUnitID["Lair"], aUnitID["Hive"])
 		if Inject_RestoreScreenLocation
-			MTsend(BI_create_camera_pos_x)
+			input.pSend(BI_create_camera_pos_x)
 		If (drag_origin = "Right" OR drag_origin = "R") And !HumanMouse ;so left origin - not case sensitive
 			Dx1 := A_ScreenWidth-25, Dy1 := 45, Dx2 := 35, Dy2 := A_ScreenHeight-240	
 		Else ;left origin
 			Dx1 := 25, Dy1 := 25, Dx2 := A_ScreenWidth-40, Dy2 := A_ScreenHeight-240
 		loop, % getBaseCameraCount()	
 		{
-			MTsend(base_camera)
+			input.pSend(base_camera)
 			sleep % ceil( (sleepTime/2) * rand(1, Inject_SleepVariance))	;need a sleep somerwhere around here to prevent walkabouts...sc2 not registerings box drag?
 			if isCastingReticleActive() ; i.e. cast larva
-				MTsend(Escape) ; (deselects queen larva) (useful on an already injected hatch) this is actually a variable
+				input.pSend(Escape) ; (deselects queen larva) (useful on an already injected hatch) this is actually a variable
 			If (drag_origin = "Right" OR drag_origin = "R") And HumanMouse ;so left origin - not case sensitive
 				Dx1 := A_ScreenWidth-15-rand(0,(360/1920)*A_ScreenWidth), Dy1 := 45+rand(5,(200/1080)*A_ScreenHeight), Dx2 := 40+rand((-5/1920)*A_ScreenWidth,(300/1920)*A_ScreenWidth), Dy2 := A_ScreenHeight-240-rand((-5/1080)*A_ScreenHeight,(140/1080)*A_ScreenHeight)
 			Else If (drag_origin = "Left" OR drag_origin = "L") AND HumanMouse ;left origin
@@ -8016,12 +8017,12 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 				sendInput {click up}
 			}
 			Else 
-				MTsend("{click D " Dx1 " " Dy1 "}{Click U " Dx2 " " Dy2 "}")
+				input.pSend("{click D " Dx1 " " Dy1 "}{Click U " Dx2 " " Dy2 "}")
 			;	MTdragClick(Dx1, Dy1, Dx2, Dy2)
 			sleep % ceil( (sleepTime/2) * rand(1, Inject_SleepVariance))
 			if (QueenIndex := filterSlectionTypeByEnergy(25, aUnitID["Queen"]))
 			{																	
-				MTsend(Inject_spawn_larva)							;have to think about macro hatch though
+				input.pSend(Inject_spawn_larva)							;have to think about macro hatch though
 				click_x := A_ScreenWidth/2 , click_y := A_ScreenHeight/2		;due to not using Shift - must have 2 queens if on same screen
 																				;as will inject only 1 (as it will go to 1 hatch, then get the order to go the other before injecting the 1s)
 				If HumanMouse
@@ -8035,7 +8036,7 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 		if Inject_RestoreScreenLocation
 		{
 			sleep % ceil( (sleepTime/2) * rand(1, Inject_SleepVariance))	; so this will actually mean the inject will sleep longer than user specified, but make it look a bit more real
-			MTsend(BI_camera_pos_x)										
+			input.pSend(BI_camera_pos_x)										
 		}
 	}
 	if (ForceInject || Inject_RestoreSelection)
@@ -8043,11 +8044,11 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 		elapsedTimeGrouping := stopwatch(stopWatchCtrlID)	
 		if (elapsedTimeGrouping < 20)
 			dSleep(ceil(20 - elapsedTimeGrouping))
-		MTsend(Inject_control_group)
+		input.pSend(Inject_control_group)
 		dsleep(15)
 		;if HighlightedGroup
 		;	sleep(2) ; After restoring a control group, needs at least 1 ms so tabs will register
-		MTsend(sRepeat(NextSubgroupKey, HighlightedGroup))
+		input.pSend(sRepeat(NextSubgroupKey, HighlightedGroup))
 	}
 }
 
@@ -8222,7 +8223,7 @@ g_SelectArmy:
 
 	if (getArmyUnitCount() != getSelectionCount())
 	{
-		MTsend(Sc2SelectArmy_Key)
+		input.pSend(Sc2SelectArmy_Key)
 		timerArmyID := stopwatch()
 		; waits for selection count to match army count 
 		; times out after 50 ms - small static sleep afterwards
@@ -8234,7 +8235,7 @@ g_SelectArmy:
 	} 
 	else 
 	{
-		MTsend(Sc2SelectArmy_Key)
+		input.pSend(Sc2SelectArmy_Key)
 		dSleep(40) 
 	}
 
@@ -8245,7 +8246,7 @@ g_SelectArmy:
 	clickUnitPortraits(aUnitPortraitLocations)
 	dSleep(15)
 	if SelectArmyControlGroupEnable
-		MTsend("^" Sc2SelectArmyCtrlGroup)
+		input.pSend("^" Sc2SelectArmyCtrlGroup)
 	dSleep(15)
 	Input.revertKeyState()
 	critical, off
@@ -8304,9 +8305,37 @@ quickSelect(aDeselect)
 	if MouseDown
 		dSleep(15)
 
+	aLookup := []
+	for i, clickUnitType in aDeselect["Units"]
+		aLookup[clickUnitType] := True
+
+
+	; This checks if one of the click unit types exist on the map
+	; Otherwise user presses hotkey and is left with all the army unit selection	
+	loop, % Unitcount := DumpUnitMemory(MemDump)
+	{	
+	    TargetFilter := numgetUnitTargetFilter(MemDump, unit := A_Index - 1)
+	    if (TargetFilter & DeadFilterFlag) || (numgetUnitOwner(MemDump, Unit) != aLocalPlayer["Slot"])
+	       Continue
+	    if aLookup.hasKey(numgetUnitModelType(numgetUnitModelPointer(MemDump, Unit)))
+	    {
+	    	unitTypesExist := True
+	    	break
+	    }
+	}
+	if !unitTypesExist
+	{
+		input.RevertKeyState()
+		critical, off 
+		sleep, -1
+		Thread, Priority, -2147483648
+		sleep, 20
+		return		
+	}
+
 	if (getArmyUnitCount() != getSelectionCount())
 	{
-		MTsend(Sc2SelectArmy_Key)
+		input.pSend(Sc2SelectArmy_Key)
 		timerQuickID := stopwatch()
 		; waits for selection count to match army count 
 		; times out after 50 ms - small static sleep afterwards
@@ -8317,7 +8346,7 @@ quickSelect(aDeselect)
 	} 
 	else  
 	{
-		MTsend(Sc2SelectArmy_Key)
+		input.pSend(Sc2SelectArmy_Key)
 		dSleep(40) 
 	}
 
@@ -8342,27 +8371,47 @@ quickSelect(aDeselect)
 	}
 	else 
 	{
-		aLookup := []
-		for i, clickUnitType in aDeselect["Units"]
-			aLookup[clickUnitType] := True
+
+		if (aDeselect.DeselectXelnaga || aDeselect.DeselectPatrolling || aDeselect.DeselectHoldPosition || aDeselect.DeselectFollowing
+		|| aDeselect.DeselectLoadedTransport || aDeselect.DeselectQueuedDrops)
+			checkStates := True
 
 		for i, unit in aSelected.units
 		{
-			if unit.unitId = prevID 
+			if (unit.unitId = prevID) 
 				continue 
-			prevID := unit.unitId
 			if !aLookup.haskey(unit.unitId)
-				clickPortraits.insert(unit.unitPortrait)
-			else 
-				selectedCount += aSelected.TabSizes[unit.unitId]
+			{
+				prevID := unit.unitId
+				clickPortraits.insert({ "portrait":  unit.unitPortrait, "modifiers": "^+"})
+			}
+			else if checkStates
+			{
+				commandString := getUnitQueuedCommandString(unit.unitIndex)
+				if (aDeselect.DeselectXelnaga && isLocalUnitHoldingXelnaga(unit.unitIndex))
+				|| (aDeselect.DeselectPatrolling && InStr(commandString, "Patrol"))
+				|| (aDeselect.DeselectHoldPosition && InStr(commandString, "Hold"))
+				|| (aDeselect.DeselectFollowing && InStr(commandString, "Follow")) ;
+					clickPortraits.insert({ "portrait":  unit.unitPortrait, "modifiers": "+"})
+				else if (aDeselect.DeselectLoadedTransport || aDeselect.DeselectQueuedDrops)
+				&& (unit.unitId = aUnitId.Medivac || unit.unitId = aUnitID.WarpPrism || unit.unitId = aUnitID.WarpPrismPhasing)
+				{
+					if (aDeselect.DeselectLoadedTransport && getCargoCount(unit.unitIndex))
+					|| (aDeselect.DeselectQueuedDrops && isTransportDropQueued(unit.unitIndex))
+						clickPortraits.insert({ "portrait":  unit.unitPortrait, "modifiers": "+"})
+				}
+
+			}
+			;	selectedCount += aSelected.TabSizes[unit.unitId]
 		}
 		; reversing the array here (rather than via numgetselection function) allows the clicks to occur on the
 		; lowest portraits i.e. on the left side of a selection group
 
 		if clickPortraits.MaxIndex()
-			reverseArray(clickPortraits), clickUnitPortraits(clickPortraits, "^+")	
+			reverseArray(clickPortraits), clickUnitPortraitsWithModifiers(clickPortraits)	
 	}
-
+/*
+	; doing everything in one go now (not removed ctrl removing units then patrolling units)
 	if (clickPortraits.MaxIndex() && (aDeselect.DeselectXelnaga || aDeselect.DeselectPatrolling || aDeselect.DeselectHoldPosition || aDeselect.DeselectFollowing
 		|| aDeselect.DeselectLoadedTransport|| aDeselect.DeselectQueuedDrops))
 	{
@@ -8381,6 +8430,7 @@ quickSelect(aDeselect)
 		clickUnitPortraits(aUnitPortraitLocations)
 
 	}
+*/
 	if (aDeselect.StoreSelection != "Off")
 		input.pSend("^" aDeselect.StoreSelection)
 	dsleep(15)
@@ -8493,7 +8543,7 @@ DeselectUnitsFromPanel(aRemoveUnits, aSelection := "")
 						MTclick(Xpage, Ypage)
 					}
 						; if changed pages, a sleep here is required under some conditions
-					MTsend("+{click " x " " y "}")
+					input.pSend("+{click " x " " y "}")
 				}
 		;		objtree(aSelection.units)
 		;		objtree(aRemoveUnits)
@@ -8533,7 +8583,7 @@ clickUnitPortraits(aUnitPortraitLocations, Modifers := "+")
 	; Also, page numbers can be clicked with the shift/ctrl/alt keys down
 
 	if (aUnitPortraitLocations.MaxIndex() && downModifers := getModifierDownSequenceFromString(Modifers))
-		MTsend(downModifers)
+		input.pSend(downModifers)
 	for i, portrait in aUnitPortraitLocations
 	{
 		if (portrait <= 143)
@@ -8546,11 +8596,11 @@ clickUnitPortraits(aUnitPortraitLocations, Modifers := "+")
 					dsleep(1)
 				dsleep(7) ; small static delay
 			}
-			MTsend("{click " x " " y "}")			
+			input.pSend("{click " x " " y "}")			
 		}
 	}
 	if downModifers
-		MTsend(getModifierUpSequenceFromString(Modifers))
+		input.pSend(getModifierUpSequenceFromString(Modifers))
 
 	if (startPage != getUnitSelectionPage())
 	{
@@ -8562,6 +8612,98 @@ clickUnitPortraits(aUnitPortraitLocations, Modifers := "+")
 	}
 	return	
 }
+
+; accepts an array which contains indivdual objects with portrait and modifiers keys
+; can click on any portrait with specified modifier 
+; useful for ctrl+shift deslecting some portrait types, while shift deselecting others 
+
+clickUnitPortraitsWithModifiers(aUnitPortraitLocationsAndModifiers)
+{
+	startPage := getUnitSelectionPage()
+
+	for i, object in aUnitPortraitLocationsAndModifiers
+	{
+		portrait := object.portrait
+		modifiers := object.modifiers
+		if (modifiers != currentModifiers) 
+		{
+			if currentModifiers
+				input.pSend(getModifierUpSequenceFromString(currentModifiers))
+			if (currentModifiers := modifiers)
+				input.pSend(getModifierDownSequenceFromString(currentModifiers))
+		}
+		if (portrait <= 143)
+		{
+			if ClickUnitPortrait(portrait, X, Y, Xpage, Ypage) 
+			{	
+				currentPage := getUnitSelectionPage()
+				MTclick(Xpage, Ypage)
+				while (getUnitSelectionPage() = currentPage && A_Index < 30)
+					dsleep(1)
+				dsleep(7) ; small static delay
+			}
+			input.pSend("{click " x " " y "}")			
+		}
+	}
+	if currentModifiers
+		input.pSend(getModifierUpSequenceFromString(currentModifiers))
+
+	if (startPage != getUnitSelectionPage())
+	{
+		currentPage := getUnitSelectionPage()
+		ClickUnitPortrait(0, X, Y, Xpage, Ypage, startPage + 1) ; for this page numbers start at 1, hence +1
+		MTclick(Xpage, Ypage)
+		while (getUnitSelectionPage() = currentPage && A_Index < 25)
+			dsleep(1)
+	}
+	return	
+}
+
+clickUnitPortraitsWithModifiersDemo(aUnitPortraitLocationsAndModifiers)
+{
+	startPage := getUnitSelectionPage()
+
+	for i, object in aUnitPortraitLocationsAndModifiers
+	{
+		portrait := object.portrait
+		modifiers := object.modifiers
+
+		if (modifiers != currentModifiers) 
+		{
+			if currentModifiers
+				input.psend(getModifierUpSequenceFromString(currentModifiers))
+			if (currentModifiers := modifiers)
+				input.psend(getModifierDownSequenceFromString(currentModifiers))
+		}
+		if (portrait <= 143)
+		{
+			if ClickUnitPortrait(portrait, X, Y, Xpage, Ypage) 
+			{	
+				currentPage := getUnitSelectionPage()
+				mousemove, %Xpage%, %Ypage%
+				msgbox % currentModifiers "| " object.modifiers
+				tooltip, % currentModifiers "|`n" object.modifiers, 500, 500
+				sleep 4000
+				send, {click %Xpage%, %Ypage%}
+				while (getUnitSelectionPage() = currentPage && A_Index < 30)
+					dsleep(1)
+				dsleep(7) ; small static delay
+			}
+
+			tooltip, % currentModifiers "`n" current mods, 500, 500
+			mousemove, %x%, %y%		
+			sleep 4000
+			send, %Modifers%{click %x%, %y%}		
+		}
+	}
+	if currentModifiers
+		input.pSend(getModifierUpSequenceFromString(currentModifiers))
+	soundplay *-1
+	return	
+}
+
+
+
 
 
 ; this is used to visualise and check the click locations are correct 
@@ -8602,7 +8744,7 @@ ClickSelectUnitsPortriat(unitIndexList, Modifers := "", restoreStartPage := Fals
 	startPage := getUnitSelectionPage()
 	numGetSelectionSorted(aSelected, True) ; reversed
 	if (unitIndexList && downModifers := getModifierDownSequenceFromString(Modifers))
-		MTsend(downModifers)
+		input.pSend(downModifers)
 
 	for i, unit in aSelected.units
 	{
@@ -8619,12 +8761,12 @@ ClickSelectUnitsPortriat(unitIndexList, Modifers := "", restoreStartPage := Fals
 					dsleep(1)
 				dsleep(7) ; small static delay			
 			}
-			MTsend("{click " x " " y "}")	
+			input.pSend("{click " x " " y "}")	
 		}
 	}
 
 	if downModifers
-		MTsend(getModifierUpSequenceFromString(Modifers))
+		input.pSend(getModifierUpSequenceFromString(Modifers))
 	if (restoreStartPage && startPage != getUnitSelectionPage())
 	{
 		currentPage := getUnitSelectionPage()
@@ -8816,7 +8958,7 @@ class ChatString
 		{
 			this.ChatString := getChatText()
 			; send variable escape to close chat txt
-			MTsend(Escape) 
+			input.pSend(Escape) 
 			; Dont return the chat string because if chat is open
 			; but nothing is typed then blank will be returned 
 			; which is equivalent to false
@@ -8836,7 +8978,7 @@ class ChatString
 			; these are from the the artifical keystrokes sent using
 			; post message for the automation more specifically from the WM_Char component
 			SetStoreCapslockMode, on
-			MTsend("{Enter}" this.ChatString)
+			input.pSend("{Enter}" this.ChatString)
 			; restore capslock mode so text can be in correct case
 			SetStoreCapslockMode, off	
 			return
@@ -8950,7 +9092,7 @@ splitByMouseLocation(SplitctrlgroupStorage_key)
 	MouseGetPos, mx, my
 	DllCall("Sleep", Uint, 5)
 	HighlightedGroup := getSelectionHighlightedGroup()
-	MTsend("^" SplitctrlgroupStorage_key)
+	input.pSend("^" SplitctrlgroupStorage_key)
 }
 
 
@@ -8967,7 +9109,7 @@ SplitUnits(SplitctrlgroupStorage_key)
 ;	sleep, % SleepSplitUnits
 	dSleep(20)
 	HighlightedGroup := getSelectionHighlightedGroup()
-	MTsend("^" SplitctrlgroupStorage_key)
+	input.pSend("^" SplitctrlgroupStorage_key)
 	timerID := stopwatch()
 
 	aSelectedUnits := []
@@ -9062,7 +9204,7 @@ SplitUnits(SplitctrlgroupStorage_key)
 		tmpObject := []
 		tmpObject.insert(aSelectedUnits[1].unit)
 		if Attack 
-			mtSend("a{Click " x " " y "}")
+			input.pSend("a{Click " x " " y "}")
 		else 
 			input.pClick(x, y, "Right")	
 		DeselectUnitsFromPanel(tmpObject, 1)		;might not have enough time to update the selections?
@@ -9076,14 +9218,14 @@ SplitUnits(SplitctrlgroupStorage_key)
 		dSleep(ceil(20 - elapsedTimeGrouping))
 
 	sendSequence := SplitctrlgroupStorage_key
-	MTsend(SplitctrlgroupStorage_key sRepeat(NextSubgroupKey, HighlightedGroup))
+	input.pSend(SplitctrlgroupStorage_key sRepeat(NextSubgroupKey, HighlightedGroup))
 	dsleep(15)
 	return
 }
 
 SplitUnitsWorking(SplitctrlgroupStorage_key)
 {
-	MTsend("^" SplitctrlgroupStorage_key)
+	input.pSend("^" SplitctrlgroupStorage_key)
 	mousegetpos, Xorigin, Yorigin
 	aSelectedUnits := []
 	xSum := ySum := 0
@@ -9107,7 +9249,7 @@ SplitUnitsWorking(SplitctrlgroupStorage_key)
 		FindAngle(Direction, Angle, xAvg,yAvg,unit.mouseX,unit.mouseY)
 		FindXYatAngle(X, Y, Angle, Direction, 4, unit.mouseX, unit.mouseY)
 		x += rand(-2,2), y += rand(-2,2)
-		MTsend("{click right " X " " Y "}")
+		input.pSend("{click right " X " " Y "}")
 		tmpObject := []
 		tmpObject.insert(aSelectedUnits[1].unit)
 		DeselectUnitsFromPanel(tmpObject)
@@ -9115,7 +9257,7 @@ SplitUnitsWorking(SplitctrlgroupStorage_key)
 ;		if (aSelectedUnits.MaxIndex() <= 3)
 ;			break
 	}
-	MTsend(SplitctrlgroupStorage_key)
+	input.pSend(SplitctrlgroupStorage_key)
 	send {click  %Xorigin%, %Yorigin%, 0}
 		return
 }
@@ -9877,8 +10019,10 @@ castEasyUnload(hotkey, queueUnload)
 	; and when the user releases the keys, windows outside of sc2 should register this as im not blocking input
 	; or using critical 
 
-	if (upSequence := getModifierUpSequenceFromString(hotkey))
-		Input.psend(upSequence)
+;	if (upSequence := getModifierUpSequenceFromString(hotkey))
+;		Input.psend(upSequence)
+	
+
 	hotkey := stripModifiers(hotkey)
 
 	if !queueUnload
@@ -9887,8 +10031,8 @@ castEasyUnload(hotkey, queueUnload)
 		{
 			tickCount := A_TickCount
 			castEasySelectLoadedTransport()
-			if upSequence
-				Input.psend(getModifierDownSequenceFromKeyboard())
+		;	if upSequence
+		;		Input.psend(getModifierDownSequenceFromKeyboard())
 			return
 		}
 		sleepTick := tickCount := A_TickCount
@@ -9896,6 +10040,7 @@ castEasyUnload(hotkey, queueUnload)
 			sleep 5
 	}
 
+	input.pReleaseKeys()
 	lClickedUnits := ""
 	aDroppTick := []
 	while GetKeyState(hotkey, "P")
@@ -9918,11 +10063,11 @@ castEasyUnload(hotkey, queueUnload)
 					{
 					;	aDroppTick[unitIndex] := A_TickCount
 						if !setCtrlGroup
-							queueUnload ? MTSend("{click}^" EasyUnloadStorageKey "{Shift Down}" unloadAll_Key "{click}{Shift Up}")
-										: MTSend("{click}^" EasyUnloadStorageKey unloadAll_Key "{click}")
+							queueUnload ? input.pSend("{click}^" EasyUnloadStorageKey "{Shift Down}" unloadAll_Key "{click}{Shift Up}")
+										: input.pSend("{click}^" EasyUnloadStorageKey unloadAll_Key "{click}")
 						else
-							queueUnload ? MTSend("{click}{Shift Down}" EasyUnloadStorageKey unloadAll_Key "{click}{Shift Up}")
-										: MTSend("{click}+" EasyUnloadStorageKey unloadAll_Key "{click}")
+							queueUnload ? input.pSend("{click}{Shift Down}" EasyUnloadStorageKey unloadAll_Key "{click}{Shift Up}")
+										: input.pSend("{click}+" EasyUnloadStorageKey unloadAll_Key "{click}")
 						setCtrlGroup := True
 						
 						if unitIndex not in %lClickedUnits%
@@ -9935,8 +10080,8 @@ castEasyUnload(hotkey, queueUnload)
 				else if !isInControlGroup(EasyUnloadStorageKey, unitIndex)
 				{
 					if !setCtrlGroup
-						MTSend("{click}^" EasyUnloadStorageKey)
-					else MTSend("{click}+" EasyUnloadStorageKey)
+						input.pSend("{click}^" EasyUnloadStorageKey)
+					else input.pSend("{click}+" EasyUnloadStorageKey)
 					setCtrlGroup := True
 					if unitIndex not in %lClickedUnits%
 					{
@@ -9959,7 +10104,7 @@ castEasyUnload(hotkey, queueUnload)
 		sleep 20
 	}
 	if setCtrlGroup
-		MTSend(EasyUnloadStorageKey)
+		input.pSend(EasyUnloadStorageKey)
 	; to restore the modifier keys if the user is still holding them down
 	; e.g. is they want to shift click somewhere without first releasing the shift key
 	; disabled to prevent stuck modifers in in certain situations 
@@ -10002,42 +10147,39 @@ getModifierDownSequenceFromKeyboard()
 
 castEasySelectLoadedTransport()
 {	
-	MTsend("{click D " A_ScreenWidth-25 " " 45 "}{Click U " 35 " "  A_ScreenHeight-240 "}")
-	sleep 15
+
+	critical, 1000
+	input.pReleaseKeys()
+
+	input.pSend("{click D " A_ScreenWidth-25 " " 45 "}{Click U " 35 " "  A_ScreenHeight-30 "}") ;  A_ScreenHeight-240 "}")
+	dsleep(50)
 	if numGetSelectionSorted(aSelected)
 	{
-		aCtrlClick := []
+		aLookup := [], aClicks := []
+
+		aLookup[aUnitId.Medivac] := True 
+		aLookup[aUnitID.WarpPrism] := True 
+		aLookup[aUnitID.WarpPrismPhasing] := True 
+		aLookup[aUnitID.overlord] := True 
+
 		for i, unit in aSelected.units
 		{
-			if ((unit.unitId = aUnitId.Medivac || unit.unitId = aUnitID.WarpPrism 
-			|| unit.unitId = aUnitID.WarpPrismPhasing || unit.unitId = aUnitID.overlord) 
-			&& getCargoCount(unit.unitIndex))
+			if (unit.unitId = prevID)
+				continue 
+
+			if !aLookup.haskey(unit.unitId)
 			{
-				aCtrlClick.insert(unit.unitPortrait)
-				break
+				prevID := unit.unitId
+				aClicks.insert({ "portrait":  unit.unitPortrait, "modifiers": "^+"})
 			}
+			else if !getCargoCount(unit.unitIndex)
+				aClicks.insert({ "portrait":  unit.unitPortrait, "modifiers": "+"})	
 		}
-		if aCtrlClick.MaxIndex()
+		if aClicks.MaxIndex()
 		{
-			clickUnitPortraits(aCtrlClick, "^")
-			sleep 10
-			aRemove := []
-			if numGetSelectionSorted(aSelected)
-			{
-				for i, unit in aSelected.units
-				{
-					if ((unit.unitId = aUnitId.Medivac || unit.unitId = aUnitID.WarpPrism 
-					|| unit.unitId = aUnitID.WarpPrismPhasing || unit.unitId = aUnitID.overlord) 
-					&& getCargoCount(unit.unitIndex))
-						Continue					
-					aRemove.insert(unit.unitPortrait)
-				}
-				if aRemove.MaxIndex()
-				{
-					reverseArray(aRemove)
-					clickUnitPortraits(aRemove, "+")
-				}
-			}
+			reverseArray(aClicks)
+			clickUnitPortraitsWithModifiers(aClicks)
+
 		}
 	}
 	return
@@ -10254,7 +10396,7 @@ pMouseMove(x, y)
   critical, 10000
   input.pSendDelay(-1)
   input.pClickDelay(-1)
-  MTsend("{F2}")
+  input.pSend("{F2}")
   dSleep(20)
   dSleep(13) ; time to sort array
 loop 5
@@ -10264,11 +10406,11 @@ loop 5
 	loop 24
 	{
 		ClickUnitPortrait(24-A_Index, x, y)
-		MTsend("+{click " x " " y "}")		
+		input.pSend("+{click " x " " y "}")		
 	}
 }
   dSleep(15)
-  MTsend("^" 1)
+  input.pSend("^" 1)
   input.pSendDelay(pKeyDelay)
   input.pClickDelay(pKeyDelay)
   critical, off 
@@ -10284,7 +10426,7 @@ loop 6
 	loop 24
 	{
 		ClickUnitPortrait(24-A_Index, x, y)
-		MTsend("+{click " x " " y "}")		
+		input.pSend("+{click " x " " y "}")		
 	}
 }
 input.pSendDelay(pClickDelay)
@@ -10398,7 +10540,7 @@ for index, object in oSelection.units
 
 
 
-MTSend("11111111111111114414113")
+input.pSend("11111111111111114414113")
 qpx(true)
 ;controlsend,, 3, %GameIdentifier%
 ;pSend(3)
@@ -10620,7 +10762,7 @@ Thread, NoTimers, true
 SetControlDelay -1
 SetKeyDelay, -1
 qpx(true)
-MTsend("1")
+input.pSend("1")
 send := qpx(false)
 qpx(true)
 while (getSelectionCount() != 5)
@@ -10690,7 +10832,7 @@ f1::
 Thread, NoTimers, true
 	SetKeyDelay, -1
 	qpx(true)
-	;MTsend("^" CG_control_group CG_nexus_Ctrlgroup_key)
+	;input.pSend("^" CG_control_group CG_nexus_Ctrlgroup_key)
 ;	pSend("112344634234242342342342")
 ;	send ^74
 	controlsend,, % "{Blind} 1", %GameIdentifier%
