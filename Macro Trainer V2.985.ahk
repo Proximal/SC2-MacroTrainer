@@ -6466,7 +6466,7 @@ autoWorkerProductionCheck()
 		critical, 1000
 		input.pReleaseKeys(True)
 
-		dSleep(25) ; increase safety ensure selection buffer fully updated
+		dSleep(35) ; increase safety ensure selection buffer fully updated
 
 		HighlightedGroup := getSelectionHighlightedGroup()
 		If numGetSelectionSorted(oSelection) ; = 0 as nothing is selected so cant restore this/control group it
@@ -6696,6 +6696,31 @@ ResumeProcess(hwnd)
 	return DllCall("ntdll\NtResumeProcess","uint",hwnd)
 }
 
+;f1::
+sleep 1000
+test := stopwatch()
+input.psend(Sc2SelectArmy_Key)
+startTick := A_TickCount
+loop 
+{
+	if (getSelectionCount() != prevCount || A_Index = 1)
+	{
+		prevCount := getSelectionCount()
+		if matchID
+			stopwatch(matchID)
+		matchID := stopwatch()
+	}
+	else 
+	{
+		if (stopwatch(matchID, False) >= 15)
+			break
+	}
+	dSleep(1)
+} until (A_TickCount - startTick >= 90)
+stopwatch(matchID)
+
+msgbox % stopwatch(test)
+return 
 
 
 
@@ -8323,7 +8348,7 @@ quickSelect(aDeselect)
 	    	break
 	    }
 	}
-	if !unitTypesExist
+	if (!unitTypesExist || !getArmyUnitCount())
 	{
 		input.RevertKeyState()
 		critical, off 
