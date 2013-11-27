@@ -3170,12 +3170,23 @@ readConfigFile()
 			Race := "Zerg"	
 
 		A_UnitGroupSettings["AutoGroup", Race, "Enabled"] := IniRead(config_file, section, "AG_Enable_" A_LoopField , 0)
+	
+
 		loop, 10		;this reads the auto group and removes the final |/, 
 		{				;and repalces all | with better looking ,
-			String := RTrim(IniRead(config_file, section, "AG_" A_LoopField A_Index - 1 , A_Space), "`, |")
-			StringReplace, String, String, |, `, %a_space%, All ;replace | with ,
-			A_UnitGroupSettings[Race, A_Index - 1] := String			
+			String := IniRead(config_file, section, "AG_" A_LoopField A_Index - 1, A_Space)
+			StringReplace, String, String, |, `, %a_space%, All ;replace | with , space
+			if Instr(String, A_Space A_Space)
+				StringReplace, String, String, %A_Space%%A_Space%, %A_Space%, All
+			list := ""
+			loop, parse, String, `, ; string is a local var/copy in this command
+			{
+				if aUnitID.HasKey(string := Trim(A_LoopField, "`, `t")) ; get rid of spaces which cause haskey to fail
+					list .= string ", "  ; leave a space for the gui
+			}
+			A_UnitGroupSettings[Race, A_Index - 1] := Trim(list, "`, `t")			
 		}
+
 	}
 	IniRead, AG_Delay, %config_file%, %section%, AG_Delay, 0
 

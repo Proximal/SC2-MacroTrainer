@@ -2378,7 +2378,7 @@ ini_settings_write:
 		}		
 	loop, parse, Short_Race_List, |
 	{	
-		i := 0
+		i := 0 			; for the loop 10 below
 		If (A_LoopField = "Terr")
 			Race := "Terran"
 		Else if (A_LoopField = "Prot")
@@ -2386,13 +2386,24 @@ ini_settings_write:
 		Else If (A_LoopField = "Zerg")
 			Race := "Zerg"	
 
-
 		if (Tmp_GuiControl = "save" OR Tmp_GuiControl = "Apply")
 			A_UnitGroupSettings["AutoGroup", Race, "Enabled"] := AG_Enable_%A_LoopField%
 		IniWrite, % A_UnitGroupSettings["AutoGroup", Race, "Enabled"], %config_file%, %section%, AG_Enable_%A_LoopField%		
 		loop, 10
-		{	if (Tmp_GuiControl = "save" OR Tmp_GuiControl = "Apply")			
-				A_UnitGroupSettings[Race, i] := AG_%Race%%i%
+		{	if (Tmp_GuiControl = "save" OR Tmp_GuiControl = "Apply")
+			{			
+				tmp := AG_%Race%%i%
+				list := checkList := ""
+				loop, parse, tmp, `,
+				{
+					if aUnitID.HasKey(string := Trim(A_LoopField, "`, `t")) ; get rid of spaces which cause haskey to fail
+					{	
+						if string not in %checkList%
+							checkList := list .= string ", " ; leave a space for the gui
+					}
+				}
+				A_UnitGroupSettings[Race, i] := Trim(list, "`, `t")
+			}
 			IniWrite, % A_UnitGroupSettings[Race, i], %config_file%, %section%, AG_%A_LoopField%%i%
 			i++
 		}
@@ -2646,21 +2657,31 @@ ini_settings_write:
 	
 	;[MiniMap]
 	section := "MiniMap" 
-	IniWrite, %UnitHighlightList1%, %config_file%, %section%, UnitHighlightList1	;the list
-	IniWrite, %UnitHighlightList2%, %config_file%, %section%, UnitHighlightList2
-	IniWrite, %UnitHighlightList3%, %config_file%, %section%, UnitHighlightList3
-	IniWrite, %UnitHighlightList4%, %config_file%, %section%, UnitHighlightList4
-	IniWrite, %UnitHighlightList5%, %config_file%, %section%, UnitHighlightList5
-	IniWrite, %UnitHighlightList6%, %config_file%, %section%, UnitHighlightList6
-	IniWrite, %UnitHighlightList7%, %config_file%, %section%, UnitHighlightList7
 
-	IniWrite, %UnitHighlightList1Colour%, %config_file%, %section%, UnitHighlightList1Colour ;the colour
-	IniWrite, %UnitHighlightList2Colour%, %config_file%, %section%, UnitHighlightList2Colour
-	IniWrite, %UnitHighlightList3Colour%, %config_file%, %section%, UnitHighlightList3Colour
-	IniWrite, %UnitHighlightList4Colour%, %config_file%, %section%, UnitHighlightList4Colour
-	IniWrite, %UnitHighlightList5Colour%, %config_file%, %section%, UnitHighlightList5Colour
-	IniWrite, %UnitHighlightList6Colour%, %config_file%, %section%, UnitHighlightList6Colour
-	IniWrite, %UnitHighlightList7Colour%, %config_file%, %section%, UnitHighlightList7Colour
+	lKeys := "UnitHighlightList1,UnitHighlightList2,UnitHighlightList3,UnitHighlightList4"
+		   . ",UnitHighlightList5,UnitHighlightList6,UnitHighlightList7"	
+		   . ",UnitHighlightExcludeList"
+	
+	; the actual unit lists
+	loop, parse, lKeys, `,
+	{
+		list := checkList := ""	
+		highlistList := %A_LoopField%
+		loop, parse, highlistList, `,
+		{
+			if aUnitID.HasKey(string := Trim(A_LoopField, "`n`, `t")) ; get rid of spaces which cause haskey to fail
+			{	
+				if string not in %checkList%
+					list .= string ", "
+
+			}
+		}
+		IniWrite, % Trim(list, "`n`, `t"), %config_file%, %section%, %A_LoopField%
+		; IniWrite, %UnitHighlightList1%, %config_file%, %section%, UnitHighlightList1	;the list
+	}
+
+	loop, 7 ; 7 colours
+		IniWrite, % UnitHighlightList%A_Index%Colour, %config_file%, %section%, UnitHighlightList%A_Index%Colour ;the colour
 
 	IniWrite, %HighlightInvisible%, %config_file%, %section%, HighlightInvisible
 	IniWrite, %UnitHighlightInvisibleColour%, %config_file%, %section%, UnitHighlightInvisibleColour
@@ -2668,7 +2689,7 @@ ini_settings_write:
 	IniWrite, %HighlightHallucinations%, %config_file%, %section%, HighlightHallucinations
 	IniWrite, %UnitHighlightHallucinationsColour%, %config_file%, %section%, UnitHighlightHallucinationsColour
 
-	IniWrite, %UnitHighlightExcludeList%, %config_file%, %section%, UnitHighlightExcludeList
+
 	IniWrite, %DrawMiniMap%, %config_file%, %section%, DrawMiniMap
 	IniWrite, %TempHideMiniMapKey%, %config_file%, %section%, TempHideMiniMapKey
 	IniWrite, %DrawSpawningRaces%, %config_file%, %section%, DrawSpawningRaces
@@ -2720,6 +2741,9 @@ ini_settings_write:
 
 	}
 Return
+f1::
+objtree(A_UnitGroupSettings)
+return 
 
 
 g_CreateUnitListsAndObjects:
@@ -6031,12 +6055,22 @@ Edit_AG:	;AutoGroup and Unit include/exclude come here
 	list := %list%
 
 	IfInString, A_GuiControl, UnitHighlight
-		TMP_EditAG_Units .= AG_GUI_ADD("", TMP_EditAG_Units ? ", " : "", list)
+		TMP_EditAG_Units .= AG_GUI_ADD("", TMP_EditAG_Units ? ", " : "", list), delimiter := ","
 	Else IfInString, A_GuiControl, quickSelect
-		TMP_EditAG_Units .= AG_GUI_ADD("", TMP_EditAG_Units ? "`n" : "", list)
+		TMP_EditAG_Units .= AG_GUI_ADD("", TMP_EditAG_Units ? "`n" : "", list), delimiter := "`n"
 	Else
-		TMP_EditAG_Units .= AG_GUI_ADD(SubStr(A_GuiControl, 0, 1), TMP_EditAG_Units ? ", " : "", list) ;retrieve the last character of name ie control number 0/1/2 etc		
-	GUIControl,, %TMP_AG_ControlName%, %TMP_EditAG_Units%
+		TMP_EditAG_Units .= AG_GUI_ADD(SubStr(A_GuiControl, 0, 1), TMP_EditAG_Units ? ", " : "", list), delimiter := "," ;retrieve the last character of name ie control number 0/1/2 etc		
+	list := checkList := ""
+	loop, parse, TMP_EditAG_Units, %delimiter%
+	{
+		if aUnitID.HasKey(string := Trim(A_LoopField, "`n`, `t")) ; get rid of spaces which cause haskey to fail
+		{	
+			if string not in %checkList%
+				list .= string (delimiter = "`n" ? delimiter : delimiter A_Space),  checkList .= string "," ; leave a space for the gui if comma delimiter
+
+		}
+	}
+	GUIControl,, %TMP_AG_ControlName%, % Trim(list, "`,`n `t")
 Return
 
 AG_GUI_ADD(Control_Group = "", delimiter := ",", list := "Error")
@@ -6937,10 +6971,18 @@ setupAutoGroup(Race, ByRef A_AutoGroup, aUnitID, A_UnitGroupSettings)
 		StringReplace, List, List, %A_Space%, , All ; Remove Spaces
 		StringReplace, List, List, |, `,, All ;replace | with ,
 		List := Rtrim(List, "`, |") ;checks the last character
+		checkList := ""
 		If (List <> "")
 		{
 			loop, parse, List, `, 
-			A_AutoGroup[ControlGroup] .= aUnitID[A_LoopField] ","	;assign the unit ID based on name from iniFile	
+			{
+				unitName := Trim(A_LoopField, "`n`, `t")
+				if unitName not in %checkList%
+				{
+					A_AutoGroup[ControlGroup] .= aUnitID[unitName] ","	;assign the unit ID based on name from iniFile	
+					checkList .= unitName ","
+				}
+			}
 			A_AutoGroup[ControlGroup] := RTrim(A_AutoGroup[ControlGroup], ",") 
 		}		 
 	}
