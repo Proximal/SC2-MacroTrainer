@@ -3371,7 +3371,14 @@ readConfigFile()
 	IniRead, MiniMapRefresh, %config_file%, %section%, MiniMapRefresh, 300
 	IniRead, OverlayRefresh, %config_file%, %section%, OverlayRefresh, 1000
 	IniRead, UnitOverlayRefresh, %config_file%, %section%, UnitOverlayRefresh, 4500
-	IniRead, OvlerayTransparency, %config_file%, %section%, OvlerayTransparency, 255
+	IniRead, overlayIncomeTransparency, %config_file%, %section%, overlayIncomeTransparency, 255
+	IniRead, overlayMatchTransparency, %config_file%, %section%, overlayMatchTransparency, 255
+	IniRead, overlayResourceTransparency, %config_file%, %section%, overlayResourceTransparency, 255
+	IniRead, overlayArmyTransparency, %config_file%, %section%, overlayArmyTransparency, 255
+	IniRead, overlayHarvesterTransparency, %config_file%, %section%, overlayHarvesterTransparency, 255
+	IniRead, overlayIdleWorkerTransparency, %config_file%, %section%, overlayIdleWorkerTransparency, 255
+	IniRead, overlayLocalColourTransparency, %config_file%, %section%, overlayLocalColourTransparency, 255
+	IniRead, overlayMinimapTransparency, %config_file%, %section%, overlayMinimapTransparency, 255
 
 	; [UnitPanelFilter]
 	section := "UnitPanelFilter"

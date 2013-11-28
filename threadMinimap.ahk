@@ -275,7 +275,7 @@ DrawMiniMap()
 	if DrawPlayerCameras
 		drawPlayerCameras(G)
 	Gdip_DeleteGraphics(G)
-	UpdateLayeredWindow(hwnd1, hdc, 0, 0, A_ScreenWidth/4, A_ScreenHeight) ;only draw on left side of the screen
+	UpdateLayeredWindow(hwnd1, hdc, 0, 0, A_ScreenWidth/4, A_ScreenHeight, overlayMinimapTransparency) ;only draw on left side of the screen
 	SelectObject(hdc, obm) ; needed else eats ram ; Select the object back into the hdc
 	DeleteObject(hbm)   ; needed else eats ram 	; Now the bitmap may be deleted
 	DeleteDC(hdc) ; Also the device context related to the bitmap may be deleted

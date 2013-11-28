@@ -1356,7 +1356,7 @@ cast_ForceInject:
 						return
 					critical 1000
 					input.pReleaseKeys(True)
-					dSleep(20)  ; give 10 ms to allow for selection buffer to fully update so we are extra safe. 
+					dSleep(40)  ; give 10 ms to allow for selection buffer to fully update so we are extra safe. 
 					if isSelectionGroupable(oSelection) ; in case it somehow changed/updated 
 						castInjectLarva("MiniMap", 1, 0)
 					Input.revertKeyState()						
@@ -2649,11 +2649,14 @@ ini_settings_write:
 	Iniwrite, %UnitOverlayRefresh%, %config_file%, %section%, UnitOverlayRefresh
 
 	; convert from 0-100 to 0-255
-	OvlerayTransparency := ceil(OvlerayTransparency * 2.55)
-	if (OvlerayTransparency > 255) ; I dont think this can happen
-		OvlerayTransparency := 255
-	Iniwrite, %OvlerayTransparency%, %config_file%, %section%, OvlerayTransparency
-
+	loopList := "overlayIncomeTransparency,overlayMatchTransparency,overlayResourceTransparency,overlayArmyTransparency,overlayHarvesterTransparency,overlayIdleWorkerTransparency,overlayLocalColourTransparency,overlayMinimapTransparency"
+	loop, parse, loopList, `,
+	{
+		%A_LoopField% := ceil(%A_LoopField% * 2.55) 
+		if (%A_LoopField% > 255 || %A_LoopField% < 0) ; I dont think this can happen
+			%A_LoopField% := 255
+		Iniwrite, % %A_LoopField%, %config_file%, %section%, %A_LoopField%
+	}
 	
 	;[MiniMap]
 	section := "MiniMap" 
@@ -2741,10 +2744,6 @@ ini_settings_write:
 
 	}
 Return
-f1::
-objtree(A_UnitGroupSettings)
-return 
-
 
 g_CreateUnitListsAndObjects:
 
@@ -2790,7 +2789,7 @@ IfWinExist, Macro Trainer V%ProgramVersion% Settings
 ; gui variables 
 ; because there computer was to slow to load the gui window the first time
 
-try 
+;try 
 {
 	Gui, Options:New
 	gui, font, norm s9	;here so if windows user has +/- font size this standardises it. But need to do other menus one day
@@ -3968,7 +3967,15 @@ try
 			
 			; transparency is max 255/0xFF
 			Gui, Add, Text, yp+35 xp-20, Opacity:
-				Gui, Add, Slider, ToolTip  NoTicks w140 xp y+10  VOvlerayTransparency, % ceil(OvlerayTransparency / 2.55) 
+			Gui, Add, DropDownList, xp+50 yp-2 vOpacityOverlayIdent w90 gG_SwapOverlayOpacitySliders, Army||Harvester|Idle Worker|Income|Local Colour|Match/Unit|Minimap|Resource
+				Gui, Add, Slider, ToolTip  NoTicks w140 xp-50 y+10   vOverlayArmyTransparency, % ceil(overlayArmyTransparency / 2.55) 
+				Gui, Add, Slider, ToolTip  NoTicks w140 xp yp  Hidden vOverlayIncomeTransparency, % ceil(overlayIncomeTransparency / 2.55) 
+				Gui, Add, Slider, ToolTip  NoTicks w140 xp yp  Hidden vOverlayMatchTransparency, % ceil(overlayMatchTransparency / 2.55) 
+				Gui, Add, Slider, ToolTip  NoTicks w140 xp yp  Hidden vOverlayResourceTransparency, % ceil(overlayResourceTransparency / 2.55) 
+				Gui, Add, Slider, ToolTip  NoTicks w140 xp yp  Hidden vOverlayHarvesterTransparency, % ceil(overlayHarvesterTransparency / 2.55) 
+				Gui, Add, Slider, ToolTip  NoTicks w140 xp yp  Hidden vOverlayIdleWorkerTransparency, % ceil(overlayIdleWorkerTransparency / 2.55) 
+				Gui, Add, Slider, ToolTip  NoTicks w140 xp yp  Hidden vOverlayLocalColourTransparency, % ceil(overlayLocalColourTransparency / 2.55) 
+				Gui, Add, Slider, ToolTip  NoTicks w140 xp yp  Hidden VOverlayMinimapTransparency, % ceil(overlayMinimapTransparency / 2.55) 
 
 
 			Gui, Add, GroupBox, xs ys+210 w170 h160, Refresh Rates:
@@ -4259,9 +4266,14 @@ try
 	TT_AGDelay_TT := AG_Delay_TT := "The program will wait this period of time before adding the select units to a control group.`nUse this if you want the function to look more 'human'.`n`nNote: This may increase the likelihood of miss-grouping units (especially on slow computers or during large battles with high APM)."
 	TempHideMiniMapKey_TT := #TempHideMiniMapKey_TT := "This will disable the minimap overlay for three seconds,`nthereby allowing you to determine if you legitimately have vision of a unit or building."
 	
-	OvlerayTransparency_TT := "Sets the transparency of all overlays, excluding the minimap."
-						. "`n`n100 = Fully opaque"
-						. "`n0 = Fully transparent"
+
+	loopList := "overlayIncomeTransparency,overlayMatchTransparency,overlayResourceTransparency,overlayArmyTransparency,overlayHarvesterTransparency,overlayIdleWorkerTransparency,overlayLocalColourTransparency,overlayMinimapTransparency"
+	loop, parse, loopList, `,
+		%A_LoopField%_TT := "Sets the transparency of the overlay."
+							. "`n`n100 = Fully opaque"
+							. "`n0 = Fully transparent"
+	
+
 	ToggleUnitOverlayKey_TT := #ToggleUnitOverlayKey_TT := "Toggles the unit panel between the following states:"
 						. "`n`n  -Units/structures"
 						. "`n  -Units/structures + Upgrades"
@@ -4370,6 +4382,17 @@ HumanMouseWarning:
 Return
 
 
+G_SwapOverlayOpacitySliders:
+GuiControlGet, selection, , %A_GuiControl%
+GuiControl, % "show" instr(selection, "Income"), overlayIncomeTransparency
+GuiControl, % "show" instr(selection, "Match"), overlayMatchTransparency
+GuiControl, % "show" instr(selection, "Resource"), overlayResourceTransparency
+GuiControl, % "show" instr(selection, "Army"), overlayArmyTransparency
+GuiControl, % "show" instr(selection, "Harvester"), overlayHarvesterTransparency
+GuiControl, % "show" instr(selection, "Idle Worker"), overlayIdleWorkerTransparency
+GuiControl, % "show" instr(selection, "Local Colour"), overlayLocalColourTransparency
+GuiControl, % "show" instr(selection, "Minimap"), overlayMinimapTransparency
+return
 
 
 
@@ -6500,7 +6523,7 @@ autoWorkerProductionCheck()
 		critical, 1000
 		input.pReleaseKeys(True)
 
-		dSleep(35) ; increase safety ensure selection buffer fully updated
+		dSleep(40) ; increase safety ensure selection buffer fully updated
 
 		HighlightedGroup := getSelectionHighlightedGroup()
 		If numGetSelectionSorted(oSelection) ; = 0 as nothing is selected so cant restore this/control group it
@@ -7018,7 +7041,7 @@ OverlayMove_LButtonDown()
 }
 
 DrawIdleWorkersOverlay(ByRef Redraw, UserScale=1,Drag=0, expand=1)
-{	global aLocalPlayer, GameIdentifier, config_file, IdleWorkersOverlayX, IdleWorkersOverlayY, a_pBitmap, OvlerayTransparency
+{	global aLocalPlayer, GameIdentifier, config_file, IdleWorkersOverlayX, IdleWorkersOverlayY, a_pBitmap, overlayIdleWorkerTransparency
 	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0				
 
 	DestX := DestY := 0
@@ -7077,14 +7100,14 @@ DrawIdleWorkersOverlay(ByRef Redraw, UserScale=1,Drag=0, expand=1)
 	Gdip_DrawImage(G, pBitmap, DestX, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)	
 	Gdip_TextToGraphics(G, idleCount, "x"(DestX+Width+2*UserScale) "y"(DestY+(Height//4)) Options, Font, TextWidthHeight, TextWidthHeight)
 	Gdip_DeleteGraphics(G)	
-	UpdateLayeredWindow(hwnd1, hdc,,,,, OvlerayTransparency)
+	UpdateLayeredWindow(hwnd1, hdc,,,,, overlayIdleWorkerTransparency)
 	SelectObject(hdc, obm) 
 	DeleteObject(hbm)  
 	DeleteDC(hdc) 
 	Return
 }
 DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Drag=0)
-{	global aLocalPlayer, aHexColours, aPlayer, GameIdentifier, IncomeOverlayX, IncomeOverlayY, config_file, MatrixColour, a_pBitmap, OvlerayTransparency
+{	global aLocalPlayer, aHexColours, aPlayer, GameIdentifier, IncomeOverlayX, IncomeOverlayY, config_file, MatrixColour, a_pBitmap, overlayIncomeTransparency
 	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0
 
 	DestX := i := 0
@@ -7191,7 +7214,7 @@ DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Dr
 	}
 	WindowHeight := DestY+Height
 	Gdip_DeleteGraphics(G)
-	UpdateLayeredWindow(hwnd1, hdc,,,WindowWidth,WindowHeight, OvlerayTransparency)
+	UpdateLayeredWindow(hwnd1, hdc,,,WindowWidth,WindowHeight, overlayIncomeTransparency)
 	SelectObject(hdc, obm) ; needed else eats ram ; Select the object back into the hdc
 	DeleteObject(hbm)   ; needed else eats ram 	; Now the bitmap may be deleted
 	DeleteDC(hdc) ; Also the device context related to the bitmap may be deleted
@@ -7199,7 +7222,7 @@ DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Dr
 }	
 
 DrawResourcesOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Drag=0)
-{	global aLocalPlayer, aHexColours, aPlayer, GameIdentifier, config_file, ResourcesOverlayX, ResourcesOverlayY, MatrixColour, a_pBitmap, OvlerayTransparency
+{	global aLocalPlayer, aHexColours, aPlayer, GameIdentifier, config_file, ResourcesOverlayX, ResourcesOverlayY, MatrixColour, a_pBitmap, overlayResourceTransparency
 	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0		
 
 	DestX := i := 0
@@ -7311,7 +7334,7 @@ DrawResourcesOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0
 	}
 	WindowHeight := DestY+Height
 	Gdip_DeleteGraphics(G)
-	UpdateLayeredWindow(hwnd1, hdc,,,WindowWidth,WindowHeight, OvlerayTransparency)
+	UpdateLayeredWindow(hwnd1, hdc,,,WindowWidth,WindowHeight, overlayResourceTransparency)
 	SelectObject(hdc, obm)
 	DeleteObject(hbm)
 	DeleteDC(hdc)
@@ -7319,7 +7342,7 @@ DrawResourcesOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0
 }
 
 DrawArmySizeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Drag=0)
-{	global aLocalPlayer, aHexColours, aPlayer, GameIdentifier, config_file, ArmySizeOverlayX, ArmySizeOverlayY, MatrixColour, a_pBitmap, OvlerayTransparency
+{	global aLocalPlayer, aHexColours, aPlayer, GameIdentifier, config_file, ArmySizeOverlayX, ArmySizeOverlayY, MatrixColour, a_pBitmap, overlayArmyTransparency
 	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0	
 		
 	DestX := i := 0
@@ -7430,14 +7453,14 @@ DrawArmySizeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,
 	}
 	WindowHeight := DestY+Height	
 	Gdip_DeleteGraphics(G)
-	UpdateLayeredWindow(hwnd1, hdc,,, WindowWidth, WindowHeight, OvlerayTransparency)
+	UpdateLayeredWindow(hwnd1, hdc,,, WindowWidth, WindowHeight, overlayArmyTransparency)
 	SelectObject(hdc, obm) 
 	DeleteObject(hbm)  
 	DeleteDC(hdc) 
 	Return
 }
 DrawWorkerOverlay(ByRef Redraw, UserScale=1,Drag=0)
-{	global aLocalPlayer, GameIdentifier, config_file, WorkerOverlayX, WorkerOverlayY, a_pBitmap, OvlerayTransparency
+{	global aLocalPlayer, GameIdentifier, config_file, WorkerOverlayX, WorkerOverlayY, a_pBitmap, overlayHarvesterTransparency
 	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := False				
 	Options := " cFFFFFFFF r4 s" 18*UserScale
 
@@ -7488,7 +7511,7 @@ DrawWorkerOverlay(ByRef Redraw, UserScale=1,Drag=0)
 	Gdip_DrawImage(G, pBitmap, DestX, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)	
 	Gdip_TextToGraphics(G, getPlayerWorkerCount(aLocalPlayer["Slot"]), "x"(DestX+Width+2*UserScale) "y"(DestY+(Height//4)) Options, Font, TextWidthHeight, TextWidthHeight)
 	Gdip_DeleteGraphics(G)	
-	UpdateLayeredWindow(hwnd1, hdc,,,,,OvlerayTransparency)
+	UpdateLayeredWindow(hwnd1, hdc,,,,, overlayHarvesterTransparency)
 	SelectObject(hdc, obm) 
 	DeleteObject(hbm)  
 	DeleteDC(hdc) 
@@ -7497,7 +7520,7 @@ DrawWorkerOverlay(ByRef Redraw, UserScale=1,Drag=0)
 
 
 DrawLocalPlayerColour(ByRef Redraw, UserScale=1,Drag=0)
-{	global aLocalPlayer, GameIdentifier, config_file, LocalPlayerColourOverlayX, LocalPlayerColourOverlayY, a_pBitmap, aHexColours, OvlerayTransparency
+{	global aLocalPlayer, GameIdentifier, config_file, LocalPlayerColourOverlayX, LocalPlayerColourOverlayY, a_pBitmap, aHexColours, overlayLocalColourTransparency
 	static overlayCreated, hwnd1, DragPrevious := 0,  PreviousPlayerColours := 0 			
 
 	playerColours := arePlayerColoursEnabled()
@@ -7562,7 +7585,7 @@ DrawLocalPlayerColour(ByRef Redraw, UserScale=1,Drag=0)
 	Gdip_FillEllipse(G, a_pBrushes[colour], 0, 0, Radius, Radius)
 
 	Gdip_DeleteGraphics(G)	
-	UpdateLayeredWindow(hwnd1, hdc,,,,,OvlerayTransparency)
+	UpdateLayeredWindow(hwnd1, hdc,,,,, overlayLocalColourTransparency)
 	SelectObject(hdc, obm) 
 	DeleteObject(hbm)  
 	DeleteDC(hdc) 
@@ -9743,7 +9766,7 @@ getLongestEnemyPlayerName(aPlayer)
 DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 {
 	GLOBAL aEnemyUnits, aEnemyUnitConstruction, a_pBitmap, aPlayer, aLocalPlayer, aHexColours, GameIdentifier, config_file, UnitOverlayX, UnitOverlayY, MatrixColour 
-		, aUnitInfo, SplitUnitPanel, aEnemyCurrentUpgrades, DrawUnitOverlay, DrawUnitUpgrades, aMiscUnitPanelInfo, aUnitID, OvlerayTransparency
+		, aUnitInfo, SplitUnitPanel, aEnemyCurrentUpgrades, DrawUnitOverlay, DrawUnitUpgrades, aMiscUnitPanelInfo, aUnitID, overlayMatchTransparency
 	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0
 
 	Options := "Center cFFFFFFFF r4 s" 17*UserScale					;these cant be static	
@@ -9980,7 +10003,7 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 	WindowWidth += width *2 ; because x begins on the left side of where the icon is drawn hence need to add 1 extra icon width to maximum width
 
 	Gdip_DeleteGraphics(G)
-	UpdateLayeredWindow(hwnd1, hdc,,,WindowWidth,WindowHeight, OvlerayTransparency)
+	UpdateLayeredWindow(hwnd1, hdc,,,WindowWidth,WindowHeight, overlayMatchTransparency)
 	SelectObject(hdc, obm)
 	DeleteObject(hbm)
 	DeleteDC(hdc)
