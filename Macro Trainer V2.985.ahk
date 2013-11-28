@@ -490,14 +490,17 @@ g_GiveLocalPalyerResources:
 return	
 
 g_GLHF:
+	critical, on
 	setLowLevelInputHooks(False)
 	SetStoreCapslockMode, On ;as I turned it off in the auto Exec section
+	; AHK bugs out with the alt key
+	; if using {asc character}
+	; and if dont send the modifier ups (really alt for this hotkey)
+	sequence := "{Blind}{Ctrl Up}{Shift UP}{Alt Up}"
 	if !isChatOpen()
-	{
-		send, +{Enter}
-	}
-	send, GL{ASC 3}HF{!} ;♥
-	SetStoreCapslockMode, Off ; this isn't really needed as it is no off by default for new threads
+		sequence .= "+{Enter}"
+	send, % sequence "GL{RAlt Down}{numpad3}{RAlt Up}HF{!}" ;♥
+	SetStoreCapslockMode, Off ; this isn't really needed as it is off by default for new threads
 	setLowLevelInputHooks(True)
 return 
 
@@ -1146,51 +1149,39 @@ AutoGroup(byref A_AutoGroup, AGDelay = 0)
 		CtrlGroupSet := RTrim(CtrlGroupSet, "|")	
 		Loop, Parse, CtrlGroupSet, |
 			AG_Temp_count := A_Index	;this counts the number of different ctrl groups ie # 1's  and 2's etc - must be only 1
-		If (AG_Temp_count = 1) && !isMenuOpen()
-	;	&& !(getkeystate("Shift", "P") && getkeystate("Control", "P")
-	;	&& getkeystate("LWin", "P") && getkeystate("RWin", "P")		
-	;	&& getkeystate("LWin", "L") && getkeystate("RWin", "L")		
-	;	&& getkeystate("Shift") && getkeystate("Control")
-		|| !( checkAllKeyStates()
-		|| readModifierState() 
-		|| MT_InputIdleTime() <= 100)
-
-		;&& !getkeystate("LWin") && !getkeystate("RWin")
-		;&& !(getkeystate("Shift", "P") || getkeystate("Control", "P") || getkeystate("Alt", "P")
-		;|| getkeystate("LWin", "P") || getkeystate("RWin", "P")	
-		;|| getkeystate("LButton", "P") || getkeystate("RButton", "P")
-		;|| readModifierState() 
-		;|| checkAllKeyStates() 
-		;|| MT_InputIdleTime() <= 30)
+		If (AG_Temp_count = 1 && !isMenuOpen()
+		&& !checkAllKeyStates() && !readModifierState() && MT_InputIdleTime() >= 120)
 		{
-		;	input.hookBlock(True, True)
+		;	input.hookBlock(True, True)	
 		;	sleep := Input.releaseKeys()
 		;	critical, 1000
 		;	input.hookBlock(False, False)
 		;	if sleep
 		;		dSleep(15) ;  sleep, 5
 			critical, 1000
-			input.pReleaseKeys()
-
-			; if the user has a delay for grouping, this increases the risk of the unit selection changing before the
-			; sent ctrl+group command is received/processed. Therefore a small sleep here should make it more robust
-			; in theory this should not be required with a delay of 0 (for the most part), as there is the idle grouping
-			; timer which is continually running (be it with a low priority) so as soon as the units/buffer change, it
-			; will group them if required. And this should occur before anything help happens in game
-
-			;	if !sleep 
-			;		dSleep(20)
-			dSleep(60)
-			numGetUnitSelectionObject(oSelection)
-			for index, Unit in oSelection.Units
-				PostDelaySelected .= "," unit.UnitIndex
-
-			if (CurrentlySelected = PostDelaySelected && !checkAllKeyStates())
+			if !(input.pReleaseKeys(True))
 			{
-				input.pSend("+" Player_Ctrl_GroupSet)
-				sleepOnExit := True
-				settimer, AutoGroupIdle, Off
-				settimer, Auto_Group, Off				
+
+				; if the user has a delay for grouping, this increases the risk of the unit selection changing before the
+				; sent ctrl+group command is received/processed. Therefore a small sleep here should make it more robust
+				; in theory this should not be required with a delay of 0 (for the most part), as there is the idle grouping
+				; timer which is continually running (be it with a low priority) so as soon as the units/buffer change, it
+				; will group them if required. And this should occur before anything help happens in game
+
+				;	if !sleep 
+				;		dSleep(20)
+				dSleep(80)
+				numGetUnitSelectionObject(oSelection)
+				for index, Unit in oSelection.Units
+					PostDelaySelected .= "," unit.UnitIndex
+
+				if (CurrentlySelected = PostDelaySelected && !checkAllKeyStates())
+				{
+					input.pSend("+" Player_Ctrl_GroupSet)
+					sleepOnExit := True
+					settimer, AutoGroupIdle, Off
+					settimer, Auto_Group, Off				
+				}
 			}
 			Input.revertKeyState()
 			critical, off
@@ -1219,6 +1210,9 @@ Return
 LimitGroup(byref UnitList, Hotkey)
 { 
 	; CtrlList := "" ;if unit type not in listt add to it - give count of list type
+	critical 1000
+	dsleep(100)
+
 	group := substr(Hotkey, 0)
 	If (ID_List := UnitList[group]) ; ie not blank
 	{
@@ -1235,7 +1229,7 @@ LimitGroup(byref UnitList, Hotkey)
 	;input.hookBlock(False, False)
 	;if sleep
 	;	dSleep(10) 
-	critical 1000
+	
 	input.pReleaseKeys()
 	input.pSend(Hotkey)
 	Input.revertKeyState()
@@ -1328,7 +1322,7 @@ cast_ForceInject:
 				if (isQueenNearHatch(Queen, CurrentHatch, MI_QueenDistance) && Queen.Energy >= 25  && !isHatchInjected(CurrentHatch.Unit)) 
 				{
 					Thread, Priority, -2147483648
-					sleep % rand(0, 1000)
+					sleep % rand(0, 2000)
 					Thread, Priority, 0	
 					startInjectWait := A_TickCount
 				;	while getkeystate("LWin", "P") || getkeystate("RWin", "P")	
@@ -2643,7 +2637,7 @@ ini_settings_write:
 	Iniwrite, %OverlayIdent%, %config_file%, %section%, OverlayIdent	
 	Iniwrite, %SplitUnitPanel%, %config_file%, %section%, SplitUnitPanel	
 	Iniwrite, %DrawUnitUpgrades%, %config_file%, %section%, DrawUnitUpgrades	
-	Iniwrite, %OverlayBackgrounds%, %config_file%, %section%, OverlayBackgrounds	
+;	Iniwrite, %OverlayBackgrounds%, %config_file%, %section%, OverlayBackgrounds	
 	Iniwrite, %MiniMapRefresh%, %config_file%, %section%, MiniMapRefresh	
 	Iniwrite, %OverlayRefresh%, %config_file%, %section%, OverlayRefresh	
 	Iniwrite, %UnitOverlayRefresh%, %config_file%, %section%, UnitOverlayRefresh
@@ -2963,7 +2957,7 @@ IfWinExist, Macro Trainer V%ProgramVersion% Settings
 				Gui, Add, Edit, Number Right x+5 yp-2 w60 vTT_FInjectHatchFrequency
 					Gui, Add, UpDown, Range0-100000 vFInjectHatchFrequency, %FInjectHatchFrequency%					
 
-			Gui, Add, Text, y+15 x%settings2RX% w140, APM Protection:
+			Gui, Add, Text, y+15 x%settings2RX% w140, APM Delay:
 				Gui, Add, Edit, Number Right x+5 yp-2 w60 vTT_FInjectAPMProtection
 					Gui, Add, UpDown,  Range0-100000 vFInjectAPMProtection, %FInjectAPMProtection%		
 
@@ -3537,7 +3531,7 @@ IfWinExist, Macro Trainer V%ProgramVersion% Settings
 			Gui, Add, Edit, Readonly yp-2 x+10 center w65 vToggleAutoWorkerState_Key gedit_hotkey, %ToggleAutoWorkerState_Key%
 		Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#ToggleAutoWorkerState_Key,  Edit ;have to use a trick eg '#' as cant write directly to above edit var, or it will activate its own label!
 
-		Gui, Add, Text, xs+220 ys w85, APM Protection:
+		Gui, Add, Text, xs+220 ys w85, APM Delay:
 			Gui, Add, Edit, Number Right x+15 yp-2 w50 vTT_AutoWorkerAPMProtection
 					Gui, Add, UpDown,  Range0-100000 vAutoWorkerAPMProtection, %AutoWorkerAPMProtection%		
 
@@ -3957,8 +3951,8 @@ IfWinExist, Macro Trainer V%ProgramVersion% Settings
 			Gui, Add, Button, center xp+15 y+15 w100 h35 vUnitPanelFilterButton Gg_GUICustomUnitPanel, Unit Filter
 
 			Gui, Add, GroupBox, ys XS+205 w170 h190 section, Overlays Misc:
-			Gui, Add, Checkbox, yp+25 xp+10 vOverlayBackgrounds Checked%OverlayBackgrounds% , Show Icon Background						
-			Gui, Add, Text, yp+25 w80, Player Identifier:
+		;	Gui, Add, Checkbox, yp+25 xp+10 vOverlayBackgrounds Checked%OverlayBackgrounds% , Show Icon Background						
+			Gui, Add, Text, yp+25 xp+10 w80, Player Identifier:
 			if OverlayIdent in 0,1,2,3
 				droplist3_var := OverlayIdent + 1
 			Else droplist3_var := 3 
@@ -4168,12 +4162,8 @@ IfWinExist, Macro Trainer V%ProgramVersion% Settings
 			. "`n`nNote: The program won't queue multiple workers while supply blocked."
 
 	TT_AutoWorkerAPMProtection_TT := AutoWorkerAPMProtection_TT
-	:= TT_FInjectAPMProtection_TT := FInjectAPMProtection_TT := "Automations will be delayed while your INSTANTANEOUS APM is greater than this value.`n"
-			. "This helps reduce the likelihood of interfering with your game play.`n`nNote: If you're a chronic key spammer who constantly has high APM you may need to increase this value,`n"
-			. "otherwise actions may be delayed for too long.`n`n"
-			. "Note: With the various program changes and improvements which have been made, this setting is no longer required for automations to function seamlessly `n"
-			. "as automations should not interfere with your game play even if you have very high APM.`n"
-			. "This is now included as an simple additional user option."
+	:= TT_FInjectAPMProtection_TT := FInjectAPMProtection_TT := "Automations will be delayed while your instantaneous APM is greater than this value.`n"
+			. "`nThis can be used to make the automations a little more subtle."
 
 	EnableAutoWorkerTerranStart_TT := EnableAutoWorkerProtossStart_TT := "Enables/Disables this function."
 	AutoWorkerStorage_T_Key_TT := #AutoWorkerStorage_T_Key_TT := AutoWorkerStorage_P_Key_TT := #AutoWorkerStorage_P_Key_TT := "During an automation cycle your selected units will be temporarily stored in this control group.`n`nSpecify a control group that you do NOT use in game."
@@ -7705,23 +7695,19 @@ CreateHotkeys()
 	Hotkey, If, WinActive(GameIdentifier) && time && !isMenuOpen() && EnableAutoWorker`%LocalPlayerRace`% ; cant use !ischatopen() - as esc will close chat before memory reads value so wont see chat was open
 		hotkey, *~Esc, g_temporarilyDisableAutoWorkerProduction, on	
 	Hotkey, If, WinActive(GameIdentifier) && !isMenuOpen() && time
-		loop, parse, l_races, `,
-		{
-			race := A_LoopField
-			if aQuickSelect[race].maxIndex()
-			{
-				for i, object in aQuickSelect[race]
-				{
-					if (object.enabled && object.Units.MaxIndex() && object.hotkey)
-						try hotkey, % object.hotkey, g_QuickSelect, on
-				}
-			}
 
+	if aQuickSelect[aLocalPlayer["Race"]].maxIndex()
+	{
+		for i, object in aQuickSelect[aLocalPlayer["Race"]]
+		{
+			if (object.enabled && object.Units.MaxIndex() && object.hotkey)
+				try hotkey, % object.hotkey, g_QuickSelect, on
 		}
+	}
 		
 	while (10 > i := A_index - 1)
 	{
-		if A_UnitGroupSettings["LimitGroup", aLocalPlayer["Race"], i,"Enabled"] 
+		if A_UnitGroupSettings["LimitGroup", aLocalPlayer["Race"], i, "Enabled"] 
 		{
 			hotkey, ^%i%, g_LimitGrouping, on
 			hotkey, +%i%, g_LimitGrouping, on
