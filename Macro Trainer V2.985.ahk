@@ -490,7 +490,7 @@ g_GiveLocalPalyerResources:
 return	
 
 g_GLHF:
-	critical, on
+	Thread, NoTimers, True
 	setLowLevelInputHooks(False)
 	SetStoreCapslockMode, On ;as I turned it off in the auto Exec section
 	; AHK bugs out with the alt key
@@ -1096,7 +1096,7 @@ Auto_Group:
 	Return
 
 AutoGroup(byref A_AutoGroup, AGDelay = 0)
-{ 	global GameIdentifier, aButtons
+{ 	global GameIdentifier, aButtons, AGBufferDelay
 	static PrevSelectedUnits, SelctedTime
 	
 	; needed to ensure the function running again while it is still running
@@ -1123,11 +1123,21 @@ AutoGroup(byref A_AutoGroup, AGDelay = 0)
 				If !InStr(CtrlList, type) ;ie not in it
 				{
 					CtrlType_i ++	;probably don't really need this count mechanism anymore
-					CtrlList .= type "|"
-					CtrlGroupSet .= Player_Ctrl_Group "|"						
+					CtrlList .= type "|"				
 				}
 				If !isInControlGroup(Player_Ctrl_Group, unit.UnitIndex)  ; add to said ctrl group If not in group
-					Player_Ctrl_GroupSet := Player_Ctrl_Group
+				{
+					if (Player_Ctrl_GroupSet = "")
+						Player_Ctrl_GroupSet := Player_Ctrl_Group
+					else 
+					{
+						if (Player_Ctrl_GroupSet != Player_Ctrl_Group)
+						{
+							WrongUnit := 1
+							break, 2
+						}
+					}
+				}
 				break		
 			}				
 		}
@@ -1144,51 +1154,28 @@ AutoGroup(byref A_AutoGroup, AGDelay = 0)
 		SelctedTime := A_Tickcount
 	}
 	if (A_Tickcount - SelctedTime >= AGDelay) && oSelection.Count && !WrongUnit  && (CtrlType_i = SelectedTypes) && (Player_Ctrl_GroupSet <> "") && WinActive(GameIdentifier) && !isGamePaused() ; note <> "" as there is group 0! cant use " Player_Ctrl_GroupSet "
-	{		
-		Sort, CtrlGroupSet, D| N U			
-		CtrlGroupSet := RTrim(CtrlGroupSet, "|")	
-		Loop, Parse, CtrlGroupSet, |
-			AG_Temp_count := A_Index	;this counts the number of different ctrl groups ie # 1's  and 2's etc - must be only 1
-		If (AG_Temp_count = 1 && !isMenuOpen()
-		&& !checkAllKeyStates() && !readModifierState() && MT_InputIdleTime() >= 120)
+	&& !isMenuOpen() && !checkAllKeyStates() && !readModifierState() && MT_InputIdleTime() >= 120
+	{			
+		critical, 1000
+		if !(input.pReleaseKeys(True))
 		{
-		;	input.hookBlock(True, True)	
-		;	sleep := Input.releaseKeys()
-		;	critical, 1000
-		;	input.hookBlock(False, False)
-		;	if sleep
-		;		dSleep(15) ;  sleep, 5
-			critical, 1000
-			if !(input.pReleaseKeys(True))
+			dSleep(AGBufferDelay)
+			numGetUnitSelectionObject(oSelection)
+			for index, Unit in oSelection.Units
+				PostDelaySelected .= "," unit.UnitIndex
+
+			if (CurrentlySelected = PostDelaySelected && !checkAllKeyStates())
 			{
-
-				; if the user has a delay for grouping, this increases the risk of the unit selection changing before the
-				; sent ctrl+group command is received/processed. Therefore a small sleep here should make it more robust
-				; in theory this should not be required with a delay of 0 (for the most part), as there is the idle grouping
-				; timer which is continually running (be it with a low priority) so as soon as the units/buffer change, it
-				; will group them if required. And this should occur before anything help happens in game
-
-				;	if !sleep 
-				;		dSleep(20)
-				dSleep(80)
-				numGetUnitSelectionObject(oSelection)
-				for index, Unit in oSelection.Units
-					PostDelaySelected .= "," unit.UnitIndex
-
-				if (CurrentlySelected = PostDelaySelected && !checkAllKeyStates())
-				{
-					input.pSend("+" Player_Ctrl_GroupSet)
-					sleepOnExit := True
-					settimer, AutoGroupIdle, Off
-					settimer, Auto_Group, Off				
-				}
+				input.pSend("+" Player_Ctrl_GroupSet)
+				sleepOnExit := True
+				settimer, AutoGroupIdle, Off
+				settimer, Auto_Group, Off				
 			}
-			Input.revertKeyState()
-			critical, off
 		}
+		Input.revertKeyState()
+		critical, off
+
 	}
-	; could do something like only sleep check when agdelay > 0 or when time since last check > 1ms 
-	
 	; someone said that the autogroup would make there camera jump to the building
 	; probably due to slow computer and the program reading the unit hasn't been grouped and so 
 	; sends the group command twice very quickly
@@ -1196,7 +1183,7 @@ AutoGroup(byref A_AutoGroup, AGDelay = 0)
 	{
 		Thread, NoTimers, false
 		Thread, Priority, -2147483648
-		sleep 80
+		sleep 85
 		settimer, AutoGroupIdle, On, -9999 ;on re-enables timers with previous period
 		settimer, Auto_Group, On		
 	}
@@ -1339,6 +1326,7 @@ cast_ForceInject:
 					While getkeystate("Enter") 
 					|| isUserBusyBuilding() || isCastingReticleActive() 
 					|| getPlayerCurrentAPM() > FInjectAPMProtection
+					||  MT_InputIdleTime() < 100
 					{
 						if (A_TickCount - startInjectWait > 500)
 							return
@@ -2403,6 +2391,7 @@ ini_settings_write:
 		}
 	}
 	IniWrite, %AG_Delay%, %config_file%, %section%, AG_Delay
+	IniWrite, %AGBufferDelay%, %config_file%, %section%, AGBufferDelay
 
 	;[Advanced Auto Inject Settings]
 	IniWrite, %auto_inject_sleep%, %config_file%, Advanced Auto Inject Settings, auto_inject_sleep
@@ -3469,10 +3458,13 @@ IfWinExist, Macro Trainer V%ProgramVersion% Settings
 		Gui, add, text, xp+50 yp w340, Auto and Restrict Unit grouping functions are not exclusive, i.e. they can be used together or alone!
 		Gui, Font, s9 norm
 	Gui, Tab, Delay
-		Gui, Add, Text, x+25 y+35, Delay (ms):
+		Gui, Add, Text, x+25 y+35 section w90, Delay (ms):
 		Gui, Add, Edit, Number Right x+20 yp-2 w45 vTT_AGDelay 
 		Gui, Add, UpDown,  Range0-1500 vAG_Delay, %AG_Delay%
-
+		
+		Gui, Add, Text, xs y+35 w90, Safety Buffer (ms):
+		Gui, Add, Edit, Number Right x+20 yp-2 w45 vTT_AGBufferDelay 
+		Gui, Add, UpDown,  Range40-290 vAGBufferDelay , %AGBufferDelay%
 
 
 	Gui, Add, Tab2,w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vQuickSelect_TAB, Terran||Protoss|Zerg|Info
@@ -6493,9 +6485,10 @@ autoWorkerProductionCheck()
 		While ( isUserBusyBuilding() || isCastingReticleActive() 
 		|| getkeystate("Shift") || getkeystate("Shift", "P") ; so user can prevent auto-worker when wanting to build something 	
 		|| getkeystate("Enter") 
-		|| getPlayerCurrentAPM() > AutoWorkerAPMProtection)
+		|| getPlayerCurrentAPM() > AutoWorkerAPMProtection
+		||  MT_InputIdleTime() < 100)
 		{
-			if (A_index > 24)
+			if (A_index > 36)
 				return ; (actually could be 480 ms - sleep 1 usually = 20ms)
 			Thread, Priority, -2147483648	
 			sleep 1
@@ -6742,32 +6735,6 @@ ResumeProcess(hwnd)
 {
 	return DllCall("ntdll\NtResumeProcess","uint",hwnd)
 }
-
-;f1::
-sleep 1000
-test := stopwatch()
-input.psend(Sc2SelectArmy_Key)
-startTick := A_TickCount
-loop 
-{
-	if (getSelectionCount() != prevCount || A_Index = 1)
-	{
-		prevCount := getSelectionCount()
-		if matchID
-			stopwatch(matchID)
-		matchID := stopwatch()
-	}
-	else 
-	{
-		if (stopwatch(matchID, False) >= 15)
-			break
-	}
-	dSleep(1)
-} until (A_TickCount - startTick >= 90)
-stopwatch(matchID)
-
-msgbox % stopwatch(test)
-return 
 
 
 
@@ -9755,7 +9722,7 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 		, aUnitInfo, SplitUnitPanel, aEnemyCurrentUpgrades, DrawUnitOverlay, DrawUnitUpgrades, aMiscUnitPanelInfo, aUnitID, overlayMatchTransparency
 	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0
 
-	Options := "Center cFFFFFFFF r4 s" 17*UserScale					;these cant be static	
+
 	If (Redraw = -1)
 	{
 		Try Gui, UnitOverlay: Destroy
@@ -9857,9 +9824,9 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 					Gdip_DrawImage(G, pBitmap, DestX, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
 					Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, DestX + .6*Width, DestY + .6*Height, Width/2.5, Height/2.5, 5)
 					if (unitCount >= 10)
-						gdip_TextToGraphics(G, unitCount, "x"(DestX + .5*Width + .3*Width/2) "y"(DestY + .5*Height + .35*Height/2)  " Bold cFFFFFFFF r4 s" 9*UserScale, Font)
+						gdip_TextToGraphics(G, unitCount, "x"(DestX + .5*Width + .18*Width/2) "y"(DestY + .5*Height + .3*Height/2)  " Bold cFFFFFFFF r4 s" 11*UserScale, Font)
 					Else
-						gdip_TextToGraphics(G, unitCount, "x"(DestX + .5*Width + .4*Width/2) "y"(DestY + .5*Height + .35*Height/2)  " Bold cFFFFFFFF r4 s" 9*UserScale, Font)
+						gdip_TextToGraphics(G, unitCount, "x"(DestX + .5*Width + .35*Width/2) "y"(DestY + .5*Height + .3*Height/2)  " Bold cFFFFFFFF r4 s" 11*UserScale, Font)
 
 					; Draws in top Left corner of picture scan count for orbitals or chrono count for protoss structures
 					if ((chronoScanCount := aMiscUnitPanelInfo["chrono", slot_number, unit]) || (unit = aUnitID.OrbitalCommand  && (chronoScanCount := aMiscUnitPanelInfo["Scans", slot_number])))
@@ -9870,9 +9837,9 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 						{
 							Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, DestX, DestY, Width/2.5, Height/2.5, 5)
 							if (chronoCount >= 10)
-								gdip_TextToGraphics(G, chronoScanCount, "x"(DestX + .1*Width/2) "y"(DestY + .15*Height/2)  " Bold Italic cFFFF00B3 r4 s" 9*UserScale, Font)
+								gdip_TextToGraphics(G, chronoScanCount, "x"(DestX + .1*Width/2) "y"(DestY + .10*Height/2)  " Bold Italic cFFFF00B3 r4 s" 11*UserScale, Font)
 							else
-								gdip_TextToGraphics(G, chronoScanCount, "x"(DestX + .2*Width/2) "y"(DestY + .15*Height/2) " Bold Italic cFFFF00B3 r4 s" 9*UserScale, Font)
+								gdip_TextToGraphics(G, chronoScanCount, "x"(DestX + .2*Width/2) "y"(DestY + .10*Height/2) " Bold Italic cFFFF00B3 r4 s" 11*UserScale, Font)
 						}
 					}
 
@@ -9881,9 +9848,9 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 						;	Gdip_FillRoundedRectangle(G, a_pBrush[TransparentBlack], DestX, DestY + .6*Height, Width/2.5, Height/2.5, 5)
 							Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, DestX + .6*Width, DestY, Width/2.5, Height/2.5, 5)
 							if (unitCount >= 10)
-								gdip_TextToGraphics(G, unitCount, "x"(DestX + .5*Width + .3*Width/2) "y"(DestY + .15*Height/2)  " Bold Italic cFFFFFFFF r4 s" 9*UserScale, Font)
+								gdip_TextToGraphics(G, unitCount, "x"(DestX + .5*Width + .16*Width/2) "y"(DestY + .10*Height/2)  " Bold Italic cFFFFFFFF r4 s" 11*UserScale, Font)
 							Else
-								gdip_TextToGraphics(G, unitCount, "x"(DestX + .5*Width + .4*Width/2) "y"(DestY + .15*Height/2)  " Bold Italic cFFFFFFFF r4 s" 9*UserScale, Font)
+								gdip_TextToGraphics(G, unitCount, "x"(DestX + .5*Width + .3*Width/2) "y"(DestY + .10*Height/2)  " Bold Italic cFFFFFFFF r4 s" 11*UserScale, Font)
 							aEnemyUnitConstruction[slot_number, priority].remove(unit, "")
 					}
 
@@ -9927,9 +9894,9 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 						Gdip_DrawImage(G, pBitmap, DestX, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
 						Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, DestX + .6*Width, DestY, Width/2.5, Height/2.5, 5)
 						if (unitCount >= 10)
-							gdip_TextToGraphics(G, unitCount, "x"(DestX + .5*Width + .3*Width/2) "y"(DestY + .15*Height/2)  " Bold Italic cFFFFFFFF r4 s" 9*UserScale, Font)
+							gdip_TextToGraphics(G, unitCount, "x"(DestX + .5*Width + .16*Width/2) "y"(DestY + .10*Height/2)  " Bold Italic cFFFFFFFF r4 s" 11*UserScale, Font)
 						Else
-							gdip_TextToGraphics(G, unitCount, "x"(DestX + .5*Width + .4*Width/2) " y"(DestY + .15*Height/2)  " Bold Italic cFFFFFFFF r4 s" 9*UserScale, Font)
+							gdip_TextToGraphics(G, unitCount, "x"(DestX + .5*Width + .3*Width/2) " y"(DestY + .10*Height/2)  " Bold Italic cFFFFFFFF r4 s" 11*UserScale, Font)
 						
 						if (!aUnitInfo[unit, "isStructure"] && SplitUnitPanel)
 						{
@@ -9964,7 +9931,7 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 					if (item.count > 1) ; This is for nukes - think its the only upgrade which can have a count > 1
 					{
 						Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, UpgradeX + .6*Width, destUpgradesY, Width/2.5, Height/2.5, 5)
-						gdip_TextToGraphics(G, item.count, "x"(UpgradeX + .5*Width + .4*Width/2) "y"(destUpgradesY + .15*Height/2)  " Bold Italic cFFFFFFFF r4 s" 9*UserScale, Font)
+						gdip_TextToGraphics(G, item.count, "x"(UpgradeX + .5*Width + .4*Width/2) "y"(destUpgradesY + .15*Height/2)  " Bold Italic cFFFFFFFF r4 s" 11*UserScale, Font)
 					}
 ;					Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, DestX, destUpgradesY+5+Height, Width, Height/10, 3)
 ;					Gdip_FillRoundedRectangle(G, a_pBrushes.Green, DestX, destUpgradesY+5+Height, Width*progress, Height/10, progress < 3 ? progress : 3)
@@ -9988,8 +9955,15 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 	WindowHeight := DestY + 4*Height
 	WindowWidth += width *2 ; because x begins on the left side of where the icon is drawn hence need to add 1 extra icon width to maximum width
 
+	; if width/height is > desktop size, updatelayerd window fails and nothing gets drawn
+	DesktopScreenCoordinates(Xmin, Ymin, Xmax, Ymax)
+	if (WindowWidth > Xmax)
+		WindowWidth := Xmax
+	if (WindowHeight > Ymax)
+		WindowHeight := Ymax
+
 	Gdip_DeleteGraphics(G)
-	UpdateLayeredWindow(hwnd1, hdc,,,WindowWidth,WindowHeight, overlayMatchTransparency)
+	UpdateLayeredWindow(hwnd1, hdc,,, WindowWidth, WindowHeight, overlayMatchTransparency)
 	SelectObject(hdc, obm)
 	DeleteObject(hbm)
 	DeleteDC(hdc)

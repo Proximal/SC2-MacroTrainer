@@ -429,6 +429,19 @@ getMapTop()
 	return ReadMemory(O_mTop, GameIdentifier) / 4096
 }
 
+IsInControlGroup(group, unitIndex)
+{
+	count := getControlGroupCount(Group)
+	ReadRawMemory(B_CtrlGroupOneStructure + S_CtrlGroup * (group - 1), GameIdentifier, Memory,  O_scUnitIndex + count * S_scStructure)
+	loop, % count 
+	{
+		if (unitIndex = (NumGet(Memory, O_scUnitIndex + (A_Index - 1) * S_scStructure, "UInt") >> 18))		
+			Return 1
+	}
+	Return 0	
+}
+
+/*
 isInControlGroup(group, unit) 
 {	; group# = 1, 2,3-0  
 	global  
@@ -437,6 +450,7 @@ isInControlGroup(group, unit)
 			Return 1	;the unit is in this control group
 	Return 0			
 }	;	ctrl_unit_number := ReadMemory(B_CtrlGroupOneStructure + S_CtrlGroup * (group - 1) + O_scUnitIndex +(A_Index - 1) * S_scStructure, GameIdentifier, 2)/4
+*/
 
 getCtrlGroupedUnitIndex(group, i=0)
 {	global
@@ -3189,7 +3203,7 @@ readConfigFile()
 
 	}
 	IniRead, AG_Delay, %config_file%, %section%, AG_Delay, 0
-
+	IniRead, AGBufferDelay, %config_file%, %section%, AGBufferDelay, 40
 	
 	;[ Volume]
 	section := "Volume"
@@ -3368,7 +3382,7 @@ readConfigFile()
 	IniRead, SplitUnitPanel, %config_file%, %section%, SplitUnitPanel, 1
 	IniRead, DrawUnitUpgrades, %config_file%, %section%, DrawUnitUpgrades, 1
 ;	IniRead, OverlayBackgrounds, %config_file%, %section%, OverlayBackgrounds, 0
-	OverlayBackgrounds := True ; should remove this from 
+	OverlayBackgrounds := False ; should remove this from 
 	IniRead, MiniMapRefresh, %config_file%, %section%, MiniMapRefresh, 300
 	IniRead, OverlayRefresh, %config_file%, %section%, OverlayRefresh, 1000
 	IniRead, UnitOverlayRefresh, %config_file%, %section%, UnitOverlayRefresh, 4500
