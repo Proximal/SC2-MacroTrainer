@@ -3203,8 +3203,9 @@ readConfigFile()
 
 	}
 	IniRead, AG_Delay, %config_file%, %section%, AG_Delay, 0
-	IniRead, AGBufferDelay, %config_file%, %section%, AGBufferDelay, 40
+	IniRead, AGBufferDelay, %config_file%, %section%, AGBufferDelay, 50
 	IniRead, AGKeyReleaseDelay, %config_file%, %section%, AGKeyReleaseDelay, 120
+	IniRead, AGRestrictBufferDelay, %config_file%, %section%, AGRestrictBufferDelay, 90
 	
 	; hotkeys
 	aAGHotkeys := []
@@ -3212,7 +3213,9 @@ readConfigFile()
 	{
 		group := A_index -1
 		IniRead, AGAddToGroup%group%, %config_file%, %section%, AGAddToGroup%group%, +%group%
-		aAGHotkeys[group] := AGAddToGroup%group%
+		IniRead, AGSetGroup%group%, %config_file%, %section%, AGSetGroup%group%, ^%group%
+		aAGHotkeys["add", group] := AGAddToGroup%group%
+		aAGHotkeys["set", group] := AGSetGroup%group%
 	}		
 
 

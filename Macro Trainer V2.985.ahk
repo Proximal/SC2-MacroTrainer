@@ -1096,7 +1096,7 @@ Auto_Group:
 	Return
 
 AutoGroup(byref A_AutoGroup, AGDelay = 0)
-{ 	global GameIdentifier, aButtons, AGBufferDelay, AGKeyReleaseDelay
+{ 	global GameIdentifier, aButtons, AGBufferDelay, AGKeyReleaseDelay, aAGHotkeys
 	static PrevSelectedUnits, SelctedTime
 	
 	; needed to ensure the function running again while it is still running
@@ -1127,11 +1127,11 @@ AutoGroup(byref A_AutoGroup, AGDelay = 0)
 				}
 				If !isInControlGroup(Player_Ctrl_Group, unit.UnitIndex)  ; add to said ctrl group If not in group
 				{
-					if (Player_Ctrl_GroupSet = "")
-						Player_Ctrl_GroupSet := Player_Ctrl_Group
+					if (controlGroup = "")
+						controlGroup := Player_Ctrl_Group
 					else 
 					{
-						if (Player_Ctrl_GroupSet != Player_Ctrl_Group)
+						if (controlGroup != Player_Ctrl_Group)
 						{
 							WrongUnit := 1
 							break, 2
@@ -1153,7 +1153,7 @@ AutoGroup(byref A_AutoGroup, AGDelay = 0)
 		PrevSelectedUnits := CurrentlySelected
 		SelctedTime := A_Tickcount
 	}
-	if (A_Tickcount - SelctedTime >= AGDelay) && oSelection.Count && !WrongUnit  && (CtrlType_i = SelectedTypes) && (Player_Ctrl_GroupSet <> "") && WinActive(GameIdentifier) && !isGamePaused() ; note <> "" as there is group 0! cant use " Player_Ctrl_GroupSet "
+	if (A_Tickcount - SelctedTime >= AGDelay) && oSelection.Count && !WrongUnit  && (CtrlType_i = SelectedTypes) && (controlGroup <> "") && WinActive(GameIdentifier) && !isGamePaused() ; note <> "" as there is group 0! cant use " controlGroup "
 	&& !isMenuOpen() && !checkAllKeyStates() && !readModifierState() && MT_InputIdleTime() >= AGKeyReleaseDelay
 	{			
 		critical, 1000
@@ -1166,7 +1166,7 @@ AutoGroup(byref A_AutoGroup, AGDelay = 0)
 
 			if (CurrentlySelected = PostDelaySelected && !checkAllKeyStates())
 			{
-				input.pSend("+" Player_Ctrl_GroupSet)
+				input.pSend(aAGHotkeys.Add[controlGroup])
 				sleepOnExit := True
 				settimer, AutoGroupIdle, Off
 				settimer, Auto_Group, Off				
@@ -1196,18 +1196,40 @@ Return
 
 LimitGroup(byref UnitList, Hotkey)
 { 
+	global aAGHotkeys, AGRestrictBufferDelay
 	; CtrlList := "" ;if unit type not in listt add to it - give count of list type
 	critical 1000
-	dsleep(100)
-
-	group := substr(Hotkey, 0)
-	If (ID_List := UnitList[group]) ; ie not blank
+	for group, addhotkey in aAGHotkeys.Add
 	{
-		loop, % getSelectionCount()		;loop thru the units in the selection buffer
+		if (Hotkey = addhotkey)
 		{
-			type := getUnitType(getSelectedUnitIndex(A_Index - 1)) 					;note no -1 (as ctrl index starts at 0)
-			if type NOT in %ID_List%
-				Return
+			found := True 
+			break 
+		}	
+	}
+	if !found 
+	{
+		for group, addhotkey in aAGHotkeys.Set
+		{
+			if (Hotkey = addhotkey)
+			{
+				found := True 
+				break 
+			}	
+		}
+	}
+
+	if found 
+	{
+		dsleep(AGRestrictBufferDelay)
+		If (ID_List := UnitList[group]) ; ie not blank
+		{
+			loop, % getSelectionCount()		;loop thru the units in the selection buffer
+			{
+				type := getUnitType(getSelectedUnitIndex(A_Index - 1)) 					;note no -1 (as ctrl index starts at 0)
+				if type NOT in %ID_List%
+					Return
+			}
 		}
 	}
 	;input.hookBlock(True, True)
@@ -1217,7 +1239,7 @@ LimitGroup(byref UnitList, Hotkey)
 	;if sleep
 	;	dSleep(10) 
 	
-	input.pReleaseKeys()
+	input.pReleaseKeys(True)
 	input.pSend(Hotkey)
 	Input.revertKeyState()
 	Return
@@ -2393,14 +2415,15 @@ ini_settings_write:
 	IniWrite, %AG_Delay%, %config_file%, %section%, AG_Delay
 	IniWrite, %AGBufferDelay%, %config_file%, %section%, AGBufferDelay
 	IniWrite, %AGKeyReleaseDelay%, %config_file%, %section%, AGKeyReleaseDelay
+	IniWrite, %AGRestrictBufferDelay%, %config_file%, %section%, AGRestrictBufferDelay
 
 	; hotkeys
 	loop 10 
 	{
 		group := A_index -1
-		IniWrite, AGAddToGroup%group%, %config_file%, %section%, AGAddToGroup%group%
+		IniWrite, % AGAddToGroup%group%, %config_file%, %section%, AGAddToGroup%group%
+		IniWrite, % AGSetGroup%group%, %config_file%, %section%, AGSetGroup%group%
 	}		
-
 
 	;[Advanced Auto Inject Settings]
 	IniWrite, %auto_inject_sleep%, %config_file%, Advanced Auto Inject Settings, auto_inject_sleep
@@ -3456,7 +3479,7 @@ IfWinExist, Macro Trainer V%ProgramVersion% Settings
 		Gui, Font, s10 BOLD
 		Gui, add, text, x+25 y+12 w380,Auto Unit Grouping
 		Gui, Font, s10 norm
-		Gui, add, text, xp y+15 w380,This function will add (shift + control group) selected units to their preselected control groups, providing:`n`n• One of the selected units in not in said control group.`n• All of the selected units 'belong'  in this control group.`n`nUnits are added after the control, shift, alt, && windows keys have been released.
+		Gui, add, text, xp y+15 w380,This function will add (shift + control group) selected units to their preselected control groups, providing:`n`n• One of the selected units in not in said control group.`n• All of the selected units 'belong'  in this control group.`n`nUnits are added after all keys/buttons have been released.
 		Gui, Font, s10 BOLD
 		Gui, add, text, y+15 w380,Restrict Unit Grouping
 		Gui, Font, s10 norm
@@ -3467,21 +3490,27 @@ IfWinExist, Macro Trainer V%ProgramVersion% Settings
 		Gui, add, text, xp+50 yp w340, Auto and Restrict Unit grouping functions are not exclusive, i.e. they can be used together or alone!
 		Gui, Font, s9 norm
 	Gui, Tab, Delays
-		Gui, Add, Text, x+25 y+35 section w90, Delay (ms):
-		Gui, Add, Edit, Number Right x+20 yp-2 w45 vTT_AGDelay 
-		Gui, Add, UpDown,  Range0-1500 vAG_Delay, %AG_Delay%
+		Gui, Add, GroupBox, x+25 Y+25 w175 h165 section, Auto Grouping
+			Gui, Add, Text, xs+10 ys+35 w90, Delay (ms):
+			Gui, Add, Edit, Number Right x+20 yp-2 w45 vTT_AGDelay 
+			Gui, Add, UpDown,  Range0-1500 vAG_Delay, %AG_Delay%
 
-		Gui, Add, Text, xs y+35 w90, Key Release Delay (ms):
-		Gui, Add, Edit, Number Right x+20 yp-2 w45 vTT_AGKeyReleaseDelay
-		Gui, Add, UpDown,  Range50-700 vAGKeyReleaseDelay , %AGKeyReleaseDelay%
-		
-		Gui, Add, Text, xs y+25 w90, Safety Buffer (ms):
-		Gui, Add, Edit, Number Right x+20 yp-2 w45 vTT_AGBufferDelay 
-		Gui, Add, UpDown,  Range40-290 vAGBufferDelay , %AGBufferDelay%
-	
+			Gui, Add, Text, xs+10 y+35 w90, Key Release Delay (ms):
+			Gui, Add, Edit, Number Right x+20 yp-2 w45 vTT_AGKeyReleaseDelay
+			Gui, Add, UpDown,  Range50-700 vAGKeyReleaseDelay , %AGKeyReleaseDelay%
+			
+			Gui, Add, Text, xs+10 y+25 w90, Safety Buffer (ms):
+			Gui, Add, Edit, Number Right x+20 yp-2 w45 vTT_AGBufferDelay 
+			Gui, Add, UpDown,  Range40-290 vAGBufferDelay , %AGBufferDelay%
+
+		Gui, Add, GroupBox, xs+205 ys w175 h165 section, Restrict Grouping
+			Gui, Add, Text, xs+10 ys+35 w90, Safety Buffer (ms):
+			Gui, Add, Edit, Number Right x+20 yp-2 w45 vTT_AGRestrictBufferDelay 
+			Gui, Add, UpDown,  Range40-290 vAGRestrictBufferDelay , %AGRestrictBufferDelay%
+			
 	Gui, Tab, HotKeys
 
-	Gui, Add, GroupBox, x+35 Y+30 w180 h380 section, Add To Control Group Hotkeys
+	Gui, Add, GroupBox, x+25 Y+25 w175 h380 section, Add To Control Group Hotkeys
 	loop 10 
 	{
 		group := A_index -1
@@ -3491,7 +3520,18 @@ IfWinExist, Macro Trainer V%ProgramVersion% Settings
 			Gui, Add, Text, xs+20 y+15 w10, %group%
 		Gui, Add, Edit, Readonly yp-2 x+15 w65 center vAGAddToGroup%group%, % AGAddToGroup%group%
 			Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#AGAddToGroup%group%,  Edit
+	}
 
+	Gui, Add, GroupBox, xs+205 Ys w175 h380 section, Set Control Group Hotkeys
+	loop 10 
+	{
+		group := A_index -1
+		if (A_index = 1)
+			Gui, Add, Text, xs+20 ys+30 w10, %group%
+		else 
+			Gui, Add, Text, xs+20 y+15 w10, %group%
+		Gui, Add, Edit, Readonly yp-2 x+15 w65 center vAGSetGroup%group%, % AGSetGroup%group%
+			Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#AGSetGroup%group%,  Edit
 	}
 
 
@@ -4273,7 +4313,7 @@ IfWinExist, Macro Trainer V%ProgramVersion% Settings
 	#ResetPixelColour_TT := "Resets the pixel colour and variance to their default settings."
 	#FindPixelColour_TT := "This sets the pixel colour for your exact system."
 	AM_MiniMap_PixelVariance_TT := TT_AM_MiniMap_PixelVariance_TT := "A match will result if  a pixel's colour lies within the +/- variance range.`n`nThis is a percent value 0-100%"
-	TT_AGDelay_TT := AG_Delay_TT := "The program will wait this period of time before adding the select units to a control group.`nUse this if you want the function to look more 'human'.`n`nNote: This may increase the likelihood of miss-grouping units (especially on slow computers or during large battles with high APM)."
+	TT_AGDelay_TT := AG_Delay_TT := "The program will wait this period of time before adding the selected units to a control group.`nUse this if you want the function to look more 'human'.`n`nNote: This probably increases the likelihood of miss-grouping units (especially on slow computers or during large battles with high APM)."
 	TT_AGKeyReleaseDelay_TT := AGKeyReleaseDelay_TT := "An auto-group attempt will not occur until after all the keys have been released for this period of time."
 			. "`n`nThis helps increase the robustness of the function."
 			. "`nIf incorrect groupings are occurring, you can try increasing this value."
@@ -4283,6 +4323,18 @@ IfWinExist, Macro Trainer V%ProgramVersion% Settings
 			. "`nIf incorrect groupings are occurring, you can try increasing this value."
 			. "`nValid values are: 40-290 ms"
 
+	TT_AGRestrictBufferDelay_TT := AGRestrictBufferDelay_TT := "When a 'restrict grouping' action is performed user input will be buffered for this period of time, I.E. button presses and mouse movements`nwill be delayed during this period."
+			. "`n`nThis helps ensure the currently selected units are ones which should be grouped."
+			. "`nIf incorrect groupings are occurring, you can try increasing this value."
+			. "`nValid values are: 40-290 ms"
+
+
+	Loop, 10
+	{
+		group := A_Index - 1
+		AGAddToGroup%group%_TT := #AGAddToGroup%group%_TT := "The SC2 hotkey used to ADD units to control group " group "`n`nThis is usually Shift + " group
+		AGSetGroup%group%_TT := #AGSetGroup%group%_TT := "The SC2 hotkey used to set the current unit selection to control group " group "`n`nThis is usually Control + " group
+	}
 
 
 	TempHideMiniMapKey_TT := #TempHideMiniMapKey_TT := "This will disable the minimap overlay for three seconds,`nthereby allowing you to determine if you legitimately have vision of a unit or building."
@@ -7711,13 +7763,14 @@ CreateHotkeys()
 		}
 	}
 		
-	while (10 > i := A_index - 1)
+	while (10 > group := A_index - 1)
 	{
-		if A_UnitGroupSettings["LimitGroup", aLocalPlayer["Race"], i, "Enabled"] 
+		if A_UnitGroupSettings["LimitGroup", aLocalPlayer["Race"], group, "Enabled"] 
 		{
-			hotkey, ^%i%, g_LimitGrouping, on
-			hotkey, +%i%, g_LimitGrouping, on
-			hotkey, ^+%i%, g_LimitGrouping, on
+			
+			try hotkey, % aAGHotkeys.Add[group], g_LimitGrouping, on
+			try hotkey, % aAGHotkeys.Set[group], g_LimitGrouping, on
+			;hotkey, ^+%i%, g_LimitGrouping, on
 		}
 	}
 	Hotkey, If
@@ -7803,12 +7856,12 @@ disableAllHotkeys()
 					try hotkey, % object.hotkey, off
 			}
 		}
-		while (10 > i := A_index - 1)
+		while (10 > group := A_index - 1)
 		{
-			try hotkey, ^%i%, off
-			try hotkey, +%i%, off
-			try hotkey, ^+%i%, off
-		}			
+			try hotkey, % aAGHotkeys.Add[group], off
+			try hotkey, % aAGHotkeys.Set[group], off
+		}	
+
 	Hotkey, If
 	return 
 }
