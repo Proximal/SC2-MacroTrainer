@@ -3204,7 +3204,18 @@ readConfigFile()
 	}
 	IniRead, AG_Delay, %config_file%, %section%, AG_Delay, 0
 	IniRead, AGBufferDelay, %config_file%, %section%, AGBufferDelay, 40
+	IniRead, AGKeyReleaseDelay, %config_file%, %section%, AGKeyReleaseDelay, 120
 	
+	; hotkeys
+	aAGHotkeys := []
+	loop 10 
+	{
+		group := A_index -1
+		IniRead, AGAddToGroup%group%, %config_file%, %section%, AGAddToGroup%group%, +%group%
+		aAGHotkeys[group] := AGAddToGroup%group%
+	}		
+
+
 	;[ Volume]
 	section := "Volume"
 	IniRead, speech_volume, %config_file%, %section%, speech, 100

@@ -1096,7 +1096,7 @@ Auto_Group:
 	Return
 
 AutoGroup(byref A_AutoGroup, AGDelay = 0)
-{ 	global GameIdentifier, aButtons, AGBufferDelay
+{ 	global GameIdentifier, aButtons, AGBufferDelay, AGKeyReleaseDelay
 	static PrevSelectedUnits, SelctedTime
 	
 	; needed to ensure the function running again while it is still running
@@ -1154,7 +1154,7 @@ AutoGroup(byref A_AutoGroup, AGDelay = 0)
 		SelctedTime := A_Tickcount
 	}
 	if (A_Tickcount - SelctedTime >= AGDelay) && oSelection.Count && !WrongUnit  && (CtrlType_i = SelectedTypes) && (Player_Ctrl_GroupSet <> "") && WinActive(GameIdentifier) && !isGamePaused() ; note <> "" as there is group 0! cant use " Player_Ctrl_GroupSet "
-	&& !isMenuOpen() && !checkAllKeyStates() && !readModifierState() && MT_InputIdleTime() >= 120
+	&& !isMenuOpen() && !checkAllKeyStates() && !readModifierState() && MT_InputIdleTime() >= AGKeyReleaseDelay
 	{			
 		critical, 1000
 		if !(input.pReleaseKeys(True))
@@ -2392,6 +2392,15 @@ ini_settings_write:
 	}
 	IniWrite, %AG_Delay%, %config_file%, %section%, AG_Delay
 	IniWrite, %AGBufferDelay%, %config_file%, %section%, AGBufferDelay
+	IniWrite, %AGKeyReleaseDelay%, %config_file%, %section%, AGKeyReleaseDelay
+
+	; hotkeys
+	loop 10 
+	{
+		group := A_index -1
+		IniWrite, AGAddToGroup%group%, %config_file%, %section%, AGAddToGroup%group%
+	}		
+
 
 	;[Advanced Auto Inject Settings]
 	IniWrite, %auto_inject_sleep%, %config_file%, Advanced Auto Inject Settings, auto_inject_sleep
@@ -3404,7 +3413,7 @@ IfWinExist, Macro Trainer V%ProgramVersion% Settings
 		;	Gui, Add, Text, X%tmpx% y+85 cRed, Note:
 		;	Gui, Add, Text, x+10 yp+0, If gateways exist, they will be chrono boosted after the warpgates. 
 
-	Gui, Add, Tab2,w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vAutoGroup_TAB, Terran||Protoss|Zerg|Delay|Info	
+	Gui, Add, Tab2,w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vAutoGroup_TAB, Terran||Protoss|Zerg|Delays|Hotkeys|Info	
 	Short_Race_List := "Terr|Prot|Zerg"
 	loop, parse, Short_Race_List, |
 	{
@@ -3457,14 +3466,33 @@ IfWinExist, Macro Trainer V%ProgramVersion% Settings
 		Gui, Font, s10 norm
 		Gui, add, text, xp+50 yp w340, Auto and Restrict Unit grouping functions are not exclusive, i.e. they can be used together or alone!
 		Gui, Font, s9 norm
-	Gui, Tab, Delay
+	Gui, Tab, Delays
 		Gui, Add, Text, x+25 y+35 section w90, Delay (ms):
 		Gui, Add, Edit, Number Right x+20 yp-2 w45 vTT_AGDelay 
 		Gui, Add, UpDown,  Range0-1500 vAG_Delay, %AG_Delay%
+
+		Gui, Add, Text, xs y+35 w90, Key Release Delay (ms):
+		Gui, Add, Edit, Number Right x+20 yp-2 w45 vTT_AGKeyReleaseDelay
+		Gui, Add, UpDown,  Range50-700 vAGKeyReleaseDelay , %AGKeyReleaseDelay%
 		
-		Gui, Add, Text, xs y+35 w90, Safety Buffer (ms):
+		Gui, Add, Text, xs y+25 w90, Safety Buffer (ms):
 		Gui, Add, Edit, Number Right x+20 yp-2 w45 vTT_AGBufferDelay 
 		Gui, Add, UpDown,  Range40-290 vAGBufferDelay , %AGBufferDelay%
+	
+	Gui, Tab, HotKeys
+
+	Gui, Add, GroupBox, x+35 Y+30 w180 h380 section, Add To Control Group Hotkeys
+	loop 10 
+	{
+		group := A_index -1
+		if (A_index = 1)
+			Gui, Add, Text, xs+20 ys+30 w10, %group%
+		else 
+			Gui, Add, Text, xs+20 y+15 w10, %group%
+		Gui, Add, Edit, Readonly yp-2 x+15 w65 center vAGAddToGroup%group%, % AGAddToGroup%group%
+			Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#AGAddToGroup%group%,  Edit
+
+	}
 
 
 	Gui, Add, Tab2,w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vQuickSelect_TAB, Terran||Protoss|Zerg|Info
@@ -4246,6 +4274,17 @@ IfWinExist, Macro Trainer V%ProgramVersion% Settings
 	#FindPixelColour_TT := "This sets the pixel colour for your exact system."
 	AM_MiniMap_PixelVariance_TT := TT_AM_MiniMap_PixelVariance_TT := "A match will result if  a pixel's colour lies within the +/- variance range.`n`nThis is a percent value 0-100%"
 	TT_AGDelay_TT := AG_Delay_TT := "The program will wait this period of time before adding the select units to a control group.`nUse this if you want the function to look more 'human'.`n`nNote: This may increase the likelihood of miss-grouping units (especially on slow computers or during large battles with high APM)."
+	TT_AGKeyReleaseDelay_TT := AGKeyReleaseDelay_TT := "An auto-group attempt will not occur until after all the keys have been released for this period of time."
+			. "`n`nThis helps increase the robustness of the function."
+			. "`nIf incorrect groupings are occurring, you can try increasing this value."
+			. "`nValid values are: 50-700 ms"
+	TT_AGBufferDelay_TT := AGBufferDelay_TT := "When an auto-group action is attempted user input will be buffered for this period of time, I.E. button presses and mouse movements`nwill be delayed during this period."
+			. "`n`nThis helps ensure the currently selected units are ones which should be grouped."
+			. "`nIf incorrect groupings are occurring, you can try increasing this value."
+			. "`nValid values are: 40-290 ms"
+
+
+
 	TempHideMiniMapKey_TT := #TempHideMiniMapKey_TT := "This will disable the minimap overlay for three seconds,`nthereby allowing you to determine if you legitimately have vision of a unit or building."
 	
 
@@ -6486,7 +6525,7 @@ autoWorkerProductionCheck()
 		|| getkeystate("Shift") || getkeystate("Shift", "P") ; so user can prevent auto-worker when wanting to build something 	
 		|| getkeystate("Enter") 
 		|| getPlayerCurrentAPM() > AutoWorkerAPMProtection
-		||  MT_InputIdleTime() < 100)
+		||  MT_InputIdleTime() < 50)
 		{
 			if (A_index > 36)
 				return ; (actually could be 480 ms - sleep 1 usually = 20ms)
