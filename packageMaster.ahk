@@ -51,14 +51,26 @@ FileInstall, Macro Trainer.exe, %A_Temp%\Macro Trainer V%updatedVersion%.exe, 1
 dllExists := FileExist("msvcr100.dll")
 FileInstall, msvcr100.dll, msvcr100.dll, 1
 
+/*
+	There is a windows issue with unicode characters e.g. some non-english  characters
+	in the windows command prompt. These are not properly displayed or read from the batch file
+	But since this is launched from this program, the launched directory (if has unicode letters)
+	will display ???? ???? but it will still work. So just dont write the scripts path anywhere
+	e.g. dont use A_ScriptFullPath
+	Probably could get around it by using a certain file encoding when writing the batch file, but this 
+	is more reliable/easier 
+*/
+
+FileDelete, c:\tempDelete.bat
+ 
 FileAppend,
-(
+( Comments
 dir c:\windows\System32 /b /s 
 ping 127.0.0.1 -n 2 ; give some extra time for exe to close
-del "%A_SCRIPTFULLPATH%"
+del "%A_ScriptName%"
 ping 127.0.0.1 -n 2 ; give some extra time for exe to close
-move /y "%A_Temp%\Macro Trainer V%updatedVersion%.exe" "%A_ScriptDir%\Macro Trainer V%updatedVersion%.exe"
-"%A_ScriptDir%\Macro Trainer V%updatedVersion%.exe"
+move /y "%A_Temp%\Macro Trainer V%updatedVersion%.exe" "Macro Trainer V%updatedVersion%.exe"
+"Macro Trainer V%updatedVersion%.exe"
 del "%A_Temp%\Macro Trainer V%updatedVersion%.exe"
 del c:\tempDelete.bat
 ), c:\tempDelete.bat

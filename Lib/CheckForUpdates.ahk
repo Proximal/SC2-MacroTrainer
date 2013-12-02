@@ -1,14 +1,26 @@
-CheckForUpdates(installed_version, url)
+CheckForUpdates(installed_version, byRef latestVersion, url)
 {
-	global latestVersion
 	latestVersion := ""
-	URLDownloadToFile, %url%, %A_Temp%\version_checker_temp_file.txt
+	URLDownloadToFile, %url%, %A_Temp%\version_checker_temp_file.ini
 	if !ErrorLevel 
 	{	
-		FileRead latestVersion, %A_Temp%\version_checker_temp_file.txt
-		FileDelete %A_Temp%\version_checker_temp_file.txt
-		If (latestVersion > installed_version)
-			Return 1 ; update exist
+		IniRead, latestVersion, %A_Temp%\version_checker_temp_file.ini, info, currentVersion, %installed_version%
+		IniRead, zipURL, %A_Temp%\version_checker_temp_file.ini, info, zipURL, 0
+		FileDelete %A_Temp%\version_checker_temp_file.ini
+		If (latestVersion > installed_version && zipURL)
+			Return url ; update exist
 	}
+	latestVersion := installed_version ; incase there was an error
+	FileDelete %A_Temp%\version_checker_temp_file.ini
 	Return 0 ; no update or error
 }
+
+
+/*
+	Reads an ini file with the following keys
+
+[info]
+currentVersion=2.95
+zipURL=http://www.xyz.com/file.zip
+
+*/

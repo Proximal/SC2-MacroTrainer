@@ -137,9 +137,10 @@ start:
 global config_file := "MT_Config.ini"
 old_backup_DIR := "Old Macro Trainers"
 url := []
-url.vr := "http://www.users.on.net/~jb10/macro_trainer_version.txt"
+url.CurrentVersionInfo := "http://www.users.on.net/~jb10/macroTrainerCurrentVersion.ini"
 url.changelog := "http://www.users.on.net/~jb10/MT_ChangeLog.html"
 url.HelpFile := "http://www.users.on.net/~jb10/MTSite/helpfulAdvice.html"
+url.Downloads := "http://www.users.on.net/~jb10/MTSite/downloads.html"
 url.ChronoRules := "http://www.users.on.net/~jb10/MTSite/chronoBoost.html"
 url.Homepage := "http://www.users.on.net/~jb10/MTSite/overview.html"
 url.buyBeer := "http://www.users.on.net/~jb10/MTSite/buyBeer.html"
@@ -218,7 +219,7 @@ InstallSC2Files()
 CreatepBitmaps(a_pBitmap, aUnitID)
 aUnitInfo := []
 
-If (auto_update AND A_IsCompiled AND CheckForUpdates(ProgramVersion, url.vr ))
+If (auto_update AND A_IsCompiled AND url.UpdateZip := CheckForUpdates(ProgramVersion, latestVersion, url.CurrentVersionInfo))
 {
 ;	changelog_text := Url2Var(url.changelog)
 	Gui, New
@@ -2152,7 +2153,7 @@ TrayUpdate:
 	{	WinActivate
 		Return 					
 	}
-	IF (CheckForUpdates(ProgramVersion, url.vr ))
+	IF (url.UpdateZip := CheckForUpdates(ProgramVersion, latestVersion, url.CurrentVersionInfo))
 	{
 ;		changelog_text := Url2Var(url.changelog)
 		Gui, New
@@ -2198,27 +2199,60 @@ TrayUpdate:
 	}
 Update:
 	; latestVersion is a global variable set by the checkforupdate()
-	EXE_url := "http://www.users.on.net/~jb10/Macro Trainer V" latestVersion ".exe"
-	save := "Macro Trainer V" latestVersion ".exe"
-	If ( InternetFileRead( binData, EXE_url ) > 0 && !ErrorLevel )
-	If VarZ_Save( binData, save ) 
+	updateSave := "MacroTrainer" latestVersion ".zip"
+	If ( InternetFileRead( binData, url.UpdateZip) > 0 && !ErrorLevel )
 	{
-		Sleep 200
-		DLP(1,1,"Download Complete") ; 1 file of 1 with message on complete
-		MsgBox, 262145, Update, Download complete.`n`nClick Ok to run the latest version (Vr %latestVersion%)`nClick cancel to continue running this version.
-		IfMsgBox Ok ;msgbox 1 = ok/cancel buttons
-		{	
-			FileCreateDir, %old_backup_DIR%
-			FileMove, %A_ScriptName%, %old_backup_DIR%\%A_ScriptName%, 1 ;ie 1 = overwrite	
-			Run %save%	
-			ExitApp
+		If VarZ_Save( binData, save ) 
+		{
+			Sleep 200
+			DLP(1,1,"Download Complete") ; 1 file of 1 with message on complete
+			if !FileExist(updateSave)
+				goto updateErrorExit
+			extractDir := A_ScriptDir "\MTUpdateFiles"
+			SmartZip(updateSave, extractDir, 4|16) ; no dialogue and yes to all
+
+			; find the name of the included exe
+			; normally just trainer exe and dll in zip file
+			launchExe := launchSize := ""
+			loop, %extractDir% "\Macro*.exe "
+			{
+				launchExe := A_LoopFileName 
+				launchSize := A_LoopFileSizeMB
+			}
+			FileDelete, %updateSave%
+			if (!launchExe || !launchSize)
+			{
+				FileRemoveDir, %extractDir%, 1 ; recursive
+				goto updateErrorExit
+			}
+			; Due to this file move and files must be in root directory of the unzipped folder
+			FileMove, %extractDir%\*.*, %A_ScriptDir%\*.*, 1
+			FileRemoveDir, %extractDir%, 1 ; recursive
+			if !FileExist(launchExe)
+				goto updateErrorExit
+
+			MsgBox, 262145, Update, Download complete.`n`nClick OK to run the latest version (Vr %latestVersion%)`nClick cancel to continue running this version.
+			IfMsgBox Ok ;msgbox 1 = ok/cancel buttons
+			{	
+				FileCreateDir, %old_backup_DIR%
+				FileMove, %A_ScriptName%, %old_backup_DIR%\%A_ScriptName%, 1 ;ie 1 = overwrite	
+				Run %launchExe%	
+				ExitApp
+			}
+			Else	
+				DLP(False) ;removes the progress
+			FileCopy, %A_ScriptName%, %old_backup_DIR%\%A_ScriptName%, 1
 		}
-		Else	DLP( False ) ;removes the progress
-		FileCopy, %A_ScriptName%, %old_backup_DIR%\%A_ScriptName%, 1
 	}
+	else goto updateErrorExit
 	Return
 
-	
+updateErrorExit:
+	msgbox, 262145, Update Error, An error has occured.`n`nPress OK to launch the trainer website in your browser to manually download the update. 
+	IfMsgBox Ok
+		run % url.Downloads
+return 
+
 ;------------
 ;	Startup/Reading the ini file
 ;------------
@@ -2804,7 +2838,7 @@ IfWinExist, Macro Trainer V%ProgramVersion% Settings
 ; gui variables 
 ; because there computer was to slow to load the gui window the first time
 
-;try 
+try 
 {
 	Gui, Options:New
 	gui, font, norm s9	;here so if windows user has +/- font size this standardises it. But need to do other menus one day
