@@ -1284,8 +1284,6 @@ Cast_DisableInject:
 	}
 	Return
 
-
-
 ;	5/9/13
 ;	Now using postMessage to send clicks. Note, not going to block or revert key states for the user invoked
 ;	one-button inject. As Users may have really high internal sleep times which could cause the installed hooks to 
@@ -1301,7 +1299,7 @@ cast_inject:
 	Thread, NoTimers, true  ;cant use critical with input buffer, as prevents hotkey threads launching and hence tracking input				
 	MouseGetPos, start_x, start_y
 	input.hookBlock(True, True)
-	if clipboard := input.releaseKeys(True)
+	if input.releaseKeys(True)
 		dsleep(20)
 	castInjectLarva(auto_inject, 0, auto_inject_sleep) ;ie nomral injectmethod
 	If HumanMouse
@@ -1349,9 +1347,9 @@ cast_ForceInject:
 					While getkeystate("Enter") 
 					|| isUserBusyBuilding() || isCastingReticleActive() 
 					|| getPlayerCurrentAPM() > FInjectAPMProtection
-					||  MT_InputIdleTime() < 100
+					||  MT_InputIdleTime() < 70
 					{
-						if (A_TickCount - startInjectWait > 500)
+						if (A_TickCount - startInjectWait > 1000)
 							return
 						Thread, Priority, -2147483648
 						sleep 1
@@ -4347,7 +4345,7 @@ try
 	#ResetPixelColour_TT := "Resets the pixel colour and variance to their default settings."
 	#FindPixelColour_TT := "This sets the pixel colour for your exact system."
 	AM_MiniMap_PixelVariance_TT := TT_AM_MiniMap_PixelVariance_TT := "A match will result if  a pixel's colour lies within the +/- variance range.`n`nThis is a percent value 0-100%"
-	TT_AGDelay_TT := AG_Delay_TT := "The program will wait this period of time before adding the selected units to a control group.`nUse this if you want the function to look more 'human'.`n`nNote: This probably increases the likelihood of miss-grouping units (especially on slow computers or during large battles with high APM)."
+	TT_AGDelay_TT := AG_Delay_TT := "The program will wait this period of time before adding the selected units to a control group.`nUse this if you want the function to look more 'human'.`n`nNote: Values greater than 0 probably the increase likelihood of miss-grouping units (especially on slow computers or during large battles with high APM)."
 	TT_AGKeyReleaseDelay_TT := AGKeyReleaseDelay_TT := "An auto-group attempt will not occur until after all the keys have been released for this period of time."
 			. "`n`nThis helps increase the robustness of the function."
 			. "`nIf incorrect groupings are occurring, you can try increasing this value."
@@ -8181,9 +8179,9 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 			If HumanMouse
 			{
 				MouseMoveHumanSC2("x" Dx1 "y" Dy1 "t" rand(HumanMouseTimeLo, HumanMouseTimeHi))
-				sendInput {click down}
+				input.pSend("{click down}")
 				MouseMoveHumanSC2("x" Dx2 "y" Dy2 "t" rand(HumanMouseTimeLo, HumanMouseTimeHi))
-				sendInput {click up}
+				input.pSend("{click up}")
 			}
 			Else 
 				input.pSend("{click D " Dx1 " " Dy1 "}{Click U " Dx2 " " Dy2 "}")
@@ -8197,7 +8195,7 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 				If HumanMouse
 				{	click_x += rand((-75/1920)*A_ScreenWidth,(75/1080)*A_ScreenHeight), click_y -= 100+rand((-75/1920)*A_ScreenWidth,(75/1080)*A_ScreenHeight)
 					MouseMoveHumanSC2("x" click_x  "y" click_y "t" rand(HumanMouseTimeLo, HumanMouseTimeHi))
-					sendInput {click Left %click_x%, %click_y%}
+					input.pSend("{click Left " click_x ", " click_y "}")
 				}
 				Else MTClick(click_x, click_y)
 			}

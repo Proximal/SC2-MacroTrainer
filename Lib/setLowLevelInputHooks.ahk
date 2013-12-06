@@ -141,7 +141,6 @@ KeyboardHook(nCode, wParam, lParam)
 	If !nCode ; if this var contains some info about a keyboard event, then process it
 	{
 		MT_InputIdleTime(A_TickCount)
-
 		; Input is blocked and this is a user pressed / released button	
   		if (input.iskeyboardBlocked() && !(NumGet(lParam+8) & 0x10)) ; LLKHF_INJECTED
   			return -1 
@@ -149,6 +148,7 @@ KeyboardHook(nCode, wParam, lParam)
    	Return CallNextHookEx(nCode, wParam, lParam) ; make sure other hooks in the chain receive this event if we didn't process it
 }
 
+	; mouse has different WM_Messages for each down/up event on each button
 MouseHook(nCode, wParam, lParam)
 {
 	Critical 1000
@@ -165,21 +165,19 @@ MouseHook(nCode, wParam, lParam)
 
 KeyboardBlockHook(nCode, wParam, lParam)
 {	
-	static WM_KEYUP := 0x101
 	Critical 1000
 
-	If (!nCode && wParam != WM_KEYUP && !(NumGet(lParam+8) & 0x10)) 
+	If (!nCode && !(NumGet(lParam+8) & 0x10)) 
   		return -1 
    	Return CallNextHookEx(nCode, wParam, lParam) ; make sure other hooks in the chain receive this event if we didn't process it
 }
 
 MouseBlockHook(nCode, wParam, lParam)
 {
-	static WM_KEYUP := 0x101
 	Critical 1000
 	; if this var contains some info about a keyboard event
-	; and its not a key up or LLKHF_INJECTED key or mouse move event
-	If (!nCode && wParam != 0x200 && wParam != WM_KEYUP && !(NumGet(lParam+8) & 0x10))  ;WM_MOUSEMOVE := 0x200
+	; and its LLKHF_INJECTED key or mouse move event
+	If (!nCode && wParam != 0x200 && wParam && !(NumGet(lParam+8) & 0x10))  ;WM_MOUSEMOVE := 0x200
 		return -1
    	Return CallNextHookEx(nCode, wParam, lParam) ; make sure other hooks in the chain receive this event if we didn't process it
 }

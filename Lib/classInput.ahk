@@ -9,6 +9,17 @@
 ; Also note, any AHK command which has an internal sleep (including eg controlsend) will cause AHK to check its msg queue
 ; and the hooks will then process any user pressed key which could interrupt the automation!
 
+
+; I've just realised sendPlay probably performs  exactly the same as my pSendInput :(
+; Though i haven't tested it but it seems that the only difference is it always sends keys to
+; the active window
+; also it wont work on vista and above while UAC is enabled unless you use
+; a script to digitally sign the exe, but then you cant modify the exe as this would
+; invalidate the signature
+
+; I probably wasted ages working on this input function and it wasnt required lol
+; but at least I know how pSend works 
+
 class Input 
 {
 ;	static keys := ["LControl", "RControl", "LAlt", "RAlt", "LShift", "RShift", "LWin", "RWin"
