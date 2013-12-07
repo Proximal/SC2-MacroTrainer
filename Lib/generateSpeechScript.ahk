@@ -5,9 +5,8 @@
 generateSpeechScript()
 {
 	script = 
-	(
+	( Comments 
 		#Persistent
-		global aMessages := []
 		global SAPI := ComObjCreate("SAPI.SpVoice")
 		setAHKVol(AHKVol)
 		{
@@ -28,24 +27,45 @@ generateSpeechScript()
 		;	    DllCall("winmm\waveOutSetVolume", "int", device-1, "uint", v|(v<<16))
 		;	}	
 
+		;	Using timers allows for the function to return immediately even if called via .ahkFunction("speak") 
+		; 	otherwise script is busy while speaking (but will still accept function calls)
+
+			static preSAPIVol, inserting := False, aMessages := []
+			inserting := true
 			aMessages.insert({ "message": message 
 							, "volume": SAPIVol})
-			SetTimer,Speak,-10 ;-1 works too
+			inserting := False
+			SetTimer, Speak, -10 ;-1 works too
 			Return
 
 			Speak:
 				for index, message in aMessages
 				{
-					if (message.volume != preSAPIVol)
-						SAPI.volume := preSAPIVol := message.volume
-					try SAPI.Speak(message.message)
+					if (message != "")
+					{
+						; clear message so it doesn't get re-spoken if there was an insertion
+						aMessages[index] := ""
+						if (message.volume != preSAPIVol)
+							SAPI.volume := preSAPIVol := message.volume
+						try SAPI.Speak(message.message)				
+					}
+
 				}
-				aMessages := []	
+				; Dont clear the object as there was an insertion during the speech
+				if !inserting
+					aMessages := []
 				Return
 		}
 	)
 	return script
 }
+
+
+	; 8/12/13 
+	; I have suspected for a while that some messages were being discarded. 
+	; After testing on my PC the below results are not true and messages are being lost if tspeak is called rapidly
+	; The above code changes seem to work fine
+
 
 		; 	Using an object works well, and allows messages arriving near each other to be 
 		; 	spoken without interfering with each other, that is, the speak function can be called 
