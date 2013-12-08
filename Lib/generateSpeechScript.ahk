@@ -2,88 +2,106 @@
 ; returns a string containing the speech script
 ; to be used by ahktextdll()
 
+; http://msdn.microsoft.com/en-us/library/ee431802(v=vs.85).aspx
+; SAPI.Speak("<pitch absmiddle = '" pitch "'/>",0x20)    ; pitch : param1 from -10 to 10. 0 is default.
+
+/*
+    ; This line returns within .2ms, but if first time creatng com
+    ; then calls to SAPI.Speak are delayed for the next ~110ms
+    SAPI := ComObjCreate("SAPI.SpVoice")
+    SAPI.Rate := 0
+    SAPI.volume := 100
+    SAPI.Speak("this is a very long sentence, laughing not really!", 1)
+
+    When fully initialised (as it normally is)
+    its takes ~4ms to make a speak call, so best to place it in its own thread
+*/
+
 generateSpeechScript()
 {
-	script = 
-	( Comments 
-		#Persistent
-		global SAPI := ComObjCreate("SAPI.SpVoice")
-		setAHKVol(AHKVol)
-		{
-			if A_OSVersion NOT in WIN_XP,WIN_2003,WIN_2000 	; below vista this sets system volume rather than
-			{										; process/program volume
-				v := AHKVol*655.35
-			    DllCall("winmm\waveOutSetVolume", "int", device-1, "uint", v|(v<<16))
-			}	
-			return
-		}
-		speak(message, SAPIVol := 100)
-		{
-		; 	This is commented out, as user can just modify volume via SAPI.
-		;	Also this will prevent the AHK Speech thread showing up in the sound mixer 	
-		;	if A_OSVersion NOT in WIN_XP,WIN_2003,WIN_2000 	; below vista this sets system volume rather than
-		;	{										; process/program volume
-		;		v := AHKVol*655.35
-		;	    DllCall("winmm\waveOutSetVolume", "int", device-1, "uint", v|(v<<16))
-		;	}	
+    script = 
+    ( Comments 
+        #Persistent
+        global SAPI := ComObjCreate("SAPI.SpVoice")
+        setAHKVol(AHKVol)
+        {
+            if A_OSVersion NOT in WIN_XP,WIN_2003,WIN_2000         ; below vista this sets system volume rather than
+            {                                                                                ; process/program volume
+                    v := AHKVol*655.35
+                DllCall("winmm\waveOutSetVolume", "int", device-1, "uint", v|(v<<16))
+            }        
+            return
+        }
+        speak(message, SAPIVol := 100, rate := 0)
+        {
+        ;         This is commented out, as user can just modify volume via SAPI.
+        ;        Also this will prevent the AHK Speech thread showing up in the sound mixer         
+        ;        if A_OSVersion NOT in WIN_XP,WIN_2003,WIN_2000         ; below vista this sets system volume rather than
+        ;        {                                                                                ; process/program volume
+        ;                v := AHKVol*655.35
+        ;            DllCall("winmm\waveOutSetVolume", "int", device-1, "uint", v|(v<<16))
+        ;        }        
 
-		;	Using timers allows for the function to return immediately even if called via .ahkFunction("speak") 
-		; 	otherwise script is busy while speaking (but will still accept function calls)
-
-			static preSAPIVol, inserting := False, aMessages := []
-			inserting := true
-			aMessages.insert({ "message": message 
-							, "volume": SAPIVol})
-			inserting := False
-			SetTimer, Speak, -10 ;-1 works too
-			Return
-
-			Speak:
-				for index, message in aMessages
-				{
-					if (message != "")
-					{
-						; clear message so it doesn't get re-spoken if there was an insertion
-						aMessages[index] := ""
-						if (message.volume != preSAPIVol)
-							SAPI.volume := preSAPIVol := message.volume
-						try SAPI.Speak(message.message)				
-					}
-
-				}
-				; Dont clear the object as there was an insertion during the speech
-				if !inserting
-					aMessages := []
-				Return
-		}
-	)
-	return script
+            if (SAPIVol < 0)
+                SAPIVol := 0
+            else if (SAPIVol > 100)
+                 SAPIVol := 100
+            if (rate < -10)
+                rate := -10
+            else if(rate > 10)
+                rate := 10 
+                               
+                
+            try 
+            {  
+                SAPI.Rate := rate
+                SAPI.volume := SAPIVol
+                SAPI.Speak(message, 1)  ; 1 allows asynchronous, so function returns immediately. This solves all the problems                             
+            }
+            Return
+        }
+    )
+    return script
 }
 
+/*
 
-	; 8/12/13 
-	; I have suspected for a while that some messages were being discarded. 
-	; After testing on my PC the below results are not true and messages are being lost if tspeak is called rapidly
-	; The above code changes seem to work fine
+;some errorcodes
+E_INVALIDARG            = 0x80070057
+NOERROR                 = 0x00000000 
+CO_E_CLASSSTRING        = 0x800401F3 
+REGDB_E_CLASSNOTREG     = 0x80040154 
+REGDB_E_READREGDB       = 0x80040150 
+CLASS_E_NOAGGREGATION   = 0x80040110 
+E_NOINTERFACE           = 0x80004002
+E_POINTER               = 0x80004003
+E_HANDLE                = 0x80070006
+E_ABORT                 = 0x80004004
+E_FAIL                  = 0x80004005
+E_ACCESSDENIED          = 0x80070005
+E_PENDING               = 0x8000000A
 
+E_FAIL = general failure
+*/
 
-		; 	Using an object works well, and allows messages arriving near each other to be 
-		; 	spoken without interfering with each other, that is, the speak function can be called 
-		; 	again and again (with or without delay) and all of the messages will be spoken
+        ; 8/12/13 
+        ; I have suspected for a while that some messages were being discarded. 
+        ; After testing on my PC the messages were being lost if tspeak was called rapidly
+        ; Changing to asynchronous fixed this (should have checked if this method was available ages ago)
 
-/*	Testing
+/*        Testing
 
-	Case 1:
-		loop 30
-			tSpeak(A_index, 100)
-	
-	Case 2:
-		loop 30
-		{
-			tSpeak(A_index, 100)
-			sleep 5
-		}
-	
-	Result: All messages were spoken.
-	
+        Case 1:
+                loop 30
+                        tSpeak(A_index, 100)
+        
+        Case 2:
+                loop 30
+                {
+                        tSpeak(A_index, 100)
+                        sleep 5
+                }
+        
+        Result: All messages were spoken.
+        
 */

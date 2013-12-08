@@ -2866,12 +2866,13 @@ exitApp(ExitCode := 0)
 }
 
 
-tSpeak(Message, SAPIVol := "")
+tSpeak(Message, SAPIVol := "", SAPIRate := "")
 {	global speech_volume, aThreads
 
 	if !SAPIVol
 		SAPIVol := speech_volume
-	aThreads.Speech.ahkPostFunction("speak", Message, SAPIVol)
+
+	aThreads.Speech.ahkPostFunction("speak", Message, SAPIVol, SAPIRate)
 	return
 }
 

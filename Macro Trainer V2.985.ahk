@@ -129,6 +129,7 @@ If 0 ; ignored by script but installed by compiler
 }
 
 Global aThreads := CriticalObject() ; Thread safe object
+;aThreads.Speech := AhkDllThread("Included Files\ahkH\AutoHotkeyMini.dll")
 aThreads.Speech := AhkDllThread("Included Files\ahkH\AutoHotkeyMini.dll")
 aThreads.Speech.ahktextdll(generateSpeechScript())
 
