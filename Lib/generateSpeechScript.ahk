@@ -15,6 +15,7 @@
 
     When fully initialised (as it normally is)
     its takes ~4ms to make a speak call, so best to place it in its own thread
+    Takes 0.008 ms to call when in another thread via postFunction
 */
 
 generateSpeechScript()
@@ -27,7 +28,7 @@ generateSpeechScript()
         {
             if A_OSVersion NOT in WIN_XP,WIN_2003,WIN_2000         ; below vista this sets system volume rather than
             {                                                                                ; process/program volume
-                    v := AHKVol*655.35
+                v := AHKVol*655.35
                 DllCall("winmm\waveOutSetVolume", "int", device-1, "uint", v|(v<<16))
             }        
             return
@@ -41,17 +42,24 @@ generateSpeechScript()
         ;                v := AHKVol*655.35
         ;            DllCall("winmm\waveOutSetVolume", "int", device-1, "uint", v|(v<<16))
         ;        }        
+        ; if volume or rate are outside 0-100 and -10-10 respectively, then will give a runtime error
+        ; when setting rate or volume. (decmials dont give an error)
+        ; but this is suppressed by the try statement anyway and the words are spoken   
 
-            if (SAPIVol < 0)
+            if SAPIVol is not number
+                SAPIVol := 100  
+            else if (SAPIVol < 0)
                 SAPIVol := 0
             else if (SAPIVol > 100)
                  SAPIVol := 100
-            if (rate < -10)
+           
+            if rate is not number
+                rate := 0 ; default
+            else if (rate < -10)
                 rate := -10
             else if(rate > 10)
                 rate := 10 
-                               
-                
+
             try 
             {  
                 SAPI.Rate := rate

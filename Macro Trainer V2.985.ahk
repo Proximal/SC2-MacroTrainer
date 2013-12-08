@@ -129,7 +129,6 @@ If 0 ; ignored by script but installed by compiler
 }
 
 Global aThreads := CriticalObject() ; Thread safe object
-;aThreads.Speech := AhkDllThread("Included Files\ahkH\AutoHotkeyMini.dll")
 aThreads.Speech := AhkDllThread("Included Files\ahkH\AutoHotkeyMini.dll")
 aThreads.Speech.ahktextdll(generateSpeechScript())
 
@@ -513,7 +512,6 @@ if (getSelectionCount() > 1)
 	MTclick(X, Y, "Left", "+")
 }
 return
-
 
 ;	This ReleaseModifiers function needs to wait an additional amount of time, as SC2 can be slow to 
 ;	update its keystate and/or it buffers input/keys for a while. Perhaps checking logical keystate would be better
