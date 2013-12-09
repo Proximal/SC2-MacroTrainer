@@ -2562,6 +2562,7 @@ ini_settings_write:
 	IniWrite, %EnableAutoWorkerProtossStart%, %config_file%, %section%, EnableAutoWorkerProtossStart
 	IniWrite, %ToggleAutoWorkerState_Key%, %config_file%, %section%, ToggleAutoWorkerState_Key
 	IniWrite, %AutoWorkerQueueSupplyBlock%, %config_file%, %section%, AutoWorkerQueueSupplyBlock
+	IniWrite, %AutoWorkerAlwaysGroup%, %config_file%, %section%, AutoWorkerAlwaysGroup
 	IniWrite, %AutoWorkerAPMProtection%, %config_file%, %section%, AutoWorkerAPMProtection
 	IniWrite, %AutoWorkerStorage_T_Key%, %config_file%, %section%, AutoWorkerStorage_T_Key
 	IniWrite, %AutoWorkerStorage_P_Key%, %config_file%, %section%, AutoWorkerStorage_P_Key
@@ -3617,7 +3618,7 @@ try
 
 	Gui, Add, Tab2,w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vAutoWorker_TAB, Auto||Info		
 	Gui, Tab, Auto
-		Gui, Add, Text, x+25 y+35 section, Toggle State:
+		Gui, Add, Text, x+25 y+25 section, Toggle State:
 
 			Gui, Add, Edit, Readonly yp-2 x+10 center w65 vToggleAutoWorkerState_Key gedit_hotkey, %ToggleAutoWorkerState_Key%
 		Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#ToggleAutoWorkerState_Key,  Edit ;have to use a trick eg '#' as cant write directly to above edit var, or it will activate its own label!
@@ -3628,6 +3629,7 @@ try
 
 	;	Gui, Add, Text, xs+220 yp+25 w85, Queue While Supply Blocked:			
 		Gui, Add, Checkbox, xs+220 y+10 vAutoWorkerQueueSupplyBlock Checked%AutoWorkerQueueSupplyBlock%, Queue While Supply Blocked
+		Gui, Add, Checkbox, xp yp+20 vAutoWorkerAlwaysGroup Checked%AutoWorkerAlwaysGroup%, Always group selection **  
 
 		thisXTabX := XTabX + 12
 		Gui, Add, GroupBox, xs Y+10 w370 h150 section, Terran 
@@ -6363,7 +6365,7 @@ autoWorkerProductionCheck()
 	, AutoWorkerMakeWorker_T_Key, AutoWorkerMakeWorker_P_Key, AutoWorkerMaxWorkerTerran, AutoWorkerMaxWorkerPerBaseTerran
 	, AutoWorkerMaxWorkerProtoss, AutoWorkerMaxWorkerPerBaseProtoss, AW_MaxWorkersReached
 	, aResourceLocations, aButtons, EventKeyDelay
-	, AutoWorkerAPMProtection, AutoWorkerQueueSupplyBlock, MT_CurrentGame, aUnitTargetFilter
+	, AutoWorkerAPMProtection, AutoWorkerQueueSupplyBlock, AutoWorkerAlwaysGroup, MT_CurrentGame, aUnitTargetFilter
 	
 	static TickCountRandomSet := 0, randPercent,  UninterruptedWorkersMade, waitForOribtal := 0
 
@@ -6426,7 +6428,7 @@ autoWorkerProductionCheck()
 			{
 				; this is for terran, so if build cc inside base, wont build up to 60 workers even though 2 bases, but just 1 mining
 				for index, geyser in aResourceLocations.geysers
-					if isUnitNearUnit(geyser, object, 7.9) ; also compares z but for 1 map unit ; so if the base is within 8 map units it counts. It seems geyers are generally no more than 7 or 7.5 away
+					if isUnitNearUnit(geyser, object, 7.9) ; also compares z but for 1 map unit ; so if the base is within 8 map units it counts. It seems geysers are generally no more than 7 or 7.5 away
 					{
 						Basecount++ ; for calculating max workers per base
 						break
@@ -6435,16 +6437,17 @@ autoWorkerProductionCheck()
 				if !isWorkerInProduction(object.unitIndex) ; also accounts for if morphing 
 				{
 					; This is used to prevent a worker being made at a CC which has been completed
-					; for less than 20 in game seconds.
-
-					if (!MT_CurrentGame.TerranCCUnderConstructionList[object.unitIndex] 
-					|| (time - MT_CurrentGame.TerranCCUnderConstructionList[object.unitIndex]) > 20)
-						idleBases++
-					else 
+					; for less than 20 in game seconds or a just landed CC for 10 seconds
+				
+					if (MT_CurrentGame.TerranCCUnderConstructionList.HasKey(object.unitIndex) && (time - MT_CurrentGame.TerranCCUnderConstructionList[object.unitIndex]) <= 20)
+					|| (MT_CurrentGame.TerranCCJustLandedList.HasKey(object.unitIndex) && (time - MT_CurrentGame.TerranCCJustLandedList[object.unitIndex]) <= 10)
 					{
 						removeRecentlyCompletedCC := True 
 						aRecentlyCompletedCC.insert(object.unitIndex)
-					}					
+					}	
+					else 
+						idleBases++
+
 				}
 				else 
 				{
@@ -6474,8 +6477,17 @@ autoWorkerProductionCheck()
 			}
 		}
 		else if ( object.type = aUnitID["CommandCenterFlying"] || object.type = aUnitID["OrbitalCommandFlying"] )
-		&& !isUnderConstruction(object.unitIndex) 
+		{
 			Basecount++ 	; so it will (account for flying base) and keep making workers at other bases if already at max worker/base	
+			; This is so a recently landed CC wont make a worker for 10 in game seconds - so can convert to obrital
+			if  (object.type = aUnitID["CommandCenterFlying"])
+			{
+				if !IsObject(MT_CurrentGame.TerranCCJustLandedList) ; because MT_CurrentGame gets cleared each game
+					MT_CurrentGame.TerranCCJustLandedList := []
+				MT_CurrentGame.TerranCCJustLandedList[object.unitIndex] := getTime()
+			}
+
+		}
 		L_BaseCtrlGroupIndexes .= "," object.unitIndex ; this is just used as a means to check the selection
 	}
 
@@ -6626,6 +6638,10 @@ autoWorkerProductionCheck()
 		;input.hookBlock(False, False)
 
 		critical, 1000
+		; as can be stuck in the loop above for a while, lets check still have minerals to build the workers
+		if (MaxWokersTobeMade > currentMax := howManyUnitsCanBeProduced(50))
+			MaxWokersTobeMade := currentMax
+
 		input.pReleaseKeys(True)
 
 		dSleep(40) ; increase safety ensure selection buffer fully updated
@@ -6704,27 +6720,33 @@ autoWorkerProductionCheck()
 			; so this may control group the units even when these bases are selected
 			; better to be safe than sorry!
 			; thats why im doing it slightly different now
+			; actually its still possible for them to match - if the dead structures UnitID is reused for a new unit (but unlikely user would have 
+			; this selected along with the other buildings)
 
-			if (BaseControlGroupNotSelected || removeRecentlyCompletedCC) ; hence if the 'main base' control group is already selected, it wont bother control grouping them (and later restoring them)
+			if (BaseControlGroupNotSelected || removeRecentlyCompletedCC || AutoWorkerAlwaysGroup) ; hence if the 'main base' control group is already selected, it wont bother control grouping them (and later restoring them)
 			{
-				numGetControlGroupObject(oControlstorage, controlstorageGroup) 	; this checks if the currently selected units match those
-				for index, object in oControlstorage.units 							; already stored in the ctrl group
-				{	
-					L_ControlstorageIndexes .= "," object.unitIndex 				; if they do, it wont bother sending the store control group command
-					if !isUnitLocallyOwned(object.unitIndex) 			; as unit may have died and its unitIndex is reused
-					{
-						setControlGroup := True
-						break
+				if !AutoWorkerAlwaysGroup
+				{
+					numGetControlGroupObject(oControlstorage, controlstorageGroup) 	; this checks if the currently selected units match those
+					for index, object in oControlstorage.units 							; already stored in the ctrl group
+					{	
+						L_ControlstorageIndexes .= "," object.unitIndex 				; if they do, it wont bother sending the store control group command
+						if !isUnitLocallyOwned(object.unitIndex) 			; as unit may have died and its unitIndex is reused
+						{
+							setControlGroup := True
+							break
+						}
 					}
 				}
 
-				if (setControlGroup || oSelection.IndicesString != subStr(L_ControlstorageIndexes, 2))  
+				if (AutoWorkerAlwaysGroup || setControlGroup || oSelection.IndicesString != subStr(L_ControlstorageIndexes, 2))  
 				{
 					setControlGroup := True
 					input.pSend("^" controlstorageGroup)
-					stopWatchCtrlID := stopwatch()
+					stopWatchCtrlID := stopwatch()	
 				}
-				input.pSend(mainControlGroup)
+				
+				input.pSend(mainControlGroup) ; safer to always send base ctrl group
 				dSleep(10) ; wont have that many units grouped with the buildings so 10ms should be plenty
 				numGetSelectionSorted(oSelection)
 			}
@@ -6791,7 +6813,7 @@ autoWorkerProductionCheck()
 			}
 			input.pSend(sendSequence), sendSequence := ""
 
-			if (BaseControlGroupNotSelected || removeRecentlyCompletedCC)
+			if (AutoWorkerAlwaysGroup || BaseControlGroupNotSelected || removeRecentlyCompletedCC)
 			{
 			;	dSleep(5)
 				if setControlGroup
