@@ -4254,6 +4254,14 @@ try
 			. "This aims to make the automation a little more subtle. If disabled, the instant you have free supply all of your bases will make a worker."
 			. "`n`nNote: The program won't queue multiple workers while supply blocked."
 
+	AutoWorkerAlwaysGroup_TT := "When enabled, your current unit selection will always be stored in a control group and then restored post automation."
+			. "`nThis provides the greatest reliability."
+			. "`n`nWhen disabled, the program will not control-group your selection nor restore it if you already have your bases (CC/nexi) selected. It will however"
+			. "`nsend the control group key for your bases."
+			. "`n`nThis helps make the automation a little more subtle, especially in the early game. But it may not work correctly for everyone."
+			. "`nIf it fails, you will end up with your base control group selected rather than your previous units."
+			. "`n`nNote: Prior to v2.986 'disabled' was the default nature. "
+
 	TT_AutoWorkerAPMProtection_TT := AutoWorkerAPMProtection_TT
 	:= TT_FInjectAPMProtection_TT := FInjectAPMProtection_TT := "Automations will be delayed while your instantaneous APM is greater than this value.`n"
 			. "`nThis can be used to make the automations a little more subtle."
@@ -10231,8 +10239,12 @@ castEasyUnload(hotkey, queueUnload)
 			return
 		}
 		sleepTick := tickCount := A_TickCount
-		while (GetKeyState(hotkey, "P") && A_TickCount - sleepTick < 50)
+		loop
+		{
+			if !GetKeyState(hotkey, "P")
+				return 
 			sleep 5
+		} until (A_TickCount - sleepTick >= 50) ; key press duration
 	}
 
 	input.pReleaseKeys()
@@ -10347,7 +10359,7 @@ castEasySelectLoadedTransport()
 	input.pReleaseKeys()
 
 	input.pSend("{click D " A_ScreenWidth-25 " " 45 "}{Click U " 35 " "  A_ScreenHeight-30 "}") ;  A_ScreenHeight-240 "}")
-	dsleep(50)
+	dsleep(110)
 	if numGetSelectionSorted(aSelected)
 	{
 		aLookup := [], aClicks := []
@@ -10374,7 +10386,6 @@ castEasySelectLoadedTransport()
 		{
 			reverseArray(aClicks)
 			clickUnitPortraitsWithModifiers(aClicks)
-
 		}
 	}
 	return
