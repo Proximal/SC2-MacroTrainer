@@ -955,10 +955,9 @@ setupSelectArmyUnits(l_input, aUnitID)
 Cast_ChronoStructure:
 	UserPressedHotkey := A_ThisHotkey ; as this variable can get changed very quickly
 	Thread, NoTimers, True
-
 	input.hookBlock(True, True)
 	if input.releaseKeys(True)
-		dsleep(20)
+		dsleep(30)
 	if (UserPressedHotkey = Cast_ChronoStargate_Key)
 		Cast_ChronoStructure(aUnitID.Stargate)
 	Else if (UserPressedHotkey = Cast_ChronoForge_Key)
@@ -968,7 +967,17 @@ Cast_ChronoStructure:
 	Else If (UserPressedHotkey = Cast_ChronoGate_Key)
 		Cast_ChronoStructure(aUnitID.WarpGate) ; this will also do gateways	
 	Else If (UserPressedHotkey = Cast_ChronoRoboticsFacility_Key)
-		Cast_ChronoStructure(aUnitID.RoboticsFacility) ; this will also do gateways
+		Cast_ChronoStructure(aUnitID.RoboticsFacility)
+	Else If (UserPressedHotkey = CastChrono_CyberneticsCore_key)
+		Cast_ChronoStructure(aUnitID.CyberneticsCore)
+	Else If (UserPressedHotkey = CastChrono_TwilightCouncil_Key)
+		Cast_ChronoStructure(aUnitID.TwilightCouncil)
+	Else If (UserPressedHotkey = CastChrono_TemplarArchives_Key)
+		Cast_ChronoStructure(aUnitID.TemplarArchive)
+	Else If (UserPressedHotkey = CastChrono_RoboticsBay_Key)
+		Cast_ChronoStructure(aUnitID.RoboticsBay)
+	Else If (UserPressedHotkey = CastChrono_FleetBeacon_Key)
+		Cast_ChronoStructure(aUnitID.FleetBeacon)
 	input.hookBlock()
 return
 
@@ -1066,7 +1075,7 @@ Cast_ChronoStructure(StructureToChrono)
 	max_chronod := nexus_chrono_count - CG_chrono_remainder
 	input.pSend("^" CG_control_group CG_nexus_Ctrlgroup_key)
 	timerID := stopwatch()
-	sleep, 10 	; Can use real sleep here as not a silent automation
+	sleep, 30 	; Can use real sleep here as not a silent automation
 	for  index, oject in oStructureToChrono
 	{
 		If (A_index > max_chronod)
@@ -1085,11 +1094,12 @@ Cast_ChronoStructure(StructureToChrono)
 	if (elapsedTimeGrouping < 20)
 		sleep, % ceil(20 - elapsedTimeGrouping)	
 	input.pSend(CG_control_group)
-	sleep, 15
+	sleep, 30
 	if HighlightedGroup
 		input.pSend(sRepeat(NextSubgroupKey, HighlightedGroup))
 	Return 
 }
+
 AutoGroupIdle:
 Auto_Group:
 	AutoGroup(A_AutoGroup, AG_Delay)
@@ -2395,11 +2405,22 @@ ini_settings_write:
 	IniWrite, %ChronoBoostEnableForge%, %config_file%, %section%, ChronoBoostEnableForge
 	IniWrite, %ChronoBoostEnableStargate%, %config_file%, %section%, ChronoBoostEnableStargate
 	IniWrite, %ChronoBoostEnableNexus%, %config_file%, %section%, ChronoBoostEnableNexus
-	IniWrite, %ChronoBoostEnableRoboticsFacility%, %config_file%, %section%, ChronoBoostEnableRoboticsFacility	
+	IniWrite, %ChronoBoostEnableRoboticsFacility%, %config_file%, %section%, ChronoBoostEnableRoboticsFacility
+	IniWrite, %ChronoBoostEnableCyberneticsCore%, %config_file%, %section%, ChronoBoostEnableCyberneticsCore
+	IniWrite, %ChronoBoostEnableTwilightCouncil%, %config_file%, %section%, ChronoBoostEnableTwilightCouncil
+	IniWrite, %ChronoBoostEnableTemplarArchives%, %config_file%, %section%, ChronoBoostEnableTemplarArchives
+	IniWrite, %ChronoBoostEnableRoboticsBay%, %config_file%, %section%, ChronoBoostEnableRoboticsBay
+	IniWrite, %ChronoBoostEnableFleetBeacon%, %config_file%, %section%, ChronoBoostEnableFleetBeacon
 	IniWrite, %Cast_ChronoForge_Key%, %config_file%, %section%, Cast_ChronoForge_Key
 	IniWrite, %Cast_ChronoStargate_Key%, %config_file%, %section%, Cast_ChronoStargate_Key
 	IniWrite, %Cast_ChronoNexus_Key%, %config_file%, %section%, Cast_ChronoNexus_Key
 	IniWrite, %Cast_ChronoRoboticsFacility_Key%, %config_file%, %section%, Cast_ChronoRoboticsFacility_Key
+	IniWrite, %CastChrono_CyberneticsCore_key%, %config_file%, %section%, CastChrono_CyberneticsCore_key
+	IniWrite, %CastChrono_TwilightCouncil_Key%, %config_file%, %section%, CastChrono_TwilightCouncil_Key
+	IniWrite, %CastChrono_TemplarArchives_Key%, %config_file%, %section%, CastChrono_TemplarArchives_Key
+	IniWrite, %CastChrono_RoboticsBay_Key%, %config_file%, %section%, CastChrono_RoboticsBay_Key
+	IniWrite, %CastChrono_FleetBeacon_Key%, %config_file%, %section%, CastChrono_FleetBeacon_Key
+
 	
 	;[Auto Control Group]
 	Short_Race_List := "Terr|Prot|Zerg"
@@ -3408,7 +3429,7 @@ try
 		Gui, Add, Button, xp yp+35 w50 h25 gg_RemoveEmailAttachment, Remove
 		Gui, Add, Button, vB_Report gB_Report xp+195 y+8 w80 h50, Send
 
-	Gui, Add, Tab2, w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vChronoBoost_TAB, Settings||Structures
+	Gui, Add, Tab2, w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vChronoBoost_TAB, Settings||Structures|Structures2
 	Gui, Tab, Settings	
 		Gui, Add, GroupBox, w200 h190 y+20 section, SC2 Keys && Control Groups			
 			Gui, Add, Text, xp+10 yp+25 , Stored Selection Control Group:
@@ -3450,7 +3471,7 @@ try
 				Gui, Add, Edit, Readonly yp-2 x+5 w100  center vCast_ChronoStargate_Key , %Cast_ChronoStargate_Key%
 					Gui, Add, Button, yp-2 x+5 gEdit_hotkey v#Cast_ChronoStargate_Key,  Edit
 
-			Gui, Add, GroupBox, w285 h60 xs yp+55 section, RoboticsFacility	
+			Gui, Add, GroupBox, w285 h60 xs yp+55 section, Robotics Facility	
 			Gui, Add, Checkbox, xp+10 yp+25 vChronoBoostEnableRoboticsFacility checked%ChronoBoostEnableRoboticsFacility%, Enable
 			Gui, Add, Text, x+20 yp w40,Hotkey:
 				Gui, Add, Edit, Readonly yp-2 x+5 w100  center vCast_ChronoRoboticsFacility_Key , %Cast_ChronoRoboticsFacility_Key%
@@ -3467,6 +3488,37 @@ try
 
 		;	Gui, Add, Text, X%tmpx% y+85 cRed, Note:
 		;	Gui, Add, Text, x+10 yp+0, If gateways exist, they will be chrono boosted after the warpgates. 
+
+	Gui, Tab, Structures2
+		Gui, Add, GroupBox, w285 h60 y+20 section, Cybernetics Core
+			Gui, Add, Checkbox, xp+10 yp+25 vChronoBoostEnableCyberneticsCore checked%ChronoBoostEnableCyberneticsCore%, Enable
+			Gui, Add, Text, x+20 yp w40,Hotkey:
+				Gui, Add, Edit, Readonly yp-2 x+5 w100  center vCastChrono_CyberneticsCore_key, %CastChrono_CyberneticsCore_key%
+					Gui, Add, Button, yp-2 x+5 gEdit_hotkey v#CastChrono_CyberneticsCore_key,  Edit		
+
+		Gui, Add, GroupBox, w285 h60 xs yp+55 section, Twilight Council	
+			Gui, Add, Checkbox, xp+10 yp+25 vChronoBoostEnableTwilightCouncil checked%ChronoBoostEnableTwilightCouncil%, Enable
+			Gui, Add, Text, x+20 yp w40,Hotkey:
+				Gui, Add, Edit, Readonly yp-2 x+5 w100  center vCastChrono_TwilightCouncil_Key, %CastChrono_TwilightCouncil_Key%
+					Gui, Add, Button, yp-2 x+5 gEdit_hotkey v#CastChrono_TwilightCouncil_Key,  Edit	
+
+		Gui, Add, GroupBox, w285 h60 xs yp+55 section, Templar Archives	
+			Gui, Add, Checkbox, xp+10 yp+25 vChronoBoostEnableTemplarArchives checked%ChronoBoostEnableTemplarArchives%, Enable
+			Gui, Add, Text, x+20 yp w40,Hotkey:
+				Gui, Add, Edit, Readonly yp-2 x+5 w100  center vCastChrono_TemplarArchives_Key, %CastChrono_TemplarArchives_Key%
+					Gui, Add, Button, yp-2 x+5 gEdit_hotkey v#CastChrono_TemplarArchives_Key,  Edit
+
+		Gui, Add, GroupBox, w285 h60 xs yp+55 section, Robotics Bay
+			Gui, Add, Checkbox, xp+10 yp+25 vChronoBoostEnableRoboticsBay checked%ChronoBoostEnableRoboticsBay%, Enable
+			Gui, Add, Text, x+20 yp w40,Hotkey:
+				Gui, Add, Edit, Readonly yp-2 x+5 w100  center vCastChrono_RoboticsBay_Key , %CastChrono_RoboticsBay_Key%
+					Gui, Add, Button, yp-2 x+5 gEdit_hotkey v#CastChrono_RoboticsBay_Key,  Edit
+
+		Gui, Add, GroupBox, w285 h60 xs yp+55 section, Fleet Beacon
+			Gui, Add, Checkbox, xp+10 yp+25 vChronoBoostEnableFleetBeacon checked%ChronoBoostEnableFleetBeacon%, Enable
+			Gui, Add, Text, x+20 yp w40,Hotkey:
+				Gui, Add, Edit, Readonly yp-2 x+5 w100  center vCastChrono_FleetBeacon_Key , %CastChrono_FleetBeacon_Key%
+					Gui, Add, Button, yp-2 x+5 gEdit_hotkey v#CastChrono_FleetBeacon_Key,  Edit					
 
 	Gui, Add, Tab2,w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vAutoGroup_TAB, Terran||Protoss|Zerg|Delays|Hotkeys|Info	
 	Short_Race_List := "Terr|Prot|Zerg"
@@ -4257,7 +4309,7 @@ try
 	AutoWorkerAlwaysGroup_TT := "When enabled, your current unit selection will always be stored in a control group and then restored post automation."
 			. "`nThis provides the greatest reliability."
 			. "`n`nWhen disabled, the program will not control-group your selection nor restore it if you already have your bases (CC/nexi) selected. It will however"
-			. "`nsend the control group key for your bases."
+			. "`nstill send the control group key for your bases."
 			. "`n`nThis helps make the automation a little more subtle, especially in the early game. But it may not work correctly for everyone."
 			. "`nIf it fails, you will end up with your base control group selected rather than your previous units."
 			. "`n`nNote: Prior to v2.986 'disabled' was the default nature. "
@@ -7728,11 +7780,7 @@ CreateHotkeys()
 	#If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Zerg") && !isMenuOpen() && time
 	#If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Zerg") && InjectTimerAdvancedEnable && !isMenuOpen() && time
 	#If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Zerg") && (auto_inject <> "Disabled") && time
-	#If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && CG_Enable && time
-	#If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableForge && time
-	#If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableStargate && time
-	#If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableNexus && time
-	#If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableRoboticsFacility && time
+	#If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && time
 	#If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Terran" || aLocalPlayer["Race"] = "Protoss")  && time
 	#If, WinActive(GameIdentifier) && time && !isMenuOpen() && EnableAutoWorker%LocalPlayerRace%
 	#If, WinActive(GameIdentifier) && time && !isMenuOpen() && SelectArmyEnable
@@ -7798,16 +7846,30 @@ CreateHotkeys()
 	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Zerg") && (auto_inject <> "Disabled") && time
 		hotkey, %cast_inject_key%, cast_inject, on	
 		hotkey, %F_InjectOff_Key%, Cast_DisableInject, on			
-	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && CG_Enable && time
-		hotkey, %Cast_ChronoGate_Key%, Cast_ChronoStructure, on	
-	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableForge && time
-		hotkey, %Cast_ChronoForge_Key%, Cast_ChronoStructure, on	
-	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableStargate && time
-		hotkey, %Cast_ChronoStargate_Key%, Cast_ChronoStructure, on
-	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableNexus && time
-		hotkey, %Cast_ChronoNexus_Key%, Cast_ChronoStructure, on	
-	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableRoboticsFacility && time
-		hotkey, %Cast_ChronoRoboticsFacility_Key%, Cast_ChronoStructure, on	
+
+
+	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && time
+		if CG_Enable
+			hotkey, %Cast_ChronoGate_Key%, Cast_ChronoStructure, on	
+		if ChronoBoostEnableForge
+			hotkey, %Cast_ChronoForge_Key%, Cast_ChronoStructure, on	
+		if ChronoBoostEnableStargate
+			hotkey, %Cast_ChronoStargate_Key%, Cast_ChronoStructure, on
+		if ChronoBoostEnableNexus
+			hotkey, %Cast_ChronoNexus_Key%, Cast_ChronoStructure, on	
+		if ChronoBoostEnableRoboticsFacility
+			hotkey, %Cast_ChronoRoboticsFacility_Key%, Cast_ChronoStructure, on	
+		if ChronoBoostEnableCyberneticsCore
+			hotkey, %CastChrono_CyberneticsCore_key%, Cast_ChronoStructure, on			
+		if ChronoBoostEnableTwilightCouncil
+			hotkey, %CastChrono_TwilightCouncil_Key%, Cast_ChronoStructure, on			
+		if ChronoBoostEnableTemplarArchives
+			hotkey, %CastChrono_TemplarArchives_Key%, Cast_ChronoStructure, on	
+		if ChronoBoostEnableRoboticsBay
+			hotkey, %CastChrono_RoboticsBay_Key%, Cast_ChronoStructure, on	
+		if ChronoBoostEnableFleetBeacon
+			hotkey, %CastChrono_FleetBeacon_Key%, Cast_ChronoStructure, on	
+
 	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Terran" || aLocalPlayer["Race"] = "Protoss")  && time
 		hotkey, %ToggleAutoWorkerState_Key%, g_UserToggleAutoWorkerState, on	
 	
@@ -7893,16 +7955,17 @@ disableAllHotkeys()
 	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Zerg") && (auto_inject <> "Disabled") && time
 		try hotkey, %cast_inject_key%, off
 		try hotkey, %F_InjectOff_Key%, off	
-	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && CG_Enable && time
+	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && time
 		try hotkey, %Cast_ChronoGate_Key%, off
-	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableForge && time
 		try hotkey, %Cast_ChronoForge_Key%, off
-	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableStargate && time
 		try hotkey, %Cast_ChronoStargate_Key%, off		
-	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableNexus && time
-		try hotkey, %Cast_ChronoNexus_Key%, off
-	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && ChronoBoostEnableRoboticsFacility && time
-		try hotkey, %Cast_ChronoRoboticsFacility_Key%, off
+		try hotkey, %Cast_ChronoNexus_Key%, off	
+		try hotkey, %Cast_ChronoRoboticsFacility_Key%, off			
+		try hotkey, %CastChrono_CyberneticsCore_key%, off
+		try hotkey, %CastChrono_TwilightCouncil_Key%, off
+		try hotkey, %CastChrono_TemplarArchives_Key%, off
+		try hotkey, %CastChrono_RoboticsBay_Key%, off
+		try hotkey, %CastChrono_FleetBeacon_Key%, off
 	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Terran" || aLocalPlayer["Race"] = "Protoss")  && time
 		try hotkey, %ToggleAutoWorkerState_Key%, off		
 	Hotkey, If, WinActive(GameIdentifier) && (!isMenuOpen() || (isMenuOpen() && isChatOpen())) && time

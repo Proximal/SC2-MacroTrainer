@@ -3110,12 +3110,21 @@ readConfigFile()
 	IniRead, ChronoBoostEnableStargate, %config_file%, %section%, ChronoBoostEnableStargate, 0
 	IniRead, ChronoBoostEnableNexus, %config_file%, %section%, ChronoBoostEnableNexus, 0
 	IniRead, ChronoBoostEnableRoboticsFacility, %config_file%, %section%, ChronoBoostEnableRoboticsFacility, 0
+	IniRead, ChronoBoostEnableCyberneticsCore, %config_file%, %section%, ChronoBoostEnableCyberneticsCore, 0
+	IniRead, ChronoBoostEnableTwilightCouncil, %config_file%, %section%, ChronoBoostEnableTwilightCouncil, 0
+	IniRead, ChronoBoostEnableTemplarArchives, %config_file%, %section%, ChronoBoostEnableTemplarArchives, 0
+	IniRead, ChronoBoostEnableRoboticsBay, %config_file%, %section%, ChronoBoostEnableRoboticsBay, 0
+	IniRead, ChronoBoostEnableFleetBeacon, %config_file%, %section%, ChronoBoostEnableFleetBeacon, 0
 	IniRead, Cast_ChronoForge_Key, %config_file%, %section%, Cast_ChronoForge_Key, ^F5
 	IniRead, Cast_ChronoStargate_Key, %config_file%, %section%, Cast_ChronoStargate_Key, +F5
 	IniRead, Cast_ChronoNexus_Key, %config_file%, %section%, Cast_ChronoNexus_Key, >!F5
 	IniRead, Cast_ChronoRoboticsFacility_Key, %config_file%, %section%, Cast_ChronoRoboticsFacility_Key, >!F6
+	IniRead, CastChrono_CyberneticsCore_key, %config_file%, %section%, CastChrono_CyberneticsCore_key, <!F5
+	IniRead, CastChrono_TwilightCouncil_Key, %config_file%, %section%, CastChrono_TwilightCouncil_Key, <!F6
+	IniRead, CastChrono_TemplarArchives_Key, %config_file%, %section%, CastChrono_TemplarArchives_Key, <!F1 
+	IniRead, CastChrono_RoboticsBay_Key, %config_file%, %section%, CastChrono_RoboticsBay_Key, <!F2
+	IniRead, CastChrono_FleetBeacon_Key, %config_file%, %section%, CastChrono_FleetBeacon_Key, <!F3
 
-	
 	;[Advanced Auto Inject Settings]
 	IniRead, auto_inject_sleep, %config_file%, Advanced Auto Inject Settings, auto_inject_sleep, 50
 	IniRead, Inject_SleepVariance, %config_file%, Advanced Auto Inject Settings, Inject_SleepVariance, 0
