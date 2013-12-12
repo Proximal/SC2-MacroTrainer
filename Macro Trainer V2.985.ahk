@@ -115,7 +115,23 @@ Else
 	debug := True
 	debug_name := "Kalamity"
 	hotkey, ^+!F12, g_GiveLocalPalyerResources
+	hotkey, >!F12, g_testKeydowns
 }
+
+g_testKeydowns:
+if (A_ThisLabel = "g_testKeydowns")
+{
+	t1 := MT_InputIdleTime()
+	sleep 2000
+	critical, 1000
+	releasedKeys := input.pReleaseKeys()
+	input.RevertKeyState()
+	critical, off
+	msgbox % releasedKeys "`n`n|" t1 " | " MT_InputIdleTime()
+	return 
+}
+
+
 RegRead, wHookTimout, HKEY_CURRENT_USER, Control Panel\Desktop, LowLevelHooksTimeout
 if (ErrorLevel || wHookTimout < 650)
 	RegWrite, REG_DWORD, HKEY_CURRENT_USER, Control Panel\Desktop, LowLevelHooksTimeout, 650
@@ -1118,7 +1134,7 @@ AutoGroup(byref A_AutoGroup, AGDelay = 0)
 	for index, Unit in oSelection.Units
 	{
 		type := unit.type				
-		If !isOwnerLocal(Unit.owner)
+		If (aLocalPlayer.Slot != Unit.owner)
 		{
 			 	WrongUnit := 1
 				break
@@ -1163,24 +1179,22 @@ AutoGroup(byref A_AutoGroup, AGDelay = 0)
 		PrevSelectedUnits := CurrentlySelected
 		SelctedTime := A_Tickcount
 	}
-	if (A_Tickcount - SelctedTime >= AGDelay) && oSelection.Count && !WrongUnit  && (CtrlType_i = SelectedTypes) && (controlGroup <> "") && WinActive(GameIdentifier) && !isGamePaused() ; note <> "" as there is group 0! cant use " controlGroup "
+	if (A_Tickcount - SelctedTime >= AGDelay) && oSelection.Count && !WrongUnit && (CtrlType_i = SelectedTypes) && (controlGroup <> "") && WinActive(GameIdentifier) && !isGamePaused() ; note <> "" as there is group 0! cant use " controlGroup "
 	&& !isMenuOpen() && !checkAllKeyStates() && !readModifierState() && MT_InputIdleTime() >= AGKeyReleaseDelay
 	{			
 		critical, 1000
-		if !(input.pReleaseKeys(True))
-		{
-			dSleep(AGBufferDelay)
-			numGetUnitSelectionObject(oSelection)
-			for index, Unit in oSelection.Units
-				PostDelaySelected .= "," unit.UnitIndex
+		input.pReleaseKeys(True)
+		dSleep(AGBufferDelay)
+		numGetUnitSelectionObject(oSelection)
+		for index, Unit in oSelection.Units
+			PostDelaySelected .= "," unit.UnitIndex
 
-			if (CurrentlySelected = PostDelaySelected && !checkAllKeyStates())
-			{
-				input.pSend(aAGHotkeys.Add[controlGroup])
-				sleepOnExit := True
-				settimer, AutoGroupIdle, Off
-				settimer, Auto_Group, Off				
-			}
+		if (CurrentlySelected = PostDelaySelected)
+		{
+			input.pSend(aAGHotkeys.Add[controlGroup])
+			sleepOnExit := True
+			settimer, AutoGroupIdle, Off
+			settimer, Auto_Group, Off				
 		}
 		Input.revertKeyState()
 		critical, off
@@ -2205,7 +2219,6 @@ TrayUpdate:
 		Return
 	}
 Update:
-	; latestVersion is a global variable set by the checkforupdate()
 	updateSave := "MacroTrainer" latestVersion ".zip"
 	If ( InternetFileRead( binData, url.UpdateZip) > 0 && !ErrorLevel )
 	{
@@ -3670,7 +3683,7 @@ try
 
 	Gui, Add, Tab2,w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vAutoWorker_TAB, Auto||Info		
 	Gui, Tab, Auto
-		Gui, Add, Text, x+25 y+25 section, Toggle State:
+		Gui, Add, Text, x+25 y+20 section, Toggle State:
 
 			Gui, Add, Edit, Readonly yp-2 x+10 center w65 vToggleAutoWorkerState_Key gedit_hotkey, %ToggleAutoWorkerState_Key%
 		Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#ToggleAutoWorkerState_Key,  Edit ;have to use a trick eg '#' as cant write directly to above edit var, or it will activate its own label!
@@ -8490,7 +8503,7 @@ g_SelectArmy:
 		while (getSelectionCount() != getArmyUnitCount() && stopwatch(timerArmyID, False) < 70 && A_Index < 80)
 			dsleep(1)
 		stopwatch(timerArmyID) ; remove the timer
-		dsleep(12)
+		dsleep(15)
 	} 
 	else 
 	{

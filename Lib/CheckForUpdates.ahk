@@ -1,6 +1,5 @@
 CheckForUpdates(installed_version, byRef latestVersion, url)
 {
-	latestVersion := ""
 	URLDownloadToFile, %url%, %A_Temp%\version_checker_temp_file.ini
 	if !ErrorLevel 
 	{	
