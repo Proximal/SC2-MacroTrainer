@@ -8502,7 +8502,6 @@ g_SelectArmy:
 		; A_Index check is just in case stopwatch fails (it should work on every computer) - get stuck in infinite loop with input blocked
 		while (getSelectionCount() != getArmyUnitCount() && stopwatch(timerArmyID, False) < 70 && A_Index < 80)
 			dsleep(1)
-		stopwatch(timerArmyID) ; remove the timer
 		dsleep(15)
 	} 
 	else 
@@ -8520,10 +8519,13 @@ g_SelectArmy:
 	if SelectArmyControlGroupEnable
 		input.pSend("^" Sc2SelectArmyCtrlGroup)
 	dSleep(15)
+	if (timerArmyID && stopwatch(timerArmyID) > 35) ; remove the timer and if took long time to select units sleep for longer
+		dSleep(15) 									; as every now and again all units can get grouped with previous button press
+													; though an increase sleep might be needed before the above grouping command
 	Input.revertKeyState()
 	critical, off
-	sleep, -1
 	Thread, Priority, -2147483648
+	sleep, -1
 	sleep 20
 	return	
 	; sleep, -1 ensures LL callbacks get processed 
@@ -11597,3 +11599,4 @@ launchMiniMapThread()
 	}
 	Return 
 }
+
