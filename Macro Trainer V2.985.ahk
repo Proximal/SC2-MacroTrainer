@@ -1348,8 +1348,20 @@ cast_ForceInject:
 
 	If getGroupedQueensWhichCanInject(aControlGroup, 1) ; 1 so it checks their movestate
 	{
+		; Need this otherwise if all hatcheries get killed injects top until user toggles auto inject on/off
+		IF !oHatcheries.MaxIndex() 
+		{
+			Thread, Priority, -2147483648
+			sleep, 10000
+			Thread, Priority, 0	
+			if !F_Inject_Enable
+				return
+			zergGetHatcheriesToInject(oHatcheries)
+		}
 		For Index, CurrentHatch in oHatcheries
+		{
 			For Index, Queen in aControlGroup.Queens
+			{
 				if (isQueenNearHatch(Queen, CurrentHatch, MI_QueenDistance) && Queen.Energy >= 25  && !isHatchInjected(CurrentHatch.Unit)) 
 				{
 					Thread, Priority, -2147483648
@@ -1388,6 +1400,8 @@ cast_ForceInject:
 					Input.revertKeyState()						
 					return
 				}
+			}
+		}
 	}
 	return
 
@@ -8372,7 +8386,6 @@ OldBackSpaceCtrlGroupInject()
  zergGetHatcheriesToInject(byref Object)
  { 	global aUnitID
  	Object := []
- 	aZergMains := [aUnitID["Hatchery"], aUnitID["Lair"], aUnitID["Hive"]]
  	Unitcount := DumpUnitMemory(MemDump)
  	while (A_Index <= Unitcount)
  	{
@@ -8381,25 +8394,24 @@ OldBackSpaceCtrlGroupInject()
 	       Continue
 	    pUnitModel := numgetUnitModelPointer(MemDump, Unit)
 	    Type := numgetUnitModelType(pUnitModel)
-	    For index, buildingType in aZergMains
-		{	
-			IF (type = buildingType)
-			{
-				MiniMapX := x := numGetUnitPositionXFromMemDump(MemDump, Unit)
-				MiniMapY := y := numGetUnitPositionYFromMemDump(MemDump, Unit)
-				z :=  numGetUnitPositionZFromMemDump(MemDump, Unit)
-				convertCoOrdindatesToMiniMapPos(MiniMapX, MiniMapY)
-				isInjected := numGetIsHatchInjectedFromMemDump(MemDump, Unit)
-				Object.insert( {  "Unit": unit 
-								, "x": x
-								, "y": y
-								, "z": z
-								, "MiniMapX": MiniMapX
-								, "MiniMapY": MiniMapY 
-								, "isInjected": isInjected } )
+	
+		IF (type = aUnitID["Hatchery"] || type = aUnitID["Lair"] || type = aUnitID["Hive"] )
+		{
+			MiniMapX := x := numGetUnitPositionXFromMemDump(MemDump, Unit)
+			MiniMapY := y := numGetUnitPositionYFromMemDump(MemDump, Unit)
+			z :=  numGetUnitPositionZFromMemDump(MemDump, Unit)
+			convertCoOrdindatesToMiniMapPos(MiniMapX, MiniMapY)
+			isInjected := numGetIsHatchInjectedFromMemDump(MemDump, Unit)
+			Object.insert( {  "Unit": unit 
+							, "x": x
+							, "y": y
+							, "z": z
+							, "MiniMapX": MiniMapX
+							, "MiniMapY": MiniMapY 
+							, "isInjected": isInjected } )
 
-			}	
-		}
+		}	
+		
  	}
  	return Object.maxindex()
  }
