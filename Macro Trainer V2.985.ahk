@@ -121,15 +121,22 @@ Else
 g_testKeydowns:
 if (A_ThisLabel = "g_testKeydowns")
 {
+
+	ListLines, on
 	t1 := MT_InputIdleTime()
 	sleep 2000
 	critical, 1000
-	releasedKeys := input.pReleaseKeys()
+	releasedKeys := input.pReleaseKeys(True)
 	input.RevertKeyState()
 	critical, off
 	msgbox % releasedKeys "`n`n|" t1 " | " MT_InputIdleTime()
+			. "`n`n" checkAllKeyStates() 
+	objtree(aAGHotkeys)
+	sleep 2000
+	testdebug := True
 	return 
 }
+
 
 
 RegRead, wHookTimout, HKEY_CURRENT_USER, Control Panel\Desktop, LowLevelHooksTimeout
@@ -839,6 +846,7 @@ clock:
 	}
 	Else if (time && game_status != "game") && (getLocalPlayerNumber() != 16 || debug) ; Local slot = 16 while in lobby/replay - this will stop replay announcements
 	{
+		SetBatchLines, 10ms 
 		game_status := "game", warpgate_status := "not researched", gateway_count := warpgate_warning_set := 0
 		
 		AW_MaxWorkersReached := TmpDisableAutoWorker := 0
@@ -951,6 +959,7 @@ clock:
 		EnemyBaseList := GetEBases()
 		findXelnagas(aXelnagas)		
 		UserSavedAppliedSettings := 0
+		SetBatchLines, -1
 	}
 return
 
@@ -1124,6 +1133,10 @@ Auto_Group:
 AutoGroup(byref A_AutoGroup, AGDelay = 0)
 { 	global GameIdentifier, aButtons, AGBufferDelay, AGKeyReleaseDelay, aAGHotkeys
 	static PrevSelectedUnits, SelctedTime
+
+	global testdebug
+	if testdebug
+		ListLines, on
 	
 	; needed to ensure the function running again while it is still running
 	;  as can arrive here from AutoGroupIdle or 
@@ -1174,12 +1187,12 @@ AutoGroup(byref A_AutoGroup, AGDelay = 0)
 		}
 
 	}
-	if (CurrentlySelected <> PrevSelectedUnits || WrongUnit)
+	if (CurrentlySelected != PrevSelectedUnits || WrongUnit)
 	{
 		PrevSelectedUnits := CurrentlySelected
 		SelctedTime := A_Tickcount
 	}
-	if (A_Tickcount - SelctedTime >= AGDelay) && oSelection.Count && !WrongUnit && (CtrlType_i = SelectedTypes) && (controlGroup <> "") && WinActive(GameIdentifier) && !isGamePaused() ; note <> "" as there is group 0! cant use " controlGroup "
+	if (A_Tickcount - SelctedTime >= AGDelay) && oSelection.Count && !WrongUnit && (CtrlType_i = SelectedTypes) && (controlGroup != "") && WinActive(GameIdentifier) && !isGamePaused() ; note <> "" as there is group 0! cant use " controlGroup "
 	&& !isMenuOpen() && !checkAllKeyStates() && !readModifierState() && MT_InputIdleTime() >= AGKeyReleaseDelay
 	{			
 		critical, 1000
@@ -1200,6 +1213,16 @@ AutoGroup(byref A_AutoGroup, AGDelay = 0)
 		critical, off
 
 	}
+
+	if testdebug
+	{
+		if !A_IsPaused
+		{
+			ListLines
+			pause
+		}
+	}	
+
 	; someone said that the autogroup would make there camera jump to the building
 	; probably due to slow computer and the program reading the unit hasn't been grouped and so 
 	; sends the group command twice very quickly
@@ -10638,6 +10661,66 @@ class SC2
 } 
 
 
+O_IndexParentTypes := 0x18
+unit := getSelectedUnitIndex()
+pAbilities := getUnitAbilityPointer(unit)
+abilitiesCount := getAbilitiesCount(pAbilities)	
+ByteArrayAddress := ReadMemory(pAbilities, GameIdentifier) + 0x3  
+if (-1 = AbilBuildIndex := getAbilityIndex(0xC, abilitiesCount, ByteArrayAddress))
+	AbilBuildIndex := 0
+
+pBuildStructure := readmemory(pAbilities + O_IndexParentTypes + 4 * AbilBuildIndex, GameIdentifier)
+;pBuildStructure := readmemory(pAbilities + 0x18, GameIdentifier) ;supply depot just at +18
+;	msgbox % chex(pBuildStructure)
+totalTime := readmemory(pBuildStructure + 0x28, GameIdentifier)
+remainingTime := readmemory(pBuildStructure + 0x2C, GameIdentifier)
+msgbox % (totalTime - remainingTime) / totalTime
+
+RETURN
+
+;msgbox % AbilBuildIndex
+;msgbox % ReadMemory(ByteArrayAddress + 0x7, GameIdentifier, 1)
+
+
+
+msgbox % clipboard := chex(  getSelectedUnitIndex() * S_uStructure + B_uStructure )
+msgbox % clipboard := chex(  getUnitAbilityPointer(getSelectedUnitIndex()) )
+
+
+s := ""
+loop 
+{
+	if (p := ReadMemory(0x1FD238a0 + A_Index*4, GameIdentifier))
+	{
+		s .= "`n " chex(p) " | " A_Index - 1 " | " ReadMemory_Str(ReadMemory(p +4, GameIdentifier), GameIdentifier)
+	}
+}
+until p = 0
+msgbox % clipboard := s
+
+return
+
+/*
+16,640
+11,104
+
+*/
+
+
+getBuildState()
+{
+	unit := getSelectedUnitIndex()
+	; + 0x28 = total build time
+	; + 0x2C = Time Remaining
+	CABuild :=  ReadMemory(0x18 + 0x7 * 0x4 + getUnitAbilityPointer(unit), GameIdentifier)
+	msgbox % chex(CABuild)
+
+	return
+
+}
+
+
+
 /*
 
 ; speed test.
@@ -11587,7 +11670,6 @@ return
 */
 
 
-
 launchMiniMapThread()
 {
 
@@ -11611,4 +11693,5 @@ launchMiniMapThread()
 	}
 	Return 
 }
+
 
