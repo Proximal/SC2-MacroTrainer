@@ -10683,20 +10683,173 @@ RETURN
 
 
 
-msgbox % clipboard := chex(  getSelectedUnitIndex() * S_uStructure + B_uStructure )
-msgbox % clipboard := chex(  getUnitAbilityPointer(getSelectedUnitIndex()) )
 
 
-s := ""
-loop 
+f1::
+unit := getSelectedUnitIndex()
+unit := getSelectedUnitIndex()
+type := getUnitType(unit)
+msgbox % clipboard := getUnitQueuedCommandString(unit)
+msgbox % getStructureMorphTime(unit, type)
+;msgbox % getStructureMorphTime(unit)
+
+return 
+
+f2::
+swapAbilityPointerFreeze()
+return 
+
+swapAbilityPointerFreeze()
 {
-	if (p := ReadMemory(0x1FD238a0 + A_Index*4, GameIdentifier))
-	{
-		s .= "`n " chex(p) " | " A_Index - 1 " | " ReadMemory_Str(ReadMemory(p +4, GameIdentifier), GameIdentifier)
-	}
+	hwnd := openCloseProcess(GameIdentifier)
+	SuspendProcess(hwnd)
+	unit := getSelectedUnitIndex()
+	abilityPointerAddress := B_uStructure + unit * S_uStructure + O_P_uAbilityPointer
+	originalValue := ReadMemory(abilityPointerAddress, GameIdentifier)
+	pAbilities := getUnitAbilityPointer(unit)
+	WriteMemory(abilityPointerAddress, pAbilities, "UInt") 
+	msgbox % "SC2 suspended`nOriginal value: "  chex(originalValue) "`nNew value: " chex(pAbilities) "`n`nOk to resume and reset value."
+	WriteMemory(abilityPointerAddress, originalValue, "UInt") 
+	ResumeProcess(hwnd)
+	openCloseProcess(hwnd, close := True)
+	return 
 }
-until p = 0
-msgbox % clipboard := s
+
+
+getUnitAbilitiesString(unit)
+{
+	B_AbilityStringPointer := 0xA4 ; string pointers for abilities start here
+	O_IndexParentTypes := 0x18
+	pAbilities := getUnitAbilityPointer(unit)
+	p1 := readmemory(pAbilities, GameIdentifier)
+	s := "pAbilities: " chex(pAbilities) " Unit ID: " unit
+	loop
+	{
+		if (p := ReadMemory( address := p1  +  B_AbilityStringPointer + (A_Index - 1)*4, GameIdentifier))
+			s .= "`n"  A_Index - 1 " | Pointer Address " chex(pAbilities + O_IndexParentTypes + (A_Index - 1)*4) " | "  ReadMemory_Str(ReadMemory(p +4, GameIdentifier), GameIdentifier)
+	}
+	until p = 0
+	msgbox % clipboard := s
+	return s
+}
+
+; the specific ability pointer for units of the same type doesn't change relative to the unit's specific pAbilties.
+; This uses a slow string read to find the pointer offset the first time, then any subsequent calls for the same unit type are
+; returned immediately from the static array
+
+findAbilityTypePointer(pAbilities, unitType, abilityString)
+{
+	static aUnitAbilitiesOffsets := [], B_AbilityStringPointer := 0xA4 ; string pointers for abilities start here
+		, O_IndexParentTypes := 0x18 ; base where pointers to specific ability areas begin
+
+	if aUnitAbilitiesOffsets[unitType].hasKey(abilityString)
+		return pAbilities + aUnitAbilitiesOffsets[unitType, abilityString]
+	p1 := readmemory(pAbilities, GameIdentifier)
+	loop
+	{
+		if (!p := ReadMemory(p1 + B_AbilityStringPointer + (A_Index - 1)*4, GameIdentifier))
+			return 0
+		if (abilityString = string := ReadMemory_Str(ReadMemory(p + 0x4, GameIdentifier), GameIdentifier))
+			return pAbilities + (aUnitAbilitiesOffsets[unitType, abilityString] :=  O_IndexParentTypes + (A_Index - 1)*4)	
+	} until (A_Index > 100)
+	return  0 ; something went wrong
+}
+
+; This will get the morph time for most structures e.g. CC -> orbital/PF, hatch -> lair -> Hive, spire -> G.Spire
+; CommandCentre->Orbital - time remaining
+; [[[[Ability Struct + 0x34] + 0x10] + 0xD4] + 0x98]
+; old way, can just use the unit's queued command pointer
+getStructureMorphTimeOld(pAbilities, unitType)
+{
+;	pBuildInProgress := findAbilityTypePointer(pAbilities, unitType, "BuildInProgress")
+	p := pointer(GameIdentifier, findAbilityTypePointer(pAbilities, unitType, "BuildInProgress"), 0x10, 0xD4)
+	timeRemaing := ReadMemory(p + 0x98, GameIdentifier)
+	totalTime := ReadMemory(p + 0xB4, GameIdentifier)
+	percent := round((totalTime - timeRemaing)/totalTime, 2)
+	if (percent >= 0 || percent <= 1)
+		return percent
+	return 1
+}
+
+; Note, this also works with corruptors -> gg.lords and overlord -> overseer, but not ling -> bane or HTs -> Archon
+; but if also has queued command then need to find the morphing ability
+getStructureMorphTimeNew(unit)
+{
+	p := ReadMemory(B_uStructure + unit * S_uStructure + O_P_uCmdQueuePointer, GameIdentifier)
+	timeRemaing := ReadMemory(p + 0x98, GameIdentifier)
+	totalTime := ReadMemory(p + 0xB4, GameIdentifier)
+	return round(mod((totalTime - timeRemaing)/totalTime, 1), 2) ; mod so number always between 0 and 1
+}
+
+/*
+
+ 	MorphToBroodLord 
+ 	MorphToOverseer
+ 	UpgradeToGreaterSpire
+ 	UpgradeToLair
+	UpgradeToHive
+	UpgradeToOrbital
+	UpgradeToPlanetaryFortress
+*/
+getStructureMorphTime(unit, unitType)
+{
+	static targetIsPoint := 0x8, targetIsUnit := 0x10, hasRun := False, aMorphStrings
+
+	if !hasRun 
+	{
+		hasRun := True 
+		aMorphStrings := { 	aUnitID.OverlordCocoon: ["MorphToOverseer"]
+						 ,	aUnitID.Corruptor: ["MorphToBroodLord"]
+						 ,	aUnitID.Spire: ["UpgradeToGreaterSpire"]
+						 ,  aUnitID.Hatchery: ["UpgradeToLair"]
+						 ,	aUnitID.Lair: ["UpgradeToHive"]
+						 ,  aUnitID.MothershipCore: ["MorphToMothership"]
+						 ,	aUnitID.CommandCenter: ["UpgradeToOrbital", "UpgradeToPlanetaryFortress"]}
+
+						;}
+	}
+	; target flag is usually 7 for the morphing types
+	if (CmdQueue := ReadMemory(B_uStructure + unit * S_uStructure + O_P_uCmdQueuePointer, GameIdentifier)) ; points if currently has a command - 0 otherwise
+	{
+		pNextCmd := ReadMemory(CmdQueue, GameIdentifier) ; If & -2 this is really the first command ie  = BaseCmdQueStruct
+		loop 
+		{
+			ReadRawMemory(pNextCmd & -2, GameIdentifier, cmdDump, 0xB8)
+			targetFlag := numget(cmdDump, 0x38, "UInt")
+
+			if !aStringTable.hasKey(pString := numget(cmdDump, 0x18, "UInt"))
+				aStringTable[pString] := ReadMemory_Str(readMemory(pString + 0x4, GameIdentifier), GameIdentifier)
+
+			for i, morphString in aMorphStrings[unitType]
+			{
+
+				if (morphString = aStringTable[pString])
+				{
+					timeRemaing := numget(cmdDump, 0x98, "UInt")
+					totalTime := numget(cmdDump, 0xB4, "UInt")			
+					return round(mod((totalTime - timeRemaing)/totalTime, 1), 2) ; mod so number always between 0 and 1
+				}
+			}
+
+		} Until (A_Index > 20 || !(targetFlag & targetIsPoint || targetFlag & targetIsUnit || targetFlag = 7)
+			|| 1 & pNextCmd := numget(cmdDump, 0, "Int"))				; loop until the last/first bit of pNextCmd is set to 1
+		; interstingly after -2 & pNextCmd (the last one) it should = the first address
+	}
+	else return 0
+
+}
+
+getLingtoBanelingMorphTime(pAbilities, unitType)
+{
+
+	p := pointer(GameIdentifier, findAbilityTypePointer(pAbilities, unitType, "MorphZerglingToBaneling"), 0x12c, 0x0)
+	totalTime := ReadMemory(p + 0x68, GameIdentifier)
+	timeRemaing := ReadMemory(p + 0x6c, GameIdentifier)
+	msgbox % percent := round(mod((totalTime - timeRemaing)/totalTime, 1), 2)
+
+	return
+}
+
 
 return
 
@@ -10706,17 +10859,22 @@ return
 
 */
 
+; total build time and Time Remaining are blank if unit exists as part of the map i.e. via the mapeditor 
 
-getBuildState()
+getBuildState(unit, type := "", pAbilities := "")
 {
-	unit := getSelectedUnitIndex()
+	static O_TotalBuildTime := 0x28, O_TimeRemaining := 0x2C
 	; + 0x28 = total build time
 	; + 0x2C = Time Remaining
-	CABuild :=  ReadMemory(0x18 + 0x7 * 0x4 + getUnitAbilityPointer(unit), GameIdentifier)
-	msgbox % chex(CABuild)
 
-	return
-
+	if pBuild := findAbilityTypePointer(pAbilities ? pAbilities : getUnitAbilityPointer(unit), type ? type : getUnitType(unit), "BuildInProgress")
+	{
+		B_Build := ReadMemory(pBuild, GameIdentifier)
+		totalTime := readmemory(B_Build + O_TotalBuildTime, GameIdentifier)
+		remainingTime := readmemory(B_Build + O_TimeRemaining, GameIdentifier)
+		return round((totalTime - remainingTime) / totalTime, 2) ; 0.73
+	}
+	else return 1 ; something went wrong so assume its complete 
 }
 
 

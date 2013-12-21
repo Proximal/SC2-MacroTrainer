@@ -68,7 +68,7 @@ WriteMemory(WriteAddress = "", PROGRAM="", Data="", TypeOrLength = "")
             Else If (TypeOrLength = "Short" or TypeOrLength = "UShort")
                 DataSize = 2
             Else If (TypeOrLength = "Char" or TypeOrLength = "UChar")
-				DataSize = 1
+				        DataSize = 1
             Else {
               ;  MsgBox, Invalid type of number.
                 Return False 

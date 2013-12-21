@@ -879,6 +879,7 @@ getUnitQueuedCommands(unit, byRef aQueuedMovements)
 									, "targetY": numget(cmdDump, 0x2C, "Int") / 4096
 									, "targetZ": numget(cmdDump, 0x30, "Int") / 4096
 									, "ability": aStringTable[pString] 
+								;	, "flag" : targetFlag
 									, "state": state })
 
 			if (A_Index > 20 || !(targetFlag & aTargetFlags.targetIsPoint || targetFlag & aTargetFlags.targetIsUnit || targetFlag = 7))
