@@ -10687,17 +10687,22 @@ RETURN
 
 f1::
 unit := getSelectedUnitIndex()
-unit := getSelectedUnitIndex()
 type := getUnitType(unit)
-msgbox % clipboard := getUnitQueuedCommandString(unit)
-msgbox % getStructureMorphTime(unit, type)
-;msgbox % getStructureMorphTime(unit)
+pAbilities := getUnitAbilityPointer(unit)
+
+getUnitAbilitiesString(unit)
+msgbox % getArchonMorphTime(pAbilities)
 
 return 
+  
 
-f2::
 swapAbilityPointerFreeze()
 return 
+
+getunitAddress(unit)
+{
+	return B_uStructure + unit * S_uStructure
+}
 
 swapAbilityPointerFreeze()
 {
@@ -10722,7 +10727,7 @@ getUnitAbilitiesString(unit)
 	O_IndexParentTypes := 0x18
 	pAbilities := getUnitAbilityPointer(unit)
 	p1 := readmemory(pAbilities, GameIdentifier)
-	s := "pAbilities: " chex(pAbilities) " Unit ID: " unit
+	s := "pAbilities: " chex(pAbilities) " Unit ID: " unit "`nuStruct: " chex(getunitAddress(unit), 0) " - " chex(getunitAddress(unit) + S_uStructure, 0)
 	loop
 	{
 		if (p := ReadMemory( address := p1  +  B_AbilityStringPointer + (A_Index - 1)*4, GameIdentifier))
@@ -10758,27 +10763,24 @@ findAbilityTypePointer(pAbilities, unitType, abilityString)
 ; This will get the morph time for most structures e.g. CC -> orbital/PF, hatch -> lair -> Hive, spire -> G.Spire
 ; CommandCentre->Orbital - time remaining
 ; [[[[Ability Struct + 0x34] + 0x10] + 0xD4] + 0x98]
-; old way, can just use the unit's queued command pointer
-getStructureMorphTimeOld(pAbilities, unitType)
+; This way is simpler than using the units queued command pointer
+getStructureMorphTime(pAbilities, unitType)
 {
 ;	pBuildInProgress := findAbilityTypePointer(pAbilities, unitType, "BuildInProgress")
 	p := pointer(GameIdentifier, findAbilityTypePointer(pAbilities, unitType, "BuildInProgress"), 0x10, 0xD4)
 	timeRemaing := ReadMemory(p + 0x98, GameIdentifier)
 	totalTime := ReadMemory(p + 0xB4, GameIdentifier)
-	percent := round((totalTime - timeRemaing)/totalTime, 2)
-	if (percent >= 0 || percent <= 1)
-		return percent
-	return 1
+	return round((totalTime - timeRemaing)/totalTime, 2)
 }
 
 ; Note, this also works with corruptors -> gg.lords and overlord -> overseer, but not ling -> bane or HTs -> Archon
 ; but if also has queued command then need to find the morphing ability
-getStructureMorphTimeNew(unit)
+getUnitMorphTimeOld(unit)
 {
 	p := ReadMemory(B_uStructure + unit * S_uStructure + O_P_uCmdQueuePointer, GameIdentifier)
 	timeRemaing := ReadMemory(p + 0x98, GameIdentifier)
 	totalTime := ReadMemory(p + 0xB4, GameIdentifier)
-	return round(mod((totalTime - timeRemaing)/totalTime, 1), 2) ; mod so number always between 0 and 1
+	return round((totalTime - timeRemaing)/totalTime, 2)
 }
 
 /*
@@ -10791,7 +10793,8 @@ getStructureMorphTimeNew(unit)
 	UpgradeToOrbital
 	UpgradeToPlanetaryFortress
 */
-getStructureMorphTime(unit, unitType)
+
+getUnitMorphTime(unit, unitType)
 {
 	static targetIsPoint := 0x8, targetIsUnit := 0x10, hasRun := False, aMorphStrings
 
@@ -10827,7 +10830,7 @@ getStructureMorphTime(unit, unitType)
 				{
 					timeRemaing := numget(cmdDump, 0x98, "UInt")
 					totalTime := numget(cmdDump, 0xB4, "UInt")			
-					return round(mod((totalTime - timeRemaing)/totalTime, 1), 2) ; mod so number always between 0 and 1
+					return round((totalTime - timeRemaing)/totalTime, 2)
 				}
 			}
 
@@ -10839,15 +10842,20 @@ getStructureMorphTime(unit, unitType)
 
 }
 
-getLingtoBanelingMorphTime(pAbilities, unitType)
+getBanelingMorphTime(pAbilities)
 {
-
-	p := pointer(GameIdentifier, findAbilityTypePointer(pAbilities, unitType, "MorphZerglingToBaneling"), 0x12c, 0x0)
+	p := pointer(GameIdentifier, findAbilityTypePointer(pAbilities, aUnitID.BanelingCocoon, "MorphZerglingToBaneling"), 0x12c, 0x0)
 	totalTime := ReadMemory(p + 0x68, GameIdentifier)
 	timeRemaing := ReadMemory(p + 0x6c, GameIdentifier)
-	msgbox % percent := round(mod((totalTime - timeRemaing)/totalTime, 1), 2)
+	return round((totalTime - timeRemaing)/totalTime, 2)
+}
 
-	return
+getArchonMorphTime(pAbilities)
+{
+	pMergeable := readmemory(findAbilityTypePointer(pAbilities, aUnitID.Archon, "Mergeable"), GameIdentifier)
+	totalTime := ReadMemory(pMergeable + 0x28, GameIdentifier)
+	timeRemaing :=ReadMemory(pMergeable + 0x2C, GameIdentifier)
+	return round((totalTime - timeRemaing)/totalTime, 2)
 }
 
 

@@ -1443,9 +1443,9 @@ getBuildStatsPF(unit, byref QueueSize := "",  QueuePosition := 0) ; dirty hack u
 	else return 0
 }
 
-cHex(dec)
+cHex(dec, useClipboard := True)
 {
-	return clipboard := substr(dectohex(dec), 3)
+	return useClipboard ? clipboard := substr(dectohex(dec), 3) : substr(dectohex(dec), 3)
 }
 
 getBuildStats(building, byref QueueSize := "", byRef item := "")
