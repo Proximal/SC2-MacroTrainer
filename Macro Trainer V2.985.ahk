@@ -2130,12 +2130,18 @@ g_unitPanelOverlay_timer:
 	If ((DrawUnitOverlay || DrawUnitUpgrades) && (WinActive(GameIdentifier) || Dragoverlay))
 	{
 		getEnemyUnitCount(aEnemyUnits, aEnemyUnitConstruction, aEnemyCurrentUpgrades)
+	;	objtree(aEnemyUnitConstruction)
+	;	msgbox 
 		FilterUnits(aEnemyUnits, aEnemyUnitConstruction, aUnitPanelUnits)
 		DrawUnitOverlay(RedrawUnit, UnitOverlayScale, OverlayIdent, Dragoverlay)
 	}
 	else if (!WinActive(GameIdentifier) && !Dragoverlay && !areOverlaysWaitingToRedraw())
 		DestroyOverlays()
 return
+
+f2::
+objtree(aEnemyUnitConstruction)
+return 
 
 gYoutubeEasyUnload:
 	run http://youtu.be/D11tsrjPUTU
@@ -9667,7 +9673,7 @@ getEnemyUnitCountOld(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aUni
 	Return
 }
 
-getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyCurrentUpgrades)
+getEnemyUnitCountCurrent(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyCurrentUpgrades)
 {
 	GLOBAL DeadFilterFlag, aPlayer, aLocalPlayer, aUnitTargetFilter, aUnitInfo, aMiscUnitPanelInfo
 	aEnemyUnits := [], aEnemyUnitConstruction := [], aEnemyCurrentUpgrades := [], aMiscUnitPanelInfo := []
@@ -9775,6 +9781,128 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 	Return
 }
 
+getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyCurrentUpgrades)
+{
+	GLOBAL DeadFilterFlag, aPlayer, aLocalPlayer, aUnitTargetFilter, aUnitInfo, aMiscUnitPanelInfo
+	aEnemyUnits := [], aEnemyUnitConstruction := [], aEnemyCurrentUpgrades := [], aMiscUnitPanelInfo := []
+	 
+;	if !aEnemyUnitPriorities	;because having  GLOBAL aEnemyUnitPriorities := [] results in it getting cleared each function run
+;		aEnemyUnitPriorities := []
+
+	loop, % Unitcount := DumpUnitMemory(MemDump)
+	{
+
+	    TargetFilter := numgetUnitTargetFilter(MemDump, unit := A_Index - 1)
+	    if (TargetFilter & DeadFilterFlag || TargetFilter & aUnitTargetFilter.Hallucination)
+	       Continue
+		owner := numgetUnitOwner(MemDump, Unit) 
+
+	    if  (aPlayer[Owner, "Team"] <> aLocalPlayer["Team"] && Owner)
+	    {
+	    	pUnitModel := numgetUnitModelPointer(MemDump, Unit)
+	    	Type := numgetUnitModelType(pUnitModel)
+	    	if  (Type < aUnitID["Colossus"])
+				continue	
+			if (!Priority := aUnitInfo[Type, "Priority"]) ; faster than reading the priority each time - this is splitting hairs!!!
+				aUnitInfo[Type, "Priority"] := Priority := numgetUnitModelPriority(pUnitModel)
+
+			if (aUnitInfo[Type, "isStructure"] = "")
+				aUnitInfo[Type, "isStructure"] := TargetFilter & aUnitTargetFilter.Structure
+
+			if (TargetFilter & aUnitTargetFilter.UnderConstruction)
+			{
+				pAbilities := numgetUnitAbilityPointer(MemDump, unit)
+				
+				;if (TargetFilter & aUnitTargetFilter.Structure)				
+					progress := getBuildProgress(pAbilities, Type)
+
+				aEnemyUnitConstruction[Owner, Priority, Type] := {"progress": progress > round(aEnemyUnitConstruction[Owner, Priority, Type].Progress) 
+																			? progress 
+																			: round(aEnemyUnitConstruction[Owner, Priority, Type].Progress)
+																, "count": round(aEnemyUnitConstruction[Owner, Priority, Type].Count) + 1}
+				aEnemyUnitConstruction[Owner, "TotalCount"] := round(aEnemyUnitConstruction[Owner, "TotalCount"]) + 1
+				
+
+			}		; this is a cheat and very lazy way of incorporating a count into the array without stuffing the for loop and having another variable
+			Else 
+			{
+				if (TargetFilter & aUnitTargetFilter.Structure)
+				{
+					chronoed := False
+					if (aPlayer[owner, "Race"] = "Protoss" && numgetIsUnitChronoed(MemDump, unit))
+					{
+						chronoed := True
+						aMiscUnitPanelInfo["chrono", owner, Type] := round(aMiscUnitPanelInfo["chrono", owner, Type]) + 1 ; ? aMiscUnitPanelInfo["chrono", owner, Type] + 1 : 1
+					}
+					else if (aPlayer[owner, "Race"] = "Terran") && (Type = aUnitID["OrbitalCommand"] || Type = aUnitID["OrbitalCommandFlying"])
+					{
+						if (scanCount := floor(numgetUnitEnergy(MemDump, unit)/50))
+							aMiscUnitPanelInfo["Scans", owner] := round(aMiscUnitPanelInfo["chrono", owner]) + scanCount ; ? aMiscUnitPanelInfo["chrono", owner] + scanCount : scanCount
+					} 
+
+					if (queueSize := getStructureProductionInfo(unit, aQueueInfo))
+					{
+						for i, aProduction in aQueueInfo
+						{
+							if (QueuedType := aUnitID[aProduction.Item])
+							{
+								; this could fail in first game when no unit has been made yet of this type (QueuedPriority will be blank)
+								; But thats a good thing! as it will allow the prioritys to match when then filter trys to remove units (hence it allows the filter to work)
+								QueuedPriority := aUnitInfo[QueuedType, "Priority"]  
+								;aEnemyUnitConstruction[Owner, QueuedPriority, QueuedType] := round(aEnemyUnitConstruction[Owner, QueuedPriority, QueuedType]) + 1 ; ? aEnemyUnitConstruction[Owner, QueuedPriority, QueuedType] + 1 : 1 	
+							
+							aEnemyUnitConstruction[Owner, QueuedPriority, QueuedType] := {"progress": (round(aEnemyUnitConstruction[Owner, QueuedPriority, QueuedType].progress) > aProduction.progress ? round(aEnemyUnitConstruction[Owner, QueuedPriority, QueuedType].progress) : aProduction.progress)
+																							, "count": round(aEnemyUnitConstruction[Owner, QueuedPriority, QueuedType].count) + 1 }
+
+							} ; this count for upgrades allows the number of nukes being produced to be displayed
+							else if a_pBitmap.haskey(aProduction.Item) ; upgrade/research item
+							{
+								; list the highest progress if more than 1
+								
+								aEnemyCurrentUpgrades[Owner, aProduction.Item] := {"progress": (round(aEnemyCurrentUpgrades[Owner, aProduction.Item].progress) > aProduction.progress ? round(aEnemyCurrentUpgrades[Owner, aProduction.Item].progress) : aProduction.progress)
+																					, "count": round(aEnemyCurrentUpgrades[Owner, aProduction.Item].count) + 1 }
+								if chronoed
+									aMiscUnitPanelInfo[owner, "ChronoUpgrade", aProduction.Item] := True
+							}
+						}
+					}
+					; priority - CC = PF = 3, Orbital = 4
+					; this allows the orbital to show as a 'under construction' unit on the right
+					if (Type = aUnitID["CommandCenter"] && MorphingType := isCommandCenterMorphing(unit))
+					{	
+						; if first game then aUnitInfo might not contain the priority
+						; priority - CC = PF = 3, Orbital = 4
+						if !Priority := aUnitInfo[MorphingType, "Priority"]
+						{
+							if (MorphingType = aUnitID.OrbitalCommand)
+								Priority := aUnitInfo[Type, "Priority"] + 1
+							else Priority := aUnitInfo[Type, "Priority"]
+							aUnitInfo[MorphingType, "isStructure"] := True ; so a unit morphing into a type which isnt already in aUnitInfo wont get drawn as a unit rather than structure
+						}
+						aEnemyUnitConstruction[Owner, Priority, MorphingType] := round(aEnemyUnitConstruction[Owner, Priority, MorphingType]) + 1 ; ? aEnemyUnitConstruction[Owner, Priority, MorphingType] + 1 : 1 
+					}
+					; hatchery, lair, and hive have the same priority - 2, so just use the hatches priority as it had to already exist 
+					else if (Type = aUnitID["Hatchery"] || aUnitID["Lair"]) && MorphingType := isHatchOrLairMorphing(unit)
+						aUnitInfo[MorphingType, "isStructure"] := True, Priority := aUnitInfo["Hatchery", "Priority"], aEnemyUnitConstruction[Owner, Priority, MorphingType] := round(aEnemyUnitConstruction[Owner, Priority, MorphingType]) + 1 ; ? aEnemyUnitConstruction[Owner, Priority, MorphingType] + 1 : 1
+					else
+						aEnemyUnits[Owner, Priority, Type] := round(aEnemyUnits[Owner, Priority, Type]) + 1 ; ? aEnemyUnits[Owner, Priority, Type] + 1 : 1 ;note +1 (++ will not work!!!)			
+				}
+				else ; Non-structure/unit
+				{
+					if (Type = aUnitId.Egg)
+					{
+						aProduction := getZergProductionFromEgg(unit)				
+						QueuedPriority := aUnitInfo[aProduction.Type, "Priority"]  
+						aEnemyUnitConstruction[Owner, QueuedPriority, aProduction.Type] := {"progress": (round(aEnemyUnitConstruction[Owner, QueuedPriority, aProduction.Type].progress) > aProduction.progress ? round(aEnemyUnitConstruction[Owner, QueuedPriority, aProduction.Type].progress) : aProduction.progress)
+																					, "count": round(aEnemyUnitConstruction[Owner, QueuedPriority, aProduction.Type].count) + aProduction.Count} 
+					}
+					else aEnemyUnits[Owner, Priority, Type] := round(aEnemyUnits[Owner, Priority, Type]) + 1 ; ? aEnemyUnits[Owner, Priority, Type] + 1 : 1
+				}
+			}
+	   	}
+	}
+	Return
+}
 
 /*
 	object looks like this
@@ -9983,6 +10111,266 @@ getLongestEnemyPlayerName(aPlayer)
 ;One Issue with the upgrades is only 1 nuke will be displayed no mater how many are building
 
 DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
+{
+	GLOBAL aEnemyUnits, aEnemyUnitConstruction, a_pBitmap, aPlayer, aLocalPlayer, aHexColours, GameIdentifier, config_file, UnitOverlayX, UnitOverlayY, MatrixColour 
+		, aUnitInfo, SplitUnitPanel, aEnemyCurrentUpgrades, DrawUnitOverlay, DrawUnitUpgrades, aMiscUnitPanelInfo, aUnitID, overlayMatchTransparency
+	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0
+
+
+	If (Redraw = -1)
+	{
+		Try Gui, UnitOverlay: Destroy
+		overlayCreated := False
+		Redraw := 0
+		Return
+	}	
+	Else if (ReDraw AND WinActive(GameIdentifier))
+	{
+		Try Gui, UnitOverlay: Destroy
+		overlayCreated := False
+		Redraw := 0
+	}
+	If (!overlayCreated)
+	{
+		Gui, UnitOverlay: -Caption Hwndhwnd1 +E0x20 +E0x80000 +LastFound  +ToolWindow +AlwaysOnTop
+		Gui, UnitOverlay: Show, NA X%UnitOverlayX% Y%UnitOverlayY% W400 H400, UnitOverlay
+		OnMessage(0x201, "OverlayMove_LButtonDown")
+		OnMessage(0x20A, "OverlayResize_WM_MOUSEWHEEL")
+		overlayCreated := True
+	}	
+	If (Drag AND !DragPrevious)
+	{	DragPrevious := 1
+		Gui, UnitOverlay: -E0x20
+	}
+	Else if (!Drag AND DragPrevious)
+	{	DragPrevious := 0
+		Gui, UnitOverlay: +E0x20 +LastFound
+		WinGetPos,UnitOverlayX,UnitOverlayY		
+		IniWrite, %UnitOverlayX%, %config_file%, Overlays, UnitOverlayX
+		Iniwrite, %UnitOverlayY%, %config_file%, Overlays, UnitOverlayY		
+	}
+	hbm := CreateDIBSection(A_ScreenWidth, A_ScreenHeight)
+	hdc := CreateCompatibleDC()
+	obm := SelectObject(hdc, hbm)
+	G := Gdip_GraphicsFromHDC(hdc)
+	DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0)
+	setDrawingQuality(G)	
+	Height := DestY := 0
+	rowMultiplier := (DrawUnitOverlay ? (SplitUnitPanel ? 2 : 1) : 0) + (DrawUnitUpgrades ? 1 : 0)
+	
+	for slot_number, priorityObject in aEnemyUnits ; slotnumber = owner and slotnumber is an object
+	{
+		Height += 7*userscale	;easy way to increase different players next line
+		; destY is height of each players first panel row.
+		destUnitSplitY := DestY := rowMultiplier * Height * (A_Index - 1)
+
+		If (PlayerIdentifier = 1 Or PlayerIdentifier = 2 )
+		{	
+			IF (PlayerIdentifier = 2)
+				OptionsName := " Bold cFF" aHexColours[aPlayer[slot_number, "Colour"]] " r4 s" 17*UserScale
+			Else IF (PlayerIdentifier = 1)
+				OptionsName := " Bold cFFFFFFFF r4 s" 17*UserScale		
+			gdip_TextToGraphics(G, getPlayerName(slot_number), "x0" "y"(DestY +12*UserScale)  OptionsName, Font) ;get string size	
+		;	StringSplit, TextSize, TextData, | ;retrieve the length of the string		
+			if !LongestNameSize
+			{
+				LongestNameData :=	gdip_TextToGraphics(G, getLongestEnemyPlayerName(aPlayer), "x0" "y"(DestY)  " Bold c00FFFFFF r4 s" 17*UserScale	, Font) ; text is invisible ;get string size	
+				StringSplit, LongestNameSize, LongestNameData, | ;retrieve the length of the string
+				LongestNameSize := LongestNameSize3
+			}
+			DestX := LongestNameSize+5*UserScale
+
+		}
+		Else If (PlayerIdentifier = 3)
+		{	
+			pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"RaceFlat"]
+			SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
+			Width *= UserScale *.5, Height *= UserScale *.5	
+			Gdip_DrawImage(G, pBitmap, 12*UserScale, DestY + Height/5, Width, Height, 0, 0, SourceWidth, SourceHeight, MatrixColour[aPlayer[slot_number, "Colour"]])
+			DestX := Width+15*UserScale 
+		}
+		else DestX := 0
+
+		; this moves the destionX to the right to account for the race-icon/name
+		firstColumnX  := destUnitSplitX := DestX
+
+
+		if DrawUnitOverlay
+		{
+			for priority, object in priorityObject
+			{
+				for unit, unitCount in object
+				{
+					if !(pBitmap := a_pBitmap[unit])
+						continue ; as i dont have a picture for that unit - not a real unit?
+					SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
+					Width *= UserScale *.5, Height *= UserScale *.5	
+					
+					; Doing like this as it's a requested feature and im too lazy to change everything to make it simpler
+					if (!aUnitInfo[unit, "isStructure"] && SplitUnitPanel)
+					{
+						prevStructureX := DestX
+						prevStructureY := DestY
+						DestX := destUnitSplitX
+						DestY := destUnitSplitY + Height * 1.1 	; 1.1 so the transparent backgrounds of the count and count underconstruction dont overlap
+					} 
+
+					Gdip_DrawImage(G, pBitmap, DestX, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
+					Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, DestX + .6*Width, DestY + .6*Height, Width/2.5, Height/2.5, 5)
+					if (unitCount >= 10)
+						gdip_TextToGraphics(G, unitCount, "x"(DestX + .5*Width + .18*Width/2) "y"(DestY + .5*Height + .3*Height/2)  " Bold cFFFFFFFF r4 s" 11*UserScale, Font)
+					Else
+						gdip_TextToGraphics(G, unitCount, "x"(DestX + .5*Width + .35*Width/2) "y"(DestY + .5*Height + .3*Height/2)  " Bold cFFFFFFFF r4 s" 11*UserScale, Font)
+
+					; Draws in top Left corner of picture scan count for orbitals or chrono count for protoss structures
+					if ((chronoScanCount := aMiscUnitPanelInfo["chrono", slot_number, unit]) || (unit = aUnitID.OrbitalCommand  && (chronoScanCount := aMiscUnitPanelInfo["Scans", slot_number])))
+					{
+						if (chronoScanCount = 1 && unit != aUnitID.OrbitalCommand)
+							Gdip_FillEllipse(G, a_pBrushes["ScanChrono"], DestX + .2*Width/2, DestY + .15*Height/2, 5*UserScale, 5*UserScale)
+						Else
+						{
+							Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, DestX, DestY, Width/2.5, Height/2.5, 5)
+							if (chronoCount >= 10)
+								gdip_TextToGraphics(G, chronoScanCount, "x"(DestX + .1*Width/2) "y"(DestY + .10*Height/2)  " Bold Italic cFFFF00B3 r4 s" 11*UserScale, Font)
+							else
+								gdip_TextToGraphics(G, chronoScanCount, "x"(DestX + .2*Width/2) "y"(DestY + .10*Height/2) " Bold Italic cFFFF00B3 r4 s" 11*UserScale, Font)
+						}
+					}
+
+					if (unitCount := aEnemyUnitConstruction[slot_number, priority, unit].count)	; so there are some of this unit being built lets draw the count on top of the completed units
+					{
+							progress := aEnemyUnitConstruction[slot_number, priority, unit].progress
+						;	Gdip_FillRoundedRectangle(G, a_pBrush[TransparentBlack], DestX, DestY + .6*Height, Width/2.5, Height/2.5, 5)
+							Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, DestX + .6*Width, DestY, Width/2.5, Height/2.5, 5)
+							if (unitCount >= 10)
+								gdip_TextToGraphics(G, unitCount, "x"(DestX + .5*Width + .16*Width/2) "y"(DestY + .10*Height/2)  " Bold Italic cFFFFFFFF r4 s" 11*UserScale, Font)
+							Else
+								gdip_TextToGraphics(G, unitCount, "x"(DestX + .5*Width + .3*Width/2) "y"(DestY + .10*Height/2)  " Bold Italic cFFFFFFFF r4 s" 11*UserScale, Font)
+							Gdip_FillRectangle(G, a_pBrushes.TransparentBlack, DestX + 5 * UserScale *.5, DestY+Height + 5 * UserScale *.5, Width - 10 * UserScale *.5, Height/15)
+							Gdip_FillRectangle(G, a_pBrushes.Green, DestX + 5 * UserScale *.5, DestY+Height + 5 * UserScale *.5, Width*progress - progress * 10 * UserScale *.5, Height/15)
+
+							aEnemyUnitConstruction[slot_number, priority].remove(unit, "")
+					}
+
+					if (!aUnitInfo[unit, "isStructure"] && SplitUnitPanel)
+					{
+						destUnitSplitX += (Width+5*UserScale)
+						DestX := prevStructureX
+						DestY := prevStructureY
+					}
+					else DestX += (Width+5*UserScale)
+				}
+
+			
+			}
+			 destUnitSplitX := DestX += (Width+5*UserScale) ; constructing units / buildings in construction appear further to the right
+
+			; in case no units in construction
+
+			; I think if the unit panel is split, all of these units should be structures
+			; so I dont have to worry about checking structure or not
+			; wrong! some units like morphing archons are considered underconstruction!
+
+			for ConstructionPriority, priorityConstructionObject in aEnemyUnitConstruction[slot_number]
+			{
+				for unit, item in priorityConstructionObject		;	lets draw the buildings under construction (these are ones which werent already drawn above)
+				{	
+
+					if (unit != "TotalCount" && pBitmap := a_pBitmap[unit])				;	i.e. there are no already completed buildings of same type
+					{
+						SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
+						Width *= UserScale *.5, Height *= UserScale *.5	
+						
+						if (!aUnitInfo[unit, "isStructure"] && SplitUnitPanel)
+						{
+							prevStructureX := DestX
+							prevStructureY := DestY
+							DestX := destUnitSplitX
+							DestY := destUnitSplitY + Height * 1.1 	; 1.1 so the tranparent backgrounds of the count and count underconstruction dont overlap 
+						} 
+
+						Gdip_DrawImage(G, pBitmap, DestX, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
+						Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, DestX + .6*Width, DestY, Width/2.5, Height/2.5, 5)
+						if (item.count >= 10)
+							gdip_TextToGraphics(G, item.count, "x"(DestX + .5*Width + .16*Width/2) "y"(DestY + .10*Height/2)  " Bold Italic cFFFFFFFF r4 s" 11*UserScale, Font)
+						Else
+							gdip_TextToGraphics(G, item.count, "x"(DestX + .5*Width + .3*Width/2) " y"(DestY + .10*Height/2)  " Bold Italic cFFFFFFFF r4 s" 11*UserScale, Font)
+						Gdip_FillRectangle(G, a_pBrushes.TransparentBlack, DestX + 5 * UserScale *.5, DestY+Height, Width - 10 * UserScale *.5, Height/15)
+						Gdip_FillRectangle(G, a_pBrushes.Green, DestX + 5 * UserScale *.5, DestY+Height, Width*item.progress - item.progress * 10 * UserScale *.5, Height/15)
+						if (!aUnitInfo[unit, "isStructure"] && SplitUnitPanel)
+						{
+							destUnitSplitX += (Width+5*UserScale)
+							DestX := prevStructureX
+							DestY := prevStructureY
+						}
+						else DestX += (Width+5*UserScale)
+					}
+				}
+			}
+				; This is here to find the longest unit panel (as they will be different size for different players)
+			if (DestX + Width > WindowWidth)
+				WindowWidth := DestX
+			else if (destUnitSplitX + Width > WindowWidth)
+				WindowWidth := destUnitSplitX
+		}
+		if DrawUnitUpgrades
+		{
+			;destUpgradesY := DestY  + Height * 1.1 * (SplitUnitPanel + DrawUnitOverlay) * DrawUnitOverlay
+			destUpgradesY := DestY  + Height * 1.1 * (rowMultiplier - 1)
+			UpgradeX := firstColumnX
+
+			for itemName, item in aEnemyCurrentUpgrades[slot_number]
+			{
+				if (pBitmap := a_pBitmap[itemName])
+				{
+					SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
+					Width *= UserScale *.5, Height *= UserScale *.5	
+					Gdip_DrawImage(G, pBitmap, UpgradeX, destUpgradesY, Width, Height, 0, 0, SourceWidth, SourceHeight)					
+
+					if (item.count > 1) ; This is for nukes - think its the only upgrade which can have a count > 1
+					{
+						Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, UpgradeX + .6*Width, destUpgradesY, Width/2.5, Height/2.5, 5)
+						gdip_TextToGraphics(G, item.count, "x"(UpgradeX + .5*Width + .4*Width/2) "y"(destUpgradesY + .15*Height/2)  " Bold Italic cFFFFFFFF r4 s" 11*UserScale, Font)
+					}
+;					Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, DestX, destUpgradesY+5+Height, Width, Height/10, 3)
+;					Gdip_FillRoundedRectangle(G, a_pBrushes.Green, DestX, destUpgradesY+5+Height, Width*progress, Height/10, progress < 3 ? progress : 3)
+					; all the icons (even unit ones) have an invisible border around them. Hence deduct 10 pixels from the width and and 5 to destX
+					; the progress bar doest start too far to the left of the icon, and doesn't finish too far to the right
+					Gdip_FillRectangle(G, a_pBrushes.TransparentBlack, UpgradeX + 5 * UserScale *.5, destUpgradesY+Height, Width - 10 * UserScale *.5, Height/15)
+					Gdip_FillRectangle(G, a_pBrushes.Green, UpgradeX + 5 * UserScale *.5, destUpgradesY+Height, Width*item.progress - item.progress * 10 * UserScale *.5, Height/15)
+					if aMiscUnitPanelInfo[slot_number, "ChronoUpgrade", itemName] ; its chronoed
+						Gdip_FillEllipse(G, a_pBrushes["ScanChrono"], UpgradeX + .2*Width/2, destUpgradesY + .2*Height/2, ceil(5*UserScale), ceil(5*UserScale)) ; ceil seems to make it rounder/crisper
+					UpgradeX += (Width+5*UserScale)
+				}
+
+			}
+			; This is here to find the longest unit panel (as they will be different size for different players)
+			if (UpgradeX + Width > WindowWidth)
+				WindowWidth := UpgradeX
+		}
+	}
+
+	; 4*height easy way to ensure the last split unit panel or upgrade doesn't get cut off
+	WindowHeight := DestY + 4*Height
+	WindowWidth += width *2 ; because x begins on the left side of where the icon is drawn hence need to add 1 extra icon width to maximum width
+
+	; if width/height is > desktop size, updatelayerd window fails and nothing gets drawn
+	DesktopScreenCoordinates(Xmin, Ymin, Xmax, Ymax)
+	if (WindowWidth > Xmax)
+		WindowWidth := Xmax
+	if (WindowHeight > Ymax)
+		WindowHeight := Ymax
+
+	Gdip_DeleteGraphics(G)
+	UpdateLayeredWindow(hwnd1, hdc,,, WindowWidth, WindowHeight, overlayMatchTransparency)
+	SelectObject(hdc, obm)
+	DeleteObject(hbm)
+	DeleteDC(hdc)
+	Return
+}
+
+
+DrawUnitOverlayOld(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 {
 	GLOBAL aEnemyUnits, aEnemyUnitConstruction, a_pBitmap, aPlayer, aLocalPlayer, aHexColours, GameIdentifier, config_file, UnitOverlayX, UnitOverlayY, MatrixColour 
 		, aUnitInfo, SplitUnitPanel, aEnemyCurrentUpgrades, DrawUnitOverlay, DrawUnitUpgrades, aMiscUnitPanelInfo, aUnitID, overlayMatchTransparency
@@ -10536,6 +10924,16 @@ return
 
 
 
+g_SimpleSplitter:
+thread, Interrupt, off
+while (GetKeyState(A_ThisHotkey, "P") && (selectionCount := getSelectionCount()) > 1)
+{
+	ClickUnitPortrait(0, X, Y, Xpage, Ypage) ; -1 as selection index begins at 0 i.e 1st unit at pos 0 top left
+	input.pSend("+{click " x " " y "}{click right}")
+	sleep 20
+	;MTclick(X, Y, "Left", "+")
+}
+return 
 
 /*
 Terran build structure
@@ -10682,13 +11080,16 @@ RETURN
 ;msgbox % ReadMemory(ByteArrayAddress + 0x7, GameIdentifier, 1)
 
 
-
-
-
 f1::
 unit := getSelectedUnitIndex()
 type := getUnitType(unit)
 pAbilities := getUnitAbilityPointer(unit)
+
+a := getZergProductionFromEgg(getSelectedUnitIndex())
+objtree(a)
+return 
+
+
 
 getUnitAbilitiesString(unit)
 msgbox % getArchonMorphTime(pAbilities)
@@ -10727,7 +11128,7 @@ getUnitAbilitiesString(unit)
 	O_IndexParentTypes := 0x18
 	pAbilities := getUnitAbilityPointer(unit)
 	p1 := readmemory(pAbilities, GameIdentifier)
-	s := "pAbilities: " chex(pAbilities) " Unit ID: " unit "`nuStruct: " chex(getunitAddress(unit), 0) " - " chex(getunitAddress(unit) + S_uStructure, 0)
+	s := "pAbilities: " chex(pAbilities) " Unit ID: " unit "`nuStruct: " chex(getunitAddress(unit)) " - " chex(getunitAddress(unit) + S_uStructure)
 	loop
 	{
 		if (p := ReadMemory( address := p1  +  B_AbilityStringPointer + (A_Index - 1)*4, GameIdentifier))
@@ -10764,7 +11165,7 @@ findAbilityTypePointer(pAbilities, unitType, abilityString)
 ; CommandCentre->Orbital - time remaining
 ; [[[[Ability Struct + 0x34] + 0x10] + 0xD4] + 0x98]
 ; This way is simpler than using the units queued command pointer
-getStructureMorphTime(pAbilities, unitType)
+getStructureMorphProgress(pAbilities, unitType)
 {
 ;	pBuildInProgress := findAbilityTypePointer(pAbilities, unitType, "BuildInProgress")
 	p := pointer(GameIdentifier, findAbilityTypePointer(pAbilities, unitType, "BuildInProgress"), 0x10, 0xD4)
@@ -10772,7 +11173,7 @@ getStructureMorphTime(pAbilities, unitType)
 	totalTime := ReadMemory(p + 0xB4, GameIdentifier)
 	return round((totalTime - timeRemaing)/totalTime, 2)
 }
-
+; similar to getStructureBuildProgress
 ; Note, this also works with corruptors -> gg.lords and overlord -> overseer, but not ling -> bane or HTs -> Archon
 ; but if also has queued command then need to find the morphing ability
 getUnitMorphTimeOld(unit)
@@ -10869,13 +11270,13 @@ return
 
 ; total build time and Time Remaining are blank if unit exists as part of the map i.e. via the mapeditor 
 
-getBuildState(unit, type := "", pAbilities := "")
+getBuildProgress(pAbilities, type)
 {
 	static O_TotalBuildTime := 0x28, O_TimeRemaining := 0x2C
 	; + 0x28 = total build time
 	; + 0x2C = Time Remaining
 
-	if pBuild := findAbilityTypePointer(pAbilities ? pAbilities : getUnitAbilityPointer(unit), type ? type : getUnitType(unit), "BuildInProgress")
+	if pBuild := findAbilityTypePointer(pAbilities, type, "BuildInProgress")
 	{
 		B_Build := ReadMemory(pBuild, GameIdentifier)
 		totalTime := readmemory(B_Build + O_TotalBuildTime, GameIdentifier)

@@ -1149,6 +1149,11 @@ getUnitAbilityPointer(unit) ;returns a pointer which still needs to be read. The
 	return ReadMemory(B_uStructure + unit * S_uStructure + O_P_uAbilityPointer, GameIdentifier) & 0xFFFFFFFC
 }
 
+numgetUnitAbilityPointer(byRef unitDump, unit)
+{
+	return numget(unitDump, unit * S_uStructure + O_P_uAbilityPointer, "UInt") & 0xFFFFFFFC
+}
+
 ; 6144 when stimmed 4096 when not
 isUnitStimed(unit)
 {
@@ -1500,7 +1505,7 @@ getStructureProductionInfo(unit, byRef aInfo)
 }
 
 
-getZergProductionFromEgg(eggUnitIndex)
+getZergProductionStringFromEgg(eggUnitIndex)
 {
 	p := readmemory(getUnitAbilityPointer(eggUnitIndex) + 0x1C, GameIdentifier)
 	p := readmemory(p + 0x34, GameIdentifier) 		; cAbilQueueUse
@@ -1511,6 +1516,22 @@ getZergProductionFromEgg(eggUnitIndex)
 	return aStringTable[pString]
 }
 
+getZergProductionFromEgg(eggUnitIndex)
+{
+	item := []
+	p := readmemory(getUnitAbilityPointer(eggUnitIndex) + 0x1C, GameIdentifier)
+	p := readmemory(p + 0x34, GameIdentifier) 		; cAbilQueueUse
+	p := readmemory(p, GameIdentifier) 				; LarvaTrain  - this pointer structure will also have the production time/total
+	timeRemaing := readmemory(p + 0x6C, GameIdentifier) 	
+	totalTime := readmemory(p + 0x68, GameIdentifier) 		
+	p := readmemory(p + 0xf4, GameIdentifier)
+	if !aStringTable.haskey(pString := readmemory(p, GameIdentifier) ) ; pString
+		aStringTable[pString] := ReadMemory_Str(readMemory(pString + 0x4, GameIdentifier), GameIdentifier)
+	item.Progress := round((totalTime - timeRemaing)/totalTime, 2) 
+	item.Type := aUnitID[(item.Item := aStringTable[pString])] 
+	item.Count := item.Type = aUnitID.Zergling ? 2 : 1
+	return item
+}
 
 /*
 	Queued Unit info (B_QueuedUnitInfo)
