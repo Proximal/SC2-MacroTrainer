@@ -197,6 +197,21 @@ class Input
 	; pSend("+{click}")		Result: Shift Left click the mouse (down and up event)
 	; pSend("{click D " x1 " " y1 "}{Click U " x2 " " y2 "}") ; Result: Box drag the mouse with the LButton
 	; pSend("+{click MM}")		Result: Shift Left click the mouse (down and up event) at location and also sends a WM_MouseMove event
+
+/*
+Bits	Meaning
+0-15	The repeat count for the current message. The value is the number of times the keystroke is autorepeated as a result of the user holding down the key. The repeat count is always 1 for a WM_KEYUP message.
+16-23	The scan code. The value depends on the OEM.
+24	Indicates whether the key is an extended key, such as the right-hand ALT and CTRL keys that appear on an enhanced 101- or 102-key keyboard. The value is 1 if it is an extended key; otherwise, it is 0.
+25-28	Reserved; do not use.
+29	The context code. The value is always 0 for a WM_KEYUP message.
+30	The previous key state. The value is always 1 for a WM_KEYUP message.
+31	The transition state. The value is always 1 for a WM_KEYUP message.
+
+To send a capital letter have to send a char (without keyup/downs) using AscII code
+postmessage, % WM_CHAR := 0x102, % Asc("A"), lparam, % this.Control, % GameIdentifier
+*/
+
 	
 	pSend(Sequence := "")
 	{
@@ -333,7 +348,8 @@ class Input
 			}
 			else if (WM_KEYUP = message.message)
 			{
-				lparam := 1 | (message.sc << 16) | (1 << 31) ; transition state
+				 ; repeat code | (scan code << 16) | (previous state << 30) | (transition state << 31)
+				lparam := 1 | (message.sc << 16) | (1 << 30) | (1 << 31)
 				postmessage, message.message, message.wParam, lparam, % this.Control, % this.WinTitle, % this.WinText, % this.ExcludeTitle, % this.ExcludeText
 			}
 			else 
@@ -348,6 +364,19 @@ class Input
 				DllCall("Sleep", Uint, pKeyDelay)
 		}
 		return aSend
+	}
+	; for use in chat boxes
+	; can send ascii art and capitalised letters i.e. just text  eg GLF♥HF! 
+	pSendChars(Sequence := "")
+	{
+		static WM_CHAR := 0x102
+		
+		loop, % strlen(Sequence) 
+		{
+			char := SubStr(Sequence, A_Index, 1)
+			postmessage, WM_CHAR, Asc(char),, % this.Control, % this.WinTitle, % this.WinText, % this.ExcludeTitle, % this.ExcludeText
+		}	
+		return	
 	}
 
 	; wParam Indicates whether various virtual keys are down. This parameter can be one or more of the following values.

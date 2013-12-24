@@ -3428,6 +3428,9 @@ readConfigFile()
 	IniRead, OverlayIdent, %config_file%, %section%, OverlayIdent, 2
 	IniRead, SplitUnitPanel, %config_file%, %section%, SplitUnitPanel, 1
 	IniRead, DrawUnitUpgrades, %config_file%, %section%, DrawUnitUpgrades, 1
+	IniRead, unitPanelDrawStructureProgress, %config_file%, %section%, unitPanelDrawStructureProgress, 1
+	IniRead, unitPanelDrawUnitProgress, %config_file%, %section%, unitPanelDrawUnitProgress, 1
+	IniRead, unitPanelDrawUpgradeProgress, %config_file%, %section%, unitPanelDrawUpgradeProgress, 1
 ;	IniRead, OverlayBackgrounds, %config_file%, %section%, OverlayBackgrounds, 0
 	OverlayBackgrounds := False ; should remove this from 
 	IniRead, MiniMapRefresh, %config_file%, %section%, MiniMapRefresh, 300
