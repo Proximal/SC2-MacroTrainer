@@ -12543,6 +12543,8 @@ return
 	Note, if a program closes/restarts then the process handle will be invalid
 	and you will need to re-open another handle.
 
+	read(), readString(), write(), and writeString() can be used to read and write memory addresses respectively.
+
 	switchTargetProgram() can be used to facilitate reading memory from multiple processes in the one script.
 
 	ReadRawMemory() can be used to dump large chunks of memory, this is considerably faster when
@@ -12569,22 +12571,22 @@ return
 			memory.write(0x0016CB60, 1234, "UInt")
 
 		read a UInt
-			memory.read(0x0016CB60, "UInt")
+			value := memory.read(0x0016CB60, "UInt")
 
 		read a pointer with offsets 0x20 and 0x15C which points to a uchar 
-			memory.read(pointerBase, "UChar", 0x20, 0x15C)
+			value := memory.read(pointerBase, "UChar", 0x20, 0x15C)
 
 		Note: read(), readString(), ReadRawMemory(), write(), and writeString() all support pointers/offsets
 			An array of pointers can be passed directly, i.e.
 			arrayPointerOffsets := [0x20, 0x15C]
-			memory.read(pointerBase, "UChar", arrayPointerOffsets*)
+			value := memory.read(pointerBase, "UChar", arrayPointerOffsets*)
 
 		
 		read a utf-16 null terminated string of unknown length at address 0x1234556 - the function will read each character until the null terminator is found
-			memory.readString(0x1234556, length := 0, encoding := "utf-16")
+			string := memory.readString(0x1234556, length := 0, encoding := "utf-16")
 		
 		read a utf-8 encoded 12 character string at address 0x1234556
-			memory.readString(0x1234556, 12)
+			string := memory.readString(0x1234556, 12)
 
 		Close ALL currently open handles - this should be done before the script exits
 			memory.closeProcess()
@@ -12748,6 +12750,7 @@ class memory
 
 	pointer(base, finalType := "UInt", offsets*)
 	{ 
+
 		For index, offset in offsets
 		{
 			if (index = offsets.maxIndex() && A_index = 1)
@@ -12761,15 +12764,13 @@ class memory
 				Else pointer := this.Read(pointer + offset)
 			}
 		}	
-		Return this.Read(pointer, finalType)
+		Return this.Read(offsets.maxIndex() ? pointer : base, finalType)
 	}
 
 	getAddressFromOffsets(address, aOffsets*)
 	{
-   		lastOffset := aOffsets.Remove() ;remove the highest key so can use pointer to find address
-		if aOffsets.maxIndex()
-			address := this.pointer(address, "UInt", aOffsets*) ; pointer function requires at least one offset
-		return	address += lastOffset		
+   		lastOffset := aOffsets.Remove() ;remove the highest key so can use pointer() to find final memory address (minus the last offset)
+		return	this.pointer(address, "UInt", aOffsets*) + lastOffset		
 	}
 
 	; The base adress for some programs is dynamic. This can retrieve the current base address, 
