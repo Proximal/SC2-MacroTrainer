@@ -1188,7 +1188,7 @@ AutoGroup(byref A_AutoGroup, AGDelay = 0)
 		SelctedTime := A_Tickcount
 	}
 	if (A_Tickcount - SelctedTime >= AGDelay) && oSelection.Count && !WrongUnit && (CtrlType_i = SelectedTypes) && (controlGroup != "") && WinActive(GameIdentifier) && !isGamePaused() ; note <> "" as there is group 0! cant use " controlGroup "
-	&& !isMenuOpen() && !checkAllKeyStates() && !readModifierState() && MT_InputIdleTime() >= AGKeyReleaseDelay
+	&& !isMenuOpen() && MT_InputIdleTime() >= AGKeyReleaseDelay && !checkAllKeyStates(False, True) && !readModifierState() 
 	{			
 		critical, 1000
 		input.pReleaseKeys(True)
@@ -1223,8 +1223,9 @@ AutoGroup(byref A_AutoGroup, AGDelay = 0)
 	; sends the group command twice very quickly
 	if sleepOnExit  
 	{
-		Thread, NoTimers, false
+		
 		Thread, Priority, -2147483648
+		Thread, NoTimers, false
 		sleep 85
 		settimer, AutoGroupIdle, On, -9999 ;on re-enables timers with previous period
 		settimer, Auto_Group, On		
@@ -7030,6 +7031,27 @@ return
 
 */
 
+
+
+WriteMemoryT(program, value, address, size := 4, aOffsets*)
+{
+    winget, pid, PID, %PROGRAM%
+   	address += getProcessBaseAddress(program)
+   	if aOffsets.maxIndex()
+   	{
+   		lastOffset := aOffsets.Remove() ;remove the highest key so can use pointer to find address
+		if aOffsets.maxIndex()
+			address := pointer(program, address, aOffsets*) ; pointer function requires at least one offset
+		address += lastOffset		
+	}
+
+    ProcessHandle := DllCall("OpenProcess", "int", 2035711, "char", 0, "UInt", PID, "UInt")
+    DllCall("WriteProcessMemory", "UInt", ProcessHandle, "UInt", address, "ptr*", value, "Uint", size, "Uint*", bytesWritten)
+    DllCall("CloseHandle", "int", ProcessHandle)
+	return bytesWritten
+}
+
+
 /*
 
 getZergProduction(EggUnitIndex)
@@ -12463,5 +12485,270 @@ launchMiniMapThread()
 	}
 	Return 
 }
+
+>!b::
+sleep 500
+var :=
+(
+"
+  GGG     EEEEE      TTTTT
+G             E                  T
+G   GG    EEE               T
+G      G    E                  T
+  GGG     EEEEE          T
+  OOO      U       U   TTTTT
+O      O    U       U        T
+O      O    U       U        T
+O      O    U       U        T
+  OOO        UUU          T"
+)
+;input.setTarget("Edit1", "ahk_exe notepad.exe")
+
+loop, % count := 40
+{
+;	Process, Priority,, High
+	spaces := ""
+	loop % count - A_Index
+		spaces .= A_space
+
+	loop, parse, var, `n
+	{
+		input.pSend("+{enter}")
+		text := SubStr(spaces A_LoopField , 1, 40)
+		input.pSendChars(text )
+		input.pSend("{enter}")
+	}
+;	Process, Priority,, Normal
+	sleep 150
+}
+
+return 
+
+
+
+
+
+if !newTest
+{
+	newTest := memory.openProcess(GameIdentifier)
+}
+mineralAddress := B_pStructure + O_pMinerals + (getLocalPlayerNumber()-1) * S_pStructure
+
+
+msgbox % memory.writeString(0x4977970, "hello322", "utf-8")
+
+msgbox % memory.readString(0x4977970, length := 0, "utf-8")
+
+
+;msgbox % clipboard := chex(B_uStructure)
+
+return
+
+
+
+
+class memory
+{
+	static currentProgram, hProcessCurrent, insertNullTerminator := True
+	, aProcessHandles := []
+
+	openCloseProcess(program, dwDesiredAccess := "")
+	{
+		If (program != this.currentProgram)
+		{
+			if dwDesiredAccess is not integer
+				dwDesiredAccess := (PROCESS_VM_OPERATION := 0x8) | (PROCESS_VM_READ := 0x10) | (PROCESS_VM_WRITE := 0x20)
+			WinGet, pid, pid, % this.currentProgram := program
+			this.hProcessCurrent := ( this.hProcessCurrent 
+								? 0*(closed:=DllCall("CloseHandle", "UInt", this.hProcessCurrent)) 
+								: 0 )+(pid 
+											? DllCall("OpenProcess", "UInt", dwDesiredAccess, "Int", False, "UInt", pid) 
+											: 0) 
+		}
+		return this.hProcessCurrent 
+	}
+
+
+	openProcess(program, dwDesiredAccess := "")
+	{
+		; if an application closes/restarts the previous handle becomes invalid so reopen it to be safe
+		if aProcessHandles.hasKey(program)
+			this.closeProcess(program)
+		if dwDesiredAccess is not integer
+			dwDesiredAccess := (PROCESS_VM_OPERATION := 0x8) | (PROCESS_VM_READ := 0x10) | (PROCESS_VM_WRITE := 0x20)
+		
+		WinGet, pid, pid, % this.currentProgram := program
+		aProcessHandles.Insert(program, this.hProcessCurrent := DllCall("OpenProcess", "UInt", dwDesiredAccess, "Int", False, "UInt", pid))
+		return this.hProcessCurrent 	
+	}	
+
+	; To close all open handles, simply call memory.closeProcess() without a parameter
+	; good programming practices says you should call this function before exiting the script
+	closeProcess(program := "")
+	{
+		if !program
+		{
+			For program, handle in this.aProcessHandles
+				DllCall("CloseHandle", "UInt", handle)
+			this.aProcessHandles := []
+			return
+		}
+		else if aProcessHandles.HasKey(program)
+			return DllCall("CloseHandle", "UInt", aProcessHandles[program]), aProcessHandles.Remove(program)
+	}
+
+	; This can be used if you're reading memory from multiple processes e.g multi boxing
+	; simply call memory.switchTargetProgram(program) before each call to a different process
+	switchTargetProgram(program)
+	{
+		if aProcessHandles.HasKey(program)
+			this.currentProgram := program,	this.hProcessCurrent := this.aProcessHandles[program]
+		else
+			this.OpenProcess(program) ; sets current Program and process handle
+		return
+	}
+
+	read(address, type := "UInt", aOffsets*)
+	{
+		if (type = "UInt" || type = "Int")
+			bytes := 4
+		else if (type = "UChar" || type = "Char")
+			bytes := 1		
+		else if (type = "UShort" || type = "Short")
+			bytes := 2
+		else 
+			bytes := 8
+		VarSetCapacity(buffer, bytes, 0)
+		if !DllCall("ReadProcessMemory","UInt",  this.hProcessCurrent, "UInt", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, "Ptr", &buffer, "UInt", bytes, "Ptr",0)
+		  return !this.hProcessCurrent ? "Handle Is closed: " this.hProcessCurrent : "Fail"
+		if (bytes = 8)
+		{
+		  loop % BYTES 
+		      result += numget(buffer, A_index-1, "Uchar") << 8 *(A_Index-1)
+		  return result
+		}
+		return numget(buffer, 0, Type)
+	}
+	; This is used to dump large chunks of memory. Values can later be retried from the buffer using AHK's numget()
+	; this offers a SIGNIFICANT (~30% and up for large areas) performance boost,
+	; as calling ReadProcessMemory for 4 bytes takes a similar amount of time as it does to read 1000 bytes
+
+	ReadRawMemory(address, byref buffer, bytes := 4, aOffsets*)
+	{
+		VarSetCapacity(buffer, bytes)
+		if aOffsets.maxIndex()
+			address := this.getAddressFromOffsets(address, aOffsets*)		
+		if !DllCall("ReadProcessMemory", "UInt", this.hProcessCurrent, "UInt", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, "Ptr", &buffer, "UInt", bytes, "Ptr", 0)
+			return !this.hProcessCurrent ? "Handle Is closed: " this.hProcessCurrent : "Fail"
+		return
+	}
+
+	readString(address, length := 0, encoding := "utf-8", aOffsets*)
+	{
+		size  := (encoding ="utf-16" || encoding = "cp1200") ? 2 : 1
+		VarSetCapacity(buffer, length ? length * size : size, 0)
+	 
+		if aOffsets.maxIndex()
+			address := this.getAddressFromOffsets(address, aOffsets*)
+	  
+	    If !length ; read until terminator found or something goes wrong
+		{
+	        Loop
+	        { 
+	            success := DllCall("ReadProcessMemory", "UInt", this.hProcessCurrent, "UInt", address + (A_index - 1) * size, "str", buffer, "Uint", size, "Ptr", 0) 
+	            if (ErrorLevel || !success || "" = char := StrGet(&buffer, 1, encoding))  ; null terminator
+	                break
+	            string .= char 
+			} 
+		}
+		Else ; will read X length
+		{
+				
+	        DllCall("ReadProcessMemory", "UInt", this.hProcessCurrent, "UInt", address, "str", buffer, "Uint", length * size, "Ptr", 0)   
+	        string := StrGet(&buffer, length, encoding)
+		}
+		return string				
+	}
+
+	; by default a null terminator is included at the end of written strings for writeString()
+	; can change this property 
+	; memory.insertNullTerminator := False
+
+	writeString(address, string, encoding := "utf-8", aOffsets*)
+	{
+		encodingSize := (encoding = "utf-16" || encoding = "cp1200") ? 2 : 1
+		requiredSize := StrPut(string, encoding) * encodingSize - (this.insertNullTerminator ? 0 : encodingSize)
+	    VarSetCapacity(buffer, requiredSize, 0)
+	    StrPut(string, &buffer, this.insertNullTerminator ? StrLen(string) : StrLen(string) + 1, encoding)
+	    DllCall("WriteProcessMemory", "UInt", this.hProcessCurrent, "UInt", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, "Ptr", &buffer, "Uint", requiredSize, "Ptr*", BytesWritten)
+	    return BytesWritten
+	}
+
+	getAddressFromOffsets(address, aOffsets*)
+	{
+   		lastOffset := aOffsets.Remove() ;remove the highest key so can use pointer to find address
+		if aOffsets.maxIndex()
+			address := this.pointer(address, "UInt", aOffsets*) ; pointer function requires at least one offset
+		return	address += lastOffset		
+	}
+
+	write(address, value, type := "Uint", aOffsets*)
+	{
+        If (type = "Int" || type = "UInt" || type = "Float" || type = "UFloat")
+            bytes := 4
+        Else If (type = "Char" || type = "UChar")
+			bytes := 1           
+        Else If (type = "Short" || type = "UShort")
+            bytes := 2
+		else If (type = "Double" || type = "Int64") ; Unsigned64 bit not supported by AHK
+            bytes := 8
+        else return "Non Supported data type"
+        VarSetCapacity(buffer, bytes, 0)
+        NumPut(value, buffer, 0, type)
+	  	return DllCall("WriteProcessMemory", "UInt", this.hProcessCurrent, "UInt", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, "Ptr", &buffer, "Uint", bytes, "Ptr", 0) 
+	}
+
+
+	; Can pass an array of offsets by using *
+	; eg, pointer(game, base, [0x10, 0x30, 0xFF]*)
+	; or a := [0x10, 0x30, 0xFF]
+	; pointer(game, base, a*)
+	; or just type them in manually
+
+	pointer(base, finalType := "UInt", offsets*)
+	{ 
+		For index, offset in offsets
+		{
+			if (index = offsets.maxIndex() && A_index = 1)
+				pointer := offset + this.Read(base)
+			Else 
+			{
+				IF (A_Index = 1) 
+					pointer := this.Read(offset + this.Read(base))
+				Else If (index = offsets.MaxIndex())
+					pointer += offset
+				Else pointer := this.Read(pointer + offset)
+			}
+		}	
+		Return this.Read(pointer, finalType)
+	}
+
+
+	; If the AHK.exe is 64 bit, then function will call GetWindowLongPtr
+	; otherwise  it calls GetWindowLong
+
+	getProcessBaseAddress(WindowTitle, MatchMode=3)	;WindowTitle can be anything "ahk_exe SC2.exe"  "ahk_class xxxx" etc
+	{
+		SetTitleMatchMode, %MatchMode%	;mode 3 is an exact match
+		WinGet, hWnd, ID, %WindowTitle%
+		; AHK32Bit A_PtrSize = 4 | AHK64Bit - 8 bytes
+		return := DllCall(A_PtrSize = 4
+			? "GetWindowLong" 
+			: "GetWindowLongPtr", "Uint", hWnd, "Uint", -6) 
+	}
+
+
+}
+
 
 

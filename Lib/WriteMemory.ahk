@@ -32,24 +32,15 @@ WriteMemory(WriteAddress = "", PROGRAM="", Data="", TypeOrLength = "")
 {
   
    Static OLDPROC, hProcess, pid
-   VarSetCapacity(MVALUE,4,0)
-   static PROCESS_VM_WRITE = 0x20
-   static PROCESS_VM_OPERATION = 0x8
-   static Buf := "        "    ; For numbers in binary form.
-   If PROGRAM != %OLDPROC%
+
+   If (PROGRAM != OLDPROC)
    {
+
       WinGet, pid, pid, % OLDPROC := PROGRAM
       hProcess := ( hProcess ? 0*(closed:=DllCall("CloseHandle"
       ,"UInt",hProcess)) : 0 )+(pid ? DllCall("OpenProcess"
-      ,"UInt", PROCESS_VM_WRITE | PROCESS_VM_OPERATION,"Int",False,"UInt",pid) : 0) ;PID is stored in value pid
+      ,"UInt", (PROCESS_VM_WRITE := 0x20) | (PROCESS_VM_OPERATION = 0x8),"Int",False,"UInt",pid) : 0) ;PID is stored in value pid
    }
-
-;old method
-;    hProcess := DllCall("OpenProcess"
-;                        , "UInt", PROCESS_VM_WRITE | PROCESS_VM_OPERATION
-;                        , "Int",  False
-;                        , "UInt", pid)
-
 
     If Data is Number   ; Either a numeric value or a memory address.
     {
@@ -73,6 +64,7 @@ WriteMemory(WriteAddress = "", PROGRAM="", Data="", TypeOrLength = "")
               ;  MsgBox, Invalid type of number.
                 Return False 
             }
+            VarSetCapacity(Buf, DataSize, 0)
             NumPut(Data, Buf, 0, TypeOrLength)
             DataAddress := &Buf
         }

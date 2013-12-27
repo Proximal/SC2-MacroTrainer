@@ -34,6 +34,7 @@ class Input
 		,	KybdBlocked := False
 		, 	pCurrentClickDelay := -1
 		, 	pCurrentSendDelay := -1
+		, 	pCurrentCharDelay := -1
 		, 	dragLeftClick := False
 		, 	Control, WinTitle, WinText,	ExcludeTitle, ExcludeText
 
@@ -170,13 +171,19 @@ class Input
 			this.pCurrentClickDelay := newDelay
 		return this.pCurrentClickDelay
 	}
-
 	pSendDelay(newDelay := "")
 	{
 		if newDelay is number 
 			this.pCurrentSendDelay := newDelay
 		return this.pCurrentSendDelay
 	}	
+	pCharDelay(newDelay := "")
+	{
+		if newDelay is number 
+			this.pCurrentCharDelay := newDelay
+		return this.pCurrentCharDelay
+	}
+
 	hookBlock(kybd := False, mouse := False)
 	{
 		this.KybdBlocked := kybd
@@ -360,8 +367,7 @@ postmessage, % WM_CHAR := 0x102, % Asc("A"), lparam, % this.Control, % GameIdent
 					DllCall("Sleep", Uint, pClickDelay)
 				continue
 			}
-			if (pKeyDelay != -1)
-				DllCall("Sleep", Uint, pKeyDelay)
+
 		}
 		return aSend
 	}
@@ -375,6 +381,8 @@ postmessage, % WM_CHAR := 0x102, % Asc("A"), lparam, % this.Control, % GameIdent
 		{
 			char := SubStr(Sequence, A_Index, 1)
 			postmessage, WM_CHAR, Asc(char),, % this.Control, % this.WinTitle, % this.WinText, % this.ExcludeTitle, % this.ExcludeText
+			if (this.pCurrentCharDelay != -1)
+				DllCall("Sleep", Uint, this.pCurrentCharDelay)
 		}	
 		return	
 	}
