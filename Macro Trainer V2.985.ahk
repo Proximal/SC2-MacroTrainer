@@ -12528,52 +12528,85 @@ return
 
 
 
-if !newTest
-{
-	newTest := memory.openProcess(GameIdentifier)
-}
-mineralAddress := B_pStructure + O_pMinerals + (getLocalPlayerNumber()-1) * S_pStructure
-
-
-msgbox % memory.writeString(0x4977970, "hello322", "utf-8")
-
-msgbox % memory.readString(0x4977970, length := 0, "utf-8")
-
-
 ;msgbox % clipboard := chex(B_uStructure)
 
 return
 
 
 
+/*
+	This is a basic wrapper for commonly used read and write memory functions.
+	Allows scripts to read/write integers and strings of various types.
+	Pointer addresses can easily be read/written by passing the base address and offsets to the read/write functions
+	
+	Process handles are kept open between reads. This increases speed.
+	Note, if a program closes/restarts then the process handle will be invalid
+	and you will need to re-open another handle.
+
+	switchTargetProgram() can be used to facilitate reading memory from multiple processes in the one script.
+
+	ReadRawMemory() can be used to dump large chunks of memory, this is considerably faster when
+	reading data from a large structure compared to repeated calls to read()/write().
+	Although, most people wouldn't notice the performance difference. This does however require you 
+	to retreive the values using AHK's numget()/strGet() from the dumped memory
+	
+	Note:
+	This was written for 32 bit processes, but the various read/write functions
+	should still work when directly reading/writing an address. The pointer parts of
+	these functions probably wont, as I assume pointers are stored as 64bit values.
+
+	Also very large (unsigned) 64 bit integers may not be read correctly - the current function works 
+	for the 64 bit ints I use it on. AHK doesn't directly support 64bit unsigned ints anyway
+
+	
+	Usage:
+
+		open a process with sufficient access to read and write memory addresses (this is required before you can use the other functions)
+			memory.openProcess("ahk_exe calc.exe")
+		Note: This can be an ahk_exe, ahk_class, ahk_pid, or simply the window title. 
+
+		write 1234 to a UInt
+			memory.write(0x0016CB60, 1234, "UInt")
+
+		read a UInt
+			memory.read(0x0016CB60, "UInt")
+
+		read a pointer with offsets 0x20 and 0x15C which points to a uchar 
+			memory.read(pointerBase, "UChar", 0x20, 0x15C)
+
+		Note: read(), readString(), ReadRawMemory(), write(), and writeString() all support pointers/offsets
+			An array of pointers can be passed directly, i.e.
+			arrayPointerOffsets := [0x20, 0x15C]
+			memory.read(pointerBase, "UChar", arrayPointerOffsets*)
+
+		
+		read a utf-16 null terminated string of unknown length at address 0x1234556 - the function will read each character until the null terminator is found
+			memory.readString(0x1234556, length := 0, encoding := "utf-16")
+		
+		read a utf-8 encoded 12 character string at address 0x1234556
+			memory.readString(0x1234556, 12)
+
+		Close ALL currently open handles - this should be done before the script exits
+			memory.closeProcess()
+		close a handle to an individual program 
+			memory.closeProcess("ahk_exe calc.exe")
+		Note: You need to pass the exact same program/string that you used to open the process i.e. openProcess("ahk_exe calc.exe")
+
+*/
+
 
 class memory
 {
-	static currentProgram, hProcessCurrent, insertNullTerminator := True
-	, aProcessHandles := []
-
-	openCloseProcess(program, dwDesiredAccess := "")
-	{
-		If (program != this.currentProgram)
-		{
-			if dwDesiredAccess is not integer
-				dwDesiredAccess := (PROCESS_VM_OPERATION := 0x8) | (PROCESS_VM_READ := 0x10) | (PROCESS_VM_WRITE := 0x20)
-			WinGet, pid, pid, % this.currentProgram := program
-			this.hProcessCurrent := ( this.hProcessCurrent 
-								? 0*(closed:=DllCall("CloseHandle", "UInt", this.hProcessCurrent)) 
-								: 0 )+(pid 
-											? DllCall("OpenProcess", "UInt", dwDesiredAccess, "Int", False, "UInt", pid) 
-											: 0) 
-		}
-		return this.hProcessCurrent 
-	}
-
+	static currentProgram, hProcessCurrent, insertNullTerminator := True, aProcessHandles := []
 
 	openProcess(program, dwDesiredAccess := "")
 	{
-		; if an application closes/restarts the previous handle becomes invalid so reopen it to be safe
+		; if an application closes/restarts the previous handle becomes invalid so reopen it to be safe (closing a now invalid handle is fine i.e. wont cause and error)
 		if aProcessHandles.hasKey(program)
 			this.closeProcess(program)
+
+		; This default access level is sufficient to read and write memory addresses.
+		; if the program is run using admin privileges, then this script will also need admin privileges
 		if dwDesiredAccess is not integer
 			dwDesiredAccess := (PROCESS_VM_OPERATION := 0x8) | (PROCESS_VM_READ := 0x10) | (PROCESS_VM_WRITE := 0x20)
 		
@@ -12607,6 +12640,8 @@ class memory
 			this.OpenProcess(program) ; sets current Program and process handle
 		return
 	}
+
+	; reads various integer type values
 
 	read(address, type := "UInt", aOffsets*)
 	{
@@ -12643,6 +12678,9 @@ class memory
 		return
 	}
 
+	; Encoding refers to how the string is stored in the programs memory - probably uft-8 or utf-16
+	; If length is 0, readString() will read the string until it finds a null terminator (or an error occurs)
+
 	readString(address, length := 0, encoding := "utf-8", aOffsets*)
 	{
 		size  := (encoding ="utf-16" || encoding = "cp1200") ? 2 : 1
@@ -12651,12 +12689,12 @@ class memory
 		if aOffsets.maxIndex()
 			address := this.getAddressFromOffsets(address, aOffsets*)
 	  
-	    If !length ; read until terminator found or something goes wrong
+	    If !length ; read until null terminator is found or something goes wrong
 		{
 	        Loop
 	        { 
 	            success := DllCall("ReadProcessMemory", "UInt", this.hProcessCurrent, "UInt", address + (A_index - 1) * size, "str", buffer, "Uint", size, "Ptr", 0) 
-	            if (ErrorLevel || !success || "" = char := StrGet(&buffer, 1, encoding))  ; null terminator
+	            if (ErrorLevel || !success || "" = char := StrGet(&buffer, 1, encoding))  ; null terminator = ""
 	                break
 	            string .= char 
 			} 
@@ -12671,7 +12709,7 @@ class memory
 	}
 
 	; by default a null terminator is included at the end of written strings for writeString()
-	; can change this property 
+	; This property can be changed i.e.
 	; memory.insertNullTerminator := False
 
 	writeString(address, string, encoding := "utf-8", aOffsets*)
@@ -12682,14 +12720,6 @@ class memory
 	    StrPut(string, &buffer, this.insertNullTerminator ? StrLen(string) : StrLen(string) + 1, encoding)
 	    DllCall("WriteProcessMemory", "UInt", this.hProcessCurrent, "UInt", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, "Ptr", &buffer, "Uint", requiredSize, "Ptr*", BytesWritten)
 	    return BytesWritten
-	}
-
-	getAddressFromOffsets(address, aOffsets*)
-	{
-   		lastOffset := aOffsets.Remove() ;remove the highest key so can use pointer to find address
-		if aOffsets.maxIndex()
-			address := this.pointer(address, "UInt", aOffsets*) ; pointer function requires at least one offset
-		return	address += lastOffset		
 	}
 
 	write(address, value, type := "Uint", aOffsets*)
@@ -12708,7 +12738,8 @@ class memory
 	  	return DllCall("WriteProcessMemory", "UInt", this.hProcessCurrent, "UInt", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, "Ptr", &buffer, "Uint", bytes, "Ptr", 0) 
 	}
 
-
+	; This can be used to read various numeric pointer types (the the other various read functions can do this too)
+	; final type refers to the how the value is stored in the final pointer address
 	; Can pass an array of offsets by using *
 	; eg, pointer(game, base, [0x10, 0x30, 0xFF]*)
 	; or a := [0x10, 0x30, 0xFF]
@@ -12733,9 +12764,16 @@ class memory
 		Return this.Read(pointer, finalType)
 	}
 
+	getAddressFromOffsets(address, aOffsets*)
+	{
+   		lastOffset := aOffsets.Remove() ;remove the highest key so can use pointer to find address
+		if aOffsets.maxIndex()
+			address := this.pointer(address, "UInt", aOffsets*) ; pointer function requires at least one offset
+		return	address += lastOffset		
+	}
 
-	; If the AHK.exe is 64 bit, then function will call GetWindowLongPtr
-	; otherwise  it calls GetWindowLong
+	; The base adress for some programs is dynamic. This can retrieve the current base address, 
+	; which can then be added to your various offsets
 
 	getProcessBaseAddress(WindowTitle, MatchMode=3)	;WindowTitle can be anything "ahk_exe SC2.exe"  "ahk_class xxxx" etc
 	{
