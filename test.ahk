@@ -1,29 +1,18 @@
 ﻿SetBatchLines, -1
 
 #SingleInstance force
+var := 0
 
-
-GameIdentifier := "ahk_exe SC2.exe"
-
-
-
-a := [] 
-
-;a["hello"] := "helloV"
-;a["help"] := "helpV"
-;a["sss"] := "sssV"
-a.insert("hello", "v1")
-a.insert("help", "v2")
-test(a)
-objtree(a)
-msgbox 
+msgbox % test() " " var
+msgbox % var
 
 
 
-test(byref a)
+test()
 {
-
-	return 0, a.remove("hello")
+	global 
+	var := 0
+	return ++var, ++var
 }
 
 
@@ -35,6 +24,80 @@ test(byref a)
 
 
 
+start := A_TickCount
+type := "UShort"
+loop, % count := 20000000	
+{
+	if !bytes := aTypeSize[type]
+		break
+
+}
+msgbox % (A_TickCount - start) / count "`n" bytes
+return 
+
+	if (type = "UInt" || type = "Int")
+		bytes := 4
+	else if (type = "UChar" || type = "Char")
+		bytes := 1		
+	else if (type = "UShort" || type = "Short")
+		bytes := 2
+	else 
+		bytes := 8
+; .000308
+; .000205
+StrPutVar(string, ByRef var, encoding)
+{
+    ; Ensure capacity.
+    VarSetCapacity( var, StrPut(string, encoding)
+        ; StrPut returns char count, but VarSetCapacity needs bytes.
+        * ((encoding="utf-16"||encoding="cp1200") ? 2 : 1) )
+    ; Copy or convert the string.
+    return StrPut(string, &var, encoding)
+}
+
+; Calculate required buffer space for a string.
+bytes_per_char := A_IsUnicode ? 2 : 1
+max_chars := 500
+max_bytes := max_chars * bytes_per_char
+
+Loop 2
+{
+    ; Allocate space for use with DllCall.
+    VarSetCapacity(buf, max_bytes)
+
+    if A_Index = 1
+        ; Alter the variable indirectly via DllCall.
+        DllCall("wsprintf", "ptr", &buf, "str", "0x%08x", "uint", 4919)
+    else
+        ; Use "str" to update the length automatically:
+    	DllCall("wsprintf", "str", buf, "str", "0x%08x", "uint", 4919)
+
+    ; Concatenate a string to demonstrate why the length needs to be updated:
+    wrong_str := buf . "<end>"
+    wrong_len := StrLen(buf)
+
+    ; Update the variable's length.
+    VarSetCapacity(buf, -1)
+
+    right_str := buf . "<end>"
+    right_len := StrLen(buf)
+
+    MsgBox,
+    (
+    Before updating
+      String: %wrong_str%
+      Length: %wrong_len%
+
+    After updating
+      String: %right_str%
+      Length: %right_len%
+    )
+}
+
+
+
+
+  
 RETURN
 		encoding := "utf-16" 
 		string := "abc"
@@ -47,188 +110,6 @@ RETURN
 	    p := &buffer
 	    msgbox % chr(*(p+5))
 	    msgbox % strget(&buffer, len, encoding)
-
-
-class memory
-{
-	static currentProgram, hProcess, insertNullTerminator := True
-
-	openCloseProcess(program, dwDesiredAccess := "")
-	{
-		If (program != this.currentProgram)
-		{
-			if dwDesiredAccess is not integer
-				dwDesiredAccess :=  (PROCESS_VM_OPERATION := 0x8) | (PROCESS_VM_READ := 0x10) | (PROCESS_VM_WRITE := 0x20)
-			WinGet, pid, pid, % this.currentProgram := PROGRAM
-			this.hProcess := ( this.hProcess 
-								? 0*(closed:=DllCall("CloseHandle","UInt", this.hProcess)) 
-								: 0 )+(pid 
-											? DllCall("OpenProcess","UInt", dwDesiredAccess,"Int",False,"UInt",pid) 
-											: 0) 
-		}
-		return
-	}
-
-	read(address, type := "UInt", aOffsets*)
-	{
-		
-		if aOffsets.maxIndex()
-			address := this.getAddressFromOffsets(address, aOffsets*)
-
-		if (type = "UInt" || type = "Int")
-			bytes := 4
-		else if (type = "UChar" || type = "Char")
-			bytes := 1		
-		else if (type = "UShort" || type = "Short")
-			bytes := 2
-		else 
-			bytes := 8
-		VarSetCapacity(buffer, BYTES, 0)
-
-		If !( this.hProcess && DllCall("ReadProcessMemory","UInt",  this.hProcess,"UInt", adddress,"Str", buffer,"UInt",BYTES,"UInt *",0))
-		  return !ProcessHandle ? "Handle Closed: " closed : "Fail"
-		if (bytes = 8)
-		{
-		  loop % BYTES 
-		      result += numget(buffer, A_index-1, "Uchar") << 8 *(A_Index-1)
-		  return result
-		}
-		return numget(buffer, 0, Type)
-	}
-
-
-	readString(address, length := 0, encoding := "utf-8", aOffsets*)
-	{
-		size  :=  (encoding ="utf-16" || encoding = "cp1200") ? 2 : 1
-		ahkSize := A_IsUnicode ? 2 : 1
-		VarSetCapacity(buffer, length ? length * size : size, 0)
-	 
-		if aOffsets.maxIndex()
-			address := this.getAddressFromOffsets(address, aOffsets*)
-	  
-	    If !length ; read until terminator found or something goes wrong/error
-		{
-	        Loop
-	        { 
-	            success := DllCall("ReadProcessMemory", "UInt", this.hProcess, "UInt", address + (A_index - 1) * size, "str", buffer, "Uint", 1, "Uint *", 0) 
-	            if (ErrorLevel || !success || StrGet(&buffer + (A_index - 1) * ahkSize, Length, encoding) = "")  ; null terminator
-	                break
-	            string .= Output 
-			} 
-		}
-		Else ; will read X length
-		{
-	        DllCall("ReadProcessMemory", "UInt", this.hProcess, "UInt", address, "str", buffer, "Uint", length * size, "Uint *", 0) 
-	        ;  Loop % length
-	        ;     string .= chr(NumGet(Output, A_Index-1, "Char"))      
-	        string := StrGet(&Output, length, encoding)
-		}
-		return string				
-	}
-
-	; include a null at the end of written strings for writeString()
-	; can change this property 
-	; memory.insertNullTerminator := False
-
-	writeString(address, string, encoding := "utf-8", aOffsets*)
-	{
-		if aOffsets.maxIndex()
-			address := this.getAddressFromOffsets(address, aOffsets*)
-
-		encodingSize := (encoding = "utf-16" || encoding = "cp1200") ? 2 : 1
-		requiredSize := StrPut(string, encoding) * encodingSize - (this.insertNullTerminator ? 0 : encodingSize)
-	    VarSetCapacity(buffer, requiredSize, 0)
-	    StrPut(string, &buffer, this.insertNullTerminator ? StrLen(string) : StrLen(string) + 1, encoding)
-	    DllCall("WriteProcessMemory", "UInt", this.hProcess, "UInt", address, "ptr*", buffer, "Uint", size, "Ptr*", BytesWritten)
-	    return BytesWritten
-	}
-
-	getAddressFromOffsets(address, aOffsets*)
-	{
-   		lastOffset := aOffsets.Remove() ;remove the highest key so can use pointer to find address
-		if aOffsets.maxIndex()
-			address := this.pointer(address, "UInt", aOffsets*) ; pointer function requires at least one offset
-		return	address += lastOffset		
-	}
-
-	write(address, value, type := "Uint", aOffsets*)
-	{
-		if aOffsets.maxIndex()
-			address := this.getAddressFromOffsets(address, aOffsets*)
-        If (type = "Int" || type = "UInt" || type = "Float" || type = "UFloat")
-            bytes = 4
-        Else If (TypeOrLength = "Char" || TypeOrLength = "UChar")
-			bytes = 1           
-        Else If (type = "Short" || type = "UShort")
-            bytes = 2
-		else If (type = "Double" || type = "Int64") ; Unsigned64 bit not supported by AHK
-            bytes = 8
-        else return "Non Supported data type"
-        VarSetCapacity(buffer, bytes, 0)
-        NumPut(value, buffer, 0, type)
-	    DllCall("WriteProcessMemory", "UInt", this.hProcess, "UInt", address, "ptr*", value, "Uint", size, "Ptr*", 0)
-		return 
-	}
-
-
-	; Can pass an array of offsets by using *
-	; eg, pointer(game, base, [0x10, 0x30, 0xFF]*)
-	; or a := [0x10, 0x30, 0xFF]
-	; pointer(game, base, a*)
-	; or just type them in manually
-
-	pointer(base, finalType := "UInt", offsets*)
-	{ 
-		For index, offset in offsets
-		{
-			if (index = offsets.maxIndex() && A_index = 1)
-				pointer := offset + this.Read(base)
-			Else 
-			{
-				IF (A_Index = 1) 
-					pointer := this.Read(offset + this.Read(base))
-				Else If (index = offsets.MaxIndex())
-					pointer += offset
-				Else pointer := this.Read(pointer + offset)
-			}
-		}	
-		Return this.Read(pointer, finalType)
-	}
-
-
-	; If the AHK.exe is 64 bit, then function will call GetWindowLongPtr
-	; otherwise  it calls GetWindowLong
-
-	getProcessBaseAddress(WindowTitle, MatchMode=3)	;WindowTitle can be anything ahk_exe ahk_class etc
-	{
-		SetTitleMatchMode, %MatchMode%	;mode 3 is an exact match
-		WinGet, hWnd, ID, %WindowTitle%
-		; AHK32Bit A_PtrSize = 4 | AHK64Bit - 8 bytes
-		return := DllCall(A_PtrSize = 4
-			? "GetWindowLong" 
-			: "GetWindowLongPtr", "Uint", hWnd, "Uint", -6) 
-	}
-
-
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

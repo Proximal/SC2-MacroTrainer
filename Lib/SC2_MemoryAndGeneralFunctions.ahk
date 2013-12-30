@@ -4,6 +4,7 @@ Global B_LocalCharacterNameID
 , B_LocalPlayerSlot
 , B_pStructure
 , S_pStructure
+, O_pStatus
 , O_pXcam
 , O_pCamDistance
 , O_pCamAngle
@@ -11,7 +12,7 @@ Global B_LocalCharacterNameID
 , O_pYcam
 , O_pTeam
 , O_pType
-, O_pStatus
+, O_pVictoryStatus 
 , O_pName
 , O_pRacePointer
 , O_pColour
@@ -133,6 +134,7 @@ Global B_LocalCharacterNameID
 
 global aUnitModel := []
 , aStringTable := []
+, aMiniMapUnits := []
 /*
 
   O_pTimeSupplyCapped := 0x840
@@ -147,6 +149,7 @@ loadMemoryAddresses(base)
 		B_LocalPlayerSlot := base + 0x011265D8 ; note 1byte and has a second copy just after +1byte eg LS =16d=10h, hex 1010 (2bytes) & LS =01d = hex 0101
 		B_pStructure := base + 0x035E7BC0 ;			 
 		S_pStructure := 0xDC0 ;0xCE0
+		 O_pStatus := 0x0
 		 O_pXcam := 0x8
 		 O_pCamDistance := 0xA
 		 O_pCamAngle := 0x14
@@ -155,7 +158,7 @@ loadMemoryAddresses(base)
 
 		 O_pTeam := 0x1C
 		 O_pType := 0x1D ;
-		 O_pStatus := 0x1E
+		 O_pVictoryStatus := 0x1E
 		 O_pName := 0x60 ;+8
 		 O_pRacePointer := 0x158
 		 O_pColour := 0x160 ;+8 
@@ -644,6 +647,34 @@ getPlayerType(i)
 
 	Return oPlayerType[ ReadMemory((B_pStructure + O_pType) + (i-1) * S_pStructure, GameIdentifier, 1) ]
 }
+
+getPlayerVictoryStatus(i)
+{	global
+	static oPlayerStatus := {	  0: "Playing"
+								, 1: "Victorious" 	
+								, 2: "Defeated"
+								, 3: "Tied" }
+
+	Return oPlayerStatus[ ReadMemory((B_pStructure + O_pVictoryStatus) + (i-1) * S_pStructure, GameIdentifier, 1) ]
+}
+
+getPlayerActiveStatus(i)
+{	global
+	static oPlayerStatus := {	  0: "Unused"
+								, 1: "Active" 	
+								, 2: "Left"
+								, 3: "Tied"
+								, 5: "Win"
+								, 7: "SeeBuildings" 
+								, 9: "Active9" 
+								, 17: "Active14" 
+								, 24: "Left" 
+								, 25: "Active25" }
+
+	Return oPlayerStatus[ ReadMemory((B_pStructure + O_pStatus) + (i-1) * S_pStructure, GameIdentifier, 1) ]
+}
+
+
 
 getPlayerTeam(player="") ;team begins at 0
 {	global
@@ -2215,8 +2246,8 @@ getUnitSubGroupPriority(unit)
 
 
 
-setupMiniMapUnitLists()
-{	local list, unitlist, ListType
+setupMiniMapUnitListsOld()
+{	local list, unitlist, ListType, listCount
 	list := "UnitHighlightList1,UnitHighlightList2,UnitHighlightList3,UnitHighlightList4,UnitHighlightList5,UnitHighlightList6,UnitHighlightList7,UnitHighlightExcludeList"
 	Loop, Parse, list, `,
 	{	
@@ -2227,9 +2258,10 @@ setupMiniMapUnitLists()
 		loop, parse, unitlist, `,
 			Active%ListType% .= aUnitID[A_LoopField] ","
 		Active%ListType% := RTrim(Active%ListType%, " ,")
+		listCount++
 	}
 	allActiveActiveUnitHighlightLists := ""
-	loop, 6
+	loop, % listCount - 1 ; remove the 1 count from the UnitHighlightExcludeList
 	{
 		loop, parse, ActiveUnitHighlightList%A_Index%, ","
 			allActiveActiveUnitHighlightLists .= A_LoopField ","
@@ -2239,7 +2271,32 @@ setupMiniMapUnitLists()
 	Return
 }
 
-
+setupMiniMapUnitLists(byRef aMiniMapUnits)
+{	local list, unitlist, ListType
+	aUnitHighlights := []
+	aMiniMapUnits.Highlight := []
+	aMiniMapUnits.Exclude := []
+	list := "UnitHighlightList1,UnitHighlightList2,UnitHighlightList3,UnitHighlightList4,UnitHighlightList5,UnitHighlightList6,UnitHighlightList7,UnitHighlightExcludeList"
+	Loop, Parse, list, `,
+	{	
+		StringReplace, unitlist, %A_LoopField%, %A_Space%, , All ; Remove Spaces also creates var unitlist	
+		StringReplace, unitlist, unitlist, %A_Tab%, , All
+		unitlist := Trim(unitlist, ", |")	; , or `, both work - remove spaces, tabs and commas
+		listNumber := A_Index ; If adding more custom highlights to the above list, ensure UnitHighlightExcludeList is last in the list!
+		
+		if (A_LoopField = "UnitHighlightExcludeList")
+		{
+			loop, parse, unitlist, `,
+				aMiniMapUnits.Exclude[aUnitID[A_LoopField]] := True
+		}
+		else 
+		{
+			loop, parse, unitlist, `,
+				aMiniMapUnits.Highlight[aUnitID[A_LoopField]] := "UnitHighlightList" listNumber "Colour"
+		}
+	}
+	Return
+}
 
 
 ;--------------------

@@ -928,7 +928,8 @@ clock:
 			SetTimer, find_races_timer, 1000, -20
 		global minimap		
 		SetMiniMap(minimap)
-		setupMiniMapUnitLists()
+		global aMiniMapUnits := []
+		setupMiniMapUnitLists(aMiniMapUnits)
 		l_ActiveDeselectArmy := setupSelectArmyUnits(l_DeselectArmy, aUnitID)
 		ShortRace := substr(LongRace := aLocalPlayer["Race"], 1, 4) ;because i changed the local race var from prot to protoss i.e. short to long - MIGHT NO be needed  now
 		setupAutoGroup(aLocalPlayer["Race"], A_AutoGroup, aUnitID, A_UnitGroupSettings)
@@ -946,6 +947,7 @@ clock:
 		{
 			Hotkey, If, WinActive(GameIdentifier) && time
 			hotkey, >!g, g_GLHF
+			hotkey, >!b, gSendBM
 			Hotkey, If
 		}	
 		SetTimer, overlay_timer, %OverlayRefresh%, -8	
@@ -7848,10 +7850,15 @@ DrawLocalPlayerColour(ByRef Redraw, UserScale=1,Drag=0)
 
 CreateHotkeys()
 {	global
-	Hotkeys:	 
+	Hotkeys:	
 
-	input.pSendDelay(-1)
- 	input.pClickDelay(-1)
+ 	input.pCurrentSendDelay := -1
+ 	input.pCurrentClickDelay := -1
+ 	input.pCurrentCharDelay := -1
+ 	input.pSendPressDuration := -1
+ 	input.pClickPressDuration := -1
+
+
  	EventKeyDelay := -1
 
 	#If, WinActive(GameIdentifier)
@@ -12486,11 +12493,11 @@ launchMiniMapThread()
 	Return 
 }
 
->!b::
+gSendBM:
 sleep 500
-var :=
+text :=
 (
-"
+"     
   GGG     EEEEE      TTTTT
 G             E                  T
 G   GG    EEE               T
@@ -12503,291 +12510,83 @@ O      O    U       U        T
   OOO        UUU          T"
 )
 ;input.setTarget("Edit1", "ahk_exe notepad.exe")
-
+thread, Interrupt, off
+space := ""
 loop, % count := 40
+	spaces .= A_space
+;Process, Priority,, High
+loop
 {
-;	Process, Priority,, High
-	spaces := ""
-	loop % count - A_Index
-		spaces .= A_space
-
-	loop, parse, var, `n
+	
+	
+	spaces := substr(spaces, 1, -4)
+	loop, parse, text, `n
 	{
 		input.pSend("+{enter}")
-		text := SubStr(spaces A_LoopField , 1, 40)
-		input.pSendChars(text )
+		if (A_Index = 1) ; i cant prevent ahk from stripping the spaces on the first line of the text ?? #ltrim doesnt do jack
+			input.pSendChars(" ")
+		else 
+			input.pSendChars(SubStr(spaces A_LoopField , 1, 40))
 		input.pSend("{enter}")
 	}
-;	Process, Priority,, Normal
-	sleep 150
+	if !strlen(spaces)
+		break
+	sleep 700
 }
+;Process, Priority,, Normal
 
 return 
 
 
 
+#include <classmemory>
 
-
-;msgbox % clipboard := chex(B_uStructure)
-
+f1::
+objtree(a_pBrushes)
+objtree(aMiniMapUnits)
+msgbox % (UnitHighlightList7Colour + 0) "`n" round(UnitHighlightList7Colour) "`n" a_pBrushes[UnitHighlightList7Colour]
 return
 
 
 
-/*
-	This is a basic wrapper for commonly used read and write memory functions.
-	Allows scripts to read/write integers and strings of various types.
-	Pointer addresses can easily be read/written by passing the base address and offsets to the read/write functions
-	
-	Process handles are kept open between reads. This increases speed.
-	Note, if a program closes/restarts then the process handle will be invalid
-	and you will need to re-open another handle.
+msgbox % getUnitType(getSelectedUnitIndex())
+return
 
-	read(), readString(), write(), and writeString() can be used to read and write memory addresses respectively.
-
-	switchTargetProgram() can be used to facilitate reading memory from multiple processes in the one script.
-
-	ReadRawMemory() can be used to dump large chunks of memory, this is considerably faster when
-	reading data from a large structure compared to repeated calls to read()/write().
-	Although, most people wouldn't notice the performance difference. This does however require you 
-	to retreive the values using AHK's numget()/strGet() from the dumped memory
-	
-	Note:
-	This was written for 32 bit processes, but the various read/write functions
-	should still work when directly reading/writing an address. The pointer parts of
-	these functions probably wont, as I assume pointers are stored as 64bit values.
-
-	Also very large (unsigned) 64 bit integers may not be read correctly - the current function works 
-	for the 64 bit ints I use it on. AHK doesn't directly support 64bit unsigned ints anyway
-
-	
-	Usage:
-
-		open a process with sufficient access to read and write memory addresses (this is required before you can use the other functions)
-			memory.openProcess("ahk_exe calc.exe")
-		Note: This can be an ahk_exe, ahk_class, ahk_pid, or simply the window title. 
-
-		write 1234 to a UInt
-			memory.write(0x0016CB60, 1234, "UInt")
-
-		read a UInt
-			value := memory.read(0x0016CB60, "UInt")
-
-		read a pointer with offsets 0x20 and 0x15C which points to a uchar 
-			value := memory.read(pointerBase, "UChar", 0x20, 0x15C)
-
-		Note: read(), readString(), ReadRawMemory(), write(), and writeString() all support pointers/offsets
-			An array of pointers can be passed directly, i.e.
-			arrayPointerOffsets := [0x20, 0x15C]
-			value := memory.read(pointerBase, "UChar", arrayPointerOffsets*)
-
-		
-		read a utf-16 null terminated string of unknown length at address 0x1234556 - the function will read each character until the null terminator is found
-			string := memory.readString(0x1234556, length := 0, encoding := "utf-16")
-		
-		read a utf-8 encoded 12 character string at address 0x1234556
-			string := memory.readString(0x1234556, 12)
-
-		Close ALL currently open handles - this should be done before the script exits
-			memory.closeProcess()
-		close a handle to an individual program 
-			memory.closeProcess("ahk_exe calc.exe")
-		Note: You need to pass the exact same program/string that you used to open the process i.e. openProcess("ahk_exe calc.exe")
-
-*/
+For slot, player in aPlayer
+	msgbox % getPlayerVictoryStatus(slot)
+		. "|`n" getPlayerActiveStatus(slot)
+		. "|`n"  player["name"]
+return
 
 
-class memory
+
+
+
+return
+msgbox % chex(B_uStructure + 0x1c0)
+
+
+
+
+
+
+
+
+
+return
+if !testvar
 {
-	static currentProgram, hProcessCurrent, insertNullTerminator := True, aProcessHandles := []
-
-	openProcess(program, dwDesiredAccess := "")
-	{
-		; if an application closes/restarts the previous handle becomes invalid so reopen it to be safe (closing a now invalid handle is fine i.e. wont cause and error)
-		if aProcessHandles.hasKey(program)
-			this.closeProcess(program)
-
-		; This default access level is sufficient to read and write memory addresses.
-		; if the program is run using admin privileges, then this script will also need admin privileges
-		if dwDesiredAccess is not integer
-			dwDesiredAccess := (PROCESS_VM_OPERATION := 0x8) | (PROCESS_VM_READ := 0x10) | (PROCESS_VM_WRITE := 0x20)
-		
-		WinGet, pid, pid, % this.currentProgram := program
-		aProcessHandles.Insert(program, this.hProcessCurrent := DllCall("OpenProcess", "UInt", dwDesiredAccess, "Int", False, "UInt", pid))
-		return this.hProcessCurrent 	
-	}	
-
-	; To close all open handles, simply call memory.closeProcess() without a parameter
-	; good programming practices says you should call this function before exiting the script
-	closeProcess(program := "")
-	{
-		if !program
-		{
-			For program, handle in this.aProcessHandles
-				DllCall("CloseHandle", "UInt", handle)
-			this.aProcessHandles := []
-			return
-		}
-		else if aProcessHandles.HasKey(program)
-			return DllCall("CloseHandle", "UInt", aProcessHandles[program]), aProcessHandles.Remove(program)
-	}
-
-	; This can be used if you're reading memory from multiple processes e.g multi boxing
-	; simply call memory.switchTargetProgram(program) before each call to a different process
-	switchTargetProgram(program)
-	{
-		if aProcessHandles.HasKey(program)
-			this.currentProgram := program,	this.hProcessCurrent := this.aProcessHandles[program]
-		else
-			this.OpenProcess(program) ; sets current Program and process handle
-		return
-	}
-
-	; reads various integer type values
-
-	read(address, type := "UInt", aOffsets*)
-	{
-		if (type = "UInt" || type = "Int")
-			bytes := 4
-		else if (type = "UChar" || type = "Char")
-			bytes := 1		
-		else if (type = "UShort" || type = "Short")
-			bytes := 2
-		else 
-			bytes := 8
-		VarSetCapacity(buffer, bytes, 0)
-		if !DllCall("ReadProcessMemory","UInt",  this.hProcessCurrent, "UInt", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, "Ptr", &buffer, "UInt", bytes, "Ptr",0)
-		  return !this.hProcessCurrent ? "Handle Is closed: " this.hProcessCurrent : "Fail"
-		if (bytes = 8)
-		{
-		  loop % BYTES 
-		      result += numget(buffer, A_index-1, "Uchar") << 8 *(A_Index-1)
-		  return result
-		}
-		return numget(buffer, 0, Type)
-	}
-	; This is used to dump large chunks of memory. Values can later be retried from the buffer using AHK's numget()
-	; this offers a SIGNIFICANT (~30% and up for large areas) performance boost,
-	; as calling ReadProcessMemory for 4 bytes takes a similar amount of time as it does to read 1000 bytes
-
-	ReadRawMemory(address, byref buffer, bytes := 4, aOffsets*)
-	{
-		VarSetCapacity(buffer, bytes)
-		if aOffsets.maxIndex()
-			address := this.getAddressFromOffsets(address, aOffsets*)		
-		if !DllCall("ReadProcessMemory", "UInt", this.hProcessCurrent, "UInt", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, "Ptr", &buffer, "UInt", bytes, "Ptr", 0)
-			return !this.hProcessCurrent ? "Handle Is closed: " this.hProcessCurrent : "Fail"
-		return
-	}
-
-	; Encoding refers to how the string is stored in the programs memory - probably uft-8 or utf-16
-	; If length is 0, readString() will read the string until it finds a null terminator (or an error occurs)
-
-	readString(address, length := 0, encoding := "utf-8", aOffsets*)
-	{
-		size  := (encoding ="utf-16" || encoding = "cp1200") ? 2 : 1
-		VarSetCapacity(buffer, length ? length * size : size, 0)
-	 
-		if aOffsets.maxIndex()
-			address := this.getAddressFromOffsets(address, aOffsets*)
-	  
-	    If !length ; read until null terminator is found or something goes wrong
-		{
-	        Loop
-	        { 
-	            success := DllCall("ReadProcessMemory", "UInt", this.hProcessCurrent, "UInt", address + (A_index - 1) * size, "str", buffer, "Uint", size, "Ptr", 0) 
-	            if (ErrorLevel || !success || "" = char := StrGet(&buffer, 1, encoding))  ; null terminator = ""
-	                break
-	            string .= char 
-			} 
-		}
-		Else ; will read X length
-		{
-				
-	        DllCall("ReadProcessMemory", "UInt", this.hProcessCurrent, "UInt", address, "str", buffer, "Uint", length * size, "Ptr", 0)   
-	        string := StrGet(&buffer, length, encoding)
-		}
-		return string				
-	}
-
-	; by default a null terminator is included at the end of written strings for writeString()
-	; This property can be changed i.e.
-	; memory.insertNullTerminator := False
-
-	writeString(address, string, encoding := "utf-8", aOffsets*)
-	{
-		encodingSize := (encoding = "utf-16" || encoding = "cp1200") ? 2 : 1
-		requiredSize := StrPut(string, encoding) * encodingSize - (this.insertNullTerminator ? 0 : encodingSize)
-	    VarSetCapacity(buffer, requiredSize, 0)
-	    StrPut(string, &buffer, this.insertNullTerminator ? StrLen(string) : StrLen(string) + 1, encoding)
-	    DllCall("WriteProcessMemory", "UInt", this.hProcessCurrent, "UInt", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, "Ptr", &buffer, "Uint", requiredSize, "Ptr*", BytesWritten)
-	    return BytesWritten
-	}
-
-	write(address, value, type := "Uint", aOffsets*)
-	{
-        If (type = "Int" || type = "UInt" || type = "Float" || type = "UFloat")
-            bytes := 4
-        Else If (type = "Char" || type = "UChar")
-			bytes := 1           
-        Else If (type = "Short" || type = "UShort")
-            bytes := 2
-		else If (type = "Double" || type = "Int64") ; Unsigned64 bit not supported by AHK
-            bytes := 8
-        else return "Non Supported data type"
-        VarSetCapacity(buffer, bytes, 0)
-        NumPut(value, buffer, 0, type)
-	  	return DllCall("WriteProcessMemory", "UInt", this.hProcessCurrent, "UInt", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, "Ptr", &buffer, "Uint", bytes, "Ptr", 0) 
-	}
-
-	; This can be used to read various numeric pointer types (the the other various read functions can do this too)
-	; final type refers to the how the value is stored in the final pointer address
-	; Can pass an array of offsets by using *
-	; eg, pointer(game, base, [0x10, 0x30, 0xFF]*)
-	; or a := [0x10, 0x30, 0xFF]
-	; pointer(game, base, a*)
-	; or just type them in manually
-
-	pointer(base, finalType := "UInt", offsets*)
-	{ 
-
-		For index, offset in offsets
-		{
-			if (index = offsets.maxIndex() && A_index = 1)
-				pointer := offset + this.Read(base)
-			Else 
-			{
-				IF (A_Index = 1) 
-					pointer := this.Read(offset + this.Read(base))
-				Else If (index = offsets.MaxIndex())
-					pointer += offset
-				Else pointer := this.Read(pointer + offset)
-			}
-		}	
-		Return this.Read(offsets.maxIndex() ? pointer : base, finalType)
-	}
-
-	getAddressFromOffsets(address, aOffsets*)
-	{
-   		lastOffset := aOffsets.Remove() ;remove the highest key so can use pointer() to find final memory address (minus the last offset)
-		return	this.pointer(address, "UInt", aOffsets*) + lastOffset		
-	}
-
-	; The base adress for some programs is dynamic. This can retrieve the current base address, 
-	; which can then be added to your various offsets
-
-	getProcessBaseAddress(WindowTitle, MatchMode=3)	;WindowTitle can be anything "ahk_exe SC2.exe"  "ahk_class xxxx" etc
-	{
-		SetTitleMatchMode, %MatchMode%	;mode 3 is an exact match
-		WinGet, hWnd, ID, %WindowTitle%
-		; AHK32Bit A_PtrSize = 4 | AHK64Bit - 8 bytes
-		return := DllCall(A_PtrSize = 4
-			? "GetWindowLong" 
-			: "GetWindowLongPtr", "Uint", hWnd, "Uint", -6) 
-	}
-
-
+	testvar := clipboard := chex(address := B_uStructure + 2 * 0x1C0 )
+	msgbox % GameIdentifier
+	msgbox % memory.OpenProcess(GameIdentifier)
 }
+memory.readChunkSize := 2048
+msgbox % memory.readChunkSize
+msgbox % memory.WriteString(address, v := "hellooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo")
+msgbox % s := memory.readString(address, 0)
+msgbox % memory.readString(address, 6)
+msgbox % memory.readChunkSize
 
-
-
+if (s = v) 
+	msgbox true
+return

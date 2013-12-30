@@ -35,11 +35,15 @@ WriteMemory(WriteAddress = "", PROGRAM="", Data="", TypeOrLength = "")
 
    If (PROGRAM != OLDPROC)
    {
-
-      WinGet, pid, pid, % OLDPROC := PROGRAM
-      hProcess := ( hProcess ? 0*(closed:=DllCall("CloseHandle"
-      ,"UInt",hProcess)) : 0 )+(pid ? DllCall("OpenProcess"
-      ,"UInt", (PROCESS_VM_WRITE := 0x20) | (PROCESS_VM_OPERATION = 0x8),"Int",False,"UInt",pid) : 0) ;PID is stored in value pid
+        if hProcess
+          closed := DllCall("CloseHandle", "UInt", hProcess), hProcess := 0, OLDPROC := ""
+        if PROGRAM
+        {
+            WinGet, pid, pid, % OLDPROC := PROGRAM
+            if !pid 
+               return "Process Doesn't Exist", OLDPROC := "" ;blank OLDPROC so subsequent calls will work if process does exist
+            hProcess := DllCall("OpenProcess", "Int", 16, "Int", 0, "UInt", pid)   
+        }
    }
 
     If Data is Number   ; Either a numeric value or a memory address.
@@ -94,5 +98,5 @@ WriteMemory(WriteAddress = "", PROGRAM="", Data="", TypeOrLength = "")
                                          , "UInt", DataAddress
                                          , "UInt", DataSize
                                          , "UInt", 0)
-    else  return !ProcessHandle ? "Handle Closed:" closed : "Fail"
+    else  return !hProcess ? "Handle Closed:" closed : "Fail"
 }

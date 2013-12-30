@@ -47,8 +47,11 @@ aUnitInfo := []
 readConfigFile(), hasReadConfig := True
 
 settimer, timer_exit, 15000, -100 ; Just as a backup if the thread gets orphaned
-l_Changeling := aUnitID["ChangelingZealot"] "," aUnitID["ChangelingMarineShield"] ","  aUnitID["ChangelingMarine"] 
-				. ","  aUnitID["ChangelingZerglingWings"] "," aUnitID["ChangelingZergling"]
+aChangeling := { 	aUnitID["ChangelingZealot"]: True
+				 ,	aUnitID["ChangelingMarineShield"]: True 
+				 ,	aUnitID["ChangelingMarine"]: True 
+				 ,	aUnitID["ChangelingZerglingWings"]: True 
+				 ,	aUnitID["ChangelingZergling"]: True }				
 gameChange()
 return
 
@@ -112,7 +115,7 @@ gameChange(UserSavedAppliedSettings := False)
 		Else If (aLocalPlayer["Race"] = "Protoss")
 			SupplyType := aUnitID["Pylon"]			
 		SetMiniMap(minimap)
-		setupMiniMapUnitLists()
+		setupMiniMapUnitLists(aMiniMapUnits) ; aMiniMapUnits is super global
 		EnemyBaseList := GetEBases()
 		
 		If (DrawMiniMap || DrawAlerts || DrawSpawningRaces || warpgate_warn_on
@@ -301,10 +304,11 @@ getEnemyUnitsMiniMap(byref A_MiniMapUnits)
      Type := numgetUnitModelType(pUnitModel)
 
      owner := numget(MemDump, UnitAddress + O_uOwner, "Char")     
-     If type in %ActiveUnitHighlightExcludeList% ; cant use or/expressions with type in
+     if aMiniMapUnits.Exclude.HasKey(type)
            Continue
-     if  (aPlayer[Owner, "Team"] <> aLocalPlayer["Team"] && Owner && type >= aUnitID["Colossus"] && !ifTypeInList(type, l_Changeling)) 
-     || (ifTypeInList(type, l_Changeling) && aPlayer[Owner, "Team"] = aLocalPlayer["Team"] ) ; as a changeling owner becomes whoever it is mimicking - its team also becomes theirs
+
+     if  (aPlayer[Owner, "Team"] <> aLocalPlayer["Team"] && Owner && type >= aUnitID["Colossus"] && !aChangeling.HasKey(type)) 
+     || (aChangeling.HasKey(type) && aPlayer[Owner, "Team"] = aLocalPlayer["Team"] ) ; as a changeling owner becomes whoever it is mimicking - its team also becomes theirs
      {
           if (!Radius := aUnitInfo[Type, "Radius"])
               Radius := aUnitInfo[Type, "Radius"] := numgetUnitModelMiniMapRadius(pUnitModel)
@@ -320,27 +324,8 @@ getEnemyUnitsMiniMap(byref A_MiniMapUnits)
            convertCoOrdindatesToMiniMapPos(x, y)
            if (HighlightInvisible && Filter & aUnitTargetFilter.Hallucination) ; have here so even if non-halluc unit type has custom colour highlight, it will be drawn using halluc colour
            	  Colour := "UnitHighlightHallucinationsColour"
-           else if type in %allActiveActiveUnitHighlightLists%
-           {
-           		; Overall, checking if the type is actually in the highlight list, 
-           		; and then checking each  individual list 
-           		; should be faster than needlessly checking every list
-
-	           if type in %ActiveUnitHighlightList1%
-	              Colour := "UnitHighlightList1Colour"
-	           Else If type in %ActiveUnitHighlightList2%
-	              Colour := "UnitHighlightList2Colour"                 
-	           Else If type in %ActiveUnitHighlightList3%
-	              Colour := "UnitHighlightList3Colour"                    
-	           Else If type in %ActiveUnitHighlightList4%
-	              Colour := "UnitHighlightList4Colour"                    
-	           Else If type in %ActiveUnitHighlightList5%
-	              Colour := "UnitHighlightList5Colour"   
-	           Else If type in %ActiveUnitHighlightList6%
-	              Colour := "UnitHighlightList6Colour"   
-	           Else If type in %ActiveUnitHighlightList7%
-	              Colour := "UnitHighlightList7Colour"
-	       }
+          else if aMiniMapUnits.Highlight.HasKey(type)
+          	Colour := aMiniMapUnits.Highlight[type]
            Else if (HighlightInvisible && Filter & aUnitTargetFilter.Cloaked) ; this will include burrowed units (so dont need to check their flags)
            	  Colour := "UnitHighlightInvisibleColour" 				; Have this at bot so if an invis unit has a custom highlight it will be drawn with that colour
            Else if PlayerColours

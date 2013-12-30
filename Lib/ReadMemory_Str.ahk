@@ -10,13 +10,23 @@ ReadMemory_Str(MADDRESS=0, PROGRAM = "", length = 0 , terminator = "")  ; "" = N
 { 
     Static OLDPROC, ProcessHandle
 
-    If (PROGRAM != OLDPROC || !ProcessHandle)
-    {
-        WinGet, pid, pid, % OLDPROC := PROGRAM
-        ProcessHandle := ( ProcessHandle ? 0*(closed:=DllCall("CloseHandle"
-        ,"UInt",ProcessHandle)) : 0 )+(pid ? DllCall("OpenProcess"
-        ,"Int",16,"Int",0,"UInt",pid) : 0) ;PID is stored in value pid
-    }
+   If (PROGRAM != OLDPROC)
+   {
+        if ProcessHandle
+        {
+            closed := DllCall("CloseHandle", "UInt", ProcessHandle)
+            ProcessHandle := 0, OLDPROC := ""
+            if !PROGRAM
+                return closed
+        }
+        if PROGRAM
+        {
+            WinGet, pid, pid, % OLDPROC := PROGRAM
+            if !pid 
+               return "Process Doesn't Exist", OLDPROC := "" ;blank OLDPROC so subsequent calls will work if process does exist
+            ProcessHandle := DllCall("OpenProcess", "Int", 16, "Int", 0, "UInt", pid)   
+        }
+   }
     ; length depends on the encoding too
     VarSetCapacity(Output, length ? length : 1, 0)
     If !length ; read until terminator found or something goes wrong/error

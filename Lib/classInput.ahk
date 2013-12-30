@@ -33,7 +33,9 @@ class Input
 		,	MouseBlocked := False
 		,	KybdBlocked := False
 		, 	pCurrentClickDelay := -1
+		, 	pClickPressDuration := -1
 		, 	pCurrentSendDelay := -1
+		,	pSendPressDuration := -1
 		, 	pCurrentCharDelay := -1
 		, 	dragLeftClick := False
 		, 	Control, WinTitle, WinText,	ExcludeTitle, ExcludeText
@@ -129,7 +131,7 @@ class Input
 			this.pSend(this.downSequence)
 			if this.dragLeftClick
 			{
-				; this is so the green box drag will appear in SC.
+				; SetCursorPos is so the green box drag will appear in SC.
 				; otherwise the box drag wont appear until the user moves the mouse 
 				MouseGetPos, x, y
 				dllcall("SetCursorPos", "int", x, "int", y)
@@ -165,24 +167,6 @@ class Input
 		return this.downSequence
 	}
 
-	pClickDelay(newDelay := "")
-	{
-		if newDelay is number
-			this.pCurrentClickDelay := newDelay
-		return this.pCurrentClickDelay
-	}
-	pSendDelay(newDelay := "")
-	{
-		if newDelay is number 
-			this.pCurrentSendDelay := newDelay
-		return this.pCurrentSendDelay
-	}	
-	pCharDelay(newDelay := "")
-	{
-		if newDelay is number 
-			this.pCurrentCharDelay := newDelay
-		return this.pCurrentCharDelay
-	}
 
 	hookBlock(kybd := False, mouse := False)
 	{
@@ -209,20 +193,19 @@ class Input
 Bits	Meaning
 0-15	The repeat count for the current message. The value is the number of times the keystroke is autorepeated as a result of the user holding down the key. The repeat count is always 1 for a WM_KEYUP message.
 16-23	The scan code. The value depends on the OEM.
-24	Indicates whether the key is an extended key, such as the right-hand ALT and CTRL keys that appear on an enhanced 101- or 102-key keyboard. The value is 1 if it is an extended key; otherwise, it is 0.
+24		Indicates whether the key is an extended key, such as the right-hand ALT and CTRL keys that appear on an enhanced 101- or 102-key keyboard. The value is 1 if it is an extended key; otherwise, it is 0.
 25-28	Reserved; do not use.
-29	The context code. The value is always 0 for a WM_KEYUP message.
-30	The previous key state. The value is always 1 for a WM_KEYUP message.
-31	The transition state. The value is always 1 for a WM_KEYUP message.
+29		The context code. The value is always 0 for a WM_KEYUP message.
+30		The previous key state. The value is always 1 for a WM_KEYUP message.
+31		The transition state. The value is always 1 for a WM_KEYUP message.
 
-To send a capital letter have to send a char (without keyup/downs) using AscII code
-postmessage, % WM_CHAR := 0x102, % Asc("A"), lparam, % this.Control, % GameIdentifier
+If you want to send text to a text box/field, consider using the pSendChar
+It is capable of sending capitalised letters, as well as non-Standard ACII chars eg ♥
 */
 
 	
 	pSend(Sequence := "")
 	{
-		Global 	GameIdentifier
 		static 	WM_KEYDOWN := 0x100
 				, WM_KEYUP := 0x101
 
@@ -351,21 +334,24 @@ postmessage, % WM_CHAR := 0x102, % Asc("A"), lparam, % this.Control, % GameIdent
 				 ; repeat code | (scan code << 16)
 				lparam := 1 | (message.sc << 16)
 				postmessage, message.message, message.wParam, lparam, % this.Control, % this.WinTitle, % this.WinText, % this.ExcludeTitle, % this.ExcludeText
-
+				if (this.pSendPressDuration != -1)
+					DllCall("Sleep", Uint, this.pSendPressDuration)		
+			
 			}
 			else if (WM_KEYUP = message.message)
 			{
 				 ; repeat code | (scan code << 16) | (previous state << 30) | (transition state << 31)
 				lparam := 1 | (message.sc << 16) | (1 << 30) | (1 << 31)
 				postmessage, message.message, message.wParam, lparam, % this.Control, % this.WinTitle, % this.WinText, % this.ExcludeTitle, % this.ExcludeText
+				if (pKeyDelay != -1)
+					DllCall("Sleep", Uint, pClickDelay)			
 			}
 			else 
 			{
-				; If mouse move is included it actually strangles moves the mouse!!
+				; If mouse move is included it actually moves the mouse for an instant!!
 				postmessage, message.message, message.wParam, message.lparam, % this.Control, % this.WinTitle, % this.WinText, % this.ExcludeTitle, % this.ExcludeText
-				if (pClickDelay != -1)
-					DllCall("Sleep", Uint, pClickDelay)
-				continue
+				if (message.HasKey("delay") && message.delay != -1)
+					DllCall("Sleep", Uint, message.delay)
 			}
 
 		}
@@ -391,12 +377,11 @@ postmessage, % WM_CHAR := 0x102, % Asc("A"), lparam, % this.Control, % GameIdent
 	; but doesnt seem to affect sc2
 
 	; Note WM_MOUSEMOVE May be required in some situations. E.g. when the chat box is up and the cursor is not 
-	; in the viewport ie over the control cards
+	; in the viewport e.g over the control cards
 
 
 	pClick(x, y, button := "L", count := 1, Modifiers := "", MouseMove := False)
 	{
-		Global GameIdentifier
 		static	  WM_MOUSEFIRST := 0x200
 				, WM_MOUSEMOVE = 0x200
 				, WM_LBUTTONDOWN = 0x201
@@ -451,15 +436,17 @@ postmessage, % WM_CHAR := 0x102, % Asc("A"), lparam, % this.Control, % GameIdent
 			else direction := -1
 			WParam |= (direction * count * 120)  << 16
 			PostMessage, %WM_MOUSEWHEEL%, %WParam%, %lParam%, % this.Control, % this.WinTitle, % this.WinText, % this.ExcludeTitle, % this.ExcludeText
+			if (pKeyDelay != -1)
+				DllCall("Sleep", Uint, pKeyDelay)			
 			return	
 		}
 		else message := "WM_LBUTTON", WParam |= MK_LBUTTON
 		; remove the word button eg Lbutton as the U will cause an UP-event to be sent
 		StringReplace, button, button, button, %A_Space%, All
 		if button contains up,U
-			message .= "UP"
+			message .= "UP", delay := this.pCurrentClickDelay
 		else if button contains down,D 
-		 	message .= "DOWN"
+		 	message .= "DOWN", delay := this.pClickPressDuration
 		else 
 		{
 			mdown := message . "DOWN"
@@ -469,14 +456,18 @@ postmessage, % WM_CHAR := 0x102, % Asc("A"), lparam, % this.Control, % GameIdent
 			loop % count 
 			{
 				PostMessage, %mdown%, %WParam%, %lParam%, % this.Control, % this.WinTitle, % this.WinText, % this.ExcludeTitle, % this.ExcludeText
+				if (this.pSendPressDuration != -1)
+					DllCall("Sleep", Uint, this.pSendPressDuration)				
+				PostMessage, %mup%, %WParam%, %lParam%, % this.Control, % this.WinTitle, % this.WinText, % this.ExcludeTitle, % this.ExcludeText
 				if (pKeyDelay != -1)
 					DllCall("Sleep", Uint, pKeyDelay)
-				PostMessage, %mup%, %WParam%, %lParam%, % this.Control, % this.WinTitle, % this.WinText, % this.ExcludeTitle, % this.ExcludeText
 			}	
 			return	
 		}
 		message := %message%
 		PostMessage, %message%, %WParam% , %lParam%, % this.Control, % this.WinTitle, % this.WinText, % this.ExcludeTitle, % this.ExcludeText
+		if (delay != -1)
+			DllCall("Sleep", Uint, delay)
 		return
 	}
 
@@ -537,7 +528,8 @@ postmessage, % WM_CHAR := 0x102, % Asc("A"), lparam, % this.Control, % GameIdent
 			
 			sendObject.insert({ "message": WM_MOUSEWHEEL
 							, "wParam": WParam |= (direction * count * 120)  << 16
-							, "lParam": lParam})
+							, "lParam": lParam
+							, "delay": this.pCurrentClickDelay})
 			return	
 		}
 		else message := "WM_LBUTTON", WParam |= MK_LBUTTON
@@ -545,9 +537,9 @@ postmessage, % WM_CHAR := 0x102, % Asc("A"), lparam, % this.Control, % GameIdent
 		StringReplace, button, button, button, %A_Space%, All
 		
 		if button contains up,U
-			message .= "UP"
+			message .= "UP", delay := this.pCurrentClickDelay
 		else if button contains down,D 
-		 	message .= "DOWN"
+		 	message .= "DOWN", delay := this.pClickPressDuration
 		else 
 		{
 			mdown := message . "DOWN"
@@ -556,18 +548,21 @@ postmessage, % WM_CHAR := 0x102, % Asc("A"), lparam, % this.Control, % GameIdent
 			{
 				sendObject.insert({ "message": %mdown%
 								, "wParam": WParam
-								, "lParam": lParam})
+								, "lParam": lParam
+								, "delay": this.pClickPressDuration})
 
 				sendObject.insert({ "message": %mup%
 					, "wParam": WParam
-					, "lParam": lParam})
+					, "lParam": lParam
+					, "delay": this.pCurrentClickDelay})
 			}	
 			return
 		}
 
 		sendObject.insert({ "message": %message%
 							, "wParam": WParam
-							, "lParam": lParam})
+							, "lParam": lParam
+							, "delay": delay})
 		return
 	}
 }
