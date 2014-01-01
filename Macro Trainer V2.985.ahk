@@ -12541,7 +12541,6 @@ return
 
 #include <classmemory>
 
-f1::
 objtree(a_pBrushes)
 objtree(aMiniMapUnits)
 msgbox % (UnitHighlightList7Colour + 0) "`n" round(UnitHighlightList7Colour) "`n" a_pBrushes[UnitHighlightList7Colour]

@@ -162,6 +162,7 @@ class Input
 		return
 	}	
 
+	; used to check how what keystrokes were sent to release the user input
 	userInputModified()
 	{
 		return this.downSequence

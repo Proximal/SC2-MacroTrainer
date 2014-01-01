@@ -68,12 +68,14 @@
 
 class memory
 {
-	static currentProgram, hProcessCurrent, insertNullTerminator := True, aProcessHandles := [], readChunkSize := 128
-	, aTypeSize := {	"UChar": 1, 	"Char": 1
-					, 	"UShort": 2, 	"Short": 2
-					, 	"UInt": 4, 		"Int": 4
-					, 	"UFloat": 4, 	"Float": 4
-					,	"Int64": 8, 	"Double": 8} 	
+	static currentProgram, hProcessCurrent, aProcessHandles := []
+	, insertNullTerminator := True
+	, readChunkSize := 128
+	, aTypeSize := {	"UChar": 	1, 	"Char":		1
+					, 	"UShort":	2, 	"Short":	2
+					, 	"UInt": 	4, 	"Int": 		4
+					, 	"UFloat": 	4, 	"Float": 	4
+					,	"Int64": 	8, 	"Double": 	8} 	
 
 					; Although unsigned 64bit values are not supported, you can read them as int64 or doubles and interpret
 					; the negative numbers as large values
@@ -143,8 +145,8 @@ class memory
 		return numget(buffer, 0, Type)
 	}
 	; This is used to dump large chunks of memory. Values can later be retried from the buffer using AHK's numget()/strget()
-	; this offers a SIGNIFICANT (~30% and up for large areas) performance boost,
-	; as calling ReadProcessMemory for 4 bytes takes a similar amount of time as it does to read 1000 bytes
+	; this offers a SIGNIFICANT (~30% and up for large areas) performance boost for large memory structures,
+	; as calling ReadProcessMemory for 4 bytes takes a similar amount of time as it does to read 1,000 bytes
 
 	ReadRawMemory(address, byref buffer, bytes := 4, aOffsets*)
 	{
