@@ -11,11 +11,12 @@ SendMode Input
 
 
 */
-
+if (1 && 0 || 0)
+	msgbox
                                   ;0  1  2  3  4  5  6  7  8  9  10 11 12 13 14
 haystackSize := hexToBinaryBuffer("11 44 22 11 22 00 00 5E 68 00 5E 68 11 5E 68", Haystack)
 ;msgbox % scanInBuf(&Haystack, &needle, haystackSize, needleSize, 1)
-realNeedleSize := makePattern(                   "00 00 5E ?? ?? ?? 68 ?? ?? 68", aOffsets, binaryNeedle)
+realNeedleSize := makePattern(         " ?? ?? ?? ?? ?? 5E ?? ?? ?? 68 ?? 5e 68", aOffsets, binaryNeedle)
 objtree(aOffsets)
 ;0   1  2  3  4 5  6  7
 ;22 ?? 22 ?? ?? ?? 33 33
@@ -23,25 +24,25 @@ makePattern(pattern, byRef aOffsets, byRef binaryNeedle)
 {
 	StringReplace, pattern, pattern, %A_Space%,, All
 	StringReplace, pattern, pattern, %A_Tab%,, All
-	pattern := Trim(pattern, "?")
+	pattern := RTrim(pattern, "?")				; can pass patterns beginning with ?? ?? - but it is a little pointless
 	loopCount := bufferSize := StrLen(pattern) / 2
 	VarSetCapacity(binaryNeedle, bufferSize)
-	aOffsets := [], startGap := 0
+	aOffsets := [], startGap := 0, prevChar := "??"
 	loop, % loopCount
 	{
 		hexChar := SubStr(pattern, 1 + 2 * (A_Index - 1), 2)
-		if (hexChar != "??" && prevChar = "??" || A_Index = 1)
+		if (hexChar != "??" && prevChar = "??")
 			binNeedleStartOffset := A_index - 1
-		else if (hexChar = "??" &&  prevChar != "??") ; last char cant be ??
+		else if (hexChar = "??" && prevChar != "??") 
 		{
 
 			aOffsets.Insert({ "binNeedleStartOffset": binNeedleStartOffset
 							, "binNeedleSize": A_Index - 1 - binNeedleStartOffset
-							, "binNeedleGap": !aOffsets.MaxIndex() ? 0 : binNeedleStartOffset - startGap + 1}) ; 1 refers to next byte
+							, "binNeedleGap": !aOffsets.MaxIndex() ? 0 : binNeedleStartOffset - startGap + 1}) ; equals number of wildcard bytes between two sub needles
 			startGap := A_index
 		}
 
-		if (A_Index = loopCount)
+		if (A_Index = loopCount) ; last char cant be ??
 			aOffsets.Insert({ "binNeedleStartOffset": binNeedleStartOffset
 							, "binNeedleSize": A_Index - binNeedleStartOffset
 							, "binNeedleGap": binNeedleStartOffset - startGap + 1})
@@ -71,7 +72,7 @@ loop 1
 	;dumpSize += mod(dumpSize, realNeedleSize)  ; ensure the needle evenly divides into the dump
 	currentStartOffstet := 0
 	aOffset := aOffsets[arrayIndex := 1]
-	haystackChunkOffset := 0
+	haystackOffset := 0
 
 	loopCount := dumpSize / realNeedleSize
 	loopCount := haystackSize / realNeedleSize
@@ -83,56 +84,54 @@ loop 1
 		{
 			lookingFor .= chex(numget(&binaryNeedle, aOffset.binNeedleStartOffset + A_Index -1, "Uchar")) " "
 		}
-		;msgbox % "haystackChunkOffset " haystackChunkOffset
+		;msgbox % "haystackOffset " haystackOffset
 		;	. "`n" lookingFor
 		;	. "`nAt need Offset " aOffset.binNeedleStartOffset 
 		
 
-		if (-1 != foundOffset := scanInBuf(&Haystack, &binaryNeedle + aOffset.binNeedleStartOffset, haystackSize, aOffset.binNeedleSize, haystackChunkOffset))
+		if (-1 != foundOffset := scanInBuf(&Haystack, &binaryNeedle + aOffset.binNeedleStartOffset, haystackSize, aOffset.binNeedleSize, haystackOffset))
 		{
 			;msgbox % arrayIndex  "arrayIndex`n" 
-			;	. "foundOffset "foundOffset " aOffset.binNeedleGap " aOffset.binNeedleGap  " + " " haystackChunkOffset " haystackChunkOffset
+			;	. "foundOffset "foundOffset " aOffset.binNeedleGap " aOffset.binNeedleGap  " + " " haystackOffset " haystackOffset
 
 
-			if (arrayIndex = 1 || foundOffset = haystackChunkOffset)
+			if (arrayIndex = 1 || foundOffset = haystackOffset)
 			{		
 					
 				if (arrayIndex = 1)
 				{
-					currentStartOffstet := aOffset.binNeedleSize + foundOffset
+					currentStartOffstet := aOffset.binNeedleSize + foundOffset ; save the offset of the match for the first part of the needle - if remainder of needle doesn't match,  resume search from here
 					tmpfoundAddress := foundOffset
 					;msgbox % "tmpfoundAddress " tmpfoundAddress := foundOffset
 				}
 				if (arrayIndex = aOffsets.MaxIndex())
 				{
-					foundAddress := tmpfoundAddress
+					foundAddress := tmpfoundAddress - aOffsets[1].binNeedleStartOffset ; deduct the first needles starting offset - in case user passed a pattern beginning with ?? eg "?? ?? 00 55"
 					break, 2
 				}	
-				;msgbox % haystackChunkOffset " haystackChunkOffset" "`ncurrentStartOffstet " currentStartOffstet
+				;msgbox % haystackOffset " haystackOffset" "`ncurrentStartOffstet " currentStartOffstet
 				prevNeedleSize := aOffset.binNeedleSize
 				aOffset := aOffsets[++arrayIndex]
-				silly := aOffset.binNeedleGap
+				;silly := aOffset.binNeedleGap
 				;msgbox foundOffset %foundOffset% `nprevNeedleSize %prevNeedleSize%`naOffset.binNeedleGap %silly%
-				haystackChunkOffset := foundOffset + prevNeedleSize + aOffset.binNeedleGap
-				;msgbox % haystackChunkOffset " haystackChunkOffset"
+				haystackOffset := foundOffset + prevNeedleSize + aOffset.binNeedleGap   ; move the start of the haystack ready for the next needle - accounting for previous needle size and any gap/wildcard-bytes between the two needles
+				;msgbox % haystackOffset " haystackOffset"
 				continue
 			}
 		}
 		
-		if (arrayIndex = 1)
+		if (arrayIndex = 1) ; couldn't find the first part of the needle so just quit
 		{
 			msgbox fsd
 			break, 2
 		}
-		else ;if (arrayIndex != 1)
+		else 		; the subsequent parts of the needle couldn't be found. So resume search from the address immediately succeeding where the first part of the needle was found
 		{	
 			;msgbox arrayIndex = %arrayIndex%
 			aOffset := aOffsets[arrayIndex := 1]
-			haystackChunkOffset := currentStartOffstet
+			haystackOffset := currentStartOffstet
 		}
-		
-		;haystackChunkOffset += aOffset.end - aOffset.start 
-		;haystackChunkOffset++
+
 	}
 }
 
