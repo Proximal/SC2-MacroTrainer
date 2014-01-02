@@ -11,29 +11,35 @@ SendMode Input
 
 
 */
-if (1 && 0 || 0)
-	msgbox
+msgbox % mod(8, 2)
                                   ;0  1  2  3  4  5  6  7  8  9  10 11 12 13 14
 haystackSize := hexToBinaryBuffer("11 44 22 11 22 00 00 5E 68 00 5E 68 11 5E 68", Haystack)
 ;msgbox % scanInBuf(&Haystack, &needle, haystackSize, needleSize, 1)
-realNeedleSize := makePattern(         " ?? ?? ?? ?? ?? 5E ?? ?? ?? 68 ?? 5e 68", aOffsets, binaryNeedle)
+realNeedleSize := makePattern(         " ?? ?? 22 ?? ?? 5E ?? ?? ?? 68 ?? 5e ??", aOffsets, binaryNeedle)
 objtree(aOffsets)
 ;0   1  2  3  4 5  6  7
 ;22 ?? 22 ?? ?? ?? 33 33
+
+; Return values
+; -1 	An odd number of characters were passed via pattern
+;		Ensure you use two digits to represent each byte i.e. 05 and 0F and not 5 OR F
+
 makePattern(pattern, byRef aOffsets, byRef binaryNeedle)
 {
 	StringReplace, pattern, pattern, %A_Space%,, All
 	StringReplace, pattern, pattern, %A_Tab%,, All
 	pattern := RTrim(pattern, "?")				; can pass patterns beginning with ?? ?? - but it is a little pointless
 	loopCount := bufferSize := StrLen(pattern) / 2
+	if Mod(loopCount, 2)
+		return -1 
 	VarSetCapacity(binaryNeedle, bufferSize)
-	aOffsets := [], startGap := 0, prevChar := "??"
+	aOffsets := [], startGap := 0 ;, prevChar := "??"
 	loop, % loopCount
 	{
 		hexChar := SubStr(pattern, 1 + 2 * (A_Index - 1), 2)
-		if (hexChar != "??" && prevChar = "??")
+		if (hexChar != "??") && (prevChar = "??" || A_Index = 1)
 			binNeedleStartOffset := A_index - 1
-		else if (hexChar = "??" && prevChar != "??") 
+		else if (hexChar = "??" && prevChar != "??" && A_Index != 1) 
 		{
 
 			aOffsets.Insert({ "binNeedleStartOffset": binNeedleStartOffset
@@ -125,7 +131,7 @@ loop 1
 			msgbox fsd
 			break, 2
 		}
-		else 		; the subsequent parts of the needle couldn't be found. So resume search from the address immediately succeeding where the first part of the needle was found
+		else 		; the subsequent parts of the needle couldn't be found. So resume search from the address immediately next to where the first part of the needle was found
 		{	
 			;msgbox arrayIndex = %arrayIndex%
 			aOffset := aOffsets[arrayIndex := 1]
