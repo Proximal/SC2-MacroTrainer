@@ -1323,6 +1323,12 @@ isHatchLairOrSpireMorphing(unit, type := 0)
 }
 
 
+isMotherShipCoreMorphing(unit)
+{
+	state := ReadMemory(getUnitAbilityPointer(unit) + 0x8, GameIdentifier, 1)
+	return state = 8 ? 1 : 0
+}
+
 IsUserMovingCamera()
 {
 	if (IsCameraDragScrollActivated() || IsCameraDirectionalKeyScrollActivated() || IsCameraMovingViaMouseAtScreenEdge())

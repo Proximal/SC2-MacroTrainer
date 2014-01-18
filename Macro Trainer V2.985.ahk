@@ -9816,6 +9816,7 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 	GLOBAL DeadFilterFlag, aPlayer, aLocalPlayer, aUnitTargetFilter, aUnitInfo, aMiscUnitPanelInfo
 	aEnemyUnits := [], aEnemyUnitConstruction := [], aEnemyCurrentUpgrades := [], aMiscUnitPanelInfo := []
 	 
+	static aUnitMorphingNames := {"Egg": True, "BanelingCocoon": True, "BroodLordCocoon": True, "OverlordCocoon": True, MothershipCore: True}
 ;	if !aEnemyUnitPriorities	;because having  GLOBAL aEnemyUnitPriorities := [] results in it getting cleared each function run
 ;		aEnemyUnitPriorities := []
 
@@ -9938,7 +9939,7 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 				}
 				else ; Non-structure/unit
 				{
-					if (aPlayer[owner, "Race"] = "Zerg" && (Type = aUnitId.Egg || Type = aUnitID.BanelingCocoon || Type = aUnitID.BroodLordCocoon || Type = aUnitID.OverlordCocoon))
+					if aUnitMorphingNames.HasKey(aUnitName[type])
 					{
 
 						if (Type = aUnitId.Egg)
@@ -9946,7 +9947,6 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 							aProduction := getZergProductionFromEgg(unit)				
 							QueuedPriority := aUnitInfo[aProduction.Type, "Priority"], progress :=  aProduction.progress, type := aProduction.Type	
 							count := aProduction.Count
-
 						}
 						else if (Type = aUnitID.BanelingCocoon)
 						{
@@ -9958,14 +9958,28 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 							progress := getUnitMorphTime(unit, Type)
 							QueuedPriority := aUnitInfo[Type := aUnitID.BroodLord, "Priority"], Count := 1
 						}
-						else ; if (Type = aUnitID.OverlordCocoon)
+						else if (Type = aUnitID.OverlordCocoon)
 						{
 							progress := getUnitMorphTime(unit, Type)
 							QueuedPriority := aUnitInfo[Type := aUnitID.Overseer, "Priority"], Count := 1
 						}
+						else if (Type = aUnitId.MothershipCore)
+						{
+							if isMotherShipCoreMorphing(unit)
+							{
+								progress := getUnitMorphTime(unit, Type)
+								QueuedPriority := aUnitInfo[Type, "Priority"], Count := 1, Type := aUnitID.Mothership
+							}
+							else 
+							{
+								aEnemyUnits[Owner, Priority, Type] := round(aEnemyUnits[Owner, Priority, Type]) + 1 ; ? aEnemyUnits[Owner, Priority, Type] + 1 : 1
+								continue
+							}
+						}							
 						aEnemyUnitConstruction[Owner, QueuedPriority, Type] := {"progress": (aEnemyUnitConstruction[Owner, QueuedPriority, Type].progress > progress ? aEnemyUnitConstruction[Owner, QueuedPriority, Type].progress : progress)
 																					, "count": round(aEnemyUnitConstruction[Owner, QueuedPriority, Type].count) + Count} 						
-					}			
+					}
+		
 					else aEnemyUnits[Owner, Priority, Type] := round(aEnemyUnits[Owner, Priority, Type]) + 1 ; ? aEnemyUnits[Owner, Priority, Type] + 1 : 1
 				}
 			}
@@ -9983,7 +9997,8 @@ msgbox % getunittargetfilter( unit) & aUnitTargetFilter.Structure "`n"
 		.	aUnitInfo[getUnitType(unit), "Priority"]  "`n"
 		. getArchonMorphTime(getUnitAbilityPointer(unit)) "`n"
 		. aUnitName[ getUnitType(unit)] "`n"
-		. isHatchLairOrSpireMorphing(unit)
+		. isHatchLairOrSpireMorphing(unit) "`n"
+		. isMotherShipCoreMorphing(unit)
 return 
 
 ; need to fix templar /dt count when morohing in an archon
