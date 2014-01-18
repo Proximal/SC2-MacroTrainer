@@ -6,7 +6,7 @@
 ; I have it here so it gets backed-up on github
 ; Class_CStruct cane be found in 
 ; SC2-MacroTrainer\Lib
-#include C:\Users\Matthieu\Desktop\GIT Repos\SC2-MacroTrainer\Lib\Class_CStruct.ahk
+#include D:\My Computer\My Documents\GitHub\SC2-MacroTrainer\Lib\Class_CStruct.ahk
 #SingleInstance Force
 
 

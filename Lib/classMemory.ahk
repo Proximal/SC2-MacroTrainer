@@ -151,11 +151,24 @@ class memory
 	ReadRawMemory(address, byref buffer, bytes := 4, aOffsets*)
 	{
 		VarSetCapacity(buffer, bytes)
-		if !DllCall("ReadProcessMemory", "UInt", this.hProcessCurrent, "UInt", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, "Ptr", &buffer, "UInt", bytes, "Ptr", 0)
+		if !DllCall("ReadProcessMemory", "UInt", this.hProcessCurrent, "UInt", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, "Ptr", &buffer, "UInt", bytes, "Ptr*", bytesRead)
 			return !this.hProcessCurrent ? "Handle Is closed: " this.hProcessCurrent : "Fail"
-		return
+		return bytesRead
 	}
 
+	ReadRawMemoryTest(address, byref buffer, bytes := 4, byref bytesReadR := 0, aOffsets*)
+	{
+		VarSetCapacity(buffer, bytes)
+		if !DllCall("ReadProcessMemory", "UInt", this.hProcessCurrent, "UInt", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, "Ptr", &buffer, "UInt", bytes, "Ptr*", bytesRead)
+		{
+			if !bytesRead
+			{
+				bytesReadR := bytesRead
+				return "Error " DllCall("GetLastError") "`nBytes Read: " bytesRead
+			}
+		}
+		return bytesRead
+	}
 	; Encoding refers to how the string is stored in the program's memory - probably uft-8 or utf-16
 	; If length is 0, readString() will read the string until it finds a null terminator (or an error occurs)
 
@@ -275,5 +288,173 @@ class memory
 			: "GetWindowLongPtr", "Uint", hWnd, "Uint", -6) 
 	}
 
+	; Return values
+	; -1 	An odd number of characters were passed via pattern
+	;		Ensure you use two digits to represent each byte i.e. 05, 0F and ??, and not 5, F or ?
+	; int 	represents the number of non-wildcard bytes in the search pattern/needle
+
+	setPattern(pattern, byRef aOffsets, byRef binaryNeedle)
+	{
+		StringReplace, pattern, pattern, %A_Space%,, All
+		StringReplace, pattern, pattern, %A_Tab%,, All
+		pattern := RTrim(pattern, "?")				; can pass patterns beginning with ?? ?? - but it is a little pointless
+		loopCount := bufferSize := StrLen(pattern) / 2
+		if Mod(StrLen(pattern), 2)
+			return -1 
+		VarSetCapacity(binaryNeedle, bufferSize)
+		aOffsets := [], startGap := 0 ;, prevChar := "??"
+		loop, % loopCount
+		{
+			hexChar := SubStr(pattern, 1 + 2 * (A_Index - 1), 2)
+			if (hexChar != "??") && (prevChar = "??" || A_Index = 1)
+				binNeedleStartOffset := A_index - 1
+			else if (hexChar = "??" && prevChar != "??" && A_Index != 1) 
+			{
+
+				aOffsets.Insert({ "binNeedleStartOffset": binNeedleStartOffset
+								, "binNeedleSize": A_Index - 1 - binNeedleStartOffset
+								, "binNeedleGap": !aOffsets.MaxIndex() ? 0 : binNeedleStartOffset - startGap + 1}) ; equals number of wildcard bytes between two sub needles
+				startGap := A_index
+			}
+
+			if (A_Index = loopCount) ; last char cant be ??
+				aOffsets.Insert({ "binNeedleStartOffset": binNeedleStartOffset
+								, "binNeedleSize": A_Index - binNeedleStartOffset
+								, "binNeedleGap": !aOffsets.MaxIndex() ? 0 : binNeedleStartOffset - startGap + 1})
+
+			prevChar := hexChar
+			if (hexChar != "??")
+			{
+				numput("0x" . hexChar, binaryNeedle, A_index - 1, "UChar")
+				realNeedleSize++
+			}
+		}
+		return realNeedleSize
+	}
+
+	; need to setup module / memory area scanning, so it only reads addresses which have read access
+
+	patternScan(pattern, startAddress, maxOffsetMB := 0, byRef returnAddressAndOffset := 0, dumpSizeMB := 50)
+	{
+		realNeedleSize := this.setPattern(pattern, aOffsets, binaryNeedle)
+		if (realNeedleSize = -1 || realNeedleSize = 0)
+			return -2 ;invlaid pattern was passed 
+		haystackSizeBytes := dumpSizeMB * 1048576   ;1048576 bytes in a MB
+		haystackSizeBytes := 30   ;1048576 bytes in a MB
+		maxAddress := startAddress + (maxOffsetMB * 1048576)
+		bytesRead := 0
+
+		loop 
+		{	
+			aaaaindex := A_Index
+			currentStartAddress := startAddress + bytesRead ; change this so it starts 1 full needle back from edge
+			if (maxOffsetMB && currentStartAddress >= maxAddress) 		
+				msgbox past final address
+			;	return -1 ; notfound 
+			
+			if (haystackSizeBytes != bytesRead :=  this.ReadRawMemoryTest(currentStartAddress, Haystack, haystackSizeBytes))
+			{
+				if !bytesRead
+				{
+					msgbox completely failed 
+					return " completely failed "
+				}
+			}
+			;	msgbox % "here currentStartAddress "  chex(currentStartAddress) "`nbytesRead " bytesRead
+			;	return -3 ; failed to dump part of the process memory
+			currentStartOffstet := 0
+			haystackOffset := 0
+			aOffset := aOffsets[arrayIndex := 1]
+
+			loop
+			{
+
+				if (-1 != foundOffset := this.scanInBuf(&Haystack, &binaryNeedle + aOffset.binNeedleStartOffset, haystackSizeBytes, aOffset.binNeedleSize, haystackOffset))
+				{
+					;msgbox % arrayIndex  "arrayIndex`n" 
+					;	. "foundOffset "foundOffset " aOffset.binNeedleGap " aOffset.binNeedleGap  " + " " haystackOffset " haystackOffset
+
+
+					if (arrayIndex = 1 || foundOffset = haystackOffset)
+					{		
+							
+						if (arrayIndex = 1)
+						{
+							currentStartOffstet := aOffset.binNeedleSize + foundOffset ; save the offset of the match for the first part of the needle - if remainder of needle doesn't match,  resume search from here
+							tmpfoundAddress := foundOffset
+							;msgbox % "tmpfoundAddress " tmpfoundAddress := foundOffset
+						}
+						if (arrayIndex = aOffsets.MaxIndex())
+						{
+							foundAddress := tmpfoundAddress - aOffsets[1].binNeedleStartOffset ; deduct the first needles starting offset - in case user passed a pattern beginning with ?? eg "?? ?? 00 55"
+							break, 2
+						}	
+						;msgbox % haystackOffset " haystackOffset" "`ncurrentStartOffstet " currentStartOffstet
+						prevNeedleSize := aOffset.binNeedleSize
+						aOffset := aOffsets[++arrayIndex]
+						;silly := aOffset.binNeedleGap
+						;msgbox foundOffset %foundOffset% `nprevNeedleSize %prevNeedleSize%`naOffset.binNeedleGap %silly%
+						haystackOffset := foundOffset + prevNeedleSize + aOffset.binNeedleGap   ; move the start of the haystack ready for the next needle - accounting for previous needle size and any gap/wildcard-bytes between the two needles
+						;msgbox % haystackOffset " haystackOffset"
+						continue
+					}
+				}
+				
+				if (arrayIndex = 1) ; couldn't find the first part of the needle so dump the next chunk of memory
+				{
+					;msgbox fsd
+					break
+				}
+				else 		; the subsequent parts of the needle couldn't be found. So resume search from the address immediately next to where the first part of the needle was found
+				{	
+					;msgbox arrayIndex = %arrayIndex%
+					aOffset := aOffsets[arrayIndex := 1]
+					haystackOffset := currentStartOffstet
+				}
+
+			}
+		}
+		if foundAddress
+		 return 1, returnAddressAndOffset += startAddress + foundAddress
+		else return 0
+	}
+
+	;Doesn't WORK with AHK 64 BIT, only works with AHK 32 bit
+	;taken from:
+	;http://www.autohotkey.com/board/topic/23627-machine-code-binary-buffer-searching-regardless-of-null/
+	; -1 not found else returns offset address (starting at 0)
+	scanInBuf(haystackAddr, needleAddr, haystackSize, needleSize, StartOffset = 0)
+	{  static fun
+
+		; AHK32Bit a_PtrSize = 4 | AHK64Bit - 8 bytes
+		if (a_PtrSize = 8)
+		  return -1
+
+		ifequal, fun,
+		{
+		  h =
+		  (  LTrim join
+		     5589E583EC0C53515256579C8B5D1483FB000F8EC20000008B4D108B451829C129D9410F8E
+		     B10000008B7D0801C78B750C31C0FCAC4B742A4B742D4B74364B74144B753F93AD93F2AE0F
+		     858B000000391F75F4EB754EADF2AE757F3947FF75F7EB68F2AE7574EB628A26F2AE756C38
+		     2775F8EB569366AD93F2AE755E66391F75F7EB474E43AD8975FC89DAC1EB02895DF483E203
+		     8955F887DF87D187FB87CAF2AE75373947FF75F789FB89CA83C7038B75FC8B4DF485C97404
+		     F3A775DE8B4DF885C97404F3A675D389DF4F89F82B45089D5F5E5A595BC9C2140031C0F7D0
+		     EBF0
+		  )
+		  varSetCapacity(fun, strLen(h)//2)
+		  loop % strLen(h)//2
+		     numPut("0x" . subStr(h, 2*a_index-1, 2), fun, a_index-1, "char")
+		}
+
+		return DllCall(&fun, "uInt", haystackAddr, "uInt", needleAddr
+		              , "uInt", haystackSize, "uInt", needleSize, "uInt", StartOffset)
+	}
+
+
+
+
+
+	
 
 }

@@ -38,7 +38,8 @@
 ; Example:
 ;		file:Struct_Example.ahk
 ;
-#Include <sizeof>
+;#Include <sizeof> ;had to comment this out, as it was sizOf wasnt working correctly when called 
+
 Class _Struct {
 	; Data Sizes
   static PTR:=A_PtrSize,UPTR:=A_PtrSize,SHORT:=2,USHORT:=2,INT:=4,UINT:=4,__int64:=8,INT64:=8,UINT64:=8,DOUBLE:=8,FLOAT:=4,CHAR:=1,UCHAR:=1,VOID:=A_PtrSize

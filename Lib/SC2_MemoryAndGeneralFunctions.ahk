@@ -1295,7 +1295,7 @@ isCommandCenterMorphing(unit)
 }
 
 
-isHatchOrLairMorphing(unit)
+isHatchLairOrSpireMorphing(unit, type := 0)
 {
 			/*
 			hatchery
@@ -1309,13 +1309,16 @@ isHatchOrLairMorphing(unit)
 			9 / 0x9 when going to lair
 			17 /0x11 when going to hive
 			*/
-	local state, Type
-	type := getUnitType(unit)
+	local state
+	if !type
+		type := getUnitType(unit)
 	state := ReadMemory(getUnitAbilityPointer(unit) + 0x8, GameIdentifier, 1)
 	if (state = 9 && type = aUnitID["Hatchery"])	;	->PF
 		return aUnitID["Lair"]
 	else if (state = 17 && type = aUnitID["Lair"])	; 	-> Orbital
 		return aUnitID["Hive"]
+	else if (state = 4 && type = aUnitID["Spire"])
+		return aUnitID["GreaterSpire"]
 	return 0
 }
 

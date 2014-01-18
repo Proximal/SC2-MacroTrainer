@@ -9693,7 +9693,7 @@ getEnemyUnitCountOld(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aUni
 			{
 				if (Type = aUnitID["CommandCenter"] && MorphingType := isCommandCenterMorphing(unit))	; this allows the orbital to show as a 'under construction' unit on the right
 					Priority := aUnitInfo["CommandCenter", "Priority"], aEnemyUnitConstruction[Owner, Priority, MorphingType] := round(aEnemyUnitConstruction[Owner, Priority, MorphingType]) + 1 ; ? aEnemyUnitConstruction[Owner, Priority, MorphingType] + 1 : 1 ;*** use 4 as morphing has no 0 priority, which != 4/CC
-				else if (Type = aUnitID["Hatchery"] || aUnitID["Lair"]) && MorphingType := isHatchOrLairMorphing(unit)
+				else if (Type = aUnitID["Hatchery"] || aUnitID["Lair"]) && MorphingType := isHatchLairOrSpireMorphing(unit)
 					Priority := aUnitInfo["Hatchery", "Priority"], aEnemyUnitConstruction[Owner, Priority, MorphingType] := round(aEnemyUnitConstruction[Owner, Priority, MorphingType]) + 1 ; ? aEnemyUnitConstruction[Owner, Priority, MorphingType] + 1 : 1
 				else
 					aEnemyUnits[Owner, Priority, Type] := round(aEnemyUnits[Owner, Priority, Type]) + 1 ; ? aEnemyUnits[Owner, Priority, Type] + 1 : 1 ;note +1 (++ will not work!!!)
@@ -9790,7 +9790,7 @@ getEnemyUnitCountCurrent(byref aEnemyUnits, byref aEnemyUnitConstruction, byref 
 						aEnemyUnitConstruction[Owner, Priority, MorphingType] := round(aEnemyUnitConstruction[Owner, Priority, MorphingType]) + 1 ; ? aEnemyUnitConstruction[Owner, Priority, MorphingType] + 1 : 1 
 					}
 					; hatchery, lair, and hive have the same priority - 2, so just use the hatches priority as it had to already exist 
-					else if (Type = aUnitID["Hatchery"] || aUnitID["Lair"]) && MorphingType := isHatchOrLairMorphing(unit)
+					else if (Type = aUnitID["Hatchery"] || aUnitID["Lair"]) && MorphingType := isHatchLairOrSpireMorphing(unit)
 						aUnitInfo[MorphingType, "isStructure"] := True, Priority := aUnitInfo["Hatchery", "Priority"], aEnemyUnitConstruction[Owner, Priority, MorphingType] := round(aEnemyUnitConstruction[Owner, Priority, MorphingType]) + 1 ; ? aEnemyUnitConstruction[Owner, Priority, MorphingType] + 1 : 1
 					else
 						aEnemyUnits[Owner, Priority, Type] := round(aEnemyUnits[Owner, Priority, Type]) + 1 ; ? aEnemyUnits[Owner, Priority, Type] + 1 : 1 ;note +1 (++ will not work!!!)			
@@ -9827,10 +9827,11 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 	       Continue
 		owner := numgetUnitOwner(MemDump, Unit) 
 
-	    if  (aPlayer[Owner, "Team"] <> aLocalPlayer["Team"] && Owner)
+	    if  (aPlayer[Owner, "Team"] <> aLocalPlayer["Team"] && Owner) || (aPlayer[Owner, "Team"] = aLocalPlayer["Team"] && Owner) 
 	    {
 	    	pUnitModel := numgetUnitModelPointer(MemDump, Unit)
 	    	Type := numgetUnitModelType(pUnitModel)
+
 	    	if  (Type < aUnitID["Colossus"])
 				continue	
 			if (!Priority := aUnitInfo[Type, "Priority"]) ; faster than reading the priority each time - this is splitting hairs!!!
@@ -9842,13 +9843,18 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 			if (TargetFilter & aUnitTargetFilter.UnderConstruction)
 			{
 				pAbilities := numgetUnitAbilityPointer(MemDump, unit)
-				
-				;if (TargetFilter & aUnitTargetFilter.Structure)				
+
+				if (Type = aUnitID.Archon )
+					progress := getArchonMorphTime(numgetUnitAbilityPointer(MemDump, unit))
+				;if (TargetFilter & aUnitTargetFilter.Structure)	
+				else			
 					progress := getBuildProgress(pAbilities, Type)
 
-				aEnemyUnitConstruction[Owner, Priority, Type] := {"progress": progress > round(aEnemyUnitConstruction[Owner, Priority, Type].Progress) 
-																			? progress 
-																			: round(aEnemyUnitConstruction[Owner, Priority, Type].Progress)
+
+
+				aEnemyUnitConstruction[Owner, Priority, Type] := {"progress": progress > aEnemyUnitConstruction[Owner, Priority, Type].Progress
+																				? progress 
+																				: aEnemyUnitConstruction[Owner, Priority, Type].Progress
 																, "count": round(aEnemyUnitConstruction[Owner, Priority, Type].Count) + 1}
 				aEnemyUnitConstruction[Owner, "TotalCount"] := round(aEnemyUnitConstruction[Owner, "TotalCount"]) + 1
 				
@@ -9881,7 +9887,7 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 								QueuedPriority := aUnitInfo[QueuedType, "Priority"]  
 								;aEnemyUnitConstruction[Owner, QueuedPriority, QueuedType] := round(aEnemyUnitConstruction[Owner, QueuedPriority, QueuedType]) + 1 ; ? aEnemyUnitConstruction[Owner, QueuedPriority, QueuedType] + 1 : 1 	
 							
-							aEnemyUnitConstruction[Owner, QueuedPriority, QueuedType] := {"progress": (round(aEnemyUnitConstruction[Owner, QueuedPriority, QueuedType].progress) > aProduction.progress ? round(aEnemyUnitConstruction[Owner, QueuedPriority, QueuedType].progress) : aProduction.progress)
+							aEnemyUnitConstruction[Owner, QueuedPriority, QueuedType] := {"progress": (aEnemyUnitConstruction[Owner, QueuedPriority, QueuedType].progress > aProduction.progress ? aEnemyUnitConstruction[Owner, QueuedPriority, QueuedType].progress : aProduction.progress)
 																							, "count": round(aEnemyUnitConstruction[Owner, QueuedPriority, QueuedType].count) + 1 }
 
 							} ; this count for upgrades allows the number of nukes being produced to be displayed
@@ -9889,7 +9895,7 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 							{
 								; list the highest progress if more than 1
 								
-								aEnemyCurrentUpgrades[Owner, aProduction.Item] := {"progress": (round(aEnemyCurrentUpgrades[Owner, aProduction.Item].progress) > aProduction.progress ? round(aEnemyCurrentUpgrades[Owner, aProduction.Item].progress) : aProduction.progress)
+								aEnemyCurrentUpgrades[Owner, aProduction.Item] := {"progress": (aEnemyCurrentUpgrades[Owner, aProduction.Item].progress > aProduction.progress ? aEnemyCurrentUpgrades[Owner, aProduction.Item].progress : aProduction.progress)
 																					, "count": round(aEnemyCurrentUpgrades[Owner, aProduction.Item].count) + 1 }
 								if chronoed
 									aMiscUnitPanelInfo[owner, "ChronoUpgrade", aProduction.Item] := True
@@ -9911,33 +9917,55 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 						}
 						progress := getUnitMorphTime(unit, type)
 						;aEnemyUnitConstruction[Owner, Priority, MorphingType] := round(aEnemyUnitConstruction[Owner, Priority, MorphingType]) + 1 ; ? aEnemyUnitConstruction[Owner, Priority, MorphingType] + 1 : 1 
-						aEnemyUnitConstruction[Owner, Priority, MorphingType] := {"progress": (round(aEnemyUnitConstruction[Owner, Priority, MorphingType].progress) > aProduction.progress ? round(aEnemyUnitConstruction[Owner, Priority, MorphingType].progress) : progress)
+						aEnemyUnitConstruction[Owner, Priority, MorphingType] := {"progress": (aEnemyUnitConstruction[Owner, Priority, MorphingType].progress > aProduction.progress ? aEnemyUnitConstruction[Owner, Priority, MorphingType].progress : progress)
 																					, "count": round(aEnemyUnitConstruction[Owner, Priority, MorphingType].count) + 1 }
 					}
 					; hatchery, lair, and hive have the same priority - 2, so just use the hatches priority as it had to already exist 
-					else if (Type = aUnitID["Hatchery"] || aUnitID["Lair"]) && MorphingType := isHatchOrLairMorphing(unit)
+					else if (Type = aUnitID["Hatchery"] || aUnitID["Lair"] || aUnitID["Spire"]) && MorphingType := isHatchLairOrSpireMorphing(unit)
 					{
 						aUnitInfo[MorphingType, "isStructure"] := True
 						progress := getUnitMorphTime(unit, type)
 						
-						aEnemyUnitConstruction[Owner, Priority, MorphingType] := {"progress": (round(aEnemyUnitConstruction[Owner, Priority, MorphingType].progress) > progress ? round(aEnemyUnitConstruction[Owner, Priority, MorphingType].progress) : progress)
+						aEnemyUnitConstruction[Owner, Priority, MorphingType] := {"progress": (aEnemyUnitConstruction[Owner, Priority, MorphingType].progress > progress ? aEnemyUnitConstruction[Owner, Priority, MorphingType].progress : progress)
 																					, "count": round(aEnemyUnitConstruction[Owner, Priority, MorphingType].count) + 1 }
 
 						; I think its better to still count the unit as a hatch as well as a morph type
 						aEnemyUnits[Owner, Priority, Type] := round(aEnemyUnits[Owner, Priority, Type]) + 1 ; as its already a hatch/lair
 					}
+
 					else
 						aEnemyUnits[Owner, Priority, Type] := round(aEnemyUnits[Owner, Priority, Type]) + 1 ; ? aEnemyUnits[Owner, Priority, Type] + 1 : 1 ;note +1 (++ will not work!!!)			
 				}
 				else ; Non-structure/unit
 				{
-					if (Type = aUnitId.Egg)
+					if (aPlayer[owner, "Race"] = "Zerg" && (Type = aUnitId.Egg || Type = aUnitID.BanelingCocoon || Type = aUnitID.BroodLordCocoon || Type = aUnitID.OverlordCocoon))
 					{
-						aProduction := getZergProductionFromEgg(unit)				
-						QueuedPriority := aUnitInfo[aProduction.Type, "Priority"]  
-						aEnemyUnitConstruction[Owner, QueuedPriority, aProduction.Type] := {"progress": (round(aEnemyUnitConstruction[Owner, QueuedPriority, aProduction.Type].progress) > aProduction.progress ? round(aEnemyUnitConstruction[Owner, QueuedPriority, aProduction.Type].progress) : aProduction.progress)
-																					, "count": round(aEnemyUnitConstruction[Owner, QueuedPriority, aProduction.Type].count) + aProduction.Count} 
-					}
+
+						if (Type = aUnitId.Egg)
+						{
+							aProduction := getZergProductionFromEgg(unit)				
+							QueuedPriority := aUnitInfo[aProduction.Type, "Priority"], progress :=  aProduction.progress, type := aProduction.Type	
+							count := aProduction.Count
+
+						}
+						else if (Type = aUnitID.BanelingCocoon)
+						{
+							progress := getBanelingMorphTime(numgetUnitAbilityPointer(MemDump, unit))
+							QueuedPriority := aUnitInfo[aUnitID.Baneling, "Priority"], Count := 1
+						}
+						else if (Type = aUnitID.BroodLordCocoon)
+						{
+							progress := getUnitMorphTime(unit, Type)
+							QueuedPriority := aUnitInfo[Type := aUnitID.BroodLord, "Priority"], Count := 1
+						}
+						else ; if (Type = aUnitID.OverlordCocoon)
+						{
+							progress := getUnitMorphTime(unit, Type)
+							QueuedPriority := aUnitInfo[Type := aUnitID.Overseer, "Priority"], Count := 1
+						}
+						aEnemyUnitConstruction[Owner, QueuedPriority, Type] := {"progress": (aEnemyUnitConstruction[Owner, QueuedPriority, Type].progress > progress ? aEnemyUnitConstruction[Owner, QueuedPriority, Type].progress : progress)
+																					, "count": round(aEnemyUnitConstruction[Owner, QueuedPriority, Type].count) + Count} 						
+					}			
 					else aEnemyUnits[Owner, Priority, Type] := round(aEnemyUnits[Owner, Priority, Type]) + 1 ; ? aEnemyUnits[Owner, Priority, Type] + 1 : 1
 				}
 			}
@@ -9945,6 +9973,21 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 	}
 	Return
 }
+f1::
+unit := getSelectedUnitIndex()
+clipboard := chex(getUnitAbilityPointer(unit))
+msgbox % isHatchLairOrSpireMorphing(unit)
+msgbox % state := ReadMemory(getUnitAbilityPointer(unit) + 0x9, GameIdentifier, 1)
+msgbox % getunittargetfilter( unit) & aUnitTargetFilter.Structure "`n"
+		.	getunittargetfilter( unit) & aUnitTargetFilter.UnderConstruction "`n"
+		.	aUnitInfo[getUnitType(unit), "Priority"]  "`n"
+		. getArchonMorphTime(getUnitAbilityPointer(unit)) "`n"
+		. aUnitName[ getUnitType(unit)] "`n"
+		. isHatchLairOrSpireMorphing(unit)
+return 
+
+; need to fix templar /dt count when morohing in an archon
+
 
 /*
 	object looks like this
@@ -9969,7 +10012,7 @@ FilterUnits(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aUnitPanelUni
 							, "Zerg": ["CreepTumorBurrowed","Broodling","Locust"]}
 
 	STATIC aAddUnits 	:=	{"Terran": {SupplyDepotLowered: "SupplyDepot", WidowMineBurrowed: "WidowMine", CommandCenterFlying: "CommandCenter", OrbitalCommandFlying: "OrbitalCommand"
-										, BarracksFlying: "Barracks", StarportFlying: "Starport", SiegeTankSieged: "SiegeTank", VikingAssault: "VikingFighter"}
+										, BarracksFlying: "Barracks", FactoryFlying: "Factory", StarportFlying: "Starport", SiegeTankSieged: "SiegeTank", VikingAssault: "VikingFighter"}
 							, "Zerg": {DroneBurrowed: "Drone", ZerglingBurrowed: "Zergling", HydraliskBurrowed: "Hydralisk", UltraliskBurrowed: "Ultralisk", RoachBurrowed: "Roach"
 							, InfestorBurrowed: "Infestor", BanelingBurrowed: "Baneling", QueenBurrowed: "Queen", SporeCrawlerUprooted: "SporeCrawler", SpineCrawlerUprooted: "SpineCrawler"}} 
 
@@ -10069,6 +10112,8 @@ FilterUnits(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aUnitPanelUni
 				priorityObject[subPriority].remove(subunit, "") ; remove the baneling cocoon
 			}
 		}
+
+
 
 		for index, removeUnit in aUnitPanelUnits[race, "FilteredCompleted"]
 		{
@@ -10584,7 +10629,7 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 
 	; 4*height easy way to ensure the last split unit panel or upgrade doesn't get cut off
 	WindowHeight := DestY + 4*Height
-	WindowWidth += width *2 ; because x begins on the left side of where the icon is drawn hence need to add 1 extra icon width to maximum width
+	WindowWidth += width *3 ; because x begins on the left side of where the icon is drawn hence need to add 1 extra icon width to maximum width - actually 1.x something due to the fact that the black count square is past the edge of the picture
 
 	; if width/height is > desktop size, updatelayerd window fails and nothing gets drawn
 	DesktopScreenCoordinates(Xmin, Ymin, Xmax, Ymax)
@@ -11435,7 +11480,7 @@ getUnitMorphTime(unit, unitType)
 	{
 		hasRun := True 
 		aMorphStrings := { 	aUnitID.OverlordCocoon: ["MorphToOverseer"]
-						 ,	aUnitID.Corruptor: ["MorphToBroodLord"]
+						 ,	aUnitID.BroodLordCocoon: ["MorphToBroodLord"]
 						 ,	aUnitID.Spire: ["UpgradeToGreaterSpire"]
 						 ,  aUnitID.Hatchery: ["UpgradeToLair"]
 						 ,	aUnitID.Lair: ["UpgradeToHive"]
@@ -12534,6 +12579,3 @@ loop
 	sleep 700
 }
 ;Process, Priority,, Normal
-
-return 
-
