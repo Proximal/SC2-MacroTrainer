@@ -4172,10 +4172,10 @@ try
 					Gui, Add, UpDown,  Range50-5000 vOverlayRefresh, %OverlayRefresh%
 			Gui, Add, Text, XS+20 yp+35, Unit Panel:
 				Gui, Add, Edit, Number Right xp+80 yp-2 w55 vTT_UnitOverlayRefresh
-					Gui, Add, UpDown,  Range150-15000 vUnitOverlayRefresh, %UnitOverlayRefresh%
+					Gui, Add, UpDown,  Range100-15000 vUnitOverlayRefresh, %UnitOverlayRefresh%
 			Gui, Add, Text, XS+20 yp+35, MiniMap:
 				Gui, Add, Edit, Number Right xp+80 yp-2 w55 vTT_MiniMapRefresh
-					Gui, Add, UpDown,  Range150-1500 vMiniMapRefresh, %MiniMapRefresh%					
+					Gui, Add, UpDown,  Range100-1500 vMiniMapRefresh, %MiniMapRefresh%					
 
 	Gui, Tab, Hotkeys 
 		
@@ -12587,3 +12587,7 @@ loop
 }
 
 
+f1::
+;unitPanelDrawUnitProgress := !unitPanelDrawUnitProgress
+unitPanelDrawStructureProgress := !unitPanelDrawStructureProgress
+return
