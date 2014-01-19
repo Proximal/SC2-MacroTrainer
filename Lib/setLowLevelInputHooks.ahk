@@ -142,7 +142,7 @@ KeyboardHook(nCode, wParam, lParam)
 	{
 		MT_InputIdleTime(A_TickCount)
 		; Input is blocked and this is a user pressed / released button	
-  		if (input.iskeyboardBlocked() && !(NumGet(lParam+8) & 0x10)) ; LLKHF_INJECTED
+  		if (input.KybdBlocked && !(NumGet(lParam+8) & 0x10)) ; LLKHF_INJECTED
   			return -1 
   	}
    	Return CallNextHookEx(nCode, wParam, lParam) ; make sure other hooks in the chain receive this event if we didn't process it
@@ -157,7 +157,7 @@ MouseHook(nCode, wParam, lParam)
 	{
 		MT_InputIdleTime(A_TickCount)
 		; Input is blocked and this is a user pressed / released button	
-		if (input.isMouseBlocked() && !(NumGet(lParam+12) & 0x10))  ; LLKHF_INJECTED
+		if (input.MouseBlocked && !(NumGet(lParam+12) & 0x10))  ; LLKHF_INJECTED
 			return -1
 	}
    	Return CallNextHookEx(nCode, wParam, lParam) ; make sure other hooks in the chain receive this event if we didn't process it

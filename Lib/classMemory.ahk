@@ -80,6 +80,15 @@ class memory
 					; Although unsigned 64bit values are not supported, you can read them as int64 or doubles and interpret
 					; the negative numbers as large values
 
+	__new(program, dwDesiredAccess := "")
+	{
+		this.openProcess(program, dwDesiredAccess)
+		return this
+	}
+	__delete()
+	{
+		closeProcess(this.hProcessCurrent)
+	}
 
 	; program can be an ahk_exe, ahk_class, ahk_pid, or simply the window title. e.g. "ahk_exe SC2.exe" or "Starcraft II"
 	; but its safer not to use the window title, as some things can have the same window title - e.g. a folder called "Starcraft II"

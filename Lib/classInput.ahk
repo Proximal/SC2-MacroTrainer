@@ -28,6 +28,11 @@ class Input
 				, "Left", "Right", "Up", "Down", "Home", "End", "PgUp", "PgDn", "Del", "Ins", "BS", "Capslock", "Numlock", "PrintScreen" 
 				, "Pause", "Space", "Enter", "Tab", "Esc", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "B", "C", "D", "E", "F", "G"
 				, "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
+	 	, aMouseClickButtons := {  "LButton": "L" 	; converts Lbutton or xbutton2 etc into L, x2
+								, "RButton": "R"
+								, "MButton": "M"
+								, "XButton1": "X1"
+								, "XButton2": "X2" }
 	 	,	MouseButtons := ["LButton", "RButton", "MButton", "XButton1", "XButton2"]
 		,	downSequence
 		,	MouseBlocked := False
@@ -38,6 +43,7 @@ class Input
 		,	pSendPressDuration := -1
 		, 	pCurrentCharDelay := -1
 		, 	dragLeftClick := False
+		, 	LastLeftClickX, LastLeftClickY
 		, 	Control, WinTitle, WinText,	ExcludeTitle, ExcludeText
 
 	; Very Important Note about logical and physical hotkey states
@@ -71,13 +77,12 @@ class Input
 			{
 				if GetKeyState(key) 	; check the logical state
 				{
-					key := this.convertMouseButtonToClickButton(key)
+					key := this.aMouseClickButtons[key]
 					upsequence .= "{click " key " Up}"
 					if instr(key, "l") ; for left button drag click
 					{
 						this.dragLeftClick := True
-						getLastLeftClickPos(x, y)
-						this.downSequence .= "{click " x " " y " " key " Down}"
+						this.downSequence .= "{click " input.LastLeftClickX " " input.LastLeftClickY " " key " Down}"
 					}
 					else this.downSequence .= "{click " key " Down}"
 				}
@@ -91,8 +96,24 @@ class Input
 		return 
 	}
 
+	; To restore box drags correctly requires a pass through hotkey on lbutton 
+	; So we can determine the x, y location of the start of the box drag
+	; i.e.
+	; *~LButton::
+	;	input.setLastLeftClickPos()
+	;	return
+	setLastLeftClickPos()
+	{
+		MouseGetPos, x, y
+		input.LastLeftClickX := x
+		input.LastLeftClickY := y
+		return
+	}
+
 	; If not blocking input, i.e. just buffering/placing thread in critical then can release 
 	; pressed keys using postmessage without fear of getting stuck keys outside of sc 
+	; Technically I guess you should have a 10ms buffer after starting critical before calling this
+	; but i haven't noticed the need.
 
 	pReleaseKeys(checkMouse := False)
 	{
@@ -106,10 +127,10 @@ class Input
 			{
 				if GetKeyState(key) 	; check the logical state
 				{
-					key := this.convertMouseButtonToClickButton(key)
+					key := this.aMouseClickButtons[key]
 					upsequence .= "{click " key " Up}"
 					if instr(key, "l") ; for left button drag click
-						this.dragLeftClick := True, getLastLeftClickPos(x, y), this.downSequence .= "{click " x " " y " " key " Down}" 	
+						this.dragLeftClick := True, this.downSequence .= "{click " input.LastLeftClickX " " input.LastLeftClickY " " key " Down}" 	
 					else this.downSequence .= "{click " key " Down}"
 					
 				}
@@ -140,55 +161,33 @@ class Input
 		return							
 	}
 
-	; converts Lbutton or xbutton2 etc into L, x2
-	convertMouseButtonToClickButton(button)
-	{
-		static aButtons := {  "LButton": "L"
-							, "RButton": "R"
-							, "MButton": "M"
-							, "XButton1": "X1"
-							, "XButton2": "X2" }
-		return aButtons[button]
-	}
-
-	; used to set the target/destination of the input
-	setTarget(Control := "", winTitle := "", winText := "", excludeTitle := "", excludeText := "")
+	; the new command is handy if you wish to send input to multiple programs
+	; inputSC2 := new input("Starcraft II")
+	; inputSC2.pSendChars("Hello World!")
+	__new(Control := "", winTitle := "", winText := "", excludeTitle := "", excludeText := "")
 	{
 		this.Control := control 
 		this.WinTitle := winTitle 
 		this.WinText := winText
 		this.ExcludeTitle := excludeTitle 
 		this.ExcludeText := excludeText
-		return
-	}	
-
-	; used to check how what keystrokes were sent to release the user input
-	userInputModified()
-	{
-		return this.downSequence
+		return this
 	}
 
-
+	; The same as:
+	; 			input.KybdBlocked := 1/0, input.MouseBlocked := 1/0
 	hookBlock(kybd := False, mouse := False)
 	{
-		this.KybdBlocked := kybd
-		this.MouseBlocked := mouse
+		input.KybdBlocked := kybd
+		input.MouseBlocked := mouse
 		return
-	}
-	iskeyboardBlocked()
-	{
-		return this.KybdBlocked
-	}
-	isMouseBlocked()
-	{
-		return this.KybdBlocked 
 	}
 
 	; This command can be used with the same syntax as AHKs sendInput command
 	; pSend("^+ap") 		Result:	Control+Shift+a p
 	; pSend("+{click}")		Result: Shift Left click the mouse (down and up event)
 	; pSend("{click D " x1 " " y1 "}{Click U " x2 " " y2 "}") ; Result: Box drag the mouse with the LButton
-	; pSend("+{click MM}")		Result: Shift Left click the mouse (down and up event) at location and also sends a WM_MouseMove event
+	; pSend("+{click MM}")		Result: Shift Left click the mouse (down and up event) at current location and also send a WM_MouseMove event
 
 /*
 Bits	Meaning

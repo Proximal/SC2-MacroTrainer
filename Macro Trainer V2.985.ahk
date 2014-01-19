@@ -182,7 +182,7 @@ GLOBAL GameWindowTitle := "StarCraft II"
 GLOBAL GameIdentifier := "ahk_exe SC2.exe"
 GLOBAL GameExe := "SC2.exe"
 
-input.setTarget("", GameIdentifier)
+input.winTitle := GameIdentifier
 ; For some reason this has to come before Gdip_Startup() for reliability 
 DllCall("RegisterShellHookWindow", UInt, getScriptHandle())
 
@@ -498,15 +498,8 @@ g_DoNothing:
 Return			
 
 g_LbuttonDown:	;Get the location of a dragbox
-	MouseGetPos, MLDownX, MLDownY
+	input.setLastLeftClickPos()
 return 
-
-getLastLeftClickPos(ByRef x, ByRef y)
-{
-	global MLDownX, MLDownY
-	x := MLDownX, y := MLDownY
-	return
-}
 
 g_GiveLocalPalyerResources:
 	SetPlayerMinerals()
@@ -947,7 +940,7 @@ clock:
 		{
 			Hotkey, If, WinActive(GameIdentifier) && time
 			hotkey, >!g, g_GLHF
-			hotkey, >!b, gSendBM
+			hotkey, >!+b, gSendBM
 			Hotkey, If
 		}	
 		SetTimer, overlay_timer, %OverlayRefresh%, -8	
@@ -9828,7 +9821,7 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 	       Continue
 		owner := numgetUnitOwner(MemDump, Unit) 
 
-	    if  (aPlayer[Owner, "Team"] <> aLocalPlayer["Team"] && Owner) || (aPlayer[Owner, "Team"] = aLocalPlayer["Team"] && Owner) 
+	    if  (aPlayer[Owner, "Team"] <> aLocalPlayer["Team"] && Owner) ;|| (Owner) 
 	    {
 	    	pUnitModel := numgetUnitModelPointer(MemDump, Unit)
 	    	Type := numgetUnitModelType(pUnitModel)
@@ -9987,7 +9980,7 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 	}
 	Return
 }
-f1::
+return
 unit := getSelectedUnitIndex()
 clipboard := chex(getUnitAbilityPointer(unit))
 msgbox % isHatchLairOrSpireMorphing(unit)
@@ -12574,7 +12567,6 @@ thread, Interrupt, off
 space := ""
 loop, % count := 40
 	spaces .= A_space
-;Process, Priority,, High
 loop
 {
 	
@@ -12593,4 +12585,5 @@ loop
 		break
 	sleep 700
 }
-;Process, Priority,, Normal
+
+
