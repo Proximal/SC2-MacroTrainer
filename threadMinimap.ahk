@@ -456,7 +456,7 @@ drawPlayerCameras(pGraphics)
 
 	For slotNumber in aPlayer
 	{
-		If (aLocalPlayer.Team != aPlayer[slotNumber].Team)
+		If (aLocalPlayer.Team != aPlayer[slotNumber].Team && getPlayerActiveStatus(slotNumber) = "Active")
 		{
 			angle := getPlayerCameraAngle(slotNumber)
 			xCenter := getPlayerCameraPositionX(slotNumber)

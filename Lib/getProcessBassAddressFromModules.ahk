@@ -40,7 +40,7 @@ getProcessBassAddressFromModules(process)
 	VarSetCapacity(lpFilename, 2048 * (A_IsUnicode ? 2 : 1))
 	loop % reqSize / 4 ; sizeof(HMODULE) - enumerate the array of HMODULEs
 	{
-		chars := DllCall("psapi\GetModuleFileNameEx", "uint", hProc, "Uint", numget(&lphModule, (A_index - 1) * 4)
+		DllCall("psapi\GetModuleFileNameEx", "uint", hProc, "Uint", numget(&lphModule, (A_index - 1) * 4)
 				, "Ptr", &lpFilename, "Uint", 2048 / (A_IsUnicode ? 2 : 1))
 		if (mainExeName = StrGet(&lpFilename))
 		{

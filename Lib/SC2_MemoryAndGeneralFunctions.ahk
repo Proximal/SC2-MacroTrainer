@@ -584,15 +584,6 @@ getUnitOwner(Unit) ;starts @ 0 i.e. first unit at 0 - 2.0.4 starts at 1?
 	Return	ReadMemory((B_uStructure + (Unit * S_uStructure)) + O_uOwner, GameIdentifier, 1) ; note the 1 to read 1 byte
 }
 
-getUnitTargetFilter(Unit) ;starts @ 0 i.e. first unit at 0
-{	local Memory, result 		;ReadRawMemory/numget is only ~11% faster
-
-	ReadRawMemory(B_uStructure + Unit * S_uStructure + O_uTargetFilter, GameIdentifier, Memory, 8)
-	loop 8 
-		result += numget(Memory, A_index-1 , "Uchar") << 8*(A_Index-1)
-	return result
-;	Return	ReadMemoryOld((B_uStructure + (Unit * S_uStructure)) + O_uTargetFilter, GameIdentifier, 8) ;This is required for the reading of the 8 bit target filter - cant work out how to do this properly with numget without looping a char
-}
 
 getMiniMapRadius(Unit)
 {	
@@ -1520,7 +1511,45 @@ getBuildStats(building, byref QueueSize := "", byRef item := "")
 }
 
 
-getStructureProductionInfo(unit, byRef aInfo)
+
+getStructureProductionInfo(unit, type, byRef aInfo)
+{
+	STATIC O_pQueueArray := 0x34, O_IndexParentTypes := 0x18, O_unitsQueued := 0x28
+		, aOffsets := []
+	aInfo := []
+	if (!pAbilities := getUnitAbilityPointer(unit))
+		return 0
+	if !aOffsets.HasKey(type)
+	{
+		if (type = aUnitID.PlanetaryFortress)
+			CAbilQueueIndex := pAbilities + 0x5C ;que5PassiveCancelToSelection - getCAbilQueueIndex will point to que5CancelToSelection which is for CC/orbital
+		else 
+			CAbilQueueIndex := getCAbilQueueIndex(pAbilities, getAbilitiesCount(pAbilities)) ; CAbilQueueIndex
+		if (CAbilQueueIndex != -1)
+			aOffsets[type] := O_IndexParentTypes + 4 * CAbilQueueIndex
+		else 
+			aOffsets[type] := -1
+	}
+	if (aOffsets[type] = -1)
+		return 0 ; refinery,reactor, depot, spine, extractor
+
+	CAbilQueue := readmemory(pAbilities + aOffsets[type], GameIdentifier)
+	QueueSize := readmemory(CAbilQueue + O_unitsQueued, GameIdentifier) ; this is how many units are produced at once eg 1 normal - 2 reactor / this is not the total/real queue size!
+	queuedArray := readmemory(CAbilQueue + O_pQueueArray, GameIdentifier)
+
+	while (A_Index <= QueueSize && B_QueuedUnitInfo := readmemory(queuedArray + 4 * (A_index-1), GameIdentifier) )   ; A_index-1 = queue position ;progress = 0 not being built, but is in queue
+	{
+		if !aStringTable.hasKey(pString := readMemory(B_QueuedUnitInfo + 0xD0, GameIdentifier))
+			aStringTable[pString] := ReadMemory_Str(readMemory(pString + 0x4, GameIdentifier), GameIdentifier)
+		item := aStringTable[pString]
+		if progress := getPercentageUnitCompleted(B_QueuedUnitInfo) ; 0.0 will be seen as false 
+			aInfo.insert({ "Item": item, "progress": progress})
+		else break 
+	} 
+	return round(aInfo.maxIndex())  ;? aInfo.maxIndex() : 0
+}
+
+getStructureProductionInfoCurrent(unit, byRef aInfo)
 {
 	STATIC O_pQueueArray := 0x34, O_IndexParentTypes := 0x18, O_unitsQueued := 0x28
 	aInfo := []
@@ -1528,6 +1557,7 @@ getStructureProductionInfo(unit, byRef aInfo)
 		return 0
 	if (-1 = CAbilQueueIndex := getCAbilQueueIndex(pAbilities, getAbilitiesCount(pAbilities)))
 		return 0 ; refinery,reactor, depot, spine, extractor
+
 	CAbilQueue := readmemory(pAbilities + O_IndexParentTypes + 4 * CAbilQueueIndex, GameIdentifier)
 	QueueSize := readmemory(CAbilQueue + O_unitsQueued, GameIdentifier)
 	queuedArray := readmemory(CAbilQueue + O_pQueueArray, GameIdentifier)
@@ -1543,7 +1573,6 @@ getStructureProductionInfo(unit, byRef aInfo)
 	} 
 	return round(aInfo.maxIndex())  ;? aInfo.maxIndex() : 0
 }
-
 
 getZergProductionStringFromEgg(eggUnitIndex)
 {
@@ -1614,6 +1643,30 @@ getAbilityIndex(abilityID, abilitiesCount, ByteArrayAddress := "", byRef byteArr
 	}
 	return -1 ; as above can return 0
 }
+
+; the specific ability pointer for units of the same type doesn't change relative to the unit's specific pAbilties.
+; This uses a slow string read to find the pointer offset the first time, then any subsequent calls for the same unit type are
+; returned immediately from the static array
+
+findAbilityTypePointer(pAbilities, unitType, abilityString)
+{
+	static aUnitAbilitiesOffsets := [], B_AbilityStringPointer := 0xA4 ; string pointers for abilities start here
+		, O_IndexParentTypes := 0x18 ; base where pointers to specific ability areas begin
+
+	if aUnitAbilitiesOffsets[unitType].hasKey(abilityString)
+		return pAbilities + aUnitAbilitiesOffsets[unitType, abilityString]
+	p1 := readmemory(pAbilities, GameIdentifier)
+	loop
+	{
+		if (!p := ReadMemory(p1 + B_AbilityStringPointer + (A_Index - 1)*4, GameIdentifier))
+			return 0
+		if (abilityString = string := ReadMemory_Str(ReadMemory(p + 0x4, GameIdentifier), GameIdentifier))
+			return pAbilities + (aUnitAbilitiesOffsets[unitType, abilityString] :=  O_IndexParentTypes + (A_Index - 1)*4)	
+	} until (A_Index > 100)
+	return  0 ; something went wrong
+}
+
+
 
 /*	cAbilityRallyStruct
 	Rally Stucture Size := 0x1C 
@@ -1695,7 +1748,7 @@ getPointerToQueuedUnitInfo(pAbilities, CAbilQueueIndex, byref QueueSize := "", Q
 		QueueSize := readmemory(CAbilQueue + O_unitsQueued, GameIdentifier)
 
 	queuedArray := readmemory(CAbilQueue + O_pQueueArray, GameIdentifier)
-	return B_QueuedUnitInfo := readmemory(queuedArray + 4 * QueuePosition, GameIdentifier)
+	return readmemory(queuedArray + 4 * QueuePosition, GameIdentifier)
 }
 
 getAbilitiesCount(pAbilities)
@@ -2008,7 +2061,7 @@ getUnitSelectionPage()	;0-5 indicates which unit page is currently selected (in 
 {	global 	
 	return pointer(GameIdentifier, P_SelectionPage, O1_SelectionPage, O2_SelectionPage, O3_SelectionPage)
 }
-
+/*
 numgetUnitTargetFilter(ByRef Memory, unit)
 {
 	local result 		;ahk has a problem with Uint64
@@ -2017,12 +2070,37 @@ numgetUnitTargetFilter(ByRef Memory, unit)
 	return result
   ; return numget(Memory, Unit * S_uStructure + O_uTargetFilter, "UDouble") ;not double!
 }
-; AHK cant read 64 bit unsigned integers properly,
-; so this could give the wrong result for extreme values
-; probably be better to read it as 2 32 bit uInts
-; and convert the target filter as required
-; but im too lazy to do this, and it seems to work
+*/
+numgetUnitTargetFilter(ByRef Memory, unit)
+{
+	return numget(Memory, Unit * S_uStructure + O_uTargetFilter, "Int64")
+}
+getUnitTargetFilter(Unit) ;starts @ 0 i.e. first unit at 0
+{
+	return ReadMemory(B_uStructure + Unit * S_uStructure + O_uTargetFilter, GameIdentifier, 8)
+}
+getUnitTargetFilterFast(unit)	;only marginally faster ~12%
+{	
+	return ReadMemory(B_uStructure + Unit * S_uStructure + O_uTargetFilter, GameIdentifier, 8)
+}
 
+/*
+getUnitTargetFilter(Unit) ;starts @ 0 i.e. first unit at 0
+{	local Memory, result 		;ReadRawMemory/numget is only ~11% faster
+
+	ReadRawMemory(B_uStructure + Unit * S_uStructure + O_uTargetFilter, GameIdentifier, Memory, 8)
+	loop 8 
+		result += numget(Memory, A_index-1 , "Uchar") << 8*(A_Index-1)
+	return result
+;	Return	ReadMemoryOld((B_uStructure + (Unit * S_uStructure)) + O_uTargetFilter, GameIdentifier, 8) ;This is required for the reading of the 8 bit target filter - cant work out how to do this properly with numget without looping a char
+}
+*/
+
+
+; AHK cant read 64 bit unsigned integers properly,
+; but doesnt really matter as using bitmask on them
+; and even then the bitmasks are less than the extreme non-supported values
+/*
 getUnitTargetFilterFast(unit)	;only marginally faster ~12%
 {	local Memory, result
 	ReadRawMemory(B_uStructure + Unit * S_uStructure + O_uTargetFilter, GameIdentifier, Memory, 8)
@@ -2030,6 +2108,7 @@ getUnitTargetFilterFast(unit)	;only marginally faster ~12%
 		result += numget(Memory, A_index-1 , "Uchar") << 8*(A_Index-1)
 	return result
 }
+*/
 
 numgetUnitOwner(ByRef Memory, Unit)
 { global 

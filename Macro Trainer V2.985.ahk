@@ -842,7 +842,7 @@ clock:
 		aResourceLocations := []
 		global aStringTable := []
 		global aXelnagas := [] ; global cant cant come after already command expressions
-		MT_CurrentGame := []	; This is a variable which from now on will store
+		global MT_CurrentGame := []	; This is a variable which from now on will store
 								; Info about the current game for other functions 
 								; An easy way to have the info cleared each match
 		Global aUnitModel := []
@@ -6564,6 +6564,7 @@ autoWorkerProductionCheck()
 				}
 				else 
 				{
+				
 					if (object.type = aUnitID["PlanetaryFortress"])
 						progress :=  getBuildStatsPF(object.unitIndex, QueueSize)
 					else
@@ -6578,6 +6579,7 @@ autoWorkerProductionCheck()
 					 		nearHalfComplete++
 					 }
 					 workersInProduction += QueueSize
+
 				}
 				TotalCompletedBasesInCtrlGroup++
 				L_ActualBasesIndexesInBaseCtrlGroup .= "," object.unitIndex
@@ -7403,7 +7405,8 @@ DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Dr
 				gdip_TextToGraphics(G, getPlayerName(slot_number), "x0" "y"(DestY+(Height//4))  OptionsName, Font)
 				if !LongestNameSize
 				{
-					LongestNameData :=	gdip_TextToGraphics(G, getLongestEnemyPlayerName(aPlayer), "x0" "y"(DestY+(Height//4))  " Bold c00FFFFFF r4 s" 17*UserScale	, Font) ; text is invisible ;get string size	
+					LongestNameData :=	gdip_TextToGraphics(G, MT_CurrentGame.HasKey("LongestEnemyName") ? MT_CurrentGame.LongestEnemyName : MT_CurrentGame.LongestEnemyName := getLongestEnemyPlayerName(aPlayer)
+															, "x0" "y"(DestY+(Height//4))  " Bold c00FFFFFF r4 s" 17*UserScale	, Font) ; text is invisible ;get string size	
 					StringSplit, LongestNameSize, LongestNameData, | ;retrieve the length of the string
 					LongestNameSize := LongestNameSize3
 				}
@@ -7520,7 +7523,8 @@ DrawResourcesOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0
 				gdip_TextToGraphics(G, getPlayerName(slot_number), "x0" "y"(DestY+(Height//4))  OptionsName, Font) ;get string size	
 				if !LongestNameSize
 				{
-					LongestNameData :=	gdip_TextToGraphics(G, getLongestEnemyPlayerName(aPlayer), "x0" "y"(DestY+(Height//4))  " Bold c00FFFFFF r4 s" 17*UserScale	, Font) ; text is invisible ;get string size	
+					LongestNameData :=	gdip_TextToGraphics(G, MT_CurrentGame.HasKey("LongestEnemyName") ? MT_CurrentGame.LongestEnemyName : MT_CurrentGame.LongestEnemyName := getLongestEnemyPlayerName(aPlayer) 
+					, "x0" "y"(DestY+(Height//4))  " Bold c00FFFFFF r4 s" 17*UserScale	, Font) ; text is invisible ;get string size	
 					StringSplit, LongestNameSize, LongestNameData, | ;retrieve the length of the string
 					LongestNameSize := LongestNameSize3
 				}
@@ -7638,7 +7642,8 @@ DrawArmySizeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,
 				gdip_TextToGraphics(G, getPlayerName(slot_number), "x0" "y"(DestY+(Height//4))  OptionsName, Font)		
 				if !LongestNameSize
 				{
-					LongestNameData :=	gdip_TextToGraphics(G, getLongestEnemyPlayerName(aPlayer), "x0" "y"(DestY+(Height//4))  " Bold c00FFFFFF r4 s" 17*UserScale	, Font) ; text is invisible ;get string size	
+					LongestNameData :=	gdip_TextToGraphics(G, MT_CurrentGame.HasKey("LongestEnemyName") ? MT_CurrentGame.LongestEnemyName : MT_CurrentGame.LongestEnemyName := getLongestEnemyPlayerName(aPlayer)
+															, "x0" "y"(DestY+(Height//4))  " Bold c00FFFFFF r4 s" 17*UserScale	, Font) ; text is invisible ;get string size	
 					StringSplit, LongestNameSize, LongestNameData, | ;retrieve the length of the string
 					LongestNameSize := LongestNameSize3
 				}
@@ -9745,7 +9750,7 @@ getEnemyUnitCountCurrent(byref aEnemyUnits, byref aEnemyUnitConstruction, byref 
 							aMiscUnitPanelInfo["Scans", owner] := round(aMiscUnitPanelInfo["chrono", owner]) + scanCount ; ? aMiscUnitPanelInfo["chrono", owner] + scanCount : scanCount
 					} 
 
-					if (queueSize := getStructureProductionInfo(unit, aQueueInfo))
+					if (queueSize := getStructureProductionInfo(unit, Type, aQueueInfo))
 					{
 						for i, aProduction in aQueueInfo
 						{
@@ -9859,18 +9864,26 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 				if (TargetFilter & aUnitTargetFilter.Structure)
 				{
 					chronoed := False
-					if (aPlayer[owner, "Race"] = "Protoss" && numgetIsUnitChronoed(MemDump, unit))
+					if (aPlayer[owner, "Race"] = "Protoss")
 					{
-						chronoed := True
-						aMiscUnitPanelInfo["chrono", owner, Type] := round(aMiscUnitPanelInfo["chrono", owner, Type]) + 1 ; ? aMiscUnitPanelInfo["chrono", owner, Type] + 1 : 1
+						if numgetIsUnitChronoed(MemDump, unit)
+						{
+							chronoed := True
+							aMiscUnitPanelInfo["chrono", owner, Type] := round(aMiscUnitPanelInfo["chrono", owner, Type]) + 1 
+						}
+						if (type = aUnitID["Nexus"])
+						{
+							if (chronoBoosts := floor(numgetUnitEnergy(MemDump, unit)/25))
+								aMiscUnitPanelInfo["chronoBoosts", owner] := round(aMiscUnitPanelInfo["chronoBoosts", owner]) + chronoBoosts 
+						}
 					}
 					else if (aPlayer[owner, "Race"] = "Terran") && (Type = aUnitID["OrbitalCommand"] || Type = aUnitID["OrbitalCommandFlying"])
 					{
 						if (scanCount := floor(numgetUnitEnergy(MemDump, unit)/50))
-							aMiscUnitPanelInfo["Scans", owner] := round(aMiscUnitPanelInfo["chrono", owner]) + scanCount ; ? aMiscUnitPanelInfo["chrono", owner] + scanCount : scanCount
+							aMiscUnitPanelInfo["Scans", owner] := round(aMiscUnitPanelInfo["Scans", owner]) + scanCount 
 					} 
 
-					if (queueSize := getStructureProductionInfo(unit, aQueueInfo))
+					if (queueSize := getStructureProductionInfo(unit, type, aQueueInfo))
 					{
 						for i, aProduction in aQueueInfo
 						{
@@ -9972,16 +9985,36 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 						aEnemyUnitConstruction[Owner, QueuedPriority, Type] := {"progress": (aEnemyUnitConstruction[Owner, QueuedPriority, Type].progress > progress ? aEnemyUnitConstruction[Owner, QueuedPriority, Type].progress : progress)
 																					, "count": round(aEnemyUnitConstruction[Owner, QueuedPriority, Type].count) + Count} 						
 					}
-		
-					else aEnemyUnits[Owner, Priority, Type] := round(aEnemyUnits[Owner, Priority, Type]) + 1 ; ? aEnemyUnits[Owner, Priority, Type] + 1 : 1
+					else if !((type = aUnitId.DarkTemplar || type = aUnitID.HighTemplar) && aUnitTargetFilter.Hidden & TargetFilter)
+						aEnemyUnits[Owner, Priority, Type] := round(aEnemyUnits[Owner, Priority, Type]) + 1 ; ? aEnemyUnits[Owner, Priority, Type] + 1 : 1
 				}
 			}
 	   	}
 	}
 	Return
 }
-return
+f1::
+
+
+
 unit := getSelectedUnitIndex()
+type := getUnitType(unit)
+
+msgbox % getStructureProductionInfo(unit, type, aInfo)
+objtree(aInfo)
+msgbox % getUnitAbilitiesString(unit)
+return
+
+
+getUnitAbilitiesString(unit)
+msgbox % chex(getUnitAbilityPointer(unit) + 0x5c)
+
+
+
+return
+msgbox % chex(getUnitAbilityPointer(unit))
+getUnitAbilitiesString(unit)
+return 
 clipboard := chex(getUnitAbilityPointer(unit))
 msgbox % isHatchLairOrSpireMorphing(unit)
 msgbox % state := ReadMemory(getUnitAbilityPointer(unit) + 0x9, GameIdentifier, 1)
@@ -9993,6 +10026,17 @@ msgbox % getunittargetfilter( unit) & aUnitTargetFilter.Structure "`n"
 		. isHatchLairOrSpireMorphing(unit) "`n"
 		. isMotherShipCoreMorphing(unit)
 return 
+
+
+getUnitTargetFilterString(unit)
+{
+	targetFilter := getUnitTargetFilter(unit)
+	for k, v in aUnitTargetFilter
+		v & targetFilter ? s .= (s ? "`n" : "") k
+	return s
+}
+
+
 
 ; need to fix templar /dt count when morohing in an archon
 
@@ -10387,7 +10431,6 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 		, unitPanelDrawStructureProgress, unitPanelDrawUnitProgress, unitPanelDrawUpgradeProgress 
 	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0
 
-
 	If (Redraw = -1)
 	{
 		Try Gui, UnitOverlay: Destroy
@@ -10446,7 +10489,8 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 		;	StringSplit, TextSize, TextData, | ;retrieve the length of the string		
 			if !LongestNameSize
 			{
-				LongestNameData :=	gdip_TextToGraphics(G, getLongestEnemyPlayerName(aPlayer), "x0" "y"(DestY)  " Bold c00FFFFFF r4 s" 17*UserScale	, Font) ; text is invisible ;get string size	
+				LongestNameData :=	gdip_TextToGraphics(G, MT_CurrentGame.HasKey("LongestEnemyName") ? MT_CurrentGame.LongestEnemyName : MT_CurrentGame.LongestEnemyName := getLongestEnemyPlayerName(aPlayer)
+														, "x0" "y"(DestY)  " Bold c00FFFFFF r4 s" 17*UserScale	, Font) ; text is invisible ;get string size	
 				StringSplit, LongestNameSize, LongestNameData, | ;retrieve the length of the string
 				LongestNameSize := LongestNameSize3
 			}
@@ -10495,19 +10539,30 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 						gdip_TextToGraphics(G, unitCount, "x"(DestX + .5*Width + .35*Width/2) "y"(DestY + .5*Height + .3*Height/2)  " Bold cFFFFFFFF r4 s" 11*UserScale, Font)
 
 					; Draws in top Left corner of picture scan count for orbitals or chrono count for protoss structures
-					if ((chronoScanCount := aMiscUnitPanelInfo["chrono", slot_number, unit]) || (unit = aUnitID.OrbitalCommand  && (chronoScanCount := aMiscUnitPanelInfo["Scans", slot_number])))
+					if ((chronos := aMiscUnitPanelInfo["chrono", slot_number, unit]))
 					{
-						if (chronoScanCount = 1 && unit != aUnitID.OrbitalCommand)
+						if (chronos = 1)
 							Gdip_FillEllipse(G, a_pBrushes["ScanChrono"], DestX + .2*Width/2, DestY + .15*Height/2, 5*UserScale, 5*UserScale)
 						Else
 						{
 							Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, DestX, DestY, Width/2.5, Height/2.5, 5)
 							if (chronoCount >= 10)
-								gdip_TextToGraphics(G, chronoScanCount, "x"(DestX + .1*Width/2) "y"(DestY + .10*Height/2)  " Bold Italic cFFFF00B3 r4 s" 11*UserScale, Font)
+								gdip_TextToGraphics(G, chronos, "x"(DestX + .1*Width/2) "y"(DestY + .10*Height/2)  " Bold Italic cFFFF00B3 r4 s" 11*UserScale, Font)
 							else
-								gdip_TextToGraphics(G, chronoScanCount, "x"(DestX + .2*Width/2) "y"(DestY + .10*Height/2) " Bold Italic cFFFF00B3 r4 s" 11*UserScale, Font)
+								gdip_TextToGraphics(G, chronos, "x"(DestX + .2*Width/2) "y"(DestY + .10*Height/2) " Bold Italic cFFFF00B3 r4 s" 11*UserScale, Font)
 						}
 					}
+
+					if 	( (unit = aUnitID.OrbitalCommand  && (chronoScanCount := aMiscUnitPanelInfo["Scans", slot_number]))
+					|| (unit = aUnitID.Nexus && (chronoScanCount := aMiscUnitPanelInfo["chronoBoosts", slot_number])))
+					{
+						Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, DestX, DestY + .6*Height, Width/2.5, Height/2.5, 5)
+						if (chronoScanCount >= 10)
+							gdip_TextToGraphics(G, chronoScanCount, "x"(DestX + .1*Width/2) "y"(DestY + .5*Height + .3*Height/2)  " Bold Italic cFF00FFFF r4 s" 11*UserScale, Font)
+						else
+							gdip_TextToGraphics(G, chronoScanCount, "x"(DestX + .2*Width/2) "y"(DestY + .5*Height + .3*Height/2) " Bold Italic cFF00FFFF r4 s" 11*UserScale, Font)
+					}
+
 
 					if (unitCount := aEnemyUnitConstruction[slot_number, priority, unit].count)	; so there are some of this unit being built lets draw the count on top of the completed units
 					{
@@ -10719,7 +10774,8 @@ DrawUnitOverlayOld(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 		;	StringSplit, TextSize, TextData, | ;retrieve the length of the string		
 			if !LongestNameSize
 			{
-				LongestNameData :=	gdip_TextToGraphics(G, getLongestEnemyPlayerName(aPlayer), "x0" "y"(DestY)  " Bold c00FFFFFF r4 s" 17*UserScale	, Font) ; text is invisible ;get string size	
+				LongestNameData :=	gdip_TextToGraphics(G, MT_CurrentGame.HasKey("LongestEnemyName") ? MT_CurrentGame.LongestEnemyName : MT_CurrentGame.LongestEnemyName := getLongestEnemyPlayerName(aPlayer)
+														, "x0" "y"(DestY)  " Bold c00FFFFFF r4 s" 17*UserScale	, Font) ; text is invisible ;get string size	
 				StringSplit, LongestNameSize, LongestNameData, | ;retrieve the length of the string
 				LongestNameSize := LongestNameSize3
 			}
@@ -11422,28 +11478,6 @@ getUnitAbilitiesString(unit)
 	until p = 0
 	msgbox % clipboard := s
 	return s
-}
-
-; the specific ability pointer for units of the same type doesn't change relative to the unit's specific pAbilties.
-; This uses a slow string read to find the pointer offset the first time, then any subsequent calls for the same unit type are
-; returned immediately from the static array
-
-findAbilityTypePointer(pAbilities, unitType, abilityString)
-{
-	static aUnitAbilitiesOffsets := [], B_AbilityStringPointer := 0xA4 ; string pointers for abilities start here
-		, O_IndexParentTypes := 0x18 ; base where pointers to specific ability areas begin
-
-	if aUnitAbilitiesOffsets[unitType].hasKey(abilityString)
-		return pAbilities + aUnitAbilitiesOffsets[unitType, abilityString]
-	p1 := readmemory(pAbilities, GameIdentifier)
-	loop
-	{
-		if (!p := ReadMemory(p1 + B_AbilityStringPointer + (A_Index - 1)*4, GameIdentifier))
-			return 0
-		if (abilityString = string := ReadMemory_Str(ReadMemory(p + 0x4, GameIdentifier), GameIdentifier))
-			return pAbilities + (aUnitAbilitiesOffsets[unitType, abilityString] :=  O_IndexParentTypes + (A_Index - 1)*4)	
-	} until (A_Index > 100)
-	return  0 ; something went wrong
 }
 
 ; This will get the morph time for most structures e.g. CC -> orbital/PF, hatch -> lair -> Hive, spire -> G.Spire
@@ -12585,9 +12619,3 @@ loop
 		break
 	sleep 700
 }
-
-
-f1::
-;unitPanelDrawUnitProgress := !unitPanelDrawUnitProgress
-unitPanelDrawStructureProgress := !unitPanelDrawStructureProgress
-return
