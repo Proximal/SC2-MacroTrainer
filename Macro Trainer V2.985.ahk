@@ -3054,7 +3054,7 @@ try
 					Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#inject_reset_key,  Edit
 					Gui, Add, Text,yp+60 x%settings2RX% w340,  This is a very basic timer. It will simply beep every x seconds
 			
-			Gui, Add, GroupBox,  w295 h140  xs ys+230, Advanced Inject Timer
+			Gui, Add, GroupBox,  w295 h135  xs ys+230, Advanced Inject Timer
 				Gui, Add, Checkbox, xp+10 yp+30 vInjectTimerAdvancedEnable checked%InjectTimerAdvancedEnable%, Enable
 				Gui, Add, Text, y+15, Alert After (s): 
 				Gui, Add, Edit, Number Right x+13 yp-2 w45 
@@ -3062,7 +3062,7 @@ try
 				Gui, Add, Text, x%settings2RX% yp+35 w90, SC2 Spawn`nLarva Key:	
 					Gui, Add, Edit, Readonly yp+2 xs+85 w120 center vInjectTimerAdvancedLarvaKey, %InjectTimerAdvancedLarvaKey%
 					Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#InjectTimerAdvancedLarvaKey,  Edit
-
+				Gui, Add, Text,yp+60 x%settings2RX% w340,  This will beep x (in game) seconds after your last inject
 
 	Gui, Tab,  Auto
 		Gui, Add, GroupBox, y+20 w225 h215, Fully Automated Injects
@@ -3695,7 +3695,8 @@ try
 			Gui, Add, Text, xs+200 ys+25, Store Selection:
 
 			Gui, Add, DropDownList,  x+15 yp-3 w45 center vQuickSelect%A_LoopField%StoreSelection Choose1, Off||1|2|3|4|5|6|7|8|9|0
-
+			QuickSelect%A_LoopField%StoreSelection_TT := "Stores the units in this control group."
+													. "`n`nNote: This uses the specified 'set control group' hotkeys as defined in the auto grouping hotkey section."
 
 			Gui, add, GroupBox, xs+200 ys+55 w165 h175, Remove
 			Gui, Add, Checkbox, Xp+10 yp+25  vquickSelect%A_LoopField%DeselectXelnaga Checked%Checked%, Xelnaga (tower) units
@@ -3709,9 +3710,14 @@ try
 		GUIControl, Enable%state%, Next%A_LoopField%QuickSelect
 		GUIControl,  Enable%state%, Previous%A_LoopField%QuickSelect
 		showQuickSelectItem(A_LoopField, aQuickSelectCopy)
-
-
 	}
+
+	Gui, Tab, Info
+		Gui, Font, s10 BOLD
+		Gui, add, text, x+25 y+12 w380, Quick Select 
+		Gui, Font, s10 norm
+		Gui, add, text, xp y+15 w380, This allows you to instantly select any number of (army) unit types with a single hotkey.`n`nIn other words, it is like selecting a predefined control group, but you never have to issue the initial grouping command.
+		Gui, Font, s9
 
 	Gui, Add, Tab2,w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vAutoWorker_TAB, Auto||Info		
 	Gui, Tab, Auto
@@ -6524,6 +6530,10 @@ autoWorkerProductionCheck()
 	workersInProduction := Basecount := almostComplete := idleBases := halfcomplete := nearHalfComplete := 0 ; in case there are no idle bases
 	aRecentlyCompletedCC := []
 
+	if !IsObject(MT_CurrentGame.TerranCCUnderConstructionList) ; because MT_CurrentGame gets cleared each game
+		MT_CurrentGame.TerranCCUnderConstructionList := []
+
+
 	; This will change the random percent every 12 seconds - otherwise
 	; 200ms timer kind of negates the +/- variance on the progress meter
 	if (A_TickCount - TickCountRandomSet > 12000) 
@@ -6539,17 +6549,27 @@ autoWorkerProductionCheck()
 		{
 			if !isUnderConstruction(object.unitIndex) 
 			{
+				nearGeyser := False
 				; this is for terran, so if build cc inside base, wont build up to 60 workers even though 2 bases, but just 1 mining
 				for index, geyser in aResourceLocations.geysers
+				{
 					if isUnitNearUnit(geyser, object, 7.9) ; also compares z but for 1 map unit ; so if the base is within 8 map units it counts. It seems geysers are generally no more than 7 or 7.5 away
 					{
 						Basecount++ ; for calculating max workers per base
+						nearGeyser := True
 						break
 					}
+				}
+
 				oBasesToldToBuildWorkers.insert({unitIndex: object.unitIndex, type: object.type})
 				if !isWorkerInProduction(object.unitIndex) ; also accounts for if morphing 
 				{
-					; This is used to prevent a worker being made at a CC which has been completed
+					; this will prevent a recently converted orbital which is not near a geyser from making a working for 20 seconds
+					; giving time to lift it off and land it at the correct position
+					if (!nearGeyser && object.type = aUnitID["CommandCenter"] && aUnitID["OrbitalCommand"] = isCommandCenterMorphing(object.unitIndex))
+						MT_CurrentGame.TerranCCUnderConstructionList[object.unitIndex] := getTime()
+
+					; This is used to prevent a worker being made at a CC which has been completed or obital which has just finished morphing 
 					; for less than 20 in game seconds or a just landed CC for 10 seconds
 				
 					if (MT_CurrentGame.TerranCCUnderConstructionList.HasKey(object.unitIndex) && (time - MT_CurrentGame.TerranCCUnderConstructionList[object.unitIndex]) <= 20)
@@ -6560,7 +6580,6 @@ autoWorkerProductionCheck()
 					}	
 					else 
 						idleBases++
-
 				}
 				else 
 				{
@@ -6585,11 +6604,7 @@ autoWorkerProductionCheck()
 				L_ActualBasesIndexesInBaseCtrlGroup .= "," object.unitIndex
 			}
 			else if (aLocalPlayer.race = "Terran")
-			{
-				if !IsObject(MT_CurrentGame.TerranCCUnderConstructionList) ; because MT_CurrentGame gets cleared each game
-					MT_CurrentGame.TerranCCUnderConstructionList := []
 				MT_CurrentGame.TerranCCUnderConstructionList[object.unitIndex] := getTime()
-			}
 		}
 		else if ( object.type = aUnitID["CommandCenterFlying"] || object.type = aUnitID["OrbitalCommandFlying"] )
 		{
@@ -6678,11 +6693,13 @@ autoWorkerProductionCheck()
 			    	BarracksHasFinished := True
 			    	break
 			    }
-			    if (highestHPRax < 1000 - getUnitHpDamage(unit))
-			    	highestHPRax := 1000 - getUnitHpDamage(unit)
+
+			    if (mostCompletedRax < thisRax := getBuildProgress(getUnitAbilityPointer(unit), aUnitID.Barracks))
+			    	mostCompletedRax := thisRax
+
 			}
 		}																	
-		if (!MT_CurrentGame.HasSleptForObital && (highestHPRax > 850 || BarracksHasFinished)) 
+		if (!MT_CurrentGame.HasSleptForObital && (mostCompletedRax > 0.83 || BarracksHasFinished))
 		{
 			MT_CurrentGame.HasSleptForObital := True 
 
@@ -8633,7 +8650,7 @@ return
 
 quickSelect(aDeselect)
 {
-	global Sc2SelectArmy_Key
+	global Sc2SelectArmy_Key, aAGHotkeys
 
 	if !getArmyUnitCount()
 		return 
@@ -8774,8 +8791,9 @@ quickSelect(aDeselect)
 
 	}
 */
+
 	if (aDeselect.StoreSelection != "Off")
-		input.pSend("^" aDeselect.StoreSelection)
+		input.pSend("^" aAGHotkeys.Set[aDeselect.StoreSelection])
 	dsleep(15)
 	input.RevertKeyState()
 	critical, off 
@@ -9826,7 +9844,7 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 	       Continue
 		owner := numgetUnitOwner(MemDump, Unit) 
 
-	    if  (aPlayer[Owner, "Team"] <> aLocalPlayer["Team"] && Owner) ;|| (Owner) 
+	    if  (aPlayer[Owner, "Team"] <> aLocalPlayer["Team"] && Owner) || (Owner) 
 	    {
 	    	pUnitModel := numgetUnitModelPointer(MemDump, Unit)
 	    	Type := numgetUnitModelType(pUnitModel)
@@ -9985,7 +10003,7 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 						aEnemyUnitConstruction[Owner, QueuedPriority, Type] := {"progress": (aEnemyUnitConstruction[Owner, QueuedPriority, Type].progress > progress ? aEnemyUnitConstruction[Owner, QueuedPriority, Type].progress : progress)
 																					, "count": round(aEnemyUnitConstruction[Owner, QueuedPriority, Type].count) + Count} 						
 					}
-					else if !((type = aUnitId.DarkTemplar || type = aUnitID.HighTemplar) && aUnitTargetFilter.Hidden & TargetFilter)
+					else
 						aEnemyUnits[Owner, Priority, Type] := round(aEnemyUnits[Owner, Priority, Type]) + 1 ; ? aEnemyUnits[Owner, Priority, Type] + 1 : 1
 				}
 			}
@@ -9999,12 +10017,19 @@ f1::
 
 unit := getSelectedUnitIndex()
 type := getUnitType(unit)
+pAbilities := getUnitAbilityPointer(unit)
 
-msgbox % getStructureProductionInfo(unit, type, aInfo)
+loop 
+{
+	highestHPRax := 1000 - getUnitHpDamage(unit)
+	if (highestHPRax > 850)
+		msgbox % progress := getBuildProgress(pAbilities, type)
+	sleep 5
+}
 objtree(aInfo)
-msgbox % getUnitAbilitiesString(unit)
-return
 
+return
+; 0.8
 
 getUnitAbilitiesString(unit)
 msgbox % chex(getUnitAbilityPointer(unit) + 0x5c)

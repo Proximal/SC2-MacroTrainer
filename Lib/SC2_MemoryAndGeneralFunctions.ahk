@@ -1453,12 +1453,12 @@ isGatewayConvertingToWarpGate(Gateway)
 SetPlayerMinerals(amount=99999)
 { 	global
 	player := getLocalPlayerNumber()
-	Return WriteMemory(B_pStructure + O_pMinerals + (player-1) * S_pStructure, GameIdentifier, amount,"ushort")   	 
+	Return WriteMemory(B_pStructure + O_pMinerals + (player-1) * S_pStructure, GameIdentifier, amount,"UInt")   	 
 }
 SetPlayerGas(amount=99999)
 { 	global
 	player := getLocalPlayerNumber()
-	Return WriteMemory(B_pStructure + O_pGas + (player-1) * S_pStructure, GameIdentifier, amount,"ushort")   
+	Return WriteMemory(B_pStructure + O_pGas + (player-1) * S_pStructure, GameIdentifier, amount,"UInt")   
 }
 
 
@@ -1511,43 +1511,50 @@ getBuildStats(building, byref QueueSize := "", byRef item := "")
 }
 
 
-
-getStructureProductionInfo(unit, type, byRef aInfo)
+; this will return 1 or 2 units in production for use in unit panel
+; hence this accounts for if a reactor is present
+; it doesn't return the full list of units queued, just the one/two which are currently being produced
+; byref totalQueueSize will return the total number of units queued though
+getStructureProductionInfo(unit, type, byRef aInfo, byRef totalQueueSize := "")
 {
 	STATIC O_pQueueArray := 0x34, O_IndexParentTypes := 0x18, O_unitsQueued := 0x28
 		, aOffsets := []
+
 	aInfo := []
 	if (!pAbilities := getUnitAbilityPointer(unit))
 		return 0
 	if !aOffsets.HasKey(type)
 	{
 		if (type = aUnitID.PlanetaryFortress)
-			CAbilQueueIndex := pAbilities + 0x5C ;que5PassiveCancelToSelection - getCAbilQueueIndex will point to que5CancelToSelection which is for CC/orbital
+			aOffsets[type] := 0x5C ;que5PassiveCancelToSelection - getCAbilQueueIndex will point to que5CancelToSelection which is for CC/orbital
 		else 
+		{
 			CAbilQueueIndex := getCAbilQueueIndex(pAbilities, getAbilitiesCount(pAbilities)) ; CAbilQueueIndex
-		if (CAbilQueueIndex != -1)
-			aOffsets[type] := O_IndexParentTypes + 4 * CAbilQueueIndex
-		else 
-			aOffsets[type] := -1
+			if (CAbilQueueIndex != -1)
+				aOffsets[type] := O_IndexParentTypes + 4 * CAbilQueueIndex
+			else 
+				aOffsets[type] := -1
+		}
 	}
 	if (aOffsets[type] = -1)
-		return 0 ; refinery,reactor, depot, spine, extractor
+		return 0 ; refinery,reactor, depot, spine, extractor etc
 
 	CAbilQueue := readmemory(pAbilities + aOffsets[type], GameIdentifier)
-	QueueSize := readmemory(CAbilQueue + O_unitsQueued, GameIdentifier) ; this is how many units are produced at once eg 1 normal - 2 reactor / this is not the total/real queue size!
+	totalQueueSize := readmemory(CAbilQueue + O_unitsQueued, GameIdentifier) ; this is how many units are produced at once eg 1 normal - 2 reactor / this is not the total/real queue size!
 	queuedArray := readmemory(CAbilQueue + O_pQueueArray, GameIdentifier)
 
-	while (A_Index <= QueueSize && B_QueuedUnitInfo := readmemory(queuedArray + 4 * (A_index-1), GameIdentifier) )   ; A_index-1 = queue position ;progress = 0 not being built, but is in queue
+	while (A_Index <= totalQueueSize && B_QueuedUnitInfo := readmemory(queuedArray + 4 * (A_index-1), GameIdentifier) )   ; A_index-1 = queue position ;progress = 0 not being built, but is in queue
 	{
 		if !aStringTable.hasKey(pString := readMemory(B_QueuedUnitInfo + 0xD0, GameIdentifier))
 			aStringTable[pString] := ReadMemory_Str(readMemory(pString + 0x4, GameIdentifier), GameIdentifier)
 		item := aStringTable[pString]
-		if progress := getPercentageUnitCompleted(B_QueuedUnitInfo) ; 0.0 will be seen as false 
+		if progress := getPercentageUnitCompleted(B_QueuedUnitInfo) ; 0.0 will be seen as false but doesnt really matter
 			aInfo.insert({ "Item": item, "progress": progress})
-		else break 
+		else break ; unit with highest complete percent is ALWAYS first in this queuedArray
 	} 
-	return round(aInfo.maxIndex())  ;? aInfo.maxIndex() : 0
+	return round(aInfo.maxIndex())
 }
+
 
 getStructureProductionInfoCurrent(unit, byRef aInfo)
 {

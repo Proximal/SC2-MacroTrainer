@@ -42,7 +42,7 @@ WriteMemory(WriteAddress = "", PROGRAM="", Data="", TypeOrLength = "")
             WinGet, pid, pid, % OLDPROC := PROGRAM
             if !pid 
                return "Process Doesn't Exist", OLDPROC := "" ;blank OLDPROC so subsequent calls will work if process does exist
-            hProcess := DllCall("OpenProcess", "Int", 16, "Int", 0, "UInt", pid)   
+            hProcess := DllCall("OpenProcess", "Int", 0x8 | 0x20, "Int", 0, "UInt", pid)   
         }
    }
 
@@ -91,12 +91,12 @@ WriteMemory(WriteAddress = "", PROGRAM="", Data="", TypeOrLength = "")
                 DataSize := StrLen(Data) + 1
         }
     }                                               
-    ; will return true if write works
-    if hProcess
-     Return DllCall("WriteProcessMemory", "UInt", hProcess 
+    ; will return null if write works
+    if (hProcess && DllCall("WriteProcessMemory", "UInt", hProcess 
                                          , "UInt", WriteAddress
                                          , "UInt", DataAddress
                                          , "UInt", DataSize
-                                         , "UInt", 0)
+                                         , "UInt", 0))
+        return                               
     else  return !hProcess ? "Handle Closed:" closed : "Fail"
 }
