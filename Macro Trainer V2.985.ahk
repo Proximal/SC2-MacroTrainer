@@ -125,13 +125,16 @@ if (A_ThisLabel = "g_testKeydowns")
 	ListLines, on
 	t1 := MT_InputIdleTime()
 	sleep 2000
+	str :=  "`n`n|" t1 " | " MT_InputIdleTime()
+			. "`n`nLogical: " checkAllKeyStates(True, False) 
+			. "`n`nPhysical: " checkAllKeyStates(False, True) 
+			. "`n|" readModifierState() 
 	critical, 1000
 	releasedKeys := input.pReleaseKeys(True)
 	input.RevertKeyState()
 	critical, off
-	msgbox % releasedKeys "`n`n|" t1 " | " MT_InputIdleTime()
-			. "`n`n" checkAllKeyStates() 
 	objtree(aAGHotkeys)
+	msgbox % releasedKeys . str
 	sleep 2000
 	testdebug := True
 	return 
@@ -552,7 +555,7 @@ ReleaseModifiers(Beep = 1, CheckIfUserPerformingAction = 0, AdditionalKeys = "",
 			return 1 ; was taking too long
 		if (A_Index = 1 && Beep && !isPerformingAction)	;wont beep if casting or burrow AKA 'extra key' is down
 			SoundPlay, %A_Temp%\ModifierDown.wav	
-		sleep, 1 ;sleep(5)
+		sleep, 5 ;sleep(5)
 	}
 
 	return
@@ -1183,7 +1186,11 @@ AutoGroup(byref A_AutoGroup, AGDelay = 0)
 		SelctedTime := A_Tickcount
 	}
 	if (A_Tickcount - SelctedTime >= AGDelay) && oSelection.Count && !WrongUnit && (CtrlType_i = SelectedTypes) && (controlGroup != "") && WinActive(GameIdentifier) && !isGamePaused() ; note <> "" as there is group 0! cant use " controlGroup "
-	&& !isMenuOpen() && MT_InputIdleTime() >= AGKeyReleaseDelay && !checkAllKeyStates(False, True) && !readModifierState() 
+	;&& !isMenuOpen() && MT_InputIdleTime() >= AGKeyReleaseDelay && !checkAllKeyStates(False, True) && !readModifierState() 
+	&& !isMenuOpen() && MT_InputIdleTime() >= AGKeyReleaseDelay 
+	&& !(getkeystate("Shift", "P") && getkeystate("Control", "P") && getkeystate("Alt", "P")
+	&& getkeystate("LWin", "P") && getkeystate("RWin", "P"))
+	&& !readModifierState() 
 	{			
 		critical, 1000
 		input.pReleaseKeys(True)
@@ -1201,7 +1208,6 @@ AutoGroup(byref A_AutoGroup, AGDelay = 0)
 		}
 		Input.revertKeyState()
 		critical, off
-
 	}
 
 	if testdebug
@@ -1393,7 +1399,7 @@ cast_ForceInject:
 				;	|| MT_InputIdleTime() < 50  ;probably best to leave this in, as every now and then the next command wont be shift modified
 				;	|| getPlayerCurrentAPM() > FInjectAPMProtection
 				
-					While getkeystate("Enter") 
+					While getkeystate("Enter", "P") || GetKeyState("LButton", "P") || GetKeyState("RButton", "P")
 					|| isUserBusyBuilding() || isCastingReticleActive() 
 					|| getPlayerCurrentAPM() > FInjectAPMProtection
 					||  MT_InputIdleTime() < 70
@@ -6749,8 +6755,8 @@ autoWorkerProductionCheck()
 	;		|| getPlayerCurrentAPM() > AutoWorkerAPMProtection) ; probably dont need this anymore
 
 		While ( isUserBusyBuilding() || isCastingReticleActive() 
-		|| getkeystate("Shift") || getkeystate("Shift", "P") ; so user can prevent auto-worker when wanting to build something 	
-		|| getkeystate("Enter") 
+		|| GetKeyState("LButton", "P") || GetKeyState("RButton", "P")
+		|| getkeystate("Enter", "P") 
 		|| getPlayerCurrentAPM() > AutoWorkerAPMProtection
 		||  MT_InputIdleTime() < 50)
 		{
@@ -9844,7 +9850,7 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 	       Continue
 		owner := numgetUnitOwner(MemDump, Unit) 
 
-	    if  (aPlayer[Owner, "Team"] <> aLocalPlayer["Team"] && Owner) || (Owner) 
+	    if  (aPlayer[Owner, "Team"] <> aLocalPlayer["Team"] && Owner) ;|| (Owner) 
 	    {
 	    	pUnitModel := numgetUnitModelPointer(MemDump, Unit)
 	    	Type := numgetUnitModelType(pUnitModel)
@@ -10011,46 +10017,6 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 	}
 	Return
 }
-f1::
-
-
-
-unit := getSelectedUnitIndex()
-type := getUnitType(unit)
-pAbilities := getUnitAbilityPointer(unit)
-
-loop 
-{
-	highestHPRax := 1000 - getUnitHpDamage(unit)
-	if (highestHPRax > 850)
-		msgbox % progress := getBuildProgress(pAbilities, type)
-	sleep 5
-}
-objtree(aInfo)
-
-return
-; 0.8
-
-getUnitAbilitiesString(unit)
-msgbox % chex(getUnitAbilityPointer(unit) + 0x5c)
-
-
-
-return
-msgbox % chex(getUnitAbilityPointer(unit))
-getUnitAbilitiesString(unit)
-return 
-clipboard := chex(getUnitAbilityPointer(unit))
-msgbox % isHatchLairOrSpireMorphing(unit)
-msgbox % state := ReadMemory(getUnitAbilityPointer(unit) + 0x9, GameIdentifier, 1)
-msgbox % getunittargetfilter( unit) & aUnitTargetFilter.Structure "`n"
-		.	getunittargetfilter( unit) & aUnitTargetFilter.UnderConstruction "`n"
-		.	aUnitInfo[getUnitType(unit), "Priority"]  "`n"
-		. getArchonMorphTime(getUnitAbilityPointer(unit)) "`n"
-		. aUnitName[ getUnitType(unit)] "`n"
-		. isHatchLairOrSpireMorphing(unit) "`n"
-		. isMotherShipCoreMorphing(unit)
-return 
 
 
 getUnitTargetFilterString(unit)
@@ -10060,7 +10026,6 @@ getUnitTargetFilterString(unit)
 		v & targetFilter ? s .= (s ? "`n" : "") k
 	return s
 }
-
 
 
 ; need to fix templar /dt count when morohing in an archon
@@ -12644,3 +12609,11 @@ loop
 		break
 	sleep 700
 }
+
+f1::
+v := 524289 >> 18 
+msgbox % v "`n" v << 18
+
+msgbox % clipboard := getSelectedUnitIndex() << 18
+
+return 

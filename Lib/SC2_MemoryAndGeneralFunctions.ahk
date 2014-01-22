@@ -96,6 +96,8 @@ Global B_LocalCharacterNameID
 , O_mTop
 , aUnitMoveStates
 , B_UnitCursor
+, O1_UnitCursor
+, O2_UnitCursor
 
 , P_IsUserPerformingAction
 , O1_IsUserPerformingAction
@@ -142,69 +144,78 @@ global aUnitModel := []
 
 
 */
+
+
+
+
 loadMemoryAddresses(base)
 {
 	;	[Memory Addresses]
-		B_LocalCharacterNameID := base + 0x04F65144  ; stored as string Name#123
-		B_LocalPlayerSlot := base + 0x011265D8 ; note 1byte and has a second copy just after +1byte eg LS =16d=10h, hex 1010 (2bytes) & LS =01d = hex 0101
-		B_pStructure := base + 0x035E7BC0 ;			 
-		S_pStructure := 0xDC0 ;0xCE0
+		B_LocalCharacterNameID := base + 0x04F0918C  ; stored as string Name#123
+		B_LocalPlayerSlot := base + 0x112D5F0 ; note 1byte and has a second 'copy' (ReplayWatchedPlayer) just after +1byte eg LS =16d=10h, hex 1010 (2bytes) & LS =01d = hex 0101
+		B_ReplayWatchedPlayer := B_LocalPlayerSlot + 1
+		B_pStructure := base + 0x35EF0E8 ;			 
+		S_pStructure := 0xE10
 		 O_pStatus := 0x0
 		 O_pXcam := 0x8
-		 O_pCamDistance := 0xA
+		 O_pYcam := 0xC	
 		 O_pCamAngle := 0x14
 		 O_pCamRotation := 0x18
-		 O_pYcam := 0xC	
+		 O_pCamDistance := 0xE ; 0xA - Dont know if this is correct
 
 		 O_pTeam := 0x1C
 		 O_pType := 0x1D ;
 		 O_pVictoryStatus := 0x1E
-		 O_pName := 0x60 ;+8
+		 O_pName := 0x68 ;+8
+		 
 		 O_pRacePointer := 0x158
-		 O_pColour := 0x160 ;+8 
+		 O_pColour := 0x1B0
 		 O_pAccountID := 0x1C0
 
-		 O_pAPM := 0x598
-		 O_pEPM := 0x5D8
+		 O_pAPM := 0x598 	; ?????
+		 O_pEPM := 0x5D8 	; ?????
 
-		 O_pWorkerCount := 0x788 ;+1c
-		 O_pWorkersBuilt := 0x798 ; number of workers made (includes the 6 at the start of the game)
-		 O_pBaseCount := 0x7F8 ; +18
-		 O_pSupplyCap := 0x848 ;+18		
-		 O_pSupply := 0x860 ;+ 12		
-		 O_pMinerals := 0x8A0 ;+18
-		 O_pGas := 0x8A8
+		 O_pWorkerCount := 0x7D8 ; **Care dont confuse this with HighestWorkerCount
+		 O_pTotalUnitsBuilt := 0x658 ; eg numbers of units made (includes 6 starting scvs) 
+		 O_pWorkersBuilt := 0x7E8 ; number of workers made (includes the 6 at the start of the game)
+		 O_pHighestWorkerCount := 0x800 ; the current highest worker account achieved
+		 O_pBaseCount := 0x848 
+		 O_pSupplyCap := 0x898		
+		 O_pSupply := 0x8B0 ;+ 12		
+		 O_pMinerals := 0x8F0 ;+18
+		 O_pGas := 0x8F8
 
-		 O_pArmySupply := 0x880
-		 O_pMineralIncome := 0x920 ;+20
-		 O_pGasIncome := 0x928
-		 O_pArmyMineralSize := 0xC08 ;0xB68 ;+A0
-		 O_pArmyGasSize := 0xC30 ;A8 
+		 O_pArmySupply := 0x8D0	 
+		 O_pMineralIncome := 0x970
+		 O_pGasIncome := 0x978
+		 O_pArmyMineralSize := 0xC58 	; there are two (identical?) values for minerals/gas 
+		 O_pArmyGasSize := 0xC80 		; ** care dont use max army gas/mineral size! 
 
-	 P_IdleWorker := base + 0x031073C0		
-		 O1_IdleWorker := 0x370
-		 O2_IdleWorker := 0x244
-	 B_Timer := base + 0x3534F44 ;0x3534F40 ;0x24C9EE0 	(Function: GameGetMissionTime)			
-	 B_rStructure := base + 0x02F6C850	
+	 P_IdleWorker := base + 0x0310E870		
+		 O1_IdleWorker := 0x358
+		 O2_IdleWorker := 0x244 	; tends to always end with this offset if finding via pointer scan
+	 B_Timer := base + 0x353C41C 	;(Function: GameGetMissionTime) (-0x800000 from IDA address)		
+
+	 B_rStructure := base + 0x02F6C850	; ?? Havent updated as dont use this
 		 S_rStructure := 0x10
 
-	 P_ChatFocus := base + 0x031073C0 		;Just when chat box is in focus
-		 O1_ChatFocus := 0x3AC 
-		 O2_ChatFocus := 0x174
+	 P_ChatFocus := base + 0x0310E870 	;Just when chat box is in focus ; value = True if open
+		 O1_ChatFocus := 0x394 
+		 O2_ChatFocus := 0x174 		; tends to end with this offset
 
-	 P_MenuFocus := base + 0x04FE4E5C 		;this is all menus and includes chat box when in focus ; old 0x3F04C04
-		 O1_MenuFocus := 0x17C
+	 P_MenuFocus := base + 0x04FEF2F4 	;this is all menus and includes chat box when in focus ; old 0x3F04C04
+		 O1_MenuFocus := 0x17C 			; tends to end with this offse
 
-	P_SocialMenu := base + 0x0409B098
+	P_SocialMenu := base + 0x0409B098 ; ???? Havent updated as dont use it
 
 	 B_uCount := base + 0x2F6C438 				; This is the units alive (and includes missiles) ;0x02CF5588			
-	 B_uHighestIndex := base + 0x3665100 ; 0x25F92C0		;this is actually the highest currently alive unit (includes missiles while alive)
-	 B_uStructure := base + 0x3665140			
+	 B_uHighestIndex := base + 0x366CB00 		;this is actually the highest currently alive unit (includes missiles while alive) and starts at 1 NOT 0! i.e. 1 unit alive = 1
+	 B_uStructure := base + 0x039DCB40			
 	 S_uStructure := 0x1C0
 		 O_uModelPointer := 0x8
 		 O_uTargetFilter := 0x14
 		 O_uBuildStatus := 0x18		; buildstatus is really part of the 8 bit targ filter!
-		 O_XelNagaActive := 0x34
+		 O_XelNagaActive := 0x34 	; dont use as doesnt work all the time
 		; something added in here in vr 2.10
 
 		 O_uOwner := 0x41  ; this and the rest below +4
@@ -235,13 +246,13 @@ loadMemoryAddresses(base)
 	 O_mMiniMapSize := 0x3AC ;0x39C
 	
 	; selection and ctrl groups
-	 B_SelectionStructure := base + 0x031CAB90 ;0x0215FB50 
+	 B_SelectionStructure := base + 0x31D2048
 
 	; Note: This is actually the second control group in the group structure. 
 	; The structure begins with ctrl group 0, then goes to 1, But i used ctrl group 1 as base for simplicity 
 	; when getting info for group 1, the negative offset will work fine 
 
-	 B_CtrlGroupOneStructure := base + 0x031CFDB8 
+	 B_CtrlGroupOneStructure := base + 0x031D7270 
 	 S_CtrlGroup := 0x1B60
 	 S_scStructure := 0x4	; Unit Selection & Ctrl Group Structures
 		 O_scTypeCount := 0x2
@@ -253,22 +264,22 @@ loadMemoryAddresses(base)
 ;		O2_PlayerColours := 0x17c
 
 	; give the army unit count (i.e. same as in the select army icon) - unit count not supply
-	B_localArmyUnitCount := base + 0x031073C0
-		O1_localArmyUnitCount := 0x36c
+	B_localArmyUnitCount := base + 0x0310E870
+		O1_localArmyUnitCount := 0x354
 		O2_localArmyUnitCount := 0x248
 
-	 B_TeamColours := base + 0x03108504 ; 2 when team colours is on 
-	; another one at + 0x4FA7800
+	 B_TeamColours := base + 0x310F9BC ; 2 when team colours is on 
+	; another one at + 0x4FB1B68
 
-	 P_SelectionPage := base + 0x031073C0 ; theres one other 3 lvl pointer but for a split second (ever second or so) it points to 
-		 O1_SelectionPage := 0x338			; the wrong address! You need to increase CE timer resolution to see this happening! Check it!
+	 P_SelectionPage := base + 0x0310E870 	; ***theres one other 3 lvl pointer but for a split second (every second or so) it points to 
+		 O1_SelectionPage := 0x320			; the wrong address! You need to increase CE timer resolution to see this happening! Check it!
 		 O2_SelectionPage := 0x15C			;this is for the currently selected unit portrait page ie 1-6 in game (really starts at 0-5)
 		 O3_SelectionPage := 0x14C 			;might actually be a 2 or 1 byte value....but works fine as 4
 
 	 DeadFilterFlag := 0x0000000200000000	
-	 BuriedFilterFlag :=	0x0000000010000000
+	 BuriedFilterFlag := 0x0000000010000000
 
-	 B_MapStruct := base + 0x3534EDC ; 0X024C9E7C 
+	 B_MapStruct := base + 0x353C3B4 ;0x3534EDC ; 0X024C9E7C 
 		 O_mLeft := B_MapStruct + 0xDC	                                   
 		 O_mBottom := B_MapStruct + 0xE0	                                   
 		 O_mRight := B_MapStruct + 0xE4	    ; MapRight 157.999756 (akilon wastes) after dividing 4096                     
@@ -283,7 +294,9 @@ loadMemoryAddresses(base)
 						, FollowNoAttack: 515} ; This is used by unit spell casters such as infestors and High temps which dont have a real attack 
 						; note I have Converted these hex numbers from their true decimal conversion 
 		
-	B_UnitCursor :=	base + 0x31073C0 					
+	B_UnitCursor :=	base + 0x31073C0
+		O1_UnitCursor := 0x2C0	 					
+		O2_UnitCursor := 0x21C 					
 
  															; If used as 4byte value, will return 256 	there seems to be 2 of these memory addresses
 	 P_IsUserPerformingAction := base + 0x031073C0			; This is a 1byte value and return 1  when user is casting or in is rallying a hatch via gather/rally or is in middle of issuing Amove/patrol command but
@@ -301,7 +314,7 @@ loadMemoryAddresses(base)
 		04_IsUserBuildingWithWorker := 0x168 				; BUT will also give 1 when a hatch is selected!!!
 
 */
-	 P_IsBuildCardDisplayed := base + 0x0311ADB4		; this displays 1 or 0 with units selected - displays 7 when targeting reticle displayed/or placing a building (same thing)
+	 P_IsBuildCardDisplayed := base + 0x0312226C		; this displays 1 or 0 with units selected - displays 7 when targeting reticle displayed/or placing a building (same thing)
 		 01_IsBuildCardDisplayed := 0x7C 				; **but when either build card is displayed it displays 6 (even when all advanced structures are greyed out)!!!!
 		 02_IsBuildCardDisplayed := 0x74 				; also displays 6 when the toss hallucination card is displayed
 		 03_IsBuildCardDisplayed := 0x398 				; could use this in place of the current 'is user performing action offset'
@@ -312,7 +325,7 @@ loadMemoryAddresses(base)
  	; while the other one keeps the text even after the chat is sent/closed
  	; this is the latter
  															
- 	 P_ChatInput := base + 0x04FE4E5C
+ 	 P_ChatInput := base + 0x04FE4E5C 		; ?????? not updated/used currently
  		 O1_ChatInput := 0x35C 
  		 O2_ChatInput := 0x78
  		 O3_ChatInput := 0x274
@@ -331,11 +344,11 @@ SC2.exe+1FDF7C8 (8 bytes) contains the state of most keys eg a-z etc
 											; it will remain 1 even when back in and shift isn't down as moving a unit wont be shift-commanded! so dont use that one
 										  	;shift = 1, ctrl = 2, alt = 4 (and add them together)
 
-															; 
-	 B_CameraDragScroll := base + 0x304A478  				; 1 byte Returns 1 when user is moving camera via DragScroll i.e. mmouse button the main map But not when on the minimap (or if mbutton is held down on the unit panel)
+														
+	 B_CameraDragScroll := base + 0x30518F0 			; 1 byte Returns 1 when user is moving camera via DragScroll i.e. mmouse button the main map But not when on the minimap (or if mbutton is held down on the unit panel)
 
-	
-	 B_InputStructure := base + 0x304A788
+	; not updated / used
+	 B_InputStructure := base + 0x304A788 		
 		 B_iMouseButtons := B_InputStructure + 0x0 		; 1 Byte 	MouseButton state 1 for Lbutton,  2 for middle mouse, 4 for rbutton
 		 B_iSpace := B_iMouseButtons + 0x8 				; 1 Bytes
 		 B_iNums := B_iSpace + 0x2  					; 2 Bytes
@@ -348,10 +361,10 @@ SC2.exe+1FDF7C8 (8 bytes) contains the state of most keys eg a-z etc
 
 
 
-	 B_CameraMovingViaMouseAtScreenEdge := base + 0x031073C0 		; Really a 1 byte value value indicates which direction screen will scroll due to mouse at edge of screen
+	 B_CameraMovingViaMouseAtScreenEdge := base + 0x0310E870 		; Really a 1 byte value value indicates which direction screen will scroll due to mouse at edge of screen
 		 01_CameraMovingViaMouseAtScreenEdge	:= 0x2C0			; 1 = Diagonal Left/Top 		4 = Left Edge
 		 02_CameraMovingViaMouseAtScreenEdge	:= 0x20C			; 2 = Top 						5 = Right Edge			
-		 03_CameraMovingViaMouseAtScreenEdge	:= 0x4B4			; 3 = Diagonal Right/Top 	  	6 = Diagonal Left/ Bot	
+		 03_CameraMovingViaMouseAtScreenEdge	:= 0x5A4			; 3 = Diagonal Right/Top 	  	6 = Diagonal Left/ Bot	
 																	; 7 = Bottom Edge 			 	8 = Diagonal Right/Bot 
 																	; Note need to do a pointer scan with max offset > 1200d!
 
@@ -413,6 +426,7 @@ SC2.exe+1FDF7C8 (8 bytes) contains the state of most keys eg a-z etc
 */	
 	return 1
 }	
+
 
 
 getMapLeft()
@@ -674,11 +688,14 @@ getPlayerTeam(player="") ;team begins at 0
 	Return ReadMemory((B_pStructure + O_pTeam) + (player-1) * S_pStructure, GameIdentifier, 1)
 }
 getPlayerColour(i)
-{	local aPlayerColour, Colour_List
-	aPlayerColour := []
-	Colour_List := "White|Red|Blue|Teal|Purple|Yellow|Orange|Green|Light Pink|Violet|Light Grey|Dark Green|Brown|Light Green|Dark Grey|Pink"
-	Loop, Parse, Colour_List, |
-		aPlayerColour[a_index - 1] := A_LoopField
+{	static aPlayerColour
+	if !isObject(aPlayerColour)
+	{
+		aPlayerColour := []
+		Colour_List := "White|Red|Blue|Teal|Purple|Yellow|Orange|Green|Light Pink|Violet|Light Grey|Dark Green|Brown|Light Green|Dark Grey|Pink"
+		Loop, Parse, Colour_List, |
+			aPlayerColour[a_index - 1] := A_LoopField
+	}
 	Return aPlayerColour[ReadMemory((B_pStructure + O_pColour) + (i-1) * S_pStructure, GameIdentifier)]
 }
 getLocalPlayerNumber() ;starts @ 1
@@ -3689,8 +3706,8 @@ stripModifiers(pressedKey)
 getCursorUnit()
 {
 	p1 := readMemory(B_UnitCursor, GameIdentifier)
-	p2 := readMemory(p1 + 0x2C0, GameIdentifier)
-	if (index := readMemory(p2 + 0x21C, GameIdentifier))
+	p2 := readMemory(p1 + O1_UnitCursor, GameIdentifier)
+	if (index := readMemory(p2 + O2_UnitCursor, GameIdentifier))
 		return index >> 18
 	return -1
 }
