@@ -98,8 +98,9 @@ if (!FileExist("msvcr100.dll") && A_IsCompiled)
 {
 	FileInstall, msvcr100.dll, msvcr100.dll, 0
 	reload ; already have admin rights
+	sleep 1000 ; this sleep is needed to prevent the script continuing execution before this instance is closed
 }
-; Process, Priority, , A
+
 Menu Tray, Add, &Settings && Options, options_menu
 Menu Tray, Add, &Check For Updates, TrayUpdate
 Menu Tray, Add, &Homepage, Homepage
@@ -1867,7 +1868,6 @@ g_InjectTimerAdvanced:
 advancedInjectTimer()
 return 
 
-
 advancedInjectTimer()
 {
 	global injectTimerAdvancedTime, W_inject_ding_on, W_inject_speech_on, w_inject_spoken
@@ -1877,21 +1877,15 @@ advancedInjectTimer()
 	; the lowest I could get for time spent with the button down was 32 ms (did get one 22ms but couldnt repeat it and that one was with
 	; A_Tickcount not QPX, so could have been a granularity/resolution thing)
 	; clicking normally its around 70 100 ms
-
+								
 	numGetSelectionSorted(aSelection)
 	if (aSelection.IsGroupable && aSelection.HighlightedId = aUnitID.Queen)
 	{
 		prevSelections := aSelection.IndicesString
-		while isGamePaused() ; shouldnt ever occur as hotkey expression contains this check
-		{
-			Thread, Priority, -2147483648
-			sleep 50
-		}
-		Thread, Priority, 0
 		loopTick := A_Tickcount
 		loop 
 		{
-			if getkeystate("Lbutton")
+			if getkeystate("Lbutton", "P")
 			{
 				; possible for the user to not click on the hatch miss or click menu/friends/options (which would arrive here) or , then to hit esc or rbutton to cancel 
 				; but this loop will then either time out or catch the next inject, so it doesn't really matter.
@@ -1906,7 +1900,6 @@ advancedInjectTimer()
 					{
 						if (unit.unitID = aUnitID.Queen)
 						{
-
 							if instr(getUnitQueuedCommandString(unit.unitIndex), "SpawnLarva")
 							{
 								injectTime := getTime()
@@ -2170,9 +2163,8 @@ ShutdownProcedure:
 		aThreads.Speech.ahkTerminate(500) ; needs 5 so thread doesn't persist	
 	if aThreads.miniMap.ahkReady() 	
 		aThreads.miniMap.ahkTerminate(500) 
-
-	Iniwrite, % round(GetProgramWaveVolume()), %config_file%, Volume, program
-
+	if FileExist(config_file) ; needed if exits due to dll not being installed
+		Iniwrite, % round(GetProgramWaveVolume()), %config_file%, Volume, program
 	ExitApp
 Return
 
@@ -6062,7 +6054,7 @@ class TwoPanelSelection_LV
 local_minerals(ByRef Return_Base_index, SortBy="Index") ;Returns a list of [Uints] index position for minerals And optionaly the [unit] index for the local base
 {	;	Nexus = 90 CommandCenter = 48 Hatchery = 117
 	;sc2_unit_count := getUnitCount()		;can put the count outside the loop for this
-	while ( A_Index <= getUnitCount()) 
+	While (A_Index <= getHighestUnitIndex()) 
 	{
 		unit := A_Index - 1
 		type := getUnitType(unit)
@@ -6629,7 +6621,6 @@ autoWorkerProductionCheck()
 
 	if (workers / Basecount >= maxWorkersPerBase)
 		return
-
 	
 	if (AutoWorkerQueueSupplyBlock && getPlayerSupply() < 200)
 		MaxWokersTobeMade := howManyUnitsCanBeProduced(50)
@@ -6789,6 +6780,7 @@ autoWorkerProductionCheck()
 		{ 
 			if !oSelection.IsGroupable
 			{
+				msgbox % oSelection.IndicesString
 				Input.revertKeyState()
 				return		
 			}
@@ -9268,12 +9260,22 @@ debugData()
 	. "Pause: " isGamePaused() "`n"
 	. "Chat Focus: " isChatOpen() "`n"
 	. "Menu Focus: " isMenuOpen() "`n"
+	. "`n"
 	. "Idle Workers: " getIdleWorkers() "`n"
+	. "Worker Count: " getPlayerWorkerCount() "`n"
+	. "Workers Built: " getPlayerWorkersBuilt() "`n"
+	. "Highest Worker Count: " getPlayerHighestWorkerCount() "`n"
+	. "`n"
+	. "Army Supply: " getPlayerArmySupply() "`n"
+	. "Army Minerals: " getPlayerArmySizeMinerals() "`n"
+	. "Army Gas: " getPlayerArmySizeGas() "`n"
+	. "`n"
 	. "Supply/Cap: " getPlayerSupply() "/" getPlayerSupplyCap() "`n"
 	. "Gas: " getPlayerGas() "`n"
 	. "Money: " getPlayerMinerals() "`n"
 	. "GasIncome: " getPlayerGasIncome() "`n"
 	. "MineralIncome: " getPlayerMineralIncome() "`n"
+	. "`n"
 	. "BaseCount: " getBaseCameraCount() "`n"
 	. "LocalSlot: " getLocalPlayerNumber() "`n"
 	. "Colour: " getplayercolour(Player) "`n"
@@ -9281,6 +9283,7 @@ debugData()
 	. "Type: " getPlayerType(Player) "`n"
 	. "Local Race: " getPlayerRace(Player) "`n"
 	. "Local Name: " getPlayerName(Player) "`n"
+	. "`n"
 	. "Unit Count: " getUnitCount() "`n"
 	. "Highest Unit Index: " getHighestUnitIndex() "`n"
 	. "Selected Unit: `n"
@@ -12594,7 +12597,6 @@ loop, % count := 40
 loop
 {
 	
-	
 	spaces := substr(spaces, 1, -4)
 	loop, parse, text, `n
 	{
@@ -12610,10 +12612,15 @@ loop
 	sleep 700
 }
 
+;128
+
+
+; all are diviseable by 4 after subtracting 1
+;5 ;9 ;13 ;17 ;33 ;65 ;73 ;81 ;129 ;133 ;137 ;145 ;161 ;193 ;209
+
+
 f1::
-v := 524289 >> 18 
-msgbox % v "`n" v << 18
 
-msgbox % clipboard := getSelectedUnitIndex() << 18
-
-return 
+	msgbox % ReadMemory((B_pStructure + O_pStatus) + (1-1) * S_pStructure, GameIdentifier, 1)
+	msgbox % ReadMemory((B_pStructure + O_pStatus) + (0-1) * S_pStructure, GameIdentifier, 1)
+	return

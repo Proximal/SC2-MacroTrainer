@@ -21,6 +21,7 @@ Global B_LocalCharacterNameID
 , O_pEPM
 , O_pWorkerCount
 , O_pWorkersBuilt
+, O_pHighestWorkerCount
 , O_pBaseCount
 , O_pSupplyCap
 , O_pSupply
@@ -153,24 +154,24 @@ loadMemoryAddresses(base)
 	;	[Memory Addresses]
 		B_LocalCharacterNameID := base + 0x04F0918C  ; stored as string Name#123
 		B_LocalPlayerSlot := base + 0x112D5F0 ; note 1byte and has a second 'copy' (ReplayWatchedPlayer) just after +1byte eg LS =16d=10h, hex 1010 (2bytes) & LS =01d = hex 0101
-		B_ReplayWatchedPlayer := B_LocalPlayerSlot + 1
-		B_pStructure := base + 0x35EF0E8 ;			 
+		B_ReplayWatchedPlayer := B_LocalPlayerSlot + 0x1
+		B_pStructure := base + 0x035EF0E8 			 
 		S_pStructure := 0xE10
 		 O_pStatus := 0x0
 		 O_pXcam := 0x8
 		 O_pYcam := 0xC	
 		 O_pCamAngle := 0x14
 		 O_pCamRotation := 0x18
-		 O_pCamDistance := 0xE ; 0xA - Dont know if this is correct
+		 O_pCamDistance := 0xA ; 0xA - Dont know if this is correct - E
 
 		 O_pTeam := 0x1C
 		 O_pType := 0x1D ;
 		 O_pVictoryStatus := 0x1E
-		 O_pName := 0x68 ;+8
+		 O_pName := 0x60 ;+8
 		 
 		 O_pRacePointer := 0x158
 		 O_pColour := 0x1B0
-		 O_pAccountID := 0x1C0
+		 O_pAccountID := 0x1C0 ; ????
 
 		 O_pAPM := 0x598 	; ?????
 		 O_pEPM := 0x5D8 	; ?????
@@ -208,9 +209,10 @@ loadMemoryAddresses(base)
 
 	P_SocialMenu := base + 0x0409B098 ; ???? Havent updated as dont use it
 
-	 B_uCount := base + 0x2F6C438 				; This is the units alive (and includes missiles) ;0x02CF5588			
+	 B_uCount := base + 0x366CAE8 				; This is the units alive (and includes missiles) 			
+	 											; There are two of these values and they only differ the instant a unit dies esp with missle fire (ive used the higher value) - dont think i use this offset anymore
 	 B_uHighestIndex := base + 0x366CB00 		;this is actually the highest currently alive unit (includes missiles while alive) and starts at 1 NOT 0! i.e. 1 unit alive = 1
-	 B_uStructure := base + 0x039DCB40			
+	 B_uStructure := base + 0x366CB40 			
 	 S_uStructure := 0x1C0
 		 O_uModelPointer := 0x8
 		 O_uTargetFilter := 0x14
@@ -276,8 +278,8 @@ loadMemoryAddresses(base)
 		 O2_SelectionPage := 0x15C			;this is for the currently selected unit portrait page ie 1-6 in game (really starts at 0-5)
 		 O3_SelectionPage := 0x14C 			;might actually be a 2 or 1 byte value....but works fine as 4
 
-	 DeadFilterFlag := 0x0000000200000000	
-	 BuriedFilterFlag := 0x0000000010000000
+	DeadFilterFlag := 0x0000000200000000	
+	BuriedFilterFlag := 0x0000000010000000
 
 	 B_MapStruct := base + 0x353C3B4 ;0x3534EDC ; 0X024C9E7C 
 		 O_mLeft := B_MapStruct + 0xDC	                                   
@@ -294,12 +296,12 @@ loadMemoryAddresses(base)
 						, FollowNoAttack: 515} ; This is used by unit spell casters such as infestors and High temps which dont have a real attack 
 						; note I have Converted these hex numbers from their true decimal conversion 
 		
-	B_UnitCursor :=	base + 0x31073C0
+	B_UnitCursor :=	base + 0x0310E870 
 		O1_UnitCursor := 0x2C0	 					
 		O2_UnitCursor := 0x21C 					
 
- 															; If used as 4byte value, will return 256 	there seems to be 2 of these memory addresses
-	 P_IsUserPerformingAction := base + 0x031073C0			; This is a 1byte value and return 1  when user is casting or in is rallying a hatch via gather/rally or is in middle of issuing Amove/patrol command but
+ 															; If used as 4byte value, will return 256 	there are 2 of these memory addresses
+	 P_IsUserPerformingAction := base + 0x0310E870			; This is a 1byte value and return 1  when user is casting or in is rallying a hatch via gather/rally or is in middle of issuing Amove/patrol command but
 		 O1_IsUserPerformingAction := 0x230 					; if youre searching for a 4byte value in CE offset will be at 0x254 (but really if using it as 1 byte it is 0x255) - but im lazy and use it as a 4byte with my pointer command
 															; also 1 when placing a structure (after structure is selected) or trying to land rax to make a addon Also gives 1 when trying to burrow spore/spine
 															; When searching for 4 byte value this offset will be 0x254 
@@ -324,12 +326,16 @@ loadMemoryAddresses(base)
  	; There are two chat buffers - One blanks after you press return (to send chat)
  	; while the other one keeps the text even after the chat is sent/closed
  	; this is the latter
+
+ 	; note there are two of these so make sure pick the right one as there addresses 
+ 	; can go from high to low so the one at the top of CE scan might not be the same one
+ 	; that was at the top last time!
  															
- 	 P_ChatInput := base + 0x04FE4E5C 		; ?????? not updated/used currently
- 		 O1_ChatInput := 0x35C 
- 		 O2_ChatInput := 0x78
- 		 O3_ChatInput := 0x274
- 		 O4_ChatInput := 0x14
+ 	 P_ChatInput := base + 0x0310EDEC 		; ?????? not updated/used currently
+ 		 O1_ChatInput := 0x16C 
+ 		 O2_ChatInput := 0xC
+ 		 O3_ChatInput := 0x278
+ 		 O4_ChatInput := 0x0
 
 /*
 Around this modifier area are other values which contain the logical states
@@ -367,21 +373,19 @@ SC2.exe+1FDF7C8 (8 bytes) contains the state of most keys eg a-z etc
 		 03_CameraMovingViaMouseAtScreenEdge	:= 0x5A4			; 3 = Diagonal Right/Top 	  	6 = Diagonal Left/ Bot	
 																	; 7 = Bottom Edge 			 	8 = Diagonal Right/Bot 
 																	; Note need to do a pointer scan with max offset > 1200d!
-
-	 B_IsGamePaused := base + 0x31F15A5 						
-
+	 B_IsGamePaused := base + 0x31F8A5D						
 
 	 B_FramesPerSecond := base + 0x04FA80EC
-	 B_Gamespeed  := base + 0x04EEB184
+	 B_Gamespeed  := base + 0x4EF35B8
 
 	; example: D:\My Computer\My Documents\StarCraft II\Accounts\56021244\6-S2-1-34722\Replays\
 	; this works for En, Fr, and Kr languages 
-	 B_ReplayFolder :=  base + 0x04F669C0
+	 B_ReplayFolder :=  base + 0x04F701F8
 
 	; Horizontal resolution ; 4 bytes
 	; vertical resolution ; The next 4 bytes immediately after the Horizontal resolution cheat and search for 8 bytes 4638564681600 (1920 1080)
 
-	 B_HorizontalResolution := base + 0x4FE4910
+	 B_HorizontalResolution := base + 0x4FEEDA8
 	 B_VerticalResolution := B_HorizontalResolution + 0x4
 
 /*
@@ -426,8 +430,6 @@ SC2.exe+1FDF7C8 (8 bytes) contains the state of most keys eg a-z etc
 */	
 	return 1
 }	
-
-
 
 getMapLeft()
 {	global
@@ -564,6 +566,12 @@ getPlayerWorkersLost(player="")
 		player := aLocalPlayer["Slot"]
 	return getPlayerWorkersBuilt() - getPlayerWorkerCount()
 }
+getPlayerHighestWorkerCount(player="")
+{ global
+	If (player = "")
+		player := aLocalPlayer["Slot"]
+	Return ReadMemory(B_pStructure + O_pHighestWorkerCount + (player-1)*S_pStructure, GameIdentifier)
+}
 getUnitType(Unit) ;starts @ 0 i.e. first unit at 0
 { global 
 
@@ -663,9 +671,9 @@ getPlayerVictoryStatus(i)
 	Return oPlayerStatus[ ReadMemory((B_pStructure + O_pVictoryStatus) + (i-1) * S_pStructure, GameIdentifier, 1) ]
 }
 
-getPlayerActiveStatus(i)
-{	global
-	static oPlayerStatus := {	  0: "Unused"
+/*
+Nuke's Enum
+oPlayerStatus := {	  0: "Unused"
 								, 1: "Active" 	
 								, 2: "Left"
 								, 3: "Tied"
@@ -675,8 +683,27 @@ getPlayerActiveStatus(i)
 								, 17: "Active14" 
 								, 24: "Left" 
 								, 25: "Active25" }
+ all of these values occured while player was still 'active'
+; all are diviseable by 4 after subtracting 1
+;5 ;9 ;13 ;17 ;33 ;65 ;73 ;81 ;129 ;133 ;137 ;145 ;161 ;193 ;209
 
-	Return oPlayerStatus[ ReadMemory((B_pStructure + O_pStatus) + (i-1) * S_pStructure, GameIdentifier, 1) ]
+unused when a plyer leaves on the replay
+I wonder if the structure is more is just active and left
+*/
+
+getPlayerActiveStatus(i)
+{	global
+	static oPlayerStatus := {	  0: "Unused"
+								, 1: "Active" 	
+								, 2: "Left"
+								, 3: "Tied" } ; wonder if there is no tied
+
+	Return oPlayerStatus[ mod(ReadMemory((B_pStructure + O_pStatus) + (i-1) * S_pStructure, GameIdentifier, 1), 4) ]
+}
+
+isPlayerActive(player)
+{
+	Return (ReadMemory((B_pStructure + O_pStatus) + (player-1) * S_pStructure, GameIdentifier, 1) & 1)
 }
 
 
@@ -1148,6 +1175,21 @@ getChatText()
 									, O3_ChatInput, O4_ChatInput)
 
 	return ReadMemory_Str(ChatAddress, GameIdentifier)	
+}
+
+getFPS()
+{
+	return ReadMemory(B_FramesPerSecond, GameIdentifier)
+}
+
+getGameSpeed()
+{
+	static aGameSpeed := { 	0: Slower
+						,	1: Slow
+						,	2: Normal
+						,	3: Fast
+						,	4: Faster }
+	return aGameSpeed[ReadMemory(B_Gamespeed, GameIdentifier)]
 }
 
 
@@ -1937,7 +1979,7 @@ numGetSelectionSorted(ByRef aSelection, ReverseOrder := False)
 															? aUnitSubGroupAlias[unitId] 
 															:  unitId)
 		, sIndices .= "," unitIndex
-		if !isUnitLocallyOwned(unitId)
+		if !isUnitLocallyOwned(unitIndex)
 			nonLocalUnitSelected := True										
 	; AHK automatically creates an object if it doesn't exist when using this syntax
 	; So i only have to check and make one object
@@ -1951,7 +1993,8 @@ numGetSelectionSorted(ByRef aSelection, ReverseOrder := False)
 		; as they appear in the unit panel ie top left to bottom right 	
 	}
 	aSelection.IndicesString := substr(sIndices, 2) ; trim first "," 
-	if (aSelection.Count && nonLocalUnitSelected)
+
+	if (aSelection.Count && !nonLocalUnitSelected)
 		aSelection.IsGroupable := True
 	; This will convert the data into a simple indexed object
 	; The index value will be 1 more than the unit portrait location
@@ -2843,7 +2886,7 @@ Class c_EnemyUnit
 ParseEnemyUnits(ByRef a_EnemyUnits, ByRef aPlayer)
 { global DeadFilterFlag
 	LocalTeam := getPlayerTeam(), a_EnemyUnitsTmp := []
-	While (A_Index <= getUnitCount()) ; Read +10% blanks in a row
+	While (A_Index <= getHighestUnitIndex())
 	{
 		unit := A_Index -1
 		Filter := getUnitTargetFilter(unit)	
