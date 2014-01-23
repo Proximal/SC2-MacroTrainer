@@ -173,7 +173,7 @@ loadMemoryAddresses(base)
 		 O_pColour := 0x1B0
 		 O_pAccountID := 0x1C0 ; ????
 
-		 O_pAPM := 0x598 	; ?????
+		 O_pAPM := 0x5E8 	; 0x598 	
 		 O_pEPM := 0x5D8 	; ?????
 
 		 O_pWorkerCount := 0x7D8 ; **Care dont confuse this with HighestWorkerCount

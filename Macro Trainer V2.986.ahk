@@ -3812,7 +3812,7 @@ try
 			gui, font, norm s10
 			gui, font, 		
 
-	Gui, Add, Tab2, w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vMiscAutomation_TAB, Select Army||Spread|Remove Unit|Easy Unload
+	Gui, Add, Tab2, w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vMiscAutomation_TAB, Select Army||Spread|Remove Unit|Easy Select/Unload
 	Gui, Tab, Select Army
 		Gui, add, GroupBox, y+15 w405 h180
 		Gui, Add, Checkbox, Xs yp+25 vSelectArmyEnable Checked%SelectArmyEnable% , Enable Select Army Function		
@@ -3859,7 +3859,7 @@ try
 		Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#castRemoveUnit_key,  Edit
 		Gui, Add, Text, Xs yp+70 w380, This removes the first unit (top left of selection card) from the selected units.`n`nThis is very usefuly for 'cloning' workers to geisers or sending 1 ling towards a group of banelings etc.
 
-	Gui, Tab, Easy Unload
+	Gui, Tab, Easy Select/Unload
 		Gui, Add, GroupBox, x+95 y+30 w95 h100 section, Enable
 			Gui, Add, Checkbox, xp+10 yp+25 vEasyUnloadTerranEnable Checked%EasyUnloadTerranEnable%, Terran	
 			Gui, Add, Checkbox, xp y+10 vEasyUnloadProtossEnable Checked%EasyUnloadProtossEnable%, Protoss	
@@ -4509,7 +4509,7 @@ try
 	BlendUnits_TT := "This will draw the units 'blended together', like SC2 does.`nIn other words, units/buildings grouped together will only have one border around all of them"
 
 	TT_OverlayRefresh_TT := OverlayRefresh_TT := "Determines how frequently these overlays are refreshed:`nIncome, Resource, Army, Local Harvesters, and Idle Workers."
-	TT_UnitOverlayRefresh_TT := UnitOverlayRefresh_TT := "Determines how frequently the unit panel is refreshed.`nThis requires more resources than the other overlays and so it has its own refresh rate."
+	TT_UnitOverlayRefresh_TT := UnitOverlayRefresh_TT := "Determines how frequently the unit panel is refreshed.`nThis requires more resources than the other overlays and so it has its own refresh rate.`n`nLower this value if you want the progress bars to increase in a smoother manner."
 
 	DrawLocalPlayerColourOverlay_TT := "During team games and while using hostile colours (green, yellow, and red) a small circle is drawn which indiactes your local player colour.`n`n"
 										. "This is helpful when your allies refer to you by colour."
@@ -4555,13 +4555,16 @@ try
 		quickSelect%A_LoopField%DeselectQueuedDrops_TT := SelectArmyDeselectQueuedDrops_TT
 	}
 
-
 	castRemoveUnit_key_TT := #castRemoveUnit_key_TT := castSplitUnit_key_TT := #castSplitUnit_key_TT := "The hotkey used to invoke this function."
 	SplitctrlgroupStorage_key_TT := #SplitctrlgroupStorage_key_TT := "This ctrl group is used during the function.`nAssign it to a control group you DON'T use!"
 	TT_DeselectSleepTime_TT :=  DeselectSleepTime_TT := "Time between deselecting units from the unit panel.`nThis is used by the split and select army, and deselect unit functions"
 
 	#Sc2SelectArmyCtrlGroup_TT := Sc2SelectArmyCtrlGroup_TT := "The control Group (key) in which to store the army.`nE.G. 1,2,3-0"
 	l_DeselectArmy_TT := #l_DeselectArmy_TT := "These unit types will be deselected."
+	EasyUnloadHotkey_TT := #EasyUnloadHotkey_TT := "This hotkey performs two function depending on if it is double tapped or held down."
+												. "`n`nDouble tap this key to select any loaded transports visible on the screen."
+												. "`n`n Hold this button and wave the mouse over the loaded transports to begin unloading them."
+	EasyUnloadStorageKey_TT := "The selected/unloaded transports will be stored in this control group"											
 
 	F_Inject_ModifierBeep_TT := "If the modifier keys (Shift, Ctrl, or Alt) or Windows Keys are held down when an Inject is attempted, a beep will heard.`nRegardless of this setting, the inject round will not begin until after these keys have been released."
 	BlockingStandard_TT := BlockingFunctional_TT := BlockingNumpad_TT := BlockingMouseKeys_TT := BlockingMultimedia_TT := BlockingMultimedia_TT := BlockingModifier_TT := "During certain automations these keys will be buffered or blocked to prevent interruption to the automation and your game play."
@@ -12611,3 +12614,4 @@ loop
 		break
 	sleep 700
 }
+
