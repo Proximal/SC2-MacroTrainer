@@ -353,8 +353,8 @@ SC2.exe+1FDF7C8 (8 bytes) contains the state of most keys eg a-z etc
 														
 	 B_CameraDragScroll := base + 0x30518F0 			; 1 byte Returns 1 when user is moving camera via DragScroll i.e. mmouse button the main map But not when on the minimap (or if mbutton is held down on the unit panel)
 
-	; not updated / used
-	 B_InputStructure := base + 0x304A788 		
+	
+	 B_InputStructure := base + 0x3051C00 		
 		 B_iMouseButtons := B_InputStructure + 0x0 		; 1 Byte 	MouseButton state 1 for Lbutton,  2 for middle mouse, 4 for rbutton
 		 B_iSpace := B_iMouseButtons + 0x8 				; 1 Bytes
 		 B_iNums := B_iSpace + 0x2  					; 2 Bytes

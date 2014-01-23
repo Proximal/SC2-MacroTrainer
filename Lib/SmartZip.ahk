@@ -77,8 +77,6 @@ SmartZip(s, o, t = 4)
 		{
 			oSource := oShell.NameSpace(A_LoopFileLongPath)
 			oObject.CopyHere(oSource.Items, t)
-			objtree(oSource.Items)
-			msgbox % A_LoopField 
 		}
 	}
 }

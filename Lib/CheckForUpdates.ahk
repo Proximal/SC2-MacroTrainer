@@ -7,7 +7,7 @@ CheckForUpdates(installed_version, byRef latestVersion, url)
 		IniRead, zipURL, %A_Temp%\version_checker_temp_file.ini, info, zipURL, 0
 		FileDelete %A_Temp%\version_checker_temp_file.ini
 		If (latestVersion > installed_version && zipURL)
-			Return url ; update exist
+			Return zipURL ; update exist
 	}
 	latestVersion := installed_version ; incase there was an error
 	FileDelete %A_Temp%\version_checker_temp_file.ini

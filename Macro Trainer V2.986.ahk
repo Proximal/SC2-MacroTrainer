@@ -144,8 +144,8 @@ if (A_ThisLabel = "g_testKeydowns")
 
 
 RegRead, wHookTimout, HKEY_CURRENT_USER, Control Panel\Desktop, LowLevelHooksTimeout
-if (ErrorLevel || wHookTimout < 650)
-	RegWrite, REG_DWORD, HKEY_CURRENT_USER, Control Panel\Desktop, LowLevelHooksTimeout, 650
+if (ErrorLevel || wHookTimout < 600)
+	RegWrite, REG_DWORD, HKEY_CURRENT_USER, Control Panel\Desktop, LowLevelHooksTimeout, 600
 ; This will up the timeout from  300 (default). Though probably isn't required
 
 
@@ -178,7 +178,7 @@ MT_CurrentInstance := [] ; Used to store random info about the current run
 program := []
 program.info := {"IsUpdating": 0} ; program.Info.IsUpdating := 0 ;has to stay here as first instance of creating infor object
 
-ProgramVersion := 2.985
+ProgramVersion := 2.986
 
 l_GameType := "1v1,2v2,3v3,4v4,FFA"
 l_Races := "Terran,Protoss,Zerg"
@@ -12611,4 +12611,3 @@ loop
 		break
 	sleep 700
 }
-
