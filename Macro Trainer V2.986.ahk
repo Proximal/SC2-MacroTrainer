@@ -57,6 +57,7 @@
 		These numbers were averaged over 10,000 reads.
 
 */
+
 SetWorkingDir %A_ScriptDir%  ; Ensures a consistent starting directory.
 #SingleInstance force
 #MaxHotkeysPerInterval 99999	; a user requested feature (they probably have their own macro script)
@@ -3033,7 +3034,7 @@ try
 			Gui, Add, Text, X%OriginTabX% y+20 cFF0000, Problems:
 			gui, font, norm s11
 			gui, Add, Text, w410 y+15, If you are consistently missing hatcheries, try increasing the sleep time. 
-			gui, Add, Text, w410 y+15, If something really goes wrong, you can reload the program by pressing "Lwin && space" three times.
+			gui, Add, Text, w410 y+15, If something really goes wrong, you can reload the program by pressing "RWin && space" three times.
 			gui, font, norm s10
 			gui, font, 		
 
@@ -12614,4 +12615,5 @@ loop
 		break
 	sleep 700
 }
+
 

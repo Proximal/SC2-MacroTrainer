@@ -2,6 +2,8 @@
 ; returns the Install path
 ; e.g.	C:\Games\StarCraft II\
 
+; if doesnt exist returns blank
+
 StarcraftInstallPath()
 {
 	if A_Is64bitOS
