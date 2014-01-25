@@ -44,6 +44,7 @@ class Input
 		, 	pCurrentCharDelay := -1
 		, 	dragLeftClick := False
 		, 	LastLeftClickX, LastLeftClickY
+		;,	lastKeyboardTick, lastMouseTick
 		, 	Control, WinTitle, WinText,	ExcludeTitle, ExcludeText
 
 	; Very Important Note about logical and physical hotkey states
