@@ -160,9 +160,10 @@ loadMemoryAddresses(base)
 		 O_pStatus := 0x0
 		 O_pXcam := 0x8
 		 O_pYcam := 0xC	
+		 O_pCamDistance := 0x10 ; 0xA - Dont know if this is correct - E
 		 O_pCamAngle := 0x14
 		 O_pCamRotation := 0x18
-		 O_pCamDistance := 0xA ; 0xA - Dont know if this is correct - E
+		
 
 		 O_pTeam := 0x1C
 		 O_pType := 0x1D ;

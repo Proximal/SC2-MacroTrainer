@@ -157,7 +157,7 @@ MouseHook(nCode, wParam, lParam)
 	{
 		MT_InputIdleTime(A_TickCount)
 		; Input is blocked and this is a user pressed / released button	
-		if (input.MouseBlocked && !(NumGet(lParam+12) & 0x10))  ; LLKHF_INJECTED
+		if (input.MouseBlocked && !(NumGet(lParam+12) & 0x1))  ; LLKHF_INJECTED
 			return -1
 	}
    	Return CallNextHookEx(nCode, wParam, lParam) ; make sure other hooks in the chain receive this event if we didn't process it
@@ -177,7 +177,7 @@ MouseBlockHook(nCode, wParam, lParam)
 	Critical 1000
 	; if this var contains some info about a keyboard event
 	; and its LLKHF_INJECTED key or mouse move event
-	If (!nCode && wParam != 0x200 && wParam && !(NumGet(lParam+8) & 0x10))  ;WM_MOUSEMOVE := 0x200
+	If (!nCode && wParam != 0x200 && wParam && !(NumGet(lParam+12) & 0x1))  ;WM_MOUSEMOVE := 0x200
 		return -1
    	Return CallNextHookEx(nCode, wParam, lParam) ; make sure other hooks in the chain receive this event if we didn't process it
 }
