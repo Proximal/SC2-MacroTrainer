@@ -1,7 +1,3 @@
-
-
-
-
 /*
 	This is a basic wrapper for commonly used read and write memory functions.
 	This allows scripts to read/write integers and strings of various types.
@@ -9,17 +5,21 @@
 	
 	Process handles are kept open between reads. This increases speed.
 	Note, if a program closes/restarts then the process handle will be invalid
-	and you will need to re-open another handle.
+	and you will need to re-open another handle (blank and recreate the object)
 
 	read(), readString(), write(), and writeString() can be used to read and write memory addresses respectively.
-
-	switchTargetProgram() can be used to facilitate reading memory from multiple processes in the one script.
 
 	ReadRawMemory() can be used to dump large chunks of memory, this is considerably faster when
 	reading data from a large structure compared to repeated calls to read().
 	Although, most people wouldn't notice the performance difference. This does however require you 
 	to retreive the values using AHK's numget()/strGet() from the dumped memory
 	
+	When the new operator is used this class returns a object which can be used to read that processes 
+	memory space.
+	To read another process simply create another object.
+
+	process handles are automatically closed when the script exits/restarts.
+
 	Note:
 	This was written for 32 bit processes, but the various read/write functions
 	should still work when directly reading/writing an address. The pointer parts of
@@ -32,43 +32,47 @@
 	Usage:
 
 		open a process with sufficient access to read and write memory addresses (this is required before you can use the other functions)
-			memory.openProcess("ahk_exe calc.exe")
+		calc :=	memory("ahk_exe calc.exe")
 		Note: This can be an ahk_exe, ahk_class, ahk_pid, or simply the window title. 
-
+		
+		Get the processes base address
+			msgbox % calc.BaseAddress
 		write 1234 to a UInt
-			memory.write(0x0016CB60, 1234, "UInt")
+			calc.write(0x0016CB60, 1234, "UInt")
 
 		read a UInt
-			value := memory.read(0x0016CB60, "UInt")
+			value := calc.read(0x0016CB60, "UInt")
 
 		read a pointer with offsets 0x20 and 0x15C which points to a uchar 
-			value := memory.read(pointerBase, "UChar", 0x20, 0x15C)
+			value := calc.read(pointerBase, "UChar", 0x20, 0x15C)
 
 		Note: read(), readString(), ReadRawMemory(), write(), and writeString() all support pointers/offsets
 			An array of pointers can be passed directly, i.e.
 			arrayPointerOffsets := [0x20, 0x15C]
-			value := memory.read(pointerBase, "UChar", arrayPointerOffsets*)
+			value := calc.read(pointerBase, "UChar", arrayPointerOffsets*)
 			Or they can be entered manually
-			value := memory.read(pointerBase, "UChar", 0x20, 0x15C)
+			value := calc.read(pointerBase, "UChar", 0x20, 0x15C)
 
 		
 		read a utf-16 null terminated string of unknown length at address 0x1234556 - the function will read each character until the null terminator is found
-			string := memory.readString(0x1234556, length := 0, encoding := "utf-16")
+			string := calc.readString(0x1234556, length := 0, encoding := "utf-16")
 		
 		read a utf-8 encoded 12 character string at address 0x1234556
-			string := memory.readString(0x1234556, 12)
+			string := calc.readString(0x1234556, 12)
 
-		Close ALL currently open handles - this should be done before the script exits
-			memory.closeProcess()
-		close a handle to an individual program 
-			memory.closeProcess("ahk_exe calc.exe")
-		Note: You need to pass the exact same program/string that you used to open the process i.e. openProcess("ahk_exe calc.exe")
+		By default a null terminator is included at the end of written strings for writeString()
+		The nullterminator property can be used to change this.
+	 		memory.insertNullTerminator := False ; This will change the property for all processes
+	 		calc.insertNullTerminator := False ; Changes the property for just this process		
 
 */
 
+
+
+
 class memory
 {
-	static currentProgram, hProcessCurrent, aProcessHandles := []
+	static baseAddress, hProcess, aProcessHandles := []
 	, insertNullTerminator := True
 	, readChunkSize := 128
 	, aTypeSize := {	"UChar": 	1, 	"Char":		1
@@ -80,14 +84,20 @@ class memory
 					; Although unsigned 64bit values are not supported, you can read them as int64 or doubles and interpret
 					; the negative numbers as large values
 
-	__new(program, dwDesiredAccess := "")
+	; The byRef handle can be used to check if it opened the process successfully
+	; otherwise can check if the returned value is an object
+	__new(program, dwDesiredAccess := "", byRef handle := "")
 	{
-		this.openProcess(program, dwDesiredAccess)
+		if !(handle := this.openProcess(program, dwDesiredAccess))
+			return ""
+		memory.aProcessHandles.insert(handle, "True")
+		this.BaseAddress := this.processBaseAddress(program)
 		return this
 	}
 	__delete()
 	{
-		closeProcess(this.hProcessCurrent)
+		this.closeProcess(this.hProcess)
+		return
 	}
 
 	; program can be an ahk_exe, ahk_class, ahk_pid, or simply the window title. e.g. "ahk_exe SC2.exe" or "Starcraft II"
@@ -97,51 +107,46 @@ class memory
 	openProcess(program, dwDesiredAccess := "")
 	{
 		; if an application closes/restarts the previous handle becomes invalid so reopen it to be safe (closing a now invalid handle is fine i.e. wont cause an issue)
-		if this.aProcessHandles.hasKey(program)
-			this.closeProcess(program)
+		
 		; This default access level is sufficient to read and write memory addresses.
 		; if the program is run using admin privileges, then this script will also need admin privileges
 		if dwDesiredAccess is not integer
 			dwDesiredAccess := (PROCESS_VM_OPERATION := 0x8) | (PROCESS_VM_READ := 0x10) | (PROCESS_VM_WRITE := 0x20)
 		WinGet, pid, pid, % this.currentProgram := program
 		if !pid
-			return 0, this.currentProgram := "" ; Process Doesn't Exist
-		this.aProcessHandles.Insert(program, this.hProcessCurrent := DllCall("OpenProcess", "UInt", dwDesiredAccess, "Int", False, "UInt", pid))
-		return this.hProcessCurrent	 ; NULL/Blank if failed to open process for some reason
+			return  this.hProcess := 0 
+		return this.hProcess := DllCall("OpenProcess", "UInt", dwDesiredAccess, "Int", False, "UInt", pid) ; NULL/Blank if failed to open process for some reason
 	}	
 
-	; To close all open handles, simply call memory.closeProcess() without a parameter
-	; good programming practices says you should call this function before exiting the script
-	closeProcess(program := "")
+	; When the script exits/restarts any open handles will automatically be closed!
+	; That is, you don't need to call this function.
+	closeProcess(hProcess := "")
 	{
-		if !program
+		if (hProcess = "") ; check if "" - as an error when opening handle will return 0 so dont want to close all handles if 0 is passed
 		{
-			For program, handle in this.aProcessHandles
-				closed .= (A_Index = 1 ? "" : "`n") program " - " handle " - " DllCall("CloseHandle", "UInt", handle)
-			this.aProcessHandles := []
-			this.hProcessCurrent := this.currentProgram := ""
-			return closed
+			for hProcess, v in memory.aProcessHandles
+				DllCall("CloseHandle", "UInt", hProcess)
+			memory.aProcessHandles := []
 		}
-		else if this.aProcessHandles.HasKey(program)
-		{
-			closed := program " - " this.aProcessHandles[program] " - " DllCall("CloseHandle", "UInt", this.aProcessHandles[program])
-			this.aProcessHandles.Remove(program)
-			if (program = this.currentProgram)
-				this.hProcessCurrent := this.currentProgram := ""
-			return closed
-		}
-		else 
-			return 0 ; Program didn't have a handle
-	}
-
-	; This can be used if you're reading memory from multiple processes e.g multi boxing
-	; simply call memory.switchTargetProgram(program) before each call to a different process
-	switchTargetProgram(program)
-	{
-		if this.aProcessHandles.HasKey(program)
-			return this.hProcessCurrent := this.aProcessHandles[program], this.currentProgram := program
 		else
-			return this.OpenProcess(program) ; sets current Program and process handle
+		{
+			DllCall("CloseHandle", "UInt", hProcess)
+			memory.aProcessHandles.remove(hProcess, "")
+		}
+		return
+	}
+	;WindowTitle can be anything ahk_exe ahk_class etc
+	processBaseAddress(WindowTitle, MatchMode=3)	
+	{
+		mode :=  A_TitleMatchMode
+		SetTitleMatchMode, %MatchMode%	;mode 3 is an exact match
+		WinGet, hWnd, ID, %WindowTitle%
+		; AHK32Bit A_PtrSize = 4 | AHK64Bit - 8 bytes
+		BaseAddress := DllCall(A_PtrSize = 4
+			? "GetWindowLong" 
+			: "GetWindowLongPtr", "Uint", hWnd, "Uint", -6) 
+		SetTitleMatchMode, %mode%	; In case executed in autoexec
+		return BaseAddress
 	}
 
 	; reads various integer type values
@@ -149,8 +154,8 @@ class memory
 	read(address, type := "UInt", aOffsets*)
 	{
       	VarSetCapacity(buffer, bytes := this.aTypeSize[type])
-		if !DllCall("ReadProcessMemory","UInt",  this.hProcessCurrent, "UInt", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, "Ptr", &buffer, "UInt", bytes, "Ptr",0)
-		  return !this.hProcessCurrent ? "Handle Is closed: " this.hProcessCurrent : "Fail"
+		if !DllCall("ReadProcessMemory","UInt",  this.hProcess, "UInt", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, "Ptr", &buffer, "UInt", bytes, "Ptr",0)
+		  return !this.hProcess ? "Handle Is closed: " this.hProcess : "Fail"
 		return numget(buffer, 0, Type)
 	}
 	; This is used to dump large chunks of memory. Values can later be retried from the buffer using AHK's numget()/strget()
@@ -160,15 +165,15 @@ class memory
 	ReadRawMemory(address, byref buffer, bytes := 4, aOffsets*)
 	{
 		VarSetCapacity(buffer, bytes)
-		if !DllCall("ReadProcessMemory", "UInt", this.hProcessCurrent, "UInt", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, "Ptr", &buffer, "UInt", bytes, "Ptr*", bytesRead)
-			return !this.hProcessCurrent ? "Handle Is closed: " this.hProcessCurrent : "Fail"
+		if !DllCall("ReadProcessMemory", "UInt", this.hProcess, "UInt", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, "Ptr", &buffer, "UInt", bytes, "Ptr*", bytesRead)
+			return !this.hProcess ? "Handle Is closed: " this.hProcess : "Fail"
 		return bytesRead
 	}
 
 	ReadRawMemoryTest(address, byref buffer, bytes := 4, byref bytesReadR := 0, aOffsets*)
 	{
 		VarSetCapacity(buffer, bytes)
-		if !DllCall("ReadProcessMemory", "UInt", this.hProcessCurrent, "UInt", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, "Ptr", &buffer, "UInt", bytes, "Ptr*", bytesRead)
+		if !DllCall("ReadProcessMemory", "UInt", this.hProcess, "UInt", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, "Ptr", &buffer, "UInt", bytes, "Ptr*", bytesRead)
 		{
 			if !bytesRead
 			{
@@ -198,12 +203,12 @@ class memory
 			Loop
 			{
 				; read a chunk of x size, rather than one/two bytes at a time, as each ReadProcessMemory call is relatively slow
-				success := DllCall("ReadProcessMemory", "UInt", this.hProcessCurrent, "UInt", address + (A_index - 1) * this.readChunkSize, "Ptr", &buffer, "Uint", this.readChunkSize, "Ptr", 0) 
+				success := DllCall("ReadProcessMemory", "UInt", this.hProcess, "UInt", address + (A_index - 1) * this.readChunkSize, "Ptr", &buffer, "Uint", this.readChunkSize, "Ptr", 0) 
 				if (ErrorLevel || !success)
 				{
-					if (A_Index = 1 && !this.hProcessCurrent)
-						return "Handle Is closed: " this.hProcessCurrent
-					else if (A_index = 1 && this.hProcessCurrent)
+					if (A_Index = 1 && !this.hProcess)
+						return "Handle Is closed: " this.hProcess
+					else if (A_index = 1 && this.hProcess)
 					 	return "Fail"
 					 else 
 					 	break
@@ -219,8 +224,8 @@ class memory
 		}
 		Else ; will read X length
 		{
-	        if !DllCall("ReadProcessMemory", "UInt", this.hProcessCurrent, "UInt", address, "Ptr", &buffer, "Uint", length * size, "Ptr", 0)   
-	        	return !this.hProcessCurrent ? "Handle Is closed: " this.hProcessCurrent : "Fail"
+	        if !DllCall("ReadProcessMemory", "UInt", this.hProcess, "UInt", address, "Ptr", &buffer, "Uint", length * size, "Ptr", 0)   
+	        	return !this.hProcess ? "Handle Is closed: " this.hProcess : "Fail"
 	        string := StrGet(&buffer, length, encoding)
 		}
 		return string				
@@ -228,7 +233,8 @@ class memory
 
 	; by default a null terminator is included at the end of written strings for writeString()
 	; This property can be changed i.e.
-	; memory.insertNullTerminator := False
+	; memory.insertNullTerminator := False ; This will change the property for all processes
+	; calc.insertNullTerminator := False ; Changes the property for just this process
 
 	writeString(address, string, encoding := "utf-8", aOffsets*)
 	{
@@ -236,7 +242,7 @@ class memory
 		requiredSize := StrPut(string, encoding) * encodingSize - (this.insertNullTerminator ? 0 : encodingSize)
 	    VarSetCapacity(buffer, requiredSize)
 	    StrPut(string, &buffer, this.insertNullTerminator ? StrLen(string) : StrLen(string) + 1, encoding)
-	    DllCall("WriteProcessMemory", "UInt", this.hProcessCurrent, "UInt", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, "Ptr", &buffer, "Uint", requiredSize, "Ptr*", BytesWritten)
+	    DllCall("WriteProcessMemory", "UInt", this.hProcess, "UInt", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, "Ptr", &buffer, "Uint", requiredSize, "Ptr*", BytesWritten)
 	    return BytesWritten
 	}
 
@@ -246,7 +252,7 @@ class memory
 	        return "Non Supported data type" ; Unsigned64 bit not supported by AHK
 	    VarSetCapacity(buffer, bytes)
         NumPut(value, buffer, 0, type)
-	  	return DllCall("WriteProcessMemory", "UInt", this.hProcessCurrent, "UInt", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, "Ptr", &buffer, "Uint", bytes, "Ptr", 0) 
+	  	return DllCall("WriteProcessMemory", "UInt", this.hProcess, "UInt", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, "Ptr", &buffer, "Uint", bytes, "Ptr", 0) 
 	}
 
 	; This can be used to read various numeric pointer types (the the other various read functions can do this too!)
@@ -296,7 +302,9 @@ class memory
 			? "GetWindowLong" 
 			: "GetWindowLongPtr", "Uint", hWnd, "Uint", -6) 
 	}
+}
 
+/*
 	; Return values
 	; -1 	An odd number of characters were passed via pattern
 	;		Ensure you use two digits to represent each byte i.e. 05, 0F and ??, and not 5, F or ?
@@ -341,8 +349,11 @@ class memory
 		return realNeedleSize
 	}
 
-	; need to setup module / memory area scanning, so it only reads addresses which have read access
 
+
+	; This function will only WORK with AHK 32 bit builds!
+	; I'll improve this another time
+	; need to setup module / memory area scanning, so it only reads addresses which have read access
 	patternScan(pattern, startAddress, maxOffsetMB := 0, byRef returnAddressAndOffset := 0, dumpSizeMB := 50)
 	{
 		realNeedleSize := this.setPattern(pattern, aOffsets, binaryNeedle)
@@ -365,8 +376,7 @@ class memory
 			{
 				if !bytesRead
 				{
-					msgbox completely failed 
-					return " completely failed "
+					return " read failed - Probably reading part an area which cannot be read"
 				}
 			}
 			;	msgbox % "here currentStartAddress "  chex(currentStartAddress) "`nbytesRead " bytesRead
@@ -380,9 +390,6 @@ class memory
 
 				if (-1 != foundOffset := this.scanInBuf(&Haystack, &binaryNeedle + aOffset.binNeedleStartOffset, haystackSizeBytes, aOffset.binNeedleSize, haystackOffset))
 				{
-					;msgbox % arrayIndex  "arrayIndex`n" 
-					;	. "foundOffset "foundOffset " aOffset.binNeedleGap " aOffset.binNeedleGap  " + " " haystackOffset " haystackOffset
-
 
 					if (arrayIndex = 1 || foundOffset = haystackOffset)
 					{		
@@ -411,12 +418,10 @@ class memory
 				
 				if (arrayIndex = 1) ; couldn't find the first part of the needle so dump the next chunk of memory
 				{
-					;msgbox fsd
 					break
 				}
 				else 		; the subsequent parts of the needle couldn't be found. So resume search from the address immediately next to where the first part of the needle was found
 				{	
-					;msgbox arrayIndex = %arrayIndex%
 					aOffset := aOffsets[arrayIndex := 1]
 					haystackOffset := currentStartOffstet
 				}
@@ -467,3 +472,5 @@ class memory
 	
 
 }
+
+*/

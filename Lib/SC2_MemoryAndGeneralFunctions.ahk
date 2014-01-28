@@ -2915,6 +2915,7 @@ DestroyOverlays()
 	global
 	; destroy minimap when alttabed out
 	; and at end of game
+	Try Gui, APMOverlay: Destroy 
 	Try Gui, MiniMapOverlay: Destroy 
 	Try Gui, IncomeOverlay: Destroy
 	Try Gui, ResourcesOverlay: Destroy
@@ -2925,7 +2926,7 @@ DestroyOverlays()
 	Try Gui, UnitOverlay: Destroy	
 	
 	; as these arent in the minimap thread, if that call it, it will jump out
-	local lOverlayFunctions := "DrawIncomeOverlay,DrawUnitOverlay,DrawResourcesOverlay"
+	local lOverlayFunctions := "DrawAPMOverlay,DrawIncomeOverlay,DrawUnitOverlay,DrawResourcesOverlay"
 				. ",DrawArmySizeOverlay,DrawWorkerOverlay,DrawIdleWorkersOverlay"
 	loop, parse, lOverlayFunctions, `,
 	{
@@ -2933,7 +2934,7 @@ DestroyOverlays()
 		if IsFunc(A_LoopField)
 			%A_LoopField%(-1)
 	}
-	ReDrawOverlays := ReDrawIncome := ReDrawResources 
+	ReDrawOverlays := ReDrawAPM := ReDrawIncome := ReDrawResources 
 				:= ReDrawArmySize := ReDrawWorker := ReDrawIdleWorkers 
 				:= RedrawUnit := ReDrawLocalPlayerColour := ReDrawMiniMap := True
 	return True ; used by shell to check thread actually ran the function
@@ -3609,7 +3610,7 @@ readConfigFile()
 	; This function will get return  the x,y coordinates for the top left, and bottom right of the 
 	; desktop screen (the area on both monitors)
 	DesktopScreenCoordinates(XminScreen, YminScreen, XmaxScreen, YmaxScreen)
-	list := "IncomeOverlay,ResourcesOverlay,ArmySizeOverlay,WorkerOverlay,IdleWorkersOverlay,UnitOverlay,LocalPlayerColourOverlay"
+	list := "APMOverlay,IncomeOverlay,ResourcesOverlay,ArmySizeOverlay,WorkerOverlay,IdleWorkersOverlay,UnitOverlay,LocalPlayerColourOverlay"
 	loop, parse, list, `,
 	{
 		IniRead, Draw%A_LoopField%, %config_file%, %section%, Draw%A_LoopField%, 0
@@ -3628,6 +3629,7 @@ readConfigFile()
 ;	IniRead, DrawWorkerOverlay, %config_file%, %section%, DrawWorkerOverlay, 1
 ;	IniRead, DrawIdleWorkersOverlay, %config_file%, %section%, DrawIdleWorkersOverlay, 1
 
+	IniRead, ToggleAPMOverlayKey, %config_file%, %section%, ToggleAPMOverlayKey, <#A
 	IniRead, ToggleUnitOverlayKey, %config_file%, %section%, ToggleUnitOverlayKey, <#U
 	IniRead, ToggleIdleWorkersOverlayKey, %config_file%, %section%, ToggleIdleWorkersOverlayKey, <#L
 	IniRead, ToggleMinimapOverlayKey, %config_file%, %section%, ToggleMinimapOverlayKey, <#H
@@ -3649,6 +3651,8 @@ readConfigFile()
 	IniRead, MiniMapRefresh, %config_file%, %section%, MiniMapRefresh, 300
 	IniRead, OverlayRefresh, %config_file%, %section%, OverlayRefresh, 1000
 	IniRead, UnitOverlayRefresh, %config_file%, %section%, UnitOverlayRefresh, 4500
+	
+	IniRead, overlayAPMTransparency, %config_file%, %section%, overlayAPMTransparency, 255
 	IniRead, overlayIncomeTransparency, %config_file%, %section%, overlayIncomeTransparency, 255
 	IniRead, overlayMatchTransparency, %config_file%, %section%, overlayMatchTransparency, 255
 	IniRead, overlayResourceTransparency, %config_file%, %section%, overlayResourceTransparency, 255

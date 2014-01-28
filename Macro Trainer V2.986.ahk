@@ -893,7 +893,7 @@ clock:
 		setLowLevelInputHooks(True)	
 
 		if WinActive(GameIdentifier)
-			ReDrawMiniMap := ReDrawIncome := ReDrawResources := ReDrawArmySize := ReDrawWorker := RedrawUnit := ReDrawIdleWorkers := ReDrawLocalPlayerColour := 1
+			ReDrawAPM := ReDrawMiniMap := ReDrawIncome := ReDrawResources := ReDrawArmySize := ReDrawWorker := RedrawUnit := ReDrawIdleWorkers := ReDrawLocalPlayerColour := 1
 		if (MaxWindowOnStart && time < 5 && !WinActive(GameIdentifier)) 
 		{	
 			WinActivate, %GameIdentifier%
@@ -2099,6 +2099,8 @@ overlay_timer: 	;DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdent=0, Bac
 	{
 		If DrawIncomeOverlay
 			DrawIncomeOverlay(ReDrawIncome, IncomeOverlayScale, OverlayIdent, OverlayBackgrounds, Dragoverlay)
+		;If DrawAPMOverlay
+		;	DrawAPMOverlay(ReDrawAPM, APMOverlayScale, OverlayIdent, modeAPM_EPM, Dragoverlay)
 		If DrawResourcesOverlay
 			DrawResourcesOverlay(ReDrawResources, ResourcesOverlayScale, OverlayIdent, OverlayBackgrounds, Dragoverlay)
 		If DrawArmySizeOverlay
@@ -7476,7 +7478,105 @@ DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Dr
 	DeleteObject(hbm)   ; needed else eats ram 	; Now the bitmap may be deleted
 	DeleteDC(hdc) ; Also the device context related to the bitmap may be deleted
 	Return
-}	
+}
+
+DrawAPMOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, modeAPM_EPM=0,Drag=0)
+{	global aLocalPlayer, aHexColours, aPlayer, GameIdentifier, APMOverlayX, APMOverlayY, config_file, MatrixColour, a_pBitmap, overlayAPMTransparency
+	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0
+
+	DestX := i := 0
+	Options := " cFFFFFFFF r4 s" 17*UserScale					;these cant be static	
+	If (Redraw = -1)
+	{
+		Try Gui, APMOverlay: Destroy
+		overlayCreated := False
+		Redraw := 0
+		Return
+	}		
+	Else if (ReDraw AND WinActive(GameIdentifier))
+	{
+		Try Gui, APMOverlay: Destroy
+		overlayCreated := False
+		Redraw := 0
+	}	
+	If (!overlayCreated)
+	{
+		Gui, APMOverlay: -Caption Hwndhwnd1 +E0x20 +E0x80000 +LastFound  +ToolWindow +AlwaysOnTop
+		Gui, APMOverlay: Show, NA X%APMOverlayX% Y%APMOverlayY% W400 H400, APMOverlay
+	;	hwnd1 := WinExist()
+		OnMessage(0x201, "OverlayMove_LButtonDown")
+		OnMessage(0x20A, "OverlayResize_WM_MOUSEWHEEL")
+		overlayCreated := True
+	}
+	If (Drag AND !DragPrevious)
+	{	DragPrevious := 1
+		Gui, APMOverlay: -E0x20
+	}
+	Else if (!Drag AND DragPrevious)
+	{	DragPrevious := 0
+		Gui, APMOverlay: +E0x20 +LastFound
+		WinGetPos,APMOverlayX,APMOverlayY,w,h		
+		IniWrite, %APMOverlayX%, %config_file%, Overlays, APMOverlayX
+		Iniwrite, %APMOverlayY%, %config_file%, Overlays, APMOverlayY		
+	}		
+	hbm := CreateDIBSection(A_ScreenWidth, A_ScreenHeight)
+	hdc := CreateCompatibleDC()
+	obm := SelectObject(hdc, hbm)
+	G := Gdip_GraphicsFromHDC(hdc)
+	DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0)	
+	For slot_number in aPlayer
+	{
+		If ( aLocalPlayer["Team"] != aPlayer[slot_number, "Team"] && isPlayerActive(slot_number))
+		{				
+			DestY := i ? i*Height : 0
+
+			If (PlayerIdentifier = 1 Or PlayerIdentifier = 2 )
+			{	
+				IF (PlayerIdentifier = 2)
+					OptionsName := " Bold cFF" aHexColours[aPlayer[slot_number, "Colour"]] " r4 s" 17*UserScale
+				Else IF (PlayerIdentifier = 1)
+					OptionsName := " Bold cFFFFFFFF r4 s" 17*UserScale	
+				pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Mineral",Background]
+				SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
+				Width *= UserScale *.5, Height *= UserScale *.5		
+				gdip_TextToGraphics(G, getPlayerName(slot_number), "x0" "y"(DestY+(Height//4))  OptionsName, Font)
+				if !LongestNameSize
+				{
+					LongestNameData :=	gdip_TextToGraphics(G, MT_CurrentGame.HasKey("LongestEnemyName") ? MT_CurrentGame.LongestEnemyName : MT_CurrentGame.LongestEnemyName := getLongestEnemyPlayerName(aPlayer)
+															, "x0" "y"(DestY+(Height//4))  " Bold c00FFFFFF r4 s" 17*UserScale	, Font) ; text is invisible ;get string size	
+					StringSplit, LongestNameSize, LongestNameData, | ;retrieve the length of the string
+					LongestNameSize := LongestNameSize3
+				}
+				DestX := LongestNameSize+10*UserScale
+			}
+			Else ;If (PlayerIdentifier = 3)
+			{		
+				pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"RaceFlat"]
+				SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
+				Width *= UserScale *.5, Height *= UserScale *.5	
+				Gdip_DrawImage(G, pBitmap, 12*UserScale, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight, MatrixColour[aPlayer[slot_number, "Colour"]])
+				DestX := Width+10*UserScale
+
+			}
+
+			TextData := Gdip_TextToGraphics(G, getPlayerCurrentAPM(slot_number), "x"DestX "y"DestY Options, Font)
+			; 24.500000|0.000000|25.140299|21.117188|2|1			
+			StringSplit, TextSize, TextData, | ;retrieve the length of the string
+			;Height := TextSize4
+			if (WindowWidth < CurrentWidth := DestX+(20*UserScale) + TextSize3)
+				WindowWidth := CurrentWidth
+			Height += 5*userscale
+			i++ 
+		}
+	}
+	WindowHeight := DestY+Height
+	Gdip_DeleteGraphics(G)
+	UpdateLayeredWindow(hwnd1, hdc,,,WindowWidth,WindowHeight, overlayAPMTransparency)
+	SelectObject(hdc, obm) ; needed else eats ram ; Select the object back into the hdc
+	DeleteObject(hbm)   ; needed else eats ram 	; Now the bitmap may be deleted
+	DeleteDC(hdc) ; Also the device context related to the bitmap may be deleted
+	Return
+}		
 
 DrawResourcesOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Drag=0)
 {	global aLocalPlayer, aHexColours, aPlayer, GameIdentifier, config_file, ResourcesOverlayX, ResourcesOverlayY, MatrixColour, a_pBitmap, overlayResourceTransparency
@@ -12615,5 +12715,3 @@ loop
 		break
 	sleep 700
 }
-
-
