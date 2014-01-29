@@ -116,7 +116,7 @@ Else
 
 	debug := True
 	debug_name := "Kalamity"
-	hotkey, ^+!F12, g_GiveLocalPalyerResources
+	hotkey, ^+!F12, g_GiveLocalPlayerResources
 	hotkey, >!F12, g_testKeydowns
 }
 
@@ -237,12 +237,13 @@ InstallSC2Files()
 #Include <Gdip>
 #Include <SC2_MemoryAndGeneralFunctions>
 #Include <classInput>
+#Include <setLowLevelInputHooks> ;In the library folder
 #include %A_ScriptDir%\Included Files\Colour Selector.ahk
 #include %A_ScriptDir%\Included Files\Class_BufferInputFast.AHk
 #include %A_ScriptDir%\Included Files\Class_ChangeButtonNames.AHk
 ;#Include <xml> ; in the local lib folder
 
-#Include <setLowLevelInputHooks> ;In the library folder
+
 
 CreatepBitmaps(a_pBitmap, aUnitID)
 aUnitInfo := []
@@ -397,7 +398,7 @@ If WinGet("EXStyle", GameIdentifier) = SC2WindowEXStyles.FullScreen
 && (DrawMiniMap || DrawAlerts || DrawSpawningRaces
 || DrawIncomeOverlay || DrawResourcesOverlay || DrawArmySizeOverlay
 || DrawWorkerOverlay || DrawIdleWorkersOverlay || DrawLocalPlayerColourOverlay
-|| DrawUnitOverlay)
+|| DrawUnitOverlay || DrawAPMOverlay)
 && !MT_Restart && A_IsCompiled ; so not restarted via hotkey or icon 
 {
 	ChangeButtonNames.set("SC2 Is NOT in 'windowed Fullscreen' mode!", "Disable", "Continue") 
@@ -413,7 +414,7 @@ If WinGet("EXStyle", GameIdentifier) = SC2WindowEXStyles.FullScreen
 	{
 		DrawMiniMap := DrawAlerts := DrawSpawningRaces := DrawIncomeOverlay := DrawResourcesOverlay
 		:= DrawArmySizeOverlay := DrawWorkerOverlay := DrawIdleWorkersOverlay 
-		:= DrawLocalPlayerColourOverlay := DrawUnitOverlay := 0
+		:= DrawLocalPlayerColourOverlay := DrawUnitOverlay := DrawAPMOverlay := 0
 		gosub, ini_settings_write
 	}
 }
@@ -506,7 +507,7 @@ g_LbuttonDown:	;Get the location of a dragbox
 	input.setLastLeftClickPos()
 return 
 
-g_GiveLocalPalyerResources:
+g_GiveLocalPlayerResources:
 	SetPlayerMinerals()
 	SetPlayerGas()
 return	
@@ -613,6 +614,7 @@ FineMouseMove(Hotkey)
 		mousemove, MX, MY-1
 	else if (Hotkey = "Down")
 		mousemove, MX, MY+1
+	return
 }
 
 g_FindTestPixelColourMsgbox:
@@ -1773,7 +1775,7 @@ money:
 			}
 			else 	; this ensures follow up warnings are not delayed by waiting for additional seconds before running timmer
 				settimer, money, 500
-			Mineral_i ++
+			Mineral_i++
 	}
 	else
 	{
@@ -1795,7 +1797,7 @@ gas:
 			}
 			if (Gas_i >= sec_gas )
 				settimer, gas, 1000
-			Gas_i ++
+			Gas_i++
 	}
 	else
 	{
@@ -1821,7 +1823,7 @@ scvidle:
 		}
 		Else
 			settimer, scvidle, 500
-		Idle_i ++
+		Idle_i++
 	}
 	else
 	{
@@ -1837,7 +1839,7 @@ inject:
 	if ( time - inject_set >= manual_inject_time )		;for manual dumb inject alarm  (i.e. dings every X seconds)
 	{
 		inject_timer := 1
-		inject_set:=time
+		inject_set := time
 
 		If W_inject_ding_on
 			SoundPlay, %A_Temp%\Windows Ding.wav  ;SoundPlay *-1
@@ -2026,9 +2028,6 @@ worker_count:
 		tSpeak(newcount "Workers")
 return	
 
-; Not using this anymore although I think it works 100%
-; safer just to use a slow timer, as dont wont to be in the game and not have the input hooks installed!
-
 ; used to monitor the activation/min of the sc2 window
 ; Also for removing and reinstalling hooks
 ; for drawing overlays (rather than a timer)
@@ -2047,7 +2046,7 @@ ShellMessage(wParam, lParam)
 		{
 			ReDrawOverlays  := True
 			DestroyOverlays()
-			setLowLevelInputHooks(False)
+			setLowLevelInputHooks(False) 	; remove hooks so ahk list box doesnt lag
 
 		}
 		else if (SC2hWnd = lParam && getTime())
@@ -5316,7 +5315,7 @@ Test_VOL:
 		}
 	}	
 	;Random, Rand_joke, 1, 8
-	Rand_joke ++
+	Rand_joke++
 	If ( Rand_joke = 1 )
 		tSpeak("Protoss is OPee", TmpSpeechVol)
 	Else If ( Rand_joke = 2 )
@@ -6994,6 +6993,7 @@ autoWorkerProductionCheck()
 	return
 }
 
+; Used for Reversing SC
 openCloseProcess(programOrHandle := "", Close := False)
 {
 	if close 
@@ -7005,12 +7005,13 @@ openCloseProcess(programOrHandle := "", Close := False)
 	}
 }
 
-
+; Used for RE
 SuspendProcess(hwnd)
 {
 	return DllCall("ntdll\NtSuspendProcess","uint",hwnd)
 }
 
+; Used for RE
 ResumeProcess(hwnd)
 {
 	return DllCall("ntdll\NtResumeProcess","uint",hwnd)
@@ -7048,26 +7049,6 @@ critical off
 return
 
 */
-
-
-
-WriteMemoryT(program, value, address, size := 4, aOffsets*)
-{
-    winget, pid, PID, %PROGRAM%
-   	address += getProcessBaseAddress(program)
-   	if aOffsets.maxIndex()
-   	{
-   		lastOffset := aOffsets.Remove() ;remove the highest key so can use pointer to find address
-		if aOffsets.maxIndex()
-			address := pointer(program, address, aOffsets*) ; pointer function requires at least one offset
-		address += lastOffset		
-	}
-
-    ProcessHandle := DllCall("OpenProcess", "int", 2035711, "char", 0, "UInt", PID, "UInt")
-    DllCall("WriteProcessMemory", "UInt", ProcessHandle, "UInt", address, "ptr*", value, "Uint", size, "Uint*", bytesWritten)
-    DllCall("CloseHandle", "int", ProcessHandle)
-	return bytesWritten
-}
 
 
 /*
@@ -7283,7 +7264,7 @@ OverlayResize_WM_MOUSEWHEEL(wParam) 		;(wParam, lParam) 0x20A =mousewheel
 	local WheelMove, ActiveTitle, newScale, Scale
 	WheelMove := wParam > 0x7FFFFFFF ? HiWord(-(~wParam)-1)/120 :  HiWord(wParam)/120 ;get the higher order word & /120 = number of rotations
 	WinGetActiveTitle, ActiveTitle 			;downard rotations are -negative numbers
-	if ActiveTitle in IncomeOverlay,ResourcesOverlay,ArmySizeOverlay,WorkerOverlay,IdleWorkersOverlay,UnitOverlay,LocalPlayerColourOverlay ; here cos it can get non overlay titles
+	if ActiveTitle in IncomeOverlay,ResourcesOverlay,ArmySizeOverlay,WorkerOverlay,IdleWorkersOverlay,UnitOverlay,LocalPlayerColourOverlay,APMOverlay ; here cos it can get non overlay titles
 	{	
 		newScale := %ActiveTitle%Scale + WheelMove*.05
 		if (newScale >= .5)
@@ -8739,15 +8720,9 @@ for index, object in aQuickSelect[aLocalPlayer.Race]
 		break
 	}
 }
-if (item = "")
+if (item = "") ; item should never be zero but im just leaving it like this just in case as i cant be bothered checking
 	return 
-settimer, testrecpver, -10000
 quickSelect(aQuickSelect[aLocalPlayer.Race, item])
-settimer, testrecpver, off
-return 
-
-testrecpver:
-input.RevertKeyState()
 return 
 
 quickSelect(aDeselect)
@@ -9421,6 +9396,7 @@ debugData()
 ; and then send it back afterwards
 ; Just realised that if the person is chatting to someone else, e.g. a friend or 
 ; sending message to a player it will by default send it to an ally
+; so not using this
 class ChatString
 {
 	static ChatString, ChatStatus
