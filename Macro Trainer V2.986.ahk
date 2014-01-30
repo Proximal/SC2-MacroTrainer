@@ -4175,8 +4175,12 @@ try
 				Gui, Add, Slider, ToolTip  NoTicks w140 xp yp  Hidden vOverlayLocalColourTransparency, % ceil(overlayLocalColourTransparency / 2.55) 
 				Gui, Add, Slider, ToolTip  NoTicks w140 xp yp  Hidden VOverlayMinimapTransparency, % ceil(overlayMinimapTransparency / 2.55) 
 
+			Gui, Add, GroupBox, xs ys+190 w170 h90, Include Self in:		
+				Gui, Add, Checkbox, xp+10 yp+20 vDrawLocalPlayerIncome Checked%drawLocalPlayerIncome%, Income Overlay
+				Gui, Add, Checkbox, xp y+10 vDrawLocalPlayerResources Checked%drawLocalPlayerResources%, Resource Overlay
+				Gui, Add, Checkbox, xp y+10 vDrawLocalPlayerArmy Checked%drawLocalPlayerArmy%, Army Size Overlay
 
-			Gui, Add, GroupBox, xs ys+190 w170 h125, Refresh Rates:
+			Gui, Add, GroupBox, xs ys+290 w170 h125, Refresh Rates:
 			Gui, Add, Text, XS+20  yp+25, General:
 				Gui, Add, Edit, Number Right xp+80 yp-2 w55 vTT_OverlayRefresh
 					Gui, Add, UpDown,  Range50-5000 vOverlayRefresh, %OverlayRefresh%
@@ -4529,6 +4533,8 @@ try
 							. "`nOrange - Transport unload"
 							. "`nYellow - Nuclear strike"
 							. "`nRed - Attack move"
+
+	drawLocalPlayerIncome_TT := drawLocalPlayerResources_TT := drawLocalPlayerArmy_TT := "Displays your own values at the bottom of the overlay."						
 
 	DrawPlayerCameras_TT := "Draws the enemy's camera on the minimap, i.e. it indicates the map area the player is currently looking at."
 
@@ -7615,10 +7621,12 @@ DrawResourcesOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0
 	G := Gdip_GraphicsFromHDC(hdc)
 	DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0)		
 
-	;For slot_number in aPlayer
+
+	; Users have requested that their own local player appear in some overlays
+	; to do this i now iterate the aEnemyAndLocalPlayer rather than the 
+	; aPlayer. Hence this is why i needlessly lookup items like race using aPlayer[slot_number, "Race"] rather than player["Race"]
 	For index, player in aEnemyAndLocalPlayer
 	{	
-		;If ( aLocalPlayer["Team"] <> aPlayer[slot_number, "Team"] )
 		if ((slot_number := player["Slot"]) != aLocalPlayer["Slot"] || drawLocalPlayerResources)
 		{	
 			DestY := i ? i*Height : 0
