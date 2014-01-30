@@ -854,7 +854,8 @@ clock:
 								; An easy way to have the info cleared each match
 		Global aUnitModel := []
 		global aPlayer, aLocalPlayer
-		getPlayers(aPlayer, aLocalPlayer)
+		global aEnemyAndLocalPlayer
+		getPlayers(aPlayer, aLocalPlayer, aEnemyAndLocalPlayer)
 		GameType := GetGameType(aPlayer)
 		If IsInList(aLocalPlayer.Type, "Referee", "Spectator")
 			return
@@ -2760,6 +2761,9 @@ ini_settings_write:
 	Iniwrite, %MiniMapRefresh%, %config_file%, %section%, MiniMapRefresh	
 	Iniwrite, %OverlayRefresh%, %config_file%, %section%, OverlayRefresh	
 	Iniwrite, %UnitOverlayRefresh%, %config_file%, %section%, UnitOverlayRefresh
+	Iniwrite, %drawLocalPlayerResources%, %config_file%, %section%, drawLocalPlayerResources
+	Iniwrite, %drawLocalPlayerIncome%, %config_file%, %section%, drawLocalPlayerIncome
+	Iniwrite, %drawLocalPlayerArmy%, %config_file%, %section%, drawLocalPlayerArmy
 
 	; convert from 0-100 to 0-255
 	loopList := "overlayIncomeTransparency,overlayMatchTransparency,overlayResourceTransparency,overlayArmyTransparency,overlayHarvesterTransparency,overlayIdleWorkerTransparency,overlayLocalColourTransparency,overlayMinimapTransparency"
@@ -7347,6 +7351,7 @@ DrawIdleWorkersOverlay(ByRef Redraw, UserScale=1,Drag=0, expand=1)
 }
 DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Drag=0)
 {	global aLocalPlayer, aHexColours, aPlayer, GameIdentifier, IncomeOverlayX, IncomeOverlayY, config_file, MatrixColour, a_pBitmap, overlayIncomeTransparency
+	, drawLocalPlayerIncome
 	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0
 
 	DestX := i := 0
@@ -7389,9 +7394,9 @@ DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Dr
 	obm := SelectObject(hdc, hbm)
 	G := Gdip_GraphicsFromHDC(hdc)
 	DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0)	
-	For slot_number in aPlayer
+	For index, player in aEnemyAndLocalPlayer
 	{
-		If ( aLocalPlayer["Team"] <> aPlayer[slot_number, "Team"] )
+		if ((slot_number := player["Slot"]) != aLocalPlayer["Slot"] || drawLocalPlayerIncome)
 		{				
 			DestY := i ? i*Height : 0
 
@@ -7407,8 +7412,11 @@ DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Dr
 				gdip_TextToGraphics(G, getPlayerName(slot_number), "x0" "y"(DestY+(Height//4))  OptionsName, Font)
 				if !LongestNameSize
 				{
-					LongestNameData :=	gdip_TextToGraphics(G, MT_CurrentGame.HasKey("LongestEnemyName") ? MT_CurrentGame.LongestEnemyName : MT_CurrentGame.LongestEnemyName := getLongestEnemyPlayerName(aPlayer)
-															, "x0" "y"(DestY+(Height//4))  " Bold c00FFFFFF r4 s" 17*UserScale	, Font) ; text is invisible ;get string size	
+					if drawLocalPlayerIncome 
+						longestName := MT_CurrentGame.HasKey("LongestName") ? MT_CurrentGame.LongestName : MT_CurrentGame.LongestName := getLongestPlayerName(aPlayer, True)
+					else 
+						longestName := MT_CurrentGame.HasKey("LongestEnemyName") ? MT_CurrentGame.LongestEnemyName : MT_CurrentGame.LongestEnemyName := getLongestPlayerName(aPlayer)					
+					LongestNameData :=	gdip_TextToGraphics(G, longestName, "x0" "y"(DestY+(Height//4))  " Bold c00FFFFFF r4 s" 17*UserScale	, Font) ; text is invisible ;get string size	
 					StringSplit, LongestNameSize, LongestNameData, | ;retrieve the length of the string
 					LongestNameSize := LongestNameSize3
 				}
@@ -7523,7 +7531,7 @@ DrawAPMOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, modeAPM_EPM=0,Drag
 				gdip_TextToGraphics(G, getPlayerName(slot_number), "x0" "y"(DestY+(Height//4))  OptionsName, Font)
 				if !LongestNameSize
 				{
-					LongestNameData :=	gdip_TextToGraphics(G, MT_CurrentGame.HasKey("LongestEnemyName") ? MT_CurrentGame.LongestEnemyName : MT_CurrentGame.LongestEnemyName := getLongestEnemyPlayerName(aPlayer)
+					LongestNameData :=	gdip_TextToGraphics(G, MT_CurrentGame.HasKey("LongestEnemyName") ? MT_CurrentGame.LongestEnemyName : MT_CurrentGame.LongestEnemyName := getLongestPlayerName(aPlayer)
 															, "x0" "y"(DestY+(Height//4))  " Bold c00FFFFFF r4 s" 17*UserScale	, Font) ; text is invisible ;get string size	
 					StringSplit, LongestNameSize, LongestNameData, | ;retrieve the length of the string
 					LongestNameSize := LongestNameSize3
@@ -7561,6 +7569,7 @@ DrawAPMOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, modeAPM_EPM=0,Drag
 
 DrawResourcesOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Drag=0)
 {	global aLocalPlayer, aHexColours, aPlayer, GameIdentifier, config_file, ResourcesOverlayX, ResourcesOverlayY, MatrixColour, a_pBitmap, overlayResourceTransparency
+			, drawLocalPlayerResources
 	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0		
 
 	DestX := i := 0
@@ -7606,10 +7615,13 @@ DrawResourcesOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0
 	G := Gdip_GraphicsFromHDC(hdc)
 	DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0)		
 
-	For slot_number in aPlayer
-	{
-		If ( aLocalPlayer["Team"] <> aPlayer[slot_number, "Team"] )
-		{	DestY := i ? i*Height : 0
+	;For slot_number in aPlayer
+	For index, player in aEnemyAndLocalPlayer
+	{	
+		;If ( aLocalPlayer["Team"] <> aPlayer[slot_number, "Team"] )
+		if ((slot_number := player["Slot"]) != aLocalPlayer["Slot"] || drawLocalPlayerResources)
+		{	
+			DestY := i ? i*Height : 0
 
 			If (PlayerIdentifier = 1 Or PlayerIdentifier = 2 )
 			{	
@@ -7623,8 +7635,11 @@ DrawResourcesOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0
 				gdip_TextToGraphics(G, getPlayerName(slot_number), "x0" "y"(DestY+(Height//4))  OptionsName, Font) ;get string size	
 				if !LongestNameSize
 				{
-					LongestNameData :=	gdip_TextToGraphics(G, MT_CurrentGame.HasKey("LongestEnemyName") ? MT_CurrentGame.LongestEnemyName : MT_CurrentGame.LongestEnemyName := getLongestEnemyPlayerName(aPlayer) 
-					, "x0" "y"(DestY+(Height//4))  " Bold c00FFFFFF r4 s" 17*UserScale	, Font) ; text is invisible ;get string size	
+					if drawLocalPlayerResources 
+						longestName := MT_CurrentGame.HasKey("LongestName") ? MT_CurrentGame.LongestName : MT_CurrentGame.LongestName := getLongestPlayerName(aPlayer, True)
+					else 
+						longestName := MT_CurrentGame.HasKey("LongestEnemyName") ? MT_CurrentGame.LongestEnemyName : MT_CurrentGame.LongestEnemyName := getLongestPlayerName(aPlayer)
+					LongestNameData :=	gdip_TextToGraphics(G, longestName, "x0" "y"(DestY+(Height//4))  " Bold c00FFFFFF r4 s" 17*UserScale	, Font) ; text is invisible ;get string size	
 					StringSplit, LongestNameSize, LongestNameData, | ;retrieve the length of the string
 					LongestNameSize := LongestNameSize3
 				}
@@ -7682,6 +7697,7 @@ DrawResourcesOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0
 
 DrawArmySizeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Drag=0)
 {	global aLocalPlayer, aHexColours, aPlayer, GameIdentifier, config_file, ArmySizeOverlayX, ArmySizeOverlayY, MatrixColour, a_pBitmap, overlayArmyTransparency
+	, drawLocalPlayerArmy
 	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0	
 		
 	DestX := i := 0
@@ -7723,9 +7739,9 @@ DrawArmySizeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,
 	obm := SelectObject(hdc, hbm)
 	G := Gdip_GraphicsFromHDC(hdc)
 	DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0)
-	For slot_number in aPlayer
+	For index, player in aEnemyAndLocalPlayer
 	{	
-		If ( aLocalPlayer["Team"]  <> aPlayer[slot_number, "Team"] )
+		if ((slot_number := player["Slot"]) != aLocalPlayer["Slot"] || drawLocalPlayerArmy)
 		{	
 		;	DestY := i ? i*Height + 5*UserScale : 0
 			DestY := i ? i*Height : 0
@@ -7742,8 +7758,12 @@ DrawArmySizeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,
 				gdip_TextToGraphics(G, getPlayerName(slot_number), "x0" "y"(DestY+(Height//4))  OptionsName, Font)		
 				if !LongestNameSize
 				{
-					LongestNameData :=	gdip_TextToGraphics(G, MT_CurrentGame.HasKey("LongestEnemyName") ? MT_CurrentGame.LongestEnemyName : MT_CurrentGame.LongestEnemyName := getLongestEnemyPlayerName(aPlayer)
-															, "x0" "y"(DestY+(Height//4))  " Bold c00FFFFFF r4 s" 17*UserScale	, Font) ; text is invisible ;get string size	
+					if drawLocalPlayerArmy 
+						longestName := MT_CurrentGame.HasKey("LongestName") ? MT_CurrentGame.LongestName : MT_CurrentGame.LongestName := getLongestPlayerName(aPlayer, True)
+					else 
+						longestName := MT_CurrentGame.HasKey("LongestEnemyName") ? MT_CurrentGame.LongestEnemyName : MT_CurrentGame.LongestEnemyName := getLongestPlayerName(aPlayer)
+
+					LongestNameData :=	gdip_TextToGraphics(G, longestName, "x0" "y"(DestY+(Height//4))  " Bold c00FFFFFF r4 s" 17*UserScale	, Font) ; text is invisible ;get string size	
 					StringSplit, LongestNameSize, LongestNameData, | ;retrieve the length of the string
 					LongestNameSize := LongestNameSize3
 				}
@@ -10487,13 +10507,16 @@ FilterUnitsOld(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aUnitPanel
 	}
 	return
 }
-
-getLongestEnemyPlayerName(aPlayer)
+; returns longest player name in enemy team and can include the local player for overlays
+getLongestPlayerName(aPlayer, includeLocalPlayer := False)
 {
 	localTeam := getPlayerTeam(getLocalPlayerNumber())
-	for index, Player in aPlayer
-		if (player.team != localTeam && StrLen(player.name) > StrLen(LongestName))
+	for slotNumber, Player in aPlayer
+	{
+		if ((player.team != localTeam || (slotNumber = aLocalPlayer["Slot"] &&includeLocalPlayer )) 
+		&& StrLen(player.name) > StrLen(LongestName))
 			LongestName := player.name
+	}
 	return player.name
 }
 
@@ -10562,7 +10585,7 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 		;	StringSplit, TextSize, TextData, | ;retrieve the length of the string		
 			if !LongestNameSize
 			{
-				LongestNameData :=	gdip_TextToGraphics(G, MT_CurrentGame.HasKey("LongestEnemyName") ? MT_CurrentGame.LongestEnemyName : MT_CurrentGame.LongestEnemyName := getLongestEnemyPlayerName(aPlayer)
+				LongestNameData :=	gdip_TextToGraphics(G, MT_CurrentGame.HasKey("LongestEnemyName") ? MT_CurrentGame.LongestEnemyName : MT_CurrentGame.LongestEnemyName := getLongestPlayerName(aPlayer)
 														, "x0" "y"(DestY)  " Bold c00FFFFFF r4 s" 17*UserScale	, Font) ; text is invisible ;get string size	
 				StringSplit, LongestNameSize, LongestNameData, | ;retrieve the length of the string
 				LongestNameSize := LongestNameSize3
@@ -10847,7 +10870,7 @@ DrawUnitOverlayOld(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 		;	StringSplit, TextSize, TextData, | ;retrieve the length of the string		
 			if !LongestNameSize
 			{
-				LongestNameData :=	gdip_TextToGraphics(G, MT_CurrentGame.HasKey("LongestEnemyName") ? MT_CurrentGame.LongestEnemyName : MT_CurrentGame.LongestEnemyName := getLongestEnemyPlayerName(aPlayer)
+				LongestNameData :=	gdip_TextToGraphics(G, MT_CurrentGame.HasKey("LongestEnemyName") ? MT_CurrentGame.LongestEnemyName : MT_CurrentGame.LongestEnemyName := getLongestPlayerName(aPlayer)
 														, "x0" "y"(DestY)  " Bold c00FFFFFF r4 s" 17*UserScale	, Font) ; text is invisible ;get string size	
 				StringSplit, LongestNameSize, LongestNameData, | ;retrieve the length of the string
 				LongestNameSize := LongestNameSize3

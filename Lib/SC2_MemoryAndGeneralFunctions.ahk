@@ -690,7 +690,7 @@ oPlayerStatus := {	  0: "Unused"
 
 unused when a plyer leaves on the replay
 I wonder if the structure is more is just active and left
-*/
+
 
 getPlayerActiveStatus(i)
 {	global
@@ -701,6 +701,7 @@ getPlayerActiveStatus(i)
 
 	Return oPlayerStatus[ mod(ReadMemory((B_pStructure + O_pStatus) + (i-1) * S_pStructure, GameIdentifier, 1), 4) ]
 }
+*/
 
 isPlayerActive(player)
 {
@@ -2829,9 +2830,9 @@ CreatepBitmaps(byref a_pBitmap, aUnitID)
 ;----------------------
 ;	player_team_sorter
 ;-----------------------
-getPlayers(byref aPlayer, byref aLocalPlayer)
+getPlayers(byref aPlayer, byref aLocalPlayer, byref aEnemyAndLocalPlayer := "")
 {
-	aPlayer := [], aLocalPlayer := []
+	aPlayer := [], aLocalPlayer := [], aEnemyAndLocalPlayer := []
 	; this should probably be 15, as I skip the first always neutral player in my player functions
 	Loop, 15	;doing it this way allows for custom games with blank slots ;can get weird things if 16 (but filtering them for nonplayers)
 	{
@@ -2842,6 +2843,14 @@ getPlayers(byref aPlayer, byref aLocalPlayer)
 		If (A_Index = getLocalPlayerNumber()) OR (debug AND getPlayerName(A_Index) == debug_name)
 			aLocalPlayer :=  new c_Player(A_Index)
 	}
+	for slotNumber, player in aPlayer
+	{
+		if player.Team != aLocalPlayer.Team 
+			aEnemyAndLocalPlayer.insert(player)
+	}
+	; so local player is last in this object so when iterating for overlays local player shows up last
+	; but cant use the key as the slot number for this object!!!
+	aEnemyAndLocalPlayer.Insert(aLocalPlayer) 
 	return	
 }
 
@@ -3651,6 +3660,9 @@ readConfigFile()
 	IniRead, MiniMapRefresh, %config_file%, %section%, MiniMapRefresh, 300
 	IniRead, OverlayRefresh, %config_file%, %section%, OverlayRefresh, 1000
 	IniRead, UnitOverlayRefresh, %config_file%, %section%, UnitOverlayRefresh, 4500
+	IniRead, drawLocalPlayerResources, %config_file%, %section%, drawLocalPlayerResources, 0
+	IniRead, drawLocalPlayerIncome, %config_file%, %section%, drawLocalPlayerIncome, 0
+	IniRead, drawLocalPlayerArmy, %config_file%, %section%, drawLocalPlayerArmy, 0
 	
 	IniRead, overlayAPMTransparency, %config_file%, %section%, overlayAPMTransparency, 255
 	IniRead, overlayIncomeTransparency, %config_file%, %section%, overlayIncomeTransparency, 255
