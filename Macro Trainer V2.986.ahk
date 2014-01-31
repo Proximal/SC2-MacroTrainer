@@ -4360,7 +4360,7 @@ try
 	 	#UnitHighlightList%A_Index%Colour_TT := "Click Me!`n`nUnits of this type will appear this colour."
 	}
 
-	DrawAPMOverlay_TT := "This enables/disabled the overlay."
+	DrawAPMOverlay_TT := "This enables/disables the overlay."
 					. "`nThe mode can be set with via the 'APM overlay mode' checkbox on right (under 'Overlays Misc')"
 
 	DrawWorkerOverlay_TT := "Displays your current harvester count with a worker icon"
@@ -12748,4 +12748,3 @@ loop
 	sleep 700
 }
 
-f1:: msgbox % getPlayerCurrentAPM()
