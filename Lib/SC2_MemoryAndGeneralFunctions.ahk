@@ -3619,7 +3619,7 @@ readConfigFile()
 	; This function will get return  the x,y coordinates for the top left, and bottom right of the 
 	; desktop screen (the area on both monitors)
 	DesktopScreenCoordinates(XminScreen, YminScreen, XmaxScreen, YmaxScreen)
-	list := "APMOverlay,IncomeOverlay,ResourcesOverlay,ArmySizeOverlay,WorkerOverlay,IdleWorkersOverlay,UnitOverlay,LocalPlayerColourOverlay"
+	list := "APMOverlay,IncomeOverlay,ResourcesOverlay,ArmySizeOverlay,WorkerOverlay,IdleWorkersOverlay,UnitOverlay,LocalPlayerColourOverlay,APMOverlay"
 	loop, parse, list, `,
 	{
 		IniRead, Draw%A_LoopField%, %config_file%, %section%, Draw%A_LoopField%, 0
@@ -3660,6 +3660,7 @@ readConfigFile()
 	IniRead, MiniMapRefresh, %config_file%, %section%, MiniMapRefresh, 300
 	IniRead, OverlayRefresh, %config_file%, %section%, OverlayRefresh, 1000
 	IniRead, UnitOverlayRefresh, %config_file%, %section%, UnitOverlayRefresh, 4500
+	IniRead, APMOverlayMode, %config_file%, %section%, APMOverlayMode, 0
 	IniRead, drawLocalPlayerResources, %config_file%, %section%, drawLocalPlayerResources, 0
 	IniRead, drawLocalPlayerIncome, %config_file%, %section%, drawLocalPlayerIncome, 0
 	IniRead, drawLocalPlayerArmy, %config_file%, %section%, drawLocalPlayerArmy, 0

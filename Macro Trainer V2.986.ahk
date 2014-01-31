@@ -729,11 +729,11 @@ Overlay_Toggle:
 	if (A_ThisHotkey = CycleOverlayKey)
 	{
 		; if more than one overlays on. Turn then all off. Then cycle
-		; DrawIncomeOverlay, DrawResourcesOverlay, DrawArmySizeOverlay, DrawUnitOverlay, All
-		If ((ActiveOverlays := DrawIncomeOverlay + DrawResourcesOverlay + DrawArmySizeOverlay + ((DrawUnitOverlay || DrawUnitUpgrades) ? 1 : 0)) > 1)
+		; DrawIncomeOverlay, DrawResourcesOverlay, DrawArmySizeOverlay, DrawAPMOverlay, DrawUnitOverlay, All
+		If ((ActiveOverlays := DrawIncomeOverlay + DrawResourcesOverlay + DrawArmySizeOverlay + DrawAPMOverlay + ((DrawUnitOverlay || DrawUnitUpgrades) ? 1 : 0)) > 1)
 		{
-			DrawResourcesOverlay := DrawArmySizeOverlay := DrawIncomeOverlay := DrawUnitOverlay := DrawUnitUpgrades := 0
-			DrawResourcesOverlay(-1), DrawArmySizeOverlay(-1), DrawIncomeOverlay(-1), DrawUnitOverlay(-1)
+			DrawResourcesOverlay := DrawArmySizeOverlay := DrawAPMOverlay := DrawIncomeOverlay := DrawUnitOverlay := DrawUnitUpgrades := 0
+			DrawResourcesOverlay(-1), DrawArmySizeOverlay(-1), DrawAPMOverlay(-1), DrawIncomeOverlay(-1), DrawUnitOverlay(-1)
 		}
 		Else If (ActiveOverlays = 0)
 			DrawIncomeOverlay := 1
@@ -744,9 +744,11 @@ Overlay_Toggle:
 			Else If DrawResourcesOverlay
 				DrawArmySizeOverlay := !DrawResourcesOverlay := DrawUnitOverlay := 0, DrawResourcesOverlay(-1)
 			Else If DrawArmySizeOverlay
-				DrawUnitUpgrades := DrawUnitOverlay := !DrawResourcesOverlay := DrawArmySizeOverlay :=  0, DrawArmySizeOverlay(-1)
+				DrawAPMOverlay := !DrawResourcesOverlay := DrawArmySizeOverlay :=  0, DrawArmySizeOverlay(-1)
+			Else If DrawAPMOverlay
+				DrawUnitUpgrades := DrawUnitOverlay := !DrawAPMOverlay :=  0, DrawAPMOverlay(-1)
 			Else If (DrawUnitOverlay || DrawUnitUpgrades) 	; turn them all on
-				DrawResourcesOverlay := DrawArmySizeOverlay := DrawIncomeOverlay := 1 	
+				DrawResourcesOverlay := DrawArmySizeOverlay := DrawAPMOverlay := DrawIncomeOverlay := 1 	
 		}
 		gosub, overlay_timer
 		gosub, g_unitPanelOverlay_timer
@@ -2099,8 +2101,8 @@ overlay_timer: 	;DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdent=0, Bac
 	{
 		If DrawIncomeOverlay
 			DrawIncomeOverlay(ReDrawIncome, IncomeOverlayScale, OverlayIdent, OverlayBackgrounds, Dragoverlay)
-		;If DrawAPMOverlay
-		;	DrawAPMOverlay(ReDrawAPM, APMOverlayScale, OverlayIdent, modeAPM_EPM, Dragoverlay)
+		If DrawAPMOverlay
+			DrawAPMOverlay(ReDrawAPM, APMOverlayScale, OverlayIdent, modeAPM_EPM, Dragoverlay)
 		If DrawResourcesOverlay
 			DrawResourcesOverlay(ReDrawResources, ResourcesOverlayScale, OverlayIdent, OverlayBackgrounds, Dragoverlay)
 		If DrawArmySizeOverlay
@@ -2727,15 +2729,16 @@ ini_settings_write:
 
 	;[Overlays]
 	section := "Overlays"
-	list := "IncomeOverlay,ResourcesOverlay,ArmySizeOverlay,WorkerOverlay,IdleWorkersOverlay,UnitOverlay,LocalPlayerColourOverlay"
+	list := "IncomeOverlay,ResourcesOverlay,ArmySizeOverlay,WorkerOverlay,IdleWorkersOverlay,UnitOverlay,LocalPlayerColourOverlay,APMOverlay"
 	loop, parse, list, `,
 	{
 		drawname := "Draw" A_LoopField,	drawvar := %drawname%
 		scalename := A_LoopField "Scale", scalevar := %scalename%
 		Togglename := "Toggle" A_LoopField "Key", Togglevar := %Togglename%
 		IniWrite, %drawvar%, %config_file%, %section%, %drawname%
-		Iniwrite, %scalevar%, %config_file%, %section%, %scalename%	
-		Iniwrite, %Togglevar%, %config_file%, %section%, %Togglename% 	
+		Iniwrite, %scalevar%, %config_file%, %section%, %scalename%
+		if (Togglevar != "") ; as some won't have a toggle key
+			Iniwrite, %Togglevar%, %config_file%, %section%, %Togglename% 	
 	}
 	Iniwrite, %ToggleMinimapOverlayKey%, %config_file%, %section%, ToggleMinimapOverlayKey	
 	Iniwrite, %AdjustOverlayKey%, %config_file%, %section%, AdjustOverlayKey	
@@ -2761,6 +2764,7 @@ ini_settings_write:
 	Iniwrite, %MiniMapRefresh%, %config_file%, %section%, MiniMapRefresh	
 	Iniwrite, %OverlayRefresh%, %config_file%, %section%, OverlayRefresh	
 	Iniwrite, %UnitOverlayRefresh%, %config_file%, %section%, UnitOverlayRefresh
+	Iniwrite, %APMOverlayMode%, %config_file%, %section%, APMOverlayMode
 	Iniwrite, %drawLocalPlayerResources%, %config_file%, %section%, drawLocalPlayerResources
 	Iniwrite, %drawLocalPlayerIncome%, %config_file%, %section%, drawLocalPlayerIncome
 	Iniwrite, %drawLocalPlayerArmy%, %config_file%, %section%, drawLocalPlayerArmy
@@ -4136,51 +4140,52 @@ try
 
 	Gui, Tab, Overlays
 			;Gui, add, text, y+20 X%XTabX%, Display Overlays:
-			Gui, Add, GroupBox, y+15 x+25  w170 h175 section, Display Overlays:
-			Gui, Add, Checkbox, xp+10 yp+20 vDrawIncomeOverlay Checked%DrawIncomeOverlay% , Income Overlay
-			Gui, Add, Checkbox, xp y+12 vDrawResourcesOverlay Checked%DrawResourcesOverlay% , Resource Overlay
-			Gui, Add, Checkbox, xp y+12 vDrawArmySizeOverlay Checked%DrawArmySizeOverlay% , Army Size Overlay
-			Gui, Add, Checkbox, xp y+12 vDrawWorkerOverlay Checked%DrawWorkerOverlay% , Local Harvester Count
-			Gui, Add, Checkbox, xp y+12 vDrawIdleWorkersOverlay Checked%DrawIdleWorkersOverlay%, Idle Worker Count
-			Gui, Add, Checkbox, xp y+12 vDrawLocalPlayerColourOverlay Checked%DrawLocalPlayerColourOverlay%, Local Player Colour
-			
-			Gui, Add, GroupBox, xs ys+190 w170 h225, Match Overlay:
-			Gui, Add, Checkbox, xp+10 yp+25 vDrawUnitUpgrades Checked%DrawUnitUpgrades%, Show Upgrades
-			Gui, Add, Checkbox, xp y+12 vDrawUnitOverlay Checked%DrawUnitOverlay%, Show Unit Count/Production
-			Gui, Add, Checkbox, xp y+12 vSplitUnitPanel Checked%SplitUnitPanel% , Split Units/Buildings
-			Gui, Add, Checkbox, xp y+12 vUnitPanelDrawStructureProgress Checked%unitPanelDrawStructureProgress%, Show Structure Progress 
-			Gui, Add, Checkbox, xp y+12 vUnitPanelDrawUnitProgress Checked%unitPanelDrawUnitProgress%, Show Unit Progress 
-			Gui, Add, Checkbox, xp y+12 vUnitPanelDrawUpgradeProgress Checked%unitPanelDrawUpgradeProgress%, Show Upgrade Progress 
+			Gui, Add, GroupBox, y+15 x+25  w170 h185 section, Display Overlays:
+				Gui, Add, Checkbox, xp+10 yp+20 vDrawIncomeOverlay Checked%DrawIncomeOverlay%, Income Overlay
+				Gui, Add, Checkbox, xp y+10 vDrawResourcesOverlay Checked%DrawResourcesOverlay%, Resource Overlay
+				Gui, Add, Checkbox, xp y+10 vDrawArmySizeOverlay Checked%DrawArmySizeOverlay%, Army Size Overlay
+				Gui, Add, Checkbox, xp y+10 vDrawAPMOverlay Checked%DrawAPMOverlay%, APM overlay
+				Gui, Add, Checkbox, xp y+10 vDrawWorkerOverlay Checked%DrawWorkerOverlay%, Local Harvester Count
+				Gui, Add, Checkbox, xp y+10 vDrawIdleWorkersOverlay Checked%DrawIdleWorkersOverlay%, Idle Worker Count
+				Gui, Add, Checkbox, xp y+10 vDrawLocalPlayerColourOverlay Checked%DrawLocalPlayerColourOverlay%, Local Player Colour
 
-			Gui, Add, Button, center xp+15 y+15 w100 h35 vUnitPanelFilterButton Gg_GUICustomUnitPanel, Unit Filter
+				Gui, Add, GroupBox, xs ys+195 w170 h220, Match Overlay:
+				Gui, Add, Checkbox, xp+10 yp+25 vDrawUnitUpgrades Checked%DrawUnitUpgrades%, Show Upgrades
+				Gui, Add, Checkbox, xp y+12 vDrawUnitOverlay Checked%DrawUnitOverlay%, Show Unit Count/Production
+				Gui, Add, Checkbox, xp y+12 vSplitUnitPanel Checked%SplitUnitPanel% , Split Units/Buildings
+				Gui, Add, Checkbox, xp y+12 vUnitPanelDrawStructureProgress Checked%unitPanelDrawStructureProgress%, Show Structure Progress 
+				Gui, Add, Checkbox, xp y+12 vUnitPanelDrawUnitProgress Checked%unitPanelDrawUnitProgress%, Show Unit Progress 
+				Gui, Add, Checkbox, xp y+12 vUnitPanelDrawUpgradeProgress Checked%unitPanelDrawUpgradeProgress%, Show Upgrade Progress 
 
-			Gui, Add, GroupBox, ys XS+205 w170 h175 section, Overlays Misc:
+				Gui, Add, Button, center xp+15 y+15 w100 h30 vUnitPanelFilterButton Gg_GUICustomUnitPanel, Unit Filter
+
+			Gui, Add, GroupBox, ys XS+205 w170 h185 section, Overlays Misc:
 		;	Gui, Add, Checkbox, yp+25 xp+10 vOverlayBackgrounds Checked%OverlayBackgrounds% , Show Icon Background						
-			Gui, Add, Text, yp+25 xp+10 w80, Player Identifier:
-			if OverlayIdent in 0,1,2,3
-				droplist3_var := OverlayIdent + 1
-			Else droplist3_var := 3 
-
-			Gui, Add, DropDownList, xp+20 yp+25 vOverlayIdent Choose%droplist3_var%, Hidden|Name (White)|Name (Coloured)|Coloured Race Icon
+				Gui, Add, Text, yp+25 xp+10 w80, Player Identifier:
+				if OverlayIdent in 0,1,2,3
+					droplist3_var := OverlayIdent + 1
+				Else droplist3_var := 3 
+				Gui, Add, DropDownList, xp+20 yp+25 vOverlayIdent Choose%droplist3_var%, Hidden|Name (White)|Name (Coloured)|Coloured Race Icon
 			
 			; transparency is max 255/0xFF
 			Gui, Add, Text, yp+35 xp-20, Opacity:
-			Gui, Add, DropDownList, xp+50 yp-2 vOpacityOverlayIdent w90 gG_SwapOverlayOpacitySliders, Army||Harvester|Idle Worker|Income|Local Colour|Match/Unit|Minimap|Resource
-				Gui, Add, Slider, ToolTip  NoTicks w140 xp-50 y+10   vOverlayArmyTransparency, % ceil(overlayArmyTransparency / 2.55) 
-				Gui, Add, Slider, ToolTip  NoTicks w140 xp yp  Hidden vOverlayIncomeTransparency, % ceil(overlayIncomeTransparency / 2.55) 
-				Gui, Add, Slider, ToolTip  NoTicks w140 xp yp  Hidden vOverlayMatchTransparency, % ceil(overlayMatchTransparency / 2.55) 
-				Gui, Add, Slider, ToolTip  NoTicks w140 xp yp  Hidden vOverlayResourceTransparency, % ceil(overlayResourceTransparency / 2.55) 
-				Gui, Add, Slider, ToolTip  NoTicks w140 xp yp  Hidden vOverlayHarvesterTransparency, % ceil(overlayHarvesterTransparency / 2.55) 
-				Gui, Add, Slider, ToolTip  NoTicks w140 xp yp  Hidden vOverlayIdleWorkerTransparency, % ceil(overlayIdleWorkerTransparency / 2.55) 
-				Gui, Add, Slider, ToolTip  NoTicks w140 xp yp  Hidden vOverlayLocalColourTransparency, % ceil(overlayLocalColourTransparency / 2.55) 
-				Gui, Add, Slider, ToolTip  NoTicks w140 xp yp  Hidden VOverlayMinimapTransparency, % ceil(overlayMinimapTransparency / 2.55) 
+				Gui, Add, DropDownList, xp+50 yp-2 vOpacityOverlayIdent w90 gG_SwapOverlayOpacitySliders, Army||Harvester|Idle Worker|Income|Local Colour|Match/Unit|Minimap|Resource
+					Gui, Add, Slider, ToolTip  NoTicks w140 xp-50 y+10   vOverlayArmyTransparency, % ceil(overlayArmyTransparency / 2.55) 
+					Gui, Add, Slider, ToolTip  NoTicks w140 xp yp  Hidden vOverlayIncomeTransparency, % ceil(overlayIncomeTransparency / 2.55) 
+					Gui, Add, Slider, ToolTip  NoTicks w140 xp yp  Hidden vOverlayMatchTransparency, % ceil(overlayMatchTransparency / 2.55) 
+					Gui, Add, Slider, ToolTip  NoTicks w140 xp yp  Hidden vOverlayResourceTransparency, % ceil(overlayResourceTransparency / 2.55) 
+					Gui, Add, Slider, ToolTip  NoTicks w140 xp yp  Hidden vOverlayHarvesterTransparency, % ceil(overlayHarvesterTransparency / 2.55) 
+					Gui, Add, Slider, ToolTip  NoTicks w140 xp yp  Hidden vOverlayIdleWorkerTransparency, % ceil(overlayIdleWorkerTransparency / 2.55) 
+					Gui, Add, Slider, ToolTip  NoTicks w140 xp yp  Hidden vOverlayLocalColourTransparency, % ceil(overlayLocalColourTransparency / 2.55) 
+					Gui, Add, Slider, ToolTip  NoTicks w140 xp yp  Hidden VOverlayMinimapTransparency, % ceil(overlayMinimapTransparency / 2.55) 
+				Gui, Add, Checkbox, xp y+5 vAPMOverlayMode Check3 Checked%APMOverlayMode%, APM overlay mode
 
-			Gui, Add, GroupBox, xs ys+190 w170 h90, Include Self in:		
+			Gui, Add, GroupBox, xs ys+195 w170 h90, Include Self in:		
 				Gui, Add, Checkbox, xp+10 yp+20 vDrawLocalPlayerIncome Checked%drawLocalPlayerIncome%, Income Overlay
 				Gui, Add, Checkbox, xp y+10 vDrawLocalPlayerResources Checked%drawLocalPlayerResources%, Resource Overlay
 				Gui, Add, Checkbox, xp y+10 vDrawLocalPlayerArmy Checked%drawLocalPlayerArmy%, Army Size Overlay
 
-			Gui, Add, GroupBox, xs ys+290 w170 h125, Refresh Rates:
+			Gui, Add, GroupBox, xs ys+295 w170 h120, Refresh Rates:
 			Gui, Add, Text, XS+20  yp+25, General:
 				Gui, Add, Edit, Number Right xp+80 yp-2 w55 vTT_OverlayRefresh
 					Gui, Add, UpDown,  Range50-5000 vOverlayRefresh, %OverlayRefresh%
@@ -4189,7 +4194,7 @@ try
 					Gui, Add, UpDown,  Range100-15000 vUnitOverlayRefresh, %UnitOverlayRefresh%
 			Gui, Add, Text, XS+20 yp+35, MiniMap:
 				Gui, Add, Edit, Number Right xp+80 yp-2 w55 vTT_MiniMapRefresh
-					Gui, Add, UpDown,  Range100-1500 vMiniMapRefresh, %MiniMapRefresh%					
+					Gui, Add, UpDown,  Range100-1500 vMiniMapRefresh, %MiniMapRefresh%				
 
 	Gui, Tab, Hotkeys 
 		
@@ -4354,6 +4359,9 @@ try
 		:= "Units of this type will be drawn using the specified colour"
 	 	#UnitHighlightList%A_Index%Colour_TT := "Click Me!`n`nUnits of this type will appear this colour."
 	}
+
+	DrawAPMOverlay_TT := "This enables/disabled the overlay."
+					. "`nThe mode can be set with via the 'APM overlay mode' checkbox on right (under 'Overlays Misc')"
 
 	DrawWorkerOverlay_TT := "Displays your current harvester count with a worker icon"
 	DrawIdleWorkersOverlay_TT := "While idle workers exist, a worker icon will be displayed with the current idle count.`n`nThe size and position can be changed easily so that it grabs your attention."
@@ -4535,7 +4543,10 @@ try
 							. "`nRed - Attack move"
 
 	drawLocalPlayerIncome_TT := drawLocalPlayerResources_TT := drawLocalPlayerArmy_TT := "Displays your own values at the bottom of the overlay."						
-
+	APMOverlayMode_TT := "Set the drawing mode for the APM overlay."
+						. "`n`n Unchecked = Enemies"
+						. "`n Checked = Only Self APM"
+						. "`n Greyed = Enemies + self (self is at bottom)"
 	DrawPlayerCameras_TT := "Draws the enemy's camera on the minimap, i.e. it indicates the map area the player is currently looking at."
 
 	SleepSplitUnit_TT := TT_SleepSplitUnits_TT := TT_SleepSelectArmy_TT := SleepSelectArmy_TT := "Increase this value if the function doesn't work properly`nThis time is required to update the selection buffer."
@@ -7418,11 +7429,11 @@ DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Dr
 				gdip_TextToGraphics(G, getPlayerName(slot_number), "x0" "y"(DestY+(Height//4))  OptionsName, Font)
 				if !LongestNameSize
 				{
-					if drawLocalPlayerIncome 
+					if drawLocalPlayerIncome
 						longestName := MT_CurrentGame.HasKey("LongestName") ? MT_CurrentGame.LongestName : MT_CurrentGame.LongestName := getLongestPlayerName(aPlayer, True)
 					else 
 						longestName := MT_CurrentGame.HasKey("LongestEnemyName") ? MT_CurrentGame.LongestEnemyName : MT_CurrentGame.LongestEnemyName := getLongestPlayerName(aPlayer)					
-					LongestNameData :=	gdip_TextToGraphics(G, longestName, "x0" "y"(DestY+(Height//4))  " Bold c00FFFFFF r4 s" 17*UserScale	, Font) ; text is invisible ;get string size	
+					LongestNameData :=	gdip_TextToGraphics(G, longestName, "x0" "y"(DestY+(Height//4))  " Bold c00FFFFFF r4 s" 17*UserScale, Font) ; text is invisible ;get string size	
 					StringSplit, LongestNameSize, LongestNameData, | ;retrieve the length of the string
 					LongestNameSize := LongestNameSize3
 				}
@@ -7477,10 +7488,11 @@ DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Dr
 
 DrawAPMOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, modeAPM_EPM=0,Drag=0)
 {	global aLocalPlayer, aHexColours, aPlayer, GameIdentifier, APMOverlayX, APMOverlayY, config_file, MatrixColour, a_pBitmap, overlayAPMTransparency
+	, APMOverlayMode
 	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0
 
 	DestX := i := 0
-	Options := " cFFFFFFFF r4 s" 17*UserScale					;these cant be static	
+	Options := " cFFFFFFFF Right r4 s" 20*UserScale					;these cant be static	
 	If (Redraw = -1)
 	{
 		Try Gui, APMOverlay: Destroy
@@ -7519,9 +7531,15 @@ DrawAPMOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, modeAPM_EPM=0,Drag
 	obm := SelectObject(hdc, hbm)
 	G := Gdip_GraphicsFromHDC(hdc)
 	DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0)	
-	For slot_number in aPlayer
+	DestX := 0
+	For index, player in aEnemyAndLocalPlayer
 	{
-		If ( aLocalPlayer["Team"] != aPlayer[slot_number, "Team"] && isPlayerActive(slot_number))
+		slot_number := player["Slot"]
+		; APMOverlayMode
+		; -1 = enemies + self
+		;  0 = enemies
+		;  1 = self
+		if ( (( slot_number = aLocalPlayer["Slot"] && APMOverlayMode) || (slot_number != aLocalPlayer["Slot"] && (!APMOverlayMode || APMOverlayMode = -1))) && isPlayerActive(slot_number))
 		{				
 			DestY := i ? i*Height : 0
 
@@ -7537,28 +7555,34 @@ DrawAPMOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, modeAPM_EPM=0,Drag
 				gdip_TextToGraphics(G, getPlayerName(slot_number), "x0" "y"(DestY+(Height//4))  OptionsName, Font)
 				if !LongestNameSize
 				{
-					LongestNameData :=	gdip_TextToGraphics(G, MT_CurrentGame.HasKey("LongestEnemyName") ? MT_CurrentGame.LongestEnemyName : MT_CurrentGame.LongestEnemyName := getLongestPlayerName(aPlayer)
-															, "x0" "y"(DestY+(Height//4))  " Bold c00FFFFFF r4 s" 17*UserScale	, Font) ; text is invisible ;get string size	
+					if (APMOverlayMode = -1) 
+						longestName := MT_CurrentGame.HasKey("LongestName") ? MT_CurrentGame.LongestName : MT_CurrentGame.LongestName := getLongestPlayerName(aPlayer, True)
+					else if (APMOverlayMode = 0) 
+						longestName := MT_CurrentGame.HasKey("LongestEnemyName") ? MT_CurrentGame.LongestEnemyName : MT_CurrentGame.LongestEnemyName := getLongestPlayerName(aPlayer)
+					else 
+						longestName := aLocalPlayer["Name"]
+					LongestNameData :=	gdip_TextToGraphics(G, longestName, "x0" "y"(DestY+(Height//4))  " Bold c00FFFFFF r4 s" 17*UserScale, Font) ; text is invisible ;get string size	
 					StringSplit, LongestNameSize, LongestNameData, | ;retrieve the length of the string
 					LongestNameSize := LongestNameSize3
 				}
 				DestX := LongestNameSize+10*UserScale
+
 			}
-			Else ;If (PlayerIdentifier = 3)
+			Else If (PlayerIdentifier = 3)
 			{		
 				pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"RaceFlat"]
 				SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
 				Width *= UserScale *.5, Height *= UserScale *.5	
 				Gdip_DrawImage(G, pBitmap, 12*UserScale, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight, MatrixColour[aPlayer[slot_number, "Colour"]])
 				DestX := Width+10*UserScale
-
+				DestY += Height//4
 			}
-
-			TextData := Gdip_TextToGraphics(G, getPlayerCurrentAPM(slot_number), "x"DestX "y"DestY Options, Font)
+			TextData := Gdip_TextToGraphics(G, getPlayerCurrentAPM(slot_number), "x"DestX "y"DestY " W" 50*UserScale " "  Options, Font)
 			; 24.500000|0.000000|25.140299|21.117188|2|1			
 			StringSplit, TextSize, TextData, | ;retrieve the length of the string
-			;Height := TextSize4
-			if (WindowWidth < CurrentWidth := DestX+(20*UserScale) + TextSize3)
+			if (Height < TextSize4)
+				Height := TextSize4
+			if (WindowWidth < CurrentWidth := DestX+(40*UserScale) + TextSize3)
 				WindowWidth := CurrentWidth
 			Height += 5*userscale
 			i++ 
@@ -7579,7 +7603,7 @@ DrawResourcesOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0
 	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0		
 
 	DestX := i := 0
-	Options := " cFFFFFFFF r4 s" 17*UserScale					;these cant be static	
+	Options := " Right cFFFFFFFF r4 s" 17*UserScale 					;these cant be static	
 	If (Redraw = -1)
 	{
 		Try Gui, ResourcesOverlay: Destroy
@@ -7643,7 +7667,7 @@ DrawResourcesOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0
 				gdip_TextToGraphics(G, getPlayerName(slot_number), "x0" "y"(DestY+(Height//4))  OptionsName, Font) ;get string size	
 				if !LongestNameSize
 				{
-					if drawLocalPlayerResources 
+					if drawLocalPlayerResources
 						longestName := MT_CurrentGame.HasKey("LongestName") ? MT_CurrentGame.LongestName : MT_CurrentGame.LongestName := getLongestPlayerName(aPlayer, True)
 					else 
 						longestName := MT_CurrentGame.HasKey("LongestEnemyName") ? MT_CurrentGame.LongestEnemyName : MT_CurrentGame.LongestEnemyName := getLongestPlayerName(aPlayer)
@@ -7673,22 +7697,22 @@ DrawResourcesOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0
 
 			Gdip_DrawImage(G, pBitmap, DestX, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)	
 			;Gdip_DisposeImage(pBitmap)
-			Gdip_TextToGraphics(G, getPlayerMinerals(slot_number), "x"(DestX+Width+5*UserScale) "y"(DestY+(Height//4)) Options, Font, TextWidthHeight, TextWidthHeight)				
+			Gdip_TextToGraphics(G, getPlayerMinerals(slot_number), "x"(DestX+Width+5*UserScale) "y"(DestY+(Height//4)) Options  " w" 45*UserScale , Font, TextWidthHeight, TextWidthHeight)				
 			pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Gas",Background]
 			SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
 			Width *= UserScale *.5, Height *= UserScale *.5
 			Gdip_DrawImage(G, pBitmap, DestX + (85*UserScale), DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)	
 			;Gdip_DisposeImage(pBitmap)
-			Gdip_TextToGraphics(G, getPlayerGas(slot_number), "x"(DestX+(85*UserScale)+Width+5*UserScale) "y"(DestY+(Height//4)) Options, Font, TextWidthHeight,TextWidthHeight)				
+			Gdip_TextToGraphics(G, getPlayerGas(slot_number), "x"(DestX+(80*UserScale)+Width+5*UserScale) "y"(DestY+(Height//4)) Options  " w" 45*UserScale, Font, TextWidthHeight,TextWidthHeight)				
 
 			pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Supply",Background]
 			SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
 			Width *= UserScale *.5, Height *= UserScale *.5
 			Gdip_DrawImage(G, pBitmap, DestX + (2*85*UserScale), DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
 			;Gdip_DisposeImage(pBitmap)
-			TextData := Gdip_TextToGraphics(G, getPlayerSupply(slot_number)"/"getPlayerSupplyCap(slot_number), "x"(DestX+(2*85*UserScale)+Width+3*UserScale) "y"(DestY+(Height//4)) Options, Font, TextWidthHeight, TextWidthHeight)				
+			TextData := Gdip_TextToGraphics(G, getPlayerSupply(slot_number)"/"getPlayerSupplyCap(slot_number), "x"(DestX+(2*83*UserScale)+Width+3*UserScale) "y"(DestY+(Height//4)) Options  " w" 70*UserScale, Font, TextWidthHeight, TextWidthHeight)				
 			StringSplit, TextSize, TextData, |			
-			if (WindowWidth < CurrentWidth := DestX+(2*85*UserScale)+Width+5*UserScale + TextSize3)
+			if (WindowWidth < CurrentWidth := DestX+(2*85*UserScale)+Width+5*UserScale + TextSize3*2)
 				WindowWidth := CurrentWidth	
 			Height += 5*userscale	;needed to stop the edge of race pic overlap'n due to Supply pic -prot then zerg
 			i++ 
@@ -7749,6 +7773,7 @@ DrawArmySizeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,
 	DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0)
 	For index, player in aEnemyAndLocalPlayer
 	{	
+		; DrawArmySizeOverlay -1 = enemies + self
 		if ((slot_number := player["Slot"]) != aLocalPlayer["Slot"] || drawLocalPlayerArmy)
 		{	
 		;	DestY := i ? i*Height + 5*UserScale : 0
@@ -7766,7 +7791,7 @@ DrawArmySizeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,
 				gdip_TextToGraphics(G, getPlayerName(slot_number), "x0" "y"(DestY+(Height//4))  OptionsName, Font)		
 				if !LongestNameSize
 				{
-					if drawLocalPlayerArmy 
+					if (DrawArmySizeOverlay = -1) 
 						longestName := MT_CurrentGame.HasKey("LongestName") ? MT_CurrentGame.LongestName : MT_CurrentGame.LongestName := getLongestPlayerName(aPlayer, True)
 					else 
 						longestName := MT_CurrentGame.HasKey("LongestEnemyName") ? MT_CurrentGame.LongestEnemyName : MT_CurrentGame.LongestEnemyName := getLongestPlayerName(aPlayer)
@@ -12722,3 +12747,5 @@ loop
 		break
 	sleep 700
 }
+
+f1:: msgbox % getPlayerCurrentAPM()
