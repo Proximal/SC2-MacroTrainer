@@ -3598,6 +3598,11 @@ readConfigFile()
 	IniRead, DeselectSleepTime, %config_file%, %section%, DeselectSleepTime, 0
 	IniRead, RemoveUnitEnable, %config_file%, %section%, RemoveUnitEnable, 0
 	IniRead, castRemoveUnit_key, %config_file%, %section%, castRemoveUnit_key, +Esc
+	IniRead, RemoveDamagedUnitsEnable, %config_file%, %section%, RemoveDamagedUnitsEnable, 0
+	IniRead, castRemoveDamagedUnits_key, %config_file%, %section%, castRemoveDamagedUnits_key, !F1
+	IniRead, RemoveDamagedUnitsCtrlGroup, %config_file%, %section%, RemoveDamagedUnitsCtrlGroup, 9
+	IniRead, RemoveDamagedUnitsHealthLevel, %config_file%, %section%, RemoveDamagedUnitsHealthLevel, 90
+		RemoveDamagedUnitsHealthLevel := round(RemoveDamagedUnitsHealthLevel / 100, 3)
 
 	IniRead, EasyUnloadTerranEnable, %config_file%, %section%, EasyUnloadTerranEnable, 0
 	IniRead, EasyUnloadProtossEnable, %config_file%, %section%, EasyUnloadProtossEnable, 0
@@ -3844,6 +3849,16 @@ getUnitMaxShield(unit)
 getUnitCurrentHp(unit)
 {
 	return getUnitMaxHp(unit) - getUnitHpDamage(unit)
+}
+; returns 1 if something goes wrong and reads 0
+getUnitPercentHP(unit)
+{
+	return (!percent := ((maxHP := getUnitMaxHp(unit)) - getUnitHpDamage(unit)) / maxHP) ? 1 : percent
+}
+
+getUnitPercentShield(unit)
+{
+	return (!percent := ((maxShield := getUnitMaxShield(unit)) - getUnitShieldDamage(unit)) / maxShield) ? 1 : percent
 }
 ; will be 0 for units which dont have shields
 getUnitCurrentShields(unit)

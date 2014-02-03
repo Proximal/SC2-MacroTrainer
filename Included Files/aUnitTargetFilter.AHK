@@ -1,3 +1,5 @@
+; some of these don't work so check before using!
+
 aUnitTargetFilter := {Outer: 0x0000800000000000
 	, Unstoppable: 0x0000400000000000
 	, Summoned: 0x0000200000000000

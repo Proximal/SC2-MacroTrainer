@@ -2665,6 +2665,11 @@ ini_settings_write:
 	IniWrite, %DeselectSleepTime%, %config_file%, %section%, DeselectSleepTime
 	IniWrite, %RemoveUnitEnable%, %config_file%, %section%, RemoveUnitEnable
 	IniWrite, %castRemoveUnit_key%, %config_file%, %section%, castRemoveUnit_key
+	IniWrite, %RemoveDamagedUnitsEnable%, %config_file%, %section%, RemoveDamagedUnitsEnable	
+	IniWrite, %castRemoveDamagedUnits_key%, %config_file%, %section%, castRemoveDamagedUnits_key	
+	IniWrite, %RemoveDamagedUnitsCtrlGroup%, %config_file%, %section%, RemoveDamagedUnitsCtrlGroup	
+	IniWrite, %RemoveDamagedUnitsHealthLevel%, %config_file%, %section%, RemoveDamagedUnitsHealthLevel	
+	RemoveDamagedUnitsHealthLevel := round(RemoveDamagedUnitsHealthLevel / 100, 3)
 
 	IniWrite, %EasyUnloadTerranEnable%, %config_file%, %section%, EasyUnloadTerranEnable
 	IniWrite, %EasyUnloadProtossEnable%, %config_file%, %section%, EasyUnloadProtossEnable
@@ -3822,7 +3827,7 @@ try
 			gui, font, norm s10
 			gui, font, 		
 
-	Gui, Add, Tab2, w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vMiscAutomation_TAB, Select Army||Spread|Remove Unit|Easy Select/Unload
+	Gui, Add, Tab2, w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vMiscAutomation_TAB, Select Army||Spread|Remove Units|Easy Select/Unload
 	Gui, Tab, Select Army
 		Gui, add, GroupBox, y+15 w405 h180
 		Gui, Add, Checkbox, Xs yp+25 vSelectArmyEnable Checked%SelectArmyEnable% , Enable Select Army Function		
@@ -3862,13 +3867,26 @@ try
 		Gui, Add, Text, Xs yp+100 w360, This can be used to spread your workers when being attack by hellbats/hellions.`n`nWhen 30`% of the selected units are worksers, the units will be spread over a much larger area
 		Gui, Add, Text, Xs yp+80 w360, Note: When spreading army/attacking units this is designed to spread your units BEFORE the engagement - Dont use it while being attacked!`n`n****This is in a very beta stage and will be improved later***
 
-	Gui, Tab, Remove Unit
-		Gui, Add, Checkbox, y+25 x+25 vRemoveUnitEnable Checked%RemoveUnitEnable% , Enable Remove Unit Function	
-		Gui, Add, Text, section yp+35, Hotkey:
-		Gui, Add, Edit, Readonly yp-2 xs+85 center w65 vcastRemoveUnit_key gedit_hotkey, %castRemoveUnit_key%
-		Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#castRemoveUnit_key,  Edit
-		Gui, Add, Text, Xs yp+70 w380, This removes the first unit (top left of selection card) from the selected units.`n`nThis is very usefuly for 'cloning' workers to geisers or sending 1 ling towards a group of banelings etc.
-
+	Gui, Tab, Remove Units
+		Gui, add, GroupBox, y+15 w405 h165 section, Remove Single Unit
+			Gui, Add, Checkbox, yp+25 xs+15 vRemoveUnitEnable Checked%RemoveUnitEnable%, Enable	
+			Gui, Add, Text, xp yp+25, Hotkey:
+			Gui, Add, Edit, Readonly yp-2 xs+105 center w65 vcastRemoveUnit_key gedit_hotkey, %castRemoveUnit_key%
+			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#castRemoveUnit_key,  Edit
+			Gui, Add, Text, Xs+15 yp+45 w360, This removes the first unit (top left of selection card) from the selected units.`n`nThis is very usefuly for 'cloning' workers to geisers or sending 1 ling towards a group of banelings etc.
+		Gui, add, GroupBox, xs ys+185 w405 h210, Remove Damaged Units
+			Gui, Add, Checkbox, yp+25 xs+15 vRemoveDamagedUnitsEnable Checked%RemoveDamagedUnitsEnable%, Enable	
+			Gui, Add, Text, xp yp+25, Hotkey:
+			Gui, Add, Edit, Readonly yp-2 xs+105 center w65 vcastRemoveDamagedUnits_key gedit_hotkey, %castRemoveDamagedUnits_key%
+			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#castRemoveDamagedUnits_key,  Edit	
+			Gui, Add, Text, xs+15 yp+35, Storeage Group:
+			Gui, Add, Edit, Readonly yp-2 xs+105 center w65 vRemoveDamagedUnitsCtrlGroup gedit_hotkey, %RemoveDamagedUnitsCtrlGroup%
+			Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#RemoveDamagedUnitsCtrlGroup,  Edit		
+			Gui, Add, Text, xs+15 yp+35, Health Level `%:
+			Gui, Add, Edit, Number Right xs+165 yp-2 w45 vEdit_RemoveDamagedUnitsHealthLevel
+				Gui, Add, UpDown,  Range1-99 vRemoveDamagedUnitsHealthLevel, % Round(RemoveDamagedUnitsHealthLevel * 100) 
+			Gui, Add, Text, Xs+15 yp+35 w360, Units with health/shields lower than the set 'health level' will be removed from selection and moved to the current mouse cursor position.`n`nThis is very help when microing units!
+	
 	Gui, Tab, Easy Select/Unload
 		Gui, Add, GroupBox, x+95 y+30 w95 h100 section, Enable
 			Gui, Add, Checkbox, xp+10 yp+25 vEasyUnloadTerranEnable Checked%EasyUnloadTerranEnable%, Terran	
@@ -4578,9 +4596,15 @@ try
 		quickSelect%A_LoopField%DeselectQueuedDrops_TT := SelectArmyDeselectQueuedDrops_TT
 	}
 
-	castRemoveUnit_key_TT := #castRemoveUnit_key_TT := castSplitUnit_key_TT := #castSplitUnit_key_TT := "The hotkey used to invoke this function."
+	castRemoveDamagedUnits_key_TT := #castRemoveDamagedUnits_key_TT := castRemoveUnit_key_TT := #castRemoveUnit_key_TT 
+		:= castSplitUnit_key_TT := #castSplitUnit_key_TT := "The hotkey used to invoke this function."
 	SplitctrlgroupStorage_key_TT := #SplitctrlgroupStorage_key_TT := "This ctrl group is used during the function.`nAssign it to a control group you DON'T use!"
 	TT_DeselectSleepTime_TT :=  DeselectSleepTime_TT := "Time between deselecting units from the unit panel.`nThis is used by the split and select army, and deselect unit functions"
+
+	Edit_RemoveDamagedUnitsHealthLevel_TT := RemoveDamagedUnitsHealthLevel_TT := "Units with health/shields lower than this percent will be removed from selection`n"
+									. "and moved to the current mouse cursor position."
+	RemoveDamagedUnitsCtrlGroup_TT := #RemoveDamagedUnitsCtrlGroup_TT := "The selected units are stored in this control group during the function."
+																. "`n`nSet this to a control group you DO NOT use."
 
 	#Sc2SelectArmyCtrlGroup_TT := Sc2SelectArmyCtrlGroup_TT := "The control Group (key) in which to store the army.`nE.G. 1,2,3-0"
 	l_DeselectArmy_TT := #l_DeselectArmy_TT := "These unit types will be deselected."
@@ -8023,6 +8047,7 @@ CreateHotkeys()
 	#If, WinActive(GameIdentifier) && time && !isMenuOpen() && SelectArmyEnable
 	#If, WinActive(GameIdentifier) && time && !isMenuOpen() && SplitUnitsEnable
 	#If, WinActive(GameIdentifier) && time && !isMenuOpen() && RemoveUnitEnable
+	#If, WinActive(GameIdentifier) && time && !isMenuOpen() && RemoveDamagedUnitsEnable	
 	#If, WinActive(GameIdentifier) && !isMenuOpen() && time
 	#If, WinActive(GameIdentifier) && (!isMenuOpen() || (isMenuOpen() && isChatOpen())) && time
 	#If, WinActive(GameIdentifier) && time
@@ -8079,11 +8104,12 @@ CreateHotkeys()
 	Hotkey, If, WinActive(GameIdentifier) && time && !isMenuOpen() && SplitUnitsEnable
 		hotkey, %castSplitUnit_key%, g_SplitUnits, on	
 	Hotkey, If, WinActive(GameIdentifier) && time && !isMenuOpen() && RemoveUnitEnable
-		hotkey, %castRemoveUnit_key%, g_DeselectUnit, on	
+		hotkey, %castRemoveUnit_key%, g_DeselectUnit, on		
+	Hotkey, If, WinActive(GameIdentifier) && time && !isMenuOpen() && RemoveDamagedUnitsEnable
+		hotkey, %castRemoveDamagedUnits_key%, gRemoveDamagedUnit, on	
 	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Zerg") && (auto_inject <> "Disabled") && time
 		hotkey, %cast_inject_key%, cast_inject, on	
 		hotkey, %F_InjectOff_Key%, Cast_DisableInject, on			
-
 
 	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && time
 		if CG_Enable
@@ -8189,6 +8215,8 @@ disableAllHotkeys()
 		try hotkey, %castSplitUnit_key%, off
 	Hotkey, If, WinActive(GameIdentifier) && time && !isMenuOpen() && RemoveUnitEnable
 		try hotkey, %castRemoveUnit_key%, off
+	Hotkey, If, WinActive(GameIdentifier) && time && !isMenuOpen() && RemoveDamagedUnitsEnable
+		try hotkey, %castRemoveDamagedUnits_key%, off
 	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Zerg") && (auto_inject <> "Disabled") && time
 		try hotkey, %cast_inject_key%, off
 		try hotkey, %F_InjectOff_Key%, off	
@@ -8981,7 +9009,7 @@ findPortraitsToRemoveFromArmy(byref aSelected := "", DeselectXelnaga = 1, Desele
 			|| (DeselectPatrolling && InStr(commandString, "Patrol"))
 			|| (DeselectHoldPosition && InStr(commandString, "Hold"))
 			|| (DeselectFollowing && InStr(commandString, "Follow")) ; Dont check Follow No Attack is used by spell casters e.g. HTs & infests which dont have and attack - as this will revmove them when theyre really on Amove
-				remove.insert(unit.unitPortrait) 
+				remove.insert(unit.unitPortrait)
 		else if (lTypes || DeselectLoadedTransport || DeselectQueuedDrops)
 		{
 			type := unit.unitId
@@ -12748,3 +12776,54 @@ loop
 	sleep 700
 }
 
+
+gRemoveDamagedUnit:
+removeDamagedUnit()
+return
+
+removeDamagedUnit()
+{
+	global RemoveDamagedUnitsHealthLevel, RemoveDamagedUnitsCtrlGroup
+
+	if !getSelectionCount()
+		return
+	while (GetKeyState("Lbutton", "P") || GetKeyState("Rbutton", "P")) ; This does an important thing in select army function
+	{ 																; but here just so APM doesn't skyrocket if user holds right click and function hotkey
+		sleep 1
+		MouseDown := True
+	}
+	critical, 1000
+	input.pReleaseKeys(True)
+	if MouseDown
+		dSleep(15) 
+	count := numGetSelectionSorted(aSelected)
+	highHP := [], lowHP := []
+	for i, unit in aSelected.units
+	{ 
+		; target filter .HasShields doesn't work! But this is faster anyway
+		if (aLocalPlayer["Race"] != "Protoss" && getUnitPercentHP(unit.unitIndex) > RemoveDamagedUnitsHealthLevel) || (aLocalPlayer["Race"] = "Protoss" && getUnitPercentShield(unit.unitIndex) > RemoveDamagedUnitsHealthLevel)
+			highHP.insert(unit.unitPortrait) ; removes the high HP/sheld units
+		else 
+			lowHP.insert(unit.unitPortrait) 	
+	}
+	if lowHP.MaxIndex()
+	{
+		timerRemove := stopwatch()
+		input.pSend("^" RemoveDamagedUnitsCtrlGroup)
+		clickUnitPortraits(highHP) ; remove high HP units
+		input.pSend("{Click Right}")
+		input.pSend(RemoveDamagedUnitsCtrlGroup)
+		while (getSelectionCount() != count && stopwatch(timerRemove, False) < 50 && A_Index < 60)
+			dsleep(1)
+		dSleep(15)
+		clickUnitPortraits(lowHP)
+		dSleep(15)
+		stopwatch(timerRemove)
+	}
+	Input.revertKeyState()
+	critical, off
+	Thread, Priority, -2147483648
+	sleep, -1
+	sleep 20 
+	return	
+}
