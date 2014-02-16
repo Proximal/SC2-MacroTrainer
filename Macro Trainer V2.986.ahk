@@ -92,6 +92,9 @@ if !A_IsAdmin
 }
 OnExit, ShutdownProcedure
 
+if !A_IsCompiled
+	Process, Priority,, H
+
 ; This is here in case the user deletes the dll
 ; although, the AHK-MD shouldn't launch if it doesn't exist
 ; (and there's not one in sys32)
@@ -2903,8 +2906,16 @@ return
 
 
 options_menu:
-
-IfWinExist, Macro Trainer V%ProgramVersion% Settings
+/*
+IfWinExist, V%ProgramVersion% Settings
+{
+	WinActivate
+	Return 									; prevent error due to reloading gui 
+}
+*/
+; different way to do the same thing.
+Gui Options:+LastFoundExist
+IfWinExist 
 {
 	WinActivate
 	Return 									; prevent error due to reloading gui 
@@ -4644,7 +4655,7 @@ try
 
 	OnMessage(0x200, "WM_MOUSEMOVE")
 	Gosub, G_GuiSetupDrawMiniMapDisable ; Disable controls based on current drawing settings
-	GuI, Options:Show, w615 h505, Macro Trainer V%ProgramVersion% Settings
+	GuI, Options:Show, w615 h505, V%ProgramVersion% Settings
 }
 Return
 
@@ -5236,7 +5247,7 @@ OptionsTree:
 	}
 	Else return  
 
-	WinSet, Redraw,, Macro Trainer V%ProgramVersion% Settings 				; redrawing whole thing as i noticed very very rarely (when a twitch stream open?) the save/cancel/apply buttons disappear
+	WinSet, Redraw,, V%ProgramVersion% Settings 				; redrawing whole thing as i noticed very very rarely (when a twitch stream open?) the save/cancel/apply buttons disappear
 ; 	 GUIControl, MoveDraw, GUIListViewIdentifyingVariableForRedraw ; this is the same as redraw (but just for a control? - although it still seems to flicker the entire thing)
  	Return															; this prevents the problem where some of the icons would remain selected
  																	; so multiple categories would have the blue background
@@ -6817,6 +6828,7 @@ autoWorkerProductionCheck()
 		;input.hookBlock(False, False)
 
 		critical, 1000
+		dsleep(30)
 		; as can be stuck in the loop above for a while, lets check still have minerals to build the workers
 		if (MaxWokersTobeMade > currentMax := howManyUnitsCanBeProduced(50))
 			MaxWokersTobeMade := currentMax
@@ -8737,6 +8749,7 @@ g_SelectArmy:
 ;	sleep := Input.releaseKeys()
 ;	critical, 1000
 	critical, 1000
+	dsleep(30)
 	input.pReleaseKeys(True)
 	sleep := 0
 
@@ -8818,6 +8831,7 @@ quickSelect(aDeselect)
 		MouseDown := True
 	}
 	critical, 1000
+	dsleep(30)
 
 	input.pReleaseKeys(True)
 	if MouseDown
@@ -12793,6 +12807,7 @@ removeDamagedUnit()
 		MouseDown := True
 	}
 	critical, 1000
+	dsleep(30)
 	input.pReleaseKeys(True)
 	if MouseDown
 		dSleep(15) 
@@ -12810,13 +12825,13 @@ removeDamagedUnit()
 	{
 		timerRemove := stopwatch()
 		input.pSend("^" RemoveDamagedUnitsCtrlGroup)
-		clickUnitPortraits(highHP) ; remove high HP units
+		clickUnitPortraits(highHP) 	; remove high HP units
 		input.pSend("{Click Right}")
-		input.pSend(RemoveDamagedUnitsCtrlGroup)
+		input.pSend(RemoveDamagedUnitsCtrlGroup) 	; restore initial selection
 		while (getSelectionCount() != count && stopwatch(timerRemove, False) < 50 && A_Index < 60)
 			dsleep(1)
 		dSleep(15)
-		clickUnitPortraits(lowHP)
+		clickUnitPortraits(lowHP) 	; remove damaged units
 		dSleep(15)
 		stopwatch(timerRemove)
 	}
@@ -12827,3 +12842,5 @@ removeDamagedUnit()
 	sleep 20 
 	return	
 }
+
+

@@ -2567,6 +2567,8 @@ initialiseBrushColours(aHexColours, byRef a_pBrushes)
 	return 
 }
 
+
+
 deleteBrushArray(byRef a_pBrushes)
 {
 	for colour, pBrush in a_pBrushes
@@ -2574,6 +2576,10 @@ deleteBrushArray(byRef a_pBrushes)
 	a_pBrushes := []
 	return
 }
+
+; 11/02/14 
+; Just realised i don't think i delete any pens
+; but I thinks? they are all static static anyway so it doesnt matter.
 
 initialisePenColours(aHexColours)
 {
