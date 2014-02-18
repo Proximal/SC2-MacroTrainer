@@ -8,14 +8,14 @@ AHK_H can run the script as is.
 
 
 Compiling for distribution:
-Ensure the correct version numbers are set in the config, macro trainer, and package master files.
+Ensure the correct version numbers are set in the config, macro trainer, and macroTrainerCurrentVersion.ini files.
 
 Compile the minimapThread.ahk using AHK_H 32Bit-MD (do not use compression). This will automatically include any called functions.
 
 Use resource hacker (\Included Files\Resource Hacker) or winRar to extract the script from the RCData folder.
 Save the script as threadMiniMapFull.ahk
 
-Compile "macro trainer vX.XX.ahk" as "macro trainer.exe" using AHK_H 32Bit-MD (do not use compression)
-Compile "packageMaster.ahk" as the new program version i.e. "macro trainer vX.XX.exe" with AHK_H 32Bit ***NON-MD*** using MPress.
-As the MD version depends on the presence of the msvcr100.dll, using this installer\wrapper should prevent any errors.
+Compile "macro trainer vX.XX.ahk" as "macro trainer vX.XX.exe" using AHK_H 32Bit-MD (do not use compression as this will prevent the change icon feature functioning). Zip the exe along with msvcr100.dll into currentMacroTrainer.zip and upload to FTP server.
+
+
 
