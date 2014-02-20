@@ -14,10 +14,7 @@
 
 ; if script re-copied from github should save it using UTF-8 with BOM (otherwise some of the ascii symbols like • wont be displayed correctly)
 /*	Things to do
-
-	Update unit panel structure so can add build progress and hallucination properties
 	Check if chrono structures are powered - It seems to be a behaviour ' Power User (Queue) '
-	Team send warn message after clicking building..maybe
 */
 
 /*	
@@ -59,7 +56,11 @@
 */
 
 SetWorkingDir %A_ScriptDir%  ; Ensures a consistent starting directory.
-#SingleInstance force
+; SingleInstance Force Doesn't do anything now, as I renamed the hidden/main GUI
+; with a random name. This is OCD (better to be safe) in case blizzard starts scanning
+; for macro trainer windows.
+; Have written a substitute routine to help ensure single instance.
+#SingleInstance force 
 #MaxHotkeysPerInterval 99999	; a user requested feature (they probably have their own macro script)
 #InstallMouseHook
 #InstallKeybdHook
@@ -91,7 +92,8 @@ if !A_IsAdmin
 	ExitApp
 }
 OnExit, ShutdownProcedure
-
+chageScriptMainWinTitle()
+; Just testing this - doesn't seem to make a difference
 if !A_IsCompiled
 	Process, Priority,, H
 
@@ -104,6 +106,8 @@ if (!FileExist("msvcr100.dll") && A_IsCompiled)
 	reload ; already have admin rights
 	sleep 1000 ; this sleep is needed to prevent the script continuing execution before this instance is closed
 }
+if A_IsCompiled
+	Gosub, SingleInstanceCheck
 
 Menu Tray, Add, &Settings && Options, options_menu
 Menu Tray, Add, &Check For Updates, TrayUpdate
@@ -123,6 +127,7 @@ Else
 	hotkey, >!F12, g_testKeydowns
 }
 
+; Just for testing will remove soon
 g_testKeydowns:
 if (A_ThisLabel = "g_testKeydowns")
 {
@@ -984,8 +989,8 @@ Cast_ChronoStructure:
 	UserPressedHotkey := A_ThisHotkey ; as this variable can get changed very quickly
 	Thread, NoTimers, True
 	input.hookBlock(True, True)
-	if input.releaseKeys(True)
-		dsleep(30)
+	input.releaseKeys(True)
+	dsleep(30)
 	if (UserPressedHotkey = Cast_ChronoStargate_Key)
 		Cast_ChronoStructure(aUnitID.Stargate)
 	Else if (UserPressedHotkey = Cast_ChronoForge_Key)
@@ -2306,6 +2311,57 @@ updateErrorExit:
 	msgbox, 262145, Update Error, An error has occured.`n`nPress OK to launch the trainer website in your browser to manually download the update. 
 	IfMsgBox Ok
 		run % url.Downloads
+return 
+
+
+SingleInstanceCheck:
+
+; SingleInstance, Force will no longer work, as the main window name has been changed
+; so for compiled scripts, this will help to ensure that new instances of the program 
+; will close older ones while still allowing them to run their exit routines.
+; if it can't close it within 2 seconds, it will try a forceful process close
+; and then continue with the script
+
+if A_IsCompiled
+{
+	prev_DetectHiddenWindows := A_DetectHiddenWindows
+	prev_TitleMatchMode := A_TitleMatchMode
+	DetectHiddenWindows, On
+	SetTitleMatchMode, 2
+	; This will return pids for processes with the same
+	; name as the current process and wont include the current
+	; process in the list
+	for i, process in getProcesses(True, A_ScriptName)
+	{
+
+	;	Winclose needs to be in a loop, as it will only close 
+	;	one window at a time. If process owns multiple windows,
+	; 	Then we need to keep closing them until the last/hidden/main window
+	; 	is closed
+		startTick := A_TickCount
+		while WinExist("ahk_pid " process.PID)
+		{
+			if (A_Index > 1)
+				sleep 50
+			WinGet, processName, ProcessName, % "ahk_pid " process.PID 
+			; Just a safety check, in case another process spawned in the 50ms
+			; since we closed the previous one, but this is highly unlikely.
+			if (processName = A_ScriptName)
+			{
+				if (A_TickCount - startTick <= 2000)
+					WinClose, % "ahk_pid " process.PID
+				else 
+				{
+					Process, Close, % process.PID
+					break
+				}	
+			}
+			else break
+		} 
+	}
+	DetectHiddenWindows, %prev_DetectHiddenWindows%  
+	SetTitleMatchMode, %prev_TitleMatchMode%         
+}
 return 
 
 ;------------
@@ -12844,3 +12900,25 @@ removeDamagedUnit()
 }
 
 
+
+
+f1::
+
+
+notepad := new input("Edit1", "ahk_exe notepad.exe")
+
+	notepad.psend("abc`n`ta")
+	sleep 500
+	;notepad.pSendChars("`naBc`t`na")
+
+
+return 
+
+
+;{shift down	}	{click 12 23 down}{shift up}
+
+;msgbox % Asc("	")
+msgbox % GetKeyVK(" ") " | " GetKeySC(" ") " | "  Asc(" ")
+	. "`n" GetKeyVK("	") " | " GetKeySC("	") " | "  Asc("	")
+
+ 		return

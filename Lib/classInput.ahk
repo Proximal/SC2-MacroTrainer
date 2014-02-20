@@ -4,8 +4,9 @@
 ; Same with Windows keys (as releasing these will cause the windows menu to appear) - although the automation
 ; may still work
 
-; Note** Do not call releaseKeys() while thread is in critical! As the LL-Hooks wont process the input
-; until the thread comes out of critical, or an AHK sleep command is used
+; Note** Do not call releaseKeys() (this used sendInput) while thread is in critical! As the LL-Hooks wont process the input
+; until the thread comes out of critical, or an AHK sleep command is used.
+; pReleaseKeys uses post message and is find to use while in critical
 ; Also note, any AHK command which has an internal sleep (including eg controlsend) will cause AHK to check its msg queue
 ; and the hooks will then process any user pressed key which could interrupt the automation!
 
@@ -184,11 +185,27 @@ class Input
 		return
 	}
 
-	; This command can be used with the same syntax as AHKs sendInput command
+	; This command can be used with the similar syntax as AHKs sendInput command
 	; pSend("^+ap") 		Result:	Control+Shift+a p
 	; pSend("+{click}")		Result: Shift Left click the mouse (down and up event)
 	; pSend("{click D " x1 " " y1 "}{Click U " x2 " " y2 "}") ; Result: Box drag the mouse with the LButton
 	; pSend("+{click MM}")		Result: Shift Left click the mouse (down and up event) at current location and also send a WM_MouseMove event
+	
+	; Tabs, spaces and new lines can also be sent. 
+	; Their escaped character representations will also work
+	; pSend("`n`thello") Would start a tabbed new line with the word 'hello'
+	
+	; Notes:
+	; This is designed to send exact key presses. For example psend("AB CD") 
+	; would send "ab cd" - non capitalised. 
+	; Depending on the program, pSend("{shift down}ab cd{shift up}") or psend("+a+b +c+d") may capitalise the text
+	; But for most purposes, it is better to use pSendChars() to send lengths of text to text/input fields.
+	; For example pSendChars("I ♥ NY!") will appear as "I ♥ NY!"
+	; Note: For game chat boxes, you will have to use pSend("{Enter}") to open and then send/close
+	; the chat box
+	;
+	; Repeating a keypress like {a 12} is not supported
+
 
 /*
 Bits	Meaning
@@ -203,7 +220,6 @@ Bits	Meaning
 If you want to send text to a text box/field, consider using the pSendChar
 It is capable of sending capitalised letters, as well as non-Standard ACII chars eg ♥
 */
-
 	
 	pSend(Sequence := "")
 	{
@@ -216,18 +232,20 @@ It is capable of sending capitalised letters, as well as non-Standard ACII chars
 		SetFormat, IntegerFast, hex
 		aSend := []
 		C_Index := 1
-	;	StringReplace, Sequence, Sequence, %A_Space% ,, All ;stuffs up {shift down}
-		StringReplace, Sequence, Sequence, `t , %A_Space%, All 
+	;	StringReplace, Sequence, Sequence, `t , %A_Space%, All ;Removed 20/02/14 so a space will generate a space
+
 		Currentmodifiers := []
 		length := strlen(Sequence) 
 		while (C_Index <= length)
 		{
 			char := SubStr(Sequence, C_Index, 1)
+		/* Removed 20/02/14	
 			if (char = " ")
 			{
 				C_Index++
 				continue
 			}
+		*/
 			if char in +,^,!
 			{		
 				if (char = "+")
@@ -248,15 +266,15 @@ It is capable of sending capitalised letters, as well as non-Standard ACII chars
 				continue
 				
 			}
-			if (char = "{") 							; send {}} will fail with this test but cant use that
-			{ 												; hotkey anyway in program would be ]
+			if (char = "{") 								; send {}} will fail with this test. It could be fixed with another if statement
+			{ 												; but cant use that key anyway, as a ] is really shift+] 
 				if (Position := instr(Sequence, "}", False, C_Index, 1)) ; lets find the closing bracket) n
 				{
 					key := trim(substr(Sequence, C_Index+1, Position -  C_Index - 1))
 					C_Index := Position ;PositionOfClosingBracket
 					while instr(key, A_space A_space) ; loops needed to ensure only 1 space eg "ab           ba"
 						StringReplace, key, key, %A_space%%A_space%, %A_space%, All
-								
+					StringReplace, key, key, `t,, All ;added 20/02/14			
 					if instr(key, "click")
 					{
 						StringReplace, key, key, click ; remove the word click
