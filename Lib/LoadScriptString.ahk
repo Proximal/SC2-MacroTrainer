@@ -1,5 +1,9 @@
 ;   Type: MAKEINTRESOURCE(10)   RT_RCDATA/Application-defined resource (raw data).
 
+; scriptResource = a text file stored in RCDATA
+; if 0
+;   FileInstall, script.ahk, Ignore
+; LoadScriptString("script.ahk")
 LoadScriptString(scriptResource)
 {
     lib := DllCall("GetModuleHandle", "ptr", 0, "ptr")
@@ -13,7 +17,7 @@ LoadScriptString(scriptResource)
 }
 
 /*
-Lexikos
+Lexikos Original
 LoadScriptResource(Name, ByRef DataSize = 0, Type = 10)
 {
     lib := DllCall("GetModuleHandle", "ptr", 0, "ptr")

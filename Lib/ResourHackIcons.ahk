@@ -195,4 +195,16 @@ SaveAs= MyProg_Updated.exe
 -delete ,,, //delete all resources before...
 -add MyProgNew.res ,,, //adding all the new resources 
 
+; delete the original ahk script inside the exe
+-delete RCdata, ">AHK WITH ICON<", 1033
+; insert a new script
+-addoverwrite newScript.txt, RCdata, ">AHK WITH ICON<", 1033
+
+Notice how these require quotes even when the ini file doesnt have spaces!
+-delete RCdata, "MT_CONFIG.INI", 1033
+-addoverwrite new.txt, RCdata, "CONFIG.INI", 1033
+Dont have to call delete first 
+-addoverwrite new.txt, RCdata, "CONFIG.INI", 1033
+
+
 */

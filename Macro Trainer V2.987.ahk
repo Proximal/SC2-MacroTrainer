@@ -2989,6 +2989,7 @@ try
 	;Gui, +ToolWindow  +E0x40000 ; E0x40000 gives it a icon on taskbar (+ToolWindow doesn't have an icon)
 	options_menu := "home32.png|radarB32.png|map32.png|Inject32.png|Group32.png|QuickGroup32.png|Worker32.png|reticule32.png|Robot32.png|key.png|warning32.ico|miscB32.png|bug32.png|settings.ico"
 	optionsMenuTitles := "Home|Detection List|MiniMap/Overlays|Injects|Auto Grouping|Quick Select|Auto Worker|Chrono Boost|Misc Automation|SC2 Keys|Warnings|Misc Abilities|Report Bug|Settings"
+
 	Gosub, g_CreateUnitListsAndObjects ; used for some menu items, and for the custom unit filter gui
 
 	ImageListID := IL_Create(10, 5, 1)  ; Create an ImageList with initial capacity for 10 icons, grows it by 5 if need be, and 1=large icons
@@ -3009,7 +3010,7 @@ try
 			Gui, Add, Button, x+20 w54 h25 gIni_settings_write, Apply
 			Gui, Font, 
 
-	Gui, Add, Tab2, w440 h%guiMenuHeight% ys x165 vInjects_TAB, Info||Basic|Auto|Alert|Manual
+	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% ys x165 vInjects_TAB, Info||Basic|Auto|Alert|Manual
 	GuiControlGet, MenuTab, Pos, Injects_TAB
 	Gui, Tab,  Basic
 		Gui, Add, GroupBox, w200 h240 section vOriginTab, One Button Inject
@@ -3178,7 +3179,7 @@ try
 			Gui, Font	
 
 
-	Gui, Add, Tab2,w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vKeys_TAB, SC2 Keys				
+	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vKeys_TAB, SC2 Keys				
 		Gui, Add, GroupBox, w280 h160, Starcraft Settings && Keys
 			Gui, Add, Text, xp+10 yp+30 w90, Pause Game: 
 				Gui, Add, Edit, Readonly yp-2 x+10 w120  center vpause_game , %pause_game%
@@ -3203,7 +3204,7 @@ try
 			gui, font, 		
 
 
-	Gui, Add, Tab2,w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vWarnings_TAB, Supply||Macro|Macro2|Warpgates
+	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vWarnings_TAB, Supply||Macro|Macro2|Warpgates
 	Gui, Tab, Supply	
 	; Gui, Add, GroupBox, w420 h335, Supply				
 		Gui, Add, Checkbox, X%XTabX% y+30 Vsupplyon checked%supplyon%, Enable Alert
@@ -3373,7 +3374,7 @@ try
 				Gui, Add, Edit, yp-2 x+10 w110 Vw_warpgate center, %w_warpgate%		
 
 
-	Gui, Add, Tab2,w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vMisc_TAB, Misc Abilities
+	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vMisc_TAB, Misc Abilities
 		Gui, Add, GroupBox, w240 h150 section, Misc Hotkeys
 
 			Gui, Add, Text, xp+10 yp+30 w80, Worker Count:
@@ -3436,7 +3437,7 @@ try
 
 
 
-	Gui, Add, Tab2,w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vSettings_TAB, Settings				
+	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vSettings_TAB, Settings				
 		Gui, Add, GroupBox, xs ys+5 w161 h110 section, Empty
 /*
 			Gui, Add, Text, xs+10 yp+35 w60, Send Delay:
@@ -3505,7 +3506,7 @@ try
 				Gui, Add, Button, x+10 vMTChageIconDefaultButton Gg_MTChageIconDefault, Default 
 				;Gui, Add, Edit, Readonly yp-2 xp-90 w80 Hidden vMTCustomIcon , %MTCustomIcon% ; invis and used to store the name
 
-	Gui, Add, Tab2,w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vDetection_TAB, Detection List
+	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vDetection_TAB, Detection List
 		loop, parse, l_GameType, `,
 		{
 			BAS_on_%A_LoopField% := alert_array[A_LoopField, "Enabled"]
@@ -3527,7 +3528,7 @@ try
 		Gui, Add, Button, center Xs+120 ys+100 w200 h60 gAlert_List_Editor vAlert_List_Editor, Launch Alert List Editor
 		Gui, Font,
 
-	Gui, Add, Tab2,w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vBug_TAB, Report Bug
+	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vBug_TAB, Report Bug
 		Gui, Add, Text, x+60 y+20 section, Your Email Address:%A_Space%%A_Space%%A_Space%%A_Space%%A_Space%(optional) 
 		Gui, Add, Edit, xp y+10 w350 vReport_Email,
 		Gui, Add, Text, xp y+10, Problem Description:
@@ -3554,7 +3555,7 @@ try
 		Gui, Add, Button, xp yp+35 w50 h25 gg_RemoveEmailAttachment, Remove
 		Gui, Add, Button, vB_Report gB_Report xp+195 y+8 w80 h50, Send
 
-	Gui, Add, Tab2, w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vChronoBoost_TAB, Settings||Structures|Structures2
+	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vChronoBoost_TAB, Settings||Structures|Structures2
 	Gui, Tab, Settings	
 		Gui, Add, GroupBox, w200 h190 y+20 section, SC2 Keys && Control Groups			
 			Gui, Add, Text, xp+10 yp+25 , Stored Selection Control Group:
@@ -3645,7 +3646,7 @@ try
 				Gui, Add, Edit, Readonly yp-2 x+5 w100  center vCastChrono_FleetBeacon_Key , %CastChrono_FleetBeacon_Key%
 					Gui, Add, Button, yp-2 x+5 gEdit_hotkey v#CastChrono_FleetBeacon_Key,  Edit					
 
-	Gui, Add, Tab2,w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vAutoGroup_TAB, Terran||Protoss|Zerg|Delays|Hotkeys|Info	
+	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vAutoGroup_TAB, Terran||Protoss|Zerg|Delays|Hotkeys|Info	
 	Short_Race_List := "Terr|Prot|Zerg"
 	loop, parse, Short_Race_List, |
 	{
@@ -3744,7 +3745,7 @@ try
 	}
 
 
-	Gui, Add, Tab2,w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vQuickSelect_TAB, Terran||Protoss|Zerg|Info
+	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vQuickSelect_TAB, Terran||Protoss|Zerg|Info
 
 	loop, parse, l_Races, `,
 	{	
@@ -3796,10 +3797,13 @@ try
 		Gui, Font, s10 BOLD
 		Gui, add, text, x+25 y+12 w380, Quick Select 
 		Gui, Font, s10 norm
-		Gui, add, text, xp y+15 w380, This allows you to instantly select any number of (army) unit types with a single hotkey.`n`nIn other words, it is like selecting a predefined control group, but you never have to issue the initial grouping command.
+		Gui, add, text, xp y+15 w380, This allows you to instantly select any number of (army) unit types with a single hotkey.`n`nIn other words, it is like selecting a predefined control group, but you never have to issue the initial grouping command.`n`nNote:`n`nYou will need to ensure the 'Select Army' hotkey found under 'Misc Automation'->'Select Army' matches your SC2 hotkey. This funtion does not need to be enabled.
 		Gui, Font, s9
+		Gui, add, text, xp y+15 w380, Test 
+		;Gui, add, text, xp y+15 w380, Test 
 
-	Gui, Add, Tab2,w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vAutoWorker_TAB, Auto||Info		
+
+	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vAutoWorker_TAB, Auto||Info		
 	Gui, Tab, Auto
 		Gui, Add, Text, x+25 y+20 section, Toggle State:
 
@@ -3894,7 +3898,7 @@ try
 			gui, font, norm s10
 			gui, font, 		
 
-	Gui, Add, Tab2, w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vMiscAutomation_TAB, Select Army||Spread|Remove Units|Easy Select/Unload
+	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vMiscAutomation_TAB, Select Army||Spread|Remove Units|Easy Select/Unload
 	Gui, Tab, Select Army
 		Gui, add, GroupBox, y+15 w405 h180
 		Gui, Add, Checkbox, Xs yp+25 vSelectArmyEnable Checked%SelectArmyEnable% , Enable Select Army Function		
@@ -3994,7 +3998,7 @@ try
 			Gui, Add, Button, xp+80 yp+25 w50 h25 ggYoutubeEasyUnload, Help
 			Gui, Font,
 
-
+/*
 	Gui, Add, Tab2, w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vAutoMine_TAB, Settings||Hotkeys|
 	Gui, Tab, Settings	
 		Gui, Add, GroupBox, y+20 w195 h300 section, Settings
@@ -4081,8 +4085,9 @@ try
 			Gui, Add, Text, xp+40  w340, Ensure the correct ('backspace') base camera key is set in the "SC2 Keys Section" (below Auto Mine - on the left).
 			Gui, Font, s10
 			Gui, Font,
-	Gui, Add, Tab2, w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vHome_TAB, Home||Emergency
+	*/
 
+	Gui, Add, Tab2, w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vHome_TAB, Home||Emergency
 	Gui, Tab, Home
 			Gui, Add, Button, y+30 gTrayUpdate w150, Check For Updates
 			Gui, Add, Button, y+20 gB_HelpFile w150 vSillyGUIControlIdentVariable2, Read The Help File
@@ -4110,10 +4115,9 @@ try
 		Gui, Add, Text, xp y+15 w405, The deult key can be changed via the 'settings' Tab on the left.
 		Gui, Add, Text, xp y+20 w405, Note: The windows key must not be disabled within the SC options.`nThis program is capable of blocking the Left windows key (check settings tab).
 
-	Gui, Add, Tab2, w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vMiniMap_TAB, MiniMap||MiniMap2|Overlays|Hotkeys|Info
+	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vMiniMap_TAB, MiniMap||MiniMap2|Overlays|Hotkeys|Info
 
 	Gui, Tab, MiniMap
-
 
 		currentGuiTabX := XTabX -5
 		groupboxGuiX := CurrentGuiTabX - 10
@@ -4354,361 +4358,344 @@ try
 		Gui, Add, Text, center xs+10 y+25 w370 cRed, The MiniMap and Overlays will only work when SC is in 'Windowed (fullscreen)' mode.
 		Gui, Font, s10 norm 
 
-	unhidden_menu := "Home_TAB"
-
-	GuiControl, Hide, Home_TAB 
-	GuiControl, Hide, Injects_TAB 
-	GuiControl, Hide, AutoGroup_TAB 
-	GuiControl, Hide, QuickSelect_TAB 
-	GuiControl, Hide, AutoWorker_TAB 
-	GuiControl, Hide, ChronoBoost_TAB 
-	GuiControl, Hide, AutoMine_TAB 
-	GuiControl, Hide, MiscAutomation_TAB 
-	GuiControl, Hide, Keys_TAB
-	GuiControl, Hide, Warnings_TAB
-	GuiControl, Hide, Misc_TAB 
-	GuiControl, Hide, Detection_TAB
-	GuiControl, Hide, Settings_TAB
-	GuiControl, Hide, Bug_TAB
-	GuiControl, Hide, MiniMap_TAB
-
-	ZergPic_TT := "The OP race"
-	TerranPic_TT := "The artist formerly known as being OP"
-	ProtossPic_TT := "The slightly less OP race"
-	auto_inject_alert_TT := "This alert will sound X seconds after your last auto inject, prompting you to inject again."
-	auto_inject_time_TT := TT_auto_inject_time_TT :=  "This is in 'SC2' Seconds."
-	#cast_inject_key_TT := cast_inject_key_TT := "When pressed the program will inject all of your hatcheries.`n`nThis Hotkey is ONLY active while playing as zerg!"
-	Auto_inject_sleep_TT := "Lower this to make the inject round faster, BUT this will make it more obvious that it is being automated!"
-	CanQueenMultiInject_TT := "During minimap injects (and auto-Injects) a queen may attempt to inject multiple hatcheries providing:`nShe is the only nearby queen and she has enough energy.`n`nThis may increase the chance of having queens go walkabouts (especially during an auto inject) - but so far I have not observed this during testing. "
-	Inject_RestoreSelection_TT := "This will store your currently selected units in a control group, which is recalled at the end inject round."
-	Inject_RestoreScreenLocation_TT := "This will save your screen/camera location and restore it at the end of the inject round.`n`n"
-							. "This option only affects the 'backspace' methods."
-
-	Inject_SleepVariance_TT := Edit_Inject_SleepVariance_TT := "This will increase each sleep period by a random percentage from 0% up to this set value.`n`n"
-							. "This does not affect the auto-injects."						
-
-	HotkeysZergBurrow_TT := #HotkeysZergBurrow_TT := "Please ensure this matches the 'Burrow' hotkey in SC2 & that you only have one active hotkey to burrow units i.e. No alternate burrow key!`n`nThis is used during auto injects to help prevent accidentally burrowing queens due to the way windows/SC2 buffers these repeated keypresses."
-	Simulation_speed_TT := "How fast the mouse moves during inject rounds. 0 = Fastest - try 1,2 or 3 if you're having problems."
-	Drag_origin_TT := "This sets the origin of the box drag to the top left or right corners. Hence making it compatible with observer panel hacks.`n`nThis is only used by the 'Backspace' method."
-	BI_create_camera_pos_x_TT := #BI_create_camera_pos_x_TT := "The hotkey used to save a camera location."
-								. "`n`nThis should correspond to one of the five SC2 'create camera' hotkeys."
-								. "`nPlease set this to a camera hotkey which you don't actually use."
-								. "`n`nThis is used by both backspace inject methods."
-
-
-	BI_camera_pos_x_TT := #BI_camera_pos_x_TT :=  "The hotkey used to invoke the above saved camera location."
-												. "`n`nThis is used by both backspace inject methods."
-
-
-	manual_inject_time_TT := "The time between alerts."
-	inject_start_key_TT := "The hotkey used to start or stop the timer."
-	inject_reset_key_TT := "The hotkey used to reset (or start) the timer."
-	Alert_List_Editor_TT := "Use this to edit and create alerts for any SC2 unit or building."
-	#base_camera_TT := base_camera_TT := "The key used to cycle between hatcheries/bases."
-	#NextSubgroupKey_TT := NextSubgroupKey_TT := "The key used to cycle forward though a selection group."
-	#control_group_TT := control_group_TT := "Set this to a control group you DON'T use - It stores your unit selection during an inject round."
-	create_camera_pos_x_TT := #create_camera_pos_x_TT := "The hotkey used to 'save' a camera location. - Ensure this isn't one you use."
-	#camera_pos_x_TT := camera_pos_x_TT := "The hotkey associated with the 'create/save' camera location above."
-	spawn_larva_TT := #spawn_larva_TT := Tspawn_larva_TT := "Please set the key or alternate key for ""spawn larvae"" in SC2 to "" e "". - This prevents problems!"
-	sub_lowerdelta_TT := TT_sub_lowerdelta_TT := "A warning will be heard when the 'free' supply drops below this number. (while your supply is below the 'Low Range Cutoff')."
-	sub_middelta_TT := TT_sub_middelta_TT := "A warning will be heard when the 'free' supply drops below this number. (While your supply is greater than the 'Low Range Cutoff' but less than the 'Middle Range Cutoff')."
-	sub_upperdelta_TT := TT_sub_upperdelta_TT := "A warning will be heard when the 'free' supply drops below this number. (While your supply is greater than the 'Middle Range Cutoff' but less than the 'Upper Range Cutoff')."
-	above_upperdelta_TT := TT_above_upperdelta_TT := "A warning will be heard when the 'free' supply drops below this number. (While your supply is greater than the 'Upper Range Cutoff')."
-	minimum_supply_TT := TT_minimum_supply_TT := "Alerts are only active while your supply is above this number."
-
-	w_supply_TT := w_warpgate_TT := w_workerprod_T_TT := w_workerprod_P_TT := w_workerprod_Z_TT := w_gas_TT := w_idle_TT := w_mineral_TT := "This text is spoken during a warning."
-	TT_sec_workerprod_TT := sec_workerprod_TT := sec_idle_TT := sec_gas_TT := sec_mineral_TT := sec_supply_TT := TT_sec_supply_TT := TT_sec_mineral_TT := TT_sec_gas_TT := TT_sec_idle_TT := TT_sec_warpgate_TT := sec_warpgate_TT := "Set how many additional warnings are to be given after the first initial warning (assuming the resource does not fall below the inciting value) - the warnings then turn off."
-	additional_delay_supply_TT := TT_additional_delay_supply_TT := additional_delay_minerals_TT := additional_delay_gas_TT := additional_idle_workers_TT 
-	:= TT_additional_delay_minerals_TT := TT_additional_delay_gas_TT := TT_additional_idle_workers_TT := TT_delay_warpgate_warn_followup_TT := delay_warpgate_warn_followup_TT := "This sets the delay between the initial warning, and the additional/follow-up warnings. (in real seconds)"
-	TT_additional_delay_worker_production_TT := additional_delay_worker_production_TT := "This sets the delay between the initial warning, and the additional/follow-up warnings. (in SC2 seconds)"
-	TT_workerproduction_time_TT := workerproduction_time_TT := "This only applies to Zerg.`nA warning will be heard if a drone has not been produced in this amount of time (SC2 seconds)."
-	delay_warpgate_warn_TT := "If a gateway has been unconverted for this period of time (real seconds) then a warning will be made."
-	warpgate_warn_on_TT := "Enables warnings for unconverted gateways. Note: The warnings become active after your first gateway is converted."
-	idletrigger_TT := gas_trigger_TT := mineraltrigger_TT := TT_mineraltrigger_TT := TT_gas_trigger_TT := TT_idletrigger_TT := "The required amount to invoke a warning."
-	supplylower_TT := TT_supplylower_TT := TT_supplymid_TT := supplymid_TT := supplyupper_TT := TT_supplyupper_TT := "Dictactes when the next or previous supply delta/threashold is used."
-	TT_workerProductionTPIdle_TT := workerProductionTPIdle_TT := "This only applies to Terran & protoss.`nIf all nexi/CC/Orbitals/PFs are idle for this amount of time (SC2 seconds), a warning will be made.`n`nNote: A main is considered idle if it has no worker in production and is not currently flying or morphing."
-
-	delay_warpgate_warn_TT := TT_delay_warpgate_warn_TT := "A warning will be heard when an unconverted gateway exists for this period of time.`nThis is in SC/in-game seconds.`n`nNote: An additional delay of up to three (real) seconds can be expected"
-
-	 TT_delay_warpgate_warn_followup_TT := delay_warpgate_warn_followup_TT := "This sets the delay between the initial warning and the additional/follow-up warnings.`n`nNote: This is in SC2 (in game) seconds."
-	DrawMiniMap_TT := "Draws enemy units on the minimap i.e. A Minimap Hack"
-	DrawSpawningRaces_TT := "Displays a race icon over the enemies spawning location at the start of the match."
-
-	DrawAlerts_TT := "While using the 'detection list' function an 'x' will be briefly displayed on the minimap during a unit warning.`n`nUnconverted gateways will also be marked (if that macro is enabled)."
-
-	UnitHighlightExcludeList_TT := #UnitHighlightExcludeList_TT := "These units will not be displayed on the minimap."
-
-	loop, 7
+	if !ZergPic_TT
 	{
-		UnitHighlightList%A_index%_TT := #UnitHighlightList%A_index%_TT
-		:= "Units of this type will be drawn using the specified colour"
-	 	#UnitHighlightList%A_Index%Colour_TT := "Click Me!`n`nUnits of this type will appear this colour."
+		ZergPic_TT := "The OP race"
+		TerranPic_TT := "The artist formerly known as being OP"
+		ProtossPic_TT := "The slightly less OP race"
+		auto_inject_alert_TT := "This alert will sound X seconds after your last auto inject, prompting you to inject again."
+		auto_inject_time_TT := TT_auto_inject_time_TT :=  "This is in 'SC2' Seconds."
+		#cast_inject_key_TT := cast_inject_key_TT := "When pressed the program will inject all of your hatcheries.`n`nThis Hotkey is ONLY active while playing as zerg!"
+		Auto_inject_sleep_TT := "Lower this to make the inject round faster, BUT this will make it more obvious that it is being automated!"
+		CanQueenMultiInject_TT := "During minimap injects (and auto-Injects) a queen may attempt to inject multiple hatcheries providing:`nShe is the only nearby queen and she has enough energy.`n`nThis may increase the chance of having queens go walkabouts (especially during an auto inject) - but so far I have not observed this during testing. "
+		Inject_RestoreSelection_TT := "This will store your currently selected units in a control group, which is recalled at the end inject round."
+		Inject_RestoreScreenLocation_TT := "This will save your screen/camera location and restore it at the end of the inject round.`n`n"
+								. "This option only affects the 'backspace' methods."
+
+		Inject_SleepVariance_TT := Edit_Inject_SleepVariance_TT := "This will increase each sleep period by a random percentage from 0% up to this set value.`n`n"
+								. "This does not affect the auto-injects."						
+
+		HotkeysZergBurrow_TT := #HotkeysZergBurrow_TT := "Please ensure this matches the 'Burrow' hotkey in SC2 & that you only have one active hotkey to burrow units i.e. No alternate burrow key!`n`nThis is used during auto injects to help prevent accidentally burrowing queens due to the way windows/SC2 buffers these repeated keypresses."
+		Simulation_speed_TT := "How fast the mouse moves during inject rounds. 0 = Fastest - try 1,2 or 3 if you're having problems."
+		Drag_origin_TT := "This sets the origin of the box drag to the top left or right corners. Hence making it compatible with observer panel hacks.`n`nThis is only used by the 'Backspace' method."
+		BI_create_camera_pos_x_TT := #BI_create_camera_pos_x_TT := "The hotkey used to save a camera location."
+									. "`n`nThis should correspond to one of the five SC2 'create camera' hotkeys."
+									. "`nPlease set this to a camera hotkey which you don't actually use."
+									. "`n`nThis is used by both backspace inject methods."
+
+
+		BI_camera_pos_x_TT := #BI_camera_pos_x_TT :=  "The hotkey used to invoke the above saved camera location."
+													. "`n`nThis is used by both backspace inject methods."
+
+
+		manual_inject_time_TT := "The time between alerts."
+		inject_start_key_TT := "The hotkey used to start or stop the timer."
+		inject_reset_key_TT := "The hotkey used to reset (or start) the timer."
+		Alert_List_Editor_TT := "Use this to edit and create alerts for any SC2 unit or building."
+		#base_camera_TT := base_camera_TT := "The key used to cycle between hatcheries/bases."
+		#NextSubgroupKey_TT := NextSubgroupKey_TT := "The key used to cycle forward though a selection group."
+		#control_group_TT := control_group_TT := "Set this to a control group you DON'T use - It stores your unit selection during an inject round."
+		create_camera_pos_x_TT := #create_camera_pos_x_TT := "The hotkey used to 'save' a camera location. - Ensure this isn't one you use."
+		#camera_pos_x_TT := camera_pos_x_TT := "The hotkey associated with the 'create/save' camera location above."
+		spawn_larva_TT := #spawn_larva_TT := Tspawn_larva_TT := "Please set the key or alternate key for ""spawn larvae"" in SC2 to "" e "". - This prevents problems!"
+		sub_lowerdelta_TT := TT_sub_lowerdelta_TT := "A warning will be heard when the 'free' supply drops below this number. (while your supply is below the 'Low Range Cutoff')."
+		sub_middelta_TT := TT_sub_middelta_TT := "A warning will be heard when the 'free' supply drops below this number. (While your supply is greater than the 'Low Range Cutoff' but less than the 'Middle Range Cutoff')."
+		sub_upperdelta_TT := TT_sub_upperdelta_TT := "A warning will be heard when the 'free' supply drops below this number. (While your supply is greater than the 'Middle Range Cutoff' but less than the 'Upper Range Cutoff')."
+		above_upperdelta_TT := TT_above_upperdelta_TT := "A warning will be heard when the 'free' supply drops below this number. (While your supply is greater than the 'Upper Range Cutoff')."
+		minimum_supply_TT := TT_minimum_supply_TT := "Alerts are only active while your supply is above this number."
+
+		w_supply_TT := w_warpgate_TT := w_workerprod_T_TT := w_workerprod_P_TT := w_workerprod_Z_TT := w_gas_TT := w_idle_TT := w_mineral_TT := "This text is spoken during a warning."
+		TT_sec_workerprod_TT := sec_workerprod_TT := sec_idle_TT := sec_gas_TT := sec_mineral_TT := sec_supply_TT := TT_sec_supply_TT := TT_sec_mineral_TT := TT_sec_gas_TT := TT_sec_idle_TT := TT_sec_warpgate_TT := sec_warpgate_TT := "Set how many additional warnings are to be given after the first initial warning (assuming the resource does not fall below the inciting value) - the warnings then turn off."
+		additional_delay_supply_TT := TT_additional_delay_supply_TT := additional_delay_minerals_TT := additional_delay_gas_TT := additional_idle_workers_TT 
+		:= TT_additional_delay_minerals_TT := TT_additional_delay_gas_TT := TT_additional_idle_workers_TT := TT_delay_warpgate_warn_followup_TT := delay_warpgate_warn_followup_TT := "This sets the delay between the initial warning, and the additional/follow-up warnings. (in real seconds)"
+		TT_additional_delay_worker_production_TT := additional_delay_worker_production_TT := "This sets the delay between the initial warning, and the additional/follow-up warnings. (in SC2 seconds)"
+		TT_workerproduction_time_TT := workerproduction_time_TT := "This only applies to Zerg.`nA warning will be heard if a drone has not been produced in this amount of time (SC2 seconds)."
+		delay_warpgate_warn_TT := "If a gateway has been unconverted for this period of time (real seconds) then a warning will be made."
+		warpgate_warn_on_TT := "Enables warnings for unconverted gateways. Note: The warnings become active after your first gateway is converted."
+		idletrigger_TT := gas_trigger_TT := mineraltrigger_TT := TT_mineraltrigger_TT := TT_gas_trigger_TT := TT_idletrigger_TT := "The required amount to invoke a warning."
+		supplylower_TT := TT_supplylower_TT := TT_supplymid_TT := supplymid_TT := supplyupper_TT := TT_supplyupper_TT := "Dictactes when the next or previous supply delta/threashold is used."
+		TT_workerProductionTPIdle_TT := workerProductionTPIdle_TT := "This only applies to Terran & protoss.`nIf all nexi/CC/Orbitals/PFs are idle for this amount of time (SC2 seconds), a warning will be made.`n`nNote: A main is considered idle if it has no worker in production and is not currently flying or morphing."
+
+		delay_warpgate_warn_TT := TT_delay_warpgate_warn_TT := "A warning will be heard when an unconverted gateway exists for this period of time.`nThis is in SC/in-game seconds.`n`nNote: An additional delay of up to three (real) seconds can be expected"
+
+		 TT_delay_warpgate_warn_followup_TT := delay_warpgate_warn_followup_TT := "This sets the delay between the initial warning and the additional/follow-up warnings.`n`nNote: This is in SC2 (in game) seconds."
+		DrawMiniMap_TT := "Draws enemy units on the minimap i.e. A Minimap Hack"
+		DrawSpawningRaces_TT := "Displays a race icon over the enemies spawning location at the start of the match."
+
+		DrawAlerts_TT := "While using the 'detection list' function an 'x' will be briefly displayed on the minimap during a unit warning.`n`nUnconverted gateways will also be marked (if that macro is enabled)."
+
+		UnitHighlightExcludeList_TT := #UnitHighlightExcludeList_TT := "These units will not be displayed on the minimap."
+
+		loop, 7
+		{
+			UnitHighlightList%A_index%_TT := #UnitHighlightList%A_index%_TT
+			:= "Units of this type will be drawn using the specified colour"
+		 	#UnitHighlightList%A_Index%Colour_TT := "Click Me!`n`nUnits of this type will appear this colour."
+		}
+
+		DrawAPMOverlay_TT := "This enables/disables the overlay."
+						. "`nThe mode can be set with via the 'APM overlay mode' checkbox on right (under 'Overlays Misc')"
+
+		DrawWorkerOverlay_TT := "Displays your current harvester count with a worker icon"
+		DrawIdleWorkersOverlay_TT := "While idle workers exist, a worker icon will be displayed with the current idle count.`n`nThe size and position can be changed easily so that it grabs your attention."
+		DrawUnitOverlay_TT := "Displays an overlay similar to the 'observer panel', listing the current and in-production unit counts.`n`nUse the 'unit panel filter' to selectively remove/display units."
+		DrawUnitUpgrades_TT := "Displays the current enemy upgrades."
+		UnitPanelFilterButton_TT := "Allows units to be selectively removed from the overlay."
+
+		ToggleAutoWorkerState_Key_TT := #ToggleAutoWorkerState_Key_TT := "Toggles (enables/disables) this function for the CURRENT match.`n`nWill only work during a match"
+		AutoWorkerProtectionDelay_TT := TT_AutoWorkerProtectionDelay_TT := "After a round a of workers has been made the function will sleep for this period of time (ms).`nThis helps prevent queueing too many workers.`n`n"
+									. "If more than one worker is commonly being queued-up and/or you have a laggy connection perhaps try increasing this value."
+
+		AutoWorkerQueueSupplyBlock_TT := "While you are supply blocked a worker will be queued-up.`n"
+				. "This aims to make the automation a little more subtle. If disabled, the instant you have free supply all of your bases will make a worker."
+				. "`n`nNote: The program won't queue multiple workers while supply blocked."
+
+		AutoWorkerAlwaysGroup_TT := "When enabled, your current unit selection will always be stored in a control group and then restored post automation."
+				. "`nThis provides the greatest reliability."
+				. "`n`nWhen disabled, the program will not control-group your selection nor restore it if you already have your bases (CC/nexi) selected. It will however"
+				. "`nstill send the control group key for your bases."
+				. "`n`nThis helps make the automation a little more subtle, especially in the early game. But it may not work correctly for everyone."
+				. "`nIf it fails, you will end up with your base control group selected rather than your previous units."
+				. "`n`nNote: Prior to v2.986 'disabled' was the default nature. "
+
+		TT_AutoWorkerAPMProtection_TT := AutoWorkerAPMProtection_TT
+		:= TT_FInjectAPMProtection_TT := FInjectAPMProtection_TT := "Automations will be delayed while your instantaneous APM is greater than this value.`n"
+				. "`nThis can be used to make the automations a little more subtle."
+
+		EnableAutoWorkerTerranStart_TT := EnableAutoWorkerProtossStart_TT := "Enables/Disables this function."
+		AutoWorkerStorage_T_Key_TT := #AutoWorkerStorage_T_Key_TT := AutoWorkerStorage_P_Key_TT := #AutoWorkerStorage_P_Key_TT := "During an automation cycle your selected units will be temporarily stored in this control group.`n`nSpecify a control group that you do NOT use in game."
+
+		#Base_Control_Group_T_Key_TT := Base_Control_Group_T_Key_TT := Base_Control_Group_P_Key_TT := #Base_Control_Group_P_Key_TT := "The control group used to store your command centres/orbitals/planetary-fortresses/nexi.`n`n"
+								. "Note: Other buildings can also be stored in this control group e.g. engineering bays/forges,`n"
+								. "but the first displayed unit in the selection card must be a main base - 99% of the time this will be the case."
+
+		AutoWorkerMakeWorker_T_Key_TT := #AutoWorkerMakeWorker_T_Key_TT := "The keyboard hotkey used to build an SCV.`nUsually 'S'."
+		AutoWorkerMakeWorker_P_Key_TT := #AutoWorkerMakeWorker_P_Key_TT := "The keyboard hotkey used to build a probe.`nUsually 'E'."
+
+		TT_AutoWorkerMaxWorkerTerran_TT := TT_AutoWorkerMaxWorkerProtoss_TT := AutoWorkerMaxWorkerTerran_TT := AutoWorkerMaxWorkerProtoss_TT := "Worker production will stop for the remainder of the game when this number of workers exist.`n"
+						. "Workers can then be 'sacked' and the function will remain off!`n`nIf you wish to turn it back on, simply use the 'toggle hotkey' twice."
+						. "`nNote: For added randomness your final worker count will be within +/- 2 of this value."
+		TT_AutoWorkerMaxWorkerPerBaseTerran_TT := TT_AutoWorkerMaxWorkerPerBaseProtoss_TT := AutoWorkerMaxWorkerPerBaseTerran_TT := AutoWorkerMaxWorkerPerBaseProtoss_TT :=  "Worker production will stop when this number is exceeded by`n"
+					. "the current worker count per the number of fully constructed (and control grouped) main-bases`n"
+					. "WHICH are within 8 map units of a gas geyser.`n`n"
+					. "Note: A properly situated base is usually 7-7.5 map units from a geyser."
+
+		Inject_spawn_larva_TT := #Inject_spawn_larva_TT := "This needs to correspond to your SC2 'spawn larva' button.`n`nThis key is sent during an inject to invoke Zerg's 'spawn larva' ability."
+
+		MI_Queen_Group_TT := #MI_Queen_Group_TT := "The queens in this control are used to inject hatcheries.`n`nHence you must add your injecting queens to this control group!"
+		F_InjectOff_Key_TT := #F_InjectOff_Key_TT := "During a match this hotkey will toggle (either disable or enable) automatic injects."
+
+		SplitUnitPanel_TT := "When enabled, the overlay will display units on separate a line to structures."
+		unitPanelDrawStructureProgress_TT := "Displays a progress bar below any structure under construction."
+		unitPanelDrawUnitProgress_TT := "Displays a progress bar below any unit in production."
+		unitPanelDrawUpgradeProgress_TT := "Displays a progress bar below the current upgrades."
+
+		OverlayIdent_TT := "Changes or disables the method of identifying players in the overlays."
+
+		Playback_Alert_Key_TT := #Playback_Alert_Key_TT := "Repeats the previous alert"
+
+		worker_count_local_key_TT := "This will read aloud your current worker count."
+		worker_count_enemy_key_TT := "This will read aloud your enemy's worker count. (only in 1v1)"
+		warning_toggle_key_TT := "Pauses and resumes the program."
+		ping_key_TT := "This hotkey will ping the map at the current mouse cursor location."
+		race_reading_TT := "Reads aloud the enemys' spawning races."
+		idle_enable_TT := "If the user has been idle for longer than a set period of time (real seconds) then the game will be paused."
+		TTidle_time_TT := idle_time_TT := "How long the user must be idle for (in real seconds) before the game is paused.`nNote: This value can be higher than the ""Don't Pause After"" parameter!"
+		TTUserIdle_LoLimit_TT  := UserIdle_LoLimit_TT := "The game can't be paused before this (in game/SC2) time."
+		TTUserIdle_HiLimit_TT := UserIdle_HiLimit_TT := "The game will not be paused after this (in game/SC2) time."
+
+		speech_volume_TT := "The relative volume of the speech engine."
+		programVolume_TT := "The overall program volume. This affects both the speech volume and the 'beeps'.`n`nNote: This probably has no effect on WindowsXP and below."
+		speaker_volume_up_key_TT := speaker_volume_down_key_TT := "Changes the windows master volume."
+		speech_volume_down_key_TT := speech_volume_up_key_TT := "Changes the programs TTS volume."
+		program_volume_up_key_TT := program_volume_down_key_TT := "Changes the programs overall volume."
+		input_method_TT := "Sets the method of artificial input.`n"
+			. "Post message is now the only available method."
+		;	. "Technically ""Event"" is the most 'reliable' across systems, but ""Input"" offers considerably better performance, key buffering and will work with almost all systems.`n"
+		;	. "Using ""Input"" will also reduce the likelihood of the program interfering with user game play during automations`n`n"
+		;	. "Hence, use ""Input"" unless it doesn't work."
+		TT_EventKeyDelay_TT := EventKeyDelay_TT := "Sets the mouse and key delay (in ms) used when in SendEvent mode.`nLower values sends keystrokes faster - but setting this too low MAY cause some strokes to be missed.`nCommon values are (-1 to 10).`nNote: These delays are accumulative, and for functions which require numerous keystrokes e.g. split this delay can become quite substantial`n`nSendInput is faster and generally more reliable, hence SendInput should be used if it works on your system."
+
+		TT_pClickDelay_TT := pClickDelay_TT := TT_pSendDelay_TT := pSendDelay_TT := "Sets the sleep time (in ms) between individual keystrokes/mousecliks."	
+							. "`n`nNote: -1 (no delay) should work for everyone, but if unit selections are not being saved/restored, perhaps try increasing this to 2 or 3"
+							. "`n`nValid values are:"
+							. "`n-1: no delay"
+							. "`n 0: Yields the remaining time slice to any other process (if requested)"
+							. "`nAny positive integer."
+
+		auto_update_TT := "While enabled the program will automatically check for new versions during startup."
+		launch_settings_TT := "Display the options menu on startup."
+
+		HideTrayIcon_TT := "Hides the tray icon and all popups/menus."
+		TT2_MI_QueenDistance_TT := MI_QueenDistance_TT := "The edge of the hatchery creep is approximately 14`nThis helps prevent queens injecting on remote hatches - It works better with lower numbers"
+		TT_F_Max_Injects_TT := F_Max_Injects_TT := "The max. number of 'forced' injects which can occur after a user 'F5'/auto-inject.`nSet this to a high number if you want the program to inject for you."
+		TT_F_Alert_PreTime_TT := F_Alert_PreTime_TT := "The alert will sound X seconds before the forced inject."
+		TT_F_Sleep_Time_TT := F_Sleep_Time_TT := "The amount of time spent idle after injecting each hatch.`n"
+				. "This should be set as low as reliably possible so that the inject rounds are shorter and there is less chance of it affecting your gameplay.`n`n"
+				. "This will vary for users, but 0 ms works reliably for me.`n"
+				. "If 0 ms is not reliable, try increasing this value in increments of 1 ms."
+		TT_FInjectHatchFrequency_TT := FInjectHatchFrequency_TT := "How often the larva state of the hatcheries are checked. (In ms/real-time)`nAny uninjected hatches will then be injected.`n`nIncreasing this value will delay injects, that is, a hatch will remain uninjected for longer."
+		TT_FInjectHatchMaxHatches_TT := FInjectHatchMaxHatches_TT := "The maximum number of hatches to be injected during an inject round"
+
+		TT_AM_KeyDelay_TT := AM_KeyDelay_TT := TT_I_KeyDelay_TT := I_KeyDelay_TT := TT_CG_KeyDelay_TT := CG_KeyDelay_TT := "This sets the delay between key/mouse events`nLower numbers are faster, but they may cause problems.`n0-10`n`nWith regards to speed, changing the 'sleep' time will generally have a larger impact."
+		TT_ChronoBoostSleep_TT := ChronoBoostSleep_TT := "Sets the amount of time that the program sleeps for during each automation cycle.`nThis has a large effect on the speed, and hence how 'human' the automation appears'.`n`n"
+				. "If you want instant chronoboosts, a value of 0 ms works reliably for me.`n"
+				. "If 0 ms is not reliable for you, try increasing the sleep time by one or two ms. (it doesn't require much)"
+		CG_chrono_remainder_TT := TT_CG_chrono_remainder_TT := "This is how many full chronoboosts will remain afterwards between all your nexi.`nA setting of 1 will leave 1 full chronoboost (or 25 energy) on one of your nexi."
+		CG_control_group_TT := Inject_control_group_TT := #CG_control_group_TT := #Inject_control_group_TT := "This stores the currently selected units into a temporary control group, so that the current unit selection may be restored after the automated cycle.`nNote: Ensure that this is set to a control group you do not use."
+		WorkerSplitType_TT := "Defines how many workers are rallied to each mineral patch."
+
+		Auto_inject_sleep_TT := Edit_pos_var_TT := "Sets the amount of time that the program sleeps for during each automation cycle.`nThis has a large effect on the speed, and hence how 'human' the automation appears'.`n`n"
+				. "The lowest reliable values will vary for users, but for myself the minimap method can be used with a sleep time of 0 ms.`n"
+				. "The backspace methods require at least 8 ms."
+
+
+		AM_MiniMap_PixelColourAlpha_TT := AM_MiniMap_PixelColourRed_TT := AM_MiniMap_PixelColourGreen_TT := AM_MinsiMap_PixelColourBlue_TT := "The ARGB pixel colour of the mini map mineral field."
+		#ResetPixelColour_TT := "Resets the pixel colour and variance to their default settings."
+		#FindPixelColour_TT := "This sets the pixel colour for your exact system."
+		AM_MiniMap_PixelVariance_TT := TT_AM_MiniMap_PixelVariance_TT := "A match will result if  a pixel's colour lies within the +/- variance range.`n`nThis is a percent value 0-100%"
+		TT_AGDelay_TT := AG_Delay_TT := "The program will wait this period of time before adding the selected units to a control group.`nUse this if you want the function to look more 'human'.`n`nNote: Values greater than 0 probably the increase likelihood of miss-grouping units (especially on slow computers or during large battles with high APM)."
+		TT_AGKeyReleaseDelay_TT := AGKeyReleaseDelay_TT := "An auto-group attempt will not occur until after all the keys have been released for this period of time."
+				. "`n`nThis helps increase the robustness of the function."
+				. "`nIf incorrect groupings are occurring, you can try increasing this value."
+				. "`nValid values are: 50-700 ms"
+		TT_AGBufferDelay_TT := AGBufferDelay_TT := "When an auto-group action is attempted user input will be buffered for this period of time, I.E. button presses and mouse movements`nwill be delayed during this period."
+				. "`n`nThis helps ensure the currently selected units are ones which should be grouped."
+				. "`nIf incorrect groupings are occurring, you can try increasing this value."
+				. "`nValid values are: 40-290 ms"
+
+		TT_AGRestrictBufferDelay_TT := AGRestrictBufferDelay_TT := "When a 'restrict grouping' action is performed user input will be buffered for this period of time, I.E. button presses and mouse movements`nwill be delayed during this period."
+				. "`n`nThis helps ensure the currently selected units are ones which should be grouped."
+				. "`nIf incorrect groupings are occurring, you can try increasing this value."
+				. "`nValid values are: 40-290 ms"
+
+
+		Loop, 10
+		{
+			group := A_Index - 1
+			AGAddToGroup%group%_TT := #AGAddToGroup%group%_TT := "The SC2 hotkey used to ADD units to control group " group "`n`nThis is usually Shift + " group
+			AGSetGroup%group%_TT := #AGSetGroup%group%_TT := "The SC2 hotkey used to set the current unit selection to control group " group "`n`nThis is usually Control + " group
+		}
+
+
+		TempHideMiniMapKey_TT := #TempHideMiniMapKey_TT := "This will disable the minimap overlay for three seconds,`nthereby allowing you to determine if you legitimately have vision of a unit or building."
+		
+
+		loopList := "overlayIncomeTransparency,overlayMatchTransparency,overlayResourceTransparency,overlayArmyTransparency,overlayHarvesterTransparency,overlayIdleWorkerTransparency,overlayLocalColourTransparency,overlayMinimapTransparency"
+		loop, parse, loopList, `,
+			%A_LoopField%_TT := "Sets the transparency of the overlay."
+								. "`n`n100 = Fully opaque"
+								. "`n0 = Fully transparent"
+		
+
+		ToggleUnitOverlayKey_TT := #ToggleUnitOverlayKey_TT := "Toggles the unit panel between the following states:"
+							. "`n`n  -Units/structures"
+							. "`n  -Units/structures + Upgrades"
+							. "`n  -Upgrades."
+							. "`n  -Off."
+
+		AdjustOverlayKey_TT := #AdjustOverlayKey_TT := "Used to move and resize the overlays."
+		TT_UserMiniMapXScale_TT := TT_UserMiniMapYScale_TT := UserMiniMapYScale_TT := UserMiniMapXScale_TT := "Adjusts the relative size of units on the minimap."
+		TT_MiniMapRefresh_TT := MiniMapRefresh_TT := "Dictates how frequently the minimap is redrawn"
+		BlendUnits_TT := "This will draw the units 'blended together', like SC2 does.`nIn other words, units/buildings grouped together will only have one border around all of them"
+
+		TT_OverlayRefresh_TT := OverlayRefresh_TT := "Determines how frequently these overlays are refreshed:`nIncome, Resource, Army, Local Harvesters, and Idle Workers."
+		TT_UnitOverlayRefresh_TT := UnitOverlayRefresh_TT := "Determines how frequently the unit panel is refreshed.`nThis requires more resources than the other overlays and so it has its own refresh rate.`n`nLower this value if you want the progress bars to increase in a smoother manner."
+
+		DrawLocalPlayerColourOverlay_TT := "During team games and while using hostile colours (green, yellow, and red) a small circle is drawn which indiactes your local player colour.`n`n"
+											. "This is helpful when your allies refer to you by colour."
+		HostileColourAssist_TT := "During team games while using hostile colours (green, yellow, and red) enemy bases will still be displayed using player colours.`n`n"
+								. "This helps when co-ordinating attacks e.g. Let's attack yellow!"
+
+		DrawUnitDestinations_TT := "Draws blue, green, orange, yellow and red lines on the minimap to indicate an enemy unit's current move state and destination."
+								. "`nAlso draws an alert icon at the destination of nuclear strikes."
+								. "`n`nBlue - Patrol"
+								. "`nGreen - Move"
+								. "`nOrange - Transport unload"
+								. "`nYellow - Nuclear strike"
+								. "`nRed - Attack move"
+
+		drawLocalPlayerIncome_TT := drawLocalPlayerResources_TT := drawLocalPlayerArmy_TT := "Displays your own values at the bottom of the overlay."						
+		APMOverlayMode_TT := "Set the drawing mode for the APM overlay."
+							. "`n`n Unchecked = Enemies"
+							. "`n Checked = Only Self APM"
+							. "`n Greyed = Enemies + self (self is at bottom)"
+		DrawPlayerCameras_TT := "Draws the enemy's camera on the minimap, i.e. it indicates the map area the player is currently looking at."
+
+		SleepSplitUnit_TT := TT_SleepSplitUnits_TT := TT_SleepSelectArmy_TT := SleepSelectArmy_TT := "Increase this value if the function doesn't work properly`nThis time is required to update the selection buffer."
+		Sc2SelectArmy_Key_TT := #Sc2SelectArmy_Key_TT := "The in game (SC2) button used to select your entire army.`nDefault is F2"
+		ModifierBeepSelectArmy_TT := "Will play a beep if a modifer key is being held down.`nModifiers include the ctrl, alt, shift and windows keys."
+		castSelectArmy_key_TT := #castSelectArmy_key_TT := "The button used to invoke this function."
+		SelectArmyDeselectXelnaga_TT := "Units controlling the xelnaga watch towers will be removed from the selection group."
+		SelectArmyDeselectPatrolling_TT := "Units with a patrol command queued will be removed from the selection group.`n`nThis is very useful if you dont want to select some units e.g. banes/lings at your base or a drop ship waiting outside a base!`nJust set them to patrol and they will not be selected with your army."
+				. "`n`nNote: Units set to follow a patrolling unit will also me removed."
+		SelectArmyDeselectHoldPosition_TT := "Units with a hold position command queued will be removed from the selection group."
+		SelectArmyDeselectFollowing_TT := "Units with a follow command queued will be removed from the selection group."
+		SelectArmyDeselectLoadedTransport_TT := "Removes loaded medivacs and warp prisms"
+		SelectArmyDeselectQueuedDrops_TT := "Removes transports which have a drop command queued`n`nDoesn't include tranports which have begun unloading."
+
+
+		loop, parse, l_Races, `,
+		{
+			New%A_LoopField%QuickSelect_TT := "Create a new quick select item."
+			Delete%A_LoopField%QuickSelect_TT := "Delte the currently displayed item."
+			quickSelect%A_LoopField%Enabled_TT := "Enables this item during a match"
+			#quickSelect%A_LoopField%_Key_TT := quickSelect%A_LoopField%_Key_TT := "The hotkey used to invoke this quick select item."
+			quickSelect%A_LoopField%UnitsArmy_TT := #quickSelect%A_LoopField%UnitsArmy_TT := "These unit types will be selected."
+
+			quickSelect%A_LoopField%DeselectXelnaga_TT := SelectArmyDeselectXelnaga_TT
+			quickSelect%A_LoopField%DeselectPatrolling_TT := SelectArmyDeselectPatrolling_TT
+			quickSelect%A_LoopField%DeselectHoldPosition_TT := SelectArmyDeselectHoldPosition_TT
+			quickSelect%A_LoopField%DeselectFollowing_TT :=SelectArmyDeselectFollowing_TT		
+			quickSelect%A_LoopField%DeselectLoadedTransport_TT := SelectArmyDeselectLoadedTransport_TT
+			quickSelect%A_LoopField%DeselectQueuedDrops_TT := SelectArmyDeselectQueuedDrops_TT
+		}
+
+		castRemoveDamagedUnits_key_TT := #castRemoveDamagedUnits_key_TT := castRemoveUnit_key_TT := #castRemoveUnit_key_TT 
+			:= castSplitUnit_key_TT := #castSplitUnit_key_TT := "The hotkey used to invoke this function."
+		SplitctrlgroupStorage_key_TT := #SplitctrlgroupStorage_key_TT := "This ctrl group is used during the function.`nAssign it to a control group you DON'T use!"
+		TT_DeselectSleepTime_TT :=  DeselectSleepTime_TT := "Time between deselecting units from the unit panel.`nThis is used by the split and select army, and deselect unit functions"
+
+		Edit_RemoveDamagedUnitsHealthLevel_TT := RemoveDamagedUnitsHealthLevel_TT := "Units with health/shields lower than this percent will be removed from selection`n"
+										. "and moved to the current mouse cursor position."
+		RemoveDamagedUnitsCtrlGroup_TT := #RemoveDamagedUnitsCtrlGroup_TT := "The selected units are stored in this control group during the function."
+																	. "`n`nSet this to a control group you DO NOT use."
+
+		#Sc2SelectArmyCtrlGroup_TT := Sc2SelectArmyCtrlGroup_TT := "The control Group (key) in which to store the army.`nE.G. 1,2,3-0"
+		l_DeselectArmy_TT := #l_DeselectArmy_TT := "These unit types will be deselected."
+		EasyUnloadHotkey_TT := #EasyUnloadHotkey_TT := "This hotkey performs two function depending on if it is double tapped or held down."
+													. "`n`nDouble tap this key to select any loaded transports visible on the screen."
+													. "`n`n Hold this button and wave the mouse over the loaded transports to begin unloading them."
+		EasyUnloadStorageKey_TT := "The selected/unloaded transports will be stored in this control group"											
+
+		F_Inject_ModifierBeep_TT := "If the modifier keys (Shift, Ctrl, or Alt) or Windows Keys are held down when an Inject is attempted, a beep will heard.`nRegardless of this setting, the inject round will not begin until after these keys have been released."
+		BlockingStandard_TT := BlockingFunctional_TT := BlockingNumpad_TT := BlockingMouseKeys_TT := BlockingMultimedia_TT := BlockingMultimedia_TT := BlockingModifier_TT := "During certain automations these keys will be buffered or blocked to prevent interruption to the automation and your game play."
+		LwinDisable_TT := "Disables the Left Windows Key while in a SC2 match.`n`nMacro Trainer Left windows hotkeys (and non-overridden windows keybinds) will still function."
+		Key_EmergencyRestart_TT := #Key_EmergencyRestart_TT := "If pressed three times, this hotkey will restart the program.`n"
+					. "This is useful in the rare event that the program malfunctions or you lose keyboard/mouse input"
+
+		HighlightInvisible_TT := #UnitHighlightInvisibleColour_TT := "All invisible, cloaked, and burrowed units will be drawn with this colour.`n"
+					. "This will instantly tell you if it's safe to look at the unit i.e. would you legitimately have vision of it."
+					. "`n`nNote: If a unit already has a custom colour highlight, then that unit will be drawn using its specific highlight colour."
+		HighlightHallucinations_TT := #UnitHighlightHallucinationsColour_TT := "Hallucinated units will be drawn using this colour."
+
+		MTCustomProgramName_TT := "This will create a new copy of the program with the specified program/process name.`n`nAfter applying the changes you MUST reload the script or launch the newly created .exe file"
+								. "`n`nTo change back to the original name and exe, simply clear/blank the name field, save the settings, exit the program and then use the original exe file"
+
+		MTChageIconButton_TT := "This will attempt to replace the program's included icon files with a .ico file of your choosing.`n`nThis is not guaranteed to work!"
+
+		MTChageIconDefaultButton_TT := "This will attempt to restore the program's default icons.`n`nThis is not guaranteed to work!"
+
+		Short_Race_List := "Terr|Prot|Zerg"
+		loop, parse, l_races, `,
+			while (10 > i := A_index-1)
+				LG_%A_LoopField%%i%_TT := "Only the specified units below can be bound to their respective control groups.`nAny unit can be grouped to a blank group.`nThis can be used with or without 'Auto Grouping'."
+
+			loop, parse, Short_Race_List, |
+			AG_Enable_%A_LoopField%_TT := "Selected units will be automatically added to their set control groups."
+
+		Report_Email_TT := "Required if you are looking for a response"
 	}
-
-	DrawAPMOverlay_TT := "This enables/disables the overlay."
-					. "`nThe mode can be set with via the 'APM overlay mode' checkbox on right (under 'Overlays Misc')"
-
-	DrawWorkerOverlay_TT := "Displays your current harvester count with a worker icon"
-	DrawIdleWorkersOverlay_TT := "While idle workers exist, a worker icon will be displayed with the current idle count.`n`nThe size and position can be changed easily so that it grabs your attention."
-	DrawUnitOverlay_TT := "Displays an overlay similar to the 'observer panel', listing the current and in-production unit counts.`n`nUse the 'unit panel filter' to selectively remove/display units."
-	DrawUnitUpgrades_TT := "Displays the current enemy upgrades."
-	UnitPanelFilterButton_TT := "Allows units to be selectively removed from the overlay."
-
-	ToggleAutoWorkerState_Key_TT := #ToggleAutoWorkerState_Key_TT := "Toggles (enables/disables) this function for the CURRENT match.`n`nWill only work during a match"
-	AutoWorkerProtectionDelay_TT := TT_AutoWorkerProtectionDelay_TT := "After a round a of workers has been made the function will sleep for this period of time (ms).`nThis helps prevent queueing too many workers.`n`n"
-								. "If more than one worker is commonly being queued-up and/or you have a laggy connection perhaps try increasing this value."
-
-	AutoWorkerQueueSupplyBlock_TT := "While you are supply blocked a worker will be queued-up.`n"
-			. "This aims to make the automation a little more subtle. If disabled, the instant you have free supply all of your bases will make a worker."
-			. "`n`nNote: The program won't queue multiple workers while supply blocked."
-
-	AutoWorkerAlwaysGroup_TT := "When enabled, your current unit selection will always be stored in a control group and then restored post automation."
-			. "`nThis provides the greatest reliability."
-			. "`n`nWhen disabled, the program will not control-group your selection nor restore it if you already have your bases (CC/nexi) selected. It will however"
-			. "`nstill send the control group key for your bases."
-			. "`n`nThis helps make the automation a little more subtle, especially in the early game. But it may not work correctly for everyone."
-			. "`nIf it fails, you will end up with your base control group selected rather than your previous units."
-			. "`n`nNote: Prior to v2.986 'disabled' was the default nature. "
-
-	TT_AutoWorkerAPMProtection_TT := AutoWorkerAPMProtection_TT
-	:= TT_FInjectAPMProtection_TT := FInjectAPMProtection_TT := "Automations will be delayed while your instantaneous APM is greater than this value.`n"
-			. "`nThis can be used to make the automations a little more subtle."
-
-	EnableAutoWorkerTerranStart_TT := EnableAutoWorkerProtossStart_TT := "Enables/Disables this function."
-	AutoWorkerStorage_T_Key_TT := #AutoWorkerStorage_T_Key_TT := AutoWorkerStorage_P_Key_TT := #AutoWorkerStorage_P_Key_TT := "During an automation cycle your selected units will be temporarily stored in this control group.`n`nSpecify a control group that you do NOT use in game."
-
-	#Base_Control_Group_T_Key_TT := Base_Control_Group_T_Key_TT := Base_Control_Group_P_Key_TT := #Base_Control_Group_P_Key_TT := "The control group used to store your command centres/orbitals/planetary-fortresses/nexi.`n`n"
-							. "Note: Other buildings can also be stored in this control group e.g. engineering bays/forges,`n"
-							. "but the first displayed unit in the selection card must be a main base - 99% of the time this will be the case."
-
-	AutoWorkerMakeWorker_T_Key_TT := #AutoWorkerMakeWorker_T_Key_TT := "The keyboard hotkey used to build an SCV.`nUsually 'S'."
-	AutoWorkerMakeWorker_P_Key_TT := #AutoWorkerMakeWorker_P_Key_TT := "The keyboard hotkey used to build a probe.`nUsually 'E'."
-
-	TT_AutoWorkerMaxWorkerTerran_TT := TT_AutoWorkerMaxWorkerProtoss_TT := AutoWorkerMaxWorkerTerran_TT := AutoWorkerMaxWorkerProtoss_TT := "Worker production will stop for the remainder of the game when this number of workers exist.`n"
-					. "Workers can then be 'sacked' and the function will remain off!`n`nIf you wish to turn it back on, simply use the 'toggle hotkey' twice."
-					. "`nNote: For added randomness your final worker count will be within +/- 2 of this value."
-	TT_AutoWorkerMaxWorkerPerBaseTerran_TT := TT_AutoWorkerMaxWorkerPerBaseProtoss_TT := AutoWorkerMaxWorkerPerBaseTerran_TT := AutoWorkerMaxWorkerPerBaseProtoss_TT :=  "Worker production will stop when this number is exceeded by`n"
-				. "the current worker count per the number of fully constructed (and control grouped) main-bases`n"
-				. "WHICH are within 8 map units of a gas geyser.`n`n"
-				. "Note: A properly situated base is usually 7-7.5 map units from a geyser."
-
-	Inject_spawn_larva_TT := #Inject_spawn_larva_TT := "This needs to correspond to your SC2 'spawn larva' button.`n`nThis key is sent during an inject to invoke Zerg's 'spawn larva' ability."
-
-	MI_Queen_Group_TT := #MI_Queen_Group_TT := "The queens in this control are used to inject hatcheries.`n`nHence you must add your injecting queens to this control group!"
-	F_InjectOff_Key_TT := #F_InjectOff_Key_TT := "During a match this hotkey will toggle (either disable or enable) automatic injects."
-
-	SplitUnitPanel_TT := "When enabled, the overlay will display units on separate a line to structures."
-	unitPanelDrawStructureProgress_TT := "Displays a progress bar below any structure under construction."
-	unitPanelDrawUnitProgress_TT := "Displays a progress bar below any unit in production."
-	unitPanelDrawUpgradeProgress_TT := "Displays a progress bar below the current upgrades."
-
-	OverlayIdent_TT := "Changes or disables the method of identifying players in the overlays."
-
-	Playback_Alert_Key_TT := #Playback_Alert_Key_TT := "Repeats the previous alert"
-
-	worker_count_local_key_TT := "This will read aloud your current worker count."
-	worker_count_enemy_key_TT := "This will read aloud your enemy's worker count. (only in 1v1)"
-	warning_toggle_key_TT := "Pauses and resumes the program."
-	ping_key_TT := "This hotkey will ping the map at the current mouse cursor location."
-	race_reading_TT := "Reads aloud the enemys' spawning races."
-	idle_enable_TT := "If the user has been idle for longer than a set period of time (real seconds) then the game will be paused."
-	TTidle_time_TT := idle_time_TT := "How long the user must be idle for (in real seconds) before the game is paused.`nNote: This value can be higher than the ""Don't Pause After"" parameter!"
-	TTUserIdle_LoLimit_TT  := UserIdle_LoLimit_TT := "The game can't be paused before this (in game/SC2) time."
-	TTUserIdle_HiLimit_TT := UserIdle_HiLimit_TT := "The game will not be paused after this (in game/SC2) time."
-
-	speech_volume_TT := "The relative volume of the speech engine."
-	programVolume_TT := "The overall program volume. This affects both the speech volume and the 'beeps'.`n`nNote: This probably has no effect on WindowsXP and below."
-	speaker_volume_up_key_TT := speaker_volume_down_key_TT := "Changes the windows master volume."
-	speech_volume_down_key_TT := speech_volume_up_key_TT := "Changes the programs TTS volume."
-	program_volume_up_key_TT := program_volume_down_key_TT := "Changes the programs overall volume."
-	input_method_TT := "Sets the method of artificial input.`n"
-		. "Post message is now the only available method."
-	;	. "Technically ""Event"" is the most 'reliable' across systems, but ""Input"" offers considerably better performance, key buffering and will work with almost all systems.`n"
-	;	. "Using ""Input"" will also reduce the likelihood of the program interfering with user game play during automations`n`n"
-	;	. "Hence, use ""Input"" unless it doesn't work."
-	TT_EventKeyDelay_TT := EventKeyDelay_TT := "Sets the mouse and key delay (in ms) used when in SendEvent mode.`nLower values sends keystrokes faster - but setting this too low MAY cause some strokes to be missed.`nCommon values are (-1 to 10).`nNote: These delays are accumulative, and for functions which require numerous keystrokes e.g. split this delay can become quite substantial`n`nSendInput is faster and generally more reliable, hence SendInput should be used if it works on your system."
-
-	TT_pClickDelay_TT := pClickDelay_TT := TT_pSendDelay_TT := pSendDelay_TT := "Sets the sleep time (in ms) between individual keystrokes/mousecliks."	
-						. "`n`nNote: -1 (no delay) should work for everyone, but if unit selections are not being saved/restored, perhaps try increasing this to 2 or 3"
-						. "`n`nValid values are:"
-						. "`n-1: no delay"
-						. "`n 0: Yields the remaining time slice to any other process (if requested)"
-						. "`nAny positive integer."
-
-	auto_update_TT := "While enabled the program will automatically check for new versions during startup."
-	launch_settings_TT := "Display the options menu on startup."
-
-	HideTrayIcon_TT := "Hides the tray icon and all popups/menus."
-	TT2_MI_QueenDistance_TT := MI_QueenDistance_TT := "The edge of the hatchery creep is approximately 14`nThis helps prevent queens injecting on remote hatches - It works better with lower numbers"
-	TT_F_Max_Injects_TT := F_Max_Injects_TT := "The max. number of 'forced' injects which can occur after a user 'F5'/auto-inject.`nSet this to a high number if you want the program to inject for you."
-	TT_F_Alert_PreTime_TT := F_Alert_PreTime_TT := "The alert will sound X seconds before the forced inject."
-	TT_F_Sleep_Time_TT := F_Sleep_Time_TT := "The amount of time spent idle after injecting each hatch.`n"
-			. "This should be set as low as reliably possible so that the inject rounds are shorter and there is less chance of it affecting your gameplay.`n`n"
-			. "This will vary for users, but 0 ms works reliably for me.`n"
-			. "If 0 ms is not reliable, try increasing this value in increments of 1 ms."
-	TT_FInjectHatchFrequency_TT := FInjectHatchFrequency_TT := "How often the larva state of the hatcheries are checked. (In ms/real-time)`nAny uninjected hatches will then be injected.`n`nIncreasing this value will delay injects, that is, a hatch will remain uninjected for longer."
-	TT_FInjectHatchMaxHatches_TT := FInjectHatchMaxHatches_TT := "The maximum number of hatches to be injected during an inject round"
-
-	TT_AM_KeyDelay_TT := AM_KeyDelay_TT := TT_I_KeyDelay_TT := I_KeyDelay_TT := TT_CG_KeyDelay_TT := CG_KeyDelay_TT := "This sets the delay between key/mouse events`nLower numbers are faster, but they may cause problems.`n0-10`n`nWith regards to speed, changing the 'sleep' time will generally have a larger impact."
-	TT_ChronoBoostSleep_TT := ChronoBoostSleep_TT := "Sets the amount of time that the program sleeps for during each automation cycle.`nThis has a large effect on the speed, and hence how 'human' the automation appears'.`n`n"
-			. "If you want instant chronoboosts, a value of 0 ms works reliably for me.`n"
-			. "If 0 ms is not reliable for you, try increasing the sleep time by one or two ms. (it doesn't require much)"
-	CG_chrono_remainder_TT := TT_CG_chrono_remainder_TT := "This is how many full chronoboosts will remain afterwards between all your nexi.`nA setting of 1 will leave 1 full chronoboost (or 25 energy) on one of your nexi."
-	CG_control_group_TT := Inject_control_group_TT := #CG_control_group_TT := #Inject_control_group_TT := "This stores the currently selected units into a temporary control group, so that the current unit selection may be restored after the automated cycle.`nNote: Ensure that this is set to a control group you do not use."
-	WorkerSplitType_TT := "Defines how many workers are rallied to each mineral patch."
-
-	Auto_inject_sleep_TT := Edit_pos_var_TT := "Sets the amount of time that the program sleeps for during each automation cycle.`nThis has a large effect on the speed, and hence how 'human' the automation appears'.`n`n"
-			. "The lowest reliable values will vary for users, but for myself the minimap method can be used with a sleep time of 0 ms.`n"
-			. "The backspace methods require at least 8 ms."
-
-
-	AM_MiniMap_PixelColourAlpha_TT := AM_MiniMap_PixelColourRed_TT := AM_MiniMap_PixelColourGreen_TT := AM_MinsiMap_PixelColourBlue_TT := "The ARGB pixel colour of the mini map mineral field."
-	#ResetPixelColour_TT := "Resets the pixel colour and variance to their default settings."
-	#FindPixelColour_TT := "This sets the pixel colour for your exact system."
-	AM_MiniMap_PixelVariance_TT := TT_AM_MiniMap_PixelVariance_TT := "A match will result if  a pixel's colour lies within the +/- variance range.`n`nThis is a percent value 0-100%"
-	TT_AGDelay_TT := AG_Delay_TT := "The program will wait this period of time before adding the selected units to a control group.`nUse this if you want the function to look more 'human'.`n`nNote: Values greater than 0 probably the increase likelihood of miss-grouping units (especially on slow computers or during large battles with high APM)."
-	TT_AGKeyReleaseDelay_TT := AGKeyReleaseDelay_TT := "An auto-group attempt will not occur until after all the keys have been released for this period of time."
-			. "`n`nThis helps increase the robustness of the function."
-			. "`nIf incorrect groupings are occurring, you can try increasing this value."
-			. "`nValid values are: 50-700 ms"
-	TT_AGBufferDelay_TT := AGBufferDelay_TT := "When an auto-group action is attempted user input will be buffered for this period of time, I.E. button presses and mouse movements`nwill be delayed during this period."
-			. "`n`nThis helps ensure the currently selected units are ones which should be grouped."
-			. "`nIf incorrect groupings are occurring, you can try increasing this value."
-			. "`nValid values are: 40-290 ms"
-
-	TT_AGRestrictBufferDelay_TT := AGRestrictBufferDelay_TT := "When a 'restrict grouping' action is performed user input will be buffered for this period of time, I.E. button presses and mouse movements`nwill be delayed during this period."
-			. "`n`nThis helps ensure the currently selected units are ones which should be grouped."
-			. "`nIf incorrect groupings are occurring, you can try increasing this value."
-			. "`nValid values are: 40-290 ms"
-
-
-	Loop, 10
-	{
-		group := A_Index - 1
-		AGAddToGroup%group%_TT := #AGAddToGroup%group%_TT := "The SC2 hotkey used to ADD units to control group " group "`n`nThis is usually Shift + " group
-		AGSetGroup%group%_TT := #AGSetGroup%group%_TT := "The SC2 hotkey used to set the current unit selection to control group " group "`n`nThis is usually Control + " group
-	}
-
-
-	TempHideMiniMapKey_TT := #TempHideMiniMapKey_TT := "This will disable the minimap overlay for three seconds,`nthereby allowing you to determine if you legitimately have vision of a unit or building."
-	
-
-	loopList := "overlayIncomeTransparency,overlayMatchTransparency,overlayResourceTransparency,overlayArmyTransparency,overlayHarvesterTransparency,overlayIdleWorkerTransparency,overlayLocalColourTransparency,overlayMinimapTransparency"
-	loop, parse, loopList, `,
-		%A_LoopField%_TT := "Sets the transparency of the overlay."
-							. "`n`n100 = Fully opaque"
-							. "`n0 = Fully transparent"
-	
-
-	ToggleUnitOverlayKey_TT := #ToggleUnitOverlayKey_TT := "Toggles the unit panel between the following states:"
-						. "`n`n  -Units/structures"
-						. "`n  -Units/structures + Upgrades"
-						. "`n  -Upgrades."
-						. "`n  -Off."
-
-	AdjustOverlayKey_TT := #AdjustOverlayKey_TT := "Used to move and resize the overlays."
-	TT_UserMiniMapXScale_TT := TT_UserMiniMapYScale_TT := UserMiniMapYScale_TT := UserMiniMapXScale_TT := "Adjusts the relative size of units on the minimap."
-	TT_MiniMapRefresh_TT := MiniMapRefresh_TT := "Dictates how frequently the minimap is redrawn"
-	BlendUnits_TT := "This will draw the units 'blended together', like SC2 does.`nIn other words, units/buildings grouped together will only have one border around all of them"
-
-	TT_OverlayRefresh_TT := OverlayRefresh_TT := "Determines how frequently these overlays are refreshed:`nIncome, Resource, Army, Local Harvesters, and Idle Workers."
-	TT_UnitOverlayRefresh_TT := UnitOverlayRefresh_TT := "Determines how frequently the unit panel is refreshed.`nThis requires more resources than the other overlays and so it has its own refresh rate.`n`nLower this value if you want the progress bars to increase in a smoother manner."
-
-	DrawLocalPlayerColourOverlay_TT := "During team games and while using hostile colours (green, yellow, and red) a small circle is drawn which indiactes your local player colour.`n`n"
-										. "This is helpful when your allies refer to you by colour."
-	HostileColourAssist_TT := "During team games while using hostile colours (green, yellow, and red) enemy bases will still be displayed using player colours.`n`n"
-							. "This helps when co-ordinating attacks e.g. Let's attack yellow!"
-
-	DrawUnitDestinations_TT := "Draws blue, green, orange, yellow and red lines on the minimap to indicate an enemy unit's current move state and destination."
-							. "`nAlso draws an alert icon at the destination of nuclear strikes."
-							. "`n`nBlue - Patrol"
-							. "`nGreen - Move"
-							. "`nOrange - Transport unload"
-							. "`nYellow - Nuclear strike"
-							. "`nRed - Attack move"
-
-	drawLocalPlayerIncome_TT := drawLocalPlayerResources_TT := drawLocalPlayerArmy_TT := "Displays your own values at the bottom of the overlay."						
-	APMOverlayMode_TT := "Set the drawing mode for the APM overlay."
-						. "`n`n Unchecked = Enemies"
-						. "`n Checked = Only Self APM"
-						. "`n Greyed = Enemies + self (self is at bottom)"
-	DrawPlayerCameras_TT := "Draws the enemy's camera on the minimap, i.e. it indicates the map area the player is currently looking at."
-
-	SleepSplitUnit_TT := TT_SleepSplitUnits_TT := TT_SleepSelectArmy_TT := SleepSelectArmy_TT := "Increase this value if the function doesn't work properly`nThis time is required to update the selection buffer."
-	Sc2SelectArmy_Key_TT := #Sc2SelectArmy_Key_TT := "The in game (SC2) button used to select your entire army.`nDefault is F2"
-	ModifierBeepSelectArmy_TT := "Will play a beep if a modifer key is being held down.`nModifiers include the ctrl, alt, shift and windows keys."
-	castSelectArmy_key_TT := #castSelectArmy_key_TT := "The button used to invoke this function."
-	SelectArmyDeselectXelnaga_TT := "Units controlling the xelnaga watch towers will be removed from the selection group."
-	SelectArmyDeselectPatrolling_TT := "Units with a patrol command queued will be removed from the selection group.`n`nThis is very useful if you dont want to select some units e.g. banes/lings at your base or a drop ship waiting outside a base!`nJust set them to patrol and they will not be selected with your army."
-			. "`n`nNote: Units set to follow a patrolling unit will also me removed."
-	SelectArmyDeselectHoldPosition_TT := "Units with a hold position command queued will be removed from the selection group."
-	SelectArmyDeselectFollowing_TT := "Units with a follow command queued will be removed from the selection group."
-	SelectArmyDeselectLoadedTransport_TT := "Removes loaded medivacs and warp prisms"
-	SelectArmyDeselectQueuedDrops_TT := "Removes transports which have a drop command queued`n`nDoesn't include tranports which have begun unloading."
-
-
-	loop, parse, l_Races, `,
-	{
-		New%A_LoopField%QuickSelect_TT := "Create a new quick select item."
-		Delete%A_LoopField%QuickSelect_TT := "Delte the currently displayed item."
-		quickSelect%A_LoopField%Enabled_TT := "Enables this item during a match"
-		#quickSelect%A_LoopField%_Key_TT := quickSelect%A_LoopField%_Key_TT := "The hotkey used to invoke this quick select item."
-		quickSelect%A_LoopField%UnitsArmy_TT := #quickSelect%A_LoopField%UnitsArmy_TT := "These unit types will be selected."
-
-		quickSelect%A_LoopField%DeselectXelnaga_TT := SelectArmyDeselectXelnaga_TT
-		quickSelect%A_LoopField%DeselectPatrolling_TT := SelectArmyDeselectPatrolling_TT
-		quickSelect%A_LoopField%DeselectHoldPosition_TT := SelectArmyDeselectHoldPosition_TT
-		quickSelect%A_LoopField%DeselectFollowing_TT :=SelectArmyDeselectFollowing_TT		
-		quickSelect%A_LoopField%DeselectLoadedTransport_TT := SelectArmyDeselectLoadedTransport_TT
-		quickSelect%A_LoopField%DeselectQueuedDrops_TT := SelectArmyDeselectQueuedDrops_TT
-	}
-
-	castRemoveDamagedUnits_key_TT := #castRemoveDamagedUnits_key_TT := castRemoveUnit_key_TT := #castRemoveUnit_key_TT 
-		:= castSplitUnit_key_TT := #castSplitUnit_key_TT := "The hotkey used to invoke this function."
-	SplitctrlgroupStorage_key_TT := #SplitctrlgroupStorage_key_TT := "This ctrl group is used during the function.`nAssign it to a control group you DON'T use!"
-	TT_DeselectSleepTime_TT :=  DeselectSleepTime_TT := "Time between deselecting units from the unit panel.`nThis is used by the split and select army, and deselect unit functions"
-
-	Edit_RemoveDamagedUnitsHealthLevel_TT := RemoveDamagedUnitsHealthLevel_TT := "Units with health/shields lower than this percent will be removed from selection`n"
-									. "and moved to the current mouse cursor position."
-	RemoveDamagedUnitsCtrlGroup_TT := #RemoveDamagedUnitsCtrlGroup_TT := "The selected units are stored in this control group during the function."
-																. "`n`nSet this to a control group you DO NOT use."
-
-	#Sc2SelectArmyCtrlGroup_TT := Sc2SelectArmyCtrlGroup_TT := "The control Group (key) in which to store the army.`nE.G. 1,2,3-0"
-	l_DeselectArmy_TT := #l_DeselectArmy_TT := "These unit types will be deselected."
-	EasyUnloadHotkey_TT := #EasyUnloadHotkey_TT := "This hotkey performs two function depending on if it is double tapped or held down."
-												. "`n`nDouble tap this key to select any loaded transports visible on the screen."
-												. "`n`n Hold this button and wave the mouse over the loaded transports to begin unloading them."
-	EasyUnloadStorageKey_TT := "The selected/unloaded transports will be stored in this control group"											
-
-	F_Inject_ModifierBeep_TT := "If the modifier keys (Shift, Ctrl, or Alt) or Windows Keys are held down when an Inject is attempted, a beep will heard.`nRegardless of this setting, the inject round will not begin until after these keys have been released."
-	BlockingStandard_TT := BlockingFunctional_TT := BlockingNumpad_TT := BlockingMouseKeys_TT := BlockingMultimedia_TT := BlockingMultimedia_TT := BlockingModifier_TT := "During certain automations these keys will be buffered or blocked to prevent interruption to the automation and your game play."
-	LwinDisable_TT := "Disables the Left Windows Key while in a SC2 match.`n`nMacro Trainer Left windows hotkeys (and non-overridden windows keybinds) will still function."
-	Key_EmergencyRestart_TT := #Key_EmergencyRestart_TT := "If pressed three times, this hotkey will restart the program.`n"
-				. "This is useful in the rare event that the program malfunctions or you lose keyboard/mouse input"
-
-	HighlightInvisible_TT := #UnitHighlightInvisibleColour_TT := "All invisible, cloaked, and burrowed units will be drawn with this colour.`n"
-				. "This will instantly tell you if it's safe to look at the unit i.e. would you legitimately have vision of it."
-				. "`n`nNote: If a unit already has a custom colour highlight, then that unit will be drawn using its specific highlight colour."
-	HighlightHallucinations_TT := #UnitHighlightHallucinationsColour_TT := "Hallucinated units will be drawn using this colour."
-
-	MTCustomProgramName_TT := "This will create a new copy of the program with the specified program/process name.`n`nAfter applying the changes you MUST reload the script or launch the newly created .exe file"
-							. "`n`nTo change back to the original name and exe, simply clear/blank the name field, save the settings, exit the program and then use the original exe file"
-
-	MTChageIconButton_TT := "This will attempt to replace the program's included icon files with a .ico file of your choosing.`n`nThis is not guaranteed to work!"
-
-	MTChageIconDefaultButton_TT := "This will attempt to restore the program's default icons.`n`nThis is not guaranteed to work!"
-
-	Short_Race_List := "Terr|Prot|Zerg"
-	loop, parse, l_races, `,
-		while (10 > i := A_index-1)
-			LG_%A_LoopField%%i%_TT := "Only the specified units below can be bound to their respective control groups.`nAny unit can be grouped to a blank group.`nThis can be used with or without 'Auto Grouping'."
-
-		loop, parse, Short_Race_List, |
-		AG_Enable_%A_LoopField%_TT := "Selected units will be automatically added to their set control groups."
-
-	Report_Email_TT := "Required if you are looking for a response"
-
-
 	OnMessage(0x200, "WM_MOUSEMOVE")
 	Gosub, G_GuiSetupDrawMiniMapDisable ; Disable controls based on current drawing settings
 	GuI, Options:Show, w615 h505, V%ProgramVersion% Settings
@@ -4745,7 +4732,7 @@ if instr(A_GuiControl, "Terran")
 else if instr(A_GuiControl, "Protoss")
 	race := "Protoss"
 else 
-	race := zerg 
+	race := "Zerg"
 
 if instr(A_GuiControl, "New")
 {
@@ -5219,89 +5206,33 @@ Screenshots and replays may be attached below.
 	return
 
 ;could hide everything each time, then unhide once, but that causes every so slightly more blinking on gui changes
+; Note this is launched automatically when the GUI is first created, as the first TV item (Home) is automatically selected
 OptionsTree:
+	; Key = MenuTitles: Value = Tab ID
+	if !isObject(aGUITabs)
+		aGUITabs := { 	"Home": "Home_TAB" 
+					, 	"Detection List": "Detection_TAB"
+					,	"MiniMap/Overlays": "MiniMap_TAB"
+					,	"Injects": "Injects_TAB"
+					,	"Auto Grouping": "AutoGroup_TAB"
+					,	"Quick Select": "quickSelect_TAB"
+					,	"Auto Worker": "AutoWorker_TAB"
+					,	"Chrono Boost": "ChronoBoost_TAB"
+					,	"Misc Automation": "MiscAutomation_TAB"
+					,	"SC2 Keys": "Keys_TAB"
+					,	"Warnings": "Warnings_TAB"
+					, 	"Misc Abilities": "Misc_TAB"
+					,	"Report Bug": "Bug_TAB"
+					,	"Settings": "Settings_TAB"}	
+
 	OptionTreeEvent := A_GuiEvent
 	OptionTreeEventInfo := A_EventInfo
 	TV_GetText(Menu_TXT, TV_GetSelection())
-
-	if Menu_TXT  ; there's a bug in AHK with the right click - have GUI on second monitor and right click, Menu_TXT will be blank
+	if (Menu_TXT && unhidden_menu)  ; there's a bug in AHK with the right click - have GUI on second monitor and right click, Menu_TXT will be blank
 		GUIcontrol, Hide, %unhidden_menu%
-	IF ( Menu_TXT = "Home" )
-	{
-		GUIcontrol, Show, Home_TAB
-		unhidden_menu := "Home_TAB"
-	}
-	ELSE IF ( Menu_TXT = "Detection List" )
-	{
-		GUIcontrol, Show, Detection_TAB
-		unhidden_menu := "Detection_TAB"
-	}	
-	ELSE IF ( Menu_TXT = "MiniMap/Overlays" )
-	{
-		GUIcontrol, Show, MiniMap_TAB
-		unhidden_menu := "MiniMap_TAB"
-	}
-	ELSE IF ( Menu_TXT = "Injects" )
-	{
-		GUIcontrol, Show, Injects_TAB
-		unhidden_menu := "Injects_TAB"
-	}	
-	ELSE IF ( Menu_TXT = "Auto Grouping" )
-	{
-		GUIcontrol, Show, AutoGroup_TAB
-		unhidden_menu := "AutoGroup_TAB"
-	}	
-	ELSE IF ( Menu_TXT = "Quick Select" )
-	{
-		GUIcontrol, Show, quickSelect_TAB
-		unhidden_menu := "quickSelect_TAB"
-	}	
-	ELSE IF ( Menu_TXT = "Auto Worker" )
-	{
-		GUIcontrol, Show, AutoWorker_TAB
-		unhidden_menu := "AutoWorker_TAB"
-	}
-	ELSE IF ( Menu_TXT = "Chrono Boost" )
-	{
-		GUIcontrol, Show, ChronoBoost_TAB
-		unhidden_menu := "ChronoBoost_TAB"
-	}
-	ELSE IF ( Menu_TXT = "Auto Mine" )
-	{
-		GUIcontrol, Show, AutoMine_TAB
-		unhidden_menu := "AutoMine_TAB"
-	}	
-	ELSE IF ( Menu_TXT = "Misc Automation" )
-	{
-		GUIcontrol, Show, MiscAutomation_TAB
-		unhidden_menu := "MiscAutomation_TAB"
-	}
-	ELSE IF ( Menu_TXT = "SC2 Keys" )
-	{
-		GUIcontrol, Show, Keys_TAB
-		unhidden_menu := "Keys_TAB"
-	}	
-	ELSE IF ( Menu_TXT = "Warnings" )
-	{
-		GUIcontrol, Show, Warnings_TAB
-		unhidden_menu := "Warnings_TAB"
-	}
-	ELSE IF ( Menu_TXT = "Misc Abilities" )
-	{
-		GUIcontrol, Show, Misc_TAB 
-		unhidden_menu := "Misc_TAB"
-	}
-	ELSE IF ( Menu_TXT = "Settings" )
-	{
-		GUIcontrol, Show, Settings_TAB
-		unhidden_menu := "Settings_TAB"
-	}	
-	ELSE IF ( Menu_TXT = "Report Bug" )
-	{
-		GUIcontrol, Show, Bug_TAB
-		unhidden_menu := "Bug_TAB"
-	}
-	Else return  
+	if aGUITabs.HasKey(Menu_TXT)
+		GUIcontrol, Show, % unhidden_menu := aGUITabs[Menu_TXT]
+	else return 
 
 	WinSet, Redraw,, V%ProgramVersion% Settings 				; redrawing whole thing as i noticed very very rarely (when a twitch stream open?) the save/cancel/apply buttons disappear
 ; 	 GUIControl, MoveDraw, GUIListViewIdentifyingVariableForRedraw ; this is the same as redraw (but just for a control? - although it still seems to flicker the entire thing)
@@ -8212,7 +8143,7 @@ CreateHotkeys()
 	{
 		for i, object in aQuickSelect[aLocalPlayer["Race"]]
 		{
-			if (object.enabled && object.Units.MaxIndex() && object.hotkey)
+			if (object.enabled && object.Units.MaxIndex())
 				try hotkey, % object.hotkey, g_QuickSelect, on
 		}
 	}
@@ -8308,10 +8239,7 @@ disableAllHotkeys()
 		{
 			race := A_LoopField
 			for i, object in aQuickSelect[race]
-			{
-				if object.hotkey
-					try hotkey, % object.hotkey, off
-			}
+				try hotkey, % object.hotkey, off
 		}
 		while (10 > group := A_index - 1)
 		{
@@ -8870,7 +8798,7 @@ for index, object in aQuickSelect[aLocalPlayer.Race]
 		break
 	}
 }
-if (item = "") ; item should never be zero but im just leaving it like this just in case as i cant be bothered checking
+if (item = "") ; item should never be blank but im just leaving it like this just in case as i cant be bothered checking
 	return 
 quickSelect(aQuickSelect[aLocalPlayer.Race, item])
 return 
@@ -8941,7 +8869,11 @@ quickSelect(aDeselect)
 	numGetSelectionSorted(aSelected)
 	global clickPortraits := []
 
-	if (aDeselect.Units.MaxIndex() = 1)
+	if (aDeselect.DeselectXelnaga || aDeselect.DeselectPatrolling || aDeselect.DeselectHoldPosition || aDeselect.DeselectFollowing
+	|| aDeselect.DeselectLoadedTransport || aDeselect.DeselectQueuedDrops)
+		checkStates := True
+
+	if (aDeselect.Units.MaxIndex() = 1 && !checkStates)
 	{
 		clickUnitType := aDeselect["Units", 1]
 		if aSelected.TabPositions.HasKey(clickUnitType)
@@ -8959,11 +8891,6 @@ quickSelect(aDeselect)
 	}
 	else 
 	{
-
-		if (aDeselect.DeselectXelnaga || aDeselect.DeselectPatrolling || aDeselect.DeselectHoldPosition || aDeselect.DeselectFollowing
-		|| aDeselect.DeselectLoadedTransport || aDeselect.DeselectQueuedDrops)
-			checkStates := True
-
 		for i, unit in aSelected.units
 		{
 			if (unit.unitId = prevID) 
@@ -8980,7 +8907,7 @@ quickSelect(aDeselect)
 				|| (aDeselect.DeselectPatrolling && InStr(commandString, "Patrol"))
 				|| (aDeselect.DeselectHoldPosition && InStr(commandString, "Hold"))
 				|| (aDeselect.DeselectFollowing && InStr(commandString, "Follow")) ;
-					clickPortraits.insert({ "portrait":  unit.unitPortrait, "modifiers": "+"})
+					clickPortraits.insert({ "portrait":  unit.unitPortrait, "modifiers": "+"}) 
 				else if (aDeselect.DeselectLoadedTransport || aDeselect.DeselectQueuedDrops)
 				&& (unit.unitId = aUnitId.Medivac || unit.unitId = aUnitID.WarpPrism || unit.unitId = aUnitID.WarpPrismPhasing)
 				{
@@ -12901,24 +12828,3 @@ removeDamagedUnit()
 
 
 
-
-f1::
-
-
-notepad := new input("Edit1", "ahk_exe notepad.exe")
-
-	notepad.psend("abc`n`ta")
-	sleep 500
-	;notepad.pSendChars("`naBc`t`na")
-
-
-return 
-
-
-;{shift down	}	{click 12 23 down}{shift up}
-
-;msgbox % Asc("	")
-msgbox % GetKeyVK(" ") " | " GetKeySC(" ") " | "  Asc(" ")
-	. "`n" GetKeyVK("	") " | " GetKeySC("	") " | "  Asc("	")
-
- 		return
