@@ -187,7 +187,7 @@ MT_CurrentInstance := [] ; Used to store random info about the current run
 program := []
 program.info := {"IsUpdating": 0} ; program.Info.IsUpdating := 0 ;has to stay here as first instance of creating infor object
 
-ProgramVersion := 2.986
+ProgramVersion := 2.988
 
 l_GameType := "1v1,2v2,3v3,4v4,FFA"
 l_Races := "Terran,Protoss,Zerg"
@@ -2429,6 +2429,12 @@ ini_settings_write:
 		}
 		Else Gui, Submit, NoHide
 	}
+	; Else from an update
+	; Not via GUI e.g. update so need to set a couple of variables to the values which would have been generated from a gui - mostly variance/percentages
+	; which are repented in a more friendly manner in the GUI
+	; These are done individually immediately before the writes
+
+
 	
 	;[Auto Inject]
 	IniWrite, %auto_inject%, %config_file%, Auto Inject, auto_inject_enable
@@ -2583,6 +2589,8 @@ ini_settings_write:
 
 	;[Advanced Auto Inject Settings]
 	IniWrite, %auto_inject_sleep%, %config_file%, Advanced Auto Inject Settings, auto_inject_sleep
+	if (Tmp_GuiControl != "save" && Tmp_GuiControl != "Apply")
+		Inject_SleepVariance := (Inject_SleepVariance - 1)*100 
 	IniWrite, %Inject_SleepVariance%, %config_file%, Advanced Auto Inject Settings, Inject_SleepVariance
 	; 30 (%) from the gui back into 1.3
 	Inject_SleepVariance := 1 + (Inject_SleepVariance/100)
@@ -2727,6 +2735,8 @@ ini_settings_write:
 	IniWrite, %RemoveDamagedUnitsEnable%, %config_file%, %section%, RemoveDamagedUnitsEnable	
 	IniWrite, %castRemoveDamagedUnits_key%, %config_file%, %section%, castRemoveDamagedUnits_key	
 	IniWrite, %RemoveDamagedUnitsCtrlGroup%, %config_file%, %section%, RemoveDamagedUnitsCtrlGroup	
+	if (Tmp_GuiControl != "save" && Tmp_GuiControl != "Apply")
+		RemoveDamagedUnitsHealthLevel := round(RemoveDamagedUnitsHealthLevel * 100)
 	IniWrite, %RemoveDamagedUnitsHealthLevel%, %config_file%, %section%, RemoveDamagedUnitsHealthLevel	
 	RemoveDamagedUnitsHealthLevel := round(RemoveDamagedUnitsHealthLevel / 100, 3)
 
@@ -2837,7 +2847,8 @@ ini_settings_write:
 	loopList := "overlayIncomeTransparency,overlayMatchTransparency,overlayResourceTransparency,overlayArmyTransparency,overlayHarvesterTransparency,overlayIdleWorkerTransparency,overlayLocalColourTransparency,overlayMinimapTransparency"
 	loop, parse, loopList, `,
 	{
-		%A_LoopField% := ceil(%A_LoopField% * 2.55) 
+		if (Tmp_GuiControl = "save" || Tmp_GuiControl = "Apply")
+			%A_LoopField% := ceil(%A_LoopField% * 2.55) 
 		if (%A_LoopField% > 255 || %A_LoopField% < 0) ; I dont think this can happen
 			%A_LoopField% := 255
 		Iniwrite, % %A_LoopField%, %config_file%, %section%, %A_LoopField%
@@ -8377,7 +8388,7 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 				if !FoundQueen
 					MissedHatcheries.insert(CurrentHatch)
 			}
-		;	/* ; THIS Is trying to do multi injects
+		;	/* ; THIS Is trying to do multi injects 
 			; just realised that can only do one multi inject per inject round
 			if (MissedHatcheries.maxindex() && CanQueenMultiInject)
 			{
@@ -12825,6 +12836,3 @@ removeDamagedUnit()
 	sleep 20 
 	return	
 }
-
-
-
