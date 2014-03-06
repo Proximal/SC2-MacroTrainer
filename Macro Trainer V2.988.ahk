@@ -347,8 +347,21 @@ while (!(B_SC2Process := getProcessBaseAddress(GameIdentifier)) || B_SC2Process 
 	sleep 400				; required to prevent memory read error - Handle closed: error 		
 SC2hWnd := WinExist(GameIdentifier)
 OnMessage(DllCall("RegisterWindowMessage", Str,"SHELLHOOK" ), "ShellMessage")
+versionMatch := loadMemoryAddresses(B_SC2Process, clientVersion := getProcessFileVersion(GameExe))
+if (!versionMatch && clientVersion && A_IsCompiled) ; clientVersion check if true - if function fails (shouldn't) it will be 0/blank
+{
+	IniRead, clientVersionWarning, %config_file%, clientVersionWarning, clientVersionWarning, 1 
+	if (clientVersion != clientVersionWarning)
+	{
+		IniWrite, %clientVersion%, %config_file%, clientVersionWarning, clientVersionWarning
+		msgbox, % 48 + 4096, Version Mismatch, % "Current Client Version: " clientVersion
+			. "`n`nMacro Trainer does not support this SC version and will most likely function incorrectly or not all."
+			. "`n`nAn update will be released shortly."
+			, 20 ; timeout 
+	}
 
-loadMemoryAddresses(B_SC2Process)	
+}
+
 
 ; it would have been better to assign all the addresses to one super global object
 ; but i tried doing this once before and it caused issues because i forgot to update some address 
@@ -12836,3 +12849,41 @@ removeDamagedUnit()
 	sleep 20 
 	return	
 }
+
+; This is used for finding certain offsets.
+; Specifically where two uInts reside next to each other.
+; It returns the 8 byte value (generated if you were to read them as an 8 byte value) 
+; which you can search for in CE
+; If the 8 byte value is >= 0x8000000000000000 the returned value will be incorrect as AHK doesn't support
+; large uInt64s
+twoUIntAsUint64(uInt1, uInt2 := "")
+{
+	if (uInt2 = "")
+		uInt2 := uInt1
+	VarSetCapacity(address, 8, 0)
+	NumPut(uInt1, address, 0, "UInt")
+	NumPut(uInt2, address, 4, "UInt")
+	return numget(address, 0, "UInt64")
+}
+twoBoolsAsShort(bool1, bool2 := "")
+{
+	if (bool2 = "")
+		bool2 := bool1
+	VarSetCapacity(address, 2, 0)
+	NumPut(bool1, address, 0, "Char")
+	NumPut(bool2, address, 1, "Char")
+	return numget(address, 0, "Short")
+}
+twoShortsAsInt(short1, short2 := "")
+{
+	if (short2 = "")
+		short2 := short1
+	VarSetCapacity(address, 4, 0)
+	NumPut(short1, address, 0, "Short")
+	NumPut(short2, address, 2, "Short")
+	return numget(address, 0, "UInt")
+}
+
+
+
+
