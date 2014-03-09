@@ -4,21 +4,44 @@ SetBatchLines, -1
 OnExit, exit
 settimer, exit, 40000 
 global aKeys := []
+; http://www.autohotkey.com/board/topic/70111-retrieve-key-names-from-onmessage-wm-keydown/page-2
+; I removed the line, DllCall("HideCaret", "ptr", 0) because it did not completely remove the "|" sign from the edit box.
+
+; hiding carret is accumulative so might need to check
 
 
-Gui, add, edit, vEditkey gTest w200
-Gui, add, edit,  w90
-Gui, Add, Hotkey, vChosenHotkey
-gui, show, w220 h100
-;settimer, updateEdit, 1000
-return 
 
-f1::
-if !hHook
-	hHook := SetWindowsHookEx(13, RegisterCallback("KeyboardHook"))
-return 
+	gui, hotBox:new
+	Gui, hotBox:add, edit, vtest  w90
+	Gui, hotBox:add, edit, vhotBoxEdit   w200 
 
-updateEdit:
+	Gui, hotBox:add, edit, vhotBoxEdit2   w200 
+
+	;Gui, Add, Picture, w300 xp w200 h20,
+	
+	gui, hotBox:show, w220 h100, HotBox
+	OnMessage(0x201, "enableHooks")
+	;OnMessage(0x201, "WM_LBUTTONDOWN")
+	OnMessage(0x207, "clearHotkey")
+	Gui, hotBox:+LastFound  
+	;WinGet hotboxHWND, ID
+	;WinWaitClose, ahk_id %hotboxHWND%
+	GuiControlGet, focusedId, FocusV 
+	if instr(focusedId, "hotBoxEdit")
+		DllCall("HideCaret", "ptr", 0)
+	;DllCall("ShowCaret", "ptr", 0)
+	OnMessage(0x100, "keydown")
+	return 
+
+keydown(wParam, lParam, msg, hwd)
+{
+	if instr(A_GuiControl, "hotBoxEdit")
+		return 0
+}
+
+
+_hotBoxUpdateEdit:
+DllCall("ShowCaret", "ptr", 0)
 nonModifiers := keys := ""
 modifiers := "Control,Shift,Alt,Win"
 			. ",LControl,LShift,LAlt,LWin"
@@ -36,14 +59,16 @@ for key, v in aKeys
 	nonModifiers := True
 
 }
-;clipboard := keys
-if nonModifiers && 0
+GuiControl, hotBox:, %hotBoxID%, %keys%
+if nonModifiers
 {
-	UnhookWindowsHookEx(hHook), hHook := 0, aKeys := []
-	soundPlay()
+	installLLHooks(False)
+	hotBoxID := ""
+	aKeys := []
+	DllCall("HideCaret", "ptr", 0)
 }
-;msgbox % keys
-GuiControl,,Editkey, %keys%
+soundPlay()
+
 return
 
 exit: 
@@ -51,21 +76,8 @@ UnhookWindowsHookEx(hHook)
 UnhookWindowsHookEx(mHook)
 exitapp 
 
-f2::
-if !hHook
-	hHook := SetWindowsHookEx(13, RegisterCallback("KeyboardHook"))
-if !mHook
-	mHook := SetWindowsHookEx(14, RegisterCallback("MouseHook"))
-;send {delete}{NumpadDel}
-clipboard := log
-log := ""
-objtree(aKeys)
-;UnhookWindowsHookEx(hHook)
-;UnhookWindowsHookEx(mHook)
-return 
-test:
 
-return 
+
 
 /*
 If alt is pressed then released
@@ -74,38 +86,11 @@ WM_KEYUP
 hhh
 */
 soundPlay()
-{
+{	
 	soundplay *-1
 }
 
-/*
-; delete key
-VK 0x2e
-SC 0x53
-vkKey NumpadDel
-SCKey NumpadDel
-extended 0x1
-================
-Numpad Del
-VK 0x2e
-SC 0x53
-vkKey NumpadDel
-SCKey NumpadDel
-extended 0x0
-================
-VK 0x71
-SC 0x3c
-vkKey F2
-SCKey F2
-extended 0x0
-================
-Numpad del/dot with numlock
-VK 0x6e
-SC 0x53
-vkKey NumpadDot
-SCKey NumpadDel
-extended 0x0
-*/
+
 ; Detects Prtsc & Pause
 ; Can't do PrintScr too low level
 KeyboardHook(nCode, wParam, lParam)
@@ -116,29 +101,32 @@ KeyboardHook(nCode, wParam, lParam)
 							,	"NumpadPgUp": "PgUp"
 							,	"NumpadDel": "Delete"
 							,	"NumpadEnd": "End"
-							,	"NumpadPgDn": "PgDn"}
-			aNeutralRemap := { "LControl": "Control"
-							, 	"LShift":	"Shift"
-							,	"LAlt": 	"Alt"
-							,	"LWin": 	"LWin"}
+							,	"NumpadPgDn": "PgDn"
+							,	"NumpadLeft": "Left"
+							,	"NumpadUp": "Up"
+							,	"NumpadDown": "Down"
+							,	"NumpadRight": "Right" }
+
+	;		aNeutralRemap := { "LControl": "Control"
+	;						, 	"LShift":	"Shift"
+	;						,	"LAlt": 	"Alt"
+	;						,	"LWin": 	"LWin"}
 
 	static WM_KEYDOWN := 0x100, WM_KEYUP := 0x101, WM_SYSKEYDOWN := 0x0104, WM_SYSKEYUP := 0x0105
 	Critical, 250 
 	;soundplay *-1
 	If !nCode 
 	{
-		vkCode := NumGet(lParam+0, 0)
-
 		SetFormat, IntegerFast, hex
 		vkCode := NumGet(lParam+0, 0)
-		scanCode := NumGet(lParam+0, 4)
+		key := getKeyName("VK" vkCode)
+		;scanCode := NumGet(lParam+0, 4)
 		flags := NumGet(lParam+0, 8)
 		extended := flags & 1
-		key := getKeyName("VK" vkCode)
 		if (extended && aExtendedRemap.HasKey(key))
 			key := aExtendedRemap[key]
 		; Replace left and right modifiers with their neutral equivalent 
-		if (neutralMap && (instr(key, "Control") || instr(key, "Shift") || instr(key, "Alt")))
+		if (neutralMap && (instr(key, "Control") || instr(key, "Shift") || instr(key, "Alt") || instr(key, "Win")))
 			key := substr(key, 2)
 		if (wParam = WM_KEYDOWN)
 			log .= "`nVK " vkCode
@@ -150,13 +138,23 @@ KeyboardHook(nCode, wParam, lParam)
 		;clipboard .= key "`n"
 		if (wParam = WM_KEYDOWN || wParam = WM_SYSKEYDOWN)
 		{
+			; prevent the context menu appearing with shift + F10
+			; prevent win hotkeys doing stuff - cant prevent win + L
+			if (key = "F10" && (aKeys.HasKey("Shift") || aKeys.HasKey("LShift") || aKeys.HasKey("RShift"))) 
+			|| instr(key, "Win")
+				blockKey := True
+			if !aKeys.hasKey(key)
+				settimer, _hotBoxUpdateEdit, -10
 			aKeys[key] := True
-			settimer, updateEdit, -10
 		}
-		;else 
-		;	aKeys.Remove(key)
+		else if (wParam = WM_KEYUP || wParam = WM_SYSKEYUP)
+		{
+			aKeys.Remove(key)
+			settimer, _hotBoxUpdateEdit, -10
+		}
+
 	}
-   Return CallNextHookEx(nCode, wParam, lParam) ; pass the key event onto other programs in the hook chain
+   Return  blockKey ? -1 : CallNextHookEx(nCode, wParam, lParam) ; pass the key event onto other programs in the hook chain
 }
 
 ; mouse has different WM_Messages for each down/up event on each button
@@ -177,16 +175,60 @@ WM_XBUTTONUP = 0x20C,
 WM_XBUTTONDBLCLK = 0x20D,
 WM_MOUSEHWHEEL = 0x20E
 */
-f3::
-clipboard := ""
-sendEvent {WheelLeft}
 
-return 
-; (number >> 16) & 0xffff	
-;	WheelMove := wParam > 0x7FFFFFFF ? HiWord(-(~wParam)-1)/120 :  HiWord(wParam)/120 
+; can call with param -1 to simply find hook state
+installLLHooks(Install := False)
+{
+	static mHook, hHook, keyboardCallback := RegisterCallback("KeyboardHook")
+		mouseCallback := RegisterCallback("MouseHook")
+	if (Install > 0)
+	{
+		if !hHook
+			hHook := SetWindowsHookEx(13, keyboardCallback)
+		if !mHook
+			mHook := SetWindowsHookEx(14, mouseCallback)	
+	}
+	else if (install = 0)
+	{
+		if hHook
+			UnhookWindowsHookEx(hHook), hHook := 0 
+		if mHook
+			UnhookWindowsHookEx(mHook), mHook := 0
+	}
+	return hHook
+}
+enableHooks(wParam, lParam, msg, hwd)
+{	
+	global hotBoxID, aKeys
+	if instr(A_GuiControl, "hotBoxEdit") && !hooksInstalled := installLLHooks(-1)
+	{
+		
+		if (hooksInstalled && A_GuiControl = hotBoxID)   
+			return 
+		else if (hooksInstalled && A_GuiControl != hotBoxID) ; hooks already installed so user in another editbox
+		{
+			GuiControl, hotBox:, %hotBoxID%
+			aKeys := []
+		}
+		if !hooksInstalled
+		{
+			installLLHooks(True)
+			DllCall("ShowCaret", "ptr", 0)
+		}
+		hotBoxID := A_GuiControl
+	}
+	return 
+}
+clearHotkey(wParam, lParam)
+{	global hotBoxEdit
+	if instr(A_GuiControl, "hotBoxEdit") && !installLLHooks(-1)
+		GuiControl, hotBox:, %A_GuiControl%, 
+	return 
+}
 
 MouseHook(nCode, wParam, lParam)
-{ 	static aMessages := {	"WM_LBUTTONDOWN":	0x201
+{ 	
+	static aMessages := {	"WM_LBUTTONDOWN":	0x201
 						,	"WM_RBUTTONDOWN":	0x204
 						,	"WM_MBUTTONDOWN":	0x207
 						,	"WM_MOUSEWHEEL":	0x20A
@@ -194,13 +236,24 @@ MouseHook(nCode, wParam, lParam)
 						,	"WM_MOUSEHWHEEL":	0x20E }
 	global aKeys					
 	Critical 1000
+
 	If !nCode 
 	{
-
 		If (wParam = aMessages.WM_LBUTTONDOWN)
-			aKeys["LButton"] := True
+		{
+			
+				blockKey := True ; settimer, _HotkeyBoxEditLabel123456, -5
+
+				aKeys["LButton"] := True
+		}
 		else if (wParam = aMessages.WM_RBUTTONDOWN)
+		{
 			aKeys["RButton"] := True
+			;ControlGetFocus, varID, % "AHK_PID " DllCall("GetCurrentProcessId")
+			;if (varID = "hotBoxEdit")
+			blockKey := True
+			;clipboard := varID
+		}
 		else if (wParam = aMessages.WM_MBUTTONDOWN)
 			aKeys["MButton"] := True
 		else 
@@ -210,10 +263,10 @@ MouseHook(nCode, wParam, lParam)
 				aKeys[((mouseData >> 16) & 1  ? "XButton1" : "XButton2")] := True
 			else if (wParam = aMessages.WM_MOUSEWHEEL || wParam = aMessages.WM_MOUSEHWHEEL)
 			{
-				; This gets the actual +/- rotations which will always be +1/-1
+				; This gets the actual +/- rotations which will always be +1/-1 in this case
 				; These are stored in the hiword of the dword mouseData
 				if (mouseData > 0x7FFFFFFF)
-					 rotations := (-(~(mouseData >> 16)) - 1)/120
+					 rotations := (-(~(mouseData >> 16)) - 1) / 120
 				else 
 					rotations := (mouseData >> 16) / 120
 
@@ -222,24 +275,13 @@ MouseHook(nCode, wParam, lParam)
 				else 
 					aKeys[(rotations > 0 ? "WheelUp" : "WheelDown")] := True
 			}
+			else ; some other message lets not activate the settimer 
+				Return CallNextHookEx(nCode, wParam, lParam)
 		}
-
+		settimer, _hotBoxUpdateEdit, -10
 	}
-   	Return CallNextHookEx(nCode, wParam, lParam) ; make sure other hooks in the chain receive this event if we didn't process it
+   	Return blockKey ? -1 : CallNextHookEx(nCode, wParam, lParam) ; make sure other hooks in the chain receive this event if we didn't process it
 }
-/*
-				if (mouseData & 0x80000000)
-					rotations := ((-(~mouseData)-1) >> 16)/120
-				else 
-					rotations := ((mouseData >> 16) & 0xFFFF)/120
-
-				if (mouseData > 0x7FFFFFFF)
-					rotations := (-(~(mouseData & 0x80000000 ? mouseData >> 16 : (mouseData >> 16) & 0xffff))-1)/120
-				else 
-					rotations := (((mouseData & 0x80000000 ? mouseData >> 16 : (mouseData >> 16) & 0xffff)))/120
-					clipboard := rotations					
-
-*/
 
 SetWindowsHookEx(idHook, pfn)
 {
