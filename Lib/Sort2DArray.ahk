@@ -11,12 +11,25 @@
 
 ; (the associated keys will still be paired with their associated sorted key)   
 
+; Keys/Values should not contain the chars + or |
+
 sort2DArray(byRef a, key, Ascending := True)
 {
-    for index, obj in a
-        out .= obj[key] "-" index "|" ; "-" allows for sort to work with just the value
-    ; out will look like:   value-index|value-index|
 
+    ; set capcity to 20MB to greatly increase concatenation speed for v. v. V. large arrays
+    ; > 20,00 items+. But before this it is insignificant 
+    ; 1000000 items is ~300ms faster 
+    ; as its still uninitialised, it doesn't actually take up 20 MB
+    ; and this call only takes .02 ms - which is easily made up for in concatenation  
+    ;VarSetCapacity(out, 20 * 1000 *1000) 
+   
+  
+    for index, obj in a
+        out .= obj[key] "+" index "|" ; "+" allows for sort to work with just the value (and negatives values)
+    ; out will look like:   value+index|value+index|
+
+    ; if index values are strings, then this check would fail - could use another function param to set alpha/numeric sort
+    ; but It's not an issue for me
     v := a[a.minIndex(), key]
     if v is number 
         type := " N "
@@ -25,9 +38,11 @@ sort2DArray(byRef a, key, Ascending := True)
     aStorage := []
     loop, parse, out, |
     {
-        StringSplit, split, A_LoopField, -
         ; split1 = value, split2 = index
-        aStorage.insert(a[split2])
+        ; StringSplit, split, A_LoopField, -
+        ; aStorage.insert(a[split2])
+        aStorage.insert(a[SubStr(A_LoopField, InStr(A_LoopField, "+") + 1)])
+        
     }
     a := aStorage
     return
