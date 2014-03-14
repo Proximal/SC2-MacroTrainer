@@ -13,13 +13,15 @@ global aKeys := []
 
 	gui, hotBox:new
 	Gui, hotBox:add, edit, vtest  w90
-	Gui, hotBox:add, edit, vhotBoxEdit   w200 
+	Gui, hotBox:add, edit, section vhotBoxEdit1   w200 
+	Gui, hotBox:add, CheckBox, x+10 yp vhotBoxCheck1 
 
-	Gui, hotBox:add, edit, vhotBoxEdit2   w200 
+	Gui, hotBox:add, edit, xs vhotBoxEdit2   w200 
+	Gui, hotBox:add, HotKey, xs   w200 
 
 	;Gui, Add, Picture, w300 xp w200 h20,
 	
-	gui, hotBox:show, w220 h100, HotBox
+	gui, hotBox:show, h100, HotBox
 	OnMessage(0x201, "enableHooks")
 	;OnMessage(0x201, "WM_LBUTTONDOWN")
 	OnMessage(0x207, "clearHotkey")
@@ -31,6 +33,9 @@ global aKeys := []
 		DllCall("HideCaret", "ptr", 0)
 	;DllCall("ShowCaret", "ptr", 0)
 	OnMessage(0x100, "keydown")
+	aHotBoxSettings := []
+	aHotBoxSettings := {	"hotBoxEdit1": "Neutral shortSyntax"
+						,	"hotBoxEdit2": ""}
 	return 
 
 keydown(wParam, lParam, msg, hwd)
@@ -42,33 +47,82 @@ keydown(wParam, lParam, msg, hwd)
 
 _hotBoxUpdateEdit:
 DllCall("ShowCaret", "ptr", 0)
-nonModifiers := keys := ""
-modifiers := "Control,Shift,Alt,Win"
+modifiers := nonModifiers := keys := modifiersShort := nonModifiersShort := "", keyCount := 0
+modifiersList := "Control,Shift,Alt,Win"
 			. ",LControl,LShift,LAlt,LWin"
 			. ",RControl,RShift,RAlt,RWin"
-loop, parse, modifiers, `,
+/*
+if instr(aHotBoxSettings[hotBoxID], "shortSyntax")	
+	delimiter := ""	
+else 
+	delimiter := " + "	
+*/
+
+loop, parse, modifiersList, `,
 {
 	if aKeys.HasKey(A_LoopField)
-		keys .= ( keys ? " + " : "") A_LoopField
+	{
+		keyCount++
+		modifiers .= (modifiers ? " + " : "") A_LoopField
+		modifiersShort .= " " A_LoopField ;(modifiersShort ? "  " : " ")
+	}
 }
+
 for key, v in aKeys 
 {
-	if key in %modifiers%
+	if key in %modifiersList%
 		continue
-	keys .= ( keys ? " + " : "") key 
-	nonModifiers := True
-
+	keyCount++
+	nonModifiers .= ( modifiers ? " + " : "") key 
+	nonModifiersShort .= key 
 }
-GuiControl, hotBox:, %hotBoxID%, %keys%
+
+clipboard := s " sdf"
+
+
+
+keys := modifiers nonModifiers
+shortKeys := modifiersShort nonModifiersShort
+if (keyCount > 1)
+{
+	tooltip, % keys
+}
+GuiControl, hotBox:, %hotBoxID%, %shortKeys%
 if nonModifiers
 {
 	installLLHooks(False)
 	hotBoxID := ""
 	aKeys := []
+	settimer, tooltipOff, -1000
 	DllCall("HideCaret", "ptr", 0)
 }
 soundPlay()
+return
 
+
+convertLongModifers(string)
+{
+	StringReplace, string, string, LControl, <^
+	StringReplace, string, string, RControl, >^
+	StringReplace, string, string, Control, ^
+	StringReplace, string, string, LShift, <+
+	StringReplace, string, string, RShift, >+
+	StringReplace, string, string, Shift, +
+	StringReplace, string, string, LAlt, <!
+	StringReplace, string, string, RAlt, >!
+	StringReplace, string, string, Alt, !
+	return string
+}
+
+shortModifiersToNeutral(string)
+{
+	StringReplace, string, string, <,, ALL
+	StringReplace, string, string, >,, ALL	
+	return string 
+}
+
+tooltipOff:
+tooltip 
 return
 
 exit: 
@@ -76,6 +130,9 @@ UnhookWindowsHookEx(hHook)
 UnhookWindowsHookEx(mHook)
 exitapp 
 
+*f1::
+exitapp 
+return 
 
 
 
@@ -95,7 +152,7 @@ soundPlay()
 ; Can't do PrintScr too low level
 KeyboardHook(nCode, wParam, lParam)
 {
-	global log
+	global aHotBoxSettings, hotBoxID
 	static aExtendedRemap := {	"NumpadIns": "Ins"
 							,	"NumpadHome": "Home"
 							,	"NumpadPgUp": "PgUp"
@@ -126,7 +183,9 @@ KeyboardHook(nCode, wParam, lParam)
 		if (extended && aExtendedRemap.HasKey(key))
 			key := aExtendedRemap[key]
 		; Replace left and right modifiers with their neutral equivalent 
-		if (neutralMap && (instr(key, "Control") || instr(key, "Shift") || instr(key, "Alt") || instr(key, "Win")))
+		StringReplace, ID, hotBoxID, Edit, Check
+		GuiControlGet, Neutral, hotBox:, %ID%
+		if (Neutral && (instr(key, "Control") || instr(key, "Shift") || instr(key, "Alt") || instr(key, "Win")))
 			key := substr(key, 2)
 		if (wParam = WM_KEYDOWN)
 			log .= "`nVK " vkCode

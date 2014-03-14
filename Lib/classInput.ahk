@@ -164,7 +164,7 @@ class Input
 	}
 
 	; the new command is handy if you wish to send input to multiple programs
-	; inputSC2 := new input("Starcraft II")
+	; inputSC2 := new input(, "Starcraft II")
 	; inputSC2.pSendChars("Hello World!")
 	__new(Control := "", winTitle := "", winText := "", excludeTitle := "", excludeText := "")
 	{
@@ -378,6 +378,7 @@ It is capable of sending capitalised letters, as well as non-Standard ACII chars
 	}
 	; for use in chat boxes
 	; can send ascii art and capitalised letters i.e. just text  eg GLF♥HF! 
+	; if shift key is down sending a "." wont do anything in notepad
 	pSendChars(Sequence := "")
 	{
 		static WM_CHAR := 0x102

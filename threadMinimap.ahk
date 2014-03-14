@@ -186,7 +186,7 @@ DrawMiniMap()
 	{
 		; Set the width and height we want as our drawing area, to draw everything in. This will be the dimensions of our bitmap
 		; Create a layered window ;E0x20 click thru (+E0x80000 : must be used for UpdateLayeredWindow to work!) that is always on top (+AlwaysOnTop), has no taskbar entry or caption		
-		Gui, MiniMapOverlay: -Caption Hwndhwnd1 +E0x20 +E0x80000 +LastFound  +ToolWindow +AlwaysOnTop
+		Gui, MiniMapOverlay: -Caption Hwndhwnd1 +E0x20 +E0x80000 +LastFound +ToolWindow +AlwaysOnTop
 		; Show the window
 		Gui, MiniMapOverlay: Show, NA
 		; Get a handle to this window we have created in order to update it later
@@ -217,7 +217,8 @@ DrawMiniMap()
 
 	}
 	If (DrawSpawningRaces) && (getTime() - round(TimeReadRacesSet) <= 14) ;round used to change undefined var to 0 for resume so dont display races
-	{	Gdip_SetInterpolationMode(G, 7)				;TimeReadRacesSet gets set to 0 at start of match
+	{	
+		Gdip_SetInterpolationMode(G, 7)				;TimeReadRacesSet gets set to 0 at start of match
 		loop, parse, EnemyBaseList, |
 		{		
 			type := getUnitType(A_LoopField)

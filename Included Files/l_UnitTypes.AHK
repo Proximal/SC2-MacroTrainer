@@ -1,6 +1,6 @@
 #LTrim
 l_UnitTypes =
-(
+( Comments 
 	__sight__ = 0,
 	System_Snapshot_Dummy = 1,
 	__unitName__Burrowed = 2,
@@ -419,8 +419,10 @@ l_UnitTypes =
 	Tempest = 425,
 	WidowMine = 427,
 	Viper = 428,
-	WidowMineBurrowed = 429,	
+	WidowMineBurrowed = 429,
 	ProtossVespeneGeyser = 511,
-	Artosilop = 562
+	VespeneGeyserPretty = 515, ; **This has same name as 262 geyser - so i give it a new one This is on a new 1v1 map Habitation Station LE - This geyser isn't in the map editor though (perhaps there's a setting to get it though)		
+	Artosilop = 562,
+	ThorHighImpactPayload = 588
 )
 #LTrim, off
