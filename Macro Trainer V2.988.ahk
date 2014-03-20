@@ -11,6 +11,18 @@
 ;-----------------------
 
 ;***********
+; 20/03/14
+; There is a minor issue with the quick select save feature
+; While editing i noticed an old item was still present, then apon saving everything moved 
+; one item to the left, and item one was discarded.
+; -------------
+; Noticed a problem with Ctrl+shift deselecting unit types in quick select function.
+; occurs for units which share a tab position eg stank/tanks, hellions/hellbats etc
+; Fixed it by just shift clicking every unit
+; Could add an exception list which ensures only these type of units can be shift clicked
+; but i dont wont to muck around with it atm.
+;***********
+
 ; GUI map flicker try "Are you tried double buffer ? Its usualy help with flickering and sometimes with redraw (problem)  :Gui +LastFound +E0x02000000"
 
 ; if script re-copied from github should save it using UTF-8 with BOM (otherwise some of the ascii symbols like • wont be displayed correctly)
@@ -829,7 +841,7 @@ mt_pause_resume:
 	if (mt_Paused := !mt_Paused)
 	{
 		game_status := "lobby" ; with this clock = 0 when not in game 
-		timeroff("clock", "money", "gas", "scvidle", "supply", "worker", "inject", "unit_bank_read", "Auto_mine", "Auto_Group", "AutoGroupIdle", "overlay_timer", "g_unitPanelOverlay_timer", "g_autoWorkerProductionCheck", "cast_ForceInject", "find_races_timer", "advancedInjectTimerFunctionLabel")
+		timeroff("clock", "money", "gas", "scvidle", "supply", "worker", "inject", "unit_bank_read", "Auto_Group", "AutoGroupIdle", "overlay_timer", "g_unitPanelOverlay_timer", "g_autoWorkerProductionCheck", "cast_ForceInject", "find_races_timer", "advancedInjectTimerFunctionLabel")
 		inject_timer := 0	;ie so know inject timer is off
 		Try DestroyOverlays()
 		Try aThreads.MiniMap.ahkPostFunction("DestroyOverlays")
@@ -842,9 +854,6 @@ mt_pause_resume:
 	}
 return
 
-
-
-
 ;------------
 ;	clock
 ;------------
@@ -853,7 +862,7 @@ clock:
 	if (!time && game_status = "game") || (UpdateTimers) ; time=0 outside game
 	{	
 		game_status := "lobby" ; with this clock = 0 when not in game (while in game at 0s clock = 44)	
-		timeroff("money", "gas", "scvidle", "supply", "worker", "inject", "unit_bank_read", "Auto_mine", "Auto_Group", "AutoGroupIdle", "overlay_timer", "g_unitPanelOverlay_timer", "g_autoWorkerProductionCheck", "cast_ForceInject", "find_races_timer", "advancedInjectTimerFunctionLabel")
+		timeroff("money", "gas", "scvidle", "supply", "worker", "inject", "unit_bank_read", "Auto_Group", "AutoGroupIdle", "overlay_timer", "g_unitPanelOverlay_timer", "g_autoWorkerProductionCheck", "cast_ForceInject", "find_races_timer", "advancedInjectTimerFunctionLabel")
 		inject_timer := TimeReadRacesSet := UpdateTimers := PrevWarning := WinNotActiveAtStart := ResumeWarnings := 0 ;ie so know inject timer is off
 		if aThreads.MiniMap.ahkReady()
 		{
@@ -865,7 +874,6 @@ clock:
 	}
 	Else if (time && game_status != "game") && (getLocalPlayerNumber() != 16 || debug) ; Local slot = 16 while in lobby/replay - this will stop replay announcements
 	{
-		SetBatchLines, 10ms 
 		game_status := "game", warpgate_status := "not researched", gateway_count := warpgate_warning_set := 0
 		
 		AW_MaxWorkersReached := TmpDisableAutoWorker := 0
@@ -883,10 +891,6 @@ clock:
 		GameType := GetGameType(aPlayer)
 		If IsInList(aLocalPlayer.Type, "Referee", "Spectator")
 			return
-		;	timeroff("money", "gas", "scvidle", "supply", "worker", "inject"
-		;		, "unit_bank_read", "Auto_mine", "Auto_Group", "AutoGroupIdle"
-		;		, "overlay_timer", "g_unitPanelOverlay_timer"
-		;		, "g_autoWorkerProductionCheck", "cast_ForceInject")
 
 		If (DrawMiniMap || DrawAlerts || DrawSpawningRaces || warpgate_warn_on
 			|| supplyon || workeron || alert_array[GameType, "Enabled"])
@@ -981,7 +985,6 @@ clock:
 		EnemyBaseList := GetEBases()
 		findXelnagas(aXelnagas)		
 		UserSavedAppliedSettings := 0
-		SetBatchLines, -1
 	}
 return
 
@@ -2681,6 +2684,7 @@ ini_settings_write:
 
 	
 		;[Auto Mine]
+/*
 	section := "Auto Mine"
 	IniWrite, %auto_mine%, %config_file%, %section%, enable
 	IniWrite, %Auto_Mine_Set_CtrlGroup%, %config_file%, %section%, Auto_Mine_Set_CtrlGroup
@@ -2701,7 +2705,7 @@ ini_settings_write:
 	IniWrite, %Make_Worker_P_Key%, %config_file%, %section%, Make_Worker_P_Key
 	IniWrite, %Make_Worker_Z1_Key%, %config_file%, %section%, Make_Worker_Z1_Key
 	IniWrite, %Make_Worker_Z2_Key%, %config_file%, %section%, Make_Worker_Z2_Key
-
+*/
 
 	;[Misc Automation]
 	section := "AutoWorkerProduction"	
@@ -3915,7 +3919,7 @@ try
 			gui, Add, Text, w400 y+15, This also works if you need to cancel a probe to make a mumma ship core.
 
 			gui, Add, Text, w400 y+20, Although you will most likely not notice this, workers will not be produced while:
-			gui, Add, Text, w400 y+5, • The control, alt, shift, or windows keys are held down.
+			;gui, Add, Text, w400 y+5, • The control, alt, shift, or windows keys are held down.
 			gui, Add, Text, w400 y+5, • A spell is being cast (includes attack)
 			gui, Add, Text, w400 y+5, • The construction card i.e. the basic or advanced building card is displayed.
 			gui, Add, Text, w400 y+5, • A non-self unit is selected e.g. a mineral patch or an enemy/allied unit (or no unit is selected).
@@ -3981,7 +3985,7 @@ try
 			Gui, Add, Text, xs+15 yp+35, Health Level `%:
 			Gui, Add, Edit, Number Right xs+165 yp-2 w45 vEdit_RemoveDamagedUnitsHealthLevel
 				Gui, Add, UpDown,  Range1-99 vRemoveDamagedUnitsHealthLevel, % Round(RemoveDamagedUnitsHealthLevel * 100) 
-			Gui, Add, Text, Xs+15 yp+35 w360, Units with health/shields lower than the set 'health level' will be removed from selection and moved to the current mouse cursor position.`n`nThis is very help when microing units!
+			Gui, Add, Text, Xs+15 yp+35 w360, Units with health/shields lower than the set 'health level' will be removed from selection and moved to the current mouse cursor position.`n`nThis is very helpful when microing units!
 	
 	Gui, Tab, Easy Select/Unload
 		Gui, Add, GroupBox, x+95 y+30 w95 h100 section, Enable
@@ -4367,7 +4371,7 @@ try
 	( ltrim
 	Hold down (and do not release) the "Adjust Overlays" Hotkey (%AdjustOverlayKey% key).
 		
-	You will hear a beep - all the overlays are now adjustable.When you're done, release the "Adjust Overlays" Hotkey. 
+	You will hear a beep - all the overlays (excluding the minimap) are now adjustable.When you're done, release the "Adjust Overlays" Hotkey. 
 	)
 		Gui, Add, Text, xs+25 y+10 w370, %text%
 		Gui, Font, CDefault bold, Verdana
@@ -5689,7 +5693,7 @@ saveAlertArray(alert_array)
 	{
 		IniDelete, %config_file%, Building & Unit Alert %A_LoopField% ;clear the list - prevent problems if now have less keys than b4
 		IniWrite, % alert_array[A_LoopField, "Enabled"], %config_file%, Building & Unit Alert %A_LoopField%, enable	;alert system on/off
-		IniWrite, % alert_array[A_LoopField, "Clipboard"], %config_file%, Building & Unit Alert %A_LoopField%, copy2clipboard
+		;IniWrite, % alert_array[A_LoopField, "Clipboard"], %config_file%, Building & Unit Alert %A_LoopField%, copy2clipboard
 		loop, % alert_array[A_LoopField, "list", "size"]  ;loop 1v1 etc units
 		{
 			IniWrite, % alert_array[A_LoopField, A_Index, "Name"], %config_file%, Building & Unit Alert %A_LoopField%, %A_Index%_name_warning
@@ -6830,8 +6834,12 @@ autoWorkerProductionCheck()
 			sleep 1
 			Thread, Priority, 0	
 		}
+
+		; as can be stuck in the loop above for a while, lets check still have minerals to build the workers
+		if (MaxWokersTobeMade > currentMax := howManyUnitsCanBeProduced(50))
+			MaxWokersTobeMade := currentMax
 		
-		if (!isSelectionGroupable(oSelection) || isGamePaused() || isMenuOpen())
+		if (!isSelectionGroupable(oSelection) || isGamePaused() || isMenuOpen() || !MaxWokersTobeMade) ; MaxWokersTobeMade could be 0 after the loop above
 			return
 		Thread, NoTimers, true
 		;input.hookBlock(True, True)
@@ -6841,9 +6849,7 @@ autoWorkerProductionCheck()
 
 		critical, 1000
 		dsleep(30)
-		; as can be stuck in the loop above for a while, lets check still have minerals to build the workers
-		if (MaxWokersTobeMade > currentMax := howManyUnitsCanBeProduced(50))
-			MaxWokersTobeMade := currentMax
+
 
 		input.pReleaseKeys(True)
 
@@ -6974,7 +6980,7 @@ autoWorkerProductionCheck()
 			; These terran mains are in order as they
 			; would appear in the  selection group
 			if (aLocalPlayer.Race = "Protoss")
-				tabPosition := 	oSelection.TabPositions[aUnitId.Nexus]
+				tabPosition := oSelection.TabPositions[aUnitId.Nexus]
 			else if oSelection.TabPositions.HasKey(aUnitId.OrbitalCommand)
 				tabPosition := oSelection.TabPositions[aUnitId.OrbitalCommand]
 			else if oSelection.TabPositions.HasKey(aUnitId.CommandCenter)
@@ -8364,10 +8370,9 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 					{
 						local selectionCount := getSelectionCount()
 						ClickSelectUnitsPortriat(lRemoveQueens, "+", True)
-						qpx(true)
 						while (getSelectionCount() != selectionCount - removedCount && A_Index <= 20)
 							dSleep(1)
-						dsleep(3)
+						dsleep(5)
 					}
 				}
 			}
@@ -8764,7 +8769,9 @@ g_SelectArmy:
 
 	if MouseDown
 		dSleep(15)
-
+	if isCastingReticleActive() 	; so can deselect units if attacking reticle was present
+		input.pSend(Escape) 		; is a dsleep() >= 15 is performed after select army key is pressed this is not required - 12isnt enough
+									; as SC will have enough time to get rid of the selection reticle itself
 	if (getArmyUnitCount() != getSelectionCount())
 	{
 		input.pSend(Sc2SelectArmy_Key)
@@ -8774,7 +8781,7 @@ g_SelectArmy:
 		; A_Index check is just in case stopwatch fails (it should work on every computer) - get stuck in infinite loop with input blocked
 		while (getSelectionCount() != getArmyUnitCount() && stopwatch(timerArmyID, False) < 70 && A_Index < 80)
 			dsleep(1)
-		dsleep(15)
+		dsleep(20)
 	} 
 	else 
 	{
@@ -8828,9 +8835,11 @@ if (item = "") ; item should never be blank but im just leaving it like this jus
 quickSelect(aQuickSelect[aLocalPlayer.Race, item])
 return 
 
+;  the ctrl+shift click remove entire group is disabled until i fix the sort with units in same tab eg tanks/stanks + hellions/hellbats
+; could use a lisft of exceptions for the this click, but can't be bothered atm
 quickSelect(aDeselect)
 {
-	global Sc2SelectArmy_Key, aAGHotkeys
+	global Sc2SelectArmy_Key, aAGHotkeys, Escape
 
 	if !getArmyUnitCount()
 		return 
@@ -8874,6 +8883,10 @@ quickSelect(aDeselect)
 		return		
 	}
 
+	if isCastingReticleActive() 	; so can deselect units if attacking reticle was present
+		input.pSend(Escape) 		; is a dsleep() >= 15 is performed after select army key is pressed this is not required - 12isnt enough
+									; as SC will have enough time to get rid of the selection reticle itself
+
 	if (getArmyUnitCount() != getSelectionCount())
 	{
 		input.pSend(Sc2SelectArmy_Key)
@@ -8883,7 +8896,7 @@ quickSelect(aDeselect)
 		; A_Index check is just in case stopwatch fails (it should work on every computer) - get stuck in infinite loop with input blocked
 		while (getSelectionCount() != getArmyUnitCount() && stopwatch(timerQuickID, False) < 70 && A_Index < 80)
 			dsleep(1)
-		dsleep(12)
+		dsleep(20)
 	} 
 	else  
 	{
@@ -8898,7 +8911,7 @@ quickSelect(aDeselect)
 	|| aDeselect.DeselectLoadedTransport || aDeselect.DeselectQueuedDrops)
 		checkStates := True
 
-	if (aDeselect.Units.MaxIndex() = 1 && !checkStates)
+	if (aDeselect.Units.MaxIndex() = 1 && !checkStates) && 0 ; this is disabled until i fix the sort with units in same tab eg tanks/stanks + hellions/hellbats
 	{
 		clickUnitType := aDeselect["Units", 1]
 		if aSelected.TabPositions.HasKey(clickUnitType)
@@ -8911,6 +8924,7 @@ quickSelect(aDeselect)
 					break
 				}
 			}
+
 			clickUnitPortraits(clickPortraits, "^")
 		}
 	}
@@ -8921,9 +8935,10 @@ quickSelect(aDeselect)
 			if (unit.unitId = prevID) 
 				continue 
 			if !aLookup.haskey(unit.unitId)
-			{
-				prevID := unit.unitId
-				clickPortraits.insert({ "portrait":  unit.unitPortrait, "modifiers": "^+"})
+			{ 			
+			;	prevID := unit.unitId 	; this is disabled until i fix the sort with units in same tab eg tanks/stanks + hellions/hellbats
+			;	clickPortraits.insert({ "portrait":  unit.unitPortrait, "modifiers": "^+"})
+				clickPortraits.insert({ "portrait":  unit.unitPortrait, "modifiers": "+"}) 
 			}
 			else if checkStates
 			{
@@ -10036,7 +10051,7 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 	       Continue
 		owner := numgetUnitOwner(MemDump, Unit) 
 
-	    if  (aPlayer[Owner, "Team"] <> aLocalPlayer["Team"] && Owner) || (Owner) 
+	    if  (aPlayer[Owner, "Team"] <> aLocalPlayer["Team"] && Owner) ;|| (Owner) 
 	    {
 	    	pUnitModel := numgetUnitModelPointer(MemDump, Unit)
 	    	Type := numgetUnitModelType(pUnitModel)
@@ -12806,7 +12821,7 @@ return
 
 removeDamagedUnit()
 {
-	global RemoveDamagedUnitsHealthLevel, RemoveDamagedUnitsCtrlGroup
+	global RemoveDamagedUnitsHealthLevel, RemoveDamagedUnitsCtrlGroup, Escape
 
 	if !getSelectionCount()
 		return
@@ -12832,6 +12847,9 @@ removeDamagedUnit()
 	}
 	if lowHP.MaxIndex()
 	{
+		if isCastingReticleActive() 	; so can deselect units if attacking reticle was present
+			input.pSend(Escape) 		; is a dsleep() >= 15 is performed after select army key is pressed this is not required - 12isnt enough
+										; as SC will have enough time to get rid of the selection reticle itself		
 		timerRemove := stopwatch()
 		input.pSend("^" RemoveDamagedUnitsCtrlGroup)
 		clickUnitPortraits(highHP) 	; remove high HP units
@@ -12888,9 +12906,7 @@ twoShortsAsInt(short1, short2 := "")
 
 
 
-
-
-
-
-
-
+f1::
+numGetSelectionSorted(aSelected)
+objtree(aSelected)
+return 

@@ -147,7 +147,7 @@ gameChange(UserSavedAppliedSettings := False)
 
 
 MiniMap_Timer:
-	if WinActive(GameIdentifier)
+	if WinActive(GameIdentifier) 
 		DrawMiniMap()
 	else if !ReDrawMiniMap
 		DestroyOverlays()

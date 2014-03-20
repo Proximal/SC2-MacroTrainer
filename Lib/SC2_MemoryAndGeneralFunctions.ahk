@@ -3562,6 +3562,7 @@ readConfigFile()
 	aButtons := [] 	; Note I no longer retreive modifier keys in this list as these will always be blocked using ~*prefix
 	aButtons.List := getKeyboardAndMouseButtonArray(BlockingStandard*1 + BlockingFunctional*2 + BlockingNumpad*4
 																	 + BlockingMouseKeys*8 + BlockingMultimedia*16)	;gets an object contains keys
+/*
 	;[Auto Mine]
 	section := "Auto Mine"
 	IniRead, auto_mine, %config_file%, %section%, enable, 0
@@ -3578,7 +3579,7 @@ readConfigFile()
 	IniRead, AM_KeyDelay, %config_file%, %section%, AM_KeyDelay, 2
 	IniRead, Idle_Worker_Key, %config_file%, %section%, Idle_Worker_Key, {F1}
 	IniRead, Gather_Minerals_key, %config_file%, %section%, Gather_Minerals_key, g
-
+*/
 
 	;[Misc Automation]
 	section := "AutoWorkerProduction"	

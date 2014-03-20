@@ -115,7 +115,7 @@ setMTMouseHook(Install)
 
 MT_InputIdleTime(NewInputTickCount := 0)
 {
-	static LastInputTickCount
+	static LastInputTickCount := A_TickCount ; encase hook never gets installed
 	if !NewInputTickCount
 		return A_TickCount - LastInputTickCount
 	LastInputTickCount := NewInputTickCount
