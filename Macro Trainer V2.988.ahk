@@ -68,6 +68,11 @@
 
 */
 
+global aTicks := []
+
+
+
+
 SetWorkingDir %A_ScriptDir%  ; Ensures a consistent starting directory.
 ; SingleInstance Force Doesn't do anything now, as I renamed the hidden/main GUI
 ; with a random name. This is OCD (better to be safe) in case blizzard starts scanning
@@ -8896,6 +8901,7 @@ quickSelect(aDeselect)
 		; A_Index check is just in case stopwatch fails (it should work on every computer) - get stuck in infinite loop with input blocked
 		while (getSelectionCount() != getArmyUnitCount() && stopwatch(timerQuickID, False) < 70 && A_Index < 80)
 			dsleep(1)
+		stopwatch(timerQuickID)
 		dsleep(20)
 	} 
 	else  
@@ -12905,8 +12911,13 @@ twoShortsAsInt(short1, short2 := "")
 }
 
 
-
-f1::
-numGetSelectionSorted(aSelected)
-objtree(aSelected)
+^+!f2::
+objtree(aTicks)
 return 
+
+
+debug(text, byRef newHeader := 0)
+{
+	FileAppend, % newHeader != 0 ? newHeader : A_Min ":" A_Sec " - " text "`n", *
+	return
+}

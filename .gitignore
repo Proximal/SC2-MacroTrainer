@@ -1,6 +1,8 @@
-#ignore the below folders
+# Ignore the below folders
+######################
 Ignored/
 SC2 Research/
+Old Macro Trainers/
 
 # Compiled source #
 ###################
@@ -47,6 +49,14 @@ threadMiniMapFull.ahk
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Test Scripts #
+######################
 testb.ahk
 test2.ahk
 test.ahk
+
+# Backups #
+######################
+*.backup
+
