@@ -68,11 +68,6 @@
 
 */
 
-global aTicks := []
-
-
-
-
 SetWorkingDir %A_ScriptDir%  ; Ensures a consistent starting directory.
 ; SingleInstance Force Doesn't do anything now, as I renamed the hidden/main GUI
 ; with a random name. This is OCD (better to be safe) in case blizzard starts scanning
@@ -12876,48 +12871,4 @@ removeDamagedUnit()
 	return	
 }
 
-; This is used for finding certain offsets.
-; Specifically where two uInts reside next to each other.
-; It returns the 8 byte value (generated if you were to read them as an 8 byte value) 
-; which you can search for in CE
-; If the 8 byte value is >= 0x8000000000000000 the returned value will be incorrect as AHK doesn't support
-; large uInt64s
-twoUIntAsUint64(uInt1, uInt2 := "")
-{
-	if (uInt2 = "")
-		uInt2 := uInt1
-	VarSetCapacity(address, 8, 0)
-	NumPut(uInt1, address, 0, "UInt")
-	NumPut(uInt2, address, 4, "UInt")
-	return numget(address, 0, "UInt64")
-}
-twoBoolsAsShort(bool1, bool2 := "")
-{
-	if (bool2 = "")
-		bool2 := bool1
-	VarSetCapacity(address, 2, 0)
-	NumPut(bool1, address, 0, "Char")
-	NumPut(bool2, address, 1, "Char")
-	return numget(address, 0, "Short")
-}
-twoShortsAsInt(short1, short2 := "")
-{
-	if (short2 = "")
-		short2 := short1
-	VarSetCapacity(address, 4, 0)
-	NumPut(short1, address, 0, "Short")
-	NumPut(short2, address, 2, "Short")
-	return numget(address, 0, "UInt")
-}
 
-
-^+!f2::
-objtree(aTicks)
-return 
-
-
-debug(text, byRef newHeader := 0)
-{
-	FileAppend, % newHeader != 0 ? newHeader : A_Min ":" A_Sec " - " text "`n", *
-	return
-}

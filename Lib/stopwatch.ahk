@@ -14,8 +14,7 @@
 
 stopwatch(itemId := 0, mode := 1)
 {
-;	static F := DllCall("QueryPerformanceFrequency", "Int64P", F) * F , aTicks := [], runID := 0
-	static F := DllCall("QueryPerformanceFrequency", "Int64P", F) * F , runID := 0
+	static F := DllCall("QueryPerformanceFrequency", "Int64P", F) * F , aTicks := [], runID := 0
 
 	if (itemId = 0) ; = 0 so if user accidentally passes an empty or invalid ID-variable function returns -1	
 		return ++runID, DllCall("QueryPerformanceCounter", "Int64P", S), aTicks[runID] := S

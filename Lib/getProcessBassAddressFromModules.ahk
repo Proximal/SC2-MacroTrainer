@@ -6,8 +6,11 @@
 	For each module, call GetModuleFileNameEx to get the filename, and compare it with the executable's filename.
 	When you've found the executable's module, call GetModuleInformation to get the raw entry point of the executable.
 */
+; Process should be as it appears in task manager e.g. notepad.exe or SC2.exe
+; If no module is specified, the adrress of the base module - main() e.g. C:\Games\StarCraft II\Versions\Base28667\SC2.exe
+; will be returned. Otherwise specify the module/dll to find.
 
-getProcessBassAddressFromModules(process)
+getProcessBassAddressFromModules(process, module := "")
 {
 	_MODULEINFO := "
 					(
@@ -20,11 +23,14 @@ getProcessBassAddressFromModules(process)
 		hProc := DllCall("OpenProcess", "uint", 0x0400 | 0x0010 , "int", 0, "uint", ErrorLevel)
 	if !hProc
 		return -2
-	VarSetCapacity(mainExeNameBuffer, 2048 * (A_IsUnicode ? 2 : 1))
-	DllCall("psapi\GetModuleFileNameEx", "uint", hProc, "Uint", 0
-				, "Ptr", &mainExeNameBuffer, "Uint", 2048 / (A_IsUnicode ? 2 : 1))
-	mainExeName := StrGet(&mainExeNameBuffer)
-	; mainExeName = main executable module of the process
+	if !module
+	{
+		VarSetCapacity(mainExeNameBuffer, 2048 * (A_IsUnicode ? 2 : 1))
+		DllCall("psapi\GetModuleFileNameEx", "uint", hProc, "Uint", 0
+					, "Ptr", &mainExeNameBuffer, "Uint", 2048 / (A_IsUnicode ? 2 : 1))
+		mainExeName := StrGet(&mainExeNameBuffer)
+		; mainExeName = main executable module of the process
+	}
 	size := VarSetCapacity(lphModule, 4)
 	loop 
 	{
@@ -42,7 +48,9 @@ getProcessBassAddressFromModules(process)
 	{
 		DllCall("psapi\GetModuleFileNameEx", "uint", hProc, "Uint", numget(lphModule, (A_index - 1) * 4)
 				, "Ptr", &lpFilename, "Uint", 2048 / (A_IsUnicode ? 2 : 1))
-		if (mainExeName = StrGet(&lpFilename))
+		;clipboard .= "`n" StrGet(&lpFilename)
+		;if 0
+		if (!module && mainExeName = StrGet(&lpFilename) || module && instr(StrGet(&lpFilename), module))
 		{
 			moduleInfo := struct(_MODULEINFO)
 			DllCall("psapi\GetModuleInformation", "uint", hProc, "Uint", numget(lphModule, (A_index - 1) * 4)

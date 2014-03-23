@@ -6,7 +6,7 @@
 
 ; Note** Do not call releaseKeys() (this used sendInput) while thread is in critical! As the LL-Hooks wont process the input
 ; until the thread comes out of critical, or an AHK sleep command is used.
-; pReleaseKeys uses post message and is find to use while in critical
+; pReleaseKeys uses post message and is fine to use while in critical
 ; Also note, any AHK command which has an internal sleep (including eg controlsend) will cause AHK to check its msg queue
 ; and the hooks will then process any user pressed key which could interrupt the automation!
 

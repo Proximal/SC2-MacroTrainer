@@ -1,4 +1,6 @@
 /*
+	RHCP basic memory class:
+
 	This is a basic wrapper for commonly used read and write memory functions.
 	This allows scripts to read/write integers and strings of various types.
 	Pointer addresses can easily be read/written by passing the base address and offsets to the various read/write functions
@@ -12,7 +14,7 @@
 	ReadRawMemory() can be used to dump large chunks of memory, this is considerably faster when
 	reading data from a large structure compared to repeated calls to read().
 	Although, most people wouldn't notice the performance difference. This does however require you 
-	to retreive the values using AHK's numget()/strGet() from the dumped memory
+	to retrieve the values using AHK's numget()/strGet() from the dumped memory
 	
 	When the new operator is used this class returns a object which can be used to read that processes 
 	memory space.
@@ -23,21 +25,35 @@
 	Note:
 	This was written for 32 bit processes, but the various read/write functions
 	should still work when directly reading/writing an address. The pointer parts of
-	these functions probably wont, as I assume pointers are stored as 64bit values.
+	these functions wont, as I assume pointers are stored as 64bit values.
 
 	Also very large (unsigned) 64 bit integers may not be read correctly - the current function works 
 	for the 64 bit ints I use it on. AHK doesn't directly support 64bit unsigned ints anyway
 
+	If the process has admin privileges, then the AHK script will also require admin privileges to work. 
+
 	
 	Usage:
 
-		open a process with sufficient access to read and write memory addresses (this is required before you can use the other functions)
-		calc :=	memory("ahk_exe calc.exe")
-		Note: This can be an ahk_exe, ahk_class, ahk_pid, or simply the window title. 
+		**Note: If you wish to try this calc example, ensure you run the 32 bit version of calc.exe - 
+				which is in C:\Windows\SysWOW64\calc.exe on 64 bit systems. You can still read/write directly to
+				a 64 bit calc process address (I doubt pointers will work), but the getBaseAddressOfModule() example will not work. Also the 
+				calc.BaseAddress will be shown as negative, as the UInt64 is too large for AHK and overflows.
+		
+
+		Open a process with sufficient access to read and write memory addresses (this is required before you can use the other functions)
+		You only need to do this once. But if the process closes, then you will need to reopen.
+			calc :=	new memory("ahk_exe calc.exe")
+			Note: This can be an ahk_exe, ahk_class, ahk_pid, or simply the window title. 
+
 		
 		Get the processes base address
 			msgbox % calc.BaseAddress
-		write 1234 to a UInt
+		
+		Get the base address of a module
+			msgbox % calc.getBaseAddressOfModule("GDI32.dll")
+		
+		write 1234 to a UInt at address 0x0016CB60
 			calc.write(0x0016CB60, 1234, "UInt")
 
 		read a UInt
@@ -111,7 +127,7 @@ class memory
 		; This default access level is sufficient to read and write memory addresses.
 		; if the program is run using admin privileges, then this script will also need admin privileges
 		if dwDesiredAccess is not integer
-			dwDesiredAccess := (PROCESS_VM_OPERATION := 0x8) | (PROCESS_VM_READ := 0x10) | (PROCESS_VM_WRITE := 0x20)
+			dwDesiredAccess := (PROCESS_QUERY_INFORMATION := 0x0400) | (PROCESS_VM_OPERATION := 0x8) | (PROCESS_VM_READ := 0x10) | (PROCESS_VM_WRITE := 0x20)
 		WinGet, pid, pid, % this.currentProgram := program
 		if !pid
 			return  this.hProcess := 0 
@@ -290,7 +306,7 @@ class memory
 		return	this.pointer(address, "UInt", aOffsets*) + lastOffset		
 	}
 
-	; The base adress for some programs is dynamic. This can retrieve the current base address, 
+	; The base adress for some programs is dynamic. This can retrieve the current base address of the main module (e.g. SC2.exe), 
 	; which can then be added to your various offsets
 
 	getProcessBaseAddress(WindowTitle, MatchMode=3)	;WindowTitle can be anything "ahk_exe SC2.exe"  "ahk_class xxxx" window title etc
@@ -302,6 +318,61 @@ class memory
 			? "GetWindowLong" 
 			: "GetWindowLongPtr", "Uint", hWnd, "Uint", -6) 
 	}
+
+	/*
+		_MODULEINFO := "
+						(
+						  LPVOID lpBaseOfDll;
+						  DWORD  SizeOfImage;
+						  LPVOID EntryPoint;
+					  	)"
+
+	*/
+	; If no module is specified, the address of the base module - main() e.g. C:\Games\StarCraft II\Versions\Base28667\SC2.exe
+	; will be returned. Otherwise specify the module/dll to find e.g. Battle.net.dll.
+	; requires PROCESS_QUERY_INFORMATION + PROCESS_VM_READ (which is included by default with this class)
+	getBaseAddressOfModule(module := "")
+	{
+
+		if !this.hProcess
+			return -2
+		if !module
+		{
+			VarSetCapacity(mainExeNameBuffer, 2048 * (A_IsUnicode ? 2 : 1))
+			DllCall("psapi\GetModuleFileNameEx", "uint", this.hProcess, "Uint", 0
+						, "Ptr", &mainExeNameBuffer, "Uint", 2048 / (A_IsUnicode ? 2 : 1))
+			mainExeName := StrGet(&mainExeNameBuffer)
+			; mainExeName = main executable module of the process
+		}
+		size := VarSetCapacity(lphModule, 4)
+		loop 
+		{
+			DllCall("psapi\EnumProcessModules", "uint", this.hProcess, "Ptr", &lphModule
+					, "Uint", size, "Uint*", reqSize)
+			if ErrorLevel
+				return -3
+			else if (size >= reqSize)
+				break
+			else 
+				size := VarSetCapacity(lphModule, reqSize)	
+		}
+		VarSetCapacity(lpFilename, 2048 * (A_IsUnicode ? 2 : 1))
+		loop % reqSize / A_PtrSize ; sizeof(HMODULE) - enumerate the array of HMODULEs
+		{
+			DllCall("psapi\GetModuleFileNameEx", "uint", this.hProcess, "Uint", numget(lphModule, (A_index - 1) * 4)
+					, "Ptr", &lpFilename, "Uint", 2048 / (A_IsUnicode ? 2 : 1))
+
+			if (!module && mainExeName = StrGet(&lpFilename) || module && instr(StrGet(&lpFilename), module))
+			{
+				VarSetCapacity(MODULEINFO, 12)
+				DllCall("psapi\GetModuleInformation", "UInt", this.hProcess, "UInt", numget(lphModule, (A_index - 1) * 4)
+					, "Ptr", &MODULEINFO, "UInt", 12)
+				return numget(MODULEINFO, 0, "UInt")
+			}
+		}
+		return -1 ; not found
+	}
+
 }
 
 /*
