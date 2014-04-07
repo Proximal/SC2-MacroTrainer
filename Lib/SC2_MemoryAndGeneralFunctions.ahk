@@ -3609,6 +3609,7 @@ readConfigFile()
 	IniRead, castSelectArmy_key, %config_file%, %section%, castSelectArmy_key, F2
 	IniRead, SleepSelectArmy, %config_file%, %section%, SleepSelectArmy, 15
 	IniRead, ModifierBeepSelectArmy, %config_file%, %section%, ModifierBeepSelectArmy, 1
+	IniRead, SelectArmyOnScreen, %config_file%, %section%, SelectArmyOnScreen, 0
 	IniRead, SelectArmyDeselectXelnaga, %config_file%, %section%, SelectArmyDeselectXelnaga, 1
 	IniRead, SelectArmyDeselectPatrolling, %config_file%, %section%, SelectArmyDeselectPatrolling, 1
 	IniRead, SelectArmyDeselectHoldPosition, %config_file%, %section%, SelectArmyDeselectHoldPosition, 0

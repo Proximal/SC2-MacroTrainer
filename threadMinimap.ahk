@@ -417,18 +417,31 @@ createPens(penSize)
 
 temporarilyHideMinimap()
 {
-	Global DrawMiniMap, DrawPlayerCameras
-	if DrawMiniMap
+	Global DrawMiniMap, DrawPlayerCameras, DrawAlerts, DrawSpawningRaces
+	if (DrawMiniMap || DrawPlayerCameras || DrawAlerts || DrawSpawningRaces)
 	{
 		if DrawPlayerCameras
 			DrawPlayerCameras := False, ReDrawPlayerCams := True
-		DrawMiniMap := False
-		gosub, MiniMap_Timer ; so minimap dissapears instantly 
+		if DrawAlerts
+			DrawAlerts := False, ReDrawAlerts := True
+		if DrawSpawningRaces
+			DrawSpawningRaces := False, ReDrawSpawningRaces := True
+		if DrawMiniMap
+			DrawMiniMap := False, ReDrawMiniMap := True
+		gosub, MiniMap_Timer ; so minimap disappears instantly 
 		Thread, Priority, -2147483648
 		sleep, 2500
-		DrawMiniMap := True, ReDrawPlayerCams ? DrawPlayerCameras := true
+		if ReDrawMiniMap
+			DrawMiniMap := True
+		if ReDrawPlayerCams 
+			DrawPlayerCameras := true
+		if ReDrawAlerts
+			DrawAlerts := True
+		if ReDrawSpawningRaces
+			DrawSpawningRaces := True
 		gosub, MiniMap_Timer
 	}
+	return
 }
 
 /*

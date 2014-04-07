@@ -105,7 +105,7 @@ if !A_IsAdmin
 	ExitApp
 }
 OnExit, ShutdownProcedure
-chageScriptMainWinTitle()
+scriptWinTitle := changeScriptMainWinTitle()
 ; Just testing this - doesn't seem to make a difference
 ;if !A_IsCompiled
 ;	Process, Priority,, H
@@ -139,6 +139,7 @@ Else
 	hotkey, ^+!F12, g_GiveLocalPlayerResources
 	hotkey, >!F12, g_testKeydowns
 }
+Menu, Tray, Icon,,, 1 ; freeze the icon
 
 ; Just for testing will remove soon
 g_testKeydowns:
@@ -454,7 +455,6 @@ If WinGet("EXStyle", GameIdentifier) = SC2WindowEXStyles.FullScreen
 }
 settimer, g_CheckForScriptToGetGameInfo, -3600000 ; 1hour
 return
-
 ;-----------------------
 ; End of execution
 ;-----------------------
@@ -462,6 +462,7 @@ return
 ;2147483647  - highest priority so if i ever give something else a high priority, this key combo will still interupt (if thread isnt critical)
 ;#MaxThreadsBuffer on
 ;<#Space::
+
 g_EmergencyRestart:	
 ;Thread, Priority, 2147483647 ; doubt this does anything. But due to problem with using the hotkeycommand try it
 		releaseAllModifiers() 					;This will be active irrespective of the window
@@ -469,27 +470,38 @@ g_EmergencyRestart:
 		settimer, EmergencyInputCountReset, 5000, -100	
 		EmergencyInputCount++		 
 		If (EmergencyInputCount = 1)
-		{
-		;	BufferInputFast.disableHotkeys()
 			CreateHotkeys()
-		}
 		else If (EmergencyInputCount >= 3)
 		{
 			IniWrite, Hotkey, %config_file%, Misc Info, RestartMethod ; could have achieved this using running the new program with a parameter then checking %1%
-		g_reload:
-			if (A_ThisLabel = "g_reload")
-				IniWrite, Icon, %config_file%, Misc Info, RestartMethod
 			SoundPlay, %A_Temp%\Windows Ding.wav
-			if (time && alert_array[GameType, "Enabled"])
-				aThreads.MiniMap.ahkFunction("doUnitDetection", 0, 0, 0, "Save")	
-			if (A_OSVersion = "WIN_XP") ; apparently the below command wont work on XP
-				try RunAsAdmin()
-			else try  Run *RunAs "%A_ScriptFullPath%"
-			ExitApp	;does the shutdown procedure.
+			gosub, g_Restart
+			return
 		}
 		SoundPlay, %A_Temp%\Windows Ding2.wav	
 	return	
-;#MaxThreadsBuffer Off
+
+g_reload:
+;if (A_ThisLabel = "g_reload")
+IniWrite, Icon, %config_file%, Misc Info, RestartMethod
+g_Restart:
+Thread, NoTimers, True
+suspend, on ; removing AHKs hooks helps reduce the lock time if the issue occurs
+setLowLevelInputHooks(False) ; remove hooks here should help 
+;critical, on ; ive noticed if you spam restarts, it can cause it to lock up the system 
+	; critical doesn't help
+	; the issue is caused by one script not exiting correctly
+	; and the other waiting for it exit
+	; looping exitapp in the exit routine seems to help
+	; These changes seem to have fixed the issue. Removing the hooks here was probably the main part
+if (time && alert_array[GameType, "Enabled"])
+	aThreads.MiniMap.ahkFunction("doUnitDetection", 0, 0, 0, "Save")	
+restartTrainer := True
+; This sleep can not be present, this time delay increases the chances of the issue occuring
+; It also increases the severity - cant control the mouse if its present
+;sleep 200	; so the last ding from the hotkey gets played
+ExitApp	;does the shutdown procedure.
+return 
 
 EmergencyInputCountReset:
 	settimer, EmergencyInputCountReset, off
@@ -497,7 +509,7 @@ EmergencyInputCountReset:
 	Return
 
 ; this is required as the 'exit' on the tray icon can only launch labels
-; and if it actually goes to " ShutdownProcedure: " the shudown procedure will actually get run twice! (not a big deal....)
+; and if it actually goes to " ShutdownProcedure: " the shudown procedure will actaually get run twice! (not a big deal....)
 ; Once from the label, and a second time due to the first use of ExitApp command 
 ExitApp:
 	ExitApp ; invokes the shutdown procedure
@@ -1166,6 +1178,12 @@ AutoGroup(byref A_AutoGroup, AGDelay = 0)
 	; needed to ensure the function running again while it is still running
 	;  as can arrive here from AutoGroupIdle or 
 	Thread, NoTimers, true
+
+	; If user presses hotkey during this time (which would still interrupt this thread), it should not defeat the
+	; two unit checks - even if the selection changes
+	; as they will no longer match
+	; I guess it would be possible if the unit died between type and isincontrolGroup
+	; and the new different unit with same index was selected - but this be very very rare
 
 	numGetUnitSelectionObject(oSelection)
 	, SelectedTypes := oSelection.Types
@@ -2172,7 +2190,7 @@ g_buyBeer:
 
 ;------------
 ;	Exit
-;------------
+;------------                                            
 
 timer_Exit:
 {
@@ -2193,8 +2211,15 @@ ShutdownProcedure:
 		aThreads.Speech.ahkTerminate(500) ; needs 5 so thread doesn't persist	
 	if aThreads.miniMap.ahkReady() 	
 		aThreads.miniMap.ahkTerminate(500) 
+	
 	if FileExist(config_file) ; needed if exits due to dll not being installed
 		Iniwrite, % round(GetProgramWaveVolume()), %config_file%, Volume, program
+	; I thought placing this here after most of the shutdown stuff would
+	; help the restart spam issue - but it hasn't :(
+	if (restartTrainer && A_OSVersion = "WIN_XP") ; apparently the below command wont work on XP
+		try RunAsAdmin()
+	else if restartTrainer
+		try  Run *RunAs "%A_ScriptFullPath%"
 	ExitApp
 Return
 
@@ -2734,6 +2759,7 @@ ini_settings_write:
 	IniWrite, %SleepSelectArmy%, %config_file%, %section%, SleepSelectArmy
 	IniWrite, %ModifierBeepSelectArmy%, %config_file%, %section%, ModifierBeepSelectArmy
 	IniWrite, %SelectArmyDeselectXelnaga%, %config_file%, %section%, SelectArmyDeselectXelnaga
+	IniWrite, %SelectArmyOnScreen%, %config_file%, %section%, SelectArmyOnScreen
 	IniWrite, %SelectArmyDeselectPatrolling%, %config_file%, %section%, SelectArmyDeselectPatrolling
 	IniWrite, %SelectArmyDeselectLoadedTransport%, %config_file%, %section%, SelectArmyDeselectLoadedTransport
 	IniWrite, %SelectArmyDeselectQueuedDrops%, %config_file%, %section%, SelectArmyDeselectQueuedDrops
@@ -3791,7 +3817,7 @@ try
 			 Gui, Add, Button, x+45 w65 h25 vNew%A_LoopField%QuickSelect gg_QuickSelectGui, New
 			 Gui, Add, Button, x+20 w65 h25 vDelete%A_LoopField%QuickSelect gg_QuickSelectGui, Delete
 
-		Gui, Add, GroupBox, xs Ys+85 w380 h260 section vGroupBoxItem%A_LoopField%QuickSelect, % "Quick  Select Item " aQuickSelectCopy[A_LoopField "IndexGUI"] 
+		Gui, Add, GroupBox, xs Ys+85 w380 h275 section vGroupBoxItem%A_LoopField%QuickSelect, % "Quick  Select Item " aQuickSelectCopy[A_LoopField "IndexGUI"] 
 
 			Gui, Add, Checkbox, xs+15 yp+25 vquickSelect%A_LoopField%Enabled Checked%Checked%, Enable
 			Gui, Add, Text, yp+40, Hotkey:
@@ -3799,8 +3825,8 @@ try
 			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#quickSelect%A_LoopField%_Key,  Edit	
 
 			Gui, Add, Text, xs+15 y+10, Units
-			Gui, Add, Edit, y+5 w160  r6 vquickSelect%A_LoopField%UnitsArmy, %A_Space%
-			Gui, Add, Button, y+5 gEdit_AG v#quickSelect%A_LoopField%UnitsArmy w160 h25,  Add
+			Gui, Add, Edit, y+5 w160  r7 vquickSelect%A_LoopField%UnitsArmy, %A_Space%
+			Gui, Add, Button, y+6 gEdit_AG v#quickSelect%A_LoopField%UnitsArmy w160 h25,  Add
 
 			Gui, Add, Text, xs+200 ys+25, Store Selection:
 
@@ -3808,8 +3834,9 @@ try
 			QuickSelect%A_LoopField%StoreSelection_TT := "Stores the units in this control group."
 													. "`n`nNote: This uses the specified 'set control group' hotkeys as defined in the auto grouping hotkey section."
 
-			Gui, add, GroupBox, xs+200 ys+55 w165 h175, Remove
+			Gui, add, GroupBox, xs+200 ys+55 w165 h190, Remove
 			Gui, Add, Checkbox, Xp+10 yp+25  vquickSelect%A_LoopField%DeselectXelnaga Checked%Checked%, Xelnaga (tower) units
+			Gui, Add, Checkbox, Xp yp+24 vquickSelect%A_LoopField%OnScreen Checked%Checked%, Outside of camera view
 			Gui, Add, Checkbox, Xp yp+24 vquickSelect%A_LoopField%DeselectPatrolling Checked%Checked%, Patrolling units
 			Gui, Add, Checkbox, Xp yp+24 vquickSelect%A_LoopField%DeselectLoadedTransport Checked%Checked%, Loaded transports
 			Gui, Add, Checkbox, Xp yp+24 vquickSelect%A_LoopField%DeselectQueuedDrops Checked%Checked%, Transports queued to drop
@@ -3945,8 +3972,9 @@ try
 			Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#Sc2SelectArmyCtrlGroup,  Edit
 		
 		;Gui, Add, Text, Xs yp+40, Deselect These Units:
-		Gui, add, GroupBox, xs-15 y+40 w405 h190, Deselect These Units
+		Gui, add, GroupBox, xs-15 y+40 w405 h205, Deselect These Units
 		Gui, Add, Checkbox, Xs yp+25 vSelectArmyDeselectXelnaga Checked%SelectArmyDeselectXelnaga%, Xelnaga (tower) units
+		Gui, Add, Checkbox, Xs yp+20 vSelectArmyOnScreen Checked%SelectArmyOnScreen%, Outside of the camera view
 		Gui, Add, Checkbox, Xs yp+20 vSelectArmyDeselectPatrolling Checked%SelectArmyDeselectPatrolling%, Patrolling units
 		Gui, Add, Checkbox, Xs yp+20 vSelectArmyDeselectLoadedTransport Checked%SelectArmyDeselectLoadedTransport%, Loaded transports
 		Gui, Add, Checkbox, Xs yp+20 vSelectArmyDeselectQueuedDrops Checked%SelectArmyDeselectQueuedDrops%, Transports queued to drop
@@ -4656,6 +4684,8 @@ try
 		ModifierBeepSelectArmy_TT := "Will play a beep if a modifer key is being held down.`nModifiers include the ctrl, alt, shift and windows keys."
 		castSelectArmy_key_TT := #castSelectArmy_key_TT := "The button used to invoke this function."
 		SelectArmyDeselectXelnaga_TT := "Units controlling the xelnaga watch towers will be removed from the selection group."
+		SelectArmyOnScreen_TT := "When checked, only the units currently on screen will be selected.`n`nThis is new and hasn't been tested much.`nNote: If no units are on screen, then your previously select units will remain selected."
+		
 		SelectArmyDeselectPatrolling_TT := "Units with a patrol command queued will be removed from the selection group.`n`nThis is very useful if you dont want to select some units e.g. banes/lings at your base or a drop ship waiting outside a base!`nJust set them to patrol and they will not be selected with your army."
 				. "`n`nNote: Units set to follow a patrolling unit will also me removed."
 		SelectArmyDeselectHoldPosition_TT := "Units with a hold position command queued will be removed from the selection group."
@@ -4673,6 +4703,7 @@ try
 			quickSelect%A_LoopField%UnitsArmy_TT := #quickSelect%A_LoopField%UnitsArmy_TT := "These unit types will be selected."
 
 			quickSelect%A_LoopField%DeselectXelnaga_TT := SelectArmyDeselectXelnaga_TT
+			quickSelect%A_LoopField%OnScreen_TT := SelectArmyOnScreen_TT
 			quickSelect%A_LoopField%DeselectPatrolling_TT := SelectArmyDeselectPatrolling_TT
 			quickSelect%A_LoopField%DeselectHoldPosition_TT := SelectArmyDeselectHoldPosition_TT
 			quickSelect%A_LoopField%DeselectFollowing_TT :=SelectArmyDeselectFollowing_TT		
@@ -4905,6 +4936,7 @@ iniReadQuickSelect(byRef aQuickSelectCopy, byRef aQuickSelect)
 			IniRead, units, %config_file%, %section%, %itemNumber%_units, %A_Space%
 			IniRead, storeSelection, %config_file%, %section%, %itemNumber%_storeSelection, off 
 			IniRead, DeselectXelnaga, %config_file%, %section%, %itemNumber%_DeselectXelnaga, 0 
+			IniRead, OnScreen, %config_file%, %section%, %itemNumber%_OnScreen, 0 
 			IniRead, DeselectPatrolling, %config_file%, %section%, %itemNumber%_DeselectPatrolling, 0 
 			IniRead, DeselectLoadedTransport, %config_file%, %section%, %itemNumber%_DeselectLoadedTransport, 0 
 			IniRead, DeselectQueuedDrops, %config_file%, %section%, %itemNumber%_DeselectQueuedDrops, 0 
@@ -4932,6 +4964,7 @@ iniReadQuickSelect(byRef aQuickSelectCopy, byRef aQuickSelect)
 
 		    aQuickSelectCopy[Race, arrayPosition, "storeSelection"] := storeSelection
 		    aQuickSelectCopy[Race, arrayPosition, "DeselectXelnaga"] := DeselectXelnaga
+		    aQuickSelectCopy[Race, arrayPosition, "OnScreen"] := OnScreen
 		    aQuickSelectCopy[Race, arrayPosition, "DeselectPatrolling"] := DeselectPatrolling
 		    aQuickSelectCopy[Race, arrayPosition, "DeselectLoadedTransport"] := DeselectLoadedTransport
 		    aQuickSelectCopy[Race, arrayPosition, "DeselectQueuedDrops"] := DeselectQueuedDrops
@@ -4958,6 +4991,7 @@ blankQuickSelectGUI(race)
 	GuiControl, ChooseString, QuickSelect%Race%StoreSelection, Off
 
 	GUIControl, , quickSelect%Race%DeselectXelnaga, 0
+	GUIControl, , quickSelect%Race%OnScreen, 0
 	GUIControl, , quickSelect%Race%DeselectPatrolling, 0
 	GUIControl, , quickSelect%Race%DeselectLoadedTransport, 0
 	GUIControl, , quickSelect%Race%DeselectQueuedDrops, 0
@@ -4981,6 +5015,7 @@ showQuickSelectItem(Race, byRef aQuickSelectCopy)
 																	? aQuickSelectCopy[Race, arrayPosition, "storeSelection"] 
 																	: "Off"
 	GUIControl, , quickSelect%Race%DeselectXelnaga, % round(aQuickSelectCopy[Race, arrayPosition, "DeselectXelnaga"])
+	GUIControl, , quickSelect%Race%OnScreen, % round(aQuickSelectCopy[Race, arrayPosition, "OnScreen"])
 	GUIControl, , quickSelect%Race%DeselectPatrolling, % round(aQuickSelectCopy[Race, arrayPosition, "DeselectPatrolling"])
 	GUIControl, , quickSelect%Race%DeselectLoadedTransport, % round(aQuickSelectCopy[Race, arrayPosition, "DeselectLoadedTransport"])
 	GUIControl, , quickSelect%Race%DeselectQueuedDrops, % round(aQuickSelectCopy[Race, arrayPosition, "DeselectQueuedDrops"])
@@ -4997,6 +5032,7 @@ saveCurrentQuickSelect(Race, byRef aQuickSelectCopy)
 	GuiControlGet, units, , quickSelect%Race%UnitsArmy ; comma delimited list
 	GuiControlGet, storeSelection, , QuickSelect%Race%StoreSelection  ; 0-9 or Off
 	GuiControlGet, DeselectXelnaga, , quickSelect%Race%DeselectXelnaga
+	GuiControlGet, OnScreen, , quickSelect%Race%OnScreen
 	GuiControlGet, DeselectPatrolling, , quickSelect%Race%DeselectPatrolling
 	GuiControlGet, DeselectLoadedTransport, , quickSelect%Race%DeselectLoadedTransport
 	GuiControlGet, DeselectQueuedDrops, , quickSelect%Race%DeselectQueuedDrops
@@ -5039,6 +5075,7 @@ saveCurrentQuickSelect(Race, byRef aQuickSelectCopy)
 
 	aQuickSelectCopy[Race, arrayPosition, "storeSelection"] := storeSelection
 	aQuickSelectCopy[Race, arrayPosition, "DeselectXelnaga"] := DeselectXelnaga
+	aQuickSelectCopy[Race, arrayPosition, "OnScreen"] := OnScreen
 	aQuickSelectCopy[Race, arrayPosition, "DeselectPatrolling"] := DeselectPatrolling
 	aQuickSelectCopy[Race, arrayPosition, "DeselectLoadedTransport"] := DeselectLoadedTransport
 	aQuickSelectCopy[Race, arrayPosition, "DeselectQueuedDrops"] := DeselectQueuedDrops
@@ -8772,7 +8809,14 @@ g_SelectArmy:
 	if isCastingReticleActive() 	; so can deselect units if attacking reticle was present
 		input.pSend(Escape) 		; is a dsleep() >= 15 is performed after select army key is pressed this is not required - 12isnt enough
 									; as SC will have enough time to get rid of the selection reticle itself
-	if (getArmyUnitCount() != getSelectionCount())
+	
+	; If i use the box drag method, then I will need to also remove workers and any allied units (left/shared control)
+	If SelectArmyOnScreen
+	{
+		input.pSend("{click D " 0 " " 0 "}{Click U " A_ScreenWidth " "  A_ScreenHeight "}") ;  A_ScreenHeight-240 "}")
+		dSleep(80) 
+	}
+	else if (getArmyUnitCount() != getSelectionCount())
 	{
 		input.pSend(Sc2SelectArmy_Key)
 		timerArmyID := stopwatch()
@@ -8792,7 +8836,7 @@ g_SelectArmy:
 	aUnitPortraitLocations := []
 	aUnitPortraitLocations := findPortraitsToRemoveFromArmy("", SelectArmyDeselectXelnaga, SelectArmyDeselectPatrolling
 									, SelectArmyDeselectHoldPosition, SelectArmyDeselectFollowing, SelectArmyDeselectLoadedTransport 
-									, SelectArmyDeselectQueuedDrops, l_ActiveDeselectArmy)
+									, SelectArmyDeselectQueuedDrops, l_ActiveDeselectArmy, SelectArmyOnScreen)
 	clickUnitPortraits(aUnitPortraitLocations)
 	dSleep(15)
 	if SelectArmyControlGroupEnable
@@ -8886,8 +8930,12 @@ quickSelect(aDeselect)
 	if isCastingReticleActive() 	; so can deselect units if attacking reticle was present
 		input.pSend(Escape) 		; is a dsleep() >= 15 is performed after select army key is pressed this is not required - 12isnt enough
 									; as SC will have enough time to get rid of the selection reticle itself
-
-	if (getArmyUnitCount() != getSelectionCount())
+	if aDeselect.OnScreen
+	{							
+		input.pSend("{click D " 0 " " 0 "}{Click U " A_ScreenWidth " "  A_ScreenHeight "}") ;  A_ScreenHeight-240 "}")
+		dSleep(80) 		
+	}					
+	else if (getArmyUnitCount() != getSelectionCount())
 	{
 		input.pSend(Sc2SelectArmy_Key)
 		timerQuickID := stopwatch()
@@ -8941,6 +8989,9 @@ quickSelect(aDeselect)
 			;	clickPortraits.insert({ "portrait":  unit.unitPortrait, "modifiers": "^+"})
 				clickPortraits.insert({ "portrait":  unit.unitPortrait, "modifiers": "+"}) 
 			}
+			; since this is a box drag remove allied units - workers will be removed via above type check
+			else if (aDeselect.OnScreen && getUnitOwner(unit.unitIndex) != aLocalPlayer["Slot"])
+				clickPortraits.insert({ "portrait":  unit.unitPortrait, "modifiers": "+"}) 
 			else if checkStates
 			{
 				commandString := getUnitQueuedCommandString(unit.unitIndex)
@@ -9034,14 +9085,23 @@ findUnitsToRemoveFromArmy(byref aSelected := "", DeselectXelnaga = 1, DeselectPa
 ; This only take 3 or 4 ms with heaps of units selected
 findPortraitsToRemoveFromArmy(byref aSelected := "", DeselectXelnaga = 1, DeselectPatrolling = 1 
 								, DeselectHoldPosition = 0, DeselectFollowing = 0, DeselectLoadedTransport = 0 
-								, DeselectQueuedDrops = 0, lTypes = "")
+								, DeselectQueuedDrops = 0, lTypes = "", removeAllied := 0)
 { 	
 	global aUnitMoveStates
 	if (!isObject(aSelected) || !aSelected.units.maxIndex())
 		numGetSelectionSorted(aSelected) ; get a sorted array of the selection buffer
 	remove := []
+
+	; as a box drag was used, so need to remove workers also 
+	if removeAllied
+		lTypes .= (lTypes ? "," : "") aUnitID.SCV "," aUnitID.Probe "," aUnitID.Drone
+
 	for i, unit in aSelected.units
 	{	
+		; This is here, as im lazy and some functions now do a box drag rather then sending the army key
+		if (removeAllied && getUnitOwner(unit.unitIndex) != aLocalPlayer["Slot"])
+			remove.insert(unit.unitPortrait) 
+
 		commandString := getUnitQueuedCommandString(unit.unitIndex)
 		if (DeselectXelnaga && isLocalUnitHoldingXelnaga(unit.unitIndex))
 			|| (DeselectPatrolling && InStr(commandString, "Patrol"))
@@ -9063,7 +9123,7 @@ findPortraitsToRemoveFromArmy(byref aSelected := "", DeselectXelnaga = 1, Desele
 			}
 			If type in %lTypes%
 				remove.insert(unit.unitPortrait) 
-		}			
+		}
 	}
 	reverseArray(remove)
 	return remove
@@ -10714,8 +10774,8 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 				{
 					if !(pBitmap := a_pBitmap[unit])
 						continue ; as i dont have a picture for that unit - not a real unit?
-					SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
-					Width *= UserScale *.5, Height *= UserScale *.5	
+					SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap) 
+					Width *= UserScale *.5, Height *= UserScale *.5	; all unit/buildings/updagres are 38x38 after being halved
 					
 					; Doing like this as it's a requested feature and im too lazy to change everything to make it simpler
 					if (!aUnitInfo[unit, "isStructure"] && SplitUnitPanel)
@@ -10771,10 +10831,15 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 						
 						if (unitPanelDrawStructureProgress && aUnitInfo[unit, "isStructure"]) || (unitPanelDrawUnitProgress && !aUnitInfo[unit, "isStructure"])
 						{
-							Gdip_FillRectangle(G, a_pBrushes.TransparentBlack, DestX + 5 * UserScale *.5, DestY+Height + 5 * UserScale *.5, Width - 10 * UserScale *.5, Height/15)
-							Gdip_FillRectangle(G, a_pBrushes.Green, DestX + 5 * UserScale *.5, DestY+Height + 5 * UserScale *.5, Width*progress - progress * 10 * UserScale *.5, Height/15)
+							; floor helps keep a consistent height for the bar - as the y address may be a a float + the float the height can cause inconsistent results 
+							; I.e. one bar might appear slightly taller 
+							Gdip_FillRectangle(G, a_pBrushes.TransparentBlack, DestX + 5 * UserScale *.5, floor(DestY+Height + 5 * UserScale *.5), Width - 10 * UserScale *.5, Height/16)
+							Gdip_FillRectangle(G, a_pBrushes.Green, DestX + 5 * UserScale *.5, floor(DestY+Height + 5 * UserScale *.5), Width*progress - progress * 10 * UserScale *.5, Height/16)
 						}
 							aEnemyUnitConstruction[slot_number, priority].remove(unit, "")
+					
+					;	clipboard .= "`n" r " - " UserScale " - " aUnitName[unit]
+
 					}
 
 					if (!aUnitInfo[unit, "isStructure"] && SplitUnitPanel)
@@ -10822,8 +10887,9 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 						
 						if (unitPanelDrawStructureProgress && aUnitInfo[unit, "isStructure"]) || (unitPanelDrawUnitProgress && !aUnitInfo[unit, "isStructure"])
 						{
-							Gdip_FillRectangle(G, a_pBrushes.TransparentBlack, DestX + 5 * UserScale *.5, DestY+Height, Width - 10 * UserScale *.5, Height/15)
-							Gdip_FillRectangle(G, a_pBrushes.Green, DestX + 5 * UserScale *.5, DestY+Height, Width*item.progress - item.progress * 10 * UserScale *.5, Height/15)
+							;Gdip_FillRectangle(G, a_pBrushes.TransparentBlack, DestX + 5 * UserScale *.5, DestY+Height, Width - 10 * UserScale *.5, Height/15) ; DestY+Height
+							Gdip_FillRectangle(G, a_pBrushes.TransparentBlack, DestX + 5 * UserScale *.5, floor(DestY+Height + 5 * UserScale *.5), Width - 10 * UserScale *.5, Height/16)
+							Gdip_FillRectangle(G, a_pBrushes.Green, DestX + 5 * UserScale *.5, floor(DestY+Height + 5 * UserScale *.5), Width*item.progress - item.progress * 10 * UserScale *.5, Height/16)
 						}
 
 						if (!aUnitInfo[unit, "isStructure"] && SplitUnitPanel)
@@ -10846,7 +10912,7 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 		{
 			;destUpgradesY := DestY  + Height * 1.1 * (rowMultiplier - 1)
 
-			offset := (SplitUnitPanel ? 2 : 1) * ((unitPanelDrawUnitProgress || unitPanelDrawStructureProgress) ? 5 : 0)
+			offset := (SplitUnitPanel ? 2 : 1) * ((unitPanelDrawUnitProgress || unitPanelDrawStructureProgress) ? 5 : 0) * userscale
 			destUpgradesY := DestY  + Height * 1.1 * (rowMultiplier - 1) + offset
 			UpgradeX := firstColumnX
 
@@ -10869,8 +10935,8 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 					; the progress bar doest start too far to the left of the icon, and doesn't finish too far to the right
 					if unitPanelDrawUpgradeProgress
 					{
-						Gdip_FillRectangle(G, a_pBrushes.TransparentBlack, UpgradeX + 5 * UserScale *.5, destUpgradesY+Height, Width - 10 * UserScale *.5, Height/15)
-						Gdip_FillRectangle(G, a_pBrushes.Green, UpgradeX + 5 * UserScale *.5, destUpgradesY+Height, Width*item.progress - item.progress * 10 * UserScale *.5, Height/15)
+						Gdip_FillRectangle(G, a_pBrushes.TransparentBlack, UpgradeX + 5 * UserScale *.5, floor(destUpgradesY+Height), Width - 10 * UserScale *.5, Height/16)
+						Gdip_FillRectangle(G, a_pBrushes.Green, UpgradeX + 5 * UserScale *.5, floor(destUpgradesY+Height), Width*item.progress - item.progress * 10 * UserScale *.5, Height/16)
 					}
 
 					if aMiscUnitPanelInfo[slot_number, "ChronoUpgrade", itemName] ; its chronoed
@@ -11632,6 +11698,72 @@ getUnitAbilitiesString(unit)
 msgbox % getArchonMorphTime(pAbilities)
 
 return 
+
+
+; In FactoryAddOns +10 is unit address of the factory
+
+; Returns:
+;	1  reactor
+;	-1  techlab
+;	0  no addons or addon in construction 
+;
+;	There are bytes in the addons (eg BarracksAddOns) structure which indicate an addon is under construction 
+;	but not which type it is - but when an addon is underconstruction is position in the unit panel doesn't change!
+
+getAddonStatus(pAbilities, unitType)
+{
+	STATIC O_IndexParentTypes := 0x18, hasRun := False, aAddonStrings := [], aOffsets := []
+	if !hasRun 
+	{
+		hasRun := True
+		aAddonStrings := { 	aUnitID.Barracks: "BarracksAddOns"
+						 ,	aUnitID.Factory: "FactoryAddOns"
+						 ,	aUnitID.Starport: "StarportAddOns"}
+	}
+	; if offset +28 or +2C not 0 addon is present techlab or reactor - both are pointers
+	if aAddonStrings.HasKey(unitType) && readmemory(readmemory(findAbilityTypePointer(pAbilities, unitType, aAddonStrings[unitType]), GameIdentifier) + 0x28, GameIdentifier)
+	{
+		if !aOffsets.HasKey(unitType) ; ie CAbilQueue offset = aOffsets[unitType] - should be the same for all 3 types of units
+			aOffsets[unitType] := O_IndexParentTypes + 4 * getCAbilQueueIndex(pAbilities, getAbilitiesCount(pAbilities)) 
+
+		if readmemory(readmemory(pAbilities + aOffsets[unitType], GameIdentifier) + 0x48, GameIdentifier) ; if != 0 reactor present
+			return 1 ; reactor Present
+		return -1 ; techlab present			
+	}
+	return 0 ; no addons
+}
+
+/*
+while addon is being constructed, order of buildings doesnt change
+
+BarracksAddOns
++28 also + 2C a pointer
+If pointer not 0 then has a reactor or techlab 
+getArchonMorphTime(pAbilities)
+{
+	pMergeable := readmemory(findAbilityTypePointer(pAbilities, aUnitID.Archon, "Mergeable"), GameIdentifier)
+	totalTime := ReadMemory(pMergeable + 0x28, GameIdentifier)
+	timeRemaing :=ReadMemory(pMergeable + 0x2C, GameIdentifier)
+	return round((totalTime - timeRemaing)/totalTime, 2)
+}
+getBuildProgress(pAbilities, type)
+{
+	static O_TotalBuildTime := 0x28, O_TimeRemaining := 0x2C
+	; + 0x28 = total build time
+	; + 0x2C = Time Remaining
+
+	if pBuild := findAbilityTypePointer(pAbilities, type, "BuildInProgress")
+	{
+		B_Build := ReadMemory(pBuild, GameIdentifier)
+		totalTime := readmemory(B_Build + O_TotalBuildTime, GameIdentifier)
+		remainingTime := readmemory(B_Build + O_TimeRemaining, GameIdentifier)
+		return round((totalTime - remainingTime) / totalTime, 2) ; 0.73
+	}
+	else return 1 ; something went wrong so assume its complete 
+}
+
+
+*/
   
 
 swapAbilityPointerFreeze()
@@ -12839,7 +12971,7 @@ removeDamagedUnit()
 	count := numGetSelectionSorted(aSelected)
 	highHP := [], lowHP := []
 	for i, unit in aSelected.units
-	{ 
+	{           
 		; target filter .HasShields doesn't work! But this is faster anyway
 		if (aLocalPlayer["Race"] != "Protoss" && getUnitPercentHP(unit.unitIndex) > RemoveDamagedUnitsHealthLevel) || (aLocalPlayer["Race"] = "Protoss" && getUnitPercentShield(unit.unitIndex) > RemoveDamagedUnitsHealthLevel)
 			highHP.insert(unit.unitPortrait) ; removes the high HP/sheld units
@@ -12870,5 +13002,55 @@ removeDamagedUnit()
 	sleep 20 
 	return	
 }
+
+/*
+camera coordinates are for the center of the view port/trapezoid
+1920 x 1080
+top left
+63.378906, 54.691406
+44.577881, 66.588379
+===============
+top Right
+63.378906, 54.691406
+81.734131, 66.017822
+===============
+bot Right
+63.378906, 54.691406
+77.188232, 48.567383
+===============
+
+camera coordinates are relative to the centre of the view port/trapezoid
+so a unit at the bottom will have a higher y position than the camy
+and unit on right
+width = 38
+height = 18
+*/
+
+isUnitInView(unit)
+{
+	uX := getUnitPositionX(unit)
+	, uY := getUnitPositiony(unit)
+	, cX := getPlayerCameraPositionX()
+	, cY := getPlayerCameraPositionY()
+	; (ABS(cX - ux) <= 18
+		x := cx - ux
+		y := cY - uY
+	if (y >= -12 && y <= 7) && (x >= -18 && x <= 18) 
+		r := 1
+	else 
+		r := 0
+	;	clipboard .= "`n" R
+	Return r
+}
+
+return 
+;clipboard := ""
+unit := getSelectedUnitIndex()
+	uX := getUnitPositionX(unit)
+	, uY:= getUnitPositiony(unit)
+	, cX := getPlayerCameraPositionX()
+	, cY := getPlayerCameraPositionY()
+;clipboard .= cX ", " cY "`n" uX ", " uY "`n==============="
+return 
 
 
