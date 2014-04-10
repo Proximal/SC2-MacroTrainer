@@ -87,7 +87,7 @@ SetControlDelay -1 	; make this global so buttons dont get held down during cont
 SetKeyDelay, -1	 	; Incase SendInput reverts to Event - and for controlsend delay
 SetMouseDelay, -1
 SetBatchLines, -1
-SendMode Input 
+SendMode, Input 
 Menu, Tray, Icon 
 if !A_IsAdmin 
 {
@@ -152,13 +152,14 @@ if (A_ThisLabel = "g_testKeydowns")
 	str :=  "`n`n|" t1 " | " MT_InputIdleTime()
 			. "`n`nLogical: " checkAllKeyStates(True, False) 
 			. "`n`nPhysical: " checkAllKeyStates(False, True) 
-			. "`n|" readModifierState() 
+			. "`n`n" debugSCKeyState() 
 	critical, 1000
 	releasedKeys := input.pReleaseKeys(True)
-	input.RevertKeyState()
+	;input.RevertKeyState()
 	critical, off
 	objtree(aAGHotkeys)
-	msgbox % releasedKeys . str
+	msgbox % "Released keys: " releasedKeys . str
+	return
 	sleep 2000
 	testdebug := True
 	return 
@@ -201,7 +202,7 @@ MT_CurrentInstance := [] ; Used to store random info about the current run
 program := []
 program.info := {"IsUpdating": 0} ; program.Info.IsUpdating := 0 ;has to stay here as first instance of creating infor object
 
-ProgramVersion := 2.988
+ProgramVersion := 2.989
 
 l_GameType := "1v1,2v2,3v3,4v4,FFA"
 l_Races := "Terran,Protoss,Zerg"
@@ -465,8 +466,15 @@ return
 
 g_EmergencyRestart:	
 ;Thread, Priority, 2147483647 ; doubt this does anything. But due to problem with using the hotkeycommand try it
-		releaseAllModifiers() 					;This will be active irrespective of the window
-		RestoreModifierPhysicalState()		;input on ; this doesnt really do anything now - not needed
+		Thread, NoTimers, True
+		if (state := setLowLevelInputHooks(False, True)) ; remove the hook for any sendInput/sendEvents
+			 setLowLevelInputHooks(false)	
+		releaseAllModifiers() 					; Keeping this, as it also checks the SC2 memory for modifier state
+		;RestoreModifierPhysicalState()		; Isn't needed
+		; if ahk loses track of logical state, can still get stuck keys, which this wont fix
+		; or if user is holding down a logically stuck key which is also a hotkey, as the OS won't see the key release - and this
+		; function won't release it either.
+		releaseLogicallyStuckKeys(True) 		
 		settimer, EmergencyInputCountReset, 5000, -100	
 		EmergencyInputCount++		 
 		If (EmergencyInputCount = 1)
@@ -478,10 +486,16 @@ g_EmergencyRestart:
 			gosub, g_Restart
 			return
 		}
+		if state
+		    setLowLevelInputHooks(True)		
 		SoundPlay, %A_Temp%\Windows Ding2.wav	
 	return	
 
 g_reload:
+; This is from the menu tray icon, so release the keys in case the user has stuck keys
+; and doesn't know about the restart hotkey
+releaseAllModifiers()
+releaseLogicallyStuckKeys(True) 
 ;if (A_ThisLabel = "g_reload")
 IniWrite, Icon, %config_file%, Misc Info, RestartMethod
 g_Restart:
@@ -540,7 +554,7 @@ ping:
 	critical, 1000
 	input.pReleaseKeys(True)
 	if isChatOpen()
-		input.psend("{click M}!g{click}{Enter}")
+		input.psend("{click MM}!g{click}{Enter}")
 	else 
 		input.psend("!g{click}")
 	Input.revertKeyState()
@@ -1020,25 +1034,25 @@ Cast_ChronoStructure:
 	input.hookBlock(True, True)
 	input.releaseKeys(True)
 	dsleep(30)
-	if (UserPressedHotkey = Cast_ChronoStargate_Key)
+	if ("" UserPressedHotkey = Cast_ChronoStargate_Key) ; force evaluation as strings otherwise +1 = 1
 		Cast_ChronoStructure(aUnitID.Stargate)
-	Else if (UserPressedHotkey = Cast_ChronoForge_Key)
+	Else if ("" UserPressedHotkey = Cast_ChronoForge_Key)
 		Cast_ChronoStructure(aUnitID.Forge)
-	Else if (UserPressedHotkey = Cast_ChronoNexus_Key)
+	Else if ("" UserPressedHotkey = Cast_ChronoNexus_Key)
 		Cast_ChronoStructure(aUnitID.Nexus)
-	Else If (UserPressedHotkey = Cast_ChronoGate_Key)
+	Else If ("" UserPressedHotkey = Cast_ChronoGate_Key)
 		Cast_ChronoStructure(aUnitID.WarpGate) ; this will also do gateways	
-	Else If (UserPressedHotkey = Cast_ChronoRoboticsFacility_Key)
+	Else If ("" UserPressedHotkey = Cast_ChronoRoboticsFacility_Key)
 		Cast_ChronoStructure(aUnitID.RoboticsFacility)
-	Else If (UserPressedHotkey = CastChrono_CyberneticsCore_key)
+	Else If ("" UserPressedHotkey = CastChrono_CyberneticsCore_key)
 		Cast_ChronoStructure(aUnitID.CyberneticsCore)
-	Else If (UserPressedHotkey = CastChrono_TwilightCouncil_Key)
+	Else If ("" UserPressedHotkey = CastChrono_TwilightCouncil_Key)
 		Cast_ChronoStructure(aUnitID.TwilightCouncil)
-	Else If (UserPressedHotkey = CastChrono_TemplarArchives_Key)
+	Else If ("" UserPressedHotkey = CastChrono_TemplarArchives_Key)
 		Cast_ChronoStructure(aUnitID.TemplarArchive)
-	Else If (UserPressedHotkey = CastChrono_RoboticsBay_Key)
+	Else If ("" UserPressedHotkey = CastChrono_RoboticsBay_Key)
 		Cast_ChronoStructure(aUnitID.RoboticsBay)
-	Else If (UserPressedHotkey = CastChrono_FleetBeacon_Key)
+	Else If ("" UserPressedHotkey = CastChrono_FleetBeacon_Key)
 		Cast_ChronoStructure(aUnitID.FleetBeacon)
 	input.hookBlock()
 return
@@ -2031,7 +2045,7 @@ return
 ;	Worker Count
 ;------------
 worker_count:
-	worker_origin := A_ThisHotkey ; so a_hotkey notchanged via thread interuption
+	worker_origin := A_ThisHotkey ; so a_hotkey not changed via thread interruption
 	IF 	( !time ) ; ie = 0 
 	{
 		tSpeak("The game has not started")
@@ -8868,7 +8882,7 @@ g_QuickSelect:
 item := ""
 for index, object in aQuickSelect[aLocalPlayer.Race]
 {
-	if (object.hotkey = A_ThisHotkey)
+	if ("" object.hotkey = A_ThisHotkey) ; concatenating literal string forces comparison as strings, else 1 = +1 
 	{
 		item := index
 		break
@@ -11298,14 +11312,50 @@ return
 
 ; gEasyUnloadQueued is disabled! Until i sort out a better way to ensure modifiers are not left stuck down.
 
+; Stuck down hotkeys - this could occur in any non-critical function where a getkeystate While loops 
+; waiting for user to release/press key and they press another a modifier - then the key for the hotkey becomes logically down.
+; This highlights the issue, hold f5 and logical state is 0
+; but while holding, press shift and logical state becomes 1
+; but since f5 is a hotkey there is no way for user to release it
+; also when ever an automation is run, release keys releases it, then revert will send it down again
+; depending on the key this can move the camera or prevent stuff working
+
+; A wildcard prefix 'fixes' this, so could force use of wildcard mods in certain hotkeys
+; Can exploit the hotkey command as well to temporarily so this
+; Best solution would be to use own hook to filter the other presses
+; or at least filter key down messages but i cbf doing this tonight
+/*
+    $f5::
+    loop 
+    {
+        ToolTip, % GetKeyState("F5")
+        sleep 20
+    } until !GetKeyState("F5", "P")
+    SoundPlay, *-1
+    return 
+*/
+
+
 gEasyUnloadQueued:
 gEasyUnload:
 thread, NoTimers, true
-castEasyUnload(A_ThisHotkey, A_ThisLabel = "gEasyUnloadQueued")
+thisHotkey := A_ThisHotkey ; as will change if thread interrupted
+Hotkey, *%thisHotkey%, g_DoNothing, on ; prevent logical state turning true if user presses modifier during function
+
+castEasyUnload(thisHotkey, A_ThisLabel = "gEasyUnloadQueued")
+Hotkey, *%thisHotkey%, off
+; this is required for some reason (other wise next press logical state = true)
+; Plus its a essential if the original hotkey was already * modified - cos then it would end up off
+; use this label incase original was already *modified - else it would turn back on DoNothing, rather than this func.
+Hotkey, If, WinActive(GameIdentifier) && !isMenuOpen() && EasyUnload`%LocalPlayerRace`%Enable && time
+Hotkey, %thisHotkey%, %A_ThisLabel% , on
+Hotkey, If
 return
 
 ; If user double taps the immediate unload hotkey, all locally owned loaded transports
 ; will be selected
+
+
 
 castEasyUnload(hotkey, queueUnload)
 {	
@@ -11319,6 +11369,8 @@ castEasyUnload(hotkey, queueUnload)
 	else if aLocalPlayer.Race = "Zerg"
 		unloadAll_Key := EasyUnload_Z_Key
 	else return
+
+
 	
 	; In case the user has modifiers in the hotkey
 	; Ahk doesn't seem to be blocking these from interfering with SC2
@@ -11328,8 +11380,6 @@ castEasyUnload(hotkey, queueUnload)
 
 ;	if (upSequence := getModifierUpSequenceFromString(hotkey))
 ;		Input.psend(upSequence)
-	
-
 	hotkey := stripModifiers(hotkey)
 
 	if !queueUnload
@@ -11339,7 +11389,7 @@ castEasyUnload(hotkey, queueUnload)
 			tickCount := A_TickCount
 			castEasySelectLoadedTransport()
 		;	if upSequence
-		;		Input.psend(getModifierDownSequenceFromKeyboard())
+		;		Input.psend(getModifierDownSequenceFromKeyboard())			
 			return
 		}
 		sleepTick := tickCount := A_TickCount
@@ -11356,6 +11406,10 @@ castEasyUnload(hotkey, queueUnload)
 	aDroppTick := []
 	while GetKeyState(hotkey, "P")
 	{
+
+	;	ToolTip, % "hotkey: " GetKeyState(hotkey)
+
+
 		If ((unitIndex := getCursorUnit()) >= 0)
 		{
 			if (isUnitLocallyOwned(unitIndex)  
@@ -11374,11 +11428,11 @@ castEasyUnload(hotkey, queueUnload)
 					{
 					;	aDroppTick[unitIndex] := A_TickCount
 						if !setCtrlGroup
-							queueUnload ? input.pSend("{click}^" EasyUnloadStorageKey "{Shift Down}" unloadAll_Key "{click}{Shift Up}")
-										: input.pSend("{click}^" EasyUnloadStorageKey unloadAll_Key "{click}")
+							queueUnload ? input.pSend("{click}^" EasyUnloadStorageKey "{Shift Down}" unloadAll_Key "{click}{Shift Up}", False)
+										: input.pSend("{click}^" EasyUnloadStorageKey unloadAll_Key "{click}", False)
 						else
-							queueUnload ? input.pSend("{click}{Shift Down}" EasyUnloadStorageKey unloadAll_Key "{click}{Shift Up}")
-										: input.pSend("{click}+" EasyUnloadStorageKey unloadAll_Key "{click}")
+							queueUnload ? input.pSend("{click}{Shift Down}" EasyUnloadStorageKey unloadAll_Key "{click}{Shift Up}", False)
+										: input.pSend("{click}+" EasyUnloadStorageKey unloadAll_Key "{click}", False)
 						setCtrlGroup := True
 						
 						if unitIndex not in %lClickedUnits%
@@ -11391,8 +11445,8 @@ castEasyUnload(hotkey, queueUnload)
 				else if !isInControlGroup(EasyUnloadStorageKey, unitIndex)
 				{
 					if !setCtrlGroup
-						input.pSend("{click}^" EasyUnloadStorageKey)
-					else input.pSend("{click}+" EasyUnloadStorageKey)
+						input.pSend("{click}^" EasyUnloadStorageKey, False)
+					else input.pSend("{click}+" EasyUnloadStorageKey, False)
 					setCtrlGroup := True
 					if unitIndex not in %lClickedUnits%
 					{
@@ -11412,10 +11466,14 @@ castEasyUnload(hotkey, queueUnload)
 				}	
 			}
 		}
-		sleep 20
+		; Ive noticed sometimes in games the sound will get toggled with this function - couldn't reproduce it in a replay
+		; The modifiers don't seem to get stuck though
+		; perhaps need game/system lag.
+		; could consider disabling the blind option for pSend in this function.
+		sleep 5 ; if 0 or -1, game will lag then hundreds of clicks will appear in screen
 	}
 	if setCtrlGroup
-		input.pSend(EasyUnloadStorageKey)
+		input.pSend(EasyUnloadStorageKey, False)
 	; to restore the modifier keys if the user is still holding them down
 	; e.g. is they want to shift click somewhere without first releasing the shift key
 	; disabled to prevent stuck modifers in in certain situations 
@@ -11462,7 +11520,8 @@ castEasySelectLoadedTransport()
 	critical, 1000
 	input.pReleaseKeys()
 
-	input.pSend("{click D " A_ScreenWidth-25 " " 45 "}{Click U " 35 " "  A_ScreenHeight-30 "}") ;  A_ScreenHeight-240 "}")
+	;input.pSend("{click D " A_ScreenWidth-25 " " 45 "}{Click U " 35 " "  A_ScreenHeight-30 "}") ;  A_ScreenHeight-240 "}")
+	input.pClickDrag(0, 0, A_ScreenWidth, A_ScreenHeight)
 	dsleep(110)
 	if numGetSelectionSorted(aSelected)
 	{
@@ -11492,6 +11551,7 @@ castEasySelectLoadedTransport()
 			clickUnitPortraitsWithModifiers(aClicks)
 		}
 	}
+	Input.revertKeyState()
 	return
 }
 
@@ -13054,3 +13114,77 @@ unit := getSelectedUnitIndex()
 return 
 
 
+
+;a1 := input.pSend("+{click D L 0 0}+{Click U L 1920 1080}")
+;input.pSend("{F2}")
+;sleep(250)
+;a3 := input.pSend("+{click D L 0 0}+{Click U L 1920 1080}")
+;input.pClickDrag(0,0,A_ScreenWidth,A_ScreenHeight, "L", "+", 1)
+
+;input.pSend(" +{click D L 0 0}{Click U L 1920 1080}")
+;input.pSend("{click D R " 0 " " 0 "}{Click U R " A_ScreenWidth " "  A_ScreenHeight "}")
+
+/*
+ U 1920 1080
+ U R 1920 1080
+
+ r 
+ m 
+ x1 
+ x2
+ WheelUp 
+ wu 
+ WheelDown
+ wd
+ else 
+ left
+
+ +{click D L 0 0}{Click U L 1920 1080}
+
+ */
+/*
+
+f1::
+send {f5}
+return 
+sleep 100
+v := ReadMemory(B_iFkeys, GameIdentifier, 2)
+send {f5 Up}
+msgbox % v
+return 
+
+A
+*/
+
+; force will release any logically down key
+; which would be useful if a key is stuck and its a hotkey as well, so it
+; cant be released by the user 
+; without force it won't be released if it's currently being pressed 
+; Since this is only called from emergency restart/release routine, 
+; this ensures that if a stuck key is one which forms that hotkey, it will be released even
+; if it's being pressed.
+
+releaseLogicallyStuckKeys(force := false)
+{
+    static aKeys := []
+    ; returns and array of unmodified keys
+    if !aKeys.maxindex()
+        aKeys := getAllKeyboardAndMouseKeys()
+    for index, key in aKeys
+    {
+    	if (force && getkeystate(key)) || (!force && getkeystate(key) && !getkeystate(key, "P"))
+        	s .= "{" key " Up}"   
+    }
+    if s
+        send("{blind}" s)
+    return s
+}
+send(sequence)
+{
+    if (state := setLowLevelInputHooks(False, True)) ; get the state
+        setLowLevelInputHooks(false)
+    send %sequence% 
+    if state
+        setLowLevelInputHooks(True)
+    return 
+}

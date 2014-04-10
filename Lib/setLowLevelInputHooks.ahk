@@ -17,12 +17,13 @@
 
 ; Just easy way to install/remove both hooks with one function
 
+; send() uses getState to determine if removing hook is required
 setLowLevelInputHooks(Install, getState := 0)
 {
 	static hKbd := 0, hMse := 0
 	
-	if getState ; for testing 
-		return "Keyboard: " hKbd "`nMouse: " hMse
+	if getState 
+		return hKbd + hMse
 
 	if install 
 	{

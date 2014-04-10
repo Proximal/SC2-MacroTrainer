@@ -29,6 +29,7 @@ class Input
 				, "Left", "Right", "Up", "Down", "Home", "End", "PgUp", "PgDn", "Del", "Ins", "BS", "Capslock", "Numlock", "PrintScreen" 
 				, "Pause", "Space", "Enter", "Tab", "Esc", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "B", "C", "D", "E", "F", "G"
 				, "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
+	 	, modifiers := ["Control", "Alt", "Shift", "LWin", "RWin"]
 	 	, aMouseClickButtons := {  "LButton": "L" 	; converts Lbutton or xbutton2 etc into L, x2
 								, "RButton": "R"
 								, "MButton": "M"
@@ -189,6 +190,8 @@ class Input
 	; pSend("^+ap") 		Result:	Control+Shift+a p
 	; pSend("+{click}")		Result: Shift Left click the mouse (down and up event)
 	; pSend("{click D " x1 " " y1 "}{Click U " x2 " " y2 "}") ; Result: Box drag the mouse with the LButton
+	; 		Note: To send a modified box drag you must specify the modifier for the both the down and up event (this is the same as AHKs click)
+	; 		pSend("+{click D " x1 " " y1 "}+{Click U " x2 " " y2 "}") ; a shift modified box drag
 	; pSend("+{click MM}")		Result: Shift Left click the mouse (down and up event) at current location and also send a WM_MouseMove event
 	
 	; Tabs, spaces and new lines can also be sent. 
@@ -196,6 +199,19 @@ class Input
 	; pSend("`n`thello") Would start a tabbed new line with the word 'hello'
 	
 	; Notes:
+	; Blind mode is enabled by default, that is the keys are sent without modifying the current logical up/down state 
+	; of the modifiers. This is because I use pRelease keys to release any down keys (includes modifiers), send the keys, then 
+	; restore their state with revertKeyState().
+	; If blind mode is disabled, then pSend will release logically down modifiers, send the key sequence,
+	; and then restore the modifiers to their correct positions. This is how AHK's send command works. 
+
+	; The AHK keyboard hook needs to be installed to allow discrimination between logically and physically pressed keys.
+	; **Be aware** that if you release the keys using pRelease/postmessage, then use pSend with blind disabled, the modifiers will be up within the game but AHK will still see
+	; them as logically/physically down, so they will be released again, the key sequence will be sent, and then the modifiers will be
+	; PRESSED DOWN again. Since they're pressed down again, if pSend is called again with blind enabled, then the sent keys will be modified by the down modifiers (e.g. shift/control down).
+	; This shouldn't be an issue providing you consistently use pSend with blind disabled in any subsequent calls to pSend
+
+
 	; This is designed to send exact key presses. For example psend("AB CD") 
 	; would send "ab cd" - non capitalised. 
 	; Depending on the program, pSend("{shift down}ab cd{shift up}") or psend("+a+b +c+d") may capitalise the text
@@ -220,14 +236,23 @@ Bits	Meaning
 If you want to send text to a text box/field, consider using the pSendChar
 It is capable of sending capitalised letters, as well as non-Standard ACII chars eg ♥
 */
-	
-	pSend(Sequence := "")
-	{
-		static 	WM_KEYDOWN := 0x100
-				, WM_KEYUP := 0x101
+; Should really send a WM_SystemKey for the alt press/release
+; but SC accepts it. Will change this after I find my new weird double press issue
 
-		pKeyDelay := this.pCurrentSendDelay
-		pClickDelay := this.pCurrentClickDelay
+	pSend(Sequence := "", blind := True)
+	{
+		static 	WM_KEYDOWN := 0x100, WM_KEYUP := 0x101
+			  , WM_SYSKEYDOWN := 0x104, WM_SYSKEYUP := 0x105
+
+		if !blind
+		{
+		;	soundplay *16
+			for index, key in this.modifiers
+			{
+				if GetKeyState(key) 	; check the logical state (as AHK will block the physical for some)
+					Sequence := "{" key " Up}" Sequence "{" key " Down}" 
+			}			
+		}
 
 		SetFormat, IntegerFast, hex
 		aSend := []
@@ -299,9 +324,18 @@ It is capable of sending capitalised letters, as well as non-Standard ACII chars
 					    {
 					    	SetFormat, IntegerFast, hex
 					    	continue ; error
-					    }	 
+					    }
+					    ; replace MM, as this could cause a middle click	 
+					    if (mousemove := instr(key, "MM"))
+					    	StringReplace, key, key, MM,, All				    
+					    
 					    SetFormat, IntegerFast, hex
-					    this.insertpClickObject(aSend, x, y, key, clickCount, CurrentmodifierString, instr(key, "MM")) ; MM - Insert MouseMove
+					    ; at this point key variable will look like this  D 1920 1080, U 1920 1080, U L 1920 1080 
+					    ; I don't need to refine the key any more, as the else-if in the function
+					    ; will still correctly identify the key
+					    ; e.g.  Middle 1920 1080 will still click the middle button, even though there is a d in middle
+
+					    this.insertpClickObject(aSend, x, y, key, clickCount, CurrentmodifierString, mousemove) ; MM - Insert MouseMove
 						skip := True ; as already inserted a mouse click event
 					}
 					else 
@@ -362,10 +396,10 @@ It is capable of sending capitalised letters, as well as non-Standard ACII chars
 				 ; repeat code | (scan code << 16) | (previous state << 30) | (transition state << 31)
 				lparam := 1 | (message.sc << 16) | (1 << 30) | (1 << 31)
 				postmessage, message.message, message.wParam, lparam, % this.Control, % this.WinTitle, % this.WinText, % this.ExcludeTitle, % this.ExcludeText
-				if (pKeyDelay != -1)
-					DllCall("Sleep", Uint, pClickDelay)			
+				if (this.pCurrentSendDelay != -1)
+					DllCall("Sleep", Uint, this.pCurrentSendDelay)			
 			}
-			else 
+			else ; mouse event
 			{
 				; If mouse move is included it actually moves the mouse for an instant!!
 				postmessage, message.message, message.wParam, message.lparam, % this.Control, % this.WinTitle, % this.WinText, % this.ExcludeTitle, % this.ExcludeText
@@ -393,12 +427,29 @@ It is capable of sending capitalised letters, as well as non-Standard ACII chars
 		return	
 	}
 
+	; The modifiers here can be used to literally modify the drag box e.g. shift drag
+	; control = ^ 
+	; shift = + 
+	; alt = ! 
+	; no win key atm (I don't need it so haven't bothered adding it)
+	pClickDrag(x1, y1, x2, y2, button := "L", modifiers := "", MouseMove := False)
+	{
+	    this.pSend(modifiers "{click D " button (MouseMove ? " MM " : " ") x1 " " y1 "}" modifiers "{Click U " button (MouseMove ? " MM " : " ") x2 " "  y2 "}")
+	    return
+	}
+
 	; wParam Indicates whether various virtual keys are down. This parameter can be one or more of the following values.
 	; but doesnt seem to affect sc2
 
 	; Note WM_MOUSEMOVE May be required in some situations. E.g. when the chat box is up and the cursor is not 
 	; in the viewport e.g over the control cards
 
+	; If doing a click or box drag near the screen edge (in SC2) - if you send a mouseMove event, the screen will move slightly
+
+
+	; ***Note*** the modifiers in this function, simply allow the message to be sent with
+	; the correct values - you still need to use pSend (prior to this) to press the
+	; modifiers down
 
 	pClick(x, y, button := "L", count := 1, Modifiers := "", MouseMove := False)
 	{

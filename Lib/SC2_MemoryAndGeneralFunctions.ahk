@@ -1449,6 +1449,20 @@ IsKeyDownSC2Input(CheckMouseButtons := False)
 	return 0
 }
 
+debugSCKeyState()
+{
+	return "B_iSpace: " ReadMemory(B_iSpace, GameIdentifier, 1)	
+		 . "`nB_iNums: " ReadMemory(B_iNums, GameIdentifier, 2)	
+		 . "`n" "B_iChars: " ReadMemory(B_iChars, GameIdentifier, 4)	
+		 . "`n" "B_iTilda: " ReadMemory(B_iTilda, GameIdentifier, 1)	
+		 . "`n" "B_iNonAlphNumChars: " ReadMemory(B_iNonAlphNumChars, GameIdentifier, 2)
+		 . "`n" "B_iNonCharKeys: " ReadMemory(B_iNonCharKeys, GameIdentifier, 2)
+		 . "`n" "B_iFkeys: " ReadMemory(B_iFkeys, GameIdentifier, 2)
+		 . "`n" "B_iFkeys: " ReadMemory(B_iFkeys, GameIdentifier, 2)
+		 . "`n" "B_iModifiers: " ReadMemory(B_iModifiers, GameIdentifier, 1)
+
+}
+
 ; 1 byte Returns 1 when user is moving camera via DragScroll i.e. Mmouse button the main map
 
 IsCameraDragScrollActivated() 
