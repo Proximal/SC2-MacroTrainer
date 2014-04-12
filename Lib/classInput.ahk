@@ -336,6 +336,7 @@ It is capable of sending capitalised letters, as well as non-Standard ACII chars
 					    ; e.g.  Middle 1920 1080 will still click the middle button, even though there is a d in middle
 
 					    this.insertpClickObject(aSend, x, y, key, clickCount, CurrentmodifierString, mousemove) ; MM - Insert MouseMove
+						; 12/04 - just looking at this now, but I don't think this is required
 						skip := True ; as already inserted a mouse click event
 					}
 					else 
@@ -352,7 +353,7 @@ It is capable of sending capitalised letters, as well as non-Standard ACII chars
 							char := outputKey1
 					}
 				}
-				else skip := True ; something went wrong
+				else skip := True ; something went wrong 
 			}
 
 			if skip
@@ -637,3 +638,48 @@ It is capable of sending capitalised letters, as well as non-Standard ACII chars
 		return
 	}
 }
+
+
+
+/*
+some regex examples which I might update code with 
+
+if instr{click xxxx}
+{
+    ; get event type
+    if !"i)\b(?P<Event>up|down|u|d)"
+        Event := 0 ; indicated a complete click down+up
+    else event = objectEventRemap
+    ; get button
+    if "i)\b(?P<Key>left|right|L|R|x1|x2|M|Middle)"
+        button := objectKeyRemap
+    else button := left 
+    ; get coords and count
+    if RegExMatch("click 23, , left, , 25, , 12", "iO)(\b\d+)[a-z\s,]*(\b\d+)?[a-z\s,]*(\b\d+)??", out)
+    {
+        if (out.count() = 2 || out.count() = 3)
+            x := out.value(1), y := out.value(2)
+        if (out.count() = 3)
+            count := out.value(3)
+        ; have to consider counr and up/down or single event
+        else if (out.count() = 1)
+        {
+            count := out.value(1)
+            MouseGetPos, x, y
+        }
+    }
+    else "click down+up" ; no numbers were found
+
+    if !event ; down+up
+    {
+        "click object down"
+        "click object up"
+    }
+    else 
+    {
+        "loop count"
+            "click eventType"
+    }
+}
+
+*/

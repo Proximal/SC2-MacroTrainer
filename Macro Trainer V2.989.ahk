@@ -78,6 +78,7 @@ SetWorkingDir %A_ScriptDir%  ; Ensures a consistent starting directory.
 #InstallMouseHook
 #InstallKeybdHook
 #UseHook
+#KeyHistory 0 ; don't need it, and gives v.v.v. minor performance boost
 #Persistent
 #NoEnv  ; Recommended for performance and compatibility with future AutoHotkey releases.
 #MaxThreads 20 ; don't know if this will affect anything
@@ -1032,7 +1033,7 @@ Cast_ChronoStructure:
 	UserPressedHotkey := A_ThisHotkey ; as this variable can get changed very quickly
 	Thread, NoTimers, True
 	input.hookBlock(True, True)
-	input.releaseKeys(True)
+	input.releaseKeys(True) ; don't use postmessage.
 	dsleep(30)
 	if ("" UserPressedHotkey = Cast_ChronoStargate_Key) ; force evaluation as strings otherwise +1 = 1
 		Cast_ChronoStructure(aUnitID.Stargate)
@@ -1407,7 +1408,7 @@ cast_inject:
 	MouseGetPos, start_x, start_y
 	input.hookBlock(True, True)
 	if input.releaseKeys(True)
-		dsleep(20)
+		dsleep(30)
 	castInjectLarva(auto_inject, 0, auto_inject_sleep) ;ie nomral injectmethod
 	If HumanMouse
 		MouseMoveHumanSC2("x" start_x "y" start_y "t" HumanMouseTimeLo)
