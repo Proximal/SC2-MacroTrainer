@@ -38,7 +38,8 @@
 
 		**Note: If you wish to try this calc example, ensure you run the 32 bit version of calc.exe - 
 				which is in C:\Windows\SysWOW64\calc.exe on 64 bit systems. You can still read/write directly to
-				a 64 bit calc process address (I doubt pointers will work), but the getBaseAddressOfModule() example will not work. 	
+				a 64 bit calc process address (I doubt pointers will work), but the getBaseAddressOfModule() example 
+				will not work unless the you are using a 64 bit version of ahk (it will return -4 indicating the operation is not possible)
 
 		Open a process with sufficient access to read and write memory addresses (this is required before you can use the other functions)
 		You only need to do this once. But if the process closes, then you will need to reopen.
