@@ -192,16 +192,17 @@ class Input
 	; pSend("{a down}") 			Result: The 'a' key is pressed down but not released
 	; pSend("{b 8}")  				Result: The 'b' key is sent eight times
 	
+	; To send mouse buttons using pSend, you must use the {click} syntax, sending "{lbutton}" wont work.
 	; Click command:
 	; 	Buttons (L/Left, R/Right, M/Middle, WU/WheelUp, WD/WheelDown, X1 and X2) are optional. If omitted the left button will be sent
-	;	Coordinates are optional. If omitted the current cursor coordinates are used
+	;	Coordinates are optional. If omitted the current physical cursor coordinates are used.
 	;	Click count is optional, but if present it must come after the coordinates (if they are present). If omitted, the button is clicked once (consists of a down and up event)
 	; pSend("+{click}")				Result: Shift Left click the mouse at its current location (down + up event)
 	; pSend("{click R 400 500 3}")	Result: The mouse is right clicked three times at coordinates 400 by 500
 	; pSend("{click D 100 50}{Click U 600 800}") 	; Result: Box drag the mouse with the LButton
-	; 		Note: To send a modified box drag you must specify the modifier for the both the down and up event (this is the same as AHKs {click})
+	; 		Note: To send a correctly modified box drag you must specify the modifier for the both the down and up event (this is the same as AHKs {click})
 	; 		pSend("+{click D 100 50}+{Click U 600 800}") ; a shift modified box drag
-	; pSend("+{click MM}")			Result: Send a WM_MouseMove message and then Shift Left click the mouse at current its location
+	; pSend("+{click MM}")			Result: Send a Shift Left click the mouse at current its location followed by a WM_MouseMove message.
 
 
 	; Tabs, spaces and new lines can also be sent. 
@@ -211,7 +212,7 @@ class Input
 	; Notes:
 	; Blind mode is enabled by default, that is the keys are sent without modifying the current logical up/down state 
 	; of the modifiers. This is because I use pRelease keys to release any down keys (includes modifiers), send the keys, then 
-	; restore their state with revertKeyState().
+	; restore their previous state with revertKeyState().
 	; If blind mode is disabled, then pSend will release logically down modifiers, send the key sequence,
 	; and then restore the modifiers to their correct positions. This is how AHK's send command works. 
 
@@ -221,13 +222,12 @@ class Input
 	; PRESSED DOWN again. Since they're pressed down again, if pSend is called again with blind enabled, then the sent keys will be modified by the down modifiers (e.g. shift/control down).
 	; This shouldn't be an issue providing you consistently use pSend with blind disabled in any subsequent calls to pSend
 
-	; This is designed to send exact key presses to interact with a program, and not to produce text. 
+	; This is designed to send exact key presses to interact with a game/program, and not to produce text. 
 	; For example psend("AB CD") would send "ab cd" - non capitalised. 
-	; Depending on the program, pSend("{shift down}ab cd{shift up}") or psend("+a+b +c+d") may capitalise the text
-	; But for most purposes, it is better to use pSendChars() to send lengths of text to text/input fields.
+	; Depending on the program, pSend("{shift down}ab cd{shift up}") or psend("+a+b +c+d") may capitalise the text, but this usually
+	; isn't the case.
+	; For most purposes, it is better to use pSendChars() to send lengths of text to text/input fields.
 	; For example pSendChars("I ♥ NY!") will appear as "I ♥ NY!"
-	; Note: For game chat boxes, you will have to use pSend("{Enter}") to open and then send/close
-	; the chat box
 
 
 /*
@@ -239,9 +239,6 @@ Bits	Meaning
 29		The context code. The value is always 0 for a WM_KEYUP message.
 30		The previous key state. The value is always 1 for a WM_KEYUP message.
 31		The transition state. The value is always 1 for a WM_KEYUP message.
-
-If you want to send text to a text box/field, consider using the pSendChar
-It is capable of sending capitalised letters, as well as non-Standard ACII chars eg ♥
 */
 
 	pSend(Sequence := "", blind := True)
@@ -279,9 +276,9 @@ It is capable of sending capitalised letters, as well as non-Standard ACII chars
 					Modifier := "Alt"
 
 				CurrentmodifierString .= char
-				Currentmodifiers.insert( {"wParam": GetKeyVK(Modifier) 
+				Currentmodifiers.insert( {"wParam": GetKeyVK(Modifier) ; used to release modifiers
 								, "sc": GetKeySC(Modifier)
-								, "systemKey": char = "!"})			
+								, "message": char = "!" ? WM_SYSKEYUP : WM_KEYUP})			
 
 				aSend.insert({	  "message": char = "!" ? WM_SYSKEYDOWN : WM_KEYDOWN
 								, "sc": GetKeySC(Modifier)
@@ -322,12 +319,14 @@ It is capable of sending capitalised letters, as well as non-Standard ACII chars
 					    if (mousemove := instr(key, "MM"))
 					    	StringReplace, key, key, MM,, All				    
 					    
-					    ;SetFormat, IntegerFast, hex
 					    ; at this point key variable will look like this  D 1920 1080, U 1920 1080, U L 1920 1080 
-					    ; I don't need to refine the key any more, as the else-if in the function
-					    ; will still correctly identify the key
+					    ; I don't need to refine the actual button any more, as the else-if in the function
+					    ; will still correctly identify the button
 					    ; e.g.  Middle 1920 1080 will still click the middle button, even though there is a d in middle
+					    ; This regex will remove any numbers/hex which are not part of a text word i.e. xbutton1 is fine
+					    ; Otherwise if coordinates were in hex, and it contained the number D, it could be seen as a down event
 
+					    key := RegExReplace(key, "i)(?:\b\d+\b)|(:?0x[a-f0-9]+)", "")
 					    this.pClick(x, y, key, clickCount, CurrentmodifierString, mousemove, aSend) 
 						skip := True ; as already inserted a mouse click event
 					}
@@ -380,7 +379,7 @@ It is capable of sending capitalised letters, as well as non-Standard ACII chars
 			if Modifier
 			{
 				for index, modifier in Currentmodifiers
-					aSend.insert({	  "message": modifier.systemKey ? WM_SYSKEYUP : WM_KEYUP
+					aSend.insert({	  "message": modifier.message
 									, "sc": modifier.sc
 									, "wParam": modifier.wParam})
 				Modifier := False
@@ -421,9 +420,10 @@ It is capable of sending capitalised letters, as well as non-Standard ACII chars
 		StringCaseSense, %caseMode%
 		return aSend
 	}
-	; for use in chat boxes
+	; For use in chat boxes and text fields. 
 	; can send ascii art and capitalised letters i.e. just text  eg GLF♥HF! 
-	; if shift key is down sending a "." wont do anything in notepad
+	; Some characters depend on the logical state of modifiers keys (due to key/message translation)
+	; for example if the shift key is logically down sending a "." wont do anything in notepad
 	pSendChars(Sequence := "")
 	{
 		static WM_CHAR := 0x102
@@ -438,30 +438,61 @@ It is capable of sending capitalised letters, as well as non-Standard ACII chars
 		return	
 	}
 
-	; The modifiers here can be used to literally modify the drag box e.g. shift drag
-	; control = ^, shift = +, alt = !, win = #
+	; pClickDrag: 
+	;	This will perform a box drag/select, i.e., mouse button down at x1, y1 and mouse button up at x2, y2.
+	
+	; Modifiers parameter:
+	; 	The modifiers here can be used to literally modify the drag box e.g. shift drag
+	; 	They can consist of one or more of the following characters.
+	;	control = ^, shift = +, alt = !, win = #
+	
+	; Refer to the pClick description for a list of acceptable buttons.
+
 	pClickDrag(x1, y1, x2, y2, button := "L", modifiers := "", MouseMove := False)
 	{
 	    this.pSend(modifiers "{click D " button (MouseMove ? " MM " : " ") x1 " " y1 "}" modifiers "{Click U " button (MouseMove ? " MM " : " ") x2 " "  y2 "}")
 	    return
 	}
 
-	; wParam Indicates whether various virtual keys are down. This parameter can be one or more of the following values.
-	; but doesnt seem to affect sc2
+	; pClick(x, y, button := "L", count := 1, keyStates := "", MouseMove := False, ByRef sendObject := "")
+	; ====================================================================================================
 
-	; Note WM_MOUSEMOVE May be required in some situations. E.g. when the chat box is up and the cursor is not 
-	; in the viewport e.g over the control cards
+	; Button parameter:
+	;	Which button to press. This can be l or left, r or right, m or middle, x1, x2 (not xbutton1/xbutton2),
+	;	WheelUp or WU, or WheelDown or WD. If no button is specified, the left button is used. 
+	; 	If the word down or letter d is specified after the button then only a down event is sent.
+	;	If the word up or letter u is specified then only an up event is sent
 
-	; If doing a click or box drag near the screen edge (in SC2) - if you send a mouseMove event, the screen will move slightly
+	; Count parameter:
+	;	If it is a normal click, then the button is clicked x many times (each click consists of a down and up event)
+	;	If a down or up event is specified (in the button parameter), then this type of event is sent x number of times (though
+	;	it will likely only have the same effect as sending it once)
+	
+	; KeyStates parameter:
+	; 	The click will likely be correctly interpreted without setting this value (so try it without).
+	; 	This ensures the wParam part of the message reflects the states of certain virtual keys. 
+	;	You shouldn't specify the button being clicked in this string, it is done automatically.
+	; 	This value isn't required in SC, and AHK's control click doesn't bother with it either.
+	; 	This parameter can be a string consisting of one or more of the following characters. 
+	; 	+ = shift, ^ = control, x1 = xbutton1, x2 = xbutton2, m = mbutton, l = left button, and r = right button
+ 	
+ 	; MouseMove parameter:
+	; 	A WM_MOUSEMOVE message may be required in some situations to have the event correctly register. 
+	;	E.g. In SC when the chat box is up and the cursor is not in the viewport (e.g over the control cards)
+	; 	If doing a click or box drag near the screen edge (in SC2) - if you send a mouseMove event, the screen will move slightly
+
+	; SendObject parameter:
+	;	You should leave this parameter blank. It is only used internally, when pClick is called via pSend
+	;	in response to a click command.
+
+	; Note: 
+	;	To send a modified click (shift, control, etc) directly using this method, you still need to 
+	; 	use pSend (prior to this) to press the modifiers down, and then use pSend afterwards to release the modifiers
 
 
-	; ***Note*** the modifiers in this function, simply allow the message to be sent with
-	; the correct values - you still need to use pSend (prior to this) to press the
-	; modifiers down
-	; Also, this method is used internally in pSend() which utilises the sendObject parameter.
-	; If calling this method directly, leave the sendObject parameter blank
+	
 
-	pClick(x, y, button := "L", count := 1, Modifiers := "", MouseMove := False, ByRef sendObject := "")
+	pClick(x, y, button := "L", count := 1, keyStates := "", MouseMove := False, ByRef sendObject := "")
 	{
 		static	  WM_MOUSEFIRST := 0x200
 				, WM_MOUSEMOVE := 0x200
@@ -489,29 +520,46 @@ It is capable of sending capitalised letters, as well as non-Standard ACII chars
 		lParam := x & 0xFFFF | (y & 0xFFFF) << 16
 		WParam := 0 ; Needed for the |= to work
 
-		if instr(Modifiers, "+")
+		; keyStates are used ensure the WParam sent contains the correct value
+		; which reflects these key states. This should reflect the logical keystate
+		; that is the current state the game sees the key the specified keys as.
+		; Since I can't check the logical Keystate of these keys (as they have been
+		; manipulated using postmessage (and i cant be fucked writing a function to track them)
+		; you will need to specify them manually). Luckily SC and likely other programs
+		; interpret the click correctly regardless of this WParam/keyStates value
+		; Also AHK doesn't bother sending them either, at least for buttons
+		; which aren't the button being clicked i.e. a control X1 click
+		; will have the WParam set to MK_XBUTTON1, but if the shift key is also down
+		; the WParam message wont contain MK_SHIFT
+
+		if instr(keyStates, "+")
 			WParam |= MK_SHIFT
-		if instr(Modifiers, "^")
+		if instr(keyStates, "^")
 			WParam |= MK_CONTROL
-		if instr(Modifiers, "x1")
+		if instr(keyStates, "x1")
 			WParam |= MK_XBUTTON1
-		if instr(Modifiers, "x2")
+		if instr(keyStates, "x2")
 			WParam |= MK_XBUTTON2
-		if MouseMove
-		{
-			if isObject(sendObject)
-				sendObject.insert({ "message": WM_MOUSEMOVE, "lParam": lParam})
-			else
-				PostMessage, %WM_MOUSEMOVE%, , %lParam%, % this.Control, % this.WinTitle, % this.WinText, % this.ExcludeTitle, % this.ExcludeText
-		}
+		if instr(keyStates, "r")
+			WParam |= MK_RBUTTON
+		if instr(keyStates, "m")
+			WParam |= MK_MBUTTON
+		if instr(keyStates, "l")
+			WParam |= MK_LBUTTON
+		; WParamUp should not contain button which was actually clicked
+		; WParamUp will be used to clear these the clicked bits, and sent with the up event
+		WParamUp := WParam  
+
+		; In game when physically performing actions, WM_MouseMove occurs after the key release and is not sent for wheelmove 
+
 		if button contains r
-			message := "WM_RBUTTON", WParam |= MK_RBUTTON
+			message := "WM_RBUTTON", WParam |= MK_RBUTTON, WParamUp &= ~MK_RBUTTON
 		else if button contains M 
-			message := "WM_MBUTTON", WParam |= MK_MBUTTON
+			message := "WM_MBUTTON", WParam |= MK_MBUTTON, WParamUp &= ~MK_MBUTTON
 		else if button contains x1 
-			message := "WM_XBUTTON", WParam |= MK_XBUTTON1
+			message := "WM_XBUTTON", WParam |= MK_XBUTTON1, WParamUp &= ~MK_XBUTTON1
 		else if button contains x2 
-			message := "WM_XBUTTON", WParam |= MK_XBUTTON2
+			message := "WM_XBUTTON", WParam |= MK_XBUTTON2, WParamUp &= ~MK_XBUTTON2
 		else if button contains WheelUp,WU,WheelDown,WD  
 		{
 			if button contains WheelUp,WU
@@ -528,13 +576,15 @@ It is capable of sending capitalised letters, as well as non-Standard ACII chars
 			}			
 			return	
 		}
-		else message := "WM_LBUTTON", WParam |= MK_LBUTTON
-		; remove the word button eg Lbutton as the U will cause an UP-event to be sent
+		else message := "WM_LBUTTON", WParam |= MK_LBUTTON, WParamUp &= ~MK_LBUTTON
+		; remove the word button eg Lbutton as the U will cause an UP-event to be sent (in case user entered xbutton1 instead of x1)
+		; or middle instead of m
 		StringReplace, button, button, button, %A_Space%, All
-		if button contains up,U
-			message .= "UP", delay := this.pCurrentClickDelay
+		StringReplace, button, button, middle, %A_Space%, All
+		if button contains up,U ; up contains u, so its a bit redundant
+			message .= "UP", wParamSingleEvent := WParamUp, delay := this.pCurrentClickDelay
 		else if button contains down,D 
-		 	message .= "DOWN", delay := this.pClickPressDuration
+		 	message .= "DOWN", wParamSingleEvent := WParam, delay := this.pClickPressDuration
 		else 
 		{
 			mdown := message . "DOWN", mup := message . "UP", mdown := %mdown%,	mup := %mup%
@@ -543,28 +593,42 @@ It is capable of sending capitalised letters, as well as non-Standard ACII chars
 				if isObject(sendObject)
 				{
 					sendObject.insert({ "message": mdown, "wParam": WParam, "lParam": lParam, "delay": this.pClickPressDuration})
-					sendObject.insert({ "message": mup, "wParam": WParam, "lParam": lParam, "delay": this.pCurrentClickDelay})					
+					sendObject.insert({ "message": mup, "wParam": WParamUp, "lParam": lParam, "delay": this.pCurrentClickDelay})					
+					if MouseMove
+						sendObject.insert({ "message": WM_MOUSEMOVE, "wParam": WParamUp, "lParam": lParam})
 				}
 				else 
 				{
 					PostMessage, %mdown%, %WParam%, %lParam%, % this.Control, % this.WinTitle, % this.WinText, % this.ExcludeTitle, % this.ExcludeText
 					if (this.pSendPressDuration != -1)
 						DllCall("Sleep", Uint, this.pSendPressDuration)				
-					PostMessage, %mup%, %WParam%, %lParam%, % this.Control, % this.WinTitle, % this.WinText, % this.ExcludeTitle, % this.ExcludeText
+					PostMessage, %mup%, %WParamUp%, %lParam%, % this.Control, % this.WinTitle, % this.WinText, % this.ExcludeTitle, % this.ExcludeText
+					if MouseMove
+						PostMessage, %WM_MOUSEMOVE%, %WParamUp%, %lParam%, % this.Control, % this.WinTitle, % this.WinText, % this.ExcludeTitle, % this.ExcludeText
 					if (this.pCurrentClickDelay != -1)
 						DllCall("Sleep", Uint, this.pCurrentClickDelay)
 				}
 			}	
 			return	
 		}
+		; so its a down or up message
 		message := %message%
-		if isObject(sendObject)
-			sendObject.insert({ "message": message, "wParam": WParam, "lParam": lParam, "delay": delay})
-		else 
+		loop % count ; There prbably isn't much point to sending multiple down msgs without an accompanied up, but I will allow it anyway
 		{
-			PostMessage, %message%, %WParam% , %lParam%, % this.Control, % this.WinTitle, % this.WinText, % this.ExcludeTitle, % this.ExcludeText
-			if (delay != -1)
-				DllCall("Sleep", Uint, delay)
+			if isObject(sendObject)
+			{
+				sendObject.insert({ "message": message, "wParam": wParamSingleEvent, "lParam": lParam, "delay": delay})
+				if MouseMove
+					sendObject.insert({ "message": WM_MOUSEMOVE, "wParam": wParamSingleEvent, "lParam": lParam})
+			}
+			else 
+			{
+				PostMessage, %message%, %wParamSingleEvent% , %lParam%, % this.Control, % this.WinTitle, % this.WinText, % this.ExcludeTitle, % this.ExcludeText
+				if MouseMove
+						PostMessage, %WM_MOUSEMOVE%, %wParamSingleEvent%, %lParam%, % this.Control, % this.WinTitle, % this.WinText, % this.ExcludeTitle, % this.ExcludeText
+				if (delay != -1)
+					DllCall("Sleep", Uint, delay)
+			}
 		}
 		return
 	}

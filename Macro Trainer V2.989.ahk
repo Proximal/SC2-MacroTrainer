@@ -13190,5 +13190,28 @@ send(sequence)
     return 
 }
 
+/*
+*f1::
+MouseGetPos, x,y
+;a := input.psend("{lbutton}")
+input.pClick(x,y,"L",1, "L^")
+return 
 
+^f2::
++f2::
+f2::
+;ControlClick [, Control-or-Pos, WinTitle, WinText, WhichButton, ClickCount, Options, ExcludeTitle, ExcludeText]
+
+;controlclick,,StarCraft II,,Left,,NA D
+controlclick,,StarCraft II,,L,,NA
+
+return 
+/*
+WParamUp := 
+i)(?:\b\d)|(?:0x[a-f0-9]+\b)
+
+(?<count>(?:0x[a-f0-9]+\b)|\d+\b)
+
+
+WParamUp &= ~(1 << x);
 
