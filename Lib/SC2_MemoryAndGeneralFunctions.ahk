@@ -3141,6 +3141,7 @@ ConvertListToObject(byref Object, List, Delimiter="|", ClearObject = 0)
 	return
 }
 
+; I believe this is very old, and I fixed the initial problem
 ; This is uesed to exit the program without causing the shutdown routine to be called
 ; twice. Only used in certain situations. e.g. directly closing a thread
 ; using the label option causes it to run twice - even when using a timer, or goto/gosub redirect

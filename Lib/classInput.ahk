@@ -244,6 +244,8 @@ It is capable of sending capitalised letters, as well as non-Standard ACII chars
 		static 	WM_KEYDOWN := 0x100, WM_KEYUP := 0x101
 			  , WM_SYSKEYDOWN := 0x104, WM_SYSKEYUP := 0x105
 
+		caseMode := A_StringCaseSense
+		StringCaseSense, Off 
 		if !blind
 		{
 		;	soundplay *16
@@ -278,13 +280,14 @@ It is capable of sending capitalised letters, as well as non-Standard ACII chars
 				else if (char = "^")
 					Modifier := "Ctrl"
 				else 
-					Modifier :="Alt"
+					Modifier := "Alt"
 
 				CurrentmodifierString .= char
 				Currentmodifiers.insert( {"wParam": GetKeyVK(Modifier) 
-								, "sc": GetKeySC(Modifier)})			
+								, "sc": GetKeySC(Modifier)
+								, "systemKey": char = "!"})			
 
-				aSend.insert({	  "message": WM_KEYDOWN
+				aSend.insert({	  "message": char = "!" ? WM_SYSKEYDOWN : WM_KEYDOWN
 								, "sc": GetKeySC(Modifier)
 								, "wParam": GetKeyVK(Modifier)})
 				C_Index++
@@ -296,10 +299,9 @@ It is capable of sending capitalised letters, as well as non-Standard ACII chars
 				if (Position := instr(Sequence, "}", False, C_Index, 1)) ; lets find the closing bracket) n
 				{
 					key := trim(substr(Sequence, C_Index+1, Position -  C_Index - 1))
-					C_Index := Position ;PositionOfClosingBracket
-					while instr(key, A_space A_space) ; loops needed to ensure only 1 space eg "ab           ba"
-						StringReplace, key, key, %A_space%%A_space%, %A_space%, All
-					StringReplace, key, key, `t,, All ;added 20/02/14			
+					C_Index := Position ;PositionOfClosingBracket				
+					
+					key := RegExReplace(key, "\s{2,}|\t", " ") ; ensures tabs replaced with a space - and there is only one space between words
 					if instr(key, "click")
 					{
 						StringReplace, key, key, click ; remove the word click
@@ -344,7 +346,9 @@ It is capable of sending capitalised letters, as well as non-Standard ACII chars
 						StringSplit, outputKey, key, %A_Space%
 						if (outputKey0 = 2)
 						{
-							aSend.insert({	  "message": instr(outputKey2, "Down") ? WM_KEYDOWN : WM_KEYUP
+							aSend.insert({	  "message": instr(outputKey2, "Down") 
+														? (instr(outputKey1, "alt") ? WM_SYSKEYDOWN : WM_KEYDOWN) 
+														: (instr(outputKey1, "alt") ? WM_SYSKEYUP : WM_KEYUP)
 											, "sc": GetKeySC(outputKey1)
 											, "wParam": GetKeyVK(outputKey1)})
 							skip := True  ; as already inserted the key			
@@ -358,7 +362,7 @@ It is capable of sending capitalised letters, as well as non-Standard ACII chars
 
 			if skip
 				skip := False
-			else 
+			else ; its a char
 			{
 				loop, 2
 					aSend.insert({	  "message": A_Index = 1 ? WM_KEYDOWN : WM_KEYUP
@@ -369,7 +373,7 @@ It is capable of sending capitalised letters, as well as non-Standard ACII chars
 			if Modifier
 			{
 				for index, modifier in Currentmodifiers
-					aSend.insert({	  "message": WM_KEYUP
+					aSend.insert({	  "message": modifier.systemKey ? WM_SYSKEYUP : WM_KEYUP
 									, "sc": modifier.sc
 									, "wParam": modifier.wParam})
 				Modifier := False
@@ -383,7 +387,7 @@ It is capable of sending capitalised letters, as well as non-Standard ACII chars
 		for index, message in aSend
 		{
 			
-			if (WM_KEYDOWN = message.message)
+			if (WM_KEYDOWN = message.message || WM_SYSKEYDOWN = message.message)
 			{
 				 ; repeat code | (scan code << 16)
 				lparam := 1 | (message.sc << 16)
@@ -392,7 +396,7 @@ It is capable of sending capitalised letters, as well as non-Standard ACII chars
 					DllCall("Sleep", Uint, this.pSendPressDuration)		
 			
 			}
-			else if (WM_KEYUP = message.message)
+			else if (WM_KEYUP = message.message || WM_SYSKEYUP = message.message)
 			{
 				 ; repeat code | (scan code << 16) | (previous state << 30) | (transition state << 31)
 				lparam := 1 | (message.sc << 16) | (1 << 30) | (1 << 31)
@@ -409,6 +413,7 @@ It is capable of sending capitalised letters, as well as non-Standard ACII chars
 			}
 
 		}
+		StringCaseSense, %caseMode%
 		return aSend
 	}
 	; for use in chat boxes

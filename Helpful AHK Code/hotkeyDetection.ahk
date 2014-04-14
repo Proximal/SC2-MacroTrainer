@@ -4,6 +4,9 @@ SetBatchLines, -1
 OnExit, exit
 settimer, exit, 40000 
 global aKeys := []
+; hook overview http://molecularmusings.wordpress.com/2011/09/05/properly-handling-keyboard-input/
+
+
 ; http://www.autohotkey.com/board/topic/70111-retrieve-key-names-from-onmessage-wm-keydown/page-2
 ; I removed the line, DllCall("HideCaret", "ptr", 0) because it did not completely remove the "|" sign from the edit box.
 
@@ -21,7 +24,7 @@ global aKeys := []
 
 	;Gui, Add, Picture, w300 xp w200 h20,
 	
-	gui, hotBox:show, h100, HotBox
+	gui, hotBox:show, h150, HotBox
 	OnMessage(0x201, "enableHooks")
 	;OnMessage(0x201, "WM_LBUTTONDOWN")
 	OnMessage(0x207, "clearHotkey")
@@ -87,7 +90,7 @@ if (keyCount > 1)
 {
 	tooltip, % keys
 }
-GuiControl, hotBox:, %hotBoxID%, %shortKeys%
+GuiControl, hotBox:, %hotBoxID%, %keys% ;%shortKeys%
 if nonModifiers
 {
 	installLLHooks(False)
