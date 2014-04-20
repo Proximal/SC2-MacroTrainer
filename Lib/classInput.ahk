@@ -23,7 +23,19 @@ class Input
 				, "Left", "Right", "Up", "Down", "Home", "End", "PgUp", "PgDn", "Del", "Ins", "BS", "Capslock", "Numlock", "PrintScreen" 
 				, "Pause", "Space", "Enter", "Tab", "Esc", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "B", "C", "D", "E", "F", "G"
 				, "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"
-				, "``", "-", "=", "[", "]", "\", ";", "'", ",", ".", "/"] ; note the "`" has to be escaped 
+				, "``", "-", "=", "[", "]", "\", ";", "'", ",", ".", "/" 		; note the "`" has to be escaped 
+				, "NumpadDiv", "NumpadMult", "NumpadAdd", "NumpadSub"]
+				; NumpadDiv keystate != / keystate etc
+				; But keystate "NumpadEnter" = keystate "enter"
+				; Should investigate adding numpad keys when numlock is off (but i don't think its required)
+				; have to think about numlock off numpad left = left button etc (but obviously scan codes will differ)
+	 			; but it shouldnt matter which one is released or pressed back down,  like lctrl vs neutral ctrl
+	 			; never the less, i should test it one day.
+	 			; Regardless of this, still don't want to send the button down twice 
+
+	 	, numLockKeys := ["Numpad0", "Numpad1", "Numpad2", "Numpad3", "Numpad4"
+	 					, "Numpad5", "Numpad6", "Numpad7", "Numpad8", "Numpad9"]
+						
 	 	, modifiers := ["Control", "Alt", "Shift", "LWin", "RWin"]
 	 	, aMouseClickButtons := {  "LButton": "L" 	; converts Lbutton or xbutton2 etc into L, x2
 								, "RButton": "R"
@@ -71,10 +83,19 @@ class Input
 			{
 				; This masks the windows keyup - if its seen as coming up by itself it will make the win bar appear
 				; i.e. just as if you pressed it by itself. (This is how AHK does it)
-				; This isn't needed when releasing vis postmessage.
+				; This isn't needed when releasing via postmessage.
 				if (key = "LWin" || key = "RWin")
 					upsequence .= "{LControl Down}{LControl Up}"
 				upsequence .= "{" key " Up}", this.downSequence .= "{" key " Down}" 
+			}
+		}
+		
+		if GetKeyState("NumLock", "T")
+		{
+			for index, key in this.numLockKeys
+			{
+				if GetKeyState(key) ; keystate of numpad0 != keystate of 0 key
+					upsequence .= "{" key " Up}", this.downSequence .= "{" key " Down}" 
 			}
 		}
 
@@ -137,6 +158,15 @@ class Input
 				upsequence .= "{" key " Up}", this.downSequence .= "{" key " Down}" 
 
 		}
+		if GetKeyState("NumLock", "T")
+		{
+			for index, key in this.numLockKeys
+			{
+				if GetKeyState(key) 
+					upsequence .= "{" key " Up}", this.downSequence .= "{" key " Down}" 
+			}
+		}
+
 		if checkMouse
 		{
 			for index, key in this.MouseButtons 
