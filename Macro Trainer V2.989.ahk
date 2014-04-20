@@ -78,7 +78,7 @@ SetWorkingDir %A_ScriptDir%  ; Ensures a consistent starting directory.
 #InstallMouseHook
 #InstallKeybdHook
 #UseHook
-#KeyHistory 0 ; don't need it, and gives v.v.v. minor performance boost
+#KeyHistory 0 ; don't need it
 #Persistent
 #NoEnv  ; Recommended for performance and compatibility with future AutoHotkey releases.
 #MaxThreads 20 ; don't know if this will affect anything
@@ -470,8 +470,6 @@ g_EmergencyRestart:
 		Thread, NoTimers, True
 		if (state := setLowLevelInputHooks(False, True)) ; remove the hook for any sendInput/sendEvents
 			 setLowLevelInputHooks(false)	
-		releaseAllModifiers() 					; Keeping this, as it also checks the SC2 memory for modifier state
-		;RestoreModifierPhysicalState()		; Isn't needed
 		; if ahk loses track of logical state, can still get stuck keys, which this wont fix
 		; or if user is holding down a logically stuck key which is also a hotkey, as the OS won't see the key release - and this
 		; function won't release it either.
@@ -787,7 +785,7 @@ Return
 
 
 Overlay_Toggle:
-	if (A_ThisHotkey = CycleOverlayKey)
+	if (A_ThisHotkey = CycleOverlayKey "")
 	{
 		; if more than one overlays on. Turn then all off. Then cycle
 		; DrawIncomeOverlay, DrawResourcesOverlay, DrawArmySizeOverlay, DrawAPMOverlay, DrawUnitOverlay, All
@@ -814,32 +812,32 @@ Overlay_Toggle:
 		gosub, overlay_timer
 		gosub, g_unitPanelOverlay_timer
 	}	
-	Else If (A_ThisHotkey = ToggleIncomeOverlayKey)
+	Else If (A_ThisHotkey = ToggleIncomeOverlayKey "")
 	{
 		If (!DrawIncomeOverlay := !DrawIncomeOverlay)
 			DrawIncomeOverlay(-1)	
 	}
-	Else If (A_ThisHotkey = ToggleResourcesOverlayKey)
+	Else If (A_ThisHotkey = ToggleResourcesOverlayKey "")
 	{
 		If (!DrawResourcesOverlay := !DrawResourcesOverlay)
 			DrawResourcesOverlay(-1)
 	}
-	Else If (A_ThisHotkey = ToggleArmySizeOverlayKey)
+	Else If (A_ThisHotkey = ToggleArmySizeOverlayKey "")
 	{
 		If (!DrawArmySizeOverlay := !DrawArmySizeOverlay)
 			DrawArmySizeOverlay(-1)	
 	}
-	Else If (A_ThisHotkey = ToggleWorkerOverlayKey)
+	Else If (A_ThisHotkey = ToggleWorkerOverlayKey "")
 	{
 		If (!DrawWorkerOverlay := !DrawWorkerOverlay)
 			DrawWorkerOverlay(-1)
 	}	
-	Else If (A_ThisHotkey = ToggleIdleWorkersOverlayKey)
+	Else If (A_ThisHotkey = ToggleIdleWorkersOverlayKey "")
 	{
 		If (!DrawIdleWorkersOverlay := !DrawIdleWorkersOverlay)
 			DrawIdleWorkersOverlay(-1)
 	}	
-	Else If (A_ThisHotkey = ToggleUnitOverlayKey)
+	Else If (A_ThisHotkey = ToggleUnitOverlayKey "")
 	{
 		if (!DrawUnitOverlay && !DrawUnitUpgrades)	
 			DrawUnitOverlay := True	
@@ -855,7 +853,7 @@ Overlay_Toggle:
 		gosub, g_unitPanelOverlay_timer
 		return
 	}
-	Else If (A_ThisHotkey = ToggleMinimapOverlayKey)
+	Else If (A_ThisHotkey = ToggleMinimapOverlayKey "")
 	{
 		; Disable the minimap, but still draws detected units/non-converted gates
 		aThreads.MiniMap.ahkPostFunction("toggleMinimap")
@@ -872,12 +870,12 @@ mt_pause_resume:
 		inject_timer := 0	;ie so know inject timer is off
 		Try DestroyOverlays()
 		Try aThreads.MiniMap.ahkPostFunction("DestroyOverlays")
-		tSpeak("Macro Trainer Paused")
+		tSpeak("Paused")
 	}	
 	Else
 	{
 		settimer, clock, 250
-		tSpeak("Macro Trainer Resumed")
+		tSpeak("Resumed")
 	}
 return
 
@@ -1310,7 +1308,7 @@ LimitGroup(byref UnitList, Hotkey)
 	critical 1000
 	for group, addhotkey in aAGHotkeys.Add
 	{
-		if (Hotkey = addhotkey)
+		if (Hotkey = addhotkey "")
 		{
 			found := True 
 			break 
@@ -1320,7 +1318,7 @@ LimitGroup(byref UnitList, Hotkey)
 	{
 		for group, addhotkey in aAGHotkeys.Set
 		{
-			if (Hotkey = addhotkey)
+			if (Hotkey = addhotkey "")
 			{
 				found := True 
 				break 
@@ -2052,7 +2050,7 @@ worker_count:
 		tSpeak("The game has not started")
 		return
 	}
-	If ( worker_origin = worker_count_enemy_key)
+	If ( worker_origin = worker_count_enemy_key "")
 	{
 		if ( GameType <> "1v1" )
 		{
@@ -8222,15 +8220,6 @@ CreateHotkeys()
 		hotkey, *~Esc, g_temporarilyDisableAutoWorkerProduction, on	
 	Hotkey, If, WinActive(GameIdentifier) && !isMenuOpen() && time
 
-	if aQuickSelect[aLocalPlayer["Race"]].maxIndex()
-	{
-		for i, object in aQuickSelect[aLocalPlayer["Race"]]
-		{
-			if (object.enabled && object.Units.MaxIndex())
-				try hotkey, % object.hotkey, g_QuickSelect, on
-		}
-	}
-		
 	while (10 > group := A_index - 1)
 	{
 		if A_UnitGroupSettings["LimitGroup", aLocalPlayer["Race"], group, "Enabled"] 
@@ -8241,6 +8230,20 @@ CreateHotkeys()
 			;hotkey, ^+%i%, g_LimitGrouping, on
 		}
 	}
+
+	; Have this after the limit grouping so quick select
+	; will override any duplicates
+
+	if aQuickSelect[aLocalPlayer["Race"]].maxIndex()
+	{
+		for i, object in aQuickSelect[aLocalPlayer["Race"]]
+		{
+			if (object.enabled && object.Units.MaxIndex())
+				try hotkey, % object.hotkey, g_QuickSelect, on
+		}
+	}
+		
+
 	Hotkey, If
 	; Note : I have the emergency hotkey here if the user decides to set another hotkey to <#Space, so it cant get changed
 	; but i think this could cause issues when the hotkey fails to get rebound somtimes? I dont think this actually happens
@@ -8804,23 +8807,41 @@ for a 146 terran army deslecting all but 1 unit
  15ms - worked 100%
 */
 
+;f1::
+loop 
+{
+	tooltip, % "`n`n`n| "GetKeyState(Input.Keys[73]) " a"
+	sleep 50
+}
+return 
+
 g_SelectArmy:
+selectArmy()
+return 
+; Das Keyboard Professional S
+
+selectArmy()
+{
+	global 
 	if !getArmyUnitCount()
 		return 
-	while (GetKeyState("Lbutton", "P") || GetKeyState("Rbutton", "P"))
-	{
-		sleep 1
-		MouseDown := True
-	}
-;	sleep := Input.releaseKeys()
-;	critical, 1000
+	;while (GetKeyState("Lbutton", "P") || GetKeyState("Rbutton", "P"))
+	; removed loop as this could cause the last key in the hotkey to get stuck
+	; don't know if this will effect reliability (as releasing mouse via pSend)
+	; so i will increase the sleep if mouse down from 15
+;	if (GetKeyState("Lbutton", "P") || GetKeyState("Rbutton", "P"))
+;	{
+;		sleep 1 
+;		MouseDown := True
+;	}
 	critical, 1000
 	dsleep(30)
 	input.pReleaseKeys(True)
 	sleep := 0
 
-	if MouseDown
-		dSleep(15)
+;	if MouseDown
+	if (GetKeyState("Lbutton", "P") || GetKeyState("Rbutton", "P"))
+		dSleep(30) 		; dSleep(15)
 	if isCastingReticleActive() 	; so can deselect units if attacking reticle was present
 		input.pSend(Escape) 		; is a dsleep() >= 15 is performed after select army key is pressed this is not required - 12isnt enough
 									; as SC will have enough time to get rid of the selection reticle itself
@@ -8860,12 +8881,14 @@ g_SelectArmy:
 	if (timerArmyID && stopwatch(timerArmyID) > 35) ; remove the timer and if took long time to select units sleep for longer
 		dSleep(15) 									; as every now and again all units can get grouped with previous button press
 													; though an increase sleep might be needed before the above grouping command
+	
 	Input.revertKeyState()
 	critical, off
 	Thread, Priority, -2147483648
 	sleep, -1
 	sleep 20
 	return	
+}
 	; sleep, -1 ensures LL callbacks get processed 
 	; without the postive value sleep, its possible to make the input lag/beep
 	; after holding down the hotkey for a while and clicking lots perhaps not enough time
@@ -11313,6 +11336,8 @@ return
 
 ; gEasyUnloadQueued is disabled! Until i sort out a better way to ensure modifiers are not left stuck down.
 
+; Update: the below issue was caused by my NKRO keyboard - when NKRO disabled keys were sent correctly
+
 ; Stuck down hotkeys - this could occur in any non-critical function where a getkeystate While loops 
 ; waiting for user to release/press key and they press another a modifier - then the key for the hotkey becomes logically down.
 ; This highlights the issue, hold f5 and logical state is 0
@@ -11336,26 +11361,34 @@ return
     return 
 */
 
+GetAsyncKeyState(key)
+{
+    return 0x8000 & DllCall("GetAsyncKeyState", "UInt", getkeyVk(key), "Short") ? 1 : 0
+}
+
+
+gethotkeySuffix(hotkey, containsPrefix := "", containsWildCard := "")
+{
+	containsPrefix := RegExMatch(hotkey, "\^|\+|\!|\&")
+
+	; so it's already a wild card hotkey
+	containsWildCard := instr(hotkey, "*")
+	if (p := instr(FinalKey := RegExReplace(hotkey,"[\*\~\$\#\+\!\^\<\>]"), "&"))
+		FinalKey := trim(SubStr(FinalKey, p+1), A_Space A_Tab)
+	return FinalKey
+}
 
 gEasyUnloadQueued:
 gEasyUnload:
 thread, NoTimers, true
-thisHotkey := A_ThisHotkey ; as will change if thread interrupted
-Hotkey, *%thisHotkey%, g_DoNothing, on ; prevent logical state turning true if user presses modifier during function
-
-castEasyUnload(thisHotkey, A_ThisLabel = "gEasyUnloadQueued")
-Hotkey, *%thisHotkey%, off
-; this is required for some reason (other wise next press logical state = true)
-; Plus its a essential if the original hotkey was already * modified - cos then it would end up off
-; use this label incase original was already *modified - else it would turn back on DoNothing, rather than this func.
-Hotkey, If, WinActive(GameIdentifier) && !isMenuOpen() && EasyUnload`%LocalPlayerRace`%Enable && time
-Hotkey, %thisHotkey%, %A_ThisLabel% , on
-Hotkey, If
+;thisEasyUnloadHotkey := A_ThisHotkey ; as will change if thread interrupted
+;unloadKeySuffix := ahkHotkeyFix(thisEasyUnloadHotkey, True)
+castEasyUnload(A_ThisHotkey, A_ThisLabel = "gEasyUnloadQueued")
+;ahkHotkeyFix(unloadKeySuffix, False)
 return
 
 ; If user double taps the immediate unload hotkey, all locally owned loaded transports
 ; will be selected
-
 
 
 castEasyUnload(hotkey, queueUnload)
@@ -11381,7 +11414,7 @@ castEasyUnload(hotkey, queueUnload)
 
 ;	if (upSequence := getModifierUpSequenceFromString(hotkey))
 ;		Input.psend(upSequence)
-	hotkey := stripModifiers(hotkey)
+	hotkey := gethotkeySuffix(hotkey)
 
 	if !queueUnload
 	{
@@ -11587,7 +11620,7 @@ if 1
 return 
 
 
-
+; testing not being used
 g_SimpleSplitter:
 thread, Interrupt, off
 while (GetKeyState(A_ThisHotkey, "P") && (selectionCount := getSelectionCount()) > 1)
@@ -13190,6 +13223,41 @@ send(sequence)
     return 
 }
 
+reloadHooks()
+{
+    if (state := setLowLevelInputHooks(False, True)) ; get the state
+    {
+        setLowLevelInputHooks(false)
+    	setLowLevelInputHooks(True)
+	}
+	return state
+}
+
+
+
+
+
+
+/*
+*f1::
+input.pSend("{shift down}{f5 down}")
+return
+
+f2::
+send, {shift down}{shift up}
+return 
+
+controlclick,,StarCraft II,,X1,,NA
+controlclick,,StarCraft II,,X2,,NA
+return 
+
++f4::
+loop 
+{
+	sleep 50
+	tooltip, % ReadMemory(B_iModifiers, GameIdentifier, 1) "`n" ReadMemory(B_iFkeys, GameIdentifier, 2)
+}
+
 /*
 *f1::
 MouseGetPos, x,y
@@ -13206,12 +13274,7 @@ f2::
 controlclick,,StarCraft II,,L,,NA
 
 return 
-/*
-WParamUp := 
-i)(?:\b\d)|(?:0x[a-f0-9]+\b)
-
-(?<count>(?:0x[a-f0-9]+\b)|\d+\b)
+*/
 
 
-WParamUp &= ~(1 << x);
 

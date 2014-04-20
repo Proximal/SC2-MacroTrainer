@@ -1,25 +1,19 @@
+/*
+ Notes pertaining to Macro Trainer:
+ As Im not accounting for mouse buttons (just want to see how well this works)
+ make sure to check Mousebuttons are not down before calling releaseKeys()
+ Same with Windows keys when using releaseKeys (sendInput) (as this will cause the windows menu to appear) - although the automation
+ may still work
 
-; As Im not accounting for mouse buttons (just want to see how well this works)
-; make sure to check Mousebuttons are not down before calling releaseKeys()
-; Same with Windows keys (as releasing these will cause the windows menu to appear) - although the automation
-; may still work
-
-; Note** Do not call releaseKeys() (this used sendInput) while thread is in critical! As the LL-Hooks wont process the input
-; until the thread comes out of critical, or an AHK sleep command is used.
-; pReleaseKeys uses post message and is fine to use while in critical
-; Also note, any AHK command which has an internal sleep (including eg controlsend) will cause AHK to check its msg queue
-; and the hooks will then process any user pressed key which could interrupt the automation!
-
-
-; I've just realised sendPlay probably performs  exactly the same as my pSendInput :(
-; Though i haven't tested it but it seems that the only difference is it always sends keys to
-; the active window
-; also it wont work on vista and above while UAC is enabled unless you use
-; a script to digitally sign the exe, but then you cant modify the exe as this would
-; invalidate the signature
-
-; I probably wasted ages working on this input function and it wasnt required lol
-; but at least I know how pSend works 
+ Note** Do not call releaseKeys() (this uses sendInput) while thread is in critical! As the LL-Hooks wont process the input
+ until the thread comes out of critical, or an AHK sleep command is used.
+ pReleaseKeys uses post message and is fine to use while in critical
+ Also note, any AHK command which has an internal sleep (including eg controlsend) will cause AHK to check its msg queue
+ and the hooks will then process any user pressed key which could interrupt the automation!
+ 
+ ControlSend is also very slow when looping lots of messages (it seems to wait for response (sendMessage?) or delays to prevent flooding)
+ Also it's slightly slower than pSend() when sending a small number of keys
+*/
 
 class Input 
 {
@@ -28,7 +22,8 @@ class Input
 				, "AppsKey", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12"
 				, "Left", "Right", "Up", "Down", "Home", "End", "PgUp", "PgDn", "Del", "Ins", "BS", "Capslock", "Numlock", "PrintScreen" 
 				, "Pause", "Space", "Enter", "Tab", "Esc", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "B", "C", "D", "E", "F", "G"
-				, "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
+				, "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"
+				, "``", "-", "=", "[", "]", "\", ";", "'", ",", ".", "/"] ; note the "`" has to be escaped 
 	 	, modifiers := ["Control", "Alt", "Shift", "LWin", "RWin"]
 	 	, aMouseClickButtons := {  "LButton": "L" 	; converts Lbutton or xbutton2 etc into L, x2
 								, "RButton": "R"
@@ -44,22 +39,32 @@ class Input
 		, 	pCurrentSendDelay := -1
 		,	pSendPressDuration := -1
 		, 	pCurrentCharDelay := -1
+		, 	threadSleep := True
 		, 	dragLeftClick := False
 		, 	LastLeftClickX, LastLeftClickY
 		;,	lastKeyboardTick, lastMouseTick
 		, 	Control, WinTitle, WinText,	ExcludeTitle, ExcludeText
 
-	; Very Important Note about logical and physical hotkey states
+	
+	; releaseKeys() uses SendInput to release any logically down
+	; keys. If checkMouse is true, then the mouse keys will be 
+	; checked and released as appropriate.
+
+	; releaseKeys() should only be used when your hook is blocking
+	; physical non-injected input. And when this is done, revertKeyState()
+	; should not be called when your automation has finished, as there is no
+	; guarantee that the keys are still down leading to stuck keys. 
+
+
+	; Note: Logical vs physical hotkey key states
 	; if the hotkey has no modifiers, then physical state will be down
-	; and the logical will be up (as expected)
-	; But if the hotkey has modifiers
-	; then both the hotkey key and its modifiers will be physically AND logically down!! 
+	; and the logical will be up (as expected). But if the hotkey has modifiers then 
+	; the prefix modifiers will be down 
 
 	releaseKeys(checkMouse := False)
 	{
 		this.downSequence := this.dragLeftClick := ""
-		formatMode := A_FormatInteger
-		SetFormat, IntegerFast, hex
+
 		for index, key in this.keys 
 		{
 			if GetKeyState(key) 	; check the logical state (as AHK will block the physical)
@@ -67,14 +72,12 @@ class Input
 				; This masks the windows keyup - if its seen as coming up by itself it will make the win bar appear
 				; i.e. just as if you pressed it by itself. (This is how AHK does it)
 				; This isn't needed when releasing vis postmessage.
-
 				if (key = "LWin" || key = "RWin")
 					upsequence .= "{LControl Down}{LControl Up}"
-
-				upsequence .= "{VK" GetKeyVK(key) " Up}", this.downSequence .= "{" key " Down}" 
+				upsequence .= "{" key " Up}", this.downSequence .= "{" key " Down}" 
 			}
 		}
-		SetFormat, IntegerFast, %formatMode%
+
 		if checkMouse
 		{
 			for index, key in this.MouseButtons 
@@ -101,7 +104,8 @@ class Input
 	}
 
 	; To restore box drags correctly requires a pass through hotkey on lbutton 
-	; So we can determine the x, y location of the start of the box drag
+	; So we can determine the x, y location of the start of the box drag (where the left button
+	; was first pressed down)
 	; i.e.
 	; *~LButton::
 	;	input.setLastLeftClickPos()
@@ -113,18 +117,26 @@ class Input
 		input.LastLeftClickY := y
 		return
 	}
+	; pReleaseKeys() is the same as releaseKeys(), except it uses post message to release the keys.
+	; The main advantage of this is that if you place the AHK thread into critical (and you have your own
+	; hooks installed) you can perform your automation including sleeps (dllCall sleeps not ahk sleeps)
+	; and then restore the key states without fear of stuck keys.
 
 	; If not blocking input, i.e. just buffering/placing thread in critical then can release 
 	; pressed keys using postmessage without fear of getting stuck keys outside of sc 
 	; Technically I guess you should have a 10ms buffer after starting critical before calling this
-	; but i haven't noticed the need.
+	; but i haven't noticed the need. Actually this probably isn't true as hooks work on a 
+	; first in last out system.
 
 	pReleaseKeys(checkMouse := False)
 	{
 		this.downSequence := this.dragLeftClick := ""
 		for index, key in this.keys 
+		{
 			if GetKeyState(key) 	; check the logical state (as AHK will block the physical)
 				upsequence .= "{" key " Up}", this.downSequence .= "{" key " Down}" 
+
+		}
 		if checkMouse
 		{
 			for index, key in this.MouseButtons 
@@ -149,10 +161,16 @@ class Input
 		return 
 	}
 
-	revertKeyState()
+	revertKeyState(ignoreKey := "")
 	{
 		if this.downSequence
 		{
+			if ignoreKey
+			{
+				s := this.downSequence
+				StringReplace, s, s, {%ignoreKey% Down}
+				this.downSequence := s
+			}
 			this.pSend(this.downSequence)
 			if this.dragLeftClick
 			{
@@ -187,31 +205,69 @@ class Input
 		return
 	}
 
-	; This command can be used with the similar syntax to AHK's send command
-	; pSend("^+ap") 				Result:	Control+Shift+a p
-	; pSend("{a down}") 			Result: The 'a' key is pressed down but not released
-	; pSend("{b 8}")  				Result: The 'b' key is sent eight times
-	
-	; To send mouse buttons using pSend, you must use the {click} syntax, sending "{lbutton}" wont work.
+	sleep(ms)
+	{
+		if this.threadSleep 
+			DllCall("Sleep", "Uint", ms)	
+		Else
+			sleep ms
+		return	
+	}
+
+
+	; This command is designed to send exact key presses to interact with a game/program, and not to produce text. 
+	; For examples, pSend("+7") or pSend("+&")  would send {shift down}{7}{shift up} (7 is the actual key for the '&' character). 
+	; If sent to a text field you would only see '7', as generally message/text translation depends 
+	; on the state the OS believes the modifiers are in. Since the messages are posted directly to the game,
+	; the OS doesn't know the shift key was actually pressed. pSendChar() provides a means to post text to a text field.
+	; If the game has an action bound shift+7, then it will respond to it.
+
+	; The syntax is very similar to AHK's send command.
+	; Examples:
+	; 	pSend("^+ap") 				
+	; 	Result:	Control+Shift+a then p
+	; 	pSend("{a down}") 			
+	;	Result: The 'a' key is pressed down but not released
+	; 	pSend("{b 8}")  				
+	;	Result: The 'b' key is sent eight times
+	; 	pSend("{vk0x41}") or pSend("{vk41}")
+	; 	Result: Sends the virtual key 0x41 - the 'a' key (the hex 0x prefix is optional) 
+	;			The scan code can also be combined with this or used alone e.g. {vkFFsc159} or {sc159}
+	; 	psend("{ctrl down}{alt down}abc{ctrl up}{alt up}")
+	;	Result: The a, b, and c keys are sent while the ctrl and alt keys are down.
+	; 	Note:	Programs may not respond correctly to left/right modifier keys i.e. {left shift} or {right ctrl down}
+	;			so it's best to send the neutral modifiers i.e. {shift down}. The ^+! modifiers will
+	; 			send the neutral modifier key. # Will send the left win key, as there is no neutral win key.			
+
+	; To send mouse buttons using pSend, you must use the {click} syntax; sending "{lbutton}" will not work.
 	; Click command:
-	; 	Buttons (L/Left, R/Right, M/Middle, WU/WheelUp, WD/WheelDown, X1 and X2) are optional. If omitted the left button will be sent
-	;	Coordinates are optional. If omitted the current physical cursor coordinates are used.
-	;	Click count is optional, but if present it must come after the coordinates (if they are present). If omitted, the button is clicked once (consists of a down and up event)
-	; pSend("+{click}")				Result: Shift Left click the mouse at its current location (down + up event)
-	; pSend("{click R 400 500 3}")	Result: The mouse is right clicked three times at coordinates 400 by 500
-	; pSend("{click D 100 50}{Click U 600 800}") 	; Result: Box drag the mouse with the LButton
-	; 		Note: To send a correctly modified box drag you must specify the modifier for the both the down and up event (this is the same as AHKs {click})
-	; 		pSend("+{click D 100 50}+{Click U 600 800}") ; a shift modified box drag
-	; pSend("+{click MM}")			Result: Send a Shift Left click the mouse at current its location followed by a WM_MouseMove message.
+	; 	Syntax:		{Click button x y ClickCount MM}
+	; 	Buttons: 	L/Left, R/Right, M/Middle, WU/WheelUp, WD/WheelDown, X1/Xbutton1 and X2/XButton2 are optional. 
+	;				If omitted the left button will be sent.
+	;	X Y:  		Coordinates are optional. If omitted the current physical cursor coordinates are used.
+	;	ClickCount: Optional, but if present it must come after the coordinates (if they are present). 
+	;				If omitted, the button is clicked once (consists of a down and an up event)
+	;   MM:			If the letters MM are present a WM_MouseMove message is included after the click
+	
+	; Examples:
+	; 	pSend("+{click}")	
+	;	Result: Shift Left click the mouse at its current location (down + up event)
+	; 	pSend("{click R 400 500 3}")	
+	;	Result: The mouse is right clicked three times at coordinates 400 by 500
+	; 	pSend("{click D 100 50}{Click U 600 800}") 	
+	; 	Result: Box drag the mouse with using the left button from coordinatesx 100, 50 to 600, 800
+	; 	Note:	To send a correctly modified box drag you must specify the modifier for the both the down and up event (this is the same as AHKs {click})
+	; 			pSend("+{click R D 100 50}+{Click R U 600 800}") ; a fully shift modified box drag using the right mouse button.
+	; 	pSend("+{click MM}")			
+	;	Result: Shift Left click the mouse at its current location then send a WM_MouseMove message.
 
 
-	; Tabs, spaces and new lines can also be sent. 
-	; Their escaped character representations will also work
-	; pSend("`n`thello") Would start a tabbed new line with the word 'hello'
+	; Tabs, spaces and new lines can also be sent. That is, their escaped character representations will also work.
+	; pSend("`n`thello") Would start a tabbed new line with the word 'hello'.
 	
 	; Notes:
 	; Blind mode is enabled by default, that is the keys are sent without modifying the current logical up/down state 
-	; of the modifiers. This is because I use pRelease keys to release any down keys (includes modifiers), send the keys, then 
+	; of the modifiers. This is because for my purposes I use pReleasekeys() to release any down keys (includes modifiers), send the keys, then 
 	; restore their previous state with revertKeyState().
 	; If blind mode is disabled, then pSend will release logically down modifiers, send the key sequence,
 	; and then restore the modifiers to their correct positions. This is how AHK's send command works. 
@@ -239,6 +295,8 @@ Bits	Meaning
 29		The context code. The value is always 0 for a WM_KEYUP message.
 30		The previous key state. The value is always 1 for a WM_KEYUP message.
 31		The transition state. The value is always 1 for a WM_KEYUP message.
+		
+I should look into testing if setting the repeat count accurately does anything
 */
 
 	pSend(Sequence := "", blind := True)
@@ -271,7 +329,7 @@ Bits	Meaning
 				else if (char = "^")
 					Modifier := "Ctrl"
 				else if (char = "#")
-					Modifier := "LWin"					
+					Modifier := "LWin"	; no common win key				
 				else 
 					Modifier := "Alt"
 
@@ -309,7 +367,7 @@ Bits	Meaning
 					   
 					    if (!numbers.maxindex() || numbers.maxindex() = 1)
 					    {
-					        MouseGetPos, x, y  ; will cause problems if send hex number to insertpClickObject
+					        MouseGetPos, x, y  ; will cause problems if send hex number to insertpClickObject the regex below fixes this
 					        clickCount := numbers.maxindex() ? numbers.1 : 1
 					    }
 					    else if (numbers.maxindex() = 2 || numbers.maxindex() = 3)
@@ -352,9 +410,7 @@ Bits	Meaning
 						{
 							loop, % sendCount ? sendCount*2 : 2
 							{
-								aSend.insert({	  "message": mod(A_index, 2)
-														   ? downMessage 
-														   : upMessage
+								aSend.insert({	  "message": mod(A_index, 2) ? downMessage : upMessage
 												, "sc": GetKeySC(sendKey)
 												, "wParam": GetKeyVK(sendKey)})
 							}
@@ -390,14 +446,13 @@ Bits	Meaning
 
 		for index, message in aSend
 		{
-			
 			if (WM_KEYDOWN = message.message || WM_SYSKEYDOWN = message.message)
 			{
 				 ; repeat code | (scan code << 16)
 				lparam := 1 | (message.sc << 16)
 				postmessage, message.message, message.wParam, lparam, % this.Control, % this.WinTitle, % this.WinText, % this.ExcludeTitle, % this.ExcludeText
 				if (this.pSendPressDuration != -1)
-					DllCall("Sleep", Uint, this.pSendPressDuration)		
+					this.sleep(this.pSendPressDuration)
 			
 			}
 			else if (WM_KEYUP = message.message || WM_SYSKEYUP = message.message)
@@ -406,16 +461,15 @@ Bits	Meaning
 				lparam := 1 | (message.sc << 16) | (1 << 30) | (1 << 31)
 				postmessage, message.message, message.wParam, lparam, % this.Control, % this.WinTitle, % this.WinText, % this.ExcludeTitle, % this.ExcludeText
 				if (this.pCurrentSendDelay != -1)
-					DllCall("Sleep", Uint, this.pCurrentSendDelay)			
+					this.sleep(this.pCurrentSendDelay)		
 			}
 			else ; mouse event
 			{
 				; If mouse move is included it actually moves the mouse for an instant!
 				postmessage, message.message, message.wParam, message.lparam, % this.Control, % this.WinTitle, % this.WinText, % this.ExcludeTitle, % this.ExcludeText
 				if (message.HasKey("delay") && message.delay != -1)
-					DllCall("Sleep", Uint, message.delay)
+					this.sleep(message.delay)
 			}
-
 		}
 		StringCaseSense, %caseMode%
 		return aSend
@@ -433,7 +487,7 @@ Bits	Meaning
 			char := SubStr(Sequence, A_Index, 1)
 			postmessage, WM_CHAR, Asc(char),, % this.Control, % this.WinTitle, % this.WinText, % this.ExcludeTitle, % this.ExcludeText
 			if (this.pCurrentCharDelay != -1)
-				DllCall("Sleep", Uint, this.pCurrentCharDelay)
+				this.sleep(this.pCurrentCharDelay)	
 		}	
 		return	
 	}
@@ -456,6 +510,9 @@ Bits	Meaning
 
 	; pClick(x, y, button := "L", count := 1, keyStates := "", MouseMove := False, ByRef sendObject := "")
 	; ====================================================================================================
+
+	; x, y parameters:
+	;	If one or both of these are omitted then the current cursor position is used.
 
 	; Button parameter:
 	;	Which button to press. This can be l or left, r or right, m or middle, x1, x2 (not xbutton1/xbutton2),
@@ -486,13 +543,13 @@ Bits	Meaning
 	;	in response to a click command.
 
 	; Note: 
-	;	To send a modified click (shift, control, etc) directly using this method, you still need to 
+	;	To send a modified click (shift, control, etc) using this method, you still need to 
 	; 	use pSend (prior to this) to press the modifiers down, and then use pSend afterwards to release the modifiers
 
 
 	
 
-	pClick(x, y, button := "L", count := 1, keyStates := "", MouseMove := False, ByRef sendObject := "")
+	pClick(x := "", y := "", button := "L", count := 1, keyStates := "", MouseMove := False, ByRef sendObject := "")
 	{
 		static	  WM_MOUSEFIRST := 0x200
 				, WM_MOUSEMOVE := 0x200
@@ -516,13 +573,20 @@ Bits	Meaning
 				, MK_MBUTTON := 0x0010
 				, MK_XBUTTON1 := 0x0020
 				, MK_XBUTTON2 := 0x0040
+				, XBUTTON1 := 0x0001
+				, XBUTTON2 := 0x0002
+		
+		caseMode := A_StringCaseSense
+		StringCaseSense, Off 
+		if (x = "" || y = "")
+			MouseGetPos, x, y
 
 		lParam := x & 0xFFFF | (y & 0xFFFF) << 16
 		WParam := 0 ; Needed for the |= to work
 
-		; keyStates are used ensure the WParam sent contains the correct value
+		; keyStates are used to ensure the WParam sent contains the correct value
 		; which reflects these key states. This should reflect the logical keystate
-		; that is the current state the game sees the key the specified keys as.
+		; that is the current state the game sees the specified keys as.
 		; Since I can't check the logical Keystate of these keys (as they have been
 		; manipulated using postmessage (and i cant be fucked writing a function to track them)
 		; you will need to specify them manually). Luckily SC and likely other programs
@@ -547,7 +611,9 @@ Bits	Meaning
 		if instr(keyStates, "l")
 			WParam |= MK_LBUTTON
 		; WParamUp should not contain button which was actually clicked
-		; WParamUp will be used to clear these the clicked bits, and sent with the up event
+		; (The exception to this is the higher order word for xbutons which contains either 0x0001 or 0x0002 on down AND up
+		;  clearing the lower order MK_XBUTTON1/MK_XBUTTON2 on up event still applies)
+		; WParamUp will be used to clear the clicked bits, and then is sent with the up event
 		WParamUp := WParam  
 
 		; In game when physically performing actions, WM_MouseMove occurs after the key release and is not sent for wheelmove 
@@ -556,34 +622,36 @@ Bits	Meaning
 			message := "WM_RBUTTON", WParam |= MK_RBUTTON, WParamUp &= ~MK_RBUTTON
 		else if button contains M 
 			message := "WM_MBUTTON", WParam |= MK_MBUTTON, WParamUp &= ~MK_MBUTTON
-		else if button contains x1 
-			message := "WM_XBUTTON", WParam |= MK_XBUTTON1, WParamUp &= ~MK_XBUTTON1
-		else if button contains x2 
-			message := "WM_XBUTTON", WParam |= MK_XBUTTON2, WParamUp &= ~MK_XBUTTON2
+		else if button contains x1,XButton1 
+			message := "WM_XBUTTON", WParam |= MK_XBUTTON1 | (XBUTTON1 << 16), WParamUp := (WParam & ~MK_XBUTTON1) | (XBUTTON1 << 16)	; WParamUp not &= as have to set the higher order word
+		else if button contains x2,XButton2 																							; unlike the other mouse buttons
+			message := "WM_XBUTTON", WParam |= MK_XBUTTON2 | (XBUTTON2 << 16), WParamUp := (WParam & ~MK_XBUTTON2) | (XBUTTON2 << 16)
 		else if button contains WheelUp,WU,WheelDown,WD  
 		{
+			; A physical WM_MOUSEWHEEL does not invoke a WM_MouseMove
 			if button contains WheelUp,WU
 				direction := 1
 			else direction := -1
-			WParam |= (direction * count * 120)  << 16
+			WParam |= (direction * count * 120) << 16
 			if isObject(sendObject)
 				sendObject.insert({ "message": WM_MOUSEWHEEL, "wParam": WParam, "lParam": lParam, "delay": this.pCurrentClickDelay})			
 			else
 			{
 				PostMessage, %WM_MOUSEWHEEL%, %WParam%, %lParam%, % this.Control, % this.WinTitle, % this.WinText, % this.ExcludeTitle, % this.ExcludeText
 				if (this.pCurrentClickDelay != -1)
-					DllCall("Sleep", Uint, this.pCurrentClickDelay)
-			}			
+					this.sleep(this.pCurrentClickDelay)						
+			}	
+			StringCaseSense, %caseMode%		
 			return	
 		}
 		else message := "WM_LBUTTON", WParam |= MK_LBUTTON, WParamUp &= ~MK_LBUTTON
 		; remove the word button eg Lbutton as the U will cause an UP-event to be sent (in case user entered xbutton1 instead of x1)
-		; or middle instead of m
+		; or middle instead of m (middle contains the letter d)
 		StringReplace, button, button, button, %A_Space%, All
 		StringReplace, button, button, middle, %A_Space%, All
-		if button contains up,U ; up contains u, so its a bit redundant
+		if button contains U 
 			message .= "UP", wParamSingleEvent := WParamUp, delay := this.pCurrentClickDelay
-		else if button contains down,D 
+		else if button contains D 
 		 	message .= "DOWN", wParamSingleEvent := WParam, delay := this.pClickPressDuration
 		else 
 		{
@@ -601,19 +669,20 @@ Bits	Meaning
 				{
 					PostMessage, %mdown%, %WParam%, %lParam%, % this.Control, % this.WinTitle, % this.WinText, % this.ExcludeTitle, % this.ExcludeText
 					if (this.pSendPressDuration != -1)
-						DllCall("Sleep", Uint, this.pSendPressDuration)				
+						this.sleep(this.pSendPressDuration)					
 					PostMessage, %mup%, %WParamUp%, %lParam%, % this.Control, % this.WinTitle, % this.WinText, % this.ExcludeTitle, % this.ExcludeText
 					if MouseMove
 						PostMessage, %WM_MOUSEMOVE%, %WParamUp%, %lParam%, % this.Control, % this.WinTitle, % this.WinText, % this.ExcludeTitle, % this.ExcludeText
 					if (this.pCurrentClickDelay != -1)
-						DllCall("Sleep", Uint, this.pCurrentClickDelay)
+						this.sleep(this.pCurrentClickDelay)	
 				}
 			}	
+			StringCaseSense, %caseMode%
 			return	
 		}
 		; so its a down or up message
 		message := %message%
-		loop % count ; There prbably isn't much point to sending multiple down msgs without an accompanied up, but I will allow it anyway
+		loop % count ; There probably isn't much point to sending multiple down msgs without an accompanied up, but I will allow it anyway
 		{
 			if isObject(sendObject)
 			{
@@ -627,9 +696,10 @@ Bits	Meaning
 				if MouseMove
 						PostMessage, %WM_MOUSEMOVE%, %wParamSingleEvent%, %lParam%, % this.Control, % this.WinTitle, % this.WinText, % this.ExcludeTitle, % this.ExcludeText
 				if (delay != -1)
-					DllCall("Sleep", Uint, delay)
+					this.sleep(delay)
 			}
 		}
+		StringCaseSense, %caseMode%
 		return
 	}
 
@@ -677,5 +747,40 @@ if instr{click xxxx}
             "click eventType"
     }
 }
+
+*/
+
+/*
+AHK key codes
+A2  01D	 	LControl       	     	     	
+A3  11D	 	RControl 
+
+SC will not respond to left or right modifiers, but it does respond to the neutral modifier key
+Here are the message logs. These logs are identical to those produced by controlSend
+
+input.pSend("{Lctrl down}1{lctrl up}")
+; Result: The 1 key is recognised, but it isn't ctrl modified
+<00001> 00811852 P WM_KEYDOWN nVirtKey:VK_LCONTROL cRepeat:1 ScanCode:1D fExtended:0 fAltDown:0 fRepeat:0 fUp:0
+<00002> 00811852 P WM_KEYDOWN nVirtKey:'1' cRepeat:1 ScanCode:02 fExtended:0 fAltDown:0 fRepeat:0 fUp:0
+<00003> 00811852 P WM_KEYUP nVirtKey:'1' cRepeat:1 ScanCode:02 fExtended:0 fAltDown:0 fRepeat:1 fUp:1
+<00004> 00811852 P WM_KEYUP nVirtKey:VK_LCONTROL cRepeat:1 ScanCode:1D fExtended:0 fAltDown:0 fRepeat:1 fUp:1
+<00005> 00811852 P WM_CHAR chCharCode:'0031' (49) cRepeat:1 ScanCode:02 fExtended:0 fAltDown:0 fRepeat:0 fUp:0
+
+input.pSend("{Rctrl down}1{Rctrl up}")
+; Result: The 1 key is recognised, but it isn't ctrl modified
+<00001> 00811852 P WM_KEYDOWN nVirtKey:VK_RCONTROL cRepeat:1 ScanCode:1D fExtended:1 fAltDown:0 fRepeat:0 fUp:0
+<00002> 00811852 P WM_KEYDOWN nVirtKey:'1' cRepeat:1 ScanCode:02 fExtended:0 fAltDown:0 fRepeat:0 fUp:0
+<00003> 00811852 P WM_KEYUP nVirtKey:'1' cRepeat:1 ScanCode:02 fExtended:0 fAltDown:0 fRepeat:1 fUp:1
+<00004> 00811852 P WM_KEYUP nVirtKey:VK_RCONTROL cRepeat:1 ScanCode:1D fExtended:1 fAltDown:0 fRepeat:1 fUp:1
+<00005> 00811852 P WM_CHAR chCharCode:'0031' (49) cRepeat:1 ScanCode:02 fExtended:0 fAltDown:0 fRepeat:0 fUp:0
+
+
+; works as expected.
+input.pSend("{ctrl down}1{ctrl up}")
+<00001> 00811852 P WM_KEYDOWN nVirtKey:VK_CONTROL cRepeat:1 ScanCode:1D fExtended:0 fAltDown:0 fRepeat:0 fUp:0
+<00002> 00811852 P WM_KEYDOWN nVirtKey:'1' cRepeat:1 ScanCode:02 fExtended:0 fAltDown:0 fRepeat:0 fUp:0
+<00003> 00811852 P WM_KEYUP nVirtKey:'1' cRepeat:1 ScanCode:02 fExtended:0 fAltDown:0 fRepeat:1 fUp:1
+<00004> 00811852 P WM_KEYUP nVirtKey:VK_CONTROL cRepeat:1 ScanCode:1D fExtended:0 fAltDown:0 fRepeat:1 fUp:1
+<00005> 00811852 P WM_CHAR chCharCode:'0031' (49) cRepeat:1 ScanCode:02 fExtended:0 fAltDown:0 fRepeat:0 fUp:0
 
 */

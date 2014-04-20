@@ -186,7 +186,7 @@ HotkeyGUI(p_Owner=0,p_Hotkey="",p_Limit="", p_Title="", p_CheckModifers = 0, p_D
     ;-------------
     ;-- Standard keys
     l_StandardKeysList=
-       (ltrim join|
+       (ltrim join| Comments 
         A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z
         0|1|2|3|4|5|6|7|8|9|0
         ``|-|=|[|]|`\|;
@@ -194,7 +194,7 @@ HotkeyGUI(p_Owner=0,p_Hotkey="",p_Limit="", p_Title="", p_CheckModifers = 0, p_D
         Space
         Tab
         Enter
-        Escape
+  ;     Escape  ; I use this with auto worker 
         Backspace
         Delete
         ScrollLock
@@ -258,8 +258,8 @@ HotkeyGUI(p_Owner=0,p_Hotkey="",p_Limit="", p_Title="", p_CheckModifers = 0, p_D
 
     ;-- Mouse
     l_MouseKeysList=
-       (ltrim join|
-        LButton
+       (ltrim join| Comments 
+;       LButton  ; LBUtton disabled as I use this as a pass through hotkey
         RButton
         MButton
         WheelDown
@@ -623,7 +623,7 @@ HotkeyGUI(p_Owner=0,p_Hotkey="",p_Limit="", p_Title="", p_CheckModifers = 0, p_D
                 else  if (l_FirstChar="~")
                     GUIControl %s_GUI%:,HG_NativeOption,1
                 else if (l_FirstChar="*")
-                    GUIControl %s_GUI%:,HG_WildcardOption,1
+                    GUIControl %s_GUI%:,HG_WildcardOption, 1
                 else if (l_FirstChar="<")
                     GUIControl %s_GUI%:,HG_LeftPairOption,1
                 else if (l_FirstChar=">")
