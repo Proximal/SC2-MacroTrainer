@@ -3869,7 +3869,7 @@ try
 		Gui, Font, s10 norm
 		Gui, add, text, xp y+15 w380, This allows you to instantly select any number of (army) unit types with a single hotkey.`n`nIn other words, it is like selecting a predefined control group, but you never have to issue the initial grouping command.`n`nNote:`n`nYou will need to ensure the 'Select Army' hotkey found under 'Misc Automation'->'Select Army' matches your SC2 hotkey. This funtion does not need to be enabled.
 		Gui, Font, s9
-		Gui, add, text, xp y+15 w380, Test 
+	;	Gui, add, text, xp y+15 w380, Test 
 		;Gui, add, text, xp y+15 w380, Test 
 
 
@@ -13244,18 +13244,6 @@ reloadHooks()
 
 
 
-;f1::
-global stest
-thread, NoTimers, True
-;s := stopwatch()
-loop, % count := 500
-;	input.pClick(600, 200, "R")
-;	ControlClick, x600 y200, StarCraft II,, R, 1
-;	ControlSend, , abc123456, StarCraft II
-;	ControlSend, , abcdefg, StarCraft II
- input.psend("abcdefg213123123123123132123123123")
-msgbox % clipboard := stopwatch(stest) / count
-return 
 
 
 

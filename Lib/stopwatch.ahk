@@ -14,7 +14,7 @@
 
 stopwatch(itemId := 0, mode := 1)
 {
-	static F := DllCall("QueryPerformanceFrequency", "Int64P", F) * F , aTicks := [], runID := 0
+	static F := DllCall("QueryPerformanceFrequency", "Int64P", F) * F / 1000, aTicks := [], runID := 0
 
 	if (itemId = 0) ; = 0 so if user accidentally passes an empty or invalid ID-variable function returns -1	
 		return ++runID, DllCall("QueryPerformanceCounter", "Int64P", S), aTicks[runID] := S
@@ -22,23 +22,18 @@ stopwatch(itemId := 0, mode := 1)
 	if aTicks.hasKey(itemId)
 	{
 		DllCall("QueryPerformanceCounter", "Int64P", now)
-		timeElapsed := (now - aTicks[itemId]) / F * 1000
+		timeElapsed := (now - aTicks[itemId]) / F
 
 		if (mode > 0)
 			aTicks.remove(itemId, "")
 		else if (mode < 0)
-			DllCall("QueryPerformanceCounter", "Int64P", S), aTicks[itemId] := S
+			aTicks[itemId] := now
 		return timeElapsed
 	}
 	else ; a blank variable or non-existent ID was passed
 		return -1	
 
 }
-
-
-
-
-
 
 
 
