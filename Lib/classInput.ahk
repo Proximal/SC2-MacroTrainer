@@ -473,7 +473,10 @@ I should look into testing if setting the repeat count accurately does anything
 			}
 			C_Index++
 		}
-
+		static test 
+		if !test
+			stest := stopwatch()
+		
 		for index, message in aSend
 		{
 			if (WM_KEYDOWN = message.message || WM_SYSKEYDOWN = message.message)
@@ -565,7 +568,7 @@ I should look into testing if setting the repeat count accurately does anything
  	
  	; MouseMove parameter:
 	; 	A WM_MOUSEMOVE message may be required in some situations to have the event correctly register. 
-	;	E.g. In SC when the chat box is up and the cursor is not in the viewport (e.g over the control cards)
+	;	E.g. In SC when the chat box is up and the cursor is not in the viewport (e.g over the control cards).
 	; 	If doing a click or box drag near the screen edge (in SC2) - if you send a mouseMove event, the screen will move slightly
 
 	; SendObject parameter:

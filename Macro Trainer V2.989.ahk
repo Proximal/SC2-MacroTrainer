@@ -341,6 +341,7 @@ if (!isInputLanguageEnglish() && !MT_HasWarnedLanguage)
 ;	hence <#Space wont work
 
 CreateHotkeys()			;create them before launching the game in case users want to edit them
+releaseLogicallyStuckKeys(True) ; in case a key is logically stuck and user doesn't use emergency button
 process, exist, %GameExe%
 If !errorlevel
 {
@@ -11361,11 +11362,6 @@ return
     return 
 */
 
-GetAsyncKeyState(key)
-{
-    return 0x8000 & DllCall("GetAsyncKeyState", "UInt", getkeyVk(key), "Short") ? 1 : 0
-}
-
 
 gethotkeySuffix(hotkey, containsPrefix := "", containsWildCard := "")
 {
@@ -13204,15 +13200,26 @@ releaseLogicallyStuckKeys(force := false)
     ; returns and array of unmodified keys
     if !aKeys.maxindex()
         aKeys := getAllKeyboardAndMouseKeys()
+    ; use GetAsyncKeyState. Its slower, but will reveal correct state the OS beleives the key is in
+    ; I've never seen AHk get it wrong (it is possible) but AHK will not know a key is down
+    ; if it starts while the key is already logically down (and its not repeating ie an injected key down)
+    ; this is mainly so the program will correctly clear any stuck keys on startup - before getKeystate/ahk
+    ; correctly knows their state.
     for index, key in aKeys
     {
-    	if (force && getkeystate(key)) || (!force && getkeystate(key) && !getkeystate(key, "P"))
+    	if (force && GetAsyncKeyState(key)) || (!force && GetAsyncKeyState(key) && !getkeystate(key, "P"))
         	s .= "{" key " Up}"   
     }
     if s
         send("{blind}" s)
     return s
 }
+GetAsyncKeyState(key)
+{
+    return 0x8000 & DllCall("GetAsyncKeyState", "UInt", getkeyVk(key), "Short") ? 1 : 0
+}
+
+
 send(sequence)
 {
     if (state := setLowLevelInputHooks(False, True)) ; get the state
@@ -13233,6 +13240,38 @@ reloadHooks()
 	return state
 }
 
+
+
+
+
+;f1::
+global stest
+thread, NoTimers, True
+;s := stopwatch()
+loop, % count := 500
+;	input.pClick(600, 200, "R")
+;	ControlClick, x600 y200, StarCraft II,, R, 1
+;	ControlSend, , abc123456, StarCraft II
+;	ControlSend, , abcdefg, StarCraft II
+ input.psend("abcdefg213123123123123132123123123")
+msgbox % clipboard := stopwatch(stest) / count
+return 
+
+
+
+; 0.005299 - Actual time spent inside postmessage send loop  (input.psend("abcdefg213123123123123132123123123"))
+; 0.688191 - ControlSend, , abcdefg, StarCraft II
+; 0.667340 - ControlSend, , a, StarCraft II
+; 0.105186 - input.psend("a")
+; 0.681377 - input.psend("abcdefg")
+
+
+;755
+; 12
+; 5
+; 204
+; 109ms
+; 698 if NA isnt present
 
 
 
