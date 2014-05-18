@@ -1,5 +1,9 @@
 /*
-	12/4/14
+	18/05/14
+	- 	Fixed issue with get getBaseAddressOfModule() returning the incorrect module 
+		when specified module name formed part of another modules name
+
+
 	RHCP basic memory class:
 
 	This is a basic wrapper for commonly used read and write memory functions.
@@ -282,7 +286,7 @@ class memory
 	; Although handles are 64-bit pointers, only the less significant 32 bits are employed in them for the purpose 
 	; of better compatibility (for example, to enable 32-bit and 64-bit processes interact with each other)
 	; Here are examples of such types: HANDLE, HWND, HMENU, HPALETTE, HBITMAP, etc. 
-
+	; http://www.viva64.com/en/k/0005/
 
 	; The base adress for some programs is dynamic. This can retrieve the current base address of the main module (e.g. SC2.exe), 
 	; which can then be added to your various offsets.	
@@ -368,8 +372,10 @@ class memory
 			DllCall("psapi\GetModuleFileNameEx", "Ptr", this.hProcess, "Uint", numget(lphModule, (A_index - 1) * A_PtrSize)
 					, "Ptr", &lpFilename, "Uint", 2048 / (A_IsUnicode ? 2 : 1))
 
-			; Use Instr() as module will contain directory path as well
-			if (!module && mainExeName = StrGet(&lpFilename) || module && instr(StrGet(&lpFilename), module))
+			; module will contain directory path as well e.g C:\Windows\syswow65\GDI32.dll
+			filename := StrGet(&lpFilename) 
+			SplitPath, filename, fileName ; strips the path so = GDI32.dll
+			if (!module && mainExeName = filename) || (module && module = filename)
 			{
 				VarSetCapacity(MODULEINFO, A_PtrSize = 4 ? 12 : 24)
 				DllCall("psapi\GetModuleInformation", "Ptr", this.hProcess, "UInt", numget(lphModule, (A_index - 1) * A_PtrSize)
