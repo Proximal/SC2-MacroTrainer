@@ -151,7 +151,7 @@ loadMemoryAddresses(base, version := "")
 		versionMatch := "2.1.0.28667"
 		#include %A_ScriptDir%\Included Files\oldOffsets\2.1.0.28667.ahk
 	}
-	else 
+	else ; load most recent in case patch didn't change offsets.
 	{
 		if (version = "2.1.1.29261" || !version) ; !version encase the findVersion function stuffs up and returns 0/blank, thereby just assume match with latest offsets
 			versionMatch := "2.1.1.29261"

@@ -473,9 +473,6 @@ I should look into testing if setting the repeat count accurately does anything
 			}
 			C_Index++
 		}
-		static test 
-		if !test
-			stest := stopwatch()
 		
 		for index, message in aSend
 		{
