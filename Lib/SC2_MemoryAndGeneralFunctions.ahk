@@ -153,9 +153,11 @@ loadMemoryAddresses(base, version := "")
 	}
 	else ; load most recent in case patch didn't change offsets.
 	{
-		if (version = "2.1.1.29261" || !version) ; !version encase the findVersion function stuffs up and returns 0/blank, thereby just assume match with latest offsets
+		; These two versions have matching offsets
+		if (version = "2.1.1.29261") 
 			versionMatch := "2.1.1.29261"
-
+		else if (version = "2.1.2.30315" || !version) ; !version encase the findVersion function stuffs up and returns 0/blank, thereby just assume match with latest offsets
+			versionMatch := "2.1.2.30315"
 		;	[Memory Addresses]
 			B_LocalCharacterNameID := base + 0x04F15C14 ; stored as string Name#123
 			B_LocalPlayerSlot := base + 0x112E5F0 ; note 1byte and has a second 'copy' (ReplayWatchedPlayer) just after +1byte eg LS =16d=10h, hex 1010 (2bytes) & LS =01d = hex 0101
@@ -2989,14 +2991,18 @@ DestroyOverlays()
 	return True ; used by shell to check thread actually ran the function
 }
 
+; 25/05/14 
+; This isn't slow when setting - which I commented about previously 
+
 setDrawingQuality(G)
-{	static lastG
-	if (lastG <> G)		;as setting these each time is slow
-	{	lastG := G
-		Gdip_SetSmoothingMode(G, 4)
-		Gdip_SetCompositingMode(G, 0) ; 0 = blended, 1= overwrite 
-	}
+{	
+	Gdip_SetSmoothingMode(G, 4)
+	Gdip_SetCompositingMode(G, 0) ; 0 = blended, 1= overwrite  ; 0 is default anyway
+	return
 }
+
+
+
 Draw(G,x,y,l=11,h=11,colour=0x880000ff, Mode=0) ;use mode 3 to draw rectangle then fill it
 {	; Set the smoothing mode to antialias = 4 to make shapes appear smother (only used for vector drawing and filling)
 	static pPen, a_pBrushes := []
@@ -3141,13 +3147,12 @@ ConvertListToObject(byref Object, List, Delimiter="|", ClearObject = 0)
 	return
 }
 
-; I believe this is very old, and I fixed the initial problem
-; This is uesed to exit the program without causing the shutdown routine to be called
+; This was used due to problems with thread.terminate() and SAPI/object
+; Also can be used to exit the thread without causing the shutdown routine to be called
 ; twice. Only used in certain situations. e.g. directly closing a thread
-; using the label option causes it to run twice - even when using a timer, or goto/gosub redirect
-exitApp(ExitCode := 0)
+exitApp()
 {
-	ExitApp, %ExitCode%
+	ExitApp
 	return 
 }
 

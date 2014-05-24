@@ -65,7 +65,7 @@ SetWorkingDir %A_ScriptDir%  ; Ensures a consistent starting directory.
 #NoEnv  ; Recommended for performance and compatibility with future AutoHotkey releases.
 #MaxThreads 20 ; don't know if this will affect anything
 SetStoreCapslockMode, off ; needed in case a user bind something to the capslock key in sc2 - other AHK always sends capslock to adjust for case.
-;ListLines(False) 
+ListLines(False) 
 SetControlDelay -1 	; make this global so buttons dont get held down during controlclick
 SetKeyDelay, -1	 	; Incase SendInput reverts to Event - and for controlsend delay
 SetMouseDelay, -1
@@ -1173,10 +1173,6 @@ AutoGroup(byref A_AutoGroup, AGDelay = 0)
 { 	global GameIdentifier, aButtons, AGBufferDelay, AGKeyReleaseDelay, aAGHotkeys
 	static PrevSelectedUnits, SelctedTime
 
-	global testdebug
-	if testdebug
-		ListLines, on
-	
 	; needed to ensure the function running again while it is still running
 	;  as can arrive here from AutoGroupIdle or 
 	Thread, NoTimers, true
@@ -1261,15 +1257,6 @@ AutoGroup(byref A_AutoGroup, AGDelay = 0)
 		Input.revertKeyState()
 		critical, off
 	}
-
-	if testdebug
-	{
-		if !A_IsPaused
-		{
-			ListLines
-			pause
-		}
-	}	
 
 	; someone said that the autogroup would make there camera jump to the building
 	; probably due to slow computer and the program reading the unit hasn't been grouped and so 
@@ -2212,15 +2199,17 @@ ShutdownProcedure:
 	Closed := ReadRawMemory()
 	Closed := ReadMemory_Str()
 	
-	if aThreads.Speech.ahkReady() 
-		aThreads.Speech.ahkLabel.clearSAPI
+	
 	;aThreads.miniMap.ahkLabel.ShutdownProcedure
 
 	; ahkTerminate is causing issues - I've probably done something wrong
 	; so just call the minimap ShutdownProcedure manually (don't really need to do this
 	; anyway) and let the threads close when the this process closes
 	if aThreads.Speech.ahkReady() 	; if exists
+	{
+		aThreads.Speech.ahkLabel.clearSAPI
 		aThreads.Speech.ahkTerminate() 
+	}
 	if aThreads.miniMap.ahkReady() 	
 		aThreads.miniMap.ahkTerminate() 
 	
@@ -2905,7 +2894,8 @@ ini_settings_write:
 	Iniwrite, %drawLocalPlayerArmy%, %config_file%, %section%, drawLocalPlayerArmy
 
 	; convert from 0-100 to 0-255
-	loopList := "overlayIncomeTransparency,overlayMatchTransparency,overlayResourceTransparency,overlayArmyTransparency,overlayHarvesterTransparency,overlayIdleWorkerTransparency,overlayLocalColourTransparency,overlayMinimapTransparency"
+	loopList := "overlayIncomeTransparency,overlayMatchTransparency,overlayResourceTransparency,overlayArmyTransparency,overlayAPMTransparency"
+			.	",overlayHarvesterTransparency,overlayIdleWorkerTransparency,overlayLocalColourTransparency,overlayMinimapTransparency"
 	loop, parse, loopList, `,
 	{
 		if (Tmp_GuiControl = "save" || Tmp_GuiControl = "Apply")
@@ -4332,7 +4322,7 @@ try
 			
 			; transparency is max 255/0xFF
 			Gui, Add, Text, yp+35 xp-20, Opacity:
-				Gui, Add, DropDownList, xp+50 yp-2 vOpacityOverlayIdent w90 gG_SwapOverlayOpacitySliders, Army||Harvester|Idle Worker|Income|Local Colour|Match/Unit|Minimap|Resource
+				Gui, Add, DropDownList, xp+50 yp-2 vOpacityOverlayIdent w90 gG_SwapOverlayOpacitySliders, Army||Harvester|Idle Worker|Income|Local Colour|Match/Unit|Minimap|Resource|APM
 					Gui, Add, Slider, ToolTip  NoTicks w140 xp-50 y+10   vOverlayArmyTransparency, % ceil(overlayArmyTransparency / 2.55) 
 					Gui, Add, Slider, ToolTip  NoTicks w140 xp yp  Hidden vOverlayIncomeTransparency, % ceil(overlayIncomeTransparency / 2.55) 
 					Gui, Add, Slider, ToolTip  NoTicks w140 xp yp  Hidden vOverlayMatchTransparency, % ceil(overlayMatchTransparency / 2.55) 
@@ -4341,6 +4331,7 @@ try
 					Gui, Add, Slider, ToolTip  NoTicks w140 xp yp  Hidden vOverlayIdleWorkerTransparency, % ceil(overlayIdleWorkerTransparency / 2.55) 
 					Gui, Add, Slider, ToolTip  NoTicks w140 xp yp  Hidden vOverlayLocalColourTransparency, % ceil(overlayLocalColourTransparency / 2.55) 
 					Gui, Add, Slider, ToolTip  NoTicks w140 xp yp  Hidden VOverlayMinimapTransparency, % ceil(overlayMinimapTransparency / 2.55) 
+					Gui, Add, Slider, ToolTip  NoTicks w140 xp yp  Hidden VOverlayAPMTransparency, % ceil(overlayAPMTransparency / 2.55) 
 				Gui, Add, Checkbox, xp y+5 vAPMOverlayMode Check3 Checked%APMOverlayMode%, APM overlay mode
 
 			Gui, Add, GroupBox, xs ys+195 w170 h90, Include Self in:		
@@ -4654,6 +4645,7 @@ try
 
 		TempHideMiniMapKey_TT := #TempHideMiniMapKey_TT := "This will disable the minimap overlay for three seconds,`nthereby allowing you to determine if you legitimately have vision of a unit or building."
 		
+		OpacityOverlayIdent_TT := "Select the overlay of interest then use the slider below to alter its transparency."
 
 		loopList := "overlayIncomeTransparency,overlayMatchTransparency,overlayResourceTransparency,overlayArmyTransparency,overlayHarvesterTransparency,overlayIdleWorkerTransparency,overlayLocalColourTransparency,overlayMinimapTransparency"
 		loop, parse, loopList, `,
@@ -4796,6 +4788,7 @@ GuiControl, % "show" instr(selection, "Harvester"), overlayHarvesterTransparency
 GuiControl, % "show" instr(selection, "Idle Worker"), overlayIdleWorkerTransparency
 GuiControl, % "show" instr(selection, "Local Colour"), overlayLocalColourTransparency
 GuiControl, % "show" instr(selection, "Minimap"), overlayMinimapTransparency
+GuiControl, % "show" instr(selection, "APM"), overlayAPMTransparency
 return
 
 
@@ -7753,7 +7746,6 @@ DrawResourcesOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0
 	G := Gdip_GraphicsFromHDC(hdc)
 	DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0)		
 
-
 	; Users have requested that their own local player appear in some overlays
 	; to do this i now iterate the aEnemyAndLocalPlayer rather than the 
 	; aPlayer. Hence this is why i needlessly lookup items like race using aPlayer[slot_number, "Race"] rather than player["Race"]
@@ -7841,7 +7833,7 @@ DrawArmySizeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,
 	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0	
 		
 	DestX := i := 0
-	Options := " cFFFFFFFF r4 Bold s" 17*UserScale					;these cant be static
+	Options := " cFFFFFFFF r4 s" 17*UserScale					;these cant be static
 	If (Redraw = -1)
 	{
 		Try Gui, ArmySizeOverlay: Destroy
@@ -8079,7 +8071,7 @@ DrawLocalPlayerColour(ByRef Redraw, UserScale=1,Drag=0)
 	obm := SelectObject(hdc, hbm)
 	G := Gdip_GraphicsFromHDC(hdc)
 	DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0)	
-	Gdip_SetSmoothingMode(G, 4) ; for some reason its smoother than calling my setDrawingQuality(G) fucntion.......
+	Gdip_SetSmoothingMode(G, 4) 
 	colour := aLocalPlayer["Colour"]
 
 	Radius := 12 * UserScale
@@ -10765,7 +10757,17 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 	obm := SelectObject(hdc, hbm)
 	G := Gdip_GraphicsFromHDC(hdc)
 	DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0)
-	setDrawingQuality(G)	
+	;Gdip_GraphicsClear(G)
+	;setDrawingQuality(G)
+
+	; This seems to make the edge (mainly left and top) of the progress bars fuzzy (AntiAlias)
+	; but it does gives the shaded count boxes a slightly neater (rounded) corner
+	; This is toggled to mode 0 (default) when drawing the progress bars - best of both worlds!
+	; Note: CC and nexus - there number counts seem to mess with the background shaded box colour 
+	; this occurs on all Gdip_SetSmoothingMode values - certain picture background colour
+	
+	Gdip_SetSmoothingMode(G, 4)
+
 	Height := DestY := 0
 	rowMultiplier := (DrawUnitOverlay ? (SplitUnitPanel ? 2 : 1) : 0) + (DrawUnitUpgrades ? 1 : 0)
 	
@@ -10873,10 +10875,12 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 						
 						if (unitPanelDrawStructureProgress && aUnitInfo[unit, "isStructure"]) || (unitPanelDrawUnitProgress && !aUnitInfo[unit, "isStructure"])
 						{
+							Gdip_SetSmoothingMode(G, 0)
 							; floor helps keep a consistent height for the bar - as the y address may be a a float + the float the height can cause inconsistent results 
 							; I.e. one bar might appear slightly taller 
 							Gdip_FillRectangle(G, a_pBrushes.TransparentBlack, DestX + 5 * UserScale *.5, floor(DestY+Height + 5 * UserScale *.5), Width - 10 * UserScale *.5, Height/16)
 							Gdip_FillRectangle(G, a_pBrushes.Green, DestX + 5 * UserScale *.5, floor(DestY+Height + 5 * UserScale *.5), Width*progress - progress * 10 * UserScale *.5, Height/16)
+							Gdip_SetSmoothingMode(G, 4)
 						}
 							aEnemyUnitConstruction[slot_number, priority].remove(unit, "")
 					
@@ -10929,9 +10933,11 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 						
 						if (unitPanelDrawStructureProgress && aUnitInfo[unit, "isStructure"]) || (unitPanelDrawUnitProgress && !aUnitInfo[unit, "isStructure"])
 						{
+							Gdip_SetSmoothingMode(G, 0)
 							;Gdip_FillRectangle(G, a_pBrushes.TransparentBlack, DestX + 5 * UserScale *.5, DestY+Height, Width - 10 * UserScale *.5, Height/15) ; DestY+Height
 							Gdip_FillRectangle(G, a_pBrushes.TransparentBlack, DestX + 5 * UserScale *.5, floor(DestY+Height + 5 * UserScale *.5), Width - 10 * UserScale *.5, Height/16)
 							Gdip_FillRectangle(G, a_pBrushes.Green, DestX + 5 * UserScale *.5, floor(DestY+Height + 5 * UserScale *.5), Width*item.progress - item.progress * 10 * UserScale *.5, Height/16)
+							Gdip_SetSmoothingMode(G, 4)
 						}
 
 						if (!aUnitInfo[unit, "isStructure"] && SplitUnitPanel)
@@ -10977,8 +10983,10 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 					; the progress bar doest start too far to the left of the icon, and doesn't finish too far to the right
 					if unitPanelDrawUpgradeProgress
 					{
+						Gdip_SetSmoothingMode(G, 0)
 						Gdip_FillRectangle(G, a_pBrushes.TransparentBlack, UpgradeX + 5 * UserScale *.5, floor(destUpgradesY+Height), Width - 10 * UserScale *.5, Height/16)
 						Gdip_FillRectangle(G, a_pBrushes.Green, UpgradeX + 5 * UserScale *.5, floor(destUpgradesY+Height), Width*item.progress - item.progress * 10 * UserScale *.5, Height/16)
+						Gdip_SetSmoothingMode(G, 4)
 					}
 
 					if aMiscUnitPanelInfo[slot_number, "ChronoUpgrade", itemName] ; its chronoed
@@ -11013,260 +11021,6 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 }
 
 
-DrawUnitOverlayOld(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
-{
-	GLOBAL aEnemyUnits, aEnemyUnitConstruction, a_pBitmap, aPlayer, aLocalPlayer, aHexColours, GameIdentifier, config_file, UnitOverlayX, UnitOverlayY, MatrixColour 
-		, aUnitInfo, SplitUnitPanel, aEnemyCurrentUpgrades, DrawUnitOverlay, DrawUnitUpgrades, aMiscUnitPanelInfo, aUnitID, overlayMatchTransparency
-	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0
-
-
-	If (Redraw = -1)
-	{
-		Try Gui, UnitOverlay: Destroy
-		overlayCreated := False
-		Redraw := 0
-		Return
-	}	
-	Else if (ReDraw AND WinActive(GameIdentifier))
-	{
-		Try Gui, UnitOverlay: Destroy
-		overlayCreated := False
-		Redraw := 0
-	}
-	If (!overlayCreated)
-	{
-		Gui, UnitOverlay: -Caption Hwndhwnd1 +E0x20 +E0x80000 +LastFound  +ToolWindow +AlwaysOnTop
-		Gui, UnitOverlay: Show, NA X%UnitOverlayX% Y%UnitOverlayY% W400 H400, UnitOverlay
-		OnMessage(0x201, "OverlayMove_LButtonDown")
-		OnMessage(0x20A, "OverlayResize_WM_MOUSEWHEEL")
-		overlayCreated := True
-	}	
-	If (Drag AND !DragPrevious)
-	{	DragPrevious := 1
-		Gui, UnitOverlay: -E0x20
-	}
-	Else if (!Drag AND DragPrevious)
-	{	DragPrevious := 0
-		Gui, UnitOverlay: +E0x20 +LastFound
-		WinGetPos,UnitOverlayX,UnitOverlayY		
-		IniWrite, %UnitOverlayX%, %config_file%, Overlays, UnitOverlayX
-		Iniwrite, %UnitOverlayY%, %config_file%, Overlays, UnitOverlayY		
-	}
-	hbm := CreateDIBSection(A_ScreenWidth, A_ScreenHeight)
-	hdc := CreateCompatibleDC()
-	obm := SelectObject(hdc, hbm)
-	G := Gdip_GraphicsFromHDC(hdc)
-	DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0)
-	setDrawingQuality(G)	
-	Height := DestY := 0
-	rowMultiplier := (DrawUnitOverlay ? (SplitUnitPanel ? 2 : 1) : 0) + (DrawUnitUpgrades ? 1 : 0)
-	
-	for slot_number, priorityObject in aEnemyUnits ; slotnumber = owner and slotnumber is an object
-	{
-		Height += 7*userscale	;easy way to increase different players next line
-		; destY is height of each players first panel row.
-		destUnitSplitY := DestY := rowMultiplier * Height * (A_Index - 1)
-
-		If (PlayerIdentifier = 1 Or PlayerIdentifier = 2 )
-		{	
-			IF (PlayerIdentifier = 2)
-				OptionsName := " Bold cFF" aHexColours[aPlayer[slot_number, "Colour"]] " r4 s" 17*UserScale
-			Else IF (PlayerIdentifier = 1)
-				OptionsName := " Bold cFFFFFFFF r4 s" 17*UserScale		
-			gdip_TextToGraphics(G, getPlayerName(slot_number), "x0" "y"(DestY +12*UserScale)  OptionsName, Font) ;get string size	
-		;	StringSplit, TextSize, TextData, | ;retrieve the length of the string		
-			if !LongestNameSize
-			{
-				LongestNameData :=	gdip_TextToGraphics(G, MT_CurrentGame.HasKey("LongestEnemyName") ? MT_CurrentGame.LongestEnemyName : MT_CurrentGame.LongestEnemyName := getLongestPlayerName(aPlayer)
-														, "x0" "y"(DestY)  " Bold c00FFFFFF r4 s" 17*UserScale	, Font) ; text is invisible ;get string size	
-				StringSplit, LongestNameSize, LongestNameData, | ;retrieve the length of the string
-				LongestNameSize := LongestNameSize3
-			}
-			DestX := LongestNameSize+5*UserScale
-
-		}
-		Else If (PlayerIdentifier = 3)
-		{	
-			pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"RaceFlat"]
-			SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
-			Width *= UserScale *.5, Height *= UserScale *.5	
-			Gdip_DrawImage(G, pBitmap, 12*UserScale, DestY + Height/5, Width, Height, 0, 0, SourceWidth, SourceHeight, MatrixColour[aPlayer[slot_number, "Colour"]])
-			DestX := Width+15*UserScale 
-		}
-		else DestX := 0
-
-		; this moves the destionX to the right to account for the race-icon/name
-		firstColumnX  := destUnitSplitX := DestX
-
-
-		if DrawUnitOverlay
-		{
-			for priority, object in priorityObject
-			{
-				for unit, unitCount in object
-				{
-					if !(pBitmap := a_pBitmap[unit])
-						continue ; as i dont have a picture for that unit - not a real unit?
-					SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
-					Width *= UserScale *.5, Height *= UserScale *.5	
-					
-					; Doing like this as it's a requested feature and im too lazy to change everything to make it simpler
-					if (!aUnitInfo[unit, "isStructure"] && SplitUnitPanel)
-					{
-						prevStructureX := DestX
-						prevStructureY := DestY
-						DestX := destUnitSplitX
-						DestY := destUnitSplitY + Height * 1.1 	; 1.1 so the transparent backgrounds of the count and count underconstruction dont overlap
-					} 
-
-					Gdip_DrawImage(G, pBitmap, DestX, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
-					Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, DestX + .6*Width, DestY + .6*Height, Width/2.5, Height/2.5, 5)
-					if (unitCount >= 10)
-						gdip_TextToGraphics(G, unitCount, "x"(DestX + .5*Width + .18*Width/2) "y"(DestY + .5*Height + .3*Height/2)  " Bold cFFFFFFFF r4 s" 11*UserScale, Font)
-					Else
-						gdip_TextToGraphics(G, unitCount, "x"(DestX + .5*Width + .35*Width/2) "y"(DestY + .5*Height + .3*Height/2)  " Bold cFFFFFFFF r4 s" 11*UserScale, Font)
-
-					; Draws in top Left corner of picture scan count for orbitals or chrono count for protoss structures
-					if ((chronoScanCount := aMiscUnitPanelInfo["chrono", slot_number, unit]) || (unit = aUnitID.OrbitalCommand  && (chronoScanCount := aMiscUnitPanelInfo["Scans", slot_number])))
-					{
-						if (chronoScanCount = 1 && unit != aUnitID.OrbitalCommand)
-							Gdip_FillEllipse(G, a_pBrushes["ScanChrono"], DestX + .2*Width/2, DestY + .15*Height/2, 5*UserScale, 5*UserScale)
-						Else
-						{
-							Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, DestX, DestY, Width/2.5, Height/2.5, 5)
-							if (chronoCount >= 10)
-								gdip_TextToGraphics(G, chronoScanCount, "x"(DestX + .1*Width/2) "y"(DestY + .10*Height/2)  " Bold Italic cFFFF00B3 r4 s" 11*UserScale, Font)
-							else
-								gdip_TextToGraphics(G, chronoScanCount, "x"(DestX + .2*Width/2) "y"(DestY + .10*Height/2) " Bold Italic cFFFF00B3 r4 s" 11*UserScale, Font)
-						}
-					}
-
-					if (unitCount := aEnemyUnitConstruction[slot_number, priority, unit])	; so there are some of this unit being built lets draw the count on top of the completed units
-					{
-						;	Gdip_FillRoundedRectangle(G, a_pBrush[TransparentBlack], DestX, DestY + .6*Height, Width/2.5, Height/2.5, 5)
-							Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, DestX + .6*Width, DestY, Width/2.5, Height/2.5, 5)
-							if (unitCount >= 10)
-								gdip_TextToGraphics(G, unitCount, "x"(DestX + .5*Width + .16*Width/2) "y"(DestY + .10*Height/2)  " Bold Italic cFFFFFFFF r4 s" 11*UserScale, Font)
-							Else
-								gdip_TextToGraphics(G, unitCount, "x"(DestX + .5*Width + .3*Width/2) "y"(DestY + .10*Height/2)  " Bold Italic cFFFFFFFF r4 s" 11*UserScale, Font)
-							aEnemyUnitConstruction[slot_number, priority].remove(unit, "")
-					}
-
-					if (!aUnitInfo[unit, "isStructure"] && SplitUnitPanel)
-					{
-						destUnitSplitX += (Width+5*UserScale)
-						DestX := prevStructureX
-						DestY := prevStructureY
-					}
-					else DestX += (Width+5*UserScale)
-				}
-
-			
-			}
-			 destUnitSplitX := DestX += (Width+5*UserScale) ; constructing units / buildings in construction appear further to the right
-
-			; in case no units in construction
-
-			; I think if the unit panel is split, all of these units should be structures
-			; so I dont have to worry about checking structure or not
-			; wrong! some units like morphing archons are considered underconstruction!
-
-			for ConstructionPriority, priorityConstructionObject in aEnemyUnitConstruction[slot_number]
-			{
-				for unit, unitCount in priorityConstructionObject		;	lets draw the buildings under construction (these are ones which werent already drawn above)
-				{	
-
-					if (unit != "TotalCount" && pBitmap := a_pBitmap[unit])				;	i.e. there are no already completed buildings of same type
-					{
-						SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
-						Width *= UserScale *.5, Height *= UserScale *.5	
-						
-						if (!aUnitInfo[unit, "isStructure"] && SplitUnitPanel)
-						{
-							prevStructureX := DestX
-							prevStructureY := DestY
-							DestX := destUnitSplitX
-							DestY := destUnitSplitY + Height * 1.1 	; 1.1 so the tranparent backgrounds of the count and count underconstruction dont overlap 
-						} 
-
-						Gdip_DrawImage(G, pBitmap, DestX, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
-						Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, DestX + .6*Width, DestY, Width/2.5, Height/2.5, 5)
-						if (unitCount >= 10)
-							gdip_TextToGraphics(G, unitCount, "x"(DestX + .5*Width + .16*Width/2) "y"(DestY + .10*Height/2)  " Bold Italic cFFFFFFFF r4 s" 11*UserScale, Font)
-						Else
-							gdip_TextToGraphics(G, unitCount, "x"(DestX + .5*Width + .3*Width/2) " y"(DestY + .10*Height/2)  " Bold Italic cFFFFFFFF r4 s" 11*UserScale, Font)
-						
-						if (!aUnitInfo[unit, "isStructure"] && SplitUnitPanel)
-						{
-							destUnitSplitX += (Width+5*UserScale)
-							DestX := prevStructureX
-							DestY := prevStructureY
-						}
-						else DestX += (Width+5*UserScale)
-					}
-				}
-			}
-				; This is here to find the longest unit panel (as they will be different size for different players)
-			if (DestX + Width > WindowWidth)
-				WindowWidth := DestX
-			else if (destUnitSplitX + Width > WindowWidth)
-				WindowWidth := destUnitSplitX
-		}
-		if DrawUnitUpgrades
-		{
-			;destUpgradesY := DestY  + Height * 1.1 * (SplitUnitPanel + DrawUnitOverlay) * DrawUnitOverlay
-			destUpgradesY := DestY  + Height * 1.1 * (rowMultiplier - 1)
-			UpgradeX := firstColumnX
-
-			for itemName, item in aEnemyCurrentUpgrades[slot_number]
-			{
-				if (pBitmap := a_pBitmap[itemName])
-				{
-					SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
-					Width *= UserScale *.5, Height *= UserScale *.5	
-					Gdip_DrawImage(G, pBitmap, UpgradeX, destUpgradesY, Width, Height, 0, 0, SourceWidth, SourceHeight)					
-
-					if (item.count > 1) ; This is for nukes - think its the only upgrade which can have a count > 1
-					{
-						Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, UpgradeX + .6*Width, destUpgradesY, Width/2.5, Height/2.5, 5)
-						gdip_TextToGraphics(G, item.count, "x"(UpgradeX + .5*Width + .4*Width/2) "y"(destUpgradesY + .15*Height/2)  " Bold Italic cFFFFFFFF r4 s" 11*UserScale, Font)
-					}
-;					Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, DestX, destUpgradesY+5+Height, Width, Height/10, 3)
-;					Gdip_FillRoundedRectangle(G, a_pBrushes.Green, DestX, destUpgradesY+5+Height, Width*progress, Height/10, progress < 3 ? progress : 3)
-					; all the icons (even unit ones) have an invisible border around them. Hence deduct 10 pixels from the width and and 5 to destX
-					; the progress bar doest start too far to the left of the icon, and doesn't finish too far to the right
-					Gdip_FillRectangle(G, a_pBrushes.TransparentBlack, UpgradeX + 5 * UserScale *.5, destUpgradesY+Height, Width - 10 * UserScale *.5, Height/15)
-					Gdip_FillRectangle(G, a_pBrushes.Green, UpgradeX + 5 * UserScale *.5, destUpgradesY+Height, Width*item.progress - item.progress * 10 * UserScale *.5, Height/15)
-					if aMiscUnitPanelInfo[slot_number, "ChronoUpgrade", itemName] ; its chronoed
-						Gdip_FillEllipse(G, a_pBrushes["ScanChrono"], UpgradeX + .2*Width/2, destUpgradesY + .2*Height/2, ceil(5*UserScale), ceil(5*UserScale)) ; ceil seems to make it rounder/crisper
-					UpgradeX += (Width+5*UserScale)
-				}
-
-			}
-			; This is here to find the longest unit panel (as they will be different size for different players)
-			if (UpgradeX + Width > WindowWidth)
-				WindowWidth := UpgradeX
-		}
-	}
-
-	; 4*height easy way to ensure the last split unit panel or upgrade doesn't get cut off
-	WindowHeight := DestY + 4*Height
-	WindowWidth += width *2 ; because x begins on the left side of where the icon is drawn hence need to add 1 extra icon width to maximum width
-
-	; if width/height is > desktop size, updatelayerd window fails and nothing gets drawn
-	DesktopScreenCoordinates(Xmin, Ymin, Xmax, Ymax)
-	if (WindowWidth > Xmax)
-		WindowWidth := Xmax
-	if (WindowHeight > Ymax)
-		WindowHeight := Ymax
-
-	Gdip_DeleteGraphics(G)
-	UpdateLayeredWindow(hwnd1, hdc,,, WindowWidth, WindowHeight, overlayMatchTransparency)
-	SelectObject(hdc, obm)
-	DeleteObject(hbm)
-	DeleteDC(hdc)
-	Return
-}
 
 ; This is used by the auto worker macro to check if a real one, or a extra/macro one
 getMapInfoMineralsAndGeysers() 
@@ -12979,6 +12733,25 @@ return
 
 launchMiniMapThread()
 {
+	if !aThreads.MiniMap.ahkReady()
+	{
+		if !aThreads.MiniMap
+			aThreads.MiniMap := AhkDllThread("Included Files\ahkH\AutoHotkey.dll")
+		if 0 
+			FileInstall, threadMiniMapFull.ahk, Ignore	
+		if A_IsCompiled
+			miniMapScript := LoadScriptString("threadMiniMapFull.ahk")
+		else 
+			FileRead, miniMapScript, threadMiniMap.ahk			
+		aThreads.MiniMap.ahktextdll(GlobalVarsScript("aThreads", 0, aThreads) miniMapScript)
+	}
+	Return 
+}
+
+/*
+Previous method. (Pretty much identical, just longer)
+launchMiniMapThread()
+{
 
 	if !aThreads.MiniMap.ahkReady()
 	{
@@ -12993,7 +12766,7 @@ launchMiniMapThread()
 		; pObject  & pCriticalSection are passed as cmdline parameter 1 and 2 respectively
 			aThreads.MiniMap.ahktextdll(miniMapScript 
 				, "", pObject := CriticalObject(aThreads,1) " " pCriticalSection := CriticalObject(aThreads,2) )
-				
+
 		}
 		else
 			aThreads.MiniMap.ahkdll("threadMiniMap.ahk"
@@ -13001,6 +12774,13 @@ launchMiniMapThread()
 	}
 	Return 
 }
+
+*/
+
+
+
+
+
 
 gSendBM:
 sleep 500
@@ -13306,12 +13086,11 @@ controlclick,,StarCraft II,,L,,NA
 return 
 */
 
-
-
 ;>!>+f10::
 ;run %comspec% /c ""C:\Users\Matthieu\Desktop\New folder (3)\MsgHookLister\x64\MsgListerApp.exe" /h > "C:\Users\Matthieu\Desktop\New folder (3)\MsgHookLister\x64\hooks.txt"",, Hide 
 ;sleep 1000 
 ;Run, "C:\Users\Matthieu\Desktop\New folder (3)\MsgHookLister\x64\hooks.txt"
 ;return 
+
 
 

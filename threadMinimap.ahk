@@ -14,12 +14,13 @@ SetBatchLines, -1
 ListLines, Off
 OnExit, ShutdownProcedure ; disabled due to crashing main thread during terminate - called manually now
 
-;Cmdline passed script parameters 
-pObject := "1", pObject := %pObject%	
-pCriticalSection := "2", pCriticalSection := %pCriticalSection%
-aThreads := CriticalObject(pObject, pCriticalSection)
+/* ;Cmdline passed script parameters - Old method - now use globalVarsScript
+	pObject := "1", pObject := %pObject%	
+	pCriticalSection := "2", pCriticalSection := %pCriticalSection%
+	aThreads := CriticalObject(pObject, pCriticalSection)
+*/ 
 
-;tspeak("test")
+global aThreads
 
 l_GameType := "1v1,2v2,3v3,4v4,FFA"
 l_Races := "Terran,Protoss,Zerg"
@@ -209,7 +210,9 @@ DrawMiniMap()
 	DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0)	
 	if DrawMiniMap
 	{
-		setDrawingQuality(G)
+		;setDrawingQuality(G)
+		Gdip_SetSmoothingMode(G, 4)
+
 		A_MiniMapUnits := []
 
  		getEnemyUnitsMiniMap(A_MiniMapUnits)
