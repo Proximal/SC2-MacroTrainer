@@ -38,8 +38,7 @@
 ; Example:
 ;		file:Struct_Example.ahk
 ;
-;#Include <sizeof> ;had to comment this out, as it was sizOf wasnt working correctly when called 
-
+#Include <sizeof>
 Class _Struct {
 	; Data Sizes
   static PTR:=A_PtrSize,UPTR:=A_PtrSize,SHORT:=2,USHORT:=2,INT:=4,UINT:=4,__int64:=8,INT64:=8,UINT64:=8,DOUBLE:=8,FLOAT:=4,CHAR:=1,UCHAR:=1,VOID:=A_PtrSize
@@ -245,8 +244,8 @@ Class _Struct {
           _Struct.___InitField(this,_ArrName_,_offset_,_ArrType_,0,0,_ArrType_,_ArrSize_)
           ; update current union size
         If _union_.MaxIndex()
-          _union_size_[_union_.MaxIndex()]:=(_offset_ + _Struct[this["`n" _ArrName_]] - _union_[_union_.MaxIndex()]>_union_size_[_union_.MaxIndex()])
-                                            ?(_offset_ + _Struct[this["`n" _ArrName_]] - _union_[_union_.MaxIndex()]):_union_size_[_union_.MaxIndex()]
+          _union_size_[_union_.MaxIndex()]:=(_offset_ + sizeof(_defobj_?_defobj_:%_ArrType_%) - _union_[_union_.MaxIndex()]>_union_size_[_union_.MaxIndex()])
+                                            ?(_offset_ + sizeof(_defobj_?_defobj_:%_ArrType_%) - _union_[_union_.MaxIndex()]):_union_size_[_union_.MaxIndex()]
         ; if not a union or a union + structure then offset must be moved (when structure offset will be reset below
         If (!_union_.MaxIndex()||_struct_[_struct_.MaxIndex()])
           _offset_+=this[" " _ArrName_]*sizeof(_defobj_?_defobj_:%_ArrType_%) ; move offset

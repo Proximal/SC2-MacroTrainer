@@ -1,5 +1,5 @@
 ﻿#include *i <LV>
-#include <_Struct>
+;~ #include <_Struct>
 
 ObjTree(ByRef obj,Title="ObjTree",Options="+ReadOnly +Resize,GuiShow=w640 h480",ishwnd=-1){
 	; Version 1.0.1.0
@@ -42,8 +42,8 @@ ObjTree(ByRef obj,Title="ObjTree",Options="+ReadOnly +Resize,GuiShow=w640 h480",
 			; following will resolve the item in ToolTip object
 			object:=[TV_Text]
 			While TV_Item:=TV_GetParent(TV_Item){
-				TV_GetText(ToolTipText,TV_Item)
-				object.Insert(ToolTipText)
+				TV_GetText(k,TV_Item)
+				object.Insert(k)
 			}
 
 			; Resolve our item/value in ToolTip object
@@ -161,7 +161,6 @@ ObjTree(ByRef obj,Title="ObjTree",Options="+ReadOnly +Resize,GuiShow=w640 h480",
 	; Apply Gui options and create Gui
 	Gui,%GuiOptions% +LastFound +LabelObjTree__
 	Gui,Add,Button, x0 y0 NoTab Hidden Default gObjTree_ButtonOK,Show/Expand Object
-	GuiControlGet,pos,Pos
 	Gui,Add,TreeView,% "xs w" (size1*0.3) " h" size2 " ys AltSubmit gObjTree_TreeView +0x800 hwndTREEHWND " ReadOnly[G] " vObjTreeTreeView" G
 	Gui,Add,ListView,% "x+1 w" (size1*0.7) " h" (size2*0.5) " ys AltSubmit Checked " ReadOnly[G] " gObjTree_ListView hwndLISTHWND" G " vObjTreeListView" G,[IsObj] Key/Address|Value/Address
 	Gui,Add,Edit,% "y+1 w" (size1*0.7) " h" (size2*0.5) " -wrap +HScroll gObjTree_Edit HWNDEDITHWND " ReadOnly[G]

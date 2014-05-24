@@ -1,10 +1,10 @@
-#include <_MemoryLibrary>
+; #include <_MemoryLibrary>
 AhkDllThread_IsH(){ ; FileGetVersionInfo Written by SKAN modified by HotKeyIt www.autohotkey.com/forum/viewtopic.php?p=233188#233188
  Static HexVal:="msvcrt\s" (A_IsUnicode?"w":"") "printf",AHK,init:=VarSetCapacity(AHK,520) DllCall("GetModuleFileName","PTR",0,"PTR",&AHK,"UInt",520) VarSetCapacity(AHK,-1)
- If ((FSz:=DllCall("Version\GetFileVersionInfoSize","Str",AHK,"UInt",0)) && VarSetCapacity(FVI,FSz,0) && VarSetCapacity(Trans,8*(A_IsUnicode?2:1)))
+ If ((FSz:=DllCall("Version\GetFileVersionInfoSize","Str",AHK,"UInt",0,"CDecl")) && VarSetCapacity(FVI,FSz,0) && VarSetCapacity(Trans,8*(A_IsUnicode?2:1)))
   && DllCall("Version\GetFileVersionInfo","Str",AHK,"Int",0,"UInt",FSz,"PTR",&FVI) 
   && DllCall("Version\VerQueryValue","PTR",&FVI,"Str","\VarFileInfo\Translation","PTR*",Translation,"UInt",0)
-  && DllCall(HexVal,"Str",Trans,"Str","`%08X","UInt",NumGet(Translation+0))
+  && DllCall(HexVal,"Str",Trans,"Str","`%08X","UInt",NumGet(Translation+0),"CDecl")
   && DllCall("Version\VerQueryValue","PTR",&FVI,"Str","\StringFileInfo\" SubStr(Trans,-3) SubStr(Trans,1,4) "\InternalName","PTR*",InfoPtr,"UInt",0)
     Return StrGet(InfoPtr+0,DllCall("lstrlen" (A_IsUnicode?"W":"A"),"PTR",InfoPtr)) = "AutoHotkey_H"
 				|| StrGet(InfoPtr+0,DllCall("lstrlen" (A_IsUnicode?"W":"A"),"PTR",InfoPtr)) = " "
@@ -16,11 +16,11 @@ AhkDllThread(dll="AutoHotkey.dll",obj=0){
   static base:={__Delete:"AhkDllThread"}
   static functions :="
 (Join
-ahkFunction:s=sssssssssss|ahkPostFunction:i=sssssssssss|
-ahkdll:ut=sss|ahktextdll:ut=sss|ahkReady:|ahkReload:i|
-ahkTerminate:i|addFile:ut=sucuc|addScript:ut=si|ahkExec:ui=s|
-ahkassign:ui=ss|ahkExecuteLine:ut=utuiui|ahkFindFunc:ut=s|
-ahkFindLabel:ut=s|ahkgetvar:s=sui|ahkLabel:ui=sui|ahkPause:s|ahkIsUnicode:
+ahkFunction:s==sssssssssss|ahkPostFunction:i==sssssssssss|
+ahkdll:ut==sss|ahktextdll:ut==sss|ahkReady:|ahkReload:i|
+ahkTerminate:i|addFile:ut==sucuc|addScript:ut==si|ahkExec:ui==s|
+ahkassign:ui==ss|ahkExecuteLine:ut=utuiui|ahkFindFunc:ut==s|
+ahkFindLabel:ut==s|ahkgetvar:s==sui|ahkLabel:ui==sui|ahkPause:i=s|ahkIsUnicode:
 )"
   static AhkDllThreadfunc :="
 (Join`r`n
@@ -30,11 +30,11 @@ SetBatchLines,-1
 #NoTrayIcon
 Return
 AhkDllThreadDLL(dll=""AutoHotkey.dll"",obj=0){
-  static functions := ""ahkFunction:s=sssssssssss|ahkPostFunction:i=sssssssssss|""
-              . ""ahkdll:ut=sss|ahktextdll:ut=sss|ahkReady:|ahkReload:i|""
-              . ""ahkTerminate:i|addFile:ut=sucuc|addScript:ut=si|ahkExec:ui=s|""
-              . ""ahkassign:ui=ss|ahkExecuteLine:ut=utuiui|ahkFindFunc:ui=s|""
-              . ""ahkFindLabel:ui=s|ahkgetvar:s=sui|ahkLabel:ui=sui|ahkPause:s""
+  static functions := ""ahkFunction:s==sssssssssss|ahkPostFunction:i==sssssssssss|""
+              . ""ahkdll:ut==sss|ahktextdll:ut==sss|ahkReady:|ahkReload:i|""
+              . ""ahkTerminate:i|addFile:ut==sucuc|addScript:ut==si|ahkExec:ui==s|""
+              . ""ahkassign:ui==ss|ahkExecuteLine:ut=utuiui|ahkFindFunc:ui==s|""
+              . ""ahkFindLabel:ui==s|ahkgetvar:s==sui|ahkLabel:ui==sui|ahkPause:i=s""
   static object
   If (dll=""0""){
     object:=""""
@@ -68,7 +68,7 @@ AhkDllThreadDLL(dll=""AutoHotkey.dll"",obj=0){
       If (ahkfunction || (DllCall(init,"Str",AhkDllThreadfunc "`n" LibScript,"Str","","Str","","Cdecl UInt") && (ahkfunction:=hLib.GetProcAddress("ahkFunction")) && (ahkExec:=hLib.GetProcAddress("ahkExec")))){
         return Object(0+DllCall(ahkfunction,"Str","AhkDllThreadDLL","Str",dll,"Str",A_IsCompiled?dllptr:"","Str","","Str","","Str","","Str","","Str","","Str","","Str","","Str","","CDecl Str"))
         ;reset internal return memory in autoHotkey.dll and release object
-        ,DllCall(ahkfunction,"Str","AhkDllThreadDLL","Str","0","Str","","Str","","Str","","Str","","Str","","Str","","Str","","Str","","Str","","CDecl Str")
+        ,DllCall(ahkfunction,"Str","AhkDllThreadDLL","Str","0","PTR",0,"PTR",0,"PTR",0,"PTR",0,"PTR",0,"PTR",0,"PTR",0,"PTR",0,"PTR",0,"CDecl Str")
       } else {
         MsgBox Could not load script in %dll%
         Return 0

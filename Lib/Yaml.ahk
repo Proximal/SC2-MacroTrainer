@@ -181,7 +181,7 @@
       If !LVL%_LVL%[""].MaxIndex()
         LVL%_LVL%.Remove("")
     } else if (_KEY!=""){
-      If (__SEQ) {
+      If (__SEQ && _LVL>__LVL) {
         If (OBJ:=LVL%_PRV%[""].MaxIndex())&&IsObject(LVL%_PRV%["",OBJ]){
           If !Yaml_SeqMap(LVL%_PRV%["",OBJ],_KEY,_VAL)
             LVL%_PRV%["",OBJ,_KEY]:=(_VAL!=""||IsVal)?_VAL:(LVL%_NXT%:=Object("base",base))

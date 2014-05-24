@@ -460,7 +460,7 @@ Class _MemoryLibrary {
   }
 
   BuildImportTable(){
-    result := 1,VarSetCapacity(lpCookie,A_PtrSize),cdbs := this.MM.cdbs[""]
+    result := 1,VarSetCapacity(lpCookie,A_PtrSize,00),cdbs := this.MM.cdbs[""]
     ,directory := this.MM.hdrs.OptionalHeader.DataDirectory[ 1 + IMAGE_DIRECTORY_ENTRY_IMPORT:=1] ; +1 because _Struct is 1 based
     ,resource := this.MM.hdrs.OptionalHeader.DataDirectory[ 1 + IMAGE_DIRECTORY_ENTRY_RESOURCE:=2] ; +1 because _Struct is 1 based
     if (directory.Size > 0) 
@@ -474,7 +474,6 @@ Class _MemoryLibrary {
         ,resDirEntry := new _Struct(this.IMAGE_RESOURCE_DIRECTORY_ENTRY,resDir[""] + sizeof(this.IMAGE_RESOURCE_DIRECTORY))
         ,resDirEntryTemp := new _Struct(this.IMAGE_RESOURCE_DIRECTORY_ENTRY)
         ,resDataEntry := new _Struct(this.IMAGE_RESOURCE_DATA_ENTRY)
-        ,thunkData:=new _Struct(this.IMAGE_IMPORT_BY_NAME)
         ,actctx :=new _Struct(this._ACTCTX) ; ACTCTX Structure
         ,actctx.cbSize :=  sizeof(actctx)
         ; Path to temp directory + our temporary file name
@@ -517,6 +516,7 @@ Class _MemoryLibrary {
           i++
         }
       }
+      thunkData:=new _Struct(this.IMAGE_IMPORT_BY_NAME)
       While (!DllCall("IsBadReadPtr","PTR",importDesc[""], "PTR", sizeof(this.IMAGE_IMPORT_DESCRIPTOR)) && importDesc.Name){
         if (!(handle := DllCall("LoadLibraryA","PTR",(cdbs + importDesc.Name),"PTR")) && !result := 0)
             break

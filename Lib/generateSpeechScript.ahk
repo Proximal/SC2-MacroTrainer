@@ -23,7 +23,12 @@ generateSpeechScript()
     script = 
     ( Comments 
         #Persistent
+        #NoEnv
         global SAPI := ComObjCreate("SAPI.SpVoice")
+        return
+        clearSAPI:
+        SAPI := []
+        return
         setAHKVol(AHKVol)
         {
             if A_OSVersion NOT in WIN_XP,WIN_2003,WIN_2000         ; below vista this sets system volume rather than

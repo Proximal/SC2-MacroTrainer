@@ -118,7 +118,7 @@ TT(options="",text="",title=""){
   T.SETMAXTIPWIDTH(MAXWIDTH?MAXWIDTH:A_ScreenWidth)
   If !(AUTOPOP INITIAL RESHOW)
     T.SETDELAYTIME()
-  else T.SETDELAYTIME(AUTOPOP?AUTOPOP*1000:-1),T.SETDELAYTIME(INITIAL?INITIAL*1000:-1),T.SETDELAYTIME(RESHOW?RESHOW*1000:-1)
+  else T.SETDELAYTIME(2,AUTOPOP?AUTOPOP*1000:-1),T.SETDELAYTIME(3,INITIAL?INITIAL*1000:-1),T.SETDELAYTIME(1,RESHOW?RESHOW*1000:-1)
   T.fulltext:=text,T.maintext:=RegExReplace(text,"<a\K[^<]*?>",">")
   If ((T.OnClick:=OnClick)||(T.OnClose:=OnClose)||(T.OnShow:=OnShow)),T.OnClose:=OnClose,T.OnShow:=OnShow,T.ClickHide:=ClickHide
     OnMessage(0x4e,"TT_OnMessage")

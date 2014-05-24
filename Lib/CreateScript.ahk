@@ -1,4 +1,4 @@
- CreateScript(script){
+CreateScript(script){
   static mScript
   StringReplace,script,script,`n,`r`n,A
   StringReplace,script,script,`r`r,`r,A

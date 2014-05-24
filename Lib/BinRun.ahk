@@ -377,7 +377,7 @@ Class _BinRun {
                                     Return DllCall("CloseHandle","PTR",__PIPE_),0
                                     DllCall("CloseHandle","PTR",__PIPE_)
                                   }
-                                  return pi.hProcess
+                                  return pi.dwProcessId
                                 }
                             }
                         }

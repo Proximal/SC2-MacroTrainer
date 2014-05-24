@@ -9,15 +9,17 @@
 #persistent
 #NoEnv  ; think this is default with AHK_H
 #NoTrayIcon
+SetWorkingDir %A_ScriptDir%
 SetBatchLines, -1
-ListLines(False) 
-OnExit, ShutdownProcedure
+ListLines, Off
+OnExit, ShutdownProcedure ; disabled due to crashing main thread during terminate - called manually now
 
 ;Cmdline passed script parameters 
 pObject := "1", pObject := %pObject%	
 pCriticalSection := "2", pCriticalSection := %pCriticalSection%
 aThreads := CriticalObject(pObject, pCriticalSection)
 
+;tspeak("test")
 
 l_GameType := "1v1,2v2,3v3,4v4,FFA"
 l_Races := "Terran,Protoss,Zerg"
@@ -29,7 +31,7 @@ GameExe := "SC2.exe"
 
 #Include <Gdip> ;In the library folder
 #Include <SC2_MemoryAndGeneralFunctions> ;In the library folder
-pToken := Gdip_Startup()
+; pToken := Gdip_Startup() ; DO NOT get a new token. Not needed and causes crash on exit when calling gdipShutdown()
 Global aUnitID, aUnitName, aUnitSubGroupAlias, aUnitTargetFilter, aHexColours, MatrixColour
 	, aUnitModel,  aPlayer, aLocalPlayer, minimap
 	, a_pBrushes := [], a_pPens := [], a_pBitmap
@@ -45,8 +47,10 @@ a_pPens := initialisePenColours(aHexColours)
 CreatepBitmaps(a_pBitmap, aUnitID)
 aUnitInfo := []
 readConfigFile(), hasReadConfig := True
-
-settimer, timer_exit, 15000, -100 ; Just as a backup if the thread gets orphaned
+; Just as a backup if the thread gets orphaned
+; This is now disabled. I'm not sure if the thread can event get orphaned.....
+; But more importantly, if this thread closes, then the main thread tries to exit - it will hang!
+;settimer, timer_exit, 15000, -100 
 aChangeling := { 	aUnitID["ChangelingZealot"]: True
 				 ,	aUnitID["ChangelingMarineShield"]: True 
 				 ,	aUnitID["ChangelingMarine"]: True 
@@ -161,11 +165,13 @@ timer_Exit:
 }
 return
 
+; This is now called from the main thread to avoid crashing
 ShutdownProcedure:
 	Closed := ReadMemory()
 	Closed := ReadRawMemory()
 	Closed := ReadMemory_Str()
-	Gdip_Shutdown(pToken)
+	; if pToken
+	; 	Gdip_Shutdown(pToken) ; DO NOT call this here - only one thread needs to call it. Called from main thread on exit 
 	ExitApp
 Return
 

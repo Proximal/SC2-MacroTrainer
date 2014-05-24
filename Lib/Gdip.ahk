@@ -2314,7 +2314,8 @@ Gdip_SetCompositingMode(pGraphics, CompositingMode=0)
 ;#####################################################################################
 ; Extra functions
 ;#####################################################################################
-
+; If Gdip_Startup is called in one thread other threads don't need to call it
+; and threads still have access to the loaded library so same performance.
 Gdip_Startup()
 {
 	Ptr := A_PtrSize ? "UPtr" : "UInt"
@@ -2325,6 +2326,7 @@ Gdip_Startup()
 	DllCall("gdiplus\GdiplusStartup", A_PtrSize ? "UPtr*" : "uint*", pToken, Ptr, &si, Ptr, 0)
 	return pToken
 }
+; only call shutdown from one thread otherwise get crash/error
 
 Gdip_Shutdown(pToken)
 {

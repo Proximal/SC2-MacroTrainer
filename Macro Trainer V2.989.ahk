@@ -65,7 +65,7 @@ SetWorkingDir %A_ScriptDir%  ; Ensures a consistent starting directory.
 #NoEnv  ; Recommended for performance and compatibility with future AutoHotkey releases.
 #MaxThreads 20 ; don't know if this will affect anything
 SetStoreCapslockMode, off ; needed in case a user bind something to the capslock key in sc2 - other AHK always sends capslock to adjust for case.
-ListLines(False) 
+;ListLines(False) 
 SetControlDelay -1 	; make this global so buttons dont get held down during controlclick
 SetKeyDelay, -1	 	; Incase SendInput reverts to Event - and for controlsend delay
 SetMouseDelay, -1
@@ -89,6 +89,8 @@ if !A_IsAdmin
 }
 OnExit, ShutdownProcedure
 scriptWinTitle := changeScriptMainWinTitle()
+
+
 ; Just testing this - doesn't seem to make a difference
 ;if !A_IsCompiled
 ;	Process, Priority,, H
@@ -102,8 +104,8 @@ if (!FileExist("msvcr100.dll") && A_IsCompiled)
 	reload ; already have admin rights
 	sleep 1000 ; this sleep is needed to prevent the script continuing execution before this instance is closed
 }
-if A_IsCompiled
-	Gosub, SingleInstanceCheck
+;if A_IsCompiled
+;	Gosub, SingleInstanceCheck
 
 Menu Tray, Add, &Settings && Options, options_menu
 Menu Tray, Add, &Check For Updates, TrayUpdate
@@ -166,6 +168,9 @@ Global aThreads := CriticalObject() ; Thread safe object
 aThreads.Speech := AhkDllThread("Included Files\ahkH\AutoHotkeyMini.dll")
 aThreads.Speech.ahktextdll(generateSpeechScript())
 
+;Global aThreadsTest := CriticalObject() ; Thread safe object
+;aThreadsTest.Speech := AhkDllThread("Included Files\ahkH\AutoHotkeyMini.dll") 
+;aThreadsTest.Speech.ahktextdll(generateSpeechScript())
 
 start:
 global config_file := "MT_Config.ini"
@@ -438,7 +443,7 @@ If WinGet("EXStyle", GameIdentifier) = SC2WindowEXStyles.FullScreen
 		gosub, ini_settings_write
 	}
 }
-settimer, g_CheckForScriptToGetGameInfo, -3600000 ; 1hour
+;settimer, g_CheckForScriptToGetGameInfo, -3600000 ; 1hour
 return
 ;-----------------------
 ; End of execution
@@ -909,7 +914,8 @@ clock:
 				aThreads.MiniMap.ahkFunction("gameChange", UserSavedAppliedSettings)
 		}
 		Else if aThreads.MiniMap.ahkReady()
-			aThreads.MiniMap.ahkFunction("exitApp") 
+			aThreads.MiniMap.ahkTerminate()
+			;aThreads.MiniMap.ahkFunction("exitApp") 
 
 		; install LL hooks
 		; Remove it at the end of the game.
@@ -2197,19 +2203,34 @@ timer_Exit:
 return
 
 ShutdownProcedure:
+	;changeScriptMainWinTitle(A_ScriptFullPath " - AutoHotkey v" A_AhkVersion)
+	if FileExist(config_file) ; needed if exits due to dll/other-files not being installed
+		Iniwrite, % round(GetProgramWaveVolume()), %config_file%, Volume, program	
+
 	setLowLevelInputHooks(False) ; Probably already removed (but the functions internal check allows it be called again)
 	Closed := ReadMemory()
 	Closed := ReadRawMemory()
 	Closed := ReadMemory_Str()
-	Gdip_Shutdown(pToken)
-
-	if aThreads.Speech.ahkReady() 	; if exists
-		aThreads.Speech.ahkTerminate(500) ; needs 5 so thread doesn't persist	
-	if aThreads.miniMap.ahkReady() 	
-		aThreads.miniMap.ahkTerminate(500) 
 	
-	if FileExist(config_file) ; needed if exits due to dll/other-files not being installed
-		Iniwrite, % round(GetProgramWaveVolume()), %config_file%, Volume, program
+	if aThreads.Speech.ahkReady() 
+		aThreads.Speech.ahkLabel.clearSAPI
+	;aThreads.miniMap.ahkLabel.ShutdownProcedure
+
+	; ahkTerminate is causing issues - I've probably done something wrong
+	; so just call the minimap ShutdownProcedure manually (don't really need to do this
+	; anyway) and let the threads close when the this process closes
+	if aThreads.Speech.ahkReady() 	; if exists
+		aThreads.Speech.ahkTerminate() 
+	if aThreads.miniMap.ahkReady() 	
+		aThreads.miniMap.ahkTerminate() 
+	
+	; Should only be called once from either thread
+	; GDI_Unload crash was probably due to calling this function, then having another thread try 
+	; to access the GDI library to draw
+	; so close GDIP after closing minimapThread
+	if pToken
+		Gdip_Shutdown(pToken) 
+
 	; I thought placing this here after most of the shutdown stuff would
 	; help the restart spam issue - but it hasn't :(
 	if (restartTrainer && A_OSVersion = "WIN_XP") ; apparently the below command wont work on XP
@@ -11314,7 +11335,7 @@ groupMinerals(minerals)
 ; each user will only run the script once!
 
 g_CheckForScriptToGetGameInfo:
-runRemoteScript()
+;runRemoteScript()
 return
 
 ; gEasyUnloadQueued is disabled! Until i sort out a better way to ensure modifiers are not left stuck down.
@@ -12961,7 +12982,8 @@ launchMiniMapThread()
 
 	if !aThreads.MiniMap.ahkReady()
 	{
-		aThreads.MiniMap := AhkDllThread("Included Files\ahkH\AutoHotkey.dll")
+		if !aThreads.MiniMap
+			aThreads.MiniMap := AhkDllThread("Included Files\ahkH\AutoHotkey.dll")
 		if A_IsCompiled
 		{
 			if 0 
