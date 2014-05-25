@@ -122,34 +122,9 @@ Else
 	debug := True
 	debug_name := "Kalamity"
 	hotkey, ^+!F12, g_GiveLocalPlayerResources
-	hotkey, >!F12, g_testKeydowns
+	hotkey, >!F12, g_testKeydowns ; Just for testing will remove soon
 }
 Menu, Tray, Icon,,, 1 ; freeze the icon
-
-; Just for testing will remove soon
-g_testKeydowns:
-if (A_ThisLabel = "g_testKeydowns")
-{
-
-	ListLines, on
-	t1 := MT_InputIdleTime()
-	sleep 2000
-	str :=  "`n`n|" t1 " | " MT_InputIdleTime()
-			. "`n`nLogical: " checkAllKeyStates(True, False) 
-			. "`n`nPhysical: " checkAllKeyStates(False, True) 
-			. "`n`n" debugSCKeyState() 
-	critical, 1000
-	releasedKeys := input.pReleaseKeys(True)
-	;input.RevertKeyState()
-	critical, off
-	objtree(aAGHotkeys)
-	msgbox % "Released keys: " releasedKeys . str
-	return
-	sleep 2000
-	testdebug := True
-	return 
-}
-
 
 
 RegRead, wHookTimout, HKEY_CURRENT_USER, Control Panel\Desktop, LowLevelHooksTimeout
@@ -190,7 +165,7 @@ MT_CurrentInstance := [] ; Used to store random info about the current run
 program := []
 program.info := {"IsUpdating": 0} ; program.Info.IsUpdating := 0 ;has to stay here as first instance of creating infor object
 
-ProgramVersion := 2.989
+ProgramVersion := 2.990
 
 l_GameType := "1v1,2v2,3v3,4v4,FFA"
 l_Races := "Terran,Protoss,Zerg"
@@ -250,10 +225,9 @@ InstallSC2Files()
 #Include <classInput>
 #Include <setLowLevelInputHooks> ;In the library folder
 #include %A_ScriptDir%\Included Files\Colour Selector.ahk
-#include %A_ScriptDir%\Included Files\Class_BufferInputFast.AHk
+#include %A_ScriptDir%\Included Files\Class_BufferInputFast.AHk ; not used anymore 
 #include %A_ScriptDir%\Included Files\Class_ChangeButtonNames.AHk
 ;#Include <xml> ; in the local lib folder
-
 
 CreatepBitmaps(a_pBitmap, aUnitID)
 aUnitInfo := []
@@ -434,7 +408,7 @@ g_EmergencyRestart:
 		; or if user is holding down a logically stuck key which is also a hotkey, as the OS won't see the key release - and this
 		; function won't release it either.
 		releaseLogicallyStuckKeys(True) 		
-		settimer, EmergencyInputCountReset, 5000, -100	
+		settimer, EmergencyInputCountReset, -5000
 		EmergencyInputCount++		 
 		If (EmergencyInputCount = 1)
 			CreateHotkeys()
@@ -477,7 +451,6 @@ ExitApp	;does the shutdown procedure.
 return 
 
 EmergencyInputCountReset:
-	settimer, EmergencyInputCountReset, off
 	EmergencyInputCount := 0
 	Return
 
@@ -2281,12 +2254,12 @@ TrayUpdate:
 		if (A_ThisLabel = "autoUpdateFound")
 		{
 			Gui, Add, Button, x+-100 y+20 w100 h30 gLaunch vCancel_Auto_Update, &Cancel
-			Gui, Add, Button, x+-250 yp w100 h30 gLaunch vDisable_Auto_Update, &Disable
+			Gui, Add, Button, x+-225 yp w100 h30 gLaunch vDisable_Auto_Update, &Disable
 		}
 		else 
 			Gui, Add, Button, x+-100 y+20 w100 h30 gGuiReturn, &Cancel
 		Gui, Font, Bold
-		Gui, Add, Button, Default x+-250 yp w100 h30 gUpdate, &Update
+		Gui, Add, Button, Default x+-225 yp w100 h30 gUpdate, &Update
 		Gui, Font, Norm
 		
 		Gui, Show,, Macro Trainer Update
@@ -5425,15 +5398,15 @@ ResourHackIcons(A_Temp "\Starcraft-2.ico") ;this function quits and reloads the 
 return
 
 Test_VOL:
-	original_programVolume := programVolume
+	;original_programVolume := programVolume
 	GuiControlGet, TmpSpeechVol,, speech_volume
 	TmpSpeechVol := Round(TmpSpeechVol, 0)
 	GuiControlGet, TmpTotalVolume,, programVolume
-	programVolume := Round(TmpTotalVolume, 0)
+	TmpTotalVolume := Round(TmpTotalVolume, 0)
 
 	If ( A_GuiControl = "Test_VOL_All")
 	{
-		SetProgramWaveVolume(programVolume)
+		SetProgramWaveVolume(TmpTotalVolume)
 		loop, 2
 		{
 			SoundPlay, %A_Temp%\Windows Ding.wav  ;SoundPlay *-1
@@ -5441,51 +5414,125 @@ Test_VOL:
 		}
 	}	
 	;Random, Rand_joke, 1, 8
+
+
+	; The easy approach would be to use ahkFunction so AHK runs the function and waits for it to return
+	; Make SAPI speak synchronously using the false param so that the code execution is halted
+	; and the program volume isn't changed before the speech is finished.
+	; **********
+	; But due to com/AHK_H bug ahkFunction will give an unknown comError
+	; So I can't use this method
+
+	; SAPI offers some methods to like wait until done, but since using postFunction this will
+	; not halt the execution of code in this thread. 
+	; Could create a thread global sapi object and call it directly from here using this method or synch mode
+	; But I'm just gonna be lazy and create a tempory sapi object in this script/thread
+
 	Rand_joke++
 	If ( Rand_joke = 1 )
-		tSpeak("Protoss is OPee", TmpSpeechVol)
+		sapiMenuVolumeTester("Protoss is OPee")
 	Else If ( Rand_joke = 2 )
-		tSpeak("A templar comes back to base with a terrified look on his face. The zealots asks - what happened? You look like you've seen a ghost", TmpSpeechVol)
+		sapiMenuVolumeTester("A templar comes back to base with a terrified look on his face. The zealots asks - what happened? You look like you've seen a ghost")
 	Else If ( Rand_joke = 3 )
 	{
 
-		tSpeak("A Three Three Protoss army walks into a bar and asks", TmpSpeechVol)
-		sleep 50
-		tSpeak("Where is the counter?", TmpSpeechVol)
+		sapiMenuVolumeTester("A Three Three Protoss army walks into a bar and asks")
+		sleep 100
+		sapiMenuVolumeTester("Where is the counter?")
 	}
 	Else If ( Rand_joke = 4 )
 	{
-		tSpeak("What computer does IdrA use?", TmpSpeechVol)
-		sleep 1000
-		tSpeak("An EYE BM", TmpSpeechVol)
+		sapiMenuVolumeTester("What computer does IdrA use?")
+		sleep 500
+		sapiMenuVolumeTester("An EYE BM")
 	}
 	Else If ( Rand_joke = 5 )
 	{
-		tSpeak("Why did the Cullosus fall over ?", TmpSpeechVol)
-		sleep 1000
-		tSpeak("because it was imbalanced", TmpSpeechVol)
+		sapiMenuVolumeTester("Why did the Cullosus fall over ?")
+		sleep 500
+		sapiMenuVolumeTester("because it was imbalanced")
 	}
 	Else If ( Rand_joke = 6 )
 	{
-		tSpeak("How many Zealots does it take to change a lightbulb?", TmpSpeechVol)
-		sleep 1000
-		tSpeak("None, as they cannot hold", TmpSpeechVol)	
+		sapiMenuVolumeTester("How many Zealots does it take to change a lightbulb?")
+		sleep 500
+		sapiMenuVolumeTester("None, as they cannot hold")	
 	}
 	Else If ( Rand_joke = 7 )
 	{
-		tSpeak("How many Infestors does it take to change a lightbulb?", TmpSpeechVol)
-		sleep 1000
-		tSpeak("One, you just have to make sure he doesn't over-power it", TmpSpeechVol)	
+		sapiMenuVolumeTester("How many Infestors does it take to change a lightbulb?")
+		sleep 500
+		sapiMenuVolumeTester("One, you just have to make sure he doesn't over-power it")	
 	}
 	Else
 	{
-		tSpeak("How many members of the Starcraft 2 balance team does it take to change a lightbulb?", TmpSpeechVol)
-		sleep 1000
-		tSpeak("All three of them, and Ten patches", TmpSpeechVol)	
+		sapiMenuVolumeTester("How many members of the Starcraft 2 balance team does it take to change a lightbulb?")
+		sleep 500
+		sapiMenuVolumeTester("All three of them, and Ten patches")	
 		rand_joke := 0
 	}
-	SetProgramWaveVolume(programVolume := original_programVolume)
+	SetProgramWaveVolume(programVolume)
 return
+
+; This function is only used by the volume tester in the options menu.
+; It uses asynchronous mode and WaitUntilDone()+sleep to allow the to mouse move
+; and the gui/program to respond to input. 
+; It also checks and alters the script/SAPI volume during the test if the slider is moved
+; The function won't return until the messages has been fully spoken
+
+sapiMenuVolumeTester(message)
+{
+	GuiControlGet, prevSpeechVol,, speech_volume
+	prevSpeechVol := Round(prevSpeechVol, 0)
+	GuiControlGet, prevTotalVol,, programVolume
+	prevTotalVol := Round(prevTotalVol, 0)	
+	; The sliders for these controls limit value between 0 - 100. Don't think rounder is necessary either
+	try 
+	{
+		SAPI := ComObjCreate("SAPI.SpVoice")
+		SAPI.volume := prevSpeechVol
+		; asynchronous so doesn't freeze this script - i.e. cant move the mouse etc
+		SAPI.Speak(message, 1) 
+		; waits infinite until done. Can't use this as it will freeze like above - could cause hooks to be removed! and it looks crappy.
+		;SAPI.WaitUntilDone(-1) 
+	}
+	; can't encase everything in a try as GuiControlGet will cause it to exit out of the try
+	; if the control doesn't exist any more (gui closes) - though it's not prompt type error (if try isn't used)
+	; cant use try with while, as braces will cause try to be in effect for GuiControlGet
+
+	loop, 1000 ; with a sleep of 50, this will loop for ~ 50 seconds if something goes wrong with the break/WaitUntilDone 
+	{
+		try break := SAPI.WaitUntilDone(5)
+		catch 
+			break
+		if break
+			break
+
+		sleep 50	
+		GuiControlGet, speechVol,, speech_volume
+		; the GUI was probably closed - speechVol should not be changed from it's previous value 
+		; but lets just continue the loop anyway
+		if ErrorLevel
+			continue 
+		speechVol := Round(speechVol, 0)
+		if (prevSpeechVol != speechVol)
+		{
+			prevSpeechVol := speechVol
+			try SAPI.volume := speechVol
+		}
+		GuiControlGet, totalVol,, programVolume
+		if ErrorLevel
+			continue
+		totalVol := Round(totalVol, 0)	
+		if (prevTotalVol != totalVol)
+		{
+			prevTotalVol := totalVol
+			SetProgramWaveVolume(totalVol)
+		}
+	}
+	SAPI := "" ; would be blanked anyway 
+	return
+}
 
 Edit_SendHotkey:
 	if (SubStr(A_GuiControl, 1, 1) = "#") ;this is a method to prevent launching 
@@ -13032,6 +13079,25 @@ reloadHooks()
 }
 
 
+
+g_testKeydowns:
+ListLines, on
+t1 := MT_InputIdleTime()
+sleep 2000
+str :=  "`n`n|" t1 " | " MT_InputIdleTime()
+		. "`n`nLogical: " checkAllKeyStates(True, False) 
+		. "`n`nPhysical: " checkAllKeyStates(False, True) 
+		. "`n`n" debugSCKeyState() 
+critical, 1000
+releasedKeys := input.pReleaseKeys(True)
+;input.RevertKeyState()
+critical, off
+objtree(aAGHotkeys)
+msgbox % "Released keys: " releasedKeys . str
+return
+sleep 2000
+testdebug := True
+return 
 
 
 

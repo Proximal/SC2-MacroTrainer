@@ -22,16 +22,16 @@ w\:* {behavior:url(#default#VML);}
  <o:DocumentProperties>
   <o:Author>Matthieu</o:Author>
   <o:LastAuthor>Matthieu</o:LastAuthor>
-  <o:Revision>392</o:Revision>
-  <o:TotalTime>7713</o:TotalTime>
+  <o:Revision>396</o:Revision>
+  <o:TotalTime>7744</o:TotalTime>
   <o:Created>2013-05-31T13:17:00Z</o:Created>
-  <o:LastSaved>2014-05-24T17:18:00Z</o:LastSaved>
+  <o:LastSaved>2014-05-25T18:36:00Z</o:LastSaved>
   <o:Pages>15</o:Pages>
-  <o:Words>7408</o:Words>
-  <o:Characters>42228</o:Characters>
-  <o:Lines>351</o:Lines>
-  <o:Paragraphs>99</o:Paragraphs>
-  <o:CharactersWithSpaces>49537</o:CharactersWithSpaces>
+  <o:Words>7477</o:Words>
+  <o:Characters>42624</o:Characters>
+  <o:Lines>355</o:Lines>
+  <o:Paragraphs>100</o:Paragraphs>
+  <o:CharactersWithSpaces>50001</o:CharactersWithSpaces>
   <o:Version>12.00</o:Version>
  </o:DocumentProperties>
 </xml><![endif]-->
@@ -2596,7 +2596,7 @@ ul
 	mso-fareast-language:EN-US;}
 </style>
 <![endif]--><!--[if gte mso 9]><xml>
- <o:shapedefaults v:ext="edit" spidmax="84994"/>
+ <o:shapedefaults v:ext="edit" spidmax="87042"/>
 </xml><![endif]--><!--[if gte mso 9]><xml>
  <o:shapelayout v:ext="edit">
   <o:idmap v:ext="edit" data="1"/>
@@ -2608,31 +2608,102 @@ ul
 <div class=WordSection1>
 
 <p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'><span
-class=SpellE>V2.990</span><span style='mso-tab-count:1'>&nbsp; </span>8/04/14</p>
-
-<p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'>hotkeys</p>
-
-<p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'>issue which
-could cause the <span class=SpellE>minimap</span>, unit panel, and possibly
-other overlays to alternate between a clear and blurred appearance.</p>
-
-<p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'>The progress
-bars in the unit overlay should have a slightly crisper appearance</p>
-
-<p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'><span
-class=SpellE>sapi</span> and <span class=SpellE>gdi</span> causing script not
-to exit cleanly</p>
-
-<p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'><span
-class=SpellE>APM</span> overlay transparency can now be</p>
-
-<p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'>Added offset</p>
+class=SpellE>V2.990</span><span style='mso-tab-count:1'>&nbsp; </span>26/05/14</p>
 
 <p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'><o:p>&nbsp;</o:p></p>
 
-<p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'><o:p>&nbsp;</o:p></p>
+<p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'>Fixes:</p>
 
-<p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'><o:p>&nbsp;</o:p></p>
+<p class=MsoListParagraphCxSpFirst style='margin-bottom:0cm;margin-bottom:.0001pt;
+mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo1'><![if !supportLists]><span
+style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
+Symbol'><span style='mso-list:Ignore'>&middot;<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></span></span><![endif]>A crash on exit/restart due to <span
+class=SpellE>GDI</span> unload.</p>
+
+<p class=MsoListParagraphCxSpMiddle style='margin-bottom:0cm;margin-bottom:
+.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo1'><![if !supportLists]><span
+style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
+Symbol'><span style='mso-list:Ignore'>&middot;<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></span></span><![endif]>Application hanging on exit/restart due to an
+issue with the speech module (this one wasn't my fault!).</p>
+
+<p class=MsoListParagraphCxSpMiddle style='margin-bottom:0cm;margin-bottom:
+.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo1'><![if !supportLists]><span
+style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
+Symbol'><span style='mso-list:Ignore'>&middot;<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></span></span><![endif]>Overlays:</p>
+
+<p class=MsoListParagraphCxSpMiddle style='margin-top:0cm;margin-right:0cm;
+margin-bottom:0cm;margin-left:72.0pt;margin-bottom:.0001pt;mso-add-space:auto;
+text-indent:-18.0pt;mso-list:l42 level2 lfo1'><![if !supportLists]><span
+style='font-family:Wingdings;mso-fareast-font-family:Wingdings;mso-bidi-font-family:
+Wingdings'><span style='mso-list:Ignore'>&sect;<span style='font:7.0pt "Times New Roman"'>&nbsp;
+</span></span></span><![endif]>An issue which could result in the <span
+class=SpellE>minmap</span> and unit panel alternating between a clear and
+blurred appearance.</p>
+
+<p class=MsoListParagraphCxSpMiddle style='margin-top:0cm;margin-right:0cm;
+margin-bottom:0cm;margin-left:72.0pt;margin-bottom:.0001pt;mso-add-space:auto;
+text-indent:-18.0pt;mso-list:l42 level2 lfo1'><![if !supportLists]><span
+style='font-family:Wingdings;mso-fareast-font-family:Wingdings;mso-bidi-font-family:
+Wingdings'><span style='mso-list:Ignore'>&sect;<span style='font:7.0pt "Times New Roman"'>&nbsp;
+</span></span></span><![endif]>The progress bars in the unit panel should now
+appear slightly 'crisper'.</p>
+
+<p class=MsoListParagraphCxSpMiddle style='margin-top:0cm;margin-right:0cm;
+margin-bottom:0cm;margin-left:72.0pt;margin-bottom:.0001pt;mso-add-space:auto;
+text-indent:-18.0pt;mso-list:l42 level2 lfo1'><![if !supportLists]><span
+style='font-family:Wingdings;mso-fareast-font-family:Wingdings;mso-bidi-font-family:
+Wingdings'><span style='mso-list:Ignore'>&sect;<span style='font:7.0pt "Times New Roman"'>&nbsp;
+</span></span></span><![endif]>The text in the army panel is no longer bolded.</p>
+
+<p class=MsoListParagraphCxSpMiddle style='margin-top:0cm;margin-right:0cm;
+margin-bottom:0cm;margin-left:72.0pt;margin-bottom:.0001pt;mso-add-space:auto;
+text-indent:-18.0pt;mso-list:l42 level2 lfo1'><![if !supportLists]><span
+style='font-family:Wingdings;mso-fareast-font-family:Wingdings;mso-bidi-font-family:
+Wingdings'><span style='mso-list:Ignore'>&sect;<span style='font:7.0pt "Times New Roman"'>&nbsp;
+</span></span></span><![endif]>The transparency of the <span class=SpellE>APM</span>
+overlay can now be altered.</p>
+
+<p class=MsoListParagraphCxSpMiddle style='margin-bottom:0cm;margin-bottom:
+.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo1'><![if !supportLists]><span
+style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
+Symbol'><span style='mso-list:Ignore'>&middot;<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></span></span><![endif]>Added the current <span class=SpellE>SC2</span>
+version (2.1.2.30315) to the supported client list.</p>
+
+<p class=MsoListParagraphCxSpMiddle style='margin-top:0cm;margin-right:0cm;
+margin-bottom:0cm;margin-left:72.0pt;margin-bottom:.0001pt;mso-add-space:auto;
+text-indent:-18.0pt;mso-list:l42 level2 lfo1'><![if !supportLists]><span
+style='font-family:Wingdings;mso-fareast-font-family:Wingdings;mso-bidi-font-family:
+Wingdings'><span style='mso-list:Ignore'>&sect;<span style='font:7.0pt "Times New Roman"'>&nbsp;
+</span></span></span><![endif]>No offsets were changed, so the previous trainer
+version works fine too.</p>
+
+<p class=MsoListParagraphCxSpMiddle style='margin-bottom:0cm;margin-bottom:
+.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo1'><![if !supportLists]><span
+style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
+Symbol'><span style='mso-list:Ignore'>&middot;<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></span></span><![endif]>Minor changes to the input system (added some
+rarely used keys) </p>
+
+<p class=MsoListParagraphCxSpMiddle style='margin-bottom:0cm;margin-bottom:
+.0001pt;mso-add-space:auto'><o:p>&nbsp;</o:p></p>
+
+<p class=MsoListParagraphCxSpMiddle style='margin-top:0cm;margin-right:0cm;
+margin-bottom:0cm;margin-left:18.0pt;margin-bottom:.0001pt;mso-add-space:auto'>Voice
+volume changing during test</p>
+
+<p class=MsoListParagraphCxSpMiddle style='margin-top:0cm;margin-right:0cm;
+margin-bottom:0cm;margin-left:18.0pt;margin-bottom:.0001pt;mso-add-space:auto'>setting
+voice volume to 0 was equivalent to 100</p>
+
+<p class=MsoListParagraphCxSpLast style='margin-top:0cm;margin-right:0cm;
+margin-bottom:0cm;margin-left:18.0pt;margin-bottom:.0001pt;mso-add-space:auto'>updated
+to latest version of <span class=SpellE>AHK_H</span></p>
+
+<p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'>--------------------------------------------------------------</p>
 
 <p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'><span
 class=SpellE>V2.989</span><span style='mso-tab-count:1'>&nbsp; </span>8/04/14</p>
@@ -2640,21 +2711,21 @@ class=SpellE>V2.989</span><span style='mso-tab-count:1'>&nbsp; </span>8/04/14</p
 <p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'>New:</p>
 
 <p class=MsoListParagraphCxSpFirst style='margin-bottom:0cm;margin-bottom:.0001pt;
-mso-add-space:auto;text-indent:-18.0pt;mso-list:l38 level1 lfo1'><![if !supportLists]><span
+mso-add-space:auto;text-indent:-18.0pt;mso-list:l38 level1 lfo2'><![if !supportLists]><span
 style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
 Symbol'><span style='mso-list:Ignore'>&middot;<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]>Version checker will load the correct offsets
 for the current <span class=SpellE>SC2</span> version (if they exist).</p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-bottom:0cm;margin-bottom:
-.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l38 level1 lfo1'><![if !supportLists]><span
+.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l38 level1 lfo2'><![if !supportLists]><span
 style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
 Symbol'><span style='mso-list:Ignore'>&middot;<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]>Quick Select and select army functions:</p>
 
 <p class=MsoListParagraphCxSpLast style='margin-top:0cm;margin-right:0cm;
 margin-bottom:0cm;margin-left:72.0pt;margin-bottom:.0001pt;mso-add-space:auto;
-text-indent:-18.0pt;mso-list:l38 level2 lfo1;tab-stops:list 72.0pt'><![if !supportLists]><span
+text-indent:-18.0pt;mso-list:l38 level2 lfo2;tab-stops:list 72.0pt'><![if !supportLists]><span
 style='font-family:Wingdings;mso-fareast-font-family:Wingdings;mso-bidi-font-family:
 Wingdings'><span style='mso-list:Ignore'>&sect;<span style='font:7.0pt "Times New Roman"'>&nbsp;
 </span></span></span><![endif]>Select/Filter only the units on screen.</p>
@@ -2662,14 +2733,14 @@ Wingdings'><span style='mso-list:Ignore'>&sect;<span style='font:7.0pt "Times Ne
 <p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'>Fixes:</p>
 
 <p class=MsoListParagraphCxSpFirst style='margin-bottom:0cm;margin-bottom:.0001pt;
-mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo2'><![if !supportLists]><span
+mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo1'><![if !supportLists]><span
 style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
 Symbol'><span style='mso-list:Ignore'>&middot;<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]><span class=SpellE>Thors</span> using the high
 impact payload ability will no longer disappear from the unit panel.</p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-bottom:0cm;margin-bottom:
-.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo2'><![if !supportLists]><span
+.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo1'><![if !supportLists]><span
 style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
 Symbol'><span style='mso-list:Ignore'>&middot;<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]>The temporarily-hide-<span class=SpellE>minimap</span>
@@ -2677,7 +2748,7 @@ function will also hide <span class=SpellE>minimap</span> alerts and player
 cameras.</p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-bottom:0cm;margin-bottom:
-.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo2'><![if !supportLists]><span
+.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo1'><![if !supportLists]><span
 style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
 Symbol'><span style='mso-list:Ignore'>&middot;<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]>The auto-worker feature will produce the correct
@@ -2685,7 +2756,7 @@ number of workers on Habitation Station LE</p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-top:0cm;margin-right:0cm;
 margin-bottom:0cm;margin-left:72.0pt;margin-bottom:.0001pt;mso-add-space:auto;
-text-indent:-18.0pt;mso-list:l42 level2 lfo2'><![if !supportLists]><span
+text-indent:-18.0pt;mso-list:l42 level2 lfo1'><![if !supportLists]><span
 style='font-family:Wingdings;mso-fareast-font-family:Wingdings;mso-bidi-font-family:
 Wingdings'><span style='mso-list:Ignore'>&sect;<span style='font:7.0pt "Times New Roman"'>&nbsp;
 </span></span></span><![endif]>Previously it would continue to make workers
@@ -2697,29 +2768,27 @@ it could prematurely stop depending on where you expanded to.</p>
 
 <p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'><o:p>&nbsp;</o:p></p>
 
-<p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'>--------------------------------------------------------------</p>
-
 <p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'><span
 class=SpellE>V2.988</span><span style='mso-tab-count:1'>&nbsp; </span>5/03/14</p>
 
 <p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'>New:</p>
 
 <p class=MsoListParagraphCxSpFirst style='margin-bottom:0cm;margin-bottom:.0001pt;
-mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo2'><![if !supportLists]><span
+mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo1'><![if !supportLists]><span
 style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
 Symbol'><span style='mso-list:Ignore'>&middot;<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]>Updated offsets for <span class=SpellE>SC2</span>
 version 2.1.1.29261</p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-bottom:0cm;margin-bottom:
-.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo2'><![if !supportLists]><span
+.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo1'><![if !supportLists]><span
 style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
 Symbol'><span style='mso-list:Ignore'>&middot;<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]>Remove damaged units function</p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-top:0cm;margin-right:0cm;
 margin-bottom:0cm;margin-left:72.0pt;margin-bottom:.0001pt;mso-add-space:auto;
-text-indent:-18.0pt;mso-list:l42 level2 lfo2'><![if !supportLists]><span
+text-indent:-18.0pt;mso-list:l42 level2 lfo1'><![if !supportLists]><span
 style='font-family:Wingdings;mso-fareast-font-family:Wingdings;mso-bidi-font-family:
 Wingdings'><span style='mso-list:Ignore'>&sect;<span style='font:7.0pt "Times New Roman"'>&nbsp;
 </span></span></span><![endif]>Removes damaged units from selection and sends
@@ -2727,20 +2796,20 @@ them to the mouse location.</p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-top:0cm;margin-right:0cm;
 margin-bottom:0cm;margin-left:72.0pt;margin-bottom:.0001pt;mso-add-space:auto;
-text-indent:-18.0pt;mso-list:l42 level2 lfo2'><![if !supportLists]><span
+text-indent:-18.0pt;mso-list:l42 level2 lfo1'><![if !supportLists]><span
 style='font-family:Wingdings;mso-fareast-font-family:Wingdings;mso-bidi-font-family:
 Wingdings'><span style='mso-list:Ignore'>&sect;<span style='font:7.0pt "Times New Roman"'>&nbsp;
 </span></span></span><![endif]>I intended to test this more extensively, but
 I've included it anyway. It seems to work fine.</p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-bottom:0cm;margin-bottom:
-.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo2'><![if !supportLists]><span
+.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo1'><![if !supportLists]><span
 style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
 Symbol'><span style='mso-list:Ignore'>&middot;<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]>Added an <span class=SpellE>APM</span> overlay</p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-bottom:0cm;margin-bottom:
-.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo2'><![if !supportLists]><span
+.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo1'><![if !supportLists]><span
 style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
 Symbol'><span style='mso-list:Ignore'>&middot;<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]><span class=SpellE>APM</span>, income, resource,
@@ -2748,7 +2817,7 @@ and army size overlays can now display your own statistics.</p>
 
 <p class=MsoListParagraphCxSpLast style='margin-top:0cm;margin-right:0cm;
 margin-bottom:0cm;margin-left:72.0pt;margin-bottom:.0001pt;mso-add-space:auto;
-text-indent:-18.0pt;mso-list:l42 level2 lfo2'><![if !supportLists]><span
+text-indent:-18.0pt;mso-list:l42 level2 lfo1'><![if !supportLists]><span
 style='font-family:Wingdings;mso-fareast-font-family:Wingdings;mso-bidi-font-family:
 Wingdings'><span style='mso-list:Ignore'>&sect;<span style='font:7.0pt "Times New Roman"'>&nbsp;
 </span></span></span><![endif]>I added this a few months ago, but it was
@@ -2814,14 +2883,14 @@ class=SpellE>V2.986</span><span style='mso-tab-count:1'>&nbsp; </span>23/01/14</
 style='mso-bidi-font-weight:normal'><span style='color:red'>Know Issue:<o:p></o:p></span></b></p>
 
 <p class=MsoListParagraphCxSpFirst style='margin-bottom:0cm;margin-bottom:.0001pt;
-mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo2'><![if !supportLists]><span
+mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo1'><![if !supportLists]><span
 style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
 Symbol'><span style='mso-list:Ignore'>&middot;<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]>Auto Grouping</p>
 
 <p class=MsoListParagraphCxSpLast style='margin-top:0cm;margin-right:0cm;
 margin-bottom:0cm;margin-left:72.0pt;margin-bottom:.0001pt;mso-add-space:auto;
-text-indent:-18.0pt;mso-list:l42 level2 lfo2'><![if !supportLists]><span
+text-indent:-18.0pt;mso-list:l42 level2 lfo1'><![if !supportLists]><span
 style='font-family:Wingdings;mso-fareast-font-family:Wingdings;mso-bidi-font-family:
 Wingdings'><span style='mso-list:Ignore'>&sect;<span style='font:7.0pt "Times New Roman"'>&nbsp;
 </span></span></span><![endif]>On rare occasions this function seems to stop
@@ -2846,21 +2915,21 @@ testing it.</p>
 <p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'>New:</p>
 
 <p class=MsoListParagraphCxSpFirst style='margin-bottom:0cm;margin-bottom:.0001pt;
-mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo2'><![if !supportLists]><span
+mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo1'><![if !supportLists]><span
 style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
 Symbol'><span style='mso-list:Ignore'>&middot;<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]>Updated offsets for <span class=SpellE>SC2</span>
 version 2.1.0</p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-bottom:0cm;margin-bottom:
-.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo2'><![if !supportLists]><span
+.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo1'><![if !supportLists]><span
 style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
 Symbol'><span style='mso-list:Ignore'>&middot;<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]>Unit/Match panel</p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-top:0cm;margin-right:0cm;
 margin-bottom:0cm;margin-left:72.0pt;margin-bottom:.0001pt;mso-add-space:auto;
-text-indent:-18.0pt;mso-list:l42 level2 lfo2'><![if !supportLists]><span
+text-indent:-18.0pt;mso-list:l42 level2 lfo1'><![if !supportLists]><span
 style='font-family:Wingdings;mso-fareast-font-family:Wingdings;mso-bidi-font-family:
 Wingdings'><span style='mso-list:Ignore'>&sect;<span style='font:7.0pt "Times New Roman"'>&nbsp;
 </span></span></span><![endif]>Now capable of displaying build progress bars
@@ -2868,7 +2937,7 @@ for units and structures</p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-top:0cm;margin-right:0cm;
 margin-bottom:0cm;margin-left:72.0pt;margin-bottom:.0001pt;mso-add-space:auto;
-text-indent:-18.0pt;mso-list:l42 level2 lfo2'><![if !supportLists]><span
+text-indent:-18.0pt;mso-list:l42 level2 lfo1'><![if !supportLists]><span
 style='font-family:Wingdings;mso-fareast-font-family:Wingdings;mso-bidi-font-family:
 Wingdings'><span style='mso-list:Ignore'>&sect;<span style='font:7.0pt "Times New Roman"'>&nbsp;
 </span></span></span><![endif]>Displays the number of <span class=SpellE>chrono</span>
@@ -2876,28 +2945,28 @@ boosts available to enemy tossers. (Displayed as blue text on the nexus
 portrait)</p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-bottom:0cm;margin-bottom:
-.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo2'><![if !supportLists]><span
+.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo1'><![if !supportLists]><span
 style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
 Symbol'><span style='mso-list:Ignore'>&middot;<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]>New update method. </p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-top:0cm;margin-right:0cm;
 margin-bottom:0cm;margin-left:72.0pt;margin-bottom:.0001pt;mso-add-space:auto;
-text-indent:-18.0pt;mso-list:l42 level2 lfo2'><![if !supportLists]><span
+text-indent:-18.0pt;mso-list:l42 level2 lfo1'><![if !supportLists]><span
 style='font-family:Wingdings;mso-fareast-font-family:Wingdings;mso-bidi-font-family:
 Wingdings'><span style='mso-list:Ignore'>&sect;<span style='font:7.0pt "Times New Roman"'>&nbsp;
 </span></span></span><![endif]>This should fix an update issue experienced by
 some people which were using directory paths containing non-english characters.</p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-bottom:0cm;margin-bottom:
-.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo2'><![if !supportLists]><span
+.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo1'><![if !supportLists]><span
 style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
 Symbol'><span style='mso-list:Ignore'>&middot;<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]>Quick select function</p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-top:0cm;margin-right:0cm;
 margin-bottom:0cm;margin-left:72.0pt;margin-bottom:.0001pt;mso-add-space:auto;
-text-indent:-18.0pt;mso-list:l42 level2 lfo2'><![if !supportLists]><span
+text-indent:-18.0pt;mso-list:l42 level2 lfo1'><![if !supportLists]><span
 style='font-family:Wingdings;mso-fareast-font-family:Wingdings;mso-bidi-font-family:
 Wingdings'><span style='mso-list:Ignore'>&sect;<span style='font:7.0pt "Times New Roman"'>&nbsp;
 </span></span></span><![endif]>This allows you to select any number of (army)
@@ -2905,21 +2974,21 @@ unit types with a single hotkey press</p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-top:0cm;margin-right:0cm;
 margin-bottom:0cm;margin-left:72.0pt;margin-bottom:.0001pt;mso-add-space:auto;
-text-indent:-18.0pt;mso-list:l42 level2 lfo2'><![if !supportLists]><span
+text-indent:-18.0pt;mso-list:l42 level2 lfo1'><![if !supportLists]><span
 style='font-family:Wingdings;mso-fareast-font-family:Wingdings;mso-bidi-font-family:
 Wingdings'><span style='mso-list:Ignore'>&sect;<span style='font:7.0pt "Times New Roman"'>&nbsp;
 </span></span></span><![endif]>Hotkeys can be specified for any number of unit
 types/groups</p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-bottom:0cm;margin-bottom:
-.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo2'><![if !supportLists]><span
+.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo1'><![if !supportLists]><span
 style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
 Symbol'><span style='mso-list:Ignore'>&middot;<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]>Auto Grouping/Restrict Grouping</p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-top:0cm;margin-right:0cm;
 margin-bottom:0cm;margin-left:72.0pt;margin-bottom:.0001pt;mso-add-space:auto;
-text-indent:-18.0pt;mso-list:l42 level2 lfo2'><![if !supportLists]><span
+text-indent:-18.0pt;mso-list:l42 level2 lfo1'><![if !supportLists]><span
 style='font-family:Wingdings;mso-fareast-font-family:Wingdings;mso-bidi-font-family:
 Wingdings'><span style='mso-list:Ignore'>&sect;<span style='font:7.0pt "Times New Roman"'>&nbsp;
 </span></span></span><![endif]>Custom hotkeys for people who use non-standard <span
@@ -2927,42 +2996,42 @@ class=SpellE>SC2</span> hotkey <span class=SpellE>configs</span></p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-top:0cm;margin-right:0cm;
 margin-bottom:0cm;margin-left:72.0pt;margin-bottom:.0001pt;mso-add-space:auto;
-text-indent:-18.0pt;mso-list:l42 level2 lfo2'><![if !supportLists]><span
+text-indent:-18.0pt;mso-list:l42 level2 lfo1'><![if !supportLists]><span
 style='font-family:Wingdings;mso-fareast-font-family:Wingdings;mso-bidi-font-family:
 Wingdings'><span style='mso-list:Ignore'>&sect;<span style='font:7.0pt "Times New Roman"'>&nbsp;
 </span></span></span><![endif]>User adjustable delays which might help increase
 reliability for some people.</p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-bottom:0cm;margin-bottom:
-.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo2'><![if !supportLists]><span
+.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo1'><![if !supportLists]><span
 style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
 Symbol'><span style='mso-list:Ignore'>&middot;<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]>New Inject warning</p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-top:0cm;margin-right:0cm;
 margin-bottom:0cm;margin-left:72.0pt;margin-bottom:.0001pt;mso-add-space:auto;
-text-indent:-18.0pt;mso-list:l42 level2 lfo2'><![if !supportLists]><span
+text-indent:-18.0pt;mso-list:l42 level2 lfo1'><![if !supportLists]><span
 style='font-family:Wingdings;mso-fareast-font-family:Wingdings;mso-bidi-font-family:
 Wingdings'><span style='mso-list:Ignore'>&sect;<span style='font:7.0pt "Times New Roman"'>&nbsp;
 </span></span></span><![endif]>Will issue a warning x (in game) seconds after
 your last inject</p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-bottom:0cm;margin-bottom:
-.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo2'><![if !supportLists]><span
+.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo1'><![if !supportLists]><span
 style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
 Symbol'><span style='mso-list:Ignore'>&middot;<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]>The transparency of all overlays can now be
 individually set.</p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-bottom:0cm;margin-bottom:
-.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo2'><![if !supportLists]><span
+.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo1'><![if !supportLists]><span
 style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
 Symbol'><span style='mso-list:Ignore'>&middot;<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]>Added additional structures to the <span
 class=SpellE>chrono</span> boost function.</p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-bottom:0cm;margin-bottom:
-.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo2'><![if !supportLists]><span
+.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo1'><![if !supportLists]><span
 style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
 Symbol'><span style='mso-list:Ignore'>&middot;<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]><span class=SpellE>Terran</span> Auto Worker
@@ -2970,7 +3039,7 @@ Production</p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-top:0cm;margin-right:0cm;
 margin-bottom:0cm;margin-left:72.0pt;margin-bottom:.0001pt;mso-add-space:auto;
-text-indent:-18.0pt;mso-list:l42 level2 lfo2'><![if !supportLists]><span
+text-indent:-18.0pt;mso-list:l42 level2 lfo1'><![if !supportLists]><span
 style='font-family:Wingdings;mso-fareast-font-family:Wingdings;mso-bidi-font-family:
 Wingdings'><span style='mso-list:Ignore'>&sect;<span style='font:7.0pt "Times New Roman"'>&nbsp;
 </span></span></span><![endif]>Recently landed <b style='mso-bidi-font-weight:
@@ -3001,28 +3070,28 @@ margin-bottom:0cm;margin-left:72.3pt;margin-bottom:.0001pt;mso-add-space:auto'>f
 <p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'>Fixes:</p>
 
 <p class=MsoListParagraphCxSpFirst style='margin-bottom:0cm;margin-bottom:.0001pt;
-mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo2'><![if !supportLists]><span
+mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo1'><![if !supportLists]><span
 style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
 Symbol'><span style='mso-list:Ignore'>&middot;<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]><span class=SpellE>Minimap</span> 'x' warnings
 will no longer mark the wrong unit if the unit dies during the warning.</p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-bottom:0cm;margin-bottom:
-.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo2'><![if !supportLists]><span
+.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo1'><![if !supportLists]><span
 style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
 Symbol'><span style='mso-list:Ignore'>&middot;<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]>The custom unit highlight list 7 will now
 actually highlight these units</p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-bottom:0cm;margin-bottom:
-.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo2'><![if !supportLists]><span
+.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo1'><![if !supportLists]><span
 style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
 Symbol'><span style='mso-list:Ignore'>&middot;<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]>Overlays should now always be destroyed and
 remade when alt-tabbing.</p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-bottom:0cm;margin-bottom:
-.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo2'><![if !supportLists]><span
+.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo1'><![if !supportLists]><span
 style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
 Symbol'><span style='mso-list:Ignore'>&middot;<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]>An issue which could result in some verbal
@@ -3030,7 +3099,7 @@ warning not being announced if multiple verbal warning occurred next to each
 other.</p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-bottom:0cm;margin-bottom:
-.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo2'><![if !supportLists]><span
+.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo1'><![if !supportLists]><span
 style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
 Symbol'><span style='mso-list:Ignore'>&middot;<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]>A bug which resulted in cessation of auto
@@ -3038,42 +3107,42 @@ injects (until the function was toggled) when all of the user's hatches/bases
 were destroyed</p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-bottom:0cm;margin-bottom:
-.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo2'><![if !supportLists]><span
+.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo1'><![if !supportLists]><span
 style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
 Symbol'><span style='mso-list:Ignore'>&middot;<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]>The 'Human like mouse movements' option will
 once again work with injects</p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-bottom:0cm;margin-bottom:
-.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo2'><![if !supportLists]><span
+.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo1'><![if !supportLists]><span
 style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
 Symbol'><span style='mso-list:Ignore'>&middot;<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]>Incorrect <span class=SpellE>Terran</span> scan
 count in the unit/match panel</p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-bottom:0cm;margin-bottom:
-.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo2'><![if !supportLists]><span
+.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo1'><![if !supportLists]><span
 style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
 Symbol'><span style='mso-list:Ignore'>&middot;<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]><span class=SpellE>SCVs</span> being produced by
 planetary fortresses will be counted in the unit/match panel</p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-bottom:0cm;margin-bottom:
-.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo2'><![if !supportLists]><span
+.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo1'><![if !supportLists]><span
 style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
 Symbol'><span style='mso-list:Ignore'>&middot;<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]>Flying <span class=SpellE>Terran</span>
 structures should no longer disappear from the unit panel</p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-bottom:0cm;margin-bottom:
-.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo2'><![if !supportLists]><span
+.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo1'><![if !supportLists]><span
 style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
 Symbol'><span style='mso-list:Ignore'>&middot;<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-</span></span></span><![endif]>Players who have left the game will no longer have
-their camera view drawn on the <span class=SpellE>minimap</span></p>
+</span></span></span><![endif]>Players who have left the game will no longer
+have their camera view drawn on the <span class=SpellE>minimap</span></p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-bottom:0cm;margin-bottom:
-.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo2'><![if !supportLists]><span
+.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo1'><![if !supportLists]><span
 style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
 Symbol'><span style='mso-list:Ignore'>&middot;<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]>The hotkeys for some functions should work
@@ -3088,14 +3157,14 @@ class=SpellE>V2.985</span><span style='mso-tab-count:1'>&nbsp; </span>10/11/13</
 <p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'>New:</p>
 
 <p class=MsoListParagraphCxSpFirst style='margin-bottom:0cm;margin-bottom:.0001pt;
-mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo2'><![if !supportLists]><span
+mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo1'><![if !supportLists]><span
 style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
 Symbol'><span style='mso-list:Ignore'>&middot;<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]>Match panel (formerly unit panel)</p>
 
 <p class=MsoListParagraphCxSpLast style='margin-top:0cm;margin-right:0cm;
 margin-bottom:0cm;margin-left:72.0pt;margin-bottom:.0001pt;mso-add-space:auto;
-text-indent:-18.0pt;mso-list:l42 level2 lfo2'><![if !supportLists]><span
+text-indent:-18.0pt;mso-list:l42 level2 lfo1'><![if !supportLists]><span
 style='font-family:Wingdings;mso-fareast-font-family:Wingdings;mso-bidi-font-family:
 Wingdings;mso-fareast-language:EN-AU;mso-no-proof:yes'><span style='mso-list:
 Ignore'>&sect;<span style='font:7.0pt "Times New Roman"'>&nbsp; </span></span></span><![endif]><span
@@ -3108,7 +3177,7 @@ style='mso-fareast-language:EN-AU;mso-no-proof:yes'>Zerg units in production
 style='mso-fareast-language:EN-AU;mso-no-proof:yes'><o:p></o:p></span></p>
 
 <p class=MsoListParagraph style='margin-bottom:0cm;margin-bottom:.0001pt;
-mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo2'><![if !supportLists]><span
+mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo1'><![if !supportLists]><span
 style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
 Symbol;mso-fareast-language:EN-AU;mso-no-proof:yes'><span style='mso-list:Ignore'>&middot;<span
 style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
@@ -3155,14 +3224,14 @@ class=SpellE>V2.984</span><span style='mso-tab-count:1'>&nbsp; </span>7/11/13</p
 <p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'>New:</p>
 
 <p class=MsoListParagraphCxSpFirst style='margin-bottom:0cm;margin-bottom:.0001pt;
-mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo2'><![if !supportLists]><span
+mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo1'><![if !supportLists]><span
 style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
 Symbol'><span style='mso-list:Ignore'>&middot;<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]>Match panel (formerly unit panel)</p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-top:0cm;margin-right:0cm;
 margin-bottom:0cm;margin-left:72.0pt;margin-bottom:.0001pt;mso-add-space:auto;
-text-indent:-18.0pt;mso-list:l42 level2 lfo2'><![if !supportLists]><span
+text-indent:-18.0pt;mso-list:l42 level2 lfo1'><![if !supportLists]><span
 style='font-family:Wingdings;mso-fareast-font-family:Wingdings;mso-bidi-font-family:
 Wingdings'><span style='mso-list:Ignore'>&sect;<span style='font:7.0pt "Times New Roman"'>&nbsp;
 </span></span></span><![endif]>Now displays units<span
@@ -3171,7 +3240,7 @@ class=SpellE>zerg</span> units)</p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-top:0cm;margin-right:0cm;
 margin-bottom:0cm;margin-left:72.0pt;margin-bottom:.0001pt;mso-add-space:auto;
-text-indent:-18.0pt;mso-list:l42 level2 lfo2'><![if !supportLists]><span
+text-indent:-18.0pt;mso-list:l42 level2 lfo1'><![if !supportLists]><span
 style='font-family:Wingdings;mso-fareast-font-family:Wingdings;mso-bidi-font-family:
 Wingdings'><span style='mso-list:Ignore'>&sect;<span style='font:7.0pt "Times New Roman"'>&nbsp;
 </span></span></span><![endif]><span style='mso-spacerun:yes'>&nbsp;</span>Can
@@ -3179,7 +3248,7 @@ display upgrades</p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-top:0cm;margin-right:0cm;
 margin-bottom:0cm;margin-left:72.0pt;margin-bottom:.0001pt;mso-add-space:auto;
-text-indent:-18.0pt;mso-list:l42 level2 lfo2'><![if !supportLists]><span
+text-indent:-18.0pt;mso-list:l42 level2 lfo1'><![if !supportLists]><span
 style='font-family:Wingdings;mso-fareast-font-family:Wingdings;mso-bidi-font-family:
 Wingdings'><span style='mso-list:Ignore'>&sect;<span style='font:7.0pt "Times New Roman"'>&nbsp;
 </span></span></span><![endif]><span class=SpellE>Chrono</span> boosted
@@ -3187,7 +3256,7 @@ structures/upgrades display a pink circle in the top left corner</p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-top:0cm;margin-right:0cm;
 margin-bottom:0cm;margin-left:108.0pt;margin-bottom:.0001pt;mso-add-space:auto;
-text-indent:-18.0pt;mso-list:l42 level3 lfo2'><![if !supportLists]><span
+text-indent:-18.0pt;mso-list:l42 level3 lfo1'><![if !supportLists]><span
 style='mso-ascii-font-family:Calibri;mso-fareast-font-family:Calibri;
 mso-hansi-font-family:Calibri;mso-bidi-font-family:Calibri'><span
 style='mso-list:Ignore'>-<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
@@ -3201,7 +3270,7 @@ class=SpellE>chronoed</span> <span class=SpellE>robos</span>.</p>
 
 <p class=MsoListParagraphCxSpLast style='margin-top:0cm;margin-right:0cm;
 margin-bottom:0cm;margin-left:72.0pt;margin-bottom:.0001pt;mso-add-space:auto;
-text-indent:-18.0pt;mso-list:l42 level2 lfo2'><![if !supportLists]><span
+text-indent:-18.0pt;mso-list:l42 level2 lfo1'><![if !supportLists]><span
 style='font-family:Wingdings;mso-fareast-font-family:Wingdings;mso-bidi-font-family:
 Wingdings'><span style='mso-list:Ignore'>&sect;<span style='font:7.0pt "Times New Roman"'>&nbsp;
 </span></span></span><![endif]>The available scan count for <span class=SpellE>Terrans</span>
@@ -3213,14 +3282,14 @@ of the orbital command icon.</p>
 
 <p class=MsoListParagraphCxSpFirst style='margin-top:0cm;margin-right:0cm;
 margin-bottom:0cm;margin-left:72.0pt;margin-bottom:.0001pt;mso-add-space:auto;
-text-indent:-18.0pt;mso-list:l42 level2 lfo2'><![if !supportLists]><span
+text-indent:-18.0pt;mso-list:l42 level2 lfo1'><![if !supportLists]><span
 style='font-family:Wingdings;mso-fareast-font-family:Wingdings;mso-bidi-font-family:
 Wingdings'><span style='mso-list:Ignore'>&sect;<span style='font:7.0pt "Times New Roman"'>&nbsp;
 </span></span></span><![endif]>Hotkey cycles between four states:</p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-top:0cm;margin-right:0cm;
 margin-bottom:0cm;margin-left:108.0pt;margin-bottom:.0001pt;mso-add-space:auto;
-text-indent:-18.0pt;mso-list:l42 level3 lfo2'><![if !supportLists]><span
+text-indent:-18.0pt;mso-list:l42 level3 lfo1'><![if !supportLists]><span
 style='mso-ascii-font-family:Calibri;mso-fareast-font-family:Calibri;
 mso-hansi-font-family:Calibri;mso-bidi-font-family:Calibri'><span
 style='mso-list:Ignore'>-<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
@@ -3228,7 +3297,7 @@ style='mso-list:Ignore'>-<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;
 
 <p class=MsoListParagraphCxSpMiddle style='margin-top:0cm;margin-right:0cm;
 margin-bottom:0cm;margin-left:108.0pt;margin-bottom:.0001pt;mso-add-space:auto;
-text-indent:-18.0pt;mso-list:l42 level3 lfo2'><![if !supportLists]><span
+text-indent:-18.0pt;mso-list:l42 level3 lfo1'><![if !supportLists]><span
 style='mso-ascii-font-family:Calibri;mso-fareast-font-family:Calibri;
 mso-hansi-font-family:Calibri;mso-bidi-font-family:Calibri'><span
 style='mso-list:Ignore'>-<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
@@ -3236,7 +3305,7 @@ style='mso-list:Ignore'>-<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;
 
 <p class=MsoListParagraphCxSpMiddle style='margin-top:0cm;margin-right:0cm;
 margin-bottom:0cm;margin-left:108.0pt;margin-bottom:.0001pt;mso-add-space:auto;
-text-indent:-18.0pt;mso-list:l42 level3 lfo2'><![if !supportLists]><span
+text-indent:-18.0pt;mso-list:l42 level3 lfo1'><![if !supportLists]><span
 style='mso-ascii-font-family:Calibri;mso-fareast-font-family:Calibri;
 mso-hansi-font-family:Calibri;mso-bidi-font-family:Calibri'><span
 style='mso-list:Ignore'>-<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
@@ -3244,20 +3313,20 @@ style='mso-list:Ignore'>-<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;
 
 <p class=MsoListParagraphCxSpMiddle style='margin-top:0cm;margin-right:0cm;
 margin-bottom:0cm;margin-left:108.0pt;margin-bottom:.0001pt;mso-add-space:auto;
-text-indent:-18.0pt;mso-list:l42 level3 lfo2'><![if !supportLists]><span
+text-indent:-18.0pt;mso-list:l42 level3 lfo1'><![if !supportLists]><span
 style='mso-ascii-font-family:Calibri;mso-fareast-font-family:Calibri;
 mso-hansi-font-family:Calibri;mso-bidi-font-family:Calibri'><span
 style='mso-list:Ignore'>-<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]>Off</p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-bottom:0cm;margin-bottom:
-.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo2'><![if !supportLists]><span
+.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo1'><![if !supportLists]><span
 style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
 Symbol'><span style='mso-list:Ignore'>&middot;<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]>Can set the transparency of the overlays</p>
 
 <p class=MsoListParagraphCxSpLast style='margin-bottom:0cm;margin-bottom:.0001pt;
-mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo2'><![if !supportLists]><span
+mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo1'><![if !supportLists]><span
 style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
 Symbol'><span style='mso-list:Ignore'>&middot;<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]>Bug report /issue website. <a
@@ -3268,14 +3337,14 @@ href="http://mt.9xq.ru/issue/">http://mt.9xq.ru/issue/</a></p>
 <p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'>Changes:</p>
 
 <p class=MsoListParagraphCxSpFirst style='margin-bottom:0cm;margin-bottom:.0001pt;
-mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo2'><![if !supportLists]><span
+mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo1'><![if !supportLists]><span
 style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
 Symbol'><span style='mso-list:Ignore'>&middot;<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]>How keys are blocked during one-button (manual)
 injects and <span class=SpellE>chrono</span> boosts.</p>
 
 <p class=MsoListParagraphCxSpLast style='margin-bottom:0cm;margin-bottom:.0001pt;
-mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo2'><![if !supportLists]><span
+mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo1'><![if !supportLists]><span
 style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
 Symbol'><span style='mso-list:Ignore'>&middot;<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]>Bug report system now uses http post, and should
@@ -3286,7 +3355,7 @@ work for everyone.</p>
 <p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'>Fixes:</p>
 
 <p class=MsoListParagraph style='margin-bottom:0cm;margin-bottom:.0001pt;
-mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo2'><![if !supportLists]><span
+mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo1'><![if !supportLists]><span
 style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
 Symbol'><span style='mso-list:Ignore'>&middot;<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]>Saving options during a match won't cause
@@ -3297,7 +3366,7 @@ margin-left:18.0pt;margin-bottom:.0001pt'><span style='mso-tab-count:1'>&nbsp;&n
 be warned again.</p>
 
 <p class=MsoListParagraph style='margin-bottom:0cm;margin-bottom:.0001pt;
-mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo2'><![if !supportLists]><span
+mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo1'><![if !supportLists]><span
 style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
 Symbol'><span style='mso-list:Ignore'>&middot;<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]>There were some other things, but I can't
@@ -3338,29 +3407,29 @@ class=SpellE>V2.983</span><span style='mso-tab-count:1'>&nbsp; </span>24/10/13</
 <p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'>New:</p>
 
 <p class=MsoListParagraphCxSpFirst style='margin-bottom:0cm;margin-bottom:.0001pt;
-mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo2'><![if !supportLists]><span
+mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo1'><![if !supportLists]><span
 style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
 Symbol'><span style='mso-list:Ignore'>&middot;<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]>The unit panel can split structures and
 non-structures</p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-bottom:0cm;margin-bottom:
-.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo2'><![if !supportLists]><span
+.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo1'><![if !supportLists]><span
 style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
 Symbol'><span style='mso-list:Ignore'>&middot;<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]>Player cameras can be drawn on the <span
 class=SpellE>minimap</span></p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-bottom:0cm;margin-bottom:
-.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo2'><![if !supportLists]><span
+.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo1'><![if !supportLists]><span
 style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
 Symbol'><span style='mso-list:Ignore'>&middot;<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-</span></span></span><![endif]>A unit's destination and move queue can be displayed
-on the <span class=SpellE>minimap</span></p>
+</span></span></span><![endif]>A unit's destination and move queue can be
+displayed on the <span class=SpellE>minimap</span></p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-top:0cm;margin-right:0cm;
 margin-bottom:0cm;margin-left:72.0pt;margin-bottom:.0001pt;mso-add-space:auto;
-text-indent:-18.0pt;mso-list:l42 level2 lfo2'><![if !supportLists]><span
+text-indent:-18.0pt;mso-list:l42 level2 lfo1'><![if !supportLists]><span
 style='font-family:Wingdings;mso-fareast-font-family:Wingdings;mso-bidi-font-family:
 Wingdings'><span style='mso-list:Ignore'>&sect;<span style='font:7.0pt "Times New Roman"'>&nbsp;
 </span></span></span><![endif]>Green = movement, blue = patrol, red = attack,
@@ -3368,35 +3437,35 @@ and orange = transport unload</p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-top:0cm;margin-right:0cm;
 margin-bottom:0cm;margin-left:72.0pt;margin-bottom:.0001pt;mso-add-space:auto;
-text-indent:-18.0pt;mso-list:l42 level2 lfo2'><![if !supportLists]><span
+text-indent:-18.0pt;mso-list:l42 level2 lfo1'><![if !supportLists]><span
 style='font-family:Wingdings;mso-fareast-font-family:Wingdings;mso-bidi-font-family:
 Wingdings'><span style='mso-list:Ignore'>&sect;<span style='font:7.0pt "Times New Roman"'>&nbsp;
 </span></span></span><![endif]>A red (alert) cross for tactical nuclear strikes
 (from ghosts)</p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-bottom:0cm;margin-bottom:
-.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo2'><![if !supportLists]><span
+.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo1'><![if !supportLists]><span
 style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
 Symbol'><span style='mso-list:Ignore'>&middot;<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]>A hotkey to toggle the <span class=SpellE>minimap</span>
 on/off</p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-bottom:0cm;margin-bottom:
-.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo2'><![if !supportLists]><span
+.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo1'><![if !supportLists]><span
 style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
 Symbol'><span style='mso-list:Ignore'>&middot;<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]>Easy unload/select transports</p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-top:0cm;margin-right:0cm;
 margin-bottom:0cm;margin-left:72.0pt;margin-bottom:.0001pt;mso-add-space:auto;
-text-indent:-18.0pt;mso-list:l42 level2 lfo2'><![if !supportLists]><span
+text-indent:-18.0pt;mso-list:l42 level2 lfo1'><![if !supportLists]><span
 style='font-family:Wingdings;mso-fareast-font-family:Wingdings;mso-bidi-font-family:
 Wingdings'><span style='mso-list:Ignore'>&sect;<span style='font:7.0pt "Times New Roman"'>&nbsp;
 </span></span></span><![endif]>Allows transports to be easily start unloading</p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-top:0cm;margin-right:0cm;
 margin-bottom:0cm;margin-left:72.0pt;margin-bottom:.0001pt;mso-add-space:auto;
-text-indent:-18.0pt;mso-list:l42 level2 lfo2'><![if !supportLists]><span
+text-indent:-18.0pt;mso-list:l42 level2 lfo1'><![if !supportLists]><span
 style='font-family:Wingdings;mso-fareast-font-family:Wingdings;mso-bidi-font-family:
 Wingdings'><span style='mso-list:Ignore'>&sect;<span style='font:7.0pt "Times New Roman"'>&nbsp;
 </span></span></span><![endif]>Allows loaded transports to be easily selected -
@@ -3404,21 +3473,21 @@ helpful when they are closely grouped with non-loaded transports and other
 units</p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-bottom:0cm;margin-bottom:
-.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo2'><![if !supportLists]><span
+.0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l42 level1 lfo1'><![if !supportLists]><span
 style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
 Symbol'><span style='mso-list:Ignore'>&middot;<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]>Army Selection function additions:</p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-top:0cm;margin-right:0cm;
 margin-bottom:0cm;margin-left:72.0pt;margin-bottom:.0001pt;mso-add-space:auto;
-text-indent:-18.0pt;mso-list:l42 level2 lfo2'><![if !supportLists]><span
+text-indent:-18.0pt;mso-list:l42 level2 lfo1'><![if !supportLists]><span
 style='font-family:Wingdings;mso-fareast-font-family:Wingdings;mso-bidi-font-family:
 Wingdings'><span style='mso-list:Ignore'>&sect;<span style='font:7.0pt "Times New Roman"'>&nbsp;
 </span></span></span><![endif]>Can deselect loaded transports</p>
 
 <p class=MsoListParagraphCxSpLast style='margin-top:0cm;margin-right:0cm;
 margin-bottom:0cm;margin-left:72.0pt;margin-bottom:.0001pt;mso-add-space:auto;
-text-indent:-18.0pt;mso-list:l42 level2 lfo2'><![if !supportLists]><span
+text-indent:-18.0pt;mso-list:l42 level2 lfo1'><![if !supportLists]><span
 style='font-family:Wingdings;mso-fareast-font-family:Wingdings;mso-bidi-font-family:
 Wingdings'><span style='mso-list:Ignore'>&sect;<span style='font:7.0pt "Times New Roman"'>&nbsp;
 </span></span></span><![endif]>Can deselect transports which have a drop
@@ -3430,7 +3499,7 @@ have begun unloading units)</p>
 
 <p class=MsoListParagraph style='margin-top:0cm;margin-right:0cm;margin-bottom:
 0cm;margin-left:72.0pt;margin-bottom:.0001pt;mso-add-space:auto;text-indent:
--18.0pt;mso-list:l42 level2 lfo2'><![if !supportLists]><span style='font-family:
+-18.0pt;mso-list:l42 level2 lfo1'><![if !supportLists]><span style='font-family:
 Wingdings;mso-fareast-font-family:Wingdings;mso-bidi-font-family:Wingdings'><span
 style='mso-list:Ignore'>&sect;<span style='font:7.0pt "Times New Roman"'>&nbsp;
 </span></span></span><![endif]>The function now checks the units entire command
@@ -3472,8 +3541,8 @@ margin-bottom:0cm;margin-left:72.0pt;margin-bottom:.0001pt;mso-add-space:auto;
 text-indent:-18.0pt;mso-list:l23 level2 lfo6'><![if !supportLists]><span
 style='font-family:Wingdings;mso-fareast-font-family:Wingdings;mso-bidi-font-family:
 Wingdings'><span style='mso-list:Ignore'>&sect;<span style='font:7.0pt "Times New Roman"'>&nbsp;
-</span></span></span><![endif]>Other command centres and planetary fortresses will
-still produce workers</p>
+</span></span></span><![endif]>Other command centres and planetary fortresses
+will still produce workers</p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-bottom:0cm;margin-bottom:
 .0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l23 level1 lfo6'><![if !supportLists]><span
@@ -3713,8 +3782,8 @@ text-indent:-18.0pt;mso-list:l29 level3 lfo11'><![if !supportLists]><span
 style='mso-ascii-font-family:Calibri;mso-fareast-font-family:Calibri;
 mso-hansi-font-family:Calibri;mso-bidi-font-family:Calibri'><span
 style='mso-list:Ignore'>-<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-</span></span></span><![endif]>If enabled, while supply blocked a worker will
-still be queued up.</p>
+</span></span></span><![endif]>If enabled, while supply blocked a worker will still
+be queued up.</p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-top:0cm;margin-right:0cm;
 margin-bottom:0cm;margin-left:108.0pt;margin-bottom:.0001pt;mso-add-space:auto;
@@ -3731,8 +3800,8 @@ text-indent:-18.0pt;mso-list:l29 level3 lfo11'><![if !supportLists]><span
 style='mso-ascii-font-family:Calibri;mso-fareast-font-family:Calibri;
 mso-hansi-font-family:Calibri;mso-bidi-font-family:Calibri'><span
 style='mso-list:Ignore'>-<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-</span></span></span><![endif]>The program won't queue multiple worker while supply
-blocked.</p>
+</span></span></span><![endif]>The program won't queue multiple worker while
+supply blocked.</p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-top:0cm;margin-right:0cm;
 margin-bottom:0cm;margin-left:108.0pt;margin-bottom:.0001pt;mso-add-space:auto;
@@ -4143,8 +4212,8 @@ class=SpellE>V2.978</span><span style='mso-tab-count:2'>&nbsp;&nbsp;&nbsp;&nbsp;
 mso-add-space:auto;text-indent:-18.0pt;mso-list:l7 level1 lfo16'><![if !supportLists]><span
 style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
 Symbol'><span style='mso-list:Ignore'>&middot;<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-</span></span></span><![endif]><span class=SpellE>Starcraft's</span> window
-mode is checked on game <span class=SpellE>startup</span></p>
+</span></span></span><![endif]><span class=SpellE>Starcraft's</span> window mode
+is checked on game <span class=SpellE>startup</span></p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-top:0cm;margin-right:0cm;
 margin-bottom:0cm;margin-left:72.0pt;margin-bottom:.0001pt;mso-add-space:auto;
@@ -4213,8 +4282,8 @@ margin-bottom:0cm;margin-left:72.0pt;margin-bottom:.0001pt;mso-add-space:auto;
 text-indent:-18.0pt;mso-list:l40 level2 lfo17;tab-stops:list 72.0pt'><![if !supportLists]><span
 style='font-family:Wingdings;mso-fareast-font-family:Wingdings;mso-bidi-font-family:
 Wingdings'><span style='mso-list:Ignore'>&sect;<span style='font:7.0pt "Times New Roman"'>&nbsp;
-</span></span></span><![endif]>This should decrease the occurrence of users
-inadvertently altering control groups</p>
+</span></span></span><![endif]>This should decrease the occurrence of users inadvertently
+altering control groups</p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-bottom:0cm;margin-bottom:
 .0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l40 level1 lfo17'><![if !supportLists]><span
@@ -4267,8 +4336,8 @@ text-indent:-18.0pt;mso-list:l40 level3 lfo17;tab-stops:list 108.0pt'><![if !sup
 style='mso-ascii-font-family:Calibri;mso-fareast-font-family:Calibri;
 mso-hansi-font-family:Calibri;mso-bidi-font-family:Calibri'><span
 style='mso-list:Ignore'>-<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-</span></span></span><![endif]>This is because it is impossible to restore
-these kinds of selections leading to problems e.g. miss-rallies</p>
+</span></span></span><![endif]>This is because it is impossible to restore these
+kinds of selections leading to problems e.g. miss-rallies</p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-bottom:0cm;margin-bottom:
 .0001pt;mso-add-space:auto;text-indent:-18.0pt;mso-list:l40 level1 lfo17'><![if !supportLists]><span
@@ -4398,8 +4467,8 @@ can now be used with a sleep</p>
 <p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'><span
 style='mso-tab-count:2'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span>delay
 of 0 ms (i.e. no sleep) for near instant automations.<span
-style='mso-spacerun:yes'>&nbsp; </span>This is important for the auto (fully automatic)
-injects, you should try setting the </p>
+style='mso-spacerun:yes'>&nbsp; </span>This is important for the auto (fully
+automatic) injects, you should try setting the </p>
 
 <p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'><span
 style='mso-tab-count:2'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span>auto
@@ -4668,8 +4737,8 @@ style='mso-ascii-font-family:Calibri;mso-fareast-font-family:Calibri;
 mso-hansi-font-family:Calibri;mso-bidi-font-family:Calibri'><span
 style='mso-list:Ignore'>-<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]>As a <span class=SpellE>Terran</span>, when
-building a CC inside your base try to place it further than 8 map units from the
-geyser</p>
+building a CC inside your base try to place it further than 8 map units from
+the geyser</p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-left:92.7pt;mso-add-space:
 auto;text-indent:-18.0pt;mso-list:l28 level1 lfo29'><![if !supportLists]><span
@@ -4795,8 +4864,8 @@ margin-bottom:0cm;margin-left:35.45pt;margin-bottom:.0001pt;mso-add-space:auto;
 text-indent:-10.9pt;mso-list:l33 level1 lfo33'><![if !supportLists]><span
 style='font-family:Wingdings;mso-fareast-font-family:Wingdings;mso-bidi-font-family:
 Wingdings'><span style='mso-list:Ignore'>&sect;<span style='font:7.0pt "Times New Roman"'>
-</span></span></span><![endif]>Previously some hotkeys would stop working
-requiring a program restart. </p>
+</span></span></span><![endif]>Previously some hotkeys would stop working requiring
+a program restart. </p>
 
 <p class=MsoListParagraphCxSpLast style='margin-top:0cm;margin-right:0cm;
 margin-bottom:0cm;margin-left:70.9pt;margin-bottom:.0001pt;mso-add-space:auto;
@@ -5291,8 +5360,7 @@ For forced/fully automatic injects a routine added which checks if the user is
 spamming the burrow button </p>
 
 <p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'><span
-style='mso-tab-count:1'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span><span
-style='mso-tab-count:1'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span>-
+style='mso-tab-count:2'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span>-
 Due to the <span class=SpellE>SC2</span>/Windows key buffering this can result
 in queens being burrowed during injects - even after the keyboard input has
 been blocked!</p>
@@ -5330,8 +5398,8 @@ class=SpellE>chronos</span></p>
 
 <p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'><span
 style='mso-tab-count:1'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span>&#8226;
-A bug which resulted in already warned buildings being re-warned when the program
-was restarted or settings changed/saved during a match</p>
+A bug which resulted in already warned buildings being re-warned when the
+program was restarted or settings changed/saved during a match</p>
 
 <p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'><span
 style='mso-tab-count:2'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span>-This
@@ -5434,8 +5502,7 @@ style='mso-tab-count:4'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&n
 Is the only queen near the hatch</p>
 
 <p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'><span
-style='mso-tab-count:2'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span><span
-style='mso-tab-count:2'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span>-
+style='mso-tab-count:4'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span>-
 Has enough <span class=SpellE>engery</span> for the additional injects</p>
 
 <p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'><span
@@ -5874,7 +5941,8 @@ style='mso-tab-count:2'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&n
 if a drone has not been</p>
 
 <p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'><span
-style='mso-tab-count:3'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span>built
+style='mso-tab-count:2'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span><span
+style='mso-tab-count:1'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span>built
 in the last X seconds. Sorry, the <span class=SpellE>zerg</span> unit build
 method is different to T &amp; P.</p>
 
@@ -6016,8 +6084,7 @@ This can be used to highlight certain units with a specific colour on the <span
 class=SpellE>minimap</span></p>
 
 <p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'><span
-style='mso-tab-count:1'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span><span
-style='mso-tab-count:1'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span></p>
+style='mso-tab-count:2'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span></p>
 
 <p class=MsoNormal>Fixes:<span style='mso-tab-count:1'>&nbsp;&nbsp;&nbsp; </span></p>
 
@@ -6276,8 +6343,8 @@ money, gas<span style='mso-tab-count:1'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbs
 
 <p class=MsoNormal>New:</p>
 
-<p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'>&#8226; New
-injection method 'Backspace Advanced':</p>
+<p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'>&#8226; New injection
+method 'Backspace Advanced':</p>
 
 <p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'><span
 style='mso-tab-count:1'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span>-
@@ -6379,9 +6446,9 @@ Game pause if user is idle (at start) has been re-enabled/fixed.</p>
 Mouse input/movement will be blocked during fully automated i.e. forced
 injects. (like it use to be)</p>
 
-<p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'>&#8226;
-Sticky keys - Although this problem is much better than it once was, on
-occasion keys (particularly the ctrl key) can still become </p>
+<p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'>&#8226; Sticky
+keys - Although this problem is much better than it once was, on occasion keys
+(particularly the ctrl key) can still become </p>
 
 <p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'><span
 style='mso-tab-count:1'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span>temporarily
@@ -6431,8 +6498,7 @@ Hotkey to playback the last detected/unit-alert message. (detected units)</p>
 Ctrl/shift key 'sticking' while using auto-group should be better/fixed.</p>
 
 <p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'>&#8226;
-Optimised <span class=SpellE>Minimap</span> Drawing rate - ~13% performance
-increase</p>
+Optimised <span class=SpellE>Minimap</span> Drawing rate - ~13% performance increase</p>
 
 <p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'>&#8226;
 Minor code/speed improvements</p>
@@ -6466,8 +6532,8 @@ Compiled using (the new) <span class=SpellE>AHK</span>(_L) <span class=SpellE>v1
 
 <p class=MsoNormal>New:</p>
 
-<p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'>&#8226; Restricted
-Unit Grouping</p>
+<p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'>&#8226;
+Restricted Unit Grouping</p>
 
 <p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'><span
 style='mso-tab-count:1'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span>-
@@ -6547,8 +6613,8 @@ style='mso-tab-count:1'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&n
 <p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'>&#8226; Auto
 Grouping units using control group 0 will now work</p>
 
-<p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'>&#8226;
-Playing a game while having the options menu open will no longer cause <span
+<p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'>&#8226; Playing
+a game while having the options menu open will no longer cause <span
 class=SpellE>warnigs</span> (money/supply etc) to occur more frequently than
 set.</p>
 
@@ -6586,8 +6652,8 @@ Emergency Unlock and Restart Button &quot;Left windows &amp; Space&quot; ***</p>
 
 <p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'><span
 style='mso-tab-count:1'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span>-When
-pressed once, it should restore user input if a key has become artificially
-stuck OR user input is erroneously blocked</p>
+pressed once, it should restore user input if a key has become artificially stuck
+OR user input is erroneously blocked</p>
 
 <p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'><span
 style='mso-tab-count:1'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span>-When
@@ -6651,9 +6717,9 @@ Input Method &quot;</p>
 
 <p class=MsoNormal>New:</p>
 
-<p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'>&#8226;
-Intelligent <span class=SpellE>MiniMap</span> larva Inject - This should
-prevent or at least reduce the likelihood of queens going walkabout.</p>
+<p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'>&#8226; Intelligent
+<span class=SpellE>MiniMap</span> larva Inject - This should prevent or at
+least reduce the likelihood of queens going walkabout.</p>
 
 <p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'><span
 style='mso-tab-count:1'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span>(only
@@ -6692,9 +6758,9 @@ Added player colour to the alert message</p>
 
 <p class=MsoNormal>Fixes:</p>
 
-<p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'>&#8226; The program
-should now be compatible with custom games, including those with free/empty
-player slots, spectators, observers, and referees.</p>
+<p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'>&#8226; The
+program should now be compatible with custom games, including those with
+free/empty player slots, spectators, observers, and referees.</p>
 
 <p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'>&#8226;
 Fixed an issue which resulted in values changing for user Idle time and
@@ -6730,9 +6796,9 @@ enemy races can now be automatically read at the start of the game</p>
 
 <p class=MsoNormal>Fixes:</p>
 
-<p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'>&#8226;
-Fixed an oversight with a memory offset which could result in no 'Unit
-Detection Warning' being issued early on in the match.</p>
+<p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'>&#8226; Fixed
+an oversight with a memory offset which could result in no 'Unit Detection
+Warning' being issued early on in the match.</p>
 
 <p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'>&#8226;
 Modified the user idle function.</p>
@@ -6753,8 +6819,8 @@ Warn If Made After' parameter for the<span style='mso-spacerun:yes'>&nbsp;
 </span>&quot;Early Pool&quot; is &quot;80&quot;, while the &quot;Don't warn if
 exists before&quot; parameter for 14 Pool is 110.</p>
 
-<p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'>This will
-mean that no alert will be given if a pool is made between 80 and 110 seconds.</p>
+<p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'>This will mean
+that no alert will be given if a pool is made between 80 and 110 seconds.</p>
 
 <p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'>To rectify
 this, simply change the 'Don't Warn If Made After' for &quot;Early Pool&quot;
@@ -6768,8 +6834,8 @@ to &quot;109&quot;. </p>
 
 <p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'>&#8226;
 Added the optional parameters &quot;<span class=SpellE>Dont</span> Warn
-Before&quot; and &quot;<span class=SpellE>Dont</span> Warn After&quot; (a
-specified game time) to the detection system.</p>
+Before&quot; and &quot;<span class=SpellE>Dont</span> Warn After&quot; (a specified
+game time) to the detection system.</p>
 
 <p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'><span
 style='mso-tab-count:1'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span>This
@@ -6833,8 +6899,8 @@ file.</p>
 class=SpellE>Copy2clipboard</span>=0 now actually disables copying the detected
 unit to the clipboard </p>
 
-<p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'>&#8226; No
-longer receive &quot;idle&quot; warning at the start of a game.</p>
+<p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'>&#8226; No longer
+receive &quot;idle&quot; warning at the start of a game.</p>
 
 <p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'><o:p>&nbsp;</o:p></p>
 
@@ -6865,8 +6931,8 @@ During the inject sequence all user keyboard and mouse input will be blocked
 <p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'>&#8226;
 Fixed the auto detect local player function</p>
 
-<p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'>&#8226; Warnings
-will no longer be heard during replays</p>
+<p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'>&#8226;
+Warnings will no longer be heard during replays</p>
 
 <p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'><o:p>&nbsp;</o:p></p>
 
@@ -6874,8 +6940,8 @@ will no longer be heard during replays</p>
 
 <p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'><o:p>&nbsp;</o:p></p>
 
-<p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'>&#8226;
-Program now auto detects local player name</p>
+<p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'>&#8226; Program
+now auto detects local player name</p>
 
 <p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'>&#8226;
 Speech and Overall program volumes can now be set via the <span class=SpellE>config</span>
@@ -6929,8 +6995,8 @@ Updated the memory addresses for SC <span class=SpellE>vr</span> 1.5.1</p>
 Changed the auto inject macro - building queens (at <span class=SpellE>queenless</span>
 hatcheries) will no longer be cancelled </p>
 
-<p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'>&#8226;
-Fixed the incorrect naming/ID of some of the units in the <span class=SpellE>config</span>
+<p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'>&#8226; Fixed
+the incorrect naming/ID of some of the units in the <span class=SpellE>config</span>
 file (<span class=SpellE>nydus</span> and spire)</p>
 
 <p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'>&#8226;
@@ -6958,8 +7024,8 @@ Added race specific voice alerts for worker production</p>
 <p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'>&#8226;
 Major rewrite of the code structure and flow</p>
 
-<p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'>&#8226; Added
-a minimum supply threshold before (supply) warnings are invoked</p>
+<p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'>&#8226;
+Added a minimum supply threshold before (supply) warnings are invoked</p>
 
 <p class=MsoNormal style='margin-bottom:0cm;margin-bottom:.0001pt'>&#8226;
 Added the ability to issue warnings for gateways which have yet to be (i.e.

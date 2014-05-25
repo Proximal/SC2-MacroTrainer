@@ -3160,7 +3160,7 @@ exitApp()
 tSpeak(Message, SAPIVol := "", SAPIRate := "")
 {	global speech_volume, aThreads
 
-	if !SAPIVol
+	if (SAPIVol = "")
 		SAPIVol := speech_volume
 
 	aThreads.Speech.ahkPostFunction("speak", Message, SAPIVol, SAPIRate)

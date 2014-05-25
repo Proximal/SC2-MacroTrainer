@@ -2,8 +2,45 @@
 ; returns a string containing the speech script
 ; to be used by ahktextdll()
 
+; **********
+; Major issue to be aware of. Cant use ahkH ahkFunction - must use ahkPostFunction
+; otherwise will cause an unknown com error 
+;**************
+
 ; http://msdn.microsoft.com/en-us/library/ee431802(v=vs.85).aspx
 ; SAPI.Speak("<pitch absmiddle = '" pitch "'/>",0x20)    ; pitch : param1 from -10 to 10. 0 is default.
+
+; SAPI COM errors
+; http://msdn.microsoft.com/en-us/library/ee431883(v=vs.85).aspx
+
+; SAPI flag values
+; http://msdn.microsoft.com/en-us/library/ms720892(v=vs.85).aspx
+/*
+    Enum SpeechVoiceSpeakFlags
+        'SpVoice Flags
+        SVSFDefault = 0
+        SVSFlagsAsync = 1
+        SVSFPurgeBeforeSpeak = 2
+        SVSFIsFilename = 4
+        SVSFIsXML = 8
+        SVSFIsNotXML = 16
+        SVSFPersistXML = 32
+
+        'Normalizer Flags
+        SVSFNLPSpeakPunc = 64
+
+        'TTS Format
+        SVSFParseSapi = 
+        SVSFParseSsml = 
+        SVSFParseAutoDetect = 
+
+        'Masks
+        SVSFNLPMask = 64
+        SVSFParseMask = 
+        SVSFVoiceMask = 127
+        SVSFUnusedFlags = -128
+    End Enum
+*/
 
 /*
     ; This line returns within .2ms, but if first time creatng com
@@ -21,7 +58,7 @@
 generateSpeechScript()
 {
     script = 
-    ( Comments 
+    ( Comments
         #Persistent
         #NoEnv
         global SAPI := ComObjCreate("SAPI.SpVoice") ; This takes 8 ms
@@ -40,6 +77,9 @@ generateSpeechScript()
             }        
             return
         }
+        ; Major issue to be aware of. Cant use ahkH ahkFunction - must use ahkPostFunction
+        ; otherwise will cause an unknown com error 
+
         speak(message, SAPIVol := 100, rate := 0)
         {
         ;         This is commented out, as user can just modify volume via SAPI.
@@ -67,12 +107,26 @@ generateSpeechScript()
             else if(rate > 10)
                 rate := 10 
 
+            ; The 'asynchronous' parameter is really a flag parameter with numerous values.
+            ; So make it either 1 for asynchronous (SVSFlagsAsync) or 0 for synchronous (SVSFDefault)
+            ; See comments at top for other valid values.
+
+            ; I've just discovered that not using ahkPostFunction will cause a comerror
+            ; hence  using ahkPostFunction negates prevents the use of synchronous 
+            ; to halt code execution so asynchronous is removed
+
+            ; if SAPIVol is not number
+            ;    asynchronous := 1
+            ; else if asynchronous
+            ;    asynchronous := 1
+            ; else
+            ;    asynchronous := 0   ; This isn't really required as it has to be a 0 to get here
+
             try 
             {  
                 SAPI.Rate := rate
                 SAPI.volume := SAPIVol
-                ; SAPI.Speak(message, 1) takes ~ 5 ms. (the first time it is called it will take ~170ms)
-                SAPI.Speak(message, 1)  ; 1 allows asynchronous, so function returns immediately. This solves all the problems                             
+                SAPI.Speak(message, 1) ; 1 allows asynchronous, so function returns immediately. This solves all the problems with timings/losing messages                           
             }
             Return
         }
