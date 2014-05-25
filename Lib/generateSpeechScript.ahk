@@ -24,8 +24,10 @@ generateSpeechScript()
     ( Comments 
         #Persistent
         #NoEnv
-        global SAPI := ComObjCreate("SAPI.SpVoice")
+        global SAPI := ComObjCreate("SAPI.SpVoice") ; This takes 8 ms
         return
+        ; Have to blank the SAPI object before terminating speechThread
+        ; Otherwise main program will hang when it attempts to terminate this thread
         clearSAPI:
         SAPI := []
         return
@@ -69,6 +71,7 @@ generateSpeechScript()
             {  
                 SAPI.Rate := rate
                 SAPI.volume := SAPIVol
+                ; SAPI.Speak(message, 1) takes ~ 5 ms. (the first time it is called it will take ~170ms)
                 SAPI.Speak(message, 1)  ; 1 allows asynchronous, so function returns immediately. This solves all the problems                             
             }
             Return

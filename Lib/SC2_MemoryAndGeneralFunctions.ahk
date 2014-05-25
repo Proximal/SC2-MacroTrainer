@@ -156,7 +156,7 @@ loadMemoryAddresses(base, version := "")
 		; These two versions have matching offsets
 		if (version = "2.1.1.29261") 
 			versionMatch := "2.1.1.29261"
-		else if (version = "2.1.2.30315" || !version) ; !version encase the findVersion function stuffs up and returns 0/blank, thereby just assume match with latest offsets
+		else if (version = "2.1.2.30315" || !version) ; !version in case the findVersion function stuffs up and returns 0/blank, thereby just assume match with latest offsets
 			versionMatch := "2.1.2.30315"
 		;	[Memory Addresses]
 			B_LocalCharacterNameID := base + 0x04F15C14 ; stored as string Name#123

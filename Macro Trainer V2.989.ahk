@@ -65,7 +65,7 @@ SetWorkingDir %A_ScriptDir%  ; Ensures a consistent starting directory.
 #NoEnv  ; Recommended for performance and compatibility with future AutoHotkey releases.
 #MaxThreads 20 ; don't know if this will affect anything
 SetStoreCapslockMode, off ; needed in case a user bind something to the capslock key in sc2 - other AHK always sends capslock to adjust for case.
-ListLines(False) 
+;ListLines(False) 
 SetControlDelay -1 	; make this global so buttons dont get held down during controlclick
 SetKeyDelay, -1	 	; Incase SendInput reverts to Event - and for controlsend delay
 SetMouseDelay, -1
@@ -255,49 +255,21 @@ InstallSC2Files()
 ;#Include <xml> ; in the local lib folder
 
 
-
 CreatepBitmaps(a_pBitmap, aUnitID)
 aUnitInfo := []
 
 If (auto_update AND A_IsCompiled AND url.UpdateZip := CheckForUpdates(ProgramVersion, latestVersion, url.CurrentVersionInfo))
 {
-;	changelog_text := Url2Var(url.changelog)
-	Gui, New
-	Gui +Toolwindow	+LabelAUpdate_On
-	Gui, Add, Picture, x12 y10 w90 h90 , %A_Temp%\Starcraft-2.ico
-	Gui, Font, S10 CDefault Bold, Verdana
-	Gui, Add, Text, x112 y10 w220, An update is available.
-	Gui, Font, Norm 
-	Gui, Add, Text, x112 y35 w560, Click UPDATE to download the latest version.
-	Gui, Add, Text, x112 y+10 w560, Click CANCEL to continue running this version.
-	Gui, Add, Text, x112 y+10 w560, Click DISABLE to stop the program automatically checking for updates.
-	Gui, Font, S8 CDefault, Verdana
-	Gui, Add, Text, x112 y+5 w560, %A_Tab% (You can still update via right clicking the tray icon.)
-	Gui, Font, S10
-	Gui, Add, Text, x112 y+10, You're currently running version %ProgramVersion%
-	Gui, Font, S8 CDefault Bold, Verdana
-	Gui, Add, Text, x10 y+5 w80, Changelog:
-	Gui, Font, Norm
-
-;	Gui, Add, Edit, x12 y+10 w560 h220 readonly -E0x200, % LTrim(changelog_text)
-	Gui Add, ActiveX, x12  w560 h220  vWB, Shell.Explorer
-	WB.Navigate(url.changelog)
-	Gui, Font, S8 CDefault Bold, Verdana
-	Gui, Add, Button, Default x50 y+20 w100 h30 gUpdate, &Update
-	Gui, Font, Norm 
-	Gui, Add, Button, x+100 yp w100 h30 gLaunch vDisable_Auto_Update, &Disable
-	Gui, Add, Button, x+100 yp w100 h30 gLaunch vCancel_Auto_Update, &Cancel
-	Gui, Show, w600, Macro Trainer Update
-	sleep, 1500 	; needs 50ms to prevent wb unknown comm error
-	try WB.Refresh() 	; So it updates to current changelog (not one in cache)
-	Return				
+	gosub autoUpdateFound
+	return			
 }
 
-Launch:
-
+LaunchClose:
+Launch: ; Used by the buttons in the GUI auto update (disable & cancel)
 If (A_GuiControl = "Disable_Auto_Update")
 	Iniwrite, % auto_update := 0, %config_file%, Misc Settings, auto_check_updates
-If (A_GuiControl = "Disable_Auto_Update" OR A_GuiControl = "Cancel_Auto_Update")
+If (A_GuiControl = "Disable_Auto_Update" || A_GuiControl = "Cancel_Auto_Update"
+|| A_ThisLabel = "LaunchClose")
 	Gui Destroy
 
 If launch_settings
@@ -379,7 +351,7 @@ l_Changeling := aUnitID["ChangelingZealot"] "," aUnitID["ChangelingMarineShield"
 				. ","  aUnitID["ChangelingZerglingWings"] "," aUnitID["ChangelingZergling"]
 
 
-if A_OSVersion in WIN_7,WIN_VISTA 
+if A_OSVersion in WIN_7,WIN_VISTA ; win8 should probably be here too should read up on it
 {
 	if !DwmIsCompositionEnabled() && !MT_DWMwarned && !MT_Restart && A_IsCompiled ; so not restarted via hotkey or icon 
 	{
@@ -2237,6 +2209,12 @@ GuiReturn:
 	Gui Destroy
 	Return 
 
+GuiClose:
+GuiEscape:
+	Gui, Options:-Disabled ; as the colour selector comes here, no need to reenable the options
+	Gui Destroy
+Return	
+
 ; Can only arrive here if cancel or x-close/escape the options menu
 ; not via save (or apply) buttons
 
@@ -2247,49 +2225,76 @@ Gui Destroy
 Gosub pre_startup	;so the correct values get read back for time *1000 conversion from ms/s vice versa
 Return				
 
-GuiClose:
-GuiEscape:
-	Gui, Options:-Disabled ; as the colour selector comes here, no need to reenable the options
-	Gui Destroy
-Return	
+;AUpdate_OnClose: ;from the Auto Update GUI
+;	Gui Destroy
+;	Goto Launch
 
-AUpdate_OnClose: ;from the Auto Update GUI
-	Gui Destroy
-	Goto Launch
-
+autoUpdateFound:
 TrayUpdate:
 	IfWinExist, Macro Trainer Update
-	{	WinActivate
+	{	
+		WinActivate
 		Return 					
 	}
-	IF (url.UpdateZip := CheckForUpdates(ProgramVersion, latestVersion, url.CurrentVersionInfo))
+	if (A_ThisLabel = "autoUpdateFound")
+	|| (A_ThisLabel = "TrayUpdate" && (url.UpdateZip := CheckForUpdates(ProgramVersion, latestVersion, url.CurrentVersionInfo)))
 	{
-;		changelog_text := Url2Var(url.changelog)
+		; Very minor bug - for some reason &Canecel does not underline the 'C' in the button
+		; for the trayupdate - but it does for the autoupdate
+	;	changelog_text := Url2Var(url.changelog)
 		Gui, New
-		Gui +Toolwindow	
-		Gui, Add, Picture, x12 y10 w90 h90 , %A_Temp%\Starcraft-2.ico
-		Gui, Font, S10 CDefault Bold, Verdana
-		Gui, Add, Text, x112 y10 w220, An update is available.
-		Gui, Font, Norm 
-		Gui, Add, Text, x112 y35 w300, Click UPDATE to download the latest version.
-		Gui, Add, Text, x112 y+5, You're currently running version %ProgramVersion%
-		Gui, Font, S8 CDefault Bold, Verdana
-		Gui, Add, Text, x112 y+5 w80, Changelog:
+		;Gui +Toolwindow	+LabelAUpdate_On
+		if (A_ThisLabel = "autoUpdateFound")
+			Gui +LabelLaunch +AlwaysOnTop
+
+		Gui, Font, S12 CDefault Bold, Verdana
+		Gui, Add, Text, y10 w220, An update is available!
+		Gui, Font, S10
+		Gui, Add, Text, section y+15, Installed version: 
+		Gui, Add, Text, xs+150 ys, %ProgramVersion%
+
+		Gui, Add, Text, xs y+10, Latest version: 
+		Gui, Add, Text, xs+150 yp cRed, %latestVersion%
+
+
 		Gui, Font, Norm 
 
+		if (A_ThisLabel = "autoUpdateFound")
+		{
+			Gui, Add, Text, xs+450 y10, Click UPDATE to download the latest version.
+			Gui, Add, Text, y+10, Click CANCEL to continue running this version.
+			Gui, Add, Text, y+10, Click DISABLE to stop the program automatically`nchecking for updates.
+
+			Gui, Font, S8 CDefault, Verdana
+			Gui, Add, Text, y+5, (You can still update via right clicking the tray icon.)
+		}
+		Gui, Font, S9 CDefault Bold, Verdana
+		if (A_ThisLabel = "autoUpdateFound")
+			Gui, Add, Text, xs y+5 w80, Changelog:
+		else Gui, Add, Text, xs y+10 w80, Changelog:
+
+		Gui, Font, Norm
 	;	Gui, Add, Edit, x12 y+10 w560 h220 readonly -E0x200, % LTrim(changelog_text)
-		Gui Add, ActiveX, x12 y+10 w560 h220  vWB, Shell.Explorer
+		Gui Add, ActiveX, x12  w800 h450  vWB, Shell.Explorer
 		WB.Navigate(url.changelog)
-		Gui, Font, S8 CDefault Bold, Verdana
-		Gui, Add, Button, Default x122 y330 w100 h30 gUpdate, &Update
-		Gui, Font, Norm 
-		Gui, Add, Button, x342 y330 w100 h30 gGuiReturn, Cancel
-		Gui, Show, x483 y242 h379 w593, Macro Trainer Update
-		sleep, 1500 	; needs 50ms to prevent wb unknown comm error
-		try WB.Refresh() 	; So it updates to current changelog (not one in cache)		
-		Return				
+		Gui, Font, S8 CDefault, Verdana
+		if (A_ThisLabel = "autoUpdateFound")
+		{
+			Gui, Add, Button, x+-100 y+20 w100 h30 gLaunch vCancel_Auto_Update, &Cancel
+			Gui, Add, Button, x+-250 yp w100 h30 gLaunch vDisable_Auto_Update, &Disable
+		}
+		else 
+			Gui, Add, Button, x+-100 y+20 w100 h30 gGuiReturn, &Cancel
+		Gui, Font, Bold
+		Gui, Add, Button, Default x+-250 yp w100 h30 gUpdate, &Update
+		Gui, Font, Norm
+		
+		Gui, Show,, Macro Trainer Update
+		sleep, 1500 	; needs 50ms to prevent wb unknown comm error - There's a way to do this with the comMethods - but I cbf atm.
+		try WB.Refresh() 	; So it updates to current changelog (not one in cache)
+		return				
 	}
-	Else
+	Else if (A_ThisLabel = "TrayUpdate") 
 	{
 		Gui, New
 		Gui +Toolwindow +AlwaysOnTop	
@@ -2303,9 +2308,11 @@ TrayUpdate:
 		Gui, Font, S8 CDefault Bold, Verdana
 		Gui, Font, Norm 
 		Gui, Add, Button, Default x160 yp+40  w100 h30 gGuiReturn, &OK
-		Gui, Show, , Macro Trainer Update
+		Gui, Show,, Macro Trainer Update
 		Return
 	}
+return 
+
 Update:
 	updateSave := "MacroTrainer" latestVersion ".zip"
 	If ( InternetFileRead( binData, url.UpdateZip) > 0 && !ErrorLevel )
@@ -2361,7 +2368,7 @@ updateErrorExit:
 		run % url.Downloads
 return 
 
-
+; Not used anymore. I think I fixed the bug (sapi) which was preventing the program from exiting cleanly
 SingleInstanceCheck:
 
 ; SingleInstance, Force will no longer work, as the main window name has been changed
@@ -13091,6 +13098,4 @@ return
 ;sleep 1000 
 ;Run, "C:\Users\Matthieu\Desktop\New folder (3)\MsgHookLister\x64\hooks.txt"
 ;return 
-
-
 
