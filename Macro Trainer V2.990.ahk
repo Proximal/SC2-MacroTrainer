@@ -107,6 +107,8 @@ if (!FileExist("msvcr100.dll") && A_IsCompiled)
 ;if A_IsCompiled
 ;	Gosub, SingleInstanceCheck
 
+InstallSC2Files() ; Run this before the gosub pre_startup  - otherwise menu items will be missing!
+
 Menu Tray, Add, &Settings && Options, options_menu
 Menu Tray, Add, &Check For Updates, TrayUpdate
 Menu Tray, Add, &Homepage, Homepage
@@ -219,7 +221,6 @@ if A_OSVersion in WIN_8,WIN_7,WIN_VISTA
 ;	Startup
 ;-----------------------
 
-InstallSC2Files()
 #Include <Gdip>
 #Include <SC2_MemoryAndGeneralFunctions>
 #Include <classInput>
@@ -5417,16 +5418,21 @@ Test_VOL:
 
 
 	; The easy approach would be to use ahkFunction so AHK runs the function and waits for it to return
-	; Make SAPI speak synchronously using the false param so that the code execution is halted
+	; Make SAPI speak synchronously so that the code execution is halted
 	; and the program volume isn't changed before the speech is finished.
 	; **********
 	; But due to com/AHK_H bug ahkFunction will give an unknown comError
-	; So I can't use this method
+	; So I can't use this method. Also this wouldn't allow the volume slider changes to dynamically
+	; influence the spoken volume
 
-	; SAPI offers some methods to like wait until done, but since using postFunction this will
+	; SAPI offers some methods to like wait until done, but using postFunction this will
 	; not halt the execution of code in this thread. 
 	; Could create a thread global sapi object and call it directly from here using this method or synch mode
-	; But I'm just gonna be lazy and create a tempory sapi object in this script/thread
+	; But I'm just gonna be lazy and create a temporary sapi object in this script/thread
+
+	; Unlike tSpeak() which doesn't call the speech module if volume is 0
+	; sapiMenuVolumeTester()  allows the text to start speaking even at 0 volume
+	; hence allowing users to observe the volume change as the slider is moved.
 
 	Rand_joke++
 	If ( Rand_joke = 1 )
@@ -5435,7 +5441,6 @@ Test_VOL:
 		sapiMenuVolumeTester("A templar comes back to base with a terrified look on his face. The zealots asks - what happened? You look like you've seen a ghost")
 	Else If ( Rand_joke = 3 )
 	{
-
 		sapiMenuVolumeTester("A Three Three Protoss army walks into a bar and asks")
 		sleep 100
 		sapiMenuVolumeTester("Where is the counter?")
@@ -5475,23 +5480,31 @@ Test_VOL:
 return
 
 ; This function is only used by the volume tester in the options menu.
-; It uses asynchronous mode and WaitUntilDone()+sleep to allow the to mouse move
+; It uses asynchronous mode and WaitUntilDone()+sleep to allow the mouse to move
 ; and the gui/program to respond to input. 
-; It also checks and alters the script/SAPI volume during the test if the slider is moved
+; It also checks and alters the SAPI volume during the test if the slider is moved
 ; The function won't return until the messages has been fully spoken
 
 sapiMenuVolumeTester(message)
 {
+	; Don't have to specify the GUIs name/ID as this is launched in response to clicking the 'test' button
+	; in the options GUI
 	GuiControlGet, prevSpeechVol,, speech_volume
+	; The GUI was closed. Since some of the jokes are 2 parts and have sleeps (could probably use xml or something to insert pauses into the text)
+	; allowing the gui to be closed between them. So just return rather than speaking at 0 volume
+	if ErrorLevel
+		return
 	prevSpeechVol := Round(prevSpeechVol, 0)
 	GuiControlGet, prevTotalVol,, programVolume
+	if ErrorLevel
+		return
 	prevTotalVol := Round(prevTotalVol, 0)	
 	; The sliders for these controls limit value between 0 - 100. Don't think rounder is necessary either
 	try 
 	{
 		SAPI := ComObjCreate("SAPI.SpVoice")
 		SAPI.volume := prevSpeechVol
-		; asynchronous so doesn't freeze this script - i.e. cant move the mouse etc
+		; use asynchronous so doesn't freeze this script - i.e. cant move the mouse etc
 		SAPI.Speak(message, 1) 
 		; waits infinite until done. Can't use this as it will freeze like above - could cause hooks to be removed! and it looks crappy.
 		;SAPI.WaitUntilDone(-1) 
@@ -5500,9 +5513,12 @@ sapiMenuVolumeTester(message)
 	; if the control doesn't exist any more (gui closes) - though it's not prompt type error (if try isn't used)
 	; cant use try with while, as braces will cause try to be in effect for GuiControlGet
 
-	loop, 1000 ; with a sleep of 50, this will loop for ~ 50 seconds if something goes wrong with the break/WaitUntilDone 
+	loop, 1000 ; with a sleep of 50+5, this will loop for ~55 seconds if something goes wrong with the break/WaitUntilDone 
 	{
-		try break := SAPI.WaitUntilDone(5)
+		; If something were to go wrong with the com, the catch should break the loop
+		; but just in case, set break to true prior to call.
+		break := True 
+		try break := SAPI.WaitUntilDone(5) ; AHK is obviously unresponsive during this call
 		catch 
 			break
 		if break
@@ -5530,7 +5546,6 @@ sapiMenuVolumeTester(message)
 			SetProgramWaveVolume(totalVol)
 		}
 	}
-	SAPI := "" ; would be blanked anyway 
 	return
 }
 

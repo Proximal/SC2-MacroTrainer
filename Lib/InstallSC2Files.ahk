@@ -1,3 +1,16 @@
+; Takes 13 ms if don't overwrite
+; Takes 66 ms on my SSD to overwrite all the files
+; Takes 86 ms if the unitpanel folder was deleted 
+; I guess it could take much longer 100s ms of ms on slow HDDs
+
+; 27/05
+; I'm going to keep the current method of overwriting all of them
+; as some of these have generic names e.g. on/off.wav and map32.png etc
+; So some other application could have put them here
+; It was fucking stupid of me not to put them in a A_Temp\MacroTrainerFolder in the first place!!
+; For the next version I might look at putting everything in its own folder (shouldn't be too hard). 
+; I've made enough changes for this version.
+
 InstallSC2Files()
 { 	global
 	FileCreateDir, %A_Temp%\UnitPanelMacroTrainer
@@ -268,5 +281,8 @@ InstallSC2Files()
 	FileInstall, Included Files\Used_Icons\Upgrades\Zerg\zergmissileweapons2.png, %A_Temp%\UnitPanelMacroTrainer\zergmissileweapons2.png, 1
 	FileInstall, Included Files\Used_Icons\Upgrades\Zerg\zergmissileweapons3.png, %A_Temp%\UnitPanelMacroTrainer\zergmissileweapons3.png, 1
 
-	FileInstall, Included Files\ahkH\AutoHotkey.exe, %A_Temp%\AHK.exe, 1
+	; This was previously used by dSpeak() - This function isn't called any more
+	; This is still used by ResourHackIcons() 
+	; Use the Non-MD version so don't need to worry about msvcr100.dll
+	FileInstall, Included Files\ahkH\nonMD\AutoHotkey.exe, %A_Temp%\AHK.exe, 1
 }

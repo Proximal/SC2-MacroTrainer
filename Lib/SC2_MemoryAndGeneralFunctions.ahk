@@ -2837,7 +2837,6 @@ SetupColourArrays(ByRef HexColour, Byref MatrixColour)
 	Return
 }
 
-
 CreatepBitmaps(byref a_pBitmap, aUnitID)
 {
 	a_pBitmap := []
@@ -3162,8 +3161,8 @@ tSpeak(Message, SAPIVol := "", SAPIRate := "")
 
 	if (SAPIVol = "")
 		SAPIVol := speech_volume
-
-	aThreads.Speech.ahkPostFunction("speak", Message, SAPIVol, SAPIRate)
+	if SAPIVol ; If it's 0 don't bother calling the function
+		aThreads.Speech.ahkPostFunction("speak", Message, SAPIVol, SAPIRate)
 	return
 }
 

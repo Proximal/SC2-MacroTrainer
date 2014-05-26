@@ -7,6 +7,16 @@
 ; otherwise will cause an unknown com error 
 ;**************
 
+/* List Installed Voices
+SAPI := ComObjCreate("SAPI.SpVoice") 
+for t in SAPI.GetVoices()
+    msgbox % T.GetDescription
+
+item := 0 ; zero based list
+SAPI.Voice := SAPI.GetVoices().Item(item) ; sets voice to first installed voice
+*/
+
+
 ; http://msdn.microsoft.com/en-us/library/ee431802(v=vs.85).aspx
 ; SAPI.Speak("<pitch absmiddle = '" pitch "'/>",0x20)    ; pitch : param1 from -10 to 10. 0 is default.
 
