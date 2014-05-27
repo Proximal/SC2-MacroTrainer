@@ -191,6 +191,12 @@ SetupColourArrays(aHexColours, MatrixColour)
 ; so they are updated when user changes custom colour highlights
 a_pPens := initialisePenColours(aHexColours)
 
+; This is required as the overlay resize function needs to know the overlay names when 
+; it receives the resize event. Minimap isn't included as it's not resizeable and is in another thread. It still has a random title though.
+global aOverlayTitles := []
+for i, overlay in ["IncomeOverlay", "ResourcesOverlay", "ArmySizeOverlay", "WorkerOverlay", "IdleWorkersOverlay", "UnitOverlay", "LocalPlayerColourOverlay", "APMOverlay"] ; here cos it can get non overlay titles
+	aOverlayTitles[overlay] := getRandomString_Az09(10, 20)
+
 Menu, Tray, Tip, MT_V%ProgramVersion% Coded By Kalamity
 
 If InStr(A_ScriptDir, old_backup_DIR)
@@ -7468,15 +7474,20 @@ OverlayResize_WM_MOUSEWHEEL(wParam) 		;(wParam, lParam) 0x20A =mousewheel
 { 
 	local WheelMove, ActiveTitle, newScale, Scale
 	WheelMove := wParam > 0x7FFFFFFF ? HiWord(-(~wParam)-1)/120 :  HiWord(wParam)/120 ;get the higher order word & /120 = number of rotations
-	WinGetActiveTitle, ActiveTitle 			;downard rotations are -negative numbers
-	if ActiveTitle in IncomeOverlay,ResourcesOverlay,ArmySizeOverlay,WorkerOverlay,IdleWorkersOverlay,UnitOverlay,LocalPlayerColourOverlay,APMOverlay ; here cos it can get non overlay titles
+	WinGetActiveTitle, ActiveTitle 			;downward rotations are -negative numbers
+	for overlayName, overlayTitle in aOverlayTitles
 	{	
-		newScale := %ActiveTitle%Scale + WheelMove*.05
-		if (newScale >= .5)
-			%ActiveTitle%Scale := newScale
-		else newScale := %ActiveTitle%Scale := .5	
-		IniWrite, %newScale%, %config_file%, Overlays, %ActiveTitle%Scale
+		if (ActiveTitle = overlayTitle)
+		{
+			newScale := %overlayName%Scale + WheelMove*.05
+			if (newScale >= .5)
+				%overlayName%Scale := newScale
+			else newScale := %overlayName%Scale := .5	
+			IniWrite, %newScale%, %config_file%, Overlays, %overlayName%Scale
+			return
+		}
 	}
+	return
 } 
 
 OverlayMove_LButtonDown()
@@ -7506,7 +7517,7 @@ DrawIdleWorkersOverlay(ByRef Redraw, UserScale=1,Drag=0, expand=1)
 	If (!overlayCreated)
 	{
 		Gui, idleWorkersOverlay: -Caption Hwndhwnd1 +E0x20 +E0x80000 +LastFound  +ToolWindow +AlwaysOnTop
-		Gui, idleWorkersOverlay: Show, NA X%idleWorkersOverlayX% Y%idleWorkersOverlayY% W400 H400, idleWorkersOverlay
+		Gui, idleWorkersOverlay: Show, NA X%idleWorkersOverlayX% Y%idleWorkersOverlayY% W400 H400, % aOverlayTitles["idleWorkersOverlay"]
 		OnMessage(0x201, "OverlayMove_LButtonDown")
 		OnMessage(0x20A, "OverlayResize_WM_MOUSEWHEEL")
 		overlayCreated := True	
@@ -7573,7 +7584,7 @@ DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Dr
 	If (!overlayCreated)
 	{
 		Gui, IncomeOverlay: -Caption Hwndhwnd1 +E0x20 +E0x80000 +LastFound  +ToolWindow +AlwaysOnTop
-		Gui, IncomeOverlay: Show, NA X%IncomeOverlayX% Y%IncomeOverlayY% W400 H400, IncomeOverlay
+		Gui, IncomeOverlay: Show, NA X%IncomeOverlayX% Y%IncomeOverlayY% W400 H400, % aOverlayTitles["IncomeOverlay"]
 	;	hwnd1 := WinExist()
 		OnMessage(0x201, "OverlayMove_LButtonDown")
 		OnMessage(0x20A, "OverlayResize_WM_MOUSEWHEEL")
@@ -7693,7 +7704,7 @@ DrawAPMOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, modeAPM_EPM=0,Drag
 	If (!overlayCreated)
 	{
 		Gui, APMOverlay: -Caption Hwndhwnd1 +E0x20 +E0x80000 +LastFound  +ToolWindow +AlwaysOnTop
-		Gui, APMOverlay: Show, NA X%APMOverlayX% Y%APMOverlayY% W400 H400, APMOverlay
+		Gui, APMOverlay: Show, NA X%APMOverlayX% Y%APMOverlayY% W400 H400, % aOverlayTitles["APMOverlay"]
 	;	hwnd1 := WinExist()
 		OnMessage(0x201, "OverlayMove_LButtonDown")
 		OnMessage(0x20A, "OverlayResize_WM_MOUSEWHEEL")
@@ -7804,7 +7815,7 @@ DrawResourcesOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0
 	If (!overlayCreated)
 	{
 		Gui, ResourcesOverlay: -Caption Hwndhwnd1 +E0x20 +E0x80000 +LastFound  +ToolWindow +AlwaysOnTop
-		Gui, ResourcesOverlay: Show, NA X%ResourcesOverlayX% Y%ResourcesOverlayY% W400 H400, ResourcesOverlay
+		Gui, ResourcesOverlay: Show, NA X%ResourcesOverlayX% Y%ResourcesOverlayY% W400 H400, % aOverlayTitles["ResourcesOverlay"]
 
 	;	hwnd1 := WinExist()
 		OnMessage(0x201, "OverlayMove_LButtonDown")
@@ -7933,7 +7944,7 @@ DrawArmySizeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,
 	If (!overlayCreated)
 	{	; Create a layered window ;E0x20 click thru (+E0x80000 : must be used for UpdateLayeredWindow to work!) that is always on top (+AlwaysOnTop), has no taskbar entry or caption		
 		Gui, ArmySizeOverlay: -Caption Hwndhwnd1 +E0x20 +E0x80000 +LastFound  +ToolWindow +AlwaysOnTop
-		Gui, ArmySizeOverlay: Show, NA X%ArmySizeOverlayX% Y%ArmySizeOverlayY% W400 H400, ArmySizeOverlay
+		Gui, ArmySizeOverlay: Show, NA X%ArmySizeOverlayX% Y%ArmySizeOverlayY% W400 H400, % aOverlayTitles["ArmySizeOverlay"]
 		OnMessage(0x201, "OverlayMove_LButtonDown")
 		OnMessage(0x20A, "OverlayResize_WM_MOUSEWHEEL")
 		overlayCreated := True
@@ -8057,7 +8068,7 @@ DrawWorkerOverlay(ByRef Redraw, UserScale=1,Drag=0)
 	If (!overlayCreated)
 	{
 		Gui, WorkerOverlay: -Caption Hwndhwnd1 +E0x20 +E0x80000 +LastFound  +ToolWindow +AlwaysOnTop
-		Gui, WorkerOverlay: Show, NA X%WorkerOverlayX% Y%WorkerOverlayY% W400 H400, WorkerOverlay
+		Gui, WorkerOverlay: Show, NA X%WorkerOverlayX% Y%WorkerOverlayY% W400 H400, % aOverlayTitles["WorkerOverlay"]
 		OnMessage(0x201, "OverlayMove_LButtonDown")
 		OnMessage(0x20A, "OverlayResize_WM_MOUSEWHEEL")
 		overlayCreated := True
@@ -8132,7 +8143,7 @@ DrawLocalPlayerColour(ByRef Redraw, UserScale=1,Drag=0)
 	If (!overlayCreated)
 	{
 		Gui, LocalPlayerColourOverlay: -Caption Hwndhwnd1 +E0x20 +E0x80000 +LastFound  +ToolWindow +AlwaysOnTop
-		Gui, LocalPlayerColourOverlay: Show, NA X%LocalPlayerColourOverlayX% Y%LocalPlayerColourOverlayY% W400 H400, LocalPlayerColourOverlay
+		Gui, LocalPlayerColourOverlay: Show, NA X%LocalPlayerColourOverlayX% Y%LocalPlayerColourOverlayY% W400 H400, % aOverlayTitles["LocalPlayerColourOverlay"]
 		OnMessage(0x201, "OverlayMove_LButtonDown")
 		OnMessage(0x20A, "OverlayResize_WM_MOUSEWHEEL")
 		overlayCreated := True
@@ -10819,7 +10830,7 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 	If (!overlayCreated)
 	{
 		Gui, UnitOverlay: -Caption Hwndhwnd1 +E0x20 +E0x80000 +LastFound  +ToolWindow +AlwaysOnTop
-		Gui, UnitOverlay: Show, NA X%UnitOverlayX% Y%UnitOverlayY% W400 H400, UnitOverlay
+		Gui, UnitOverlay: Show, NA X%UnitOverlayX% Y%UnitOverlayY% W400 H400, % aOverlayTitles["UnitOverlay"]
 		OnMessage(0x201, "OverlayMove_LButtonDown")
 		OnMessage(0x20A, "OverlayResize_WM_MOUSEWHEEL")
 		overlayCreated := True
@@ -11076,7 +11087,6 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 						Gdip_FillEllipse(G, a_pBrushes["ScanChrono"], UpgradeX + .2*Width/2, destUpgradesY + .2*Height/2, ceil(5*UserScale), ceil(5*UserScale)) ; ceil seems to make it rounder/crisper
 					UpgradeX += (Width+5*UserScale)
 				}
-
 			}
 			; This is here to find the longest unit panel (as they will be different size for different players)
 			if (UpgradeX + Width > WindowWidth)
@@ -11088,7 +11098,16 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 	WindowHeight := DestY + 4*Height
 	WindowWidth += width *3 ; because x begins on the left side of where the icon is drawn hence need to add 1 extra icon width to maximum width - actually 1.x something due to the fact that the black count square is past the edge of the picture
 
-	; if width/height is > desktop size, updatelayerd window fails and nothing gets drawn
+	; If just showing upgrades and no names/race icons (though possible but unlikely when showing all),
+	; window height width could be null as could destY and width. This would cause the updatelayered to fail
+	; causing the last drawn upgrade to annoyingly flash on the screen
+
+	if !WindowHeight
+		WindowHeight := 20
+	if !WindowWidth
+		WindowWidth := 20	
+
+	; if width/height is > desktop size, updatelayered window fails and nothing gets drawn
 	DesktopScreenCoordinates(Xmin, Ymin, Xmax, Ymax)
 	if (WindowWidth > Xmax)
 		WindowWidth := Xmax
@@ -13193,6 +13212,4 @@ return
 ;sleep 1000 
 ;Run, "C:\Users\Matthieu\Desktop\New folder (3)\MsgHookLister\x64\hooks.txt"
 ;return 
-
-
 
