@@ -242,7 +242,12 @@ If (auto_update AND A_IsCompiled AND url.UpdateZip := CheckForUpdates(ProgramVer
 LaunchClose:
 Launch: ; Used by the buttons in the GUI auto update (disable & cancel)
 If (A_GuiControl = "Disable_Auto_Update")
+{
+	; need to specify the options: gui as this thread wasn't spawned from the options menu
+	GuiControl, Options:, auto_update, 0 ; Uncheck - when first installed the options GUI will appear before the
+								; Update box - so user could click disable and the box in the GUI would still be checked and the state changed back to on when they save the options menu
 	Iniwrite, % auto_update := 0, %config_file%, Misc Settings, auto_check_updates
+}
 If (A_GuiControl = "Disable_Auto_Update" || A_GuiControl = "Cancel_Auto_Update"
 || A_ThisLabel = "LaunchClose")
 	Gui Destroy
@@ -685,6 +690,7 @@ g_PrevWarning:
 	aThreads.MiniMap.ahkPostFunction("announcePreviousUnitWarning")
 Return
 
+
 Adjust_overlay:
 	Dragoverlay := True
 	{
@@ -705,6 +711,20 @@ Adjust_overlay:
 		SetTimer, g_unitPanelOverlay_timer, %UnitOverlayRefresh%, -9
 		SoundPlay, %A_Temp%\Off.wav
 		WinActivate, %GameIdentifier%
+		; Bug: 
+		;	If adjust overlay, then move mouse so that it is no longer on top of an overlay
+		; 	and release adjust button, overlays (except minimap) will be hidden.
+		; Fix: 
+		; Gosub to them so that they save their new positions	
+		; Destroy and remake them.
+		; Gosub again so they are redrawn instantly 
+		gosub overlay_timer
+		if DrawUnitOverlay
+			gosub g_unitPanelOverlay_timer			
+		DestroyOverlays()
+		gosub overlay_timer
+		if DrawUnitOverlay
+			gosub g_unitPanelOverlay_timer		
 	}
 Return	
 
@@ -1734,13 +1754,10 @@ find_races:
 If (A_ThisLabel = "find_races")
 	aThreads.MiniMap.ahkassign.TimeReadRacesSet := time
 	;TimeReadRacesSet := time
-if !time	;leave this in, so if they press the hotkey whileoutside of game, wont get gibberish
+if !time	;leave this in, so if they press the hotkey while outside of game, wont get gibberish
 	return
 Else EnemyRaces := GetEnemyRaces()
-if (race_clipboard && WinActive(GameIdentifier))
-	clipboard := EnemyRaces
-if race_speech
-	tSpeak(EnemyRaces)
+tSpeak(EnemyRaces)
 return
 
 ;--------------------------------------------
@@ -2413,7 +2430,7 @@ if FileExist(config_file) ; the file exists lets read the ini settings
 		Gosub, pre_startup ; Read the ini settings again - this updates the 'read version' and also helps with Control group 'ERROR' variable 
 		;IniRead, read_version, %config_file%, Version, version, 1	;this is a safety net - and used to prevent keeping user alert lists in update pre 2.6 & Auto control group 'ERROR'
 		;msgbox It seems that this is the first time that you have ran this version.`n`nYour old %config_file% & Macro Trainer have been backed up to `"\%old_backup_DIR%`". A new config file has been installed which contains your previous personalised settings`n`nPress OK to continue.
-		Pressed := CMsgbox( "Macro Trainer Vr" ProgramVersion , "It seems that this is the first time that you have ran this version.`n`nYour old " config_file " and Macro Trainer have been backed up to '\" old_backup_DIR "'.`nA new config file has been installed which contains your previous personalised settings`n`nPress Launch to run SC2 and pwn noobs.`n`nOtherwise press Options to open the options menu.", "*Launch|&Options", 560, 160, 45, A_Temp "\Starcraft-2.ico", 110, 0, 12)
+		Pressed := CMsgbox( "Macro Trainer Vr" ProgramVersion , "It seems that this is the first time that you have ran this version.`n`nYour old " config_file " and Macro Trainer have been backed up to '\" old_backup_DIR "'.`n`nA new config file has been installed which contains your previous personalised settings`n`nPress Launch to run SC2.`n`nOtherwise press Options to open the options menu.", "*Launch|&Options", 500, 170, 45, A_Temp "\Starcraft-2.ico", 80, 0, 12)
 		If ( Pressed = "Options")
 			gosub options_menu
 	}
@@ -2422,7 +2439,7 @@ if FileExist(config_file) ; the file exists lets read the ini settings
 Else If A_IsCompiled  ; config file doesn't exist
 {
 	FileInstall, MT_Config.ini, %config_file%, 0 ; includes and install the ini to the working directory - 0 prevents file being overwritten
-	CMsgbox( "Macro Trainer Vr" ProgramVersion ,"This appears to be the first time you have run this program.`n`nPlease take a moment to read the help file and edit the settings in the options menu as you see fit.`n`n", "*OK", 500, 130, 10, A_Temp "\Starcraft-2.ico", 110)
+	CMsgbox( "Macro Trainer Vr" ProgramVersion ,"This appears to be the first time you have run this program.`n`nPlease take a moment to read the help file and edit the settings in the options menu as you see fit.`n`n", "*OK", 500, 90, 10, A_Temp "\Starcraft-2.ico", 70)
 	Gosub pre_startup
 	gosub options_menu
 }
@@ -2632,8 +2649,8 @@ ini_settings_write:
 	IniWrite, %race_reading%, %config_file%, Read Opponents Spawn-Races, enable
 	IniWrite, %Auto_Read_Races%, %config_file%, Read Opponents Spawn-Races, Auto_Read_Races
 	IniWrite, %read_races_key%, %config_file%, Read Opponents Spawn-Races, read_key
-	IniWrite, %race_speech%, %config_file%, Read Opponents Spawn-Races, speech
-	IniWrite, %race_clipboard%, %config_file%, Read Opponents Spawn-Races, copy_to_clipboard
+	;IniWrite, %race_speech%, %config_file%, Read Opponents Spawn-Races, speech
+	;IniWrite, %race_clipboard%, %config_file%, Read Opponents Spawn-Races, copy_to_clipboard
 
 	;[Worker Production Helper]	
 	IniWrite, %workeron%, %config_file%, Worker Production Helper, warning_enable
@@ -3440,10 +3457,10 @@ try
 
 			Gui, Add, Checkbox,xp+10 yp+30 Vrace_reading checked%race_reading%, Enable
 			Gui, Add, Checkbox, y+10 vAuto_Read_Races checked%Auto_Read_Races%, Run on match start
-			Gui, Add, Checkbox, y+10 Vrace_speech checked%race_speech%, Speak Races
-			Gui, Add, Checkbox, y+10 Vrace_clipboard checked%race_clipboard%, Copy to Clipboard
+			;Gui, Add, Checkbox, y+10 Vrace_speech checked%race_speech%, Speak Races
+			;Gui, Add, Checkbox, y+10 Vrace_clipboard checked%race_clipboard%, Copy to Clipboard
 
-			Gui, Add, Text, yp+25 w20, Hotkey:
+			Gui, Add, Text, yp+40 w20, Hotkey:
 				Gui, Add, Edit, Readonly yp-2 x+5 w65  center Vread_races_key , %read_races_key%
 					Gui, Add, Button, yp-2 x+5 gEdit_hotkey v#read_races_key,  Edit
 
@@ -3551,10 +3568,7 @@ try
 
 	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vDetection_TAB, Detection List
 		loop, parse, l_GameType, `,
-		{
 			BAS_on_%A_LoopField% := alert_array[A_LoopField, "Enabled"]
-			BAS_copy2clipboard_%A_LoopField% := alert_array[A_LoopField, "Clipboard"]
-		}
 		
 		Gui, Add, GroupBox, x+45 y+60 w100 h160 section, Enable Warnings
 			Gui, Add, Checkbox, xp+15 yp+25 vBAS_on_1v1 checked%BAS_on_1v1%, 1v1
@@ -5382,7 +5396,7 @@ return
 	; so the compiled exe will be ~4x bigger!
 
 g_MTChageIcon:
-FileSelectFile, NewIconFile, S3, , Select an Icon or Picture, *.ico ; only *.ico will work with reshacker
+FileSelectFile, NewIconFile, S3, , Select an icon file, *.ico ; only *.ico will work with reshacker
 if (errorlevel || !NewIconFile || !A_IsCompiled) ; is set to 1 if the user dismissed the dialog without selecting a file (such as by pressing the Cancel button).
 	return
 ;GUIControl,, MTCustomIcon, %NewIconFile% 
@@ -13179,4 +13193,6 @@ return
 ;sleep 1000 
 ;Run, "C:\Users\Matthieu\Desktop\New folder (3)\MsgHookLister\x64\hooks.txt"
 ;return 
+
+
 

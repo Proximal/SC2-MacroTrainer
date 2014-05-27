@@ -2965,6 +2965,8 @@ DestroyOverlays()
 	global
 	; destroy minimap when alttabed out
 	; and at end of game
+	; These destroy commands shouldnt be needed as the functions
+	; themselves will do it when called with -1
 	Try Gui, APMOverlay: Destroy 
 	Try Gui, MiniMapOverlay: Destroy 
 	Try Gui, IncomeOverlay: Destroy
@@ -3429,8 +3431,8 @@ readConfigFile()
 	IniRead, race_reading, %config_file%, Read Opponents Spawn-Races, enable, 1
 	IniRead, Auto_Read_Races, %config_file%, Read Opponents Spawn-Races, Auto_Read_Races, 1
 	IniRead, read_races_key, %config_file%, Read Opponents Spawn-Races, read_key, LWin & F1
-	IniRead, race_speech, %config_file%, Read Opponents Spawn-Races, speech, 1
-	IniRead, race_clipboard, %config_file%, Read Opponents Spawn-Races, copy_to_clipboard, 0
+	;IniRead, race_speech, %config_file%, Read Opponents Spawn-Races, speech, 1
+	;IniRead, race_clipboard, %config_file%, Read Opponents Spawn-Races, copy_to_clipboard, 0
 
 	;[Worker Production Helper]	
 	IniRead, workeron, %config_file%, Worker Production Helper, warning_enable, 1

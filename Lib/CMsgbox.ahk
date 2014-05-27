@@ -47,7 +47,7 @@
 CMsgBox( title, text, buttons, w="", h="", bsep=3, icon="", icon_h=64, owner=0, rows=8 ) {
   Global _CMsg_Result
   
-  GuiID := 9      ; If you change, also change the subroutines below
+  GuiID := 25      ; If you change, also change the subroutines below
   
   StringSplit Button, buttons, |
   
@@ -87,8 +87,11 @@ CMsgBox( title, text, buttons, w="", h="", bsep=3, icon="", icon_h=64, owner=0, 
   ;GuiControl, Move, %GuiID%, w200 h200
   
   Loop 
+  {
     If( _CMsg_Result )
       Break
+    sleep 20
+  }
 
   If( owner <> 0 )
     Gui %owner%:-Disabled
@@ -99,8 +102,8 @@ CMsgBox( title, text, buttons, w="", h="", bsep=3, icon="", icon_h=64, owner=0, 
   Return Result
 }
 
-9GuiEscape:
-9GuiClose:
+25GuiEscape:
+25GuiClose:
   _CMsg_Result := "Close"
 Return
 
