@@ -202,7 +202,9 @@ DrawMiniMap()
 	;	hwnd1 := WinExist()
 	}
 		; Create a gdi bitmap with width and height of what we are going to draw into it. This is the entire drawing area for everything
-		hbm := CreateDIBSection(A_ScreenWidth/4, A_ScreenHeight) ;only draw on left side of the screen
+		;only draw on left side of the screen - DIB size influences speed considerably
+		; but im too lazy to convert (drawing pos) the code so that DIB with fully screen height isn't required.
+		hbm := CreateDIBSection(A_ScreenWidth/4, A_ScreenHeight) 
 		; Get a device context compatible with the screen
 		hdc := CreateCompatibleDC()
 		; Select the bitmap into the device context

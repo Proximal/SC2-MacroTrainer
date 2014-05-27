@@ -23,8 +23,6 @@
 ; but i dont wont to muck around with it atm.
 ;***********
 
-; GUI map flicker try "Are you tried double buffer ? Its usualy help with flickering and sometimes with redraw (problem)  :Gui +LastFound +E0x02000000"
-
 ; if script re-copied from github should save it using UTF-8 with BOM (otherwise some of the ascii symbols like • wont be displayed correctly)
 /*	Things to do
 	Check if chrono structures are powered - It seems to be a behaviour ' Power User (Queue) '
@@ -696,6 +694,11 @@ g_PrevWarning:
 	aThreads.MiniMap.ahkPostFunction("announcePreviousUnitWarning")
 Return
 
+
+; Not sure what would happen if this hotkey thread activates while an overlay function
+; is drawn. Not sure if changing the priority here is retroActive allowing the interrupted drawing
+; thread/routine to (finish and then) interrupt this hotkey and redraw/update size. 
+; Never observed the overlays not responding to this.
 
 Adjust_overlay:
 	Dragoverlay := True
@@ -7282,7 +7285,6 @@ getZergProduction(EggUnitIndex)
 
 */
 
-
 isSelectionGroupable(ByRef oSelection)
 {	GLOBAl aLocalPlayer
 	if !numGetUnitSelectionObject(oSelection) 	; No units selected
@@ -7495,6 +7497,9 @@ OverlayMove_LButtonDown()
     PostMessage, 0xA1, 2
 }
 
+; The performance/time measurements above each function were performed with
+; no player IDs. When IDs (text/pic) are present it takes a bit longer
+; Takes 0.76 ms
 DrawIdleWorkersOverlay(ByRef Redraw, UserScale=1,Drag=0, expand=1)
 {	global aLocalPlayer, GameIdentifier, config_file, IdleWorkersOverlayX, IdleWorkersOverlayY, a_pBitmap, overlayIdleWorkerTransparency
 	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0				
@@ -7533,7 +7538,7 @@ DrawIdleWorkersOverlay(ByRef Redraw, UserScale=1,Drag=0, expand=1)
 		IniWrite, %idleWorkersOverlayX%, %config_file%, Overlays, idleWorkersOverlayX
 		Iniwrite, %idleWorkersOverlayY%, %config_file%, Overlays, idleWorkersOverlayY
 	}
-	hbm := CreateDIBSection(A_ScreenWidth, A_ScreenHeight)
+	hbm := CreateDIBSection(400, 400)
 	hdc := CreateCompatibleDC()
 	obm := SelectObject(hdc, hbm)
 	G := Gdip_GraphicsFromHDC(hdc)
@@ -7561,6 +7566,9 @@ DrawIdleWorkersOverlay(ByRef Redraw, UserScale=1,Drag=0, expand=1)
 	DeleteDC(hdc) 
 	Return
 }
+
+
+; Takes 4.4 ms    
 DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Drag=0)
 {	global aLocalPlayer, aHexColours, aPlayer, GameIdentifier, IncomeOverlayX, IncomeOverlayY, config_file, MatrixColour, a_pBitmap, overlayIncomeTransparency
 	, drawLocalPlayerIncome
@@ -7673,14 +7681,26 @@ DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Dr
 		}
 	}
 	WindowHeight := DestY+Height
+
+	if !WindowWidth
+		WindowWidth := 20	
+	else if (WindowWidth > A_ScreenWidth)
+		WindowWidth := A_ScreenWidth
+
+	if !WindowHeight
+		WindowHeight := 20		
+	else if (WindowHeight > A_ScreenHeight)
+		WindowHeight := A_ScreenHeight
+
 	Gdip_DeleteGraphics(G)
-	UpdateLayeredWindow(hwnd1, hdc,,,WindowWidth,WindowHeight, overlayIncomeTransparency)
+	UpdateLayeredWindow(hwnd1, hdc,,, WindowWidth, WindowHeight, overlayIncomeTransparency)
 	SelectObject(hdc, obm) ; needed else eats ram ; Select the object back into the hdc
 	DeleteObject(hbm)   ; needed else eats ram 	; Now the bitmap may be deleted
 	DeleteDC(hdc) ; Also the device context related to the bitmap may be deleted
 	Return
 }
 
+; Takes ~ 3 ms (due to dib size)
 DrawAPMOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, modeAPM_EPM=0,Drag=0)
 {	global aLocalPlayer, aHexColours, aPlayer, GameIdentifier, APMOverlayX, APMOverlayY, config_file, MatrixColour, a_pBitmap, overlayAPMTransparency
 	, APMOverlayMode
@@ -7784,14 +7804,26 @@ DrawAPMOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, modeAPM_EPM=0,Drag
 		}
 	}
 	WindowHeight := DestY+Height
+
+	if !WindowWidth
+		WindowWidth := 20	
+	else if (WindowWidth > A_ScreenWidth)
+		WindowWidth := A_ScreenWidth
+
+	if !WindowHeight
+		WindowHeight := 20		
+	else if (WindowHeight > A_ScreenHeight)
+		WindowHeight := A_ScreenHeight
+
 	Gdip_DeleteGraphics(G)
-	UpdateLayeredWindow(hwnd1, hdc,,,WindowWidth,WindowHeight, overlayAPMTransparency)
+	UpdateLayeredWindow(hwnd1, hdc,,, WindowWidth, WindowHeight, overlayAPMTransparency)
 	SelectObject(hdc, obm) ; needed else eats ram ; Select the object back into the hdc
 	DeleteObject(hbm)   ; needed else eats ram 	; Now the bitmap may be deleted
 	DeleteDC(hdc) ; Also the device context related to the bitmap may be deleted
 	Return
-}		
+}
 
+; Takes 4.45 ms (slow due to dib size)
 DrawResourcesOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Drag=0)
 {	global aLocalPlayer, aHexColours, aPlayer, GameIdentifier, config_file, ResourcesOverlayX, ResourcesOverlayY, MatrixColour, a_pBitmap, overlayResourceTransparency
 			, drawLocalPlayerResources
@@ -7913,14 +7945,26 @@ DrawResourcesOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0
 		}
 	}
 	WindowHeight := DestY+Height
+
+	if !WindowWidth
+		WindowWidth := 20	
+	else if (WindowWidth > A_ScreenWidth)
+		WindowWidth := A_ScreenWidth
+
+	if !WindowHeight
+		WindowHeight := 20		
+	else if (WindowHeight > A_ScreenHeight)
+		WindowHeight := A_ScreenHeight
+
 	Gdip_DeleteGraphics(G)
-	UpdateLayeredWindow(hwnd1, hdc,,,WindowWidth,WindowHeight, overlayResourceTransparency)
+	UpdateLayeredWindow(hwnd1, hdc,,, WindowWidth, WindowHeight, overlayResourceTransparency)
 	SelectObject(hdc, obm)
 	DeleteObject(hbm)
 	DeleteDC(hdc)
 	Return
 }
 
+; Takes 7 ms for 2 (enemy) players (slow due to DIB size)
 DrawArmySizeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Drag=0)
 {	global aLocalPlayer, aHexColours, aPlayer, GameIdentifier, config_file, ArmySizeOverlayX, ArmySizeOverlayY, MatrixColour, a_pBitmap, overlayArmyTransparency
 	, drawLocalPlayerArmy
@@ -8038,7 +8082,25 @@ DrawArmySizeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,
 			i++ 
 		}
 	}
-	WindowHeight := DestY+Height	
+	WindowHeight := DestY+Height
+
+	;DesktopScreenCoordinates(Xmin, Ymin, Xmax, Ymax)
+	; If the width is larger than the created Dib section the 
+	; Update layered window will fail and nothing will get drawn (overlay permanently hidden)
+	; window width should never be 0 for this overlay (unless 0 players in the game)
+	; Note: I think there is a little more to it than this, as when adjusting the overlay it allows
+	; you to make it massive and then disappears when the overlay gets destroyed/redrawn
+
+	if !WindowWidth
+		WindowWidth := 20	
+	else if (WindowWidth > A_ScreenWidth)
+		WindowWidth := A_ScreenWidth
+
+	if !WindowHeight
+		WindowHeight := 20		
+	else if (WindowHeight > A_ScreenHeight)
+		WindowHeight := A_ScreenHeight
+
 	Gdip_DeleteGraphics(G)
 	UpdateLayeredWindow(hwnd1, hdc,,, WindowWidth, WindowHeight, overlayArmyTransparency)
 	SelectObject(hdc, obm) 
@@ -8046,6 +8108,7 @@ DrawArmySizeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,
 	DeleteDC(hdc) 
 	Return
 }
+; Takes 0.6 ms
 DrawWorkerOverlay(ByRef Redraw, UserScale=1,Drag=0)
 {	global aLocalPlayer, GameIdentifier, config_file, WorkerOverlayX, WorkerOverlayY, a_pBitmap, overlayHarvesterTransparency
 	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := False				
@@ -8086,7 +8149,10 @@ DrawWorkerOverlay(ByRef Redraw, UserScale=1,Drag=0)
 		IniWrite, %WorkerOverlayX%, %config_file%, Overlays, WorkerOverlayX
 		Iniwrite, %WorkerOverlayY%, %config_file%, Overlays, WorkerOverlayY
 	}
-	hbm := CreateDIBSection(A_ScreenWidth, A_ScreenHeight)
+	; With a dib of full screen size this takes 3 ms (avg over 500 runs)
+	; with a dib of 400x400 it takes 0.6 ms
+
+	hbm := CreateDIBSection(400, 400)
 	hdc := CreateCompatibleDC()
 	obm := SelectObject(hdc, hbm)
 	G := Gdip_GraphicsFromHDC(hdc)
@@ -8098,6 +8164,8 @@ DrawWorkerOverlay(ByRef Redraw, UserScale=1,Drag=0)
 	Gdip_DrawImage(G, pBitmap, DestX, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)	
 	Gdip_TextToGraphics(G, getPlayerWorkerCount(aLocalPlayer["Slot"]), "x"(DestX+Width+2*UserScale) "y"(DestY+(Height//4)) Options, Font, TextWidthHeight, TextWidthHeight)
 	Gdip_DeleteGraphics(G)	
+
+	; Don't have to worry about size checks here, as not passing these params to updateLayeredWindow()
 	UpdateLayeredWindow(hwnd1, hdc,,,,, overlayHarvesterTransparency)
 	SelectObject(hdc, obm) 
 	DeleteObject(hbm)  
@@ -8105,7 +8173,7 @@ DrawWorkerOverlay(ByRef Redraw, UserScale=1,Drag=0)
 	Return
 }
 
-
+; Function takes 0.151217 ms
 DrawLocalPlayerColour(ByRef Redraw, UserScale=1,Drag=0)
 {	global aLocalPlayer, GameIdentifier, config_file, LocalPlayerColourOverlayX, LocalPlayerColourOverlayY, a_pBitmap, aHexColours, overlayLocalColourTransparency
 	static overlayCreated, hwnd1, DragPrevious := 0,  PreviousPlayerColours := 0 			
@@ -8143,7 +8211,7 @@ DrawLocalPlayerColour(ByRef Redraw, UserScale=1,Drag=0)
 	If (!overlayCreated)
 	{
 		Gui, LocalPlayerColourOverlay: -Caption Hwndhwnd1 +E0x20 +E0x80000 +LastFound  +ToolWindow +AlwaysOnTop
-		Gui, LocalPlayerColourOverlay: Show, NA X%LocalPlayerColourOverlayX% Y%LocalPlayerColourOverlayY% W400 H400, % aOverlayTitles["LocalPlayerColourOverlay"]
+		Gui, LocalPlayerColourOverlay: Show, NA X%LocalPlayerColourOverlayX% Y%LocalPlayerColourOverlayY% W200 H200, % aOverlayTitles["LocalPlayerColourOverlay"]
 		OnMessage(0x201, "OverlayMove_LButtonDown")
 		OnMessage(0x20A, "OverlayResize_WM_MOUSEWHEEL")
 		overlayCreated := True
@@ -8160,7 +8228,7 @@ DrawLocalPlayerColour(ByRef Redraw, UserScale=1,Drag=0)
 		Iniwrite, %LocalPlayerColourOverlayY%, %config_file%, Overlays, LocalPlayerColourOverlayY
 	}
 
-	hbm := CreateDIBSection(A_ScreenWidth, A_ScreenHeight) ;/10 not really necessary but should be plenty large enough
+	hbm := CreateDIBSection(200, 200)
 	hdc := CreateCompatibleDC()
 	obm := SelectObject(hdc, hbm)
 	G := Gdip_GraphicsFromHDC(hdc)
@@ -10846,6 +10914,7 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 		IniWrite, %UnitOverlayX%, %config_file%, Overlays, UnitOverlayX
 		Iniwrite, %UnitOverlayY%, %config_file%, Overlays, UnitOverlayY		
 	}
+
 	hbm := CreateDIBSection(A_ScreenWidth, A_ScreenHeight)
 	hdc := CreateCompatibleDC()
 	obm := SelectObject(hdc, hbm)
@@ -11102,17 +11171,22 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 	; window height width could be null as could destY and width. This would cause the updatelayered to fail
 	; causing the last drawn upgrade to annoyingly flash on the screen
 
-	if !WindowHeight
-		WindowHeight := 20
+	;DesktopScreenCoordinates(Xmin, Ymin, Xmax, Ymax)
+	; If the width is larger than the created Dib section the 
+	; Update layered window will fail and nothing will get drawn (overlay permanently hidden)
+
+	; Note: I think there is a little more to it than this, as when adjusting the overlay it allows
+	; you to make it massive and then disappears when the overlay gets destroyed/redrawn
+
 	if !WindowWidth
 		WindowWidth := 20	
+	else if (WindowWidth > A_ScreenWidth)
+		WindowWidth := A_ScreenWidth
 
-	; if width/height is > desktop size, updatelayered window fails and nothing gets drawn
-	DesktopScreenCoordinates(Xmin, Ymin, Xmax, Ymax)
-	if (WindowWidth > Xmax)
-		WindowWidth := Xmax
-	if (WindowHeight > Ymax)
-		WindowHeight := Ymax
+	if !WindowHeight
+		WindowHeight := 20		
+	else if (WindowHeight > A_ScreenHeight)
+		WindowHeight := A_ScreenHeight
 
 	Gdip_DeleteGraphics(G)
 	UpdateLayeredWindow(hwnd1, hdc,,, WindowWidth, WindowHeight, overlayMatchTransparency)
@@ -11122,6 +11196,28 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 	Return
 }
 
+/* Performance impact of changing DIB size
+	Since the DIB size limits the drawing size and it would be nice to allow
+	a UI to be larger than the screen (in practice this would never be required)
+	Also remeber that you cant update the layered window with a size larger than the DIB size
+	Test:
+		thread, NoTimers, True
+		getEnemyUnitCount(aEnemyUnits, aEnemyUnitConstruction, aEnemyCurrentUpgrades)
+		FilterUnits(aEnemyUnits, aEnemyUnitConstruction, aUnitPanelUnits)
+		s := stopwatch()
+		loop 100
+				DrawUnitOverlay(RedrawUnit, UnitOverlayScale, OverlayIdent, Dragoverlay)
+		msgbox %  clipboard := stopwatch(s)
+		return 
+
+	when DIB size of screen
+	hbm := CreateDIBSection(A_ScreenWidth, A_ScreenHeight)
+ 	Results: 776,779,783,771 ms
+
+	when DIB 2*size of screen
+	hbm := CreateDIBSection(A_ScreenWidth, A_ScreenHeight)
+	Results: 1496, 1506, 1481 ms 
+*/
 
 
 ; This is used by the auto worker macro to check if a real one, or a extra/macro one
@@ -13212,4 +13308,6 @@ return
 ;sleep 1000 
 ;Run, "C:\Users\Matthieu\Desktop\New folder (3)\MsgHookLister\x64\hooks.txt"
 ;return 
+
+
 
