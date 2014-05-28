@@ -720,6 +720,7 @@ Adjust_overlay:
 		SetTimer, g_unitPanelOverlay_timer, %UnitOverlayRefresh%, -9
 		SoundPlay, %A_Temp%\Off.wav
 		WinActivate, %GameIdentifier%
+		WinWaitActive, %GameIdentifier%,, 2 ; wait max 2 seconds
 		; Bug: 
 		;	If adjust overlay, then move mouse so that it is no longer on top of an overlay
 		; 	and release adjust button, overlays (except minimap) will be hidden.
@@ -7566,6 +7567,13 @@ DrawIdleWorkersOverlay(ByRef Redraw, UserScale=1,Drag=0, expand=1)
 	DeleteDC(hdc) 
 	Return
 }
+
+/*
+"FYI, Microsoft recommends to free the Graphics object (G) before working with the GDI device context 
+handle (hdc). In other words, call Gdip_DeleteGraphics() before UpdateLayeredWindow() rather than after. "
+http://www.autohotkey.com/board/topic/37927-help-with-gdi-clearing-image-after-updating/
+http://support.microsoft.com/kb/311221
+*/
 
 
 ; Takes 4.4 ms    
