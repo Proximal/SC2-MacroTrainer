@@ -1,3 +1,6 @@
+; This is old and not used anymore
+
+
 Class BufferInputFast
 {	static BufferedState := 0, BlockedState := 0, aBuffer := [], aBlockedKeys := []
 	

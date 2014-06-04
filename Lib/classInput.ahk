@@ -15,14 +15,19 @@
  Also it's slightly slower than pSend() when sending a small number of keys
 */
 
+; 30/05. I've noticed something with sendInput.
+; Send {blind}A or {blind}{A up}
+; This will always send a shift even with setcapsLock state off
+
 class Input 
 {
 ;	static keys := ["LControl", "RControl", "LAlt", "RAlt", "LShift", "RShift", "LWin", "RWin"
 	static keys := ["Control", "Alt", "Shift", "LWin", "RWin"  ; use neurtral modifiers as postmessage cant release left/right
 				, "AppsKey", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12"
 				, "Left", "Right", "Up", "Down", "Home", "End", "PgUp", "PgDn", "Del", "Ins", "BS", "Capslock", "Numlock", "PrintScreen" 
-				, "Pause", "Space", "Enter", "Tab", "Esc", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "B", "C", "D", "E", "F", "G"
-				, "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"
+				, "Pause", "Space", "Enter", "Tab", "Esc", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0"
+				, "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m" ; Have to use lower case to prevent sendInput sending extra shifts
+				, "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z"
 				, "``", "-", "=", "[", "]", "\", ";", "'", ",", ".", "/" 		; note the "`" has to be escaped 
 				, "NumpadDiv", "NumpadMult", "NumpadAdd", "NumpadSub"]
 				; NumpadDiv keystate != / keystate etc

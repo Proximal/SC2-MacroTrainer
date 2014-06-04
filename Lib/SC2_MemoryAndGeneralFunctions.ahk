@@ -235,7 +235,7 @@ loadMemoryAddresses(base, version := "")
 			 O_uModelPointer := 0x8
 			 O_uTargetFilter := 0x14
 			 O_uBuildStatus := 0x18		; buildstatus is really part of the 8 bit targ filter!
-			 O_XelNagaActive := 0x34 	; dont use as doesnt work all the time
+			 O_XelNagaActive := 0x34 	; xel - dont use as doesnt work all the time
 			; something added in here in vr 2.10
 
 			 O_uOwner := 0x41  ; this and the rest below +4
@@ -519,7 +519,6 @@ ReadRawUnit(unit, ByRef Memory)	; dumps the raw memory for one unit
 	ReadRawMemory(B_uStructure + unit * S_uStructure, GameIdentifier, Memory, S_uStructure)
 	return
 }
-
 
 getSelectedUnitIndex(i=0) ;IF Blank just return the first selected unit (at position 0)
 {	global
@@ -2617,12 +2616,20 @@ deleteBrushArray(byRef a_pBrushes)
 ; Just realised i don't think i delete any pens
 ; but I thinks? they are all static static anyway so it doesnt matter.
 
-initialisePenColours(aHexColours)
+initialisePenColours(aHexColours, penSize := 1)
 {
 	a_pPens := []
 	for colour, hexValue in aHexColours
-		a_pPens[colour] := Gdip_CreatePen(0xcFF hexValue, 1)
+		a_pPens[colour] := Gdip_CreatePen(0xcFF hexValue, penSize)
 	return a_pPens
+}
+
+deletePens(byRef a_pPens)
+{
+	for i, pPen in a_pPens
+		Gdip_DeletePen(pPen)
+	a_pPens := []
+	return 
 }
 
 
@@ -2633,7 +2640,7 @@ drawUnitRectangle(G, x, y, width, height, colour := "black")
 	height *= minimap.scale
 
 	x := x - width / 2
-	y :=y - height /2
+	y := y - height /2
 					;as pen is only 1 pixel, it doesn't encroach into the fill paint (only occurs when >=2)
 ;	if !pPen
 ;		pPen := Gdip_CreatePen(0xFF000000, 1)	
@@ -2837,6 +2844,7 @@ SetupColourArrays(ByRef HexColour, Byref MatrixColour)
 	Return
 }
 
+; These bitmaps take up a bit more than 1 MB of space (check mem usage before and after deleting)
 CreatepBitmaps(byref a_pBitmap, aUnitID)
 {
 	a_pBitmap := []
@@ -2868,6 +2876,22 @@ CreatepBitmaps(byref a_pBitmap, aUnitID)
 	a_pBitmap["RedX16"] := Gdip_CreateBitmapFromFile(A_Temp "\RedX16.png")
 }
 
+deletepBitMaps(byRef a_pBitmap)
+{
+	for i, v in a_pBitmap
+	{
+		if IsObject(v)
+			deletepBitMaps(a_pBitmap[i]) ; passing reference to original object, so I could check if it was clearing every item
+		else 
+		{
+			Gdip_DisposeImage(v)
+		;	a_pBitmap[i] := Gdip_DisposeImage(v) ; Return value 0 indicates success - was used to check it was doing it for every item
+		}
+	}
+	a_pBitmap := []
+	return
+}
+
 ;----------------------
 ;	player_team_sorter
 ;-----------------------
@@ -2880,7 +2904,7 @@ getPlayers(byref aPlayer, byref aLocalPlayer, byref aEnemyAndLocalPlayer := "")
 		if !getPlayerName(A_Index) ;empty slot custom games?
 		|| IsInList(getPlayerType(A_Index), "None", "Neutral", "Hostile", "Referee", "Spectator")
 			Continue
-		aPlayer.insert( A_Index, new c_Player(A_Index) )  ; insert at player index so can call using player slot number 
+		aPlayer.insert(A_Index, new c_Player(A_Index) )  ; insert at player index so can call using player slot number as the key (slot number = key) 
 		If (A_Index = getLocalPlayerNumber()) OR (debug AND getPlayerName(A_Index) == debug_name)
 			aLocalPlayer :=  new c_Player(A_Index)
 	}
@@ -2890,7 +2914,9 @@ getPlayers(byref aPlayer, byref aLocalPlayer, byref aEnemyAndLocalPlayer := "")
 			aEnemyAndLocalPlayer.insert(player)
 	}
 	; so local player is last in this object so when iterating for overlays local player shows up last
+	; **********
 	; but cant use the key as the slot number for this object!!!
+	; *********
 	aEnemyAndLocalPlayer.Insert(aLocalPlayer) 
 	return	
 }
@@ -2950,6 +2976,18 @@ ParseEnemyUnits(ByRef a_EnemyUnits, ByRef aPlayer)
 	a_EnemyUnits := a_EnemyUnitsTmp
 }
 
+; returns longest player name in enemy team and can include the local player for overlays
+getLongestPlayerName(aPlayer, includeLocalPlayer := False)
+{
+	localTeam := getPlayerTeam(getLocalPlayerNumber())
+	for slotNumber, Player in aPlayer
+	{
+		if ((player.team != localTeam || (slotNumber = aLocalPlayer["Slot"] && includeLocalPlayer )) 
+		&& StrLen(player.name) > StrLen(LongestName))
+			LongestName := player.name
+	}
+	return LongestName
+}
 
 areOverlaysWaitingToRedraw()
 {
@@ -3063,15 +3101,40 @@ convertCoOrdindatesToMiniMapPos(ByRef  X, ByRef  Y)
 	return	
 }
 
+isUserPerformingAction()
+{	
+	if ( isUserBusyBuilding() || IsUserMovingCamera() || IsMouseButtonActive() 	; so it wont do anything if user is holding down a mousebutton! eg dragboxing
+	||  isCastingReticleActive() ) ; this gives 256 when reticle/cast cursor is present
+		return 1
+	else return 0
+}
 
+isUserPerformingActionIgnoringCamera()
+{	GLOBAL
+	if ( isUserBusyBuilding() || IsMouseButtonActive() 	; so it wont do anything if user is holding down a mousebutton! eg dragboxing
+	||  isCastingReticleActive() ) ; this gives 256 when reticle/cast cursor is present
+		return 1
+	else return 0
+}
 
+; this gives 256 when reticle/casting cursor is present (includes attacking)
+isCastingReticleActive()
+{	GLOBAL
+	return pointer(GameIdentifier, P_IsUserPerformingAction, O1_IsUserPerformingAction)
+}
 
-
-
-
-
-
-
+; for the second old pointer
+; This will return 1 if the basic or advanced building selection card is up (even if all structures greyed out)
+; This will also return 1 when user is trying to place the structure
+isUserBusyBuilding()	
+{ 	GLOBAL
+	; if 6, it means that either the basic or advanced build cards are displayed - even if all are greyed out (and hence a worker is selected) - give 1 for most other units, but gives 7 for targeting reticle
+	if ( 6 = pointer(GameIdentifier, P_IsBuildCardDisplayed, 01_IsBuildCardDisplayed, 02_IsBuildCardDisplayed, 03_IsBuildCardDisplayed)) 
+		return 1 ; as it seems 6 is only displayed when the worker build cards are up, so don't need to double check with below pointer
+	;	return pointer(GameIdentifier, P_IsUserBuildingWithWorker, 01_IsUserBuildingWithWorker, 02_IsUserBuildingWithWorker, 03_IsUserBuildingWithWorker, 04_IsUserBuildingWithWorker)
+	else return 0
+}
+	
 
 /*
 
@@ -3928,6 +3991,132 @@ getCurrentHpAndShields(unit, byRef result)
     return
 }
 
+
+; This will get the morph time for most structures e.g. CC -> orbital/PF, hatch -> lair -> Hive, spire -> G.Spire
+; CommandCentre->Orbital - time remaining
+; [[[[Ability Struct + 0x34] + 0x10] + 0xD4] + 0x98]
+; This way is simpler than using the units queued command pointer
+getStructureMorphProgress(pAbilities, unitType)
+{
+;	pBuildInProgress := findAbilityTypePointer(pAbilities, unitType, "BuildInProgress")
+	p := pointer(GameIdentifier, findAbilityTypePointer(pAbilities, unitType, "BuildInProgress"), 0x10, 0xD4)
+	timeRemaing := ReadMemory(p + 0x98, GameIdentifier)
+	totalTime := ReadMemory(p + 0xB4, GameIdentifier)
+	return round((totalTime - timeRemaing)/totalTime, 2)
+}
+; similar to getStructureBuildProgress
+; Note, this also works with corruptors -> gg.lords and overlord -> overseer, but not ling -> bane or HTs -> Archon
+; but if also has queued command then need to find the morphing ability
+getUnitMorphTimeOld(unit)
+{
+	p := ReadMemory(B_uStructure + unit * S_uStructure + O_P_uCmdQueuePointer, GameIdentifier)
+	timeRemaing := ReadMemory(p + 0x98, GameIdentifier)
+	totalTime := ReadMemory(p + 0xB4, GameIdentifier)
+	return round((totalTime - timeRemaing)/totalTime, 2)
+}
+
+/*
+
+ 	MorphToBroodLord 
+ 	MorphToOverseer
+ 	UpgradeToGreaterSpire
+ 	UpgradeToLair
+	UpgradeToHive
+	UpgradeToOrbital
+	UpgradeToPlanetaryFortress
+*/
+
+getUnitMorphTime(unit, unitType)
+{
+	static targetIsPoint := 0x8, targetIsUnit := 0x10, hasRun := False, aMorphStrings
+
+	if !hasRun 
+	{
+		hasRun := True 
+		aMorphStrings := { 	aUnitID.OverlordCocoon: ["MorphToOverseer"]
+						 ,	aUnitID.BroodLordCocoon: ["MorphToBroodLord"]
+						 ,	aUnitID.Spire: ["UpgradeToGreaterSpire"]
+						 ,  aUnitID.Hatchery: ["UpgradeToLair"]
+						 ,	aUnitID.Lair: ["UpgradeToHive"]
+						 ,  aUnitID.MothershipCore: ["MorphToMothership"]
+						 ,	aUnitID.CommandCenter: ["UpgradeToOrbital", "UpgradeToPlanetaryFortress"]}
+
+						;}
+	}
+	; target flag is usually 7 for the morphing types
+	if (CmdQueue := ReadMemory(B_uStructure + unit * S_uStructure + O_P_uCmdQueuePointer, GameIdentifier)) ; points if currently has a command - 0 otherwise
+	{
+		pNextCmd := ReadMemory(CmdQueue, GameIdentifier) ; If & -2 this is really the first command ie  = BaseCmdQueStruct
+		loop 
+		{
+			ReadRawMemory(pNextCmd & -2, GameIdentifier, cmdDump, 0xB8)
+			targetFlag := numget(cmdDump, 0x38, "UInt")
+
+			if !aStringTable.hasKey(pString := numget(cmdDump, 0x18, "UInt"))
+				aStringTable[pString] := ReadMemory_Str(readMemory(pString + 0x4, GameIdentifier), GameIdentifier)
+
+			for i, morphString in aMorphStrings[unitType]
+			{
+
+				if (morphString = aStringTable[pString])
+				{
+					timeRemaing := numget(cmdDump, 0x98, "UInt")
+					totalTime := numget(cmdDump, 0xB4, "UInt")			
+					return round((totalTime - timeRemaing)/totalTime, 2)
+				}
+			}
+
+		} Until (A_Index > 20 || !(targetFlag & targetIsPoint || targetFlag & targetIsUnit || targetFlag = 7)
+			|| 1 & pNextCmd := numget(cmdDump, 0, "Int"))				; loop until the last/first bit of pNextCmd is set to 1
+		; interstingly after -2 & pNextCmd (the last one) it should = the first address
+	}
+	else return 0
+
+}
+
+getBanelingMorphTime(pAbilities)
+{
+	p := pointer(GameIdentifier, findAbilityTypePointer(pAbilities, aUnitID.BanelingCocoon, "MorphZerglingToBaneling"), 0x12c, 0x0)
+	totalTime := ReadMemory(p + 0x68, GameIdentifier)
+	timeRemaing := ReadMemory(p + 0x6c, GameIdentifier)
+	return round((totalTime - timeRemaing)/totalTime, 2)
+}
+
+getArchonMorphTime(pAbilities)
+{
+	pMergeable := readmemory(findAbilityTypePointer(pAbilities, aUnitID.Archon, "Mergeable"), GameIdentifier)
+	totalTime := ReadMemory(pMergeable + 0x28, GameIdentifier)
+	timeRemaing :=ReadMemory(pMergeable + 0x2C, GameIdentifier)
+	return round((totalTime - timeRemaing)/totalTime, 2)
+}
+
+
+/*
+16,640
+11,104
+
+*/
+
+; total build time and Time Remaining are blank if unit exists as part of the map i.e. via the mapeditor 
+
+getBuildProgress(pAbilities, type)
+{
+	static O_TotalBuildTime := 0x28, O_TimeRemaining := 0x2C
+	; + 0x28 = total build time
+	; + 0x2C = Time Remaining
+
+	if pBuild := findAbilityTypePointer(pAbilities, type, "BuildInProgress")
+	{
+		B_Build := ReadMemory(pBuild, GameIdentifier)
+		totalTime := readmemory(B_Build + O_TotalBuildTime, GameIdentifier)
+		remainingTime := readmemory(B_Build + O_TimeRemaining, GameIdentifier)
+		return round((totalTime - remainingTime) / totalTime, 2) ; 0.73
+	}
+	else return 1 ; something went wrong so assume its complete 
+}
+
+
+
 ; This is used for finding certain offsets.
 ; Specifically where two uInts reside next to each other.
 ; It returns the 8 byte value (generated if you were to read them as an 8 byte value) 
@@ -3964,6 +4153,6 @@ twoShortsAsInt(short1, short2 := "")
 
 debug(text, byRef newHeader := 0)
 {
-	FileAppend, % newHeader != 0 ? newHeader : A_Min ":" A_Sec " - " text "`n", *
+	FileAppend, % (newHeader != 0 ? newHeader : A_Min ":" A_Sec " - ") text "`n", *
 	return
 }

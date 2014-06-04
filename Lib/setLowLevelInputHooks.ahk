@@ -113,7 +113,7 @@ setMTMouseHook(Install)
 	else return -1
 }
 
-
+/*
 MT_InputIdleTime(NewInputTickCount := 0)
 {
 	static LastInputTickCount := A_TickCount ; encase hook never gets installed
@@ -121,6 +121,12 @@ MT_InputIdleTime(NewInputTickCount := 0)
 		return A_TickCount - LastInputTickCount
 	LastInputTickCount := NewInputTickCount
 	return 
+}
+*/
+
+MT_InputIdleTime()
+{
+	return A_mtTimeIdle
 }
 
 
@@ -134,8 +140,8 @@ MT_InputIdleTime(NewInputTickCount := 0)
 ; ncode < 0 means the message shouldn't be processed and I should Return CallNextHookEx(nCode, wParam, lParam)
 ; ncode 0 - message contains information
 ; return a negative value to prevent other programs reading the key
-
-KeyboardHook(nCode, wParam, lParam)
+/*
+KeyboardHook1(nCode, wParam, lParam)
 {	
 	Critical 1000
 
@@ -148,12 +154,82 @@ KeyboardHook(nCode, wParam, lParam)
   	}
    	Return CallNextHookEx(nCode, wParam, lParam) ; make sure other hooks in the chain receive this event if we didn't process it
 }
+*/
+KeyboardHook(nCode, wParam, lParam)
+{	
+	Critical 1000
+   	Return CallNextHookEx(nCode, wParam, lParam) ; make sure other hooks in the chain receive this event if we didn't process it
+}
+/*
+KeyboardHook(nCode, wParam, lParam)
+{	
+	Critical 1000
 
+	If !nCode ; if this var contains some info about a keyboard event, then process it
+	{
+		MT_InputIdleTime(A_TickCount)
+		; Input is blocked and this is a user pressed / released button	
+  		if (input.KybdBlocked && !(NumGet(lParam+8) & 0x10)) ; !LLKHF_INJECTED
+  		{
+  			if (wParam = 0x101 || wParam = 0x0105) ; keyUp || sysKeyUp
+  			{
+  				SetFormat, IntegerFast, hex
+				vkCode := NumGet(lParam+0, 0)
+				key := getKeyName("VK" vkCode)
+				SetFormat, IntegerFast, d
+				if GetKeyState(key, "P")
+					Return CallNextHookEx(nCode, wParam, lParam)
+			}
+			return -1 
+		}
+  		
+  	}
+   	Return CallNextHookEx(nCode, wParam, lParam) ; make sure other hooks in the chain receive this event if we didn't process it
+}
+*/
 
 
 
 	; mouse has different WM_Messages for each down/up event on each button
+/*
 MouseHook(nCode, wParam, lParam)
+{
+	Critical 1000
+
+	static aButtonUps := {0x202: "LButton", 0x205: "RButton", 0x208: "MButton"}
+
+	If (!nCode && wParam != 0x200)  ;WM_MOUSEMOVE := 0x200
+	{
+		MT_InputIdleTime(A_TickCount)
+		; Input is blocked and this is a user pressed / released button	
+		if (input.MouseBlocked && !(NumGet(lParam+12) & 0x1))  ; !LLKHF_INJECTED
+		{
+			; WM_XBUTTONUP := 0x020C
+			if (wParam = 0x020C)
+			{
+				mouseData := NumGet(lParam+0, 8, "Int")
+				if GetKeyState(((mouseData >> 16) & 1  ? "XButton1" : "XButton2"), "P")
+					Return CallNextHookEx(nCode, wParam, lParam)
+			}
+			else if aButtonUps.HasKey(wParam)
+			{
+				if GetKeyState(aButtonUps[wParam], "P")
+					Return CallNextHookEx(nCode, wParam, lParam)				
+			}
+			return -1
+		}
+	}
+   	Return CallNextHookEx(nCode, wParam, lParam) ; make sure other hooks in the chain receive this event if we didn't process it
+}	
+*/
+MouseHook(nCode, wParam, lParam)
+{
+	Critical 1000
+   	Return CallNextHookEx(nCode, wParam, lParam) ; make sure other hooks in the chain receive this event if we didn't process it
+}
+/*
+; mouse has different WM_Messages for each down/up event on each button
+MouseHook1(nCode, wParam, lParam)
 {
 	Critical 1000
 
@@ -166,7 +242,7 @@ MouseHook(nCode, wParam, lParam)
 	}
    	Return CallNextHookEx(nCode, wParam, lParam) ; make sure other hooks in the chain receive this event if we didn't process it
 }
-
+*/
 KeyboardBlockHook(nCode, wParam, lParam)
 {	
 	Critical 1000

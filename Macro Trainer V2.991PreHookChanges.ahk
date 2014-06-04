@@ -58,7 +58,8 @@ SetWorkingDir %A_ScriptDir%  ; Ensures a consistent starting directory.
 #InstallMouseHook
 #InstallKeybdHook
 #UseHook
-#KeyHistory 0 ; don't need it
+;#KeyHistory 0 ; don't need it
+#KeyHistory 500 ; don't need it
 #Persistent
 #NoEnv  ; Recommended for performance and compatibility with future AutoHotkey releases.
 #MaxThreads 20 ; don't know if this will affect anything
@@ -119,10 +120,10 @@ Else
 {
 	Menu Tray, Icon, Included Files\Used_Icons\Starcraft-2.ico
 
-	debug := True
+	global debug := True
 	debug_name := "Kalamity"
 	hotkey, ^+!F12, g_GiveLocalPlayerResources
-	hotkey, >!F12, g_testKeydowns ; Just for testing will remove soon
+	hotkey, *>!F12, g_testKeydowns ; Just for testing will remove soon
 }
 Menu, Tray, Icon,,, 1 ; freeze the icon
 
@@ -869,20 +870,27 @@ clock:
 		MiniMapWarning := [], a_BaseList := [], aGatewayWarnings := []
 		aResourceLocations := []
 		global aStringTable := []
-		global aXelnagas := [] ; global cant cant come after already command expressions
+		global aXelnagas := [] ; global cant cant come after command expressions
 		global MT_CurrentGame := []	; This is a variable which from now on will store
 								; Info about the current game for other functions 
 								; An easy way to have the info cleared each match
 		Global aUnitModel := []
 		global aPlayer, aLocalPlayer
 		global aEnemyAndLocalPlayer
+		global minimap	
+		global aMiniMapUnits := []
+
 		getPlayers(aPlayer, aLocalPlayer, aEnemyAndLocalPlayer)
 		GameType := GetGameType(aPlayer)
+		MT_CurrentGame.LongestName := getLongestPlayerName(aPlayer, True) ; Out of enemies + self
+		MT_CurrentGame.LongestEnemyName := getLongestPlayerName(aPlayer) ; just enemies
 		If IsInList(aLocalPlayer.Type, "Referee", "Spectator")
 			return
 
+		setLowLevelInputHooks(False) ; try to remove them first, as can get here from just saving/applying settings in options GUI
+
 		If (DrawMiniMap || DrawAlerts || DrawSpawningRaces || warpgate_warn_on
-			|| supplyon || workeron || alert_array[GameType, "Enabled"])
+		|| supplyon || workeron || alert_array[GameType, "Enabled"])
 		{
 			if !aThreads.MiniMap.ahkReady()
 				launchMiniMapThread()
@@ -892,27 +900,9 @@ clock:
 		Else if aThreads.MiniMap.ahkReady()
 			aThreads.MiniMap.ahkTerminate()
 			;aThreads.MiniMap.ahkFunction("exitApp") 
-
-		; install LL hooks
-		; Remove it at the end of the game.
-		; Also scrolling GUI listboxes with the hook installed
-		; causes the scroll to lag. Obviously it will still lag if user opens the
-		; gui while in a game the scroll will still lag.
-		; Install after starting the minimap thread, as i have had this happen a couple of times 
-		; half way through the loading screen
-		; where input the system input locks up for a few seconds
-		; of course it always works fine, but it could cause the users LLINput to be removed if they were already installed
-		;
-		; My timer function should only register positive when the game has actually begun!
-		; so the script shouldn't be doing anything for this to occur
-		; will test with a beep during some matches
-		; I think that it only happens when game is 100% loaded, but still waiting for someone else?
-		; perhaps online/lag sometimes causes the timer changes slightly before the game begins
-		; and while AHK is launching the minimap thread the LL callbacks are being delayed ???
-		
-		setLowLevelInputHooks(False) ; try to remove them first, as can get here from just saving/applying settings in options GUI
-		setLowLevelInputHooks(True)	
-
+			
+		SetMiniMap(minimap)
+		aResourceLocations := getMapInfoMineralsAndGeysers()
 		if WinActive(GameIdentifier)
 			ReDrawAPM := ReDrawMiniMap := ReDrawIncome := ReDrawResources := ReDrawArmySize := ReDrawWorker := RedrawUnit := ReDrawIdleWorkers := ReDrawLocalPlayerColour := 1
 		if (MaxWindowOnStart && time < 5 && !WinActive(GameIdentifier)) 
@@ -921,16 +911,40 @@ clock:
 			MouseMove A_ScreenWidth/2, A_ScreenHeight/2
 			WinNotActiveAtStart := 1
 		}
+		setupMiniMapUnitLists(aMiniMapUnits)
+		l_ActiveDeselectArmy := setupSelectArmyUnits(l_DeselectArmy, aUnitID)
+		ShortRace := substr(LongRace := aLocalPlayer["Race"], 1, 4) ;because i changed the local race var from prot to protoss i.e. short to long - MIGHT NO be needed  now
+		setupAutoGroup(aLocalPlayer["Race"], A_AutoGroup, aUnitID, A_UnitGroupSettings)
+		EnemyBaseList := GetEBases()
+		findXelnagas(aXelnagas)	
+
+		disableAllHotkeys()
+		CreateHotkeys()	
+		if !A_IsCompiled
+		{
+			Hotkey, If, WinActive(GameIdentifier) && time
+			hotkey, >!g, g_GLHF
+			hotkey, >!+b, gSendBM
+			Hotkey, If
+		}				
 
 		If (F_Inject_Enable && aLocalPlayer["Race"] = "Zerg")
 		{
 			zergGetHatcheriesToInject(oHatcheries)
 			settimer, cast_ForceInject, %FInjectHatchFrequency%	
 		}
-		aResourceLocations := getMapInfoMineralsAndGeysers()
-		if	mineralon
+
+		; I've gotten the buffer full beep a couple of times while moving the mouse at the loading screen
+		; The timer shouldn't be positive until inside the game. 
+		; Perhaps when playing online the timer can go slightly positive for me, while someone is still loading
+		; the game on a slow computer. 
+		; I've tried to place the Installing hook call here after all the intense unit structure iterations
+
+		setLowLevelInputHooks(True)			
+
+		if mineralon
 			settimer, money, 500, -5
-		if	gas_on
+		if gas_on
 			settimer, gas, 1000, -5
 		if idleon		;this is the idle worker
 			settimer, scvidle, 500, -5	; the idle scv pointer changes every game
@@ -945,13 +959,7 @@ clock:
 		}
 		if ( Auto_Read_Races AND race_reading ) && 	!((ResumeWarnings || UserSavedAppliedSettings) && time > 12)
 			SetTimer, find_races_timer, 1000, -20
-		global minimap		
-		SetMiniMap(minimap)
-		global aMiniMapUnits := []
-		setupMiniMapUnitLists(aMiniMapUnits)
-		l_ActiveDeselectArmy := setupSelectArmyUnits(l_DeselectArmy, aUnitID)
-		ShortRace := substr(LongRace := aLocalPlayer["Race"], 1, 4) ;because i changed the local race var from prot to protoss i.e. short to long - MIGHT NO be needed  now
-		setupAutoGroup(aLocalPlayer["Race"], A_AutoGroup, aUnitID, A_UnitGroupSettings)
+
 		If A_UnitGroupSettings["AutoGroup", aLocalPlayer["Race"], "Enabled"]
 		{
 			settimer, Auto_Group, %AutoGroupTimer% 						; set to 30 ms via config ini default
@@ -960,20 +968,10 @@ clock:
 																		; and so wont prevent the minimap or overlay being drawn
 																		; note may delay some timers from launching for a fraction of a ms while its in thread, no timers interupt mode (but it takes less than 1 ms to run anyway)
 		} 																; Hence with these two timers running autogroup will occur at least once every 30 ms, but generally much more frequently
-		disableAllHotkeys()
-		CreateHotkeys()
-		if !A_IsCompiled
-		{
-			Hotkey, If, WinActive(GameIdentifier) && time
-			hotkey, >!g, g_GLHF
-			hotkey, >!+b, gSendBM
-			Hotkey, If
-		}	
+
 		SetTimer, overlay_timer, %OverlayRefresh%, -8	
 		SetTimer, g_unitPanelOverlay_timer, %UnitOverlayRefresh%, -9	
-
-		EnemyBaseList := GetEBases()
-		findXelnagas(aXelnagas)		
+	
 		UserSavedAppliedSettings := 0
 	}
 return
@@ -995,7 +993,10 @@ setupSelectArmyUnits(l_input, aUnitID)
 Cast_ChronoStructure:
 	UserPressedHotkey := A_ThisHotkey ; as this variable can get changed very quickly
 	Thread, NoTimers, True
-	input.hookBlock(True, True)
+	;input.hookBlock(True, True)
+	MTBlockInput, On
+
+
 	input.releaseKeys(True) ; don't use postmessage.
 	dsleep(30)
 	if ("" UserPressedHotkey = Cast_ChronoStargate_Key) ; force evaluation as strings otherwise +1 = 1
@@ -1018,7 +1019,8 @@ Cast_ChronoStructure:
 		Cast_ChronoStructure(aUnitID.RoboticsBay)
 	Else If ("" UserPressedHotkey = CastChrono_FleetBeacon_Key)
 		Cast_ChronoStructure(aUnitID.FleetBeacon)
-	input.hookBlock()
+	;input.hookBlock()
+	MTBlockInput, Off
 return
 
 
@@ -1356,13 +1358,15 @@ cast_inject:
 		;chat is 0 when  menu is in focus
 	Thread, NoTimers, true  ;cant use critical with input buffer, as prevents hotkey threads launching and hence tracking input				
 	MouseGetPos, start_x, start_y
-	input.hookBlock(True, True)
+	;input.hookBlock(True, True)
+	MTBlockInput, On
 	if input.releaseKeys(True)
 		dsleep(30)
 	castInjectLarva(auto_inject, 0, auto_inject_sleep) ;ie nomral injectmethod
 	If HumanMouse
 		MouseMoveHumanSC2("x" start_x "y" start_y "t" HumanMouseTimeLo)
-	input.hookBlock()
+	;input.hookBlock()
+	MTBlockInput, Off
 	Thread, NoTimers, false
 	inject_set := getTime()  
 	if auto_inject_alert
@@ -1440,79 +1444,7 @@ cast_ForceInject:
 	}
 	return
 
-/* ; Shouldnt need this anymore
-	
-	;should probably add a blockinput for the burrow check
-	if (getBurrowedQueenCountInControlGroup(MI_Queen_Group, UnburrowedQueenCount) > 1)
-	{
-		TooManyBurrowedQueens := 1
-		SetKeyDelay, %EventKeyDelay%	;this only affects send events - so can just have it, dont have to set delay to original as its only changed for current thread
-		SetMouseDelay, %EventKeyDelay%	;again, this wont affect send click (when input/play is in use) - I think some other commands may be affected?
-	;	ReleaseModifiers(0, 1, HotkeysZergBurrow)
-		ReleaseModifiers(0, 1, HotkeysZergBurrow, True, False, 40) ; check all keys
-		Thread, NoTimers, true  ;cant use critical with input buffer, as prevents hotkey threads launching and hence tracking input
-
-		sendSequence := "^" Inject_control_group MI_Queen_Group		
-		if UnburrowedQueenCount
-			sendSequence .= NextSubgroupKey ; sleep(2) ; After restoring a control group, needs at least 1 ms so tabs will register
-	
-		sendSequence .= HotkeysZergBurrow Inject_control_group
-		input.pSend(sendSequence)
-		TooManyBurrowedQueens := 0
-		Thread, NoTimers, false
-	}
-	else TooManyBurrowedQueens := 0
-
-	getBurrowedQueenCountInControlGroup(Group, ByRef UnburrowedCount="")
-	{	GLOBAL aUnitID
-		UnburrowedCount := BurrowedCount := 0
-		numGetControlGroupObject(oControlGroup, Group)
-		for index, unit in oControlGroup.units
-			if (unit.type = aUnitID.QueenBurrowed)
-				BurrowedCount ++
-			else if (unit.type = aUnitID.Queen)
-				UnburrowedCount++
-		return BurrowedCount
-	}
-*/
  
-
-isUserPerformingAction()
-{	
-	if ( isUserBusyBuilding() || IsUserMovingCamera() || IsMouseButtonActive() 	; so it wont do anything if user is holding down a mousebutton! eg dragboxing
-	||  isCastingReticleActive() ) ; this gives 256 when reticle/cast cursor is present
-		return 1
-	else return 0
-}
-
-isUserPerformingActionIgnoringCamera()
-{	GLOBAL
-	if ( isUserBusyBuilding() || IsMouseButtonActive() 	; so it wont do anything if user is holding down a mousebutton! eg dragboxing
-	||  isCastingReticleActive() ) ; this gives 256 when reticle/cast cursor is present
-		return 1
-	else return 0
-}
-
-; this gives 256 when reticle/casting cursor is present (includes attacking)
-isCastingReticleActive()
-{	GLOBAL
-	return pointer(GameIdentifier, P_IsUserPerformingAction, O1_IsUserPerformingAction)
-}
-
-; for the second old pointer
-; This will return 1 if the basic or advanced building selection card is up (even if all structures greyed out)
-; This will also return 1 when user is trying to place the structure
-isUserBusyBuilding()	
-{ 	GLOBAL
-	; if 6, it means that either the basic or advanced build cards are displayed - even if all are greyed out (and hence a worker is selected) - give 1 for most other units, but gives 7 for targeting reticle
-	if ( 6 = pointer(GameIdentifier, P_IsBuildCardDisplayed, 01_IsBuildCardDisplayed, 02_IsBuildCardDisplayed, 03_IsBuildCardDisplayed)) 
-		return 1 ; as it seems 6 is only displayed when the worker build cards are up, so don't need to double check with below pointer
-	;	return pointer(GameIdentifier, P_IsUserBuildingWithWorker, 01_IsUserBuildingWithWorker, 02_IsUserBuildingWithWorker, 03_IsUserBuildingWithWorker, 04_IsUserBuildingWithWorker)
-	else return 0
-}
-	
-
-
 
 ;----------------------
 ;	Auto Mine
@@ -1761,13 +1693,13 @@ If (time < 8)
 SetTimer, find_races_timer, off		
 
 find_races:
-If (A_ThisLabel = "find_races")
-	aThreads.MiniMap.ahkassign.TimeReadRacesSet := time
-	;TimeReadRacesSet := time
-if !time	;leave this in, so if they press the hotkey while outside of game, wont get gibberish
-	return
-Else EnemyRaces := GetEnemyRaces()
-tSpeak(EnemyRaces)
+if time	;leave this in, so if they press the hotkey while outside of game, wont get gibberish
+{
+	If (A_ThisLabel = "find_races")
+		aThreads.MiniMap.ahkassign.TimeReadRacesSet := time
+		;TimeReadRacesSet := time
+	tSpeak(GetEnemyRaces())
+}
 return
 
 ;--------------------------------------------
@@ -1985,7 +1917,7 @@ user_idle:
 		send, +{enter}%chat_text%{enter} 
 		Send, %pause_game%
 	}
-	Else If ( time > 10 )
+	Else If ( time > UserIdle_HiLimit )
 		settimer, user_idle, off	
 return
 
@@ -2184,10 +2116,16 @@ ShutdownProcedure:
 	if aThreads.miniMap.ahkReady() 	
 		aThreads.miniMap.ahkTerminate() 
 	
+	; Don't really need to clear these - They will be cleared anyway 
+	; when the program exits
+	deletepBitMaps(a_pBitmap)
+	deletePens(a_pPens)
+	deleteBrushArray(a_pBrushes)
+
 	; Should only be called once from either thread
 	; GDI_Unload crash was probably due to calling this function, then having another thread try 
 	; to access the GDI library to draw
-	; so close GDIP after closing minimapThread
+	; so close GDIP after closing minimapThread	
 	if pToken
 		Gdip_Shutdown(pToken) 
 
@@ -4445,7 +4383,7 @@ try
 
 		HotkeysZergBurrow_TT := #HotkeysZergBurrow_TT := "Please ensure this matches the 'Burrow' hotkey in SC2 & that you only have one active hotkey to burrow units i.e. No alternate burrow key!`n`nThis is used during auto injects to help prevent accidentally burrowing queens due to the way windows/SC2 buffers these repeated keypresses."
 		Simulation_speed_TT := "How fast the mouse moves during inject rounds. 0 = Fastest - try 1,2 or 3 if you're having problems."
-		Drag_origin_TT := "This sets the origin of the box drag to the top left or right corners. Hence making it compatible with observer panel hacks.`n`nThis is only used by the 'Backspace' method."
+		Drag_origin_TT := "This sets the origin of the box drag to the top left or right corners. Hence making it compatible with (clickable) internal observer panel hacks.`n`nThis is only used by the 'Backspace' method."
 		BI_create_camera_pos_x_TT := #BI_create_camera_pos_x_TT := "The hotkey used to save a camera location."
 									. "`n`nThis should correspond to one of the five SC2 'create camera' hotkeys."
 									. "`nPlease set this to a camera hotkey which you don't actually use."
@@ -4479,7 +4417,7 @@ try
 		TT_additional_delay_worker_production_TT := additional_delay_worker_production_TT := "This sets the delay between the initial warning, and the additional/follow-up warnings. (in SC2 seconds)"
 		TT_workerproduction_time_TT := workerproduction_time_TT := "This only applies to Zerg.`nA warning will be heard if a drone has not been produced in this amount of time (SC2 seconds)."
 		delay_warpgate_warn_TT := "If a gateway has been unconverted for this period of time (real seconds) then a warning will be made."
-		warpgate_warn_on_TT := "Enables warnings for unconverted gateways. Note: The warnings become active after your first gateway is converted."
+		warpgate_warn_on_TT := "Enables warnings for unconverted gateways.`nNote: The warnings become active after your first gateway is converted."
 		idletrigger_TT := gas_trigger_TT := mineraltrigger_TT := TT_mineraltrigger_TT := TT_gas_trigger_TT := TT_idletrigger_TT := "The required amount to invoke a warning."
 		supplylower_TT := TT_supplylower_TT := TT_supplymid_TT := supplymid_TT := supplyupper_TT := TT_supplyupper_TT := "Dictactes when the next or previous supply delta/threashold is used."
 		TT_workerProductionTPIdle_TT := workerProductionTPIdle_TT := "This only applies to Terran & protoss.`nIf all nexi/CC/Orbitals/PFs are idle for this amount of time (SC2 seconds), a warning will be made.`n`nNote: A main is considered idle if it has no worker in production and is not currently flying or morphing."
@@ -4569,8 +4507,8 @@ try
 		race_reading_TT := "Reads aloud the enemys' spawning races."
 		idle_enable_TT := "If the user has been idle for longer than a set period of time (real seconds) then the game will be paused."
 		TTidle_time_TT := idle_time_TT := "How long the user must be idle for (in real seconds) before the game is paused.`nNote: This value can be higher than the ""Don't Pause After"" parameter!"
-		TTUserIdle_LoLimit_TT  := UserIdle_LoLimit_TT := "The game can't be paused before this (in game/SC2) time."
-		TTUserIdle_HiLimit_TT := UserIdle_HiLimit_TT := "The game will not be paused after this (in game/SC2) time."
+		TTUserIdle_LoLimit_TT  := UserIdle_LoLimit_TT := "The game will not be paused before this time. (In game/SC2 seconds)"
+		TTUserIdle_HiLimit_TT := UserIdle_HiLimit_TT := "The game will not be paused after this time. (In game/SC2 seconds)"
 
 		speech_volume_TT := "The relative volume of the speech engine."
 		programVolume_TT := "The overall program volume. This affects both the speech volume and the 'beeps'.`n`nNote: This probably has no effect on WindowsXP and below."
@@ -4690,7 +4628,7 @@ try
 							. "`n Checked = Only Self APM"
 							. "`n Greyed = Enemies + self (self is at bottom)"
 		DrawPlayerCameras_TT := "Draws the enemy's camera on the minimap, i.e. it indicates the map area the player is currently looking at."
-
+							. "`n`nNote: AI/computer players will not be drawn, as they never move the camera."
 		SleepSplitUnit_TT := TT_SleepSplitUnits_TT := TT_SleepSelectArmy_TT := SleepSelectArmy_TT := "Increase this value if the function doesn't work properly`nThis time is required to update the selection buffer."
 		Sc2SelectArmy_Key_TT := #Sc2SelectArmy_Key_TT := "The in game (SC2) button used to select your entire army.`nDefault is F2"
 		ModifierBeepSelectArmy_TT := "Will play a beep if a modifer key is being held down.`nModifiers include the ctrl, alt, shift and windows keys."
@@ -7639,9 +7577,9 @@ DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Dr
 				if !LongestNameSize
 				{
 					if drawLocalPlayerIncome
-						longestName := MT_CurrentGame.HasKey("LongestName") ? MT_CurrentGame.LongestName : MT_CurrentGame.LongestName := getLongestPlayerName(aPlayer, True)
+						longestName := MT_CurrentGame.LongestName
 					else 
-						longestName := MT_CurrentGame.HasKey("LongestEnemyName") ? MT_CurrentGame.LongestEnemyName : MT_CurrentGame.LongestEnemyName := getLongestPlayerName(aPlayer)					
+						longestName := MT_CurrentGame.LongestEnemyName
 					LongestNameData :=	gdip_TextToGraphics(G, longestName, "x0" "y"(DestY+(Height//4))  " Bold c00FFFFFF r4 s" 17*UserScale, Font) ; text is invisible ;get string size	
 					StringSplit, LongestNameSize, LongestNameData, | ;retrieve the length of the string
 					LongestNameSize := LongestNameSize3
@@ -7777,9 +7715,9 @@ DrawAPMOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, modeAPM_EPM=0,Drag
 				if !LongestNameSize
 				{
 					if (APMOverlayMode = -1) 
-						longestName := MT_CurrentGame.HasKey("LongestName") ? MT_CurrentGame.LongestName : MT_CurrentGame.LongestName := getLongestPlayerName(aPlayer, True)
+						longestName := MT_CurrentGame.LongestName
 					else if (APMOverlayMode = 0) 
-						longestName := MT_CurrentGame.HasKey("LongestEnemyName") ? MT_CurrentGame.LongestEnemyName : MT_CurrentGame.LongestEnemyName := getLongestPlayerName(aPlayer)
+						longestName := MT_CurrentGame.LongestEnemyName
 					else 
 						longestName := aLocalPlayer["Name"]
 					LongestNameData :=	gdip_TextToGraphics(G, longestName, "x0" "y"(DestY+(Height//4))  " Bold c00FFFFFF r4 s" 17*UserScale, Font) ; text is invisible ;get string size	
@@ -7900,9 +7838,9 @@ DrawResourcesOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0
 				if !LongestNameSize
 				{
 					if drawLocalPlayerResources
-						longestName := MT_CurrentGame.HasKey("LongestName") ? MT_CurrentGame.LongestName : MT_CurrentGame.LongestName := getLongestPlayerName(aPlayer, True)
+						longestName := MT_CurrentGame.LongestName
 					else 
-						longestName := MT_CurrentGame.HasKey("LongestEnemyName") ? MT_CurrentGame.LongestEnemyName : MT_CurrentGame.LongestEnemyName := getLongestPlayerName(aPlayer)
+						longestName := MT_CurrentGame.LongestEnemyName
 					LongestNameData :=	gdip_TextToGraphics(G, longestName, "x0" "y"(DestY+(Height//4))  " Bold c00FFFFFF r4 s" 17*UserScale	, Font) ; text is invisible ;get string size	
 					StringSplit, LongestNameSize, LongestNameData, | ;retrieve the length of the string
 					LongestNameSize := LongestNameSize3
@@ -8036,9 +7974,9 @@ DrawArmySizeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,
 				if !LongestNameSize
 				{
 					if (DrawArmySizeOverlay = -1) 
-						longestName := MT_CurrentGame.HasKey("LongestName") ? MT_CurrentGame.LongestName : MT_CurrentGame.LongestName := getLongestPlayerName(aPlayer, True)
+						longestName := MT_CurrentGame.LongestName
 					else 
-						longestName := MT_CurrentGame.HasKey("LongestEnemyName") ? MT_CurrentGame.LongestEnemyName : MT_CurrentGame.LongestEnemyName := getLongestPlayerName(aPlayer)
+						longestName := MT_CurrentGame.LongestEnemyName
 
 					LongestNameData :=	gdip_TextToGraphics(G, longestName, "x0" "y"(DestY+(Height//4))  " Bold c00FFFFFF r4 s" 17*UserScale	, Font) ; text is invisible ;get string size	
 					StringSplit, LongestNameSize, LongestNameData, | ;retrieve the length of the string
@@ -8991,7 +8929,7 @@ selectArmy()
 		return 
 	;while (GetKeyState("Lbutton", "P") || GetKeyState("Rbutton", "P"))
 	; removed loop as this could cause the last key in the hotkey to get stuck
-	; don't know if this will effect reliability (as releasing mouse via pSend)
+	; don't know if this will affect reliability (as releasing mouse via pSend)
 	; so i will increase the sleep if mouse down from 15
 ;	if (GetKeyState("Lbutton", "P") || GetKeyState("Rbutton", "P"))
 ;	{
@@ -9390,7 +9328,7 @@ DeselectUnitsFromPanel(aRemoveUnits, aSelection := "")
 ; This finding also agrees with a test i did ages ago.
 
 ; also if you manually tab through all of the units before deselecting, no sleep is required!
-; i.e. sc2 caches the unit selection
+; i.e. sc2 caches the unit selection (but the unit pages must be displayed for a certain minimum time)
 
 ; deselects an array of unit portraits
 ; the portraits should be sorted in descending order
@@ -9400,6 +9338,12 @@ clickUnitPortraits(aUnitPortraitLocations, Modifers := "+")
 	; Send modifiers down once at start so don't needlessly send up/down for each click 
 	; though i dont think it really matters
 	; Also, page numbers can be clicked with the shift/ctrl/alt keys down
+
+		if debug 
+		{
+			gameTime := gettime()	
+			debug("`n========================", "")
+		}
 
 	if (aUnitPortraitLocations.MaxIndex() && downModifers := getModifierDownSequenceFromString(Modifers))
 		input.pSend(downModifers)
@@ -9411,8 +9355,21 @@ clickUnitPortraits(aUnitPortraitLocations, Modifers := "+")
 			{	
 				currentPage := getUnitSelectionPage()
 				MTclick(Xpage, Ypage)
-				while (getUnitSelectionPage() = currentPage && A_Index < 25)
+		if debug 	
+			s := stopwatch()
+
+				; 1/6/14 - this is just the while loop
+				; generally takes 0-10 ms. But get the odd extreme ~16 ms (and even 36ms! in a late online game 3v3)
+				; perhaps even more (this is probably contributing to deselect issue in battles)
+				; Tested with 50 ms sleep max on a test map with 490 collosi and full panel of Terran units and
+				; got the buffer full beep and then all units were selected
+
+				while (getUnitSelectionPage() = currentPage && A_Index < 35) ; Raised from 25
 					dsleep(1)
+		if debug 
+			debug(stopwatch(s), gameTime  " - ")
+
+
 				dsleep(7) ; small static delay
 			}
 			input.pSend("{click " x " " y "}")			
@@ -9426,7 +9383,7 @@ clickUnitPortraits(aUnitPortraitLocations, Modifers := "+")
 		currentPage := getUnitSelectionPage()
 		ClickUnitPortrait(0, X, Y, Xpage, Ypage, startPage + 1) ; for this page numbers start at 1, hence +1
 		MTclick(Xpage, Ypage)
-		while (getUnitSelectionPage() = currentPage && A_Index < 25)
+		while (getUnitSelectionPage() = currentPage && A_Index < 35)
 			dsleep(1)
 	}
 	return	
@@ -10189,7 +10146,7 @@ getEnemyUnitCountOld(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aUni
 	Return
 }
 
-getEnemyUnitCountCurrent(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyCurrentUpgrades)
+getEnemyUnitCountCurrentOld(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyCurrentUpgrades)
 {
 	GLOBAL DeadFilterFlag, aPlayer, aLocalPlayer, aUnitTargetFilter, aUnitInfo, aMiscUnitPanelInfo
 	aEnemyUnits := [], aEnemyUnitConstruction := [], aEnemyCurrentUpgrades := [], aMiscUnitPanelInfo := []
@@ -10868,18 +10825,6 @@ FilterUnitsOld(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aUnitPanel
 	}
 	return
 }
-; returns longest player name in enemy team and can include the local player for overlays
-getLongestPlayerName(aPlayer, includeLocalPlayer := False)
-{
-	localTeam := getPlayerTeam(getLocalPlayerNumber())
-	for slotNumber, Player in aPlayer
-	{
-		if ((player.team != localTeam || (slotNumber = aLocalPlayer["Slot"] &&includeLocalPlayer )) 
-		&& StrLen(player.name) > StrLen(LongestName))
-			LongestName := player.name
-	}
-	return player.name
-}
 
 DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 {
@@ -10957,7 +10902,7 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 		;	StringSplit, TextSize, TextData, | ;retrieve the length of the string		
 			if !LongestNameSize
 			{
-				LongestNameData :=	gdip_TextToGraphics(G, MT_CurrentGame.HasKey("LongestEnemyName") ? MT_CurrentGame.LongestEnemyName : MT_CurrentGame.LongestEnemyName := getLongestPlayerName(aPlayer)
+				LongestNameData :=	gdip_TextToGraphics(G, MT_CurrentGame.LongestEnemyName
 														, "x0" "y"(DestY)  " Bold c00FFFFFF r4 s" 17*UserScale	, Font) ; text is invisible ;get string size	
 				StringSplit, LongestNameSize, LongestNameData, | ;retrieve the length of the string
 				LongestNameSize := LongestNameSize3
@@ -11858,132 +11803,6 @@ getUnitAbilitiesString(unit)
 	msgbox % clipboard := s
 	return s
 }
-
-; This will get the morph time for most structures e.g. CC -> orbital/PF, hatch -> lair -> Hive, spire -> G.Spire
-; CommandCentre->Orbital - time remaining
-; [[[[Ability Struct + 0x34] + 0x10] + 0xD4] + 0x98]
-; This way is simpler than using the units queued command pointer
-getStructureMorphProgress(pAbilities, unitType)
-{
-;	pBuildInProgress := findAbilityTypePointer(pAbilities, unitType, "BuildInProgress")
-	p := pointer(GameIdentifier, findAbilityTypePointer(pAbilities, unitType, "BuildInProgress"), 0x10, 0xD4)
-	timeRemaing := ReadMemory(p + 0x98, GameIdentifier)
-	totalTime := ReadMemory(p + 0xB4, GameIdentifier)
-	return round((totalTime - timeRemaing)/totalTime, 2)
-}
-; similar to getStructureBuildProgress
-; Note, this also works with corruptors -> gg.lords and overlord -> overseer, but not ling -> bane or HTs -> Archon
-; but if also has queued command then need to find the morphing ability
-getUnitMorphTimeOld(unit)
-{
-	p := ReadMemory(B_uStructure + unit * S_uStructure + O_P_uCmdQueuePointer, GameIdentifier)
-	timeRemaing := ReadMemory(p + 0x98, GameIdentifier)
-	totalTime := ReadMemory(p + 0xB4, GameIdentifier)
-	return round((totalTime - timeRemaing)/totalTime, 2)
-}
-
-/*
-
- 	MorphToBroodLord 
- 	MorphToOverseer
- 	UpgradeToGreaterSpire
- 	UpgradeToLair
-	UpgradeToHive
-	UpgradeToOrbital
-	UpgradeToPlanetaryFortress
-*/
-
-getUnitMorphTime(unit, unitType)
-{
-	static targetIsPoint := 0x8, targetIsUnit := 0x10, hasRun := False, aMorphStrings
-
-	if !hasRun 
-	{
-		hasRun := True 
-		aMorphStrings := { 	aUnitID.OverlordCocoon: ["MorphToOverseer"]
-						 ,	aUnitID.BroodLordCocoon: ["MorphToBroodLord"]
-						 ,	aUnitID.Spire: ["UpgradeToGreaterSpire"]
-						 ,  aUnitID.Hatchery: ["UpgradeToLair"]
-						 ,	aUnitID.Lair: ["UpgradeToHive"]
-						 ,  aUnitID.MothershipCore: ["MorphToMothership"]
-						 ,	aUnitID.CommandCenter: ["UpgradeToOrbital", "UpgradeToPlanetaryFortress"]}
-
-						;}
-	}
-	; target flag is usually 7 for the morphing types
-	if (CmdQueue := ReadMemory(B_uStructure + unit * S_uStructure + O_P_uCmdQueuePointer, GameIdentifier)) ; points if currently has a command - 0 otherwise
-	{
-		pNextCmd := ReadMemory(CmdQueue, GameIdentifier) ; If & -2 this is really the first command ie  = BaseCmdQueStruct
-		loop 
-		{
-			ReadRawMemory(pNextCmd & -2, GameIdentifier, cmdDump, 0xB8)
-			targetFlag := numget(cmdDump, 0x38, "UInt")
-
-			if !aStringTable.hasKey(pString := numget(cmdDump, 0x18, "UInt"))
-				aStringTable[pString] := ReadMemory_Str(readMemory(pString + 0x4, GameIdentifier), GameIdentifier)
-
-			for i, morphString in aMorphStrings[unitType]
-			{
-
-				if (morphString = aStringTable[pString])
-				{
-					timeRemaing := numget(cmdDump, 0x98, "UInt")
-					totalTime := numget(cmdDump, 0xB4, "UInt")			
-					return round((totalTime - timeRemaing)/totalTime, 2)
-				}
-			}
-
-		} Until (A_Index > 20 || !(targetFlag & targetIsPoint || targetFlag & targetIsUnit || targetFlag = 7)
-			|| 1 & pNextCmd := numget(cmdDump, 0, "Int"))				; loop until the last/first bit of pNextCmd is set to 1
-		; interstingly after -2 & pNextCmd (the last one) it should = the first address
-	}
-	else return 0
-
-}
-
-getBanelingMorphTime(pAbilities)
-{
-	p := pointer(GameIdentifier, findAbilityTypePointer(pAbilities, aUnitID.BanelingCocoon, "MorphZerglingToBaneling"), 0x12c, 0x0)
-	totalTime := ReadMemory(p + 0x68, GameIdentifier)
-	timeRemaing := ReadMemory(p + 0x6c, GameIdentifier)
-	return round((totalTime - timeRemaing)/totalTime, 2)
-}
-
-getArchonMorphTime(pAbilities)
-{
-	pMergeable := readmemory(findAbilityTypePointer(pAbilities, aUnitID.Archon, "Mergeable"), GameIdentifier)
-	totalTime := ReadMemory(pMergeable + 0x28, GameIdentifier)
-	timeRemaing :=ReadMemory(pMergeable + 0x2C, GameIdentifier)
-	return round((totalTime - timeRemaing)/totalTime, 2)
-}
-
-
-return
-
-/*
-16,640
-11,104
-
-*/
-
-; total build time and Time Remaining are blank if unit exists as part of the map i.e. via the mapeditor 
-
-getBuildProgress(pAbilities, type)
-{
-	static O_TotalBuildTime := 0x28, O_TimeRemaining := 0x2C
-	; + 0x28 = total build time
-	; + 0x2C = Time Remaining
-
-	if pBuild := findAbilityTypePointer(pAbilities, type, "BuildInProgress")
-	{
-		B_Build := ReadMemory(pBuild, GameIdentifier)
-		totalTime := readmemory(B_Build + O_TotalBuildTime, GameIdentifier)
-		remainingTime := readmemory(B_Build + O_TimeRemaining, GameIdentifier)
-		return round((totalTime - remainingTime) / totalTime, 2) ; 0.73
-	}
-	else return 1 ; something went wrong so assume its complete 
-}
-
 
 
 /*
@@ -13235,8 +13054,8 @@ ListLines, on
 t1 := MT_InputIdleTime()
 sleep 2000
 str :=  "`n`n|" t1 " | " MT_InputIdleTime()
-		. "`n`nLogical: " checkAllKeyStates(True, False) 
-		. "`n`nPhysical: " checkAllKeyStates(False, True) 
+		. "`n`nLogical: " debugAllKeyStates(True, False) 
+		. "`n`nPhysical: " debugAllKeyStates(False, True) 
 		. "`n`n" debugSCKeyState() 
 critical, 1000
 releasedKeys := input.pReleaseKeys(True)
@@ -13249,7 +13068,31 @@ sleep 2000
 testdebug := True
 return 
 
+debugAllKeyStates(logical := True, physical := True)
+{
+	static aKeys := []
 
+	; returns and array of unmodified keys
+	if !aKeys.maxindex()
+		aKeys := getAllKeyboardAndMouseKeys()
+	if logical
+	{
+		for index, key in aKeys
+		{
+			if getkeystate(key)
+				s .= key "`n"
+		}
+	}
+	if physical
+	{
+		for index, key in aKeys
+		{
+			if getkeystate(key, "P")
+				s .= key "`n"
+		}
+	}	
+	return s
+}
 
 
 
@@ -13315,5 +13158,62 @@ return
 ;Run, "C:\Users\Matthieu\Desktop\New folder (3)\MsgHookLister\x64\hooks.txt"
 ;return 
 
+/*
+f1::
+DetectHiddenWindows, On
+winGet, window, list 
+s := ""
+
+loop, % window 
+{
+	WinGetTitle, title, % "ahk_id " window%A_Index%
+	s .= "`n" title
+}
+clipboard := s
+return 
+*/
+
+launchOverlayThread()
+{
+	if !aThreads.Overlay.ahkReady()
+	{
+		if !aThreads.Overlay
+			aThreads.Overlay := AhkDllThread("Included Files\ahkH\AutoHotkey.dll")
+		if 0 
+			FileInstall, Overlays.ahk, Ignore	
+		if A_IsCompiled
+			overlayScript := LoadScriptString("overlays.ahk")
+		else 
+			FileRead, overlayScript, overlays.ahk			
+		aThreads.Overlay.ahktextdll(overlayScript)
+	}
+	Return 
+}
 
 
+
+f1::
+sleep 500
+critical, 1000
+setLowLevelInputHooks(True)
+soundplay *-1 
+s := A_TickCount
+while (A_TickCount < s + 1000)
+	vta++
+s := stopwatch()
+setLowLevelInputHooks(False)
+t := stopwatch(s)
+sleep 100
+msgbox % t
+return 
+dddsssgf
+fffff
+critical, off
+s := A_TickCount
+soundplay *-1 
+while (A_TickCount < s + 5000)
+	vta++
+return 
+
+
+                                

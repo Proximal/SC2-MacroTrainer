@@ -9,16 +9,7 @@ chageScriptMainWinTitle(newTitle := "")
 	DetectHiddenWindows, On
 	SetTitleMatchMode, 2
 	if (newTitle = "")
-	{
-		loop, % rand(2,20)
-		{
-			if rand(0,4)
-				newTitle .= Chr(rand(97, 122)) 	; a-z
-			else 
-				newTitle .= Chr(rand(48, 57))   ; 0-9
-		}
-			
-	}
+		newTitle := getRandomString_Az09(6, 20)
 	WinSetTitle, %currentTitle%,, %newTitle%
 	currentTitle := newTitle
 	DetectHiddenWindows, %prevDetectWindows%

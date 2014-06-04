@@ -12,14 +12,14 @@
 SetWorkingDir %A_ScriptDir%
 SetBatchLines, -1
 ListLines, Off
-OnExit, ShutdownProcedure ; disabled due to crashing main thread during terminate - called manually now
+OnExit, ShutdownProcedure 
 
 /* ;Cmdline passed script parameters - Old method - now use globalVarsScript
 	pObject := "1", pObject := %pObject%	
 	pCriticalSection := "2", pCriticalSection := %pCriticalSection%
 	aThreads := CriticalObject(pObject, pCriticalSection)
 */ 
-
+scriptWinTitle := changeScriptMainWinTitle()
 global aThreads
 
 l_GameType := "1v1,2v2,3v3,4v4,FFA"
@@ -29,9 +29,8 @@ GLOBAL GameIdentifier := "ahk_exe SC2.exe"
 GLOBAL config_file := "MT_Config.ini"
 GameExe := "SC2.exe"
 
-
-#Include <Gdip> ;In the library folder
-#Include <SC2_MemoryAndGeneralFunctions> ;In the library folder
+#Include <Gdip> 
+#Include <SC2_MemoryAndGeneralFunctions> 
 ; pToken := Gdip_Startup() ; DO NOT get a new token. Not needed and causes crash on exit when calling gdipShutdown()
 Global aUnitID, aUnitName, aUnitSubGroupAlias, aUnitTargetFilter, aHexColours, MatrixColour
 	, aUnitModel,  aPlayer, aLocalPlayer, minimap
@@ -48,10 +47,6 @@ a_pPens := initialisePenColours(aHexColours)
 CreatepBitmaps(a_pBitmap, aUnitID)
 aUnitInfo := []
 readConfigFile(), hasReadConfig := True
-; Just as a backup if the thread gets orphaned
-; This is now disabled. I'm not sure if the thread can event get orphaned.....
-; But more importantly, if this thread closes, then the main thread tries to exit - it will hang!
-;settimer, timer_exit, 15000, -100 
 aChangeling := { 	aUnitID["ChangelingZealot"]: True
 				 ,	aUnitID["ChangelingMarineShield"]: True 
 				 ,	aUnitID["ChangelingMarine"]: True 
@@ -60,7 +55,7 @@ aChangeling := { 	aUnitID["ChangelingZealot"]: True
 gameChange()
 return
 
-; Need this, as somtimes call from main thread to gameChange() fails
+; Need this, as sometimes call from main thread to gameChange() fails
 ; also, sometimes the call succeeds, but the timers remain on
 ; it's fucking retarded!
 
@@ -68,6 +63,8 @@ gClock:
 if (!time := getTime())
 	gameChange()
 return 
+
+
 
 
 toggleMinimap()
@@ -114,11 +111,7 @@ gameChange(UserSavedAppliedSettings := False)
 		if WinActive(GameIdentifier)
 			ReDrawMiniMap := ReDrawIncome := ReDrawResources := ReDrawArmySize := ReDrawWorker := RedrawUnit := ReDrawIdleWorkers := ReDrawLocalPlayerColour := 1
 		getPlayers(aPlayer, aLocalPlayer)
-		GameType := GetGameType(aPlayer)
-		If (aLocalPlayer["Race"] = "Terran")
-			SupplyType := aUnitID["SupplyDepot"]
-		Else If (aLocalPlayer["Race"] = "Protoss")
-			SupplyType := aUnitID["Pylon"]			
+		GameType := GetGameType(aPlayer)		
 		SetMiniMap(minimap)
 		setupMiniMapUnitLists(aMiniMapUnits) ; aMiniMapUnits is super global
 		EnemyBaseList := GetEBases()
@@ -126,16 +119,16 @@ gameChange(UserSavedAppliedSettings := False)
 		If (DrawMiniMap || DrawAlerts || DrawSpawningRaces || warpgate_warn_on
 		|| alert_array[GameType, "Enabled"])
 			SetTimer, MiniMap_Timer, %MiniMapRefresh%, -7
-		if (warpgate_warn_on || supplyon || workeron || alert_array[GameType, "Enabled"]) 
+		if ((ResumeWarnings || UserSavedAppliedSettings) && alert_array[GameType, "Enabled"])  
+			doUnitDetection(0, 0, 0, "Resume")
+		Else
+			doUnitDetection(0, 0, 0, "Reset") ; clear the variables within the function			
+		if (warpgate_warn_on || supplyon || workeron || alert_array[GameType, "Enabled"])
 			settimer, unit_bank_read, %UnitDetectionTimer_ms%, -6
 		if workeron
 			settimer, worker, 1000, -5
 		if supplyon
 			settimer, supply, 200, -5
-		if ((ResumeWarnings || UserSavedAppliedSettings) && alert_array[GameType, "Enabled"])  
-			doUnitDetection(0, 0, 0, "Resume")
-		Else
-			doUnitDetection(0, 0, 0, "Reset") ; clear the variables within the function	
 		settimer, gClock, 1000, -4
 	}
 	else 
@@ -150,7 +143,6 @@ gameChange(UserSavedAppliedSettings := False)
 	return "testValue"
 }
 
-
 MiniMap_Timer:
 	if WinActive(GameIdentifier) 
 		DrawMiniMap()
@@ -158,19 +150,14 @@ MiniMap_Timer:
 		DestroyOverlays()
 Return
 
-timer_Exit:
-{
-	process, exist, %GameExe%
-	if !errorlevel 		;errorlevel = 0 if not exist
-		ExitApp ; this will run the shutdown routine below
-}
-return
-
-; This is now called from the main thread to avoid crashing
 ShutdownProcedure:
 	Closed := ReadMemory()
 	Closed := ReadRawMemory()
 	Closed := ReadMemory_Str()
+	deletepBitMaps(a_pBitmap)
+	deletePens(a_pPens)
+	deleteBrushArray(a_pBrushes)
+
 	; if pToken
 	; 	Gdip_Shutdown(pToken) ; DO NOT call this here - only one thread needs to call it. Called from main thread on exit 
 	ExitApp
@@ -367,14 +354,6 @@ getEnemyUnitsMiniMap(byref A_MiniMapUnits)
 
 drawUnitDestinations(pGraphics, byRef A_MiniMapUnits)
 {
-	static a_pPen := [], hasRun
-
-	if !hasRun
-	{
-		a_pPen := createPens(1)
-		hasRun := True
-	}
-
 	for indexOuter, unit in A_MiniMapUnits
 	{
 		for indexQueued, command in unit.QueuedCommands
@@ -414,7 +393,7 @@ drawUnitDestinations(pGraphics, byRef A_MiniMapUnits)
 			Else 
 				x := targetX, y := targetY
 			convertCoOrdindatesToMiniMapPos(targetX := command.targetX, targetY := command.targetY)	
-			Gdip_DrawLine(pGraphics, a_pPen[colour], x, y, targetX, targetY)
+			Gdip_DrawLine(pGraphics, a_pPens[colour], x, y, targetX, targetY)
 		}
 	}
 	return
@@ -472,18 +451,15 @@ temporarilyHideMinimap()
 
 drawPlayerCameras(pGraphics)
 {
-	static a_pPen := [], maxAngle := 1.195313, hasRun
-	if !hasRun
-	{
-		a_pPen := createPens(1)
-		hasRun := True
-	}
+	static maxAngle := 1.195313
 	Region := Gdip_GetClipRegion(pGraphics)
 	Gdip_SetClipRect(pGraphics, minimap.ScreenLeft, minimap.ScreenTop, minimap.Width, minimap.Height, 0)
 
 	For slotNumber in aPlayer
 	{
-		If (aLocalPlayer.Team != aPlayer[slotNumber].Team && isPlayerActive(slotNumber))
+		If (aLocalPlayer.Team != aPlayer[slotNumber].Team 
+		&& isPlayerActive(slotNumber) 
+		&& aPlayer[slotNumber].Type != "Computer") ; As AI don't move the camera
 		{
 			angle := getPlayerCameraAngle(slotNumber)
 			xCenter := getPlayerCameraPositionX(slotNumber)
@@ -502,7 +478,7 @@ drawPlayerCameras(pGraphics)
 			x4 := x1 + ((x2 - x1)/2) - xOffset
 			y4 := y3 
 
-			Gdip_DrawLines(pGraphics, a_pPen[aPlayer[slotNumber, "colour"]],  x1 "," y1 "|" x2 "," y2 
+			Gdip_DrawLines(pGraphics, a_pPens[aPlayer[slotNumber, "colour"]],  x1 "," y1 "|" x2 "," y2 
 							. "|" x3 "," y3 "|" x4 "," y4 "|" x1 "," y1 )
 		}
 	}
@@ -512,6 +488,12 @@ drawPlayerCameras(pGraphics)
 
 unit_bank_read:
 SupplyInProductionCount := gateway_count := warpgate_count := 0
+If (aLocalPlayer["Race"] = "Terran")
+	SupplyType := aUnitID["SupplyDepot"]
+Else If (aLocalPlayer["Race"] = "Protoss")
+	SupplyType := aUnitID["Pylon"]
+else If (aLocalPlayer["Race"] = "Zerg")
+	SupplyType := aUnitID["Egg"]	
 Time := getTime()
 a_BaseListTmp := []
 UnitBankCount := DumpUnitMemory(UBMemDump)
@@ -526,8 +508,17 @@ while (A_Index <= UnitBankCount)
 	unit_type := numgetUnitModelType(numgetUnitModelPointer(UBMemDump, u_iteration))
 	if (unit_owner = aLocalPlayer["Slot"])
 	{
-		IF (unit_type = supplytype AND Filter & aUnitTargetFilter.UnderConstruction)
-				SupplyInProductionCount ++		
+		If (unit_type = supplytype) 
+		{
+			if (unit_type = aUnitID["Egg"]) ; Eggs already constructed
+			{
+				aProduction := getZergProductionFromEgg(u_iteration)
+				if (aProduction.Type = aUnitID["Overlord"])
+					SupplyInProductionCount++	
+			}
+			else if (Filter & aUnitTargetFilter.UnderConstruction)
+				SupplyInProductionCount++				
+		}
 		if ( warpgate_warn_on AND (unit_type = aUnitID["Gateway"] OR unit_type = aUnitID["WarpGate"]) 
 			AND !(Filter & aUnitTargetFilter.UnderConstruction))
 		{
