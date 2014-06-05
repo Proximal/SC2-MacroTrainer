@@ -156,14 +156,17 @@ loadMemoryAddresses(base, version := "")
 		; These two versions have matching offsets
 		if (version = "2.1.1.29261") 
 			versionMatch := "2.1.1.29261"
-		else if (version = "2.1.2.30315" || !version) ; !version in case the findVersion function stuffs up and returns 0/blank, thereby just assume match with latest offsets
+		else if (version = "2.1.2.30315") 
 			versionMatch := "2.1.2.30315"
+		else if (version = "2.1.3.30508" || !version) ; !version in case the findVersion function stuffs up and returns 0/blank, thereby just assume match with latest offsets
+			versionMatch := "2.1.3.30508"
+
 		;	[Memory Addresses]
-			B_LocalCharacterNameID := base + 0x04F15C14 ; stored as string Name#123
-			B_LocalPlayerSlot := base + 0x112E5F0 ; note 1byte and has a second 'copy' (ReplayWatchedPlayer) just after +1byte eg LS =16d=10h, hex 1010 (2bytes) & LS =01d = hex 0101
-			B_ReplayWatchedPlayer := B_LocalPlayerSlot + 0x1
-			B_pStructure := base + 0x35F55A8  			 
-			S_pStructure := 0xE10
+		B_LocalCharacterNameID := base + 0x04F15C14 ; stored as string Name#123
+		B_LocalPlayerSlot := base + 0x112E5F0 ; note 1byte and has a second 'copy' (ReplayWatchedPlayer) just after +1byte eg LS =16d=10h, hex 1010 (2bytes) & LS =01d = hex 0101
+		B_ReplayWatchedPlayer := B_LocalPlayerSlot + 0x1
+		B_pStructure := base + 0x35F55A8  			 
+		S_pStructure := 0xE10
 			 O_pStatus := 0x0
 			 O_pXcam := 0x8
 			 O_pYcam := 0xC	
@@ -3245,7 +3248,8 @@ doUnitDetection(unit, type, owner, mode = "")
 	if (Mode = "Reset")
 	{
 		Alert_TimedOut := [],, Alerted_Buildings := [], Alerted_Buildings_Base := []
-		Iniwrite, 0, %config_file%, Resume Warnings, Resume
+		Iniwrite, 0, %config_file%, Resume Warnings, Resume ; bit pointless as its getting deleted
+		IniDelete, %config_file%, Resume Warnings
 		return
 	}
 	else If (Mode = "Save")
@@ -3280,7 +3284,7 @@ doUnitDetection(unit, type, owner, mode = "")
 			ArrayName := A_loopfield
 			%ArrayName% := []
 			Iniread, string, %config_file%, Resume Warnings, %ArrayName%, %A_space%
-			if string
+			if (string != A_Space)
 				loop, parse, string, `,
 				{
 					StringSplit, VarOut, A_loopfield, %A_Space%

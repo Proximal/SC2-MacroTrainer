@@ -160,75 +160,35 @@ gameChange(UserSavedAppliedSettings := False)
 	return "testValue"
 }
 
-
-; The performance/time measurements above each function were performed with
-; no player IDs. When IDs (text/pic) are present it takes a bit longer
-; Takes 0.76 ms
-DrawIdleWorkersOverlay(ByRef Redraw, UserScale=1,Drag=0, expand=1)
-{	global aLocalPlayer, GameIdentifier, config_file, IdleWorkersOverlayX, IdleWorkersOverlayY, a_pBitmap, overlayIdleWorkerTransparency
-	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0				
-
-	DestX := DestY := 0
-	idleCount := getIdleWorkers()
-	If (Redraw = -1 || !idleCount)		;only draw overlay when idle workers present
-	{
-		Try Gui, idleWorkersOverlay: Destroy
-		overlayCreated := False
-		Redraw := 0
-		Return
-	}	
-	Else if (ReDraw AND WinActive(GameIdentifier) && idleCount)
-	{
-		Try Gui, idleWorkersOverlay: Destroy
-		overlayCreated := False
-		Redraw := 0
-	}	
-	If (!overlayCreated)
-	{
-		Gui, idleWorkersOverlay: -Caption Hwndhwnd1 +E0x20 +E0x80000 +LastFound  +ToolWindow +AlwaysOnTop
-		Gui, idleWorkersOverlay: Show, NA X%idleWorkersOverlayX% Y%idleWorkersOverlayY% W400 H400, % aOverlayTitles["idleWorkersOverlay"]
-		OnMessage(0x201, "OverlayMove_LButtonDown")
-		OnMessage(0x20A, "OverlayResize_WM_MOUSEWHEEL")
-		overlayCreated := True	
+HiWord(number)
+{
+	if (number & 0x80000000)
+		return (number >> 16)
+	return (number >> 16) & 0xffff	
+}	
+OverlayResize_WM_MOUSEWHEEL(wParam) 		;(wParam, lParam) 0x20A =mousewheel
+{ 
+	local WheelMove, ActiveTitle, newScale, Scale
+	WheelMove := wParam > 0x7FFFFFFF ? HiWord(-(~wParam)-1)/120 :  HiWord(wParam)/120 ;get the higher order word & /120 = number of rotations
+	WinGetActiveTitle, ActiveTitle 			;downward rotations are -negative numbers
+	for overlayName, overlayTitle in aOverlayTitles
+	{	
+		if (ActiveTitle = overlayTitle)
+		{
+			newScale := %overlayName%Scale + WheelMove*.05
+			if (newScale >= .5)
+				%overlayName%Scale := newScale
+			else newScale := %overlayName%Scale := .5	
+			IniWrite, %newScale%, %config_file%, Overlays, %overlayName%Scale
+			return
+		}
 	}
-	If (Drag AND !DragPrevious)
-	{	DragPrevious := 1
-		Gui, idleWorkersOverlay: -E0x20
-	}
-	Else if (!Drag AND DragPrevious)
-	{	DragPrevious := 0
-		Gui, idleWorkersOverlay: +E0x20 +LastFound
-		WinGetPos,idleWorkersOverlayX,idleWorkersOverlayY		
-		IniWrite, %idleWorkersOverlayX%, %config_file%, Overlays, idleWorkersOverlayX
-		Iniwrite, %idleWorkersOverlayY%, %config_file%, Overlays, idleWorkersOverlayY
-	}
-	hbm := CreateDIBSection(400, 400)
-	hdc := CreateCompatibleDC()
-	obm := SelectObject(hdc, hbm)
-	G := Gdip_GraphicsFromHDC(hdc)
-	DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0)	
+	return
+} 
 
-	pBitmap := a_pBitmap[aLocalPlayer["Race"],"Worker"]
-	SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
-
-	expandOnIdle := 4
-	if expand
-	{
-		increased := floor(idlecount / expandOnIdle)/8
-		if (increased > .5)		; insreases size every 4 idle workers until 16 workers ie 4x
-			increased := .5
-		UserScale += increased
-	}
-	Options := " cFFFFFFFF r4 s" 18*UserScale
-	Width *= UserScale *.5, Height *= UserScale *.5
-	Gdip_DrawImage(G, pBitmap, DestX, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)	
-	Gdip_TextToGraphics(G, idleCount, "x"(DestX+Width+2*UserScale) "y"(DestY+(Height//4)) Options, Font, TextWidthHeight, TextWidthHeight)
-	Gdip_DeleteGraphics(G)	
-	UpdateLayeredWindow(hwnd1, hdc,,,,, overlayIdleWorkerTransparency)
-	SelectObject(hdc, obm) 
-	DeleteObject(hbm)  
-	DeleteDC(hdc) 
-	Return
+OverlayMove_LButtonDown()
+{
+    PostMessage, 0xA1, 2
 }
 
 
@@ -305,9 +265,9 @@ DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Dr
 				if !LongestNameSize
 				{
 					if drawLocalPlayerIncome
-						longestName := MT_CurrentGame.HasKey("LongestName") ? MT_CurrentGame.LongestName : MT_CurrentGame.LongestName := getLongestPlayerName(aPlayer, True)
+						longestName := MT_CurrentGame.LongestName
 					else 
-						longestName := MT_CurrentGame.HasKey("LongestEnemyName") ? MT_CurrentGame.LongestEnemyName : MT_CurrentGame.LongestEnemyName := getLongestPlayerName(aPlayer)					
+						longestName := MT_CurrentGame.LongestEnemyName
 					LongestNameData :=	gdip_TextToGraphics(G, longestName, "x0" "y"(DestY+(Height//4))  " Bold c00FFFFFF r4 s" 17*UserScale, Font) ; text is invisible ;get string size	
 					StringSplit, LongestNameSize, LongestNameData, | ;retrieve the length of the string
 					LongestNameSize := LongestNameSize3
@@ -443,9 +403,9 @@ DrawAPMOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, modeAPM_EPM=0,Drag
 				if !LongestNameSize
 				{
 					if (APMOverlayMode = -1) 
-						longestName := MT_CurrentGame.HasKey("LongestName") ? MT_CurrentGame.LongestName : MT_CurrentGame.LongestName := getLongestPlayerName(aPlayer, True)
+						longestName := MT_CurrentGame.LongestName
 					else if (APMOverlayMode = 0) 
-						longestName := MT_CurrentGame.HasKey("LongestEnemyName") ? MT_CurrentGame.LongestEnemyName : MT_CurrentGame.LongestEnemyName := getLongestPlayerName(aPlayer)
+						longestName := MT_CurrentGame.LongestEnemyName
 					else 
 						longestName := aLocalPlayer["Name"]
 					LongestNameData :=	gdip_TextToGraphics(G, longestName, "x0" "y"(DestY+(Height//4))  " Bold c00FFFFFF r4 s" 17*UserScale, Font) ; text is invisible ;get string size	
@@ -566,9 +526,9 @@ DrawResourcesOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0
 				if !LongestNameSize
 				{
 					if drawLocalPlayerResources
-						longestName := MT_CurrentGame.HasKey("LongestName") ? MT_CurrentGame.LongestName : MT_CurrentGame.LongestName := getLongestPlayerName(aPlayer, True)
+						longestName := MT_CurrentGame.LongestName
 					else 
-						longestName := MT_CurrentGame.HasKey("LongestEnemyName") ? MT_CurrentGame.LongestEnemyName : MT_CurrentGame.LongestEnemyName := getLongestPlayerName(aPlayer)
+						longestName := MT_CurrentGame.LongestEnemyName
 					LongestNameData :=	gdip_TextToGraphics(G, longestName, "x0" "y"(DestY+(Height//4))  " Bold c00FFFFFF r4 s" 17*UserScale	, Font) ; text is invisible ;get string size	
 					StringSplit, LongestNameSize, LongestNameData, | ;retrieve the length of the string
 					LongestNameSize := LongestNameSize3
@@ -702,9 +662,9 @@ DrawArmySizeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,
 				if !LongestNameSize
 				{
 					if (DrawArmySizeOverlay = -1) 
-						longestName := MT_CurrentGame.HasKey("LongestName") ? MT_CurrentGame.LongestName : MT_CurrentGame.LongestName := getLongestPlayerName(aPlayer, True)
+						longestName := MT_CurrentGame.LongestName
 					else 
-						longestName := MT_CurrentGame.HasKey("LongestEnemyName") ? MT_CurrentGame.LongestEnemyName : MT_CurrentGame.LongestEnemyName := getLongestPlayerName(aPlayer)
+						longestName := MT_CurrentGame.LongestEnemyName
 
 					LongestNameData :=	gdip_TextToGraphics(G, longestName, "x0" "y"(DestY+(Height//4))  " Bold c00FFFFFF r4 s" 17*UserScale	, Font) ; text is invisible ;get string size	
 					StringSplit, LongestNameSize, LongestNameData, | ;retrieve the length of the string
@@ -920,6 +880,7 @@ DrawLocalPlayerColour(ByRef Redraw, UserScale=1,Drag=0)
 }
 
 
+
 getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyCurrentUpgrades)
 {
 	GLOBAL DeadFilterFlag, aPlayer, aLocalPlayer, aUnitTargetFilter, aUnitInfo, aMiscUnitPanelInfo
@@ -1104,7 +1065,6 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 	}
 	Return
 }
-
 
 ; need to fix templar /dt count when morohing in an archon
 
@@ -1381,7 +1341,7 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 		;	StringSplit, TextSize, TextData, | ;retrieve the length of the string		
 			if !LongestNameSize
 			{
-				LongestNameData :=	gdip_TextToGraphics(G, MT_CurrentGame.HasKey("LongestEnemyName") ? MT_CurrentGame.LongestEnemyName : MT_CurrentGame.LongestEnemyName := getLongestPlayerName(aPlayer)
+				LongestNameData :=	gdip_TextToGraphics(G, MT_CurrentGame.LongestEnemyName
 														, "x0" "y"(DestY)  " Bold c00FFFFFF r4 s" 17*UserScale	, Font) ; text is invisible ;get string size	
 				StringSplit, LongestNameSize, LongestNameData, | ;retrieve the length of the string
 				LongestNameSize := LongestNameSize3
@@ -1648,35 +1608,3 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 	hbm := CreateDIBSection(A_ScreenWidth, A_ScreenHeight)
 	Results: 1496, 1506, 1481 ms 
 */
-
-HiWord(number)
-{
-	if (number & 0x80000000)
-		return (number >> 16)
-	return (number >> 16) & 0xffff	
-}	
-
-OverlayResize_WM_MOUSEWHEEL(wParam) 		;(wParam, lParam) 0x20A =mousewheel
-{ 
-	local WheelMove, ActiveTitle, newScale, Scale
-	WheelMove := wParam > 0x7FFFFFFF ? HiWord(-(~wParam)-1)/120 :  HiWord(wParam)/120 ;get the higher order word & /120 = number of rotations
-	WinGetActiveTitle, ActiveTitle 			;downward rotations are -negative numbers
-	for overlayName, overlayTitle in aOverlayTitles
-	{	
-		if (ActiveTitle = overlayTitle)
-		{
-			newScale := %overlayName%Scale + WheelMove*.05
-			if (newScale >= .5)
-				%overlayName%Scale := newScale
-			else newScale := %overlayName%Scale := .5	
-			IniWrite, %newScale%, %config_file%, Overlays, %overlayName%Scale
-			return
-		}
-	}
-	return
-} 
-
-OverlayMove_LButtonDown()
-{
-    PostMessage, 0xA1, 2
-}

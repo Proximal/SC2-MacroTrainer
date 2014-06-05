@@ -8,12 +8,16 @@
 ;Bytes can take 1,2,3,4 or 8
 ; wont correctly handle 8 bytes with extreme values
 ; I've written a memory class which is more extensive than this,
-; and other people should just use that
+; and other people should just use that.
+; Its in lib\classmemory.ahk
 
 ReadMemory(MADDRESS=0,PROGRAM="",BYTES=4)
 {
    Static OLDPROC, ProcessHandle
-   VarSetCapacity(MVALUE, BYTES)
+   
+   ; keep buffer a local variable, rather than static so that it is 
+   ; quasi thread safe. 
+   VarSetCapacity(buffer, BYTES) 
    If (PROGRAM != OLDPROC)
    {
         if ProcessHandle
@@ -27,7 +31,7 @@ ReadMemory(MADDRESS=0,PROGRAM="",BYTES=4)
         }
    }
    
-   If !(ProcessHandle && DllCall("ReadProcessMemory","UInt",ProcessHandle,"UInt",MADDRESS,"Str",MVALUE,"UInt",BYTES,"UInt *",0))
+   If !(ProcessHandle && DllCall("ReadProcessMemory", "UInt", ProcessHandle, "UInt", MADDRESS, "Ptr", &buffer, "UInt", BYTES, "Ptr", 0))
       return !ProcessHandle ? "Handle Closed: " closed : "Fail"
    else if (BYTES = 1)
       Type := "UChar"
@@ -37,13 +41,7 @@ ReadMemory(MADDRESS=0,PROGRAM="",BYTES=4)
       Type := "UInt"
    else 
       Type := "Int64"
-   ;{
-   ;   loop % BYTES 
-   ;       result += numget(MVALUE, A_index-1, "Uchar") << 8 *(A_Index-1)
-   ;   return result
-   ;}
-
-   return numget(MVALUE, 0, Type)
+   return numget(buffer, 0, Type)
 }
 
 

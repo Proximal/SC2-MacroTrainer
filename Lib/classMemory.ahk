@@ -4,7 +4,7 @@
 		when specified module name formed part of another modules name
 
 
-	RHCP basic memory class:
+	RHCP's basic memory class:
 
 	This is a basic wrapper for commonly used read and write memory functions.
 	This allows scripts to read/write integers and strings of various types.
@@ -45,10 +45,11 @@
 				a 64 bit calc process address (I doubt pointers will work), but the getBaseAddressOfModule() example 
 				will not work unless the you are using a 64 bit version of ahk (it will return -4 indicating the operation is not possible)
 
+		
 		Open a process with sufficient access to read and write memory addresses (this is required before you can use the other functions)
 		You only need to do this once. But if the process closes, then you will need to reopen.
-			calc :=	new memory("ahk_exe calc.exe")
-			Note: This can be an ahk_exe, ahk_class, ahk_pid, or simply the window title. 
+			calc :=	new memory("ahk_exe calc.exe") ; Note: This can be an ahk_exe, ahk_class, ahk_pid, or simply the window title. 
+			
 
 		
 		Get the processes base address
@@ -74,10 +75,10 @@
 			value := calc.read(pointerBase, "UChar", 0x20, 0x15C)
 
 		
-		read a utf-16 null terminated string of unknown length at address 0x1234556 - the function will read each character until the null terminator is found
+		read a utf-16 null terminated string of unknown size at address 0x1234556 - the function will read each character until the null terminator is found
 			string := calc.readString(0x1234556, length := 0, encoding := "utf-16")
 		
-		read a utf-8 encoded 12 character string at address 0x1234556
+		read a utf-8 encoded character string which is 12 bytes long at address 0x1234556
 			string := calc.readString(0x1234556, 12)
 
 		By default a null terminator is included at the end of written strings for writeString()
@@ -91,7 +92,6 @@ class memory
 {
 	static baseAddress, hProcess
 	, insertNullTerminator := True
-	, readChunkSize := 128
 	, aTypeSize := {	"UChar": 	1, 	"Char":		1
 					, 	"UShort":	2, 	"Short":	2
 					, 	"UInt": 	4, 	"Int": 		4
@@ -170,57 +170,39 @@ class memory
 	ReadRawMemory(address, byref buffer, bytes := 4, aOffsets*)
 	{
 		VarSetCapacity(buffer, bytes)
-		if !DllCall("ReadProcessMemory", "UInt", this.hProcess, "UInt", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, "Ptr", &buffer, "UInt", bytes, "Ptr*", bytesRead)
+		if !DllCall("ReadProcessMemory", "UInt", this.hProcess, "UInt", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, "Ptr", &buffer, "UInt", bytes, "UInt*", bytesRead)
 			return !this.hProcess ? "Handle Is closed: " this.hProcess : "Fail"
 		return bytesRead
 	}
 
 	; Encoding refers to how the string is stored in the program's memory - probably uft-8 or utf-16
-	; If length is 0, readString() will read the string until it finds a null terminator (or an error occurs)
+	; If sizeBytes is 0, readString() will read the string until it finds a null terminator (or an error occurs)
 
-	readString(address, length := 0, encoding := "utf-8", aOffsets*)
+	readString(address, sizeBytes := 0, encoding := "utf-8", aOffsets*)
 	{
-		size  := (encoding ="utf-16" || encoding = "cp1200") ? 2 : 1
-		VarSetCapacity(buffer, length ? length * size : (this.readChunkSize < size ? this.readChunkSize := size : this.readChunkSize), 0)
-	 
+		bufferSize := VarSetCapacity(buffer, sizeBytes ? sizeBytes : 100, 0)
 		if aOffsets.maxIndex()
 			address := this.getAddressFromOffsets(address, aOffsets*)
-
-		if !length  ; read until null terminator is found or something goes wrong
+		if !sizeBytes  ; read until null terminator is found or something goes wrong
 		{
-			VarSetCapacity(string, this.readChunkSize * 2) 		; this is absolutely not needed, but if you're reading large strings from memory
-																; performance can be slightly improved by increasing readchunksize
-																; e.g. memory.readChunkSize := 1024
-																; the *2 multiplier in varsetcapacity() can also be increased to improve long string concatenations. 
+			encodingSize := (encoding = "utf-16" || encoding = "cp1200") ? 2 : 1
+			charType := encodingSize = 1 ? "Char" : "Short"
 			Loop
 			{
-				; read a chunk of x size, rather than one/two bytes at a time, as each ReadProcessMemory call is relatively slow
-				success := DllCall("ReadProcessMemory", "UInt", this.hProcess, "UInt", address + (A_index - 1) * this.readChunkSize, "Ptr", &buffer, "Uint", this.readChunkSize, "Ptr", 0) 
+				success := DllCall("ReadProcessMemory", "UInt", this.hProcess, "UInt", address + (A_index - 1) * encodingSize, "Ptr", &buffer, "Uint", encodingSize, "Ptr", 0) 
 				if (ErrorLevel || !success)
-				{
-					if (A_Index = 1 && !this.hProcess)
-						return "Handle Is closed: " this.hProcess
-					else if (A_index = 1 && this.hProcess)
-					 	return "Fail"
-					 else 
-					 	break
-				}
-				loop, % this.readChunkSize / size
-				{
-					if ("" = char := StrGet(&buffer + (A_Index -1) * size, 1, encoding))
-						break, 2
-					string .= char
-				}
-			 	; don't need to blank the buffer as it will be completely overwritten, if the readmemory fails (very unlikely) then loop gets broken anyway
+					return this.hProcess ? "Fail" : "Handle Is closed: " this.hProcess
+				else if (0 = NumGet(buffer, 0, charType)) ; NULL terminator
+	            {
+	                if (bufferSize < sizeBytes := A_Index * encodingSize) ; A_Index will equal the size of the string in bytes
+	                    VarSetCapacity(buffer, sizeBytes)
+	                break
+	            }   
 			}
 		}
-		Else ; will read X length
-		{
-	        if !DllCall("ReadProcessMemory", "UInt", this.hProcess, "UInt", address, "Ptr", &buffer, "Uint", length * size, "Ptr", 0)   
-	        	return !this.hProcess ? "Handle Is closed: " this.hProcess : "Fail"
-	        string := StrGet(&buffer, length, encoding)
-		}
-		return string				
+        if !DllCall("ReadProcessMemory", "UInt", this.hProcess, "UInt", address, "Ptr", &buffer, "Uint", sizeBytes, "Ptr", 0)   
+        	return !this.hProcess ? "Handle Is closed: " this.hProcess : "Fail"
+		return StrGet(&buffer,, encoding)				
 	}
 
 	; by default a null terminator is included at the end of written strings for writeString()
@@ -234,7 +216,7 @@ class memory
 		requiredSize := StrPut(string, encoding) * encodingSize - (this.insertNullTerminator ? 0 : encodingSize)
 	    VarSetCapacity(buffer, requiredSize)
 	    StrPut(string, &buffer, this.insertNullTerminator ? StrLen(string) : StrLen(string) + 1, encoding)
-	    DllCall("WriteProcessMemory", "UInt", this.hProcess, "UInt", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, "Ptr", &buffer, "Uint", requiredSize, "Ptr*", BytesWritten)
+	    DllCall("WriteProcessMemory", "UInt", this.hProcess, "UInt", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, "Ptr", &buffer, "Uint", requiredSize, "UInt*", BytesWritten)
 	    return BytesWritten
 	}
 
