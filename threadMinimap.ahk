@@ -148,6 +148,9 @@ MiniMap_Timer:
 		DrawMiniMap()
 	else if !ReDrawMiniMap
 		DestroyOverlays()
+	sleep, 10 
+	; sleep incase have v. fast refresh rates or slow computer (so CPU usage doesn't increase too much)
+	; This is a non-issue for me
 Return
 
 ShutdownProcedure:

@@ -1,10 +1,11 @@
 #persistent
 #NoEnv  ; think this is default with AHK_H
-;#NoTrayIcon
+#NoTrayIcon
 SetWorkingDir %A_ScriptDir%
 SetBatchLines, -1
-;ListLines, Off
+ListLines, Off
 OnExit, ShutdownProcedure 
+scriptWinTitle := changeScriptMainWinTitle()
 
 l_GameType := "1v1,2v2,3v3,4v4,FFA"
 l_Races := "Terran,Protoss,Zerg"
@@ -63,54 +64,37 @@ if (!time := getTime())
 return 
 
 overlay_timer: 	;DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdent=0, Background=0,Drag=0)
-loop 
-{	
-	If (WinActive(GameIdentifier) || Dragoverlay) ;really only needed to ressize/scale not drag - as the movement is donve via  a post message - needed as overlay becomes the active window during drag etc
-	{
-		If DrawIncomeOverlay
-			DrawIncomeOverlay(ReDrawIncome, IncomeOverlayScale, OverlayIdent, OverlayBackgrounds, Dragoverlay)
-		If DrawAPMOverlay
-			DrawAPMOverlay(ReDrawAPM, APMOverlayScale, OverlayIdent, modeAPM_EPM, Dragoverlay)
-		If DrawResourcesOverlay
-			DrawResourcesOverlay(ReDrawResources, ResourcesOverlayScale, OverlayIdent, OverlayBackgrounds, Dragoverlay)
-		If DrawArmySizeOverlay
-			DrawArmySizeOverlay(ReDrawArmySize, ArmySizeOverlayScale, OverlayIdent, OverlayBackgrounds, Dragoverlay)
-		If DrawWorkerOverlay
-			DrawWorkerOverlay(ReDrawWorker, WorkerOverlayScale, Dragoverlay) ;2 less parameters
-		If DrawIdleWorkersOverlay
-			DrawIdleWorkersOverlay(ReDrawIdleWorkers, IdleWorkersOverlayScale, dragOverlay)
-		if (DrawLocalPlayerColourOverlay && (GameType != "1v1" && GameType != "FFA"))   ;easier just to redraw it each time as otherwise have to change internal for when dragging
-			DrawLocalPlayerColour(ReDrawLocalPlayerColour, LocalPlayerColourOverlayScale, DragOverlay)
-		If 1 || (DrawUnitOverlay || DrawUnitUpgrades)
-		{
-			DrawUnitOverlay := DrawUnitUpgrades := true
-
-			getEnemyUnitCount(aEnemyUnits, aEnemyUnitConstruction, aEnemyCurrentUpgrades)
-			FilterUnits(aEnemyUnits, aEnemyUnitConstruction, aUnitPanelUnits)
-			DrawUnitOverlay(RedrawUnit, UnitOverlayScale, OverlayIdent, Dragoverlay)
-		}	
-
-	}
-	; sometimes the overlay timer doesnt work, so this is a backup which ensure theyre destroyed
-	; I think it fails sometimes because its inside an overlay function or something
-	else if (!WinActive(GameIdentifier) && !Dragoverlay && !areOverlaysWaitingToRedraw())
-		DestroyOverlays()
-	sleep 10
-}
-Return
-
-g_unitPanelOverlay_timer: 
-	If ((DrawUnitOverlay || DrawUnitUpgrades) && (WinActive(GameIdentifier) || Dragoverlay))
+	
+If (WinActive(GameIdentifier) || Dragoverlay) ;really only needed to ressize/scale not drag - as the movement is donve via  a post message - needed as overlay becomes the active window during drag etc
+{
+	If DrawIncomeOverlay
+		DrawIncomeOverlay(ReDrawIncome, IncomeOverlayScale, OverlayIdent, OverlayBackgrounds, Dragoverlay)
+	If DrawAPMOverlay
+		DrawAPMOverlay(ReDrawAPM, APMOverlayScale, OverlayIdent, modeAPM_EPM, Dragoverlay)
+	If DrawResourcesOverlay
+		DrawResourcesOverlay(ReDrawResources, ResourcesOverlayScale, OverlayIdent, OverlayBackgrounds, Dragoverlay)
+	If DrawArmySizeOverlay
+		DrawArmySizeOverlay(ReDrawArmySize, ArmySizeOverlayScale, OverlayIdent, OverlayBackgrounds, Dragoverlay)
+	If DrawWorkerOverlay
+		DrawWorkerOverlay(ReDrawWorker, WorkerOverlayScale, Dragoverlay) ;2 less parameters
+	If DrawIdleWorkersOverlay
+		DrawIdleWorkersOverlay(ReDrawIdleWorkers, IdleWorkersOverlayScale, dragOverlay)
+	if (DrawLocalPlayerColourOverlay && (GameType != "1v1" && GameType != "FFA"))   ;easier just to redraw it each time as otherwise have to change internal for when dragging
+		DrawLocalPlayerColour(ReDrawLocalPlayerColour, LocalPlayerColourOverlayScale, DragOverlay)
+	If (DrawUnitOverlay || DrawUnitUpgrades)
 	{
 		getEnemyUnitCount(aEnemyUnits, aEnemyUnitConstruction, aEnemyCurrentUpgrades)
 		FilterUnits(aEnemyUnits, aEnemyUnitConstruction, aUnitPanelUnits)
 		DrawUnitOverlay(RedrawUnit, UnitOverlayScale, OverlayIdent, Dragoverlay)
-	}
-	else if (!WinActive(GameIdentifier) && !Dragoverlay && !areOverlaysWaitingToRedraw())
-		DestroyOverlays()
-return
-return 
+	}	
 
+}
+; sometimes the overlay timer doesnt work, so this is a backup which ensure theyre destroyed
+; I think it fails sometimes because its inside an overlay function or something
+else if (!WinActive(GameIdentifier) && !Dragoverlay && !areOverlaysWaitingToRedraw())
+	DestroyOverlays()
+sleep 10
+Return
   
 updateUserSettings()
 {	
@@ -119,7 +103,7 @@ updateUserSettings()
 	hasReadConfig := True
 }
 
-gameChange(UserSavedAppliedSettings := False)
+gameChange()
 {
 	global
 	if !hasReadConfig
@@ -133,31 +117,123 @@ gameChange(UserSavedAppliedSettings := False)
 	}
 	if (Time := getTime())
 	{
-		game_status := "game", warpgate_status := "not researched", gateway_count := warpgate_warning_set := 0
-		TimeReadRacesSet := 0
+		game_status := "game"
 		; aStringTable and aUnitModel are super global declared in memory and general functions
-		aUnitModel := [] 		
-		aStringTable := []
-		MiniMapWarning := [], a_BaseList := [], aGatewayWarnings := []
-		MT_CurrentGame := []
-		;if WinActive(GameIdentifier)
+		aUnitModel := [], aStringTable := [], MT_CurrentGame := []
+		if WinActive(GameIdentifier)
 			ReDrawMiniMap := ReDrawIncome := ReDrawResources := ReDrawArmySize := ReDrawWorker := RedrawUnit := ReDrawIdleWorkers := ReDrawLocalPlayerColour := 1
 		getPlayers(aPlayer, aLocalPlayer, aEnemyAndLocalPlayer)
-		GameType := GetGameType(aPlayer)		
-		SetMiniMap(minimap)
-		setupMiniMapUnitLists(aMiniMapUnits) ; aMiniMapUnits is super global
-		EnemyBaseList := GetEBases()
-
-		SetTimer, overlay_timer, -1
-		
+		GameType := GetGameType(aPlayer)	
+		getLongestPlayerNames(LongestEnemyName, LongestName) ; Enemy, Enemy or Self
+		MT_CurrentGame.LongestEnemyName := LongestEnemyName, MT_CurrentGame.LongestName := LongestName
+		SetTimer, overlay_timer, %OverlayRefresh%
 	}
 	else 
 	{
-		msgbox here 
 		SetTimer, overlay_timer, off
 		DestroyOverlays()
 	}
-	return "testValue"
+	return
+}
+
+increaseOverlayTimer()
+{
+	global 
+
+	SetTimer, overlay_timer, 50 ; increase freq so that increasing size occurs more rapidly
+	SetTimer, overlayTimerSetOriginal, -60000
+	return
+	overlayTimerSetOriginal:
+	SetTimer, overlay_timer, %OverlayRefresh%
+	return
+}
+
+restoreOverlayTimer()
+{
+	global 
+	SetTimer, overlay_timer, %OverlayRefresh%
+	return	
+}
+
+overlayToggle(hotkey)
+{
+	global
+	if (hotkey = CycleOverlayKey "")
+	{
+		; if more than one overlays on. Turn then all off. Then cycle
+		; DrawIncomeOverlay, DrawResourcesOverlay, DrawArmySizeOverlay, DrawAPMOverlay, DrawUnitOverlay, All
+		If ((ActiveOverlays := DrawIncomeOverlay + DrawResourcesOverlay + DrawArmySizeOverlay + DrawAPMOverlay + ((DrawUnitOverlay || DrawUnitUpgrades) ? 1 : 0)) > 1)
+		{
+			DrawResourcesOverlay := DrawArmySizeOverlay := DrawAPMOverlay := DrawIncomeOverlay := DrawUnitOverlay := DrawUnitUpgrades := 0
+			DrawResourcesOverlay(-1), DrawArmySizeOverlay(-1), DrawAPMOverlay(-1), DrawIncomeOverlay(-1), DrawUnitOverlay(-1)
+		}
+		Else If (ActiveOverlays = 0)
+			DrawIncomeOverlay := 1
+		Else
+		{
+			If DrawIncomeOverlay
+				DrawResourcesOverlay := !DrawIncomeOverlay := DrawUnitOverlay := 0, DrawIncomeOverlay(-1) 				
+			Else If DrawResourcesOverlay
+				DrawArmySizeOverlay := !DrawResourcesOverlay := DrawUnitOverlay := 0, DrawResourcesOverlay(-1)
+			Else If DrawArmySizeOverlay
+				DrawAPMOverlay := !DrawResourcesOverlay := DrawArmySizeOverlay :=  0, DrawArmySizeOverlay(-1)
+			Else If DrawAPMOverlay
+				DrawUnitUpgrades := DrawUnitOverlay := !DrawAPMOverlay :=  0, DrawAPMOverlay(-1)
+			Else If (DrawUnitOverlay || DrawUnitUpgrades) 	; turn them all on
+				DrawResourcesOverlay := DrawArmySizeOverlay := DrawAPMOverlay := DrawIncomeOverlay := 1 	
+		}
+		gosub, overlay_timer
+	}	
+	Else If (hotkey = ToggleIncomeOverlayKey "")
+	{
+		If (!DrawIncomeOverlay := !DrawIncomeOverlay)
+			DrawIncomeOverlay(-1)	
+	}
+	Else If (hotkey = ToggleResourcesOverlayKey "")
+	{
+		If (!DrawResourcesOverlay := !DrawResourcesOverlay)
+			DrawResourcesOverlay(-1)
+	}
+	Else If (hotkey = ToggleArmySizeOverlayKey "")
+	{
+		If (!DrawArmySizeOverlay := !DrawArmySizeOverlay)
+			DrawArmySizeOverlay(-1)	
+	}
+	Else If (hotkey = ToggleWorkerOverlayKey "")
+	{
+		If (!DrawWorkerOverlay := !DrawWorkerOverlay)
+			DrawWorkerOverlay(-1)
+	}	
+	Else If (hotkey = ToggleIdleWorkersOverlayKey "")
+	{
+		If (!DrawIdleWorkersOverlay := !DrawIdleWorkersOverlay)
+			DrawIdleWorkersOverlay(-1)
+	}	
+	Else If (hotkey = ToggleUnitOverlayKey "")
+	{
+		if (!DrawUnitOverlay && !DrawUnitUpgrades)	
+			DrawUnitOverlay := True	
+		else if (DrawUnitOverlay && !DrawUnitUpgrades)
+			DrawUnitUpgrades := True
+		else if (DrawUnitOverlay && DrawUnitUpgrades)
+			DrawUnitOverlay := False, DrawUnitUpgrades := True		
+		else if (!DrawUnitOverlay && DrawUnitUpgrades)
+			DrawUnitUpgrades := False
+		If (!DrawUnitOverlay && !DrawUnitUpgrades)
+			DrawUnitOverlay(-1)
+	}
+	gosub, overlay_timer ;this makes the change take effect immediately. 
+	Return
+}
+toggleIdentifier()
+{
+	global 
+	If OverlayIdent = 3
+		OverlayIdent := 0
+	Else OverlayIdent ++
+	Iniwrite, %OverlayIdent%, %config_file%, Overlays, OverlayIdent
+	gosub, overlay_timer
+	Return
 }
 
 HiWord(number)
@@ -199,6 +275,75 @@ http://www.autohotkey.com/board/topic/37927-help-with-gdi-clearing-image-after-u
 http://support.microsoft.com/kb/311221
 */
 
+; The performance/time measurements above each function were performed with
+; no player IDs. When IDs (text/pic) are present it takes a bit longer
+; Takes 0.76 ms
+DrawIdleWorkersOverlay(ByRef Redraw, UserScale=1,Drag=0, expand=1)
+{	global aLocalPlayer, GameIdentifier, config_file, IdleWorkersOverlayX, IdleWorkersOverlayY, a_pBitmap, overlayIdleWorkerTransparency
+	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0				
+
+	DestX := DestY := 0
+	idleCount := getIdleWorkers()
+	If (Redraw = -1 || !idleCount)		;only draw overlay when idle workers present
+	{
+		Try Gui, idleWorkersOverlay: Destroy
+		overlayCreated := False
+		Redraw := 0
+		Return
+	}	
+	Else if (ReDraw AND WinActive(GameIdentifier) && idleCount)
+	{
+		Try Gui, idleWorkersOverlay: Destroy
+		overlayCreated := False
+		Redraw := 0
+	}	
+	If (!overlayCreated)
+	{
+		Gui, idleWorkersOverlay: -Caption Hwndhwnd1 +E0x20 +E0x80000 +LastFound  +ToolWindow +AlwaysOnTop
+		Gui, idleWorkersOverlay: Show, NA X%idleWorkersOverlayX% Y%idleWorkersOverlayY% W400 H400, % aOverlayTitles["idleWorkersOverlay"]
+		OnMessage(0x201, "OverlayMove_LButtonDown")
+		OnMessage(0x20A, "OverlayResize_WM_MOUSEWHEEL")
+		overlayCreated := True	
+	}
+	If (Drag AND !DragPrevious)
+	{	DragPrevious := 1
+		Gui, idleWorkersOverlay: -E0x20
+	}
+	Else if (!Drag AND DragPrevious)
+	{	DragPrevious := 0
+		Gui, idleWorkersOverlay: +E0x20 +LastFound
+		WinGetPos,idleWorkersOverlayX,idleWorkersOverlayY		
+		IniWrite, %idleWorkersOverlayX%, %config_file%, Overlays, idleWorkersOverlayX
+		Iniwrite, %idleWorkersOverlayY%, %config_file%, Overlays, idleWorkersOverlayY
+	}
+	hbm := CreateDIBSection(400, 400)
+	hdc := CreateCompatibleDC()
+	obm := SelectObject(hdc, hbm)
+	G := Gdip_GraphicsFromHDC(hdc)
+	DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0)	
+
+	pBitmap := a_pBitmap[aLocalPlayer["Race"],"Worker"]
+	SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
+
+	expandOnIdle := 4
+	if expand
+	{
+		increased := floor(idlecount / expandOnIdle)/8
+		if (increased > .5)		; insreases size every 4 idle workers until 16 workers ie 4x
+			increased := .5
+		UserScale += increased
+	}
+	Options := " cFFFFFFFF r4 s" 18*UserScale
+	Width *= UserScale *.5, Height *= UserScale *.5
+	Gdip_DrawImage(G, pBitmap, DestX, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)	
+	Gdip_TextToGraphics(G, idleCount, "x"(DestX+Width+2*UserScale) "y"(DestY+(Height//4)) Options, Font, TextWidthHeight, TextWidthHeight)
+	Gdip_DeleteGraphics(G)	
+	UpdateLayeredWindow(hwnd1, hdc,,,,, overlayIdleWorkerTransparency)
+	SelectObject(hdc, obm) 
+	DeleteObject(hbm)  
+	DeleteDC(hdc) 
+	Return
+}
 
 ; Takes 4.4 ms    
 DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Drag=0)
@@ -1568,12 +1713,12 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 	; Note: I think there is a little more to it than this, as when adjusting the overlay it allows
 	; you to make it massive and then disappears when the overlay gets destroyed/redrawn
 
-	if !WindowWidth
-		WindowWidth := 20	
+	if !WindowWidth 
+		WindowWidth := DestX ? DestX : 20	; so names/pictures dont get cut off if just displaying upgrades height should; height will always have a value
 	else if (WindowWidth > A_ScreenWidth)
 		WindowWidth := A_ScreenWidth
 
-	if !WindowHeight
+	if !WindowHeight ; I think window height will always have a value (unless no players)
 		WindowHeight := 20		
 	else if (WindowHeight > A_ScreenHeight)
 		WindowHeight := A_ScreenHeight

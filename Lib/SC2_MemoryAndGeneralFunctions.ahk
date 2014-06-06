@@ -160,7 +160,7 @@ loadMemoryAddresses(base, version := "")
 			versionMatch := "2.1.2.30315"
 		else if (version = "2.1.3.30508" || !version) ; !version in case the findVersion function stuffs up and returns 0/blank, thereby just assume match with latest offsets
 			versionMatch := "2.1.3.30508"
-
+		else versionMatch := false
 		;	[Memory Addresses]
 		B_LocalCharacterNameID := base + 0x04F15C14 ; stored as string Name#123
 		B_LocalPlayerSlot := base + 0x112E5F0 ; note 1byte and has a second 'copy' (ReplayWatchedPlayer) just after +1byte eg LS =16d=10h, hex 1010 (2bytes) & LS =01d = hex 0101
@@ -2992,6 +2992,37 @@ getLongestPlayerName(aPlayer, includeLocalPlayer := False)
 	return LongestName
 }
 
+getLongestPlayerNames(byRef LongestEnemyName, byRef LongestIncludeSelf)
+{
+	hbm := CreateDIBSection(600, 200) ; big enough for any name
+	hdc := CreateCompatibleDC()
+	obm := SelectObject(hdc, hbm)
+	G := Gdip_GraphicsFromHDC(hdc)
+	for slotNumber, Player in aPlayer
+	{
+		if (player.team != localTeam)
+		{
+			data := gdip_TextToGraphics(G, player.name, "x0y0 Bold cFFFFFFFF r4 s17", "Arial") ;get string size
+			StringSplit, size, data, | ;retrieve the length of the string
+			if (size3 > longestSize)
+				longestSize := size3, LongestEnemyName := player.name
+		} 	
+	}
+
+	data := gdip_TextToGraphics(G, aLocalPlayer.Name, "x0y0 Bold cFFFFFFFF r4 s17", "Arial") ;get string size
+	StringSplit, size, data, | ;retrieve the length of the string
+	if (size3 > longestSize)
+		LongestIncludeSelf := aLocalPlayer.Name
+	else LongestIncludeSelf := LongestEnemyName
+
+	Gdip_DeleteGraphics(G)
+	UpdateLayeredWindow(hwnd1, hdc,,, WindowWidth, WindowHeight, overlayMatchTransparency)
+	SelectObject(hdc, obm)
+	DeleteObject(hbm)
+	DeleteDC(hdc)
+	return
+}
+
 areOverlaysWaitingToRedraw()
 {
 	global 
@@ -4094,12 +4125,47 @@ getArchonMorphTime(pAbilities)
 	return round((totalTime - timeRemaing)/totalTime, 2)
 }
 
+; In FactoryAddOns +10 is unit address of the factory
+
+; Returns:
+;	1  reactor
+;	-1  techlab
+;	0  no addons or addon in construction 
+;
+;	There are bytes in the addons (eg BarracksAddOns) structure which indicate an addon is under construction 
+;	but not which type it is - but when an addon is underconstruction is position in the unit panel doesn't change!
+
+getAddonStatus(pAbilities, unitType)
+{
+	STATIC O_IndexParentTypes := 0x18, hasRun := False, aAddonStrings := [], aOffsets := []
+	if !hasRun 
+	{
+		hasRun := True
+		aAddonStrings := { 	aUnitID.Barracks: "BarracksAddOns"
+						 ,	aUnitID.Factory: "FactoryAddOns"
+						 ,	aUnitID.Starport: "StarportAddOns"}
+	}
+	; if offset +28 or +2C not 0 addon is present techlab or reactor - both are pointers
+	if aAddonStrings.HasKey(unitType) && readmemory(readmemory(findAbilityTypePointer(pAbilities, unitType, aAddonStrings[unitType]), GameIdentifier) + 0x28, GameIdentifier)
+	{
+		if !aOffsets.HasKey(unitType) ; ie CAbilQueue offset = aOffsets[unitType] - should be the same for all 3 types of units
+			aOffsets[unitType] := O_IndexParentTypes + 4 * getCAbilQueueIndex(pAbilities, getAbilitiesCount(pAbilities)) 
+
+		if readmemory(readmemory(pAbilities + aOffsets[unitType], GameIdentifier) + 0x48, GameIdentifier) ; if != 0 reactor present
+			return 1 ; reactor Present
+		return -1 ; techlab present			
+	}
+	return 0 ; no addons
+}
 
 /*
-16,640
-11,104
+while addon is being constructed, order of buildings doesnt change
 
-*/
+BarracksAddOns
++28 also + 2C a pointer
+If pointer not 0 then has a reactor or techlab 
+
+*/ 
 
 ; total build time and Time Remaining are blank if unit exists as part of the map i.e. via the mapeditor 
 
@@ -4119,7 +4185,18 @@ getBuildProgress(pAbilities, type)
 	else return 1 ; something went wrong so assume its complete 
 }
 
+getunitAddress(unit)
+{
+	return B_uStructure + unit * S_uStructure
+}
 
+getUnitTargetFilterString(unit)
+{
+	targetFilter := getUnitTargetFilter(unit)
+	for k, v in aUnitTargetFilter
+		v & targetFilter ? s .= (s ? "`n" : "") k
+	return s
+}
 
 ; This is used for finding certain offsets.
 ; Specifically where two uInts reside next to each other.
