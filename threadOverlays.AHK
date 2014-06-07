@@ -2,7 +2,7 @@
 #NoEnv  ; think this is default with AHK_H
 #NoTrayIcon
 SetWorkingDir %A_ScriptDir%
-SetBatchLines, -1
+SetBatchLines, -1 ; This is the default for AHK_H, but any other value eg 30 causes major issues!
 ListLines, Off
 OnExit, ShutdownProcedure 
 scriptWinTitle := changeScriptMainWinTitle()
@@ -30,13 +30,8 @@ a_pPens := initialisePenColours(aHexColours)
 
 
 CreatepBitmaps(a_pBitmap, aUnitID)
-aUnitInfo := []
+global aUnitInfo := []
 readConfigFile(), hasReadConfig := True
-aChangeling := { 	aUnitID["ChangelingZealot"]: True
-				 ,	aUnitID["ChangelingMarineShield"]: True 
-				 ,	aUnitID["ChangelingMarine"]: True 
-				 ,	aUnitID["ChangelingZerglingWings"]: True 
-				 ,	aUnitID["ChangelingZergling"]: True }		
 global aOverlayTitles := []
 for i, overlay in ["IncomeOverlay", "ResourcesOverlay", "ArmySizeOverlay", "WorkerOverlay", "IdleWorkersOverlay", "UnitOverlay", "LocalPlayerColourOverlay", "APMOverlay"] ; here cos it can get non overlay titles
 	aOverlayTitles[overlay] := getRandomString_Az09(10, 20)
@@ -83,17 +78,19 @@ If (WinActive(GameIdentifier) || Dragoverlay) ;really only needed to ressize/sca
 		DrawLocalPlayerColour(ReDrawLocalPlayerColour, LocalPlayerColourOverlayScale, DragOverlay)
 	If (DrawUnitOverlay || DrawUnitUpgrades)
 	{
+		; 854 unit count (all players being drawn)
+		; 10 ms for getEnemyUnitCount+FilterUnits 
+		; 25-30 ms for draw
 		getEnemyUnitCount(aEnemyUnits, aEnemyUnitConstruction, aEnemyCurrentUpgrades)
 		FilterUnits(aEnemyUnits, aEnemyUnitConstruction, aUnitPanelUnits)
 		DrawUnitOverlay(RedrawUnit, UnitOverlayScale, OverlayIdent, Dragoverlay)
-	}	
-
+	}
 }
 ; sometimes the overlay timer doesnt work, so this is a backup which ensure theyre destroyed
 ; I think it fails sometimes because its inside an overlay function or something
 else if (!WinActive(GameIdentifier) && !Dragoverlay && !areOverlaysWaitingToRedraw())
 	DestroyOverlays()
-sleep 10
+sleep 10 ; keep CPU usage in check with very low refresh rates
 Return
   
 updateUserSettings()
@@ -127,10 +124,12 @@ gameChange()
 		getLongestPlayerNames(LongestEnemyName, LongestName) ; Enemy, Enemy or Self
 		MT_CurrentGame.LongestEnemyName := LongestEnemyName, MT_CurrentGame.LongestName := LongestName
 		SetTimer, overlay_timer, %OverlayRefresh%
+		settimer, gClock, 1000, -4 ; doesn't seem necessary any more. Updated AHK_H seems to always call the function from the main thread
 	}
 	else 
 	{
 		SetTimer, overlay_timer, off
+		SetTimer, gClock, off
 		DestroyOverlays()
 	}
 	return
@@ -320,7 +319,7 @@ DrawIdleWorkersOverlay(ByRef Redraw, UserScale=1,Drag=0, expand=1)
 	hdc := CreateCompatibleDC()
 	obm := SelectObject(hdc, hbm)
 	G := Gdip_GraphicsFromHDC(hdc)
-	DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0)	
+	;DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0)	
 
 	pBitmap := a_pBitmap[aLocalPlayer["Race"],"Worker"]
 	SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
@@ -390,7 +389,7 @@ DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Dr
 	hdc := CreateCompatibleDC()
 	obm := SelectObject(hdc, hbm)
 	G := Gdip_GraphicsFromHDC(hdc)
-	DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0)	
+	;DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0)	
 	For index, player in aEnemyAndLocalPlayer
 	{
 		if ((slot_number := player["Slot"]) != aLocalPlayer["Slot"] || drawLocalPlayerIncome)
@@ -522,7 +521,7 @@ DrawAPMOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, modeAPM_EPM=0,Drag
 	hdc := CreateCompatibleDC()
 	obm := SelectObject(hdc, hbm)
 	G := Gdip_GraphicsFromHDC(hdc)
-	DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0)	
+	;DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0)	
 	DestX := 0
 	For index, player in aEnemyAndLocalPlayer
 	{
@@ -647,7 +646,7 @@ DrawResourcesOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0
 	hdc := CreateCompatibleDC()
 	obm := SelectObject(hdc, hbm)
 	G := Gdip_GraphicsFromHDC(hdc)
-	DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0)		
+	;DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0)		
 
 	; Users have requested that their own local player appear in some overlays
 	; to do this i now iterate the aEnemyAndLocalPlayer rather than the 
@@ -785,7 +784,7 @@ DrawArmySizeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,
 	hdc := CreateCompatibleDC()
 	obm := SelectObject(hdc, hbm)
 	G := Gdip_GraphicsFromHDC(hdc)
-	DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0)
+	;DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0)
 	For index, player in aEnemyAndLocalPlayer
 	{	
 		; DrawArmySizeOverlay -1 = enemies + self
@@ -933,7 +932,7 @@ DrawWorkerOverlay(ByRef Redraw, UserScale=1,Drag=0)
 	hdc := CreateCompatibleDC()
 	obm := SelectObject(hdc, hbm)
 	G := Gdip_GraphicsFromHDC(hdc)
-	DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0)	
+	;DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0)	
 
 	pBitmap := a_pBitmap[aLocalPlayer["Race"],"Worker"]
 	SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
@@ -1009,7 +1008,7 @@ DrawLocalPlayerColour(ByRef Redraw, UserScale=1,Drag=0)
 	hdc := CreateCompatibleDC()
 	obm := SelectObject(hdc, hbm)
 	G := Gdip_GraphicsFromHDC(hdc)
-	DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0)	
+	;DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0)	
 	Gdip_SetSmoothingMode(G, 4) 
 	colour := aLocalPlayer["Colour"]
 
@@ -1409,6 +1408,7 @@ FilterUnits(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aUnitPanelUni
 	return
 }
 
+; Gdip_GetImageWidth() takes almost no time 0.0009 ms.
 
 DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 {
@@ -1449,12 +1449,13 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 		IniWrite, %UnitOverlayX%, %config_file%, Overlays, UnitOverlayX
 		Iniwrite, %UnitOverlayY%, %config_file%, Overlays, UnitOverlayY		
 	}
-
 	hbm := CreateDIBSection(A_ScreenWidth, A_ScreenHeight)
-	hdc := CreateCompatibleDC()
-	obm := SelectObject(hdc, hbm)
-	G := Gdip_GraphicsFromHDC(hdc)
-	DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0)
+	, hdc := CreateCompatibleDC()
+	, obm := SelectObject(hdc, hbm)
+	, G := Gdip_GraphicsFromHDC(hdc)
+
+ ;	DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0) ; takes 2ms for a 1920x1080. Not required if deleting graphics
+
 	;Gdip_GraphicsClear(G)
 	;setDrawingQuality(G)
 
@@ -1581,11 +1582,7 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 							Gdip_SetSmoothingMode(G, 4)
 						}
 							aEnemyUnitConstruction[slot_number, priority].remove(unit, "")
-					
-					;	clipboard .= "`n" r " - " UserScale " - " aUnitName[unit]
-
 					}
-
 					if (!aUnitInfo[unit, "isStructure"] && SplitUnitPanel)
 					{
 						destUnitSplitX += (Width+5*UserScale)
@@ -1594,8 +1591,6 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 					}
 					else DestX += (Width+5*UserScale)
 				}
-
-			
 			}
 			 destUnitSplitX := DestX += (Width+5*UserScale) ; constructing units / buildings in construction appear further to the right
 
@@ -1723,9 +1718,9 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 	else if (WindowHeight > A_ScreenHeight)
 		WindowHeight := A_ScreenHeight
 
-	Gdip_DeleteGraphics(G)
+	Gdip_DeleteGraphics(G) ; .0005ms
 	UpdateLayeredWindow(hwnd1, hdc,,, WindowWidth, WindowHeight, overlayMatchTransparency)
-	SelectObject(hdc, obm)
+	SelectObject(hdc, obm) ; All Three of these only take a total of ~ 0.22 ms. So in the end its faster to recreate/delete these than to GDI clear the graphics
 	DeleteObject(hbm)
 	DeleteDC(hdc)
 	Return
@@ -1747,7 +1742,7 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 
 	when DIB size of screen
 	hbm := CreateDIBSection(A_ScreenWidth, A_ScreenHeight)
- 	Results: 776,779,783,771 ms
+ 	Results: 776, 779, 783, 771 ms
 
 	when DIB 2*size of screen
 	hbm := CreateDIBSection(A_ScreenWidth, A_ScreenHeight)

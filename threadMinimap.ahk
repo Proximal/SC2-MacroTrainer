@@ -45,7 +45,7 @@ SetupColourArrays(aHexColours, MatrixColour)
 a_pPens := initialisePenColours(aHexColours)
 
 CreatepBitmaps(a_pBitmap, aUnitID)
-aUnitInfo := []
+global aUnitInfo := []
 readConfigFile(), hasReadConfig := True
 aChangeling := { 	aUnitID["ChangelingZealot"]: True
 				 ,	aUnitID["ChangelingMarineShield"]: True 
@@ -116,7 +116,7 @@ gameChange(UserSavedAppliedSettings := False)
 		setupMiniMapUnitLists(aMiniMapUnits) ; aMiniMapUnits is super global
 		EnemyBaseList := GetEBases()
 		
-		If (DrawMiniMap || DrawAlerts || DrawSpawningRaces || warpgate_warn_on
+		If (DrawMiniMap || DrawAlerts || DrawSpawningRaces || DrawPlayerCameras || warpgate_warn_on
 		|| alert_array[GameType, "Enabled"])
 			SetTimer, MiniMap_Timer, %MiniMapRefresh%, -7
 		if ((ResumeWarnings || UserSavedAppliedSettings) && alert_array[GameType, "Enabled"])  
@@ -140,8 +140,11 @@ gameChange(UserSavedAppliedSettings := False)
 		SetTimer, gClock, off
 		DestroyOverlays()
 	}
-	return "testValue"
+	return
 }
+
+; If user presses spawning race hotkey, then nothing will happen if 
+; they don't also have one of the settings enabled which activates this timer
 
 MiniMap_Timer:
 	if WinActive(GameIdentifier) 
@@ -169,7 +172,7 @@ Return
 DrawMiniMap()
 {	global
 	local UnitRead_i, unit, type, Owner, Radius, Filter, EndCount, colour, ResourceOverlay_i, unitcount
-	, DrawX, DrawY, Width, height, i, hbm, hdc, obm, G,  pBitmap, PlayerColours, A_MiniMapUnits, hwnd1, unit, x, y
+	, DrawX, DrawY, Width, height, i, hbm, hdc, obm, G,  Region, pBitmap, PlayerColours, A_MiniMapUnits, hwnd1, unit, x, y
 	static overlayCreated := 0, overlayTitle := ""
 
 	if (ReDrawMiniMap and WinActive(GameIdentifier))
@@ -191,17 +194,20 @@ DrawMiniMap()
 		; Get a handle to this window we have created in order to update it later
 	;	hwnd1 := WinExist()
 	}
-		; Create a gdi bitmap with width and height of what we are going to draw into it. This is the entire drawing area for everything
-		;only draw on left side of the screen - DIB size influences speed considerably
-		; but im too lazy to convert (drawing pos) the code so that DIB with fully screen height isn't required.
-		hbm := CreateDIBSection(A_ScreenWidth/4, A_ScreenHeight) 
-		; Get a device context compatible with the screen
-		hdc := CreateCompatibleDC()
-		; Select the bitmap into the device context
-		obm := SelectObject(hdc, hbm)
+	; Create a gdi bitmap with width and height of what we are going to draw into it. This is the entire drawing area for everything
+	;only draw on left side of the screen - DIB size influences speed considerably
+	; but im too lazy to convert (drawing pos) the code so that DIB with fully screen height isn't required.
+	hbm := CreateDIBSection(A_ScreenWidth/4, A_ScreenHeight) 
+	; Get a device context compatible with the screen
+	hdc := CreateCompatibleDC()
+	; Select the bitmap into the device context
+	obm := SelectObject(hdc, hbm)
 	; Get a pointer to the graphics of the bitmap, for use with drawing functions
 	G := Gdip_GraphicsFromHDC(hdc) ;needs to be here
-	DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0)	
+	;DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0)	
+	Region := Gdip_GetClipRegion(G)
+	Gdip_SetClipRect(G, minimap.ScreenLeft, minimap.ScreenTop, minimap.Width, minimap.Height, 0)
+
 	if DrawMiniMap
 	{
 		;setDrawingQuality(G)
@@ -281,6 +287,7 @@ DrawMiniMap()
 	}
 	if DrawPlayerCameras
 		drawPlayerCameras(G)
+	Gdip_DeleteRegion(Region)
 	Gdip_DeleteGraphics(G)
 	UpdateLayeredWindow(hwnd1, hdc, 0, 0, A_ScreenWidth/4, A_ScreenHeight, overlayMinimapTransparency) ;only draw on left side of the screen
 	SelectObject(hdc, obm) ; needed else eats ram ; Select the object back into the hdc
@@ -455,9 +462,6 @@ temporarilyHideMinimap()
 drawPlayerCameras(pGraphics)
 {
 	static maxAngle := 1.195313
-	Region := Gdip_GetClipRegion(pGraphics)
-	Gdip_SetClipRect(pGraphics, minimap.ScreenLeft, minimap.ScreenTop, minimap.Width, minimap.Height, 0)
-
 	For slotNumber in aPlayer
 	{
 		If (aLocalPlayer.Team != aPlayer[slotNumber].Team 
@@ -485,7 +489,6 @@ drawPlayerCameras(pGraphics)
 							. "|" x3 "," y3 "|" x4 "," y4 "|" x1 "," y1 )
 		}
 	}
-	Gdip_DeleteRegion(Region)
 	return 
 }
 

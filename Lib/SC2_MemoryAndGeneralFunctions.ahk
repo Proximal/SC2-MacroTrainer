@@ -4237,3 +4237,9 @@ debug(text, byRef newHeader := 0)
 	FileAppend, % (newHeader != 0 ? newHeader : A_Min ":" A_Sec " - ") text "`n", *
 	return
 }
+
+log(text, logFile := "log.txt")
+{
+	FileAppend, %text%`n, %logFile%
+	return 
+}

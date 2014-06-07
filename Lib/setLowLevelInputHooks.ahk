@@ -46,42 +46,6 @@ setLowLevelInputHooks(Install, getState := 0)
 	}
 }
 
-swapMonitoringForBlockingHooks(Install)
-{
-	static kHook, mHook
-	, kBlockCallBack := RegisterCallback("KeyboardBlockHook")
-	, mBlockCallBack := RegisterCallback("MouseBlockHook")
-	
-	if install
-	{
-		setLowLevelInputHooks(False)
-		if kHook
-			UnhookWindowsHookEx(kHook)
-		kHook := SetWindowsHookEx(13, kBlockCallBack)
-		if mHook
-			UnhookWindowsHookEx(mHook)
-		mHook := SetWindowsHookEx(14, mBlockCallBack)
-		; emergency restart key wont work while input blocked
-		; so this is a safety timer if the hook still exits
-		; after 15 seconds
-		SetTimer, safetyBlockingHookTimeOut, -15000
-	}
-	else 
-	{
-		UnhookWindowsHookEx(kHook), kHook := 0
-		UnhookWindowsHookEx(mHook), mHook := 0
-		SetTimer, safetyBlockingHookTimeOut, off
-		setLowLevelInputHooks(False) ;so cant double up on hooks if call false on install twice in a row (though the hook function would remove any existing hooks anyway)
-		setLowLevelInputHooks(True)
-	}
-	return
-
-	safetyBlockingHookTimeOut:
-	swapMonitoringForBlockingHooks(false)
-	return
-}
-
-
 
 ; only lookup the callback once for each function
 setMTKeyboardHook(Install)
@@ -113,152 +77,22 @@ setMTMouseHook(Install)
 	else return -1
 }
 
-/*
-MT_InputIdleTime(NewInputTickCount := 0)
-{
-	static LastInputTickCount := A_TickCount ; encase hook never gets installed
-	if !NewInputTickCount
-		return A_TickCount - LastInputTickCount
-	LastInputTickCount := NewInputTickCount
-	return 
-}
-*/
-
 MT_InputIdleTime()
 {
 	return A_mtTimeIdle
 }
 
-
-; these keyboard hooks are used to track to update MT_InputIdleTime, which is used to track the time 
-; since the user's last input (ignoring mousemovement)
-; holding down a keyboard button will cause the hook to fire (auto repeat) and reset the idle count
-; This does not occur for mouse buttons!
-
-; ** This is highly affected by the 'repeat delay' and 'repeat rate' settings in windows
-
-; ncode < 0 means the message shouldn't be processed and I should Return CallNextHookEx(nCode, wParam, lParam)
-; ncode 0 - message contains information
-; return a negative value to prevent other programs reading the key
-/*
-KeyboardHook1(nCode, wParam, lParam)
-{	
-	Critical 1000
-
-	If !nCode ; if this var contains some info about a keyboard event, then process it
-	{
-		MT_InputIdleTime(A_TickCount)
-		; Input is blocked and this is a user pressed / released button	
-  		if (input.KybdBlocked && !(NumGet(lParam+8) & 0x10)) ; LLKHF_INJECTED
-  			return -1 
-  	}
-   	Return CallNextHookEx(nCode, wParam, lParam) ; make sure other hooks in the chain receive this event if we didn't process it
-}
-*/
+; Installing these hooks then placing main thread into critical allows
+; user input to be delayed until automation finishes (critical ends)
 KeyboardHook(nCode, wParam, lParam)
 {	
 	Critical 1000
    	Return CallNextHookEx(nCode, wParam, lParam) ; make sure other hooks in the chain receive this event if we didn't process it
 }
-/*
-KeyboardHook(nCode, wParam, lParam)
-{	
-	Critical 1000
 
-	If !nCode ; if this var contains some info about a keyboard event, then process it
-	{
-		MT_InputIdleTime(A_TickCount)
-		; Input is blocked and this is a user pressed / released button	
-  		if (input.KybdBlocked && !(NumGet(lParam+8) & 0x10)) ; !LLKHF_INJECTED
-  		{
-  			if (wParam = 0x101 || wParam = 0x0105) ; keyUp || sysKeyUp
-  			{
-  				SetFormat, IntegerFast, hex
-				vkCode := NumGet(lParam+0, 0)
-				key := getKeyName("VK" vkCode)
-				SetFormat, IntegerFast, d
-				if GetKeyState(key, "P")
-					Return CallNextHookEx(nCode, wParam, lParam)
-			}
-			return -1 
-		}
-  		
-  	}
-   	Return CallNextHookEx(nCode, wParam, lParam) ; make sure other hooks in the chain receive this event if we didn't process it
-}
-*/
-
-
-
-	; mouse has different WM_Messages for each down/up event on each button
-/*
 MouseHook(nCode, wParam, lParam)
 {
 	Critical 1000
-
-	static aButtonUps := {0x202: "LButton", 0x205: "RButton", 0x208: "MButton"}
-
-	If (!nCode && wParam != 0x200)  ;WM_MOUSEMOVE := 0x200
-	{
-		MT_InputIdleTime(A_TickCount)
-		; Input is blocked and this is a user pressed / released button	
-		if (input.MouseBlocked && !(NumGet(lParam+12) & 0x1))  ; !LLKHF_INJECTED
-		{
-			; WM_XBUTTONUP := 0x020C
-			if (wParam = 0x020C)
-			{
-				mouseData := NumGet(lParam+0, 8, "Int")
-				if GetKeyState(((mouseData >> 16) & 1  ? "XButton1" : "XButton2"), "P")
-					Return CallNextHookEx(nCode, wParam, lParam)
-			}
-			else if aButtonUps.HasKey(wParam)
-			{
-				if GetKeyState(aButtonUps[wParam], "P")
-					Return CallNextHookEx(nCode, wParam, lParam)				
-			}
-			return -1
-		}
-	}
-   	Return CallNextHookEx(nCode, wParam, lParam) ; make sure other hooks in the chain receive this event if we didn't process it
-}	
-*/
-MouseHook(nCode, wParam, lParam)
-{
-	Critical 1000
-   	Return CallNextHookEx(nCode, wParam, lParam) ; make sure other hooks in the chain receive this event if we didn't process it
-}
-/*
-; mouse has different WM_Messages for each down/up event on each button
-MouseHook1(nCode, wParam, lParam)
-{
-	Critical 1000
-
-	If (!nCode && wParam != 0x200)  ;WM_MOUSEMOVE := 0x200
-	{
-		MT_InputIdleTime(A_TickCount)
-		; Input is blocked and this is a user pressed / released button	
-		if (input.MouseBlocked && !(NumGet(lParam+12) & 0x1))  ; LLKHF_INJECTED
-			return -1
-	}
-   	Return CallNextHookEx(nCode, wParam, lParam) ; make sure other hooks in the chain receive this event if we didn't process it
-}
-*/
-KeyboardBlockHook(nCode, wParam, lParam)
-{	
-	Critical 1000
-
-	If (!nCode && !(NumGet(lParam+8) & 0x10)) 
-  		return -1 
-   	Return CallNextHookEx(nCode, wParam, lParam) ; make sure other hooks in the chain receive this event if we didn't process it
-}
-
-MouseBlockHook(nCode, wParam, lParam)
-{
-	Critical 1000
-	; if this var contains some info about a keyboard event
-	; and its LLKHF_INJECTED key or mouse move event
-	If (!nCode && wParam != 0x200 && !(NumGet(lParam+12) & 0x1))  ;WM_MOUSEMOVE := 0x200
-		return -1
    	Return CallNextHookEx(nCode, wParam, lParam) ; make sure other hooks in the chain receive this event if we didn't process it
 }
 
@@ -278,7 +112,7 @@ CallNextHookEx(nCode, wParam, lParam, hHook = 0)
 }
 
 /*
-	KeyboardOridingal(nCode, wParam, lParam)
+	keyboardExample(nCode, wParam, lParam)
 	{
 	   Critical
 	   If !nCode ; if this var contains some info about a keyboard event, then process it

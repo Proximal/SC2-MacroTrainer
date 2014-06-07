@@ -224,14 +224,15 @@ if A_OSVersion in WIN_8,WIN_7,WIN_VISTA
 #Include <Gdip>
 #Include <SC2_MemoryAndGeneralFunctions>
 #Include <classInput>
-#Include <setLowLevelInputHooks> ;In the library folder
+#Include <setLowLevelInputHooks>
+#Include <WindowsAPI> 
 #include %A_ScriptDir%\Included Files\Colour Selector.ahk
-#include %A_ScriptDir%\Included Files\Class_BufferInputFast.AHk ; not used anymore 
+;#include %A_ScriptDir%\Included Files\Class_BufferInputFast.AHk ; not used anymore 
 #include %A_ScriptDir%\Included Files\Class_ChangeButtonNames.AHk
-;#Include <xml> ; in the local lib folder
+
 
 ;CreatepBitmaps(a_pBitmap, aUnitID)
-aUnitInfo := []
+;aUnitInfo := []
 
 If (auto_update AND A_IsCompiled AND url.UpdateZip := CheckForUpdates(ProgramVersion, latestVersion, url.CurrentVersionInfo))
 {
@@ -476,9 +477,34 @@ g_GetDebugData:
 	IfWinExist, DebugData Vr: %ProgramVersion%
 		WinClose
 	Gui, New 
-	Gui, Add, Edit, x12 y+10 w980 h640 readonly -E0x200, % LTrim(debugData)
+	Gui, Add, Edit, x12 y+10 w980 h640 hwndHwndEdit readonly -E0x200, % LTrim(debugData)
 	Gui, Show,, DebugData Vr: %ProgramVersion%
+	selectText(HwndEdit, -1) ; Deselect edit box text
 return
+
+g_DebugKey:
+	IfWinExist, MT Key States Vr: %ProgramVersion%
+		WinClose
+	Gui, New 
+	Gui, Add, Edit, x12 y+10 w250 h250 hwndHwndEdit readonly, % "Currently down keys:`n`n" debugAllKeyStates()
+	. "`nLogical state refers to the state applications believe the key is in."
+	. "`n`nPhysical refers to the true physical state of the key."
+	Gui, Show,, MT Key States Vr: %ProgramVersion%
+	selectText(HwndEdit, -1) ; Deselect edit box text
+return	
+
+; selects text in a text box, given absolute character positions
+;   if start is -1, the current selection is deselected
+;   if end is omitted or -1, the end of the text is used
+;       (omit both to select all)
+
+SelectText( ControlID, start=0, end=-1 )
+{
+    ; EM_SETSEL = 0x00B1
+    SendMessage, 0xB1, start, end,, ahk_id %ControlID%
+    return (ErrorLevel != "FAIL")
+}
+
 
 Stealth_Exit:
 	ExitApp
@@ -554,7 +580,7 @@ ReleaseModifiers(Beep = 1, CheckIfUserPerformingAction = 0, AdditionalKeys = "",
 	|| (AdditionalKeys && isaKeyPhysicallyOrLogicallyDown(AdditionalKeys))  ; ExtraKeysDown should actually return the actual key
 	|| (CheckAllKeys && checkAllKeyStates())  
 	|| (isPerformingAction := CheckIfUserPerformingAction && isUserPerformingAction()) ; have this function last as it can take the longest if lots of units selected
-	|| (LastButtonPress && MT_InputIdleTime() < LastButtonPress)
+	|| (LastButtonPress && A_mtTimeIdle < LastButtonPress)
 	{
 		if (timeout && A_Tickcount - startTime >= timeout)
 			return 1 ; was taking too long
@@ -1153,7 +1179,7 @@ AutoGroup(byref A_AutoGroup, AGDelay = 0)
 	}
 	if (A_Tickcount - SelctedTime >= AGDelay) && oSelection.Count && !WrongUnit && (CtrlType_i = SelectedTypes) && (controlGroup != "") && WinActive(GameIdentifier) && !isGamePaused() ; note <> "" as there is group 0! cant use " controlGroup "
 	;&& !isMenuOpen() && MT_InputIdleTime() >= AGKeyReleaseDelay && !checkAllKeyStates(False, True) && !readModifierState() 
-	&& !isMenuOpen() && MT_InputIdleTime() >= AGKeyReleaseDelay 
+	&& !isMenuOpen() && A_mtTimeIdle >= AGKeyReleaseDelay 
 	&& !(getkeystate("Shift", "P") && getkeystate("Control", "P") && getkeystate("Alt", "P")
 	&& getkeystate("LWin", "P") && getkeystate("RWin", "P"))
 	&& !readModifierState() 
@@ -1369,7 +1395,7 @@ cast_ForceInject:
 					While getkeystate("Enter", "P") || GetKeyState("LButton", "P") || GetKeyState("RButton", "P")
 					|| isUserBusyBuilding() || isCastingReticleActive() 
 					|| getPlayerCurrentAPM() > FInjectAPMProtection
-					||  MT_InputIdleTime() < 70
+					||  A_mtTimeIdle < 70
 					{
 						if (A_TickCount - startInjectWait > 1000)
 							return
@@ -3164,6 +3190,7 @@ try
 		Gui, Add, GroupBox, Xs+171 ys+116 w245 h170, Debugging
 			Gui, Add, Button, xp+10 yp+30  Gg_ListVars w75 h25,  List Variables
 			Gui, Add, Button, xp yp+30  Gg_GetDebugData w75 h25,  Debug Data
+			Gui, Add, Button, xp yp+30  Gg_DebugKey w75 h25,  Key States
 
 		Gui, Add, GroupBox, Xs+171 ys+290 w245 h60, Emergency Restart Key
 			Gui, Add, Text, xp+10 yp+25 w40,Hotkey:
@@ -3379,12 +3406,12 @@ try
 		Gui, add, text, xp+50 yp w340, Auto and Restrict Unit grouping functions are not exclusive, i.e. they can be used together or alone!
 		Gui, Font, s9 norm
 	Gui, Tab, Delays
-		Gui, Add, GroupBox, x+25 Y+25 w175 h165 section, Auto Grouping
+		Gui, Add, GroupBox, x+25 Y+25 w175 h155 section, Auto Grouping
 			Gui, Add, Text, xs+10 ys+35 w90, Delay (ms):
 			Gui, Add, Edit, Number Right x+20 yp-2 w45 vTT_AGDelay 
 			Gui, Add, UpDown,  Range0-1500 vAG_Delay, %AG_Delay%
 
-			Gui, Add, Text, xs+10 y+35 w90, Key Release Delay (ms):
+			Gui, Add, Text, xs+10 y+25 w90, Key Event Delay (ms):
 			Gui, Add, Edit, Number Right x+20 yp-2 w45 vTT_AGKeyReleaseDelay
 			Gui, Add, UpDown,  Range50-700 vAGKeyReleaseDelay , %AGKeyReleaseDelay%
 			
@@ -3392,7 +3419,7 @@ try
 			Gui, Add, Edit, Number Right x+20 yp-2 w45 vTT_AGBufferDelay 
 			Gui, Add, UpDown,  Range40-290 vAGBufferDelay , %AGBufferDelay%
 
-		Gui, Add, GroupBox, xs+205 ys w175 h165 section, Restrict Grouping
+		Gui, Add, GroupBox, xs+205 ys w175 h155 section, Restrict Grouping
 			Gui, Add, Text, xs+10 ys+35 w90, Safety Buffer (ms):
 			Gui, Add, Edit, Number Right x+20 yp-2 w45 vTT_AGRestrictBufferDelay 
 			Gui, Add, UpDown,  Range40-290 vAGRestrictBufferDelay , %AGRestrictBufferDelay%
@@ -4147,9 +4174,7 @@ try
 		EnableAutoWorkerTerranStart_TT := EnableAutoWorkerProtossStart_TT := "Enables/Disables this function."
 		AutoWorkerStorage_T_Key_TT := #AutoWorkerStorage_T_Key_TT := AutoWorkerStorage_P_Key_TT := #AutoWorkerStorage_P_Key_TT := "During an automation cycle your selected units will be temporarily stored in this control group.`n`nSpecify a control group that you do NOT use in game."
 
-		#Base_Control_Group_T_Key_TT := Base_Control_Group_T_Key_TT := Base_Control_Group_P_Key_TT := #Base_Control_Group_P_Key_TT := "The control group used to store your command centres/orbitals/planetary-fortresses/nexi.`n`n"
-								. "Note: Other buildings can also be stored in this control group e.g. engineering bays/forges,`n"
-								. "but the first displayed unit in the selection card must be a main base - 99% of the time this will be the case."
+		#Base_Control_Group_T_Key_TT := Base_Control_Group_T_Key_TT := Base_Control_Group_P_Key_TT := #Base_Control_Group_P_Key_TT := "The control group which contains your command centres/orbitals/planetary-fortresses/nexi.`n`n"
 
 		AutoWorkerMakeWorker_T_Key_TT := #AutoWorkerMakeWorker_T_Key_TT := "The keyboard hotkey used to build an SCV.`nUsually 'S'."
 		AutoWorkerMakeWorker_P_Key_TT := #AutoWorkerMakeWorker_P_Key_TT := "The keyboard hotkey used to build a probe.`nUsually 'E'."
@@ -4237,11 +4262,14 @@ try
 		#FindPixelColour_TT := "This sets the pixel colour for your exact system."
 		AM_MiniMap_PixelVariance_TT := TT_AM_MiniMap_PixelVariance_TT := "A match will result if  a pixel's colour lies within the +/- variance range.`n`nThis is a percent value 0-100%"
 		TT_AGDelay_TT := AG_Delay_TT := "The program will wait this period of time before adding the selected units to a control group.`nUse this if you want the function to look more 'human'.`n`nNote: Values greater than 0 probably the increase likelihood of miss-grouping units (especially on slow computers or during large battles with high APM)."
-		TT_AGKeyReleaseDelay_TT := AGKeyReleaseDelay_TT := "An auto-group attempt will not occur until after all the keys have been released for this period of time."
+		TT_AGKeyReleaseDelay_TT := AGKeyReleaseDelay_TT := "An auto-group attempt will not occur until no key events (messages) have occurred for this amount of time."
 				. "`n`nThis helps increase the robustness of the function."
-				. "`nIf incorrect groupings are occurring, you can try increasing this value."
-				. "`nValid values are: 50-700 ms"
-		TT_AGBufferDelay_TT := AGBufferDelay_TT := "When an auto-group action is attempted user input will be buffered for this period of time, I.E. button presses and mouse movements`nwill be delayed during this period."
+				. "`nIf incorrect groupings are occurring try increasing this value."
+				. "`n`nIf this value has been raised considerably (and depending on your Windows keyboard repeat rate) after selecting " 
+				. "`nthe unit you might need to release any pressed key(s) for a fraction of a second before the grouping is attempted."
+				. "`nMoving the mouse does not interrupt/influence this."
+				. "`n`nValid values are: 50-700 ms"
+		TT_AGBufferDelay_TT := AGBufferDelay_TT := "When an auto-group action IS attempted user input will be buffered for this period of time, I.E. button presses and mouse movements`nwill be delayed during this period."
 				. "`n`nThis helps ensure the currently selected units are ones which should be grouped."
 				. "`nIf incorrect groupings are occurring, you can try increasing this value."
 				. "`nValid values are: 40-290 ms"
@@ -6353,7 +6381,7 @@ autoWorkerProductionCheck()
 	if (workers >= maxWorkers)
 	{ 
 		AW_MaxWorkersReached := True
-		UninterruptedWorkersMade := 0 
+	;	UninterruptedWorkersMade := 0 
 		return 
 	}
 	if isGamePaused() || isMenuOpen() ;chat is 0 when  menu is in focus
@@ -6478,6 +6506,7 @@ autoWorkerProductionCheck()
 	; lowest 55% completed of a svc before another is made- so 7.65 s remaining on scv build time
 	; 7.65 * 15.3866 = 876.9072 - so rax should have more than 876 hp
 	; obviously this wont work correctly if the rax is being attacked 
+	; Now uses construction % not hp
 
 	if (MaxWokersTobeMade && TotalCompletedBasesInCtrlGroup <= 2 && aLocalPlayer["Race"] = "Terran" && !MT_CurrentGame.HasSleptForObital)
 	{
@@ -6586,7 +6615,7 @@ autoWorkerProductionCheck()
 		|| GetKeyState("LButton", "P") || GetKeyState("RButton", "P")
 		|| getkeystate("Enter", "P") 
 		|| getPlayerCurrentAPM() > AutoWorkerAPMProtection
-		||  MT_InputIdleTime() < 50)
+		||  A_mtTimeIdle < 50)
 		{
 			if (A_index > 36)
 				return ; (actually could be 480 ms - sleep 1 usually = 20ms)
@@ -6770,7 +6799,7 @@ autoWorkerProductionCheck()
 			; i tried checking the selection buffer for non.structure units and this worked well for 4 days, then all of a sudden it started giving false errors
 			; This is probably due to insufficient sleep time to update the selection buffer (3ms)
 			; i cant be bothered looking into it
-			; so now im just checking if macro has ran too many times (as if worker is will/attempted  it will sleep for  800ms)
+			; so now im just checking if macro has ran too many times (as if worker is will/attempted  it will sleep for 800ms)
 			; this isnt perfect or fool proof, but it should work well enough, and quickly enough to prevent interrupting the user
 			; for longer than 4 or 5 seconds if they stuff up their base control group
 
@@ -6778,14 +6807,14 @@ autoWorkerProductionCheck()
 			; and make a worker 5 times in a row without any risk of falsely activating the the control group error routine
 			
 			; should need this anymore
-			if (UninterruptedWorkersMade > 6) ; after 4 days this started giving an error, so now i have added an additional sleep time 
-			{
-				dSleep(5)
-				numGetUnitSelectionObject(oSelection) 	; can't use numgetControlGroup - as when nexus dies and is replaced with a local owned unit it will cause a warning
-				for index, object in oSelection.units
-					if !isUnitAStructure(object.unitIndex)	; as units will have higher priority and appear in group 0/top left control card - and this isnt compatible with this macro
-						BaseCtrlGroupError := 1					; as the macro will tell that unit e.g. probe to 'make a worker' and cause it to bug out
-			}
+			;if (UninterruptedWorkersMade > 6) ; after 4 days this started giving an error, so now i have added an additional sleep time 
+			;{
+			;	dSleep(5)
+			;	numGetUnitSelectionObject(oSelection) 	; can't use numgetControlGroup - as when nexus dies and is replaced with a local owned unit it will cause a warning
+			;	for index, object in oSelection.units
+			;		if !isUnitAStructure(object.unitIndex)	; as units will have higher priority and appear in group 0/top left control card - and this isnt compatible with this macro
+			;			BaseCtrlGroupError := 1					; as the macro will tell that unit e.g. probe to 'make a worker' and cause it to bug out
+			;}
 			input.pSend(sendSequence), sendSequence := ""
 
 			if (AutoWorkerAlwaysGroup || BaseControlGroupNotSelected || removeRecentlyCompletedCC)
@@ -6814,17 +6843,17 @@ autoWorkerProductionCheck()
 		critical, off
 		Thread, NoTimers, false 
 	;	BaseCtrlGroupError := 0
-		if BaseCtrlGroupError ; as non-structure units will have higher priority and appear in group 0/top left control card - and this isnt compatible with this macro
-		{	; as the macro will tell that unit e.g. probe to 'make a worker' and cause it to bug out	
-			tSpeak("Error in Base Control Group. Auto Worker")
-			gosub g_UserToggleAutoWorkerState ; this will say 'off' Hence Will speak Auto worker Off	
-			UninterruptedWorkersMade := 0 ; reset the count so when user fixes group it will work
-			return 
-		}
+	;	if BaseCtrlGroupError ; as non-structure units will have higher priority and appear in group 0/top left control card - and this isnt compatible with this macro
+	;	{	; as the macro will tell that unit e.g. probe to 'make a worker' and cause it to bug out	
+	;		tSpeak("Error in Base Control Group. Auto Worker")
+	;		gosub g_UserToggleAutoWorkerState ; this will say 'off' Hence Will speak Auto worker Off	
+	;		UninterruptedWorkersMade := 0 ; reset the count so when user fixes group it will work
+	;		return 
+	;	}
 
 		if WorkerMade
 		{
-			UninterruptedWorkersMade++ ; keep track of how many workers are made in a row
+	;		UninterruptedWorkersMade++ ; keep track of how many workers are made in a row
 			SetTimer, g_autoWorkerProductionCheck, Off
 			SetTimer, resumeAutoWorker, -800
 			;Thread, Priority, -2147483648
@@ -6832,7 +6861,7 @@ autoWorkerProductionCheck()
 		}		 	; so will send another build event and queueing more workers
 					; 400 worked find for stable connection, but on Kr sever needed more. 800 seems to work well
 	}
-	else UninterruptedWorkersMade := 0
+	;else UninterruptedWorkersMade := 0
 	return
 }
 
@@ -10571,9 +10600,9 @@ reloadHooks()
 
 g_testKeydowns:
 ListLines, on
-t1 := MT_InputIdleTime()
+t1 := A_mtTimeIdle
 sleep 2000
-str :=  "`n`n|" t1 " | " MT_InputIdleTime()
+str :=  "`n`n|" t1 " | " A_mtTimeIdle
 		. "`n`nLogical: " debugAllKeyStates(True, False) 
 		. "`n`nPhysical: " debugAllKeyStates(False, True) 
 		. "`n`n" debugSCKeyState() 
@@ -10589,31 +10618,19 @@ return
 
 debugAllKeyStates(logical := True, physical := True)
 {
-	static aKeys := []
-
-	; returns and array of unmodified keys
-	if !aKeys.maxindex()
-		aKeys := getAllKeyboardAndMouseKeys()
-	if logical
+	for index, key in getAllKeyboardAndMouseKeys(), lCount := pCount := 0	
 	{
-		for index, key in aKeys
-		{
-			if getkeystate(key)
-				s .= key "`n"
-		}
+		if (logical && getkeystate(key))
+			logKeys .= key "`n", lCount++
+		if (physical && getkeystate(key, "P"))
+			phyKeys .= key "`n", pCount++	
 	}
+	if logical
+		s .= "Logical Count: " lCount "`n" logKeys 
 	if physical
-	{
-		for index, key in aKeys
-		{
-			if getkeystate(key, "P")
-				s .= key "`n"
-		}
-	}	
+		s .= (logical ? "`n=========`n`n" : "") "Physical Count: " pCount "`n" phyKeys
 	return s
 }
-
-
 
 ; 0.005299 - Actual time spent inside postmessage send loop  (input.psend("abcdefg213123123123123132123123123"))
 ; 0.688191 - ControlSend, , abcdefg, StarCraft II
@@ -10721,4 +10738,9 @@ while (A_TickCount < s + 5000)
 return 
 
 
-                                
+*/
+
+f1::
+send {space down}{a down}{b down}
+msgbox % debugAllKeyStates(True, True)
+return 
