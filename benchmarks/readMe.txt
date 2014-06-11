@@ -1,0 +1,1 @@
+I'm going to start keeping any benchmarks (MacroTrainer and SC) here, rather than having it littered everywhere in the code.

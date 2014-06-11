@@ -2,6 +2,9 @@
 	18/05/14
 	- 	Fixed issue with get getBaseAddressOfModule() returning the incorrect module 
 		when specified module name formed part of another modules name
+	10/06/14
+	- 	Fixed a bug introduced by the above change, which prevented the function returning 
+		the base address of the process.
 
 
 	RHCP's basic memory class:
@@ -25,7 +28,7 @@
 	memory space.
 	To read another process simply create another object.
 
-	process handles are automatically closed when the script exits/restarts.
+	process handles are automatically closed when the script exits/restarts or when you free the object.
 
 	Note:
 	This was written for 32 bit target processes, but the various read/write functions
@@ -48,10 +51,9 @@
 		
 		Open a process with sufficient access to read and write memory addresses (this is required before you can use the other functions)
 		You only need to do this once. But if the process closes, then you will need to reopen.
+		Also, if the target process is running as admin, then the script will also require admin rights!
 			calc :=	new memory("ahk_exe calc.exe") ; Note: This can be an ahk_exe, ahk_class, ahk_pid, or simply the window title. 
 			
-
-		
 		Get the processes base address
 			msgbox % calc.BaseAddress
 		
@@ -85,6 +87,12 @@
 		The nullterminator property can be used to change this.
 	 		memory.insertNullTerminator := False ; This will change the property for all processes
 	 		calc.insertNullTerminator := False ; Changes the property for just this process		
+
+
+	Notes: 
+		When opening a new process:
+		If returned process handle is zero then the program isn't running or you passed an incorrect program identifier parameter
+		If the returned process handle is blank, openProcess failed. If the target process has admin rights, then the script also needs to be ran as admin.
 
 */
 
@@ -120,6 +128,9 @@ class memory
 	; program can be an ahk_exe, ahk_class, ahk_pid, or simply the window title. e.g. "ahk_exe SC2.exe" or "Starcraft II"
 	; but its safer not to use the window title, as some things can have the same window title - e.g. a folder called "Starcraft II"
 	; would have the same window title as the game itself.
+
+	; If returned process handle is zero then the program isn't running or you passed an incorrect program identifier parameter
+	; If the returned process handle is blank, openProcess failed. If the target process has admin rights, then the script also needs to be ran as admin.
 
 	; To use the scripts current setting for SetTitleMatchMode, simply pass 0 or A_TitleMatchMode as
 	; the windowMatchMode parameter
@@ -301,23 +312,23 @@ class memory
 	; http://winprogger.com/getmodulefilenameex-enumprocessmodulesex-failures-in-wow64/
 	; http://stackoverflow.com/questions/3801517/how-to-enum-modules-in-a-64bit-process-from-a-32bit-wow-process
 
-	/*
-		_MODULEINFO := "
-						(
-						  LPVOID lpBaseOfDll;
-						  DWORD  SizeOfImage;
-						  LPVOID EntryPoint;
-					  	)"
+	; Parameters:
+	;   Module - The file name of the module/dll to find e.g. "GDI32.dll", "Battle.net.dll" etc
+	;            If no module is specified, the address of the base module - main() (program) will be returned e.g. C:\Games\StarCraft II\Versions\Base28667\SC2.exe
 
-	*/
-	; If no module is specified, the address of the base module - main() e.g. C:\Games\StarCraft II\Versions\Base28667\SC2.exe
-	; will be returned. Otherwise specify the module/dll to find e.g. Battle.net.dll.
-	; requires PROCESS_QUERY_INFORMATION + PROCESS_VM_READ (which is included by default with this class)
+	; Return Values: 
+	;   Positive integer - Module base address
+	;   -1 - Module not found
+	;   -2 - The process handle has been closed.
+	;   -4 - The AHK script is 32 bit and you are trying to access the modules of a 64 bit target process. Or the target process has been closed.
+
 	; Note: A 64 bit AHK can enumerate the modules of a target 64 or 32 bit process.
 	;  		A 32 bit AHK can only enumerate the modules of a 32 bit process
+
+	; This function requires PROCESS_QUERY_INFORMATION + PROCESS_VM_READ (which is included by default with this class)
+
 	getBaseAddressOfModule(module := "")
 	{
-
 		if !this.hProcess
 			return -2
 
@@ -328,13 +339,13 @@ class memory
 				return -4 ; AHK is 32bit and target process is 64 bit, this function wont work
 		}
 
-		if !module
+		if (module = "")
 		{
 			VarSetCapacity(mainExeNameBuffer, 2048 * (A_IsUnicode ? 2 : 1))
 			DllCall("psapi\GetModuleFileNameEx", "Ptr", this.hProcess, "Uint", 0
 						, "Ptr", &mainExeNameBuffer, "Uint", 2048 / (A_IsUnicode ? 2 : 1))
-			mainExeName := StrGet(&mainExeNameBuffer)
-			; mainExeName = main executable module of the process
+        	mainExeFullPath := StrGet(&mainExeNameBuffer)
+        ; mainExeName = main executable module of the process (will include full directory path)
 		}
 		size := VarSetCapacity(lphModule, 4)
 		loop 
@@ -354,10 +365,10 @@ class memory
 			DllCall("psapi\GetModuleFileNameEx", "Ptr", this.hProcess, "Uint", numget(lphModule, (A_index - 1) * A_PtrSize)
 					, "Ptr", &lpFilename, "Uint", 2048 / (A_IsUnicode ? 2 : 1))
 
-			; module will contain directory path as well e.g C:\Windows\syswow65\GDI32.dll
-			filename := StrGet(&lpFilename) 
-			SplitPath, filename, fileName ; strips the path so = GDI32.dll
-			if (!module && mainExeName = filename) || (module && module = filename)
+	        ; module will contain directory path as well e.g C:\Windows\syswow65\GDI32.dll
+	        moduleFullPath := StrGet(&lpFilename) 
+	        SplitPath, moduleFullPath, fileName ; strips the path so = GDI32.dll
+	        if (module = "" && mainExeFullPath = moduleFullPath) || (module != "" && module = filename)
 			{
 				VarSetCapacity(MODULEINFO, A_PtrSize = 4 ? 12 : 24)
 				DllCall("psapi\GetModuleInformation", "Ptr", this.hProcess, "UInt", numget(lphModule, (A_index - 1) * A_PtrSize)
@@ -369,6 +380,18 @@ class memory
 	}
 
 }
+
+	/*
+		_MODULEINFO := "
+						(
+						  LPVOID lpBaseOfDll;
+						  DWORD  SizeOfImage;
+						  LPVOID EntryPoint;
+					  	)"
+
+	*/
+
+
 
 /*
 

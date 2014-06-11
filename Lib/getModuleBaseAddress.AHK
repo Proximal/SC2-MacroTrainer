@@ -1,39 +1,40 @@
-/*
-_MODULEINFO:    LPVOID lpBaseOfDll
-                DWORD  SizeOfImage
-                LPVOID EntryPoint
-*/
+; Parameters:
+;   Program - Can be any window title/class e.g "AHK_EXE SC2.exe"
+;   Module - The file name of the module/dll to find e.g. "GDI32.dll", "Battle.net.dll" etc
+;            If no module is specified, the address of the base module - main() (program) will be returned e.g. C:\Games\StarCraft II\Versions\Base28667\SC2.exe
 
-
-; Process should be as it appears in task manager e.g. notepad.exe or SC2.exe  - dont user AHK_EXE or window title
-; If no module is specified, the adrress of the base module - main() e.g. C:\Games\StarCraft II\Versions\Base28667\SC2.exe
-; will be returned. Otherwise specify the module/dll to find.
-
-; Example of a module GDI32.dll or Battle.net.dll
+; Return Values: 
+;   Positive integer - Module base address
+;   -1 - Module not found
+;   -2 - Couldn't find the process. The program isn't running or you passed an incorrect program identifier parameter
+;   -3 - Couldn't open the process. If the target process is running with admin rights, then the script will also need to be ran as admin. 
+;   -4 - Problem with EnumProcessModules. This shouldn't happen.
+;   -5 - The AHK script is 32 bit and you are trying to access the modules of a 64 bit target process.
 
 ; Note: A 64 bit AHK can enumerate the modules of a target 64 or 32 bit process.
 ;       A 32 bit AHK (any process actually) can only enumerate the modules of another 32 bit process
 
-getModuleBaseAddress(process, module := "")
+getModuleBaseAddress(program, module := "")
 {
-    Process, Exist, %process%
-    if ErrorLevel                             ; PROCESS_QUERY_INFORMATION + PROCESS_VM_READ 
-        hProc := DllCall("OpenProcess", "UInt", 0x0400 | 0x0010 , "Int", 0, "UInt", ErrorLevel)
+    WinGet, pid, pid, %program%
+    if pid                              ; PROCESS_QUERY_INFORMATION + PROCESS_VM_READ 
+        hProc := DllCall("OpenProcess", "UInt", 0x0400 | 0x0010 , "Int", 0, "UInt", pid)
+    else return -2
     if !hProc
-        return -2
+        return -3
     if (A_PtrSize = 4) ; AHK 32bit
     {
         DllCall("IsWow64Process", "Ptr", hProc, "Int*", result)
         if !result 
-            return -4 ; AHK is 32bit and target process is 64 bit, this function wont work 
+            return -5 ; AHK is 32bit and target process is 64 bit, this function wont work 
     }
-    if !module
+    if (module = "")
     {        
         VarSetCapacity(mainExeNameBuffer, 2048 * (A_IsUnicode ? 2 : 1))
         DllCall("psapi\GetModuleFileNameEx", "Ptr", hProc, "UInt", 0
                     , "Ptr", &mainExeNameBuffer, "UInt", 2048 / (A_IsUnicode ? 2 : 1))
-        mainExeName := StrGet(&mainExeNameBuffer)
-        ; mainExeName = main executable module of the process
+        mainExeFullPath := StrGet(&mainExeNameBuffer)
+        ; mainExeName = main executable module of the process (will include full directory path)
     }
     size := VarSetCapacity(lphModule, 4)
     loop 
@@ -41,7 +42,7 @@ getModuleBaseAddress(process, module := "")
         DllCall("psapi\EnumProcessModules", "Ptr", hProc, "Ptr", &lphModule
                 , "UInt", size, "UInt*", reqSize)
         if ErrorLevel
-            return -3, DllCall("CloseHandle","Ptr",hProc) 
+            return -4, DllCall("CloseHandle","Ptr",hProc) 
         else if (size >= reqSize)
             break
         else 
@@ -52,8 +53,10 @@ getModuleBaseAddress(process, module := "")
     {
         DllCall("psapi\GetModuleFileNameEx", "Ptr", hProc, "Ptr", numget(lphModule, (A_index - 1) * A_PtrSize)
                 , "Ptr", &lpFilename, "UInt", 2048 / (A_IsUnicode ? 2 : 1))
-        ; Use Instr() as module will contain directory path as well
-        if (!module && mainExeName = StrGet(&lpFilename) || module && instr(StrGet(&lpFilename), module))
+        ; module will contain directory path as well e.g C:\Windows\syswow65\GDI32.dll
+        moduleFullPath := StrGet(&lpFilename) 
+        SplitPath, moduleFullPath, fileName ; strips the path so = GDI32.dll
+        if (module = "" && mainExeFullPath = moduleFullPath) || (module != "" && module = filename)
         {
             VarSetCapacity(MODULEINFO, A_PtrSize = 4 ? 12 : 24)
             DllCall("psapi\GetModuleInformation", "Ptr", hProc, "Ptr", numget(lphModule, (A_index - 1) * A_PtrSize)
@@ -64,10 +67,11 @@ getModuleBaseAddress(process, module := "")
     return -1, DllCall("CloseHandle","Ptr",hProc) ; not found
 }
 
-/* 
-This is the same thing which uses Hotkeyit's struct() and sizeof() functions 
-I have commented it out as the above function will work fine, so if any one comes across it
-They don't need to download these functions - I've posted this on AHK forums.
+/*
+_MODULEINFO:    LPVOID lpBaseOfDll
+                DWORD  SizeOfImage
+                LPVOID EntryPoint
+*/
 
 /*
     http://stackoverflow.com/questions/14467229/get-base-address-of-process
@@ -77,14 +81,11 @@ They don't need to download these functions - I've posted this on AHK forums.
     For each module, call GetModuleFileNameEx to get the filename, and compare it with the executable's filename.
     When you've found the executable's module, call GetModuleInformation to get the raw entry point of the executable.
 */
-; Process should be as it appears in task manager e.g. notepad.exe or SC2.exe
-; If no module is specified, the adrress of the base module - main() e.g. C:\Games\StarCraft II\Versions\Base28667\SC2.exe
-; will be returned. Otherwise specify the module/dll to find.
-
-; Note: A 64 bit AHK can enumerate the modules of a target 64 or 32 bit process.
-;       A 32 bit AHK can only enumerate the modules of a 32 bit process
-; This requies struct function
 /*
+; This is the same function but uses uses Hotkeyit's struct() and sizeof() functions 
+; I have commented it out as the above function will work fine, so if any one comes across it
+; They don't need to download these functions - I've posted this on AHK forums.
+
 getProcessBassAddressFromModules(process, module := "")
 {
     _MODULEINFO := "

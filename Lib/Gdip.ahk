@@ -2284,12 +2284,12 @@ Gdip_SetTextRenderingHint(pGraphics, RenderingHint)
 ; The interpolation mode determines the algorithm that is used when images are scaled or rotated.
 ; Default = 0
 ; LowQuality = 1
-; HighQuality = 2
-; Bilinear = 3
-; Bicubic = 4
+; HighQuality = 2 ; Similar quality as mode 7 and not much slower than default
+; Bilinear = 3 
+; Bicubic = 4 
 ; NearestNeighbor = 5
 ; HighQualityBilinear = 6
-; HighQualityBicubic = 7
+; HighQualityBicubic = 7 
 Gdip_SetInterpolationMode(pGraphics, InterpolationMode)
 {
    return DllCall("gdiplus\GdipSetInterpolationMode", A_PtrSize ? "UPtr" : "UInt", pGraphics, "int", InterpolationMode)

@@ -2848,7 +2848,7 @@ SetupColourArrays(ByRef HexColour, Byref MatrixColour)
 }
 
 ; These bitmaps take up a bit more than 1 MB of space (check mem usage before and after deleting)
-CreatepBitmaps(byref a_pBitmap, aUnitID)
+CreatepBitmaps(byref a_pBitmap, aUnitID, MatrixColour)
 {
 	a_pBitmap := []
 	l_Races := "Terran,Protoss,Zerg"
@@ -2863,8 +2863,21 @@ CreatepBitmaps(byref a_pBitmap, aUnitID)
 		}
 		a_pBitmap[A_loopfield,"Worker"] := Gdip_CreateBitmapFromFile(A_Temp "\Worker_0" A_loopfield ".png")
 		a_pBitmap[A_loopfield,"Army"] := Gdip_CreateBitmapFromFile(A_Temp "\Army_" A_loopfield ".png")
-		a_pBitmap[A_loopfield,"RaceFlat"]  := Gdip_CreateBitmapFromFile(A_Temp "\Race_" A_loopfield "Flat.png")
 		a_pBitmap[A_loopfield,"RacePretty"] := Gdip_CreateBitmapFromFile(A_Temp "\" A_loopfield "90.png")
+		a_pBitmap[A_loopfield,"RaceFlat"]  := Gdip_CreateBitmapFromFile(A_Temp "\Race_" A_loopfield "Flat.png")
+
+		Width := Gdip_GetImageWidth(a_pBitmap[A_loopfield,"RaceFlat"]), Height := Gdip_GetImageHeight(a_pBitmap[A_loopfield,"RaceFlat"])
+		; Using a matrix in the overlays via drawImage() to change the colour is slower (adds a couple of ms for 6 race icons). So create a bitmap with the colour already changed.
+		for colour, matrix in MatrixColour
+		{
+			a_pBitmap[A_loopfield, "RaceFlatColour", colour] := Gdip_CreateBitmap(Width, Height)
+			G2 := Gdip_GraphicsFromImage(a_pBitmap[A_loopfield, "RaceFlatColour", colour])
+			; These two shouldn't be required as not drawing shapes or altering size (but leave them just incase)
+			Gdip_SetSmoothingMode(G2, 4)
+			Gdip_SetInterpolationMode(G2, 7)	
+			Gdip_DrawImage(G2, a_pBitmap[A_loopfield,"RaceFlat"], "", "", "", "", "", "", "", "", matrix)
+			Gdip_DeleteGraphics(G2)
+		}
 	}
 	Loop, %A_Temp%\UnitPanelMacroTrainer\*.png
 	{
@@ -3881,6 +3894,7 @@ readConfigFile()
 	IniRead, AutoGroupTimerIdle, %config_file%, %section%, AutoGroupTimerIdle, 5	; have to carefully think about timer priorities and frequency
 	
 	; Resume Warnings
+	; This is written in the unitDetection save function
 	Iniread, ResumeWarnings, %config_file%, Resume Warnings, Resume, 0
 
 	; [Misc Info]

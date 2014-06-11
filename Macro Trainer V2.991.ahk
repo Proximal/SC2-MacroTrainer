@@ -180,16 +180,9 @@ DllCall("RegisterShellHookWindow", UInt, getScriptHandle())
 
 pToken := Gdip_Startup()
 Global aUnitID, aUnitName, aUnitSubGroupAlias, aUnitTargetFilter
-;, aHexColours, MatrixColour
-;	, a_pBrushes := [], a_pPens := [], a_pBitmap
-
 SetupUnitIDArray(aUnitID, aUnitName)
 getSubGroupAliasArray(aUnitSubGroupAlias)
 setupTargetFilters(aUnitTargetFilter)
-;SetupColourArrays(aHexColours, MatrixColour)
-; Note: The brushes are initialised within the readConfig function
-; so they are updated when user changes custom colour highlights
-;a_pPens := initialisePenColours(aHexColours)
 
 Menu, Tray, Tip, MT_V%ProgramVersion% Coded By Kalamity
 
@@ -487,8 +480,8 @@ g_DebugKey:
 		WinClose
 	Gui, New 
 	Gui, Add, Edit, x12 y+10 w250 h250 hwndHwndEdit readonly, % "Currently down keys:`n`n" debugAllKeyStates()
-	. "`nLogical state refers to the state applications believe the key is in."
-	. "`n`nPhysical refers to the true physical state of the key."
+	. "`nLogical refers to the state applications see the key in."
+	. "`n`nPhysical refers to the actual physical state which MacroTrainer believes the key is in."
 	Gui, Show,, MT Key States Vr: %ProgramVersion%
 	selectText(HwndEdit, -1) ; Deselect edit box text
 return	
@@ -729,11 +722,12 @@ Return
 Adjust_overlay:
 ; use sendmessage as it's more reliable 
 aThreads.Overlays.AhkAssign.Dragoverlay := Dragoverlay := True
-aThreads.Overlays.AhkLabel.overlay_timer
+aThreads.Overlays.AhkLabel.overlayTimer
+aThreads.Overlays.AhkLabel.unitPanelOverlayTimer
 aThreads.Overlays.AhkFunction("increaseOverlayTimer") ; Increase Freq (it will automatically restore to default after 60 seconds)
 SoundPlay, %A_Temp%\On.wav
 sleep 500
-KeyWait, %AdjustOverlayKey%, T40
+KeyWait, % gethotkeySuffix(AdjustOverlayKey), T40
 	
 SoundPlay, %A_Temp%\Off.wav
 WinActivate, %GameIdentifier%
@@ -746,9 +740,11 @@ WinWaitActive, %GameIdentifier%,, 2 ; wait max 2 seconds
 ; Destroy and remake them.
 ; Gosub again so they are redrawn instantly
 aThreads.Overlays.AhkAssign.Dragoverlay := Dragoverlay := False	 
-aThreads.Overlays.AhkLabel.overlay_timer
+aThreads.Overlays.AhkLabel.overlayTimer
+aThreads.Overlays.AhkLabel.unitPanelOverlayTimer
 aThreads.Overlays.AhkFunction.("DestroyOverlays")
-aThreads.Overlays.AhkLabel.overlay_timer
+aThreads.Overlays.AhkLabel.overlayTimer
+aThreads.Overlays.AhkLabel.unitPanelOverlayTimer
 aThreads.Overlays.AhkFunction.("restoreOverlayTimer")
 Return	
 
@@ -787,7 +783,7 @@ return
 mt_pause_resume:
 	if (mt_Paused := !mt_Paused)
 	{
-		game_status := "lobby" ; with this clock = 0 when not in game 
+		isInMatch := False ; with this clock = 0 when not in game 
 		timeroff("clock", "money", "gas", "scvidle", "supply", "worker", "inject", "Auto_Group", "AutoGroupIdle", "g_autoWorkerProductionCheck", "cast_ForceInject", "find_races_timer", "advancedInjectTimerFunctionLabel")
 		inject_timer := 0	;ie so know inject timer is off
 		Try DestroyOverlays()
@@ -811,24 +807,33 @@ return
 ;------------
 clock:
 	time := GetTime()
-	if (!time && game_status = "game") || (UpdateTimers) ; time=0 outside game
+	if (!time && isInMatch) || (UpdateTimers) ; time=0 outside game
 	{	
-		game_status := "lobby" ; with this clock = 0 when not in game (while in game at 0s clock = 44)	
+		isInMatch := False ; with this clock = 0 when not in game (while in game at 0s clock = 44)	
 		timeroff("money", "gas", "scvidle", "supply", "worker", "inject", "Auto_Group", "AutoGroupIdle", "g_autoWorkerProductionCheck", "cast_ForceInject", "find_races_timer", "advancedInjectTimerFunctionLabel")
-		inject_timer := TimeReadRacesSet := UpdateTimers := PrevWarning := WinNotActiveAtStart := ResumeWarnings := 0 ;ie so know inject timer is off
-		if aThreads.MiniMap.ahkReady()
+		; Don't call these thread functions if just updating settings. 
+		; They will be called below. When everything is turned back on.
+		; Resetting the unit detections here probably increased the chances of the warning not
+		; being resume from the saved version (though this should really happen anyway)
+		; I realise it would be a cleaner solution to call the function and pass some 'isUpdating' param
+		; but I don't feel like modifying anything and this works fine. Also have to consider
+		; when the program restarts during a match.
+		if !UpdateTimers 
 		{
-			aThreads.MiniMap.ahkassign.TimeReadRacesSet := 0
-			aThreads.MiniMap.ahkFunction("gameChange")
-			aThreads.Overlays.ahkFunction("gameChange")	
-		}
-		Try DestroyOverlays()
-		setLowLevelInputHooks(False)
+			if aThreads.MiniMap.ahkReady()
+			{
+				aThreads.MiniMap.ahkassign.TimeReadRacesSet := 0
+				aThreads.MiniMap.ahkFunction("gameChange")
+			}
+			if aThreads.Overlays.ahkReady()
+				aThreads.Overlays.ahkFunction("gameChange")
+		}	
+		inject_timer := TimeReadRacesSet := UpdateTimers := PrevWarning := WinNotActiveAtStart := ResumeWarnings := 0 ;ie so know inject timer is off
+		setLowLevelInputHooks(False) ; Shouldn't be required anymore but I'm just gonna leave it anyway
 	}
-	Else if (time && game_status != "game") && (getLocalPlayerNumber() != 16 || debug) ; Local slot = 16 while in lobby/replay - this will stop replay announcements
+	Else if (time && !isInMatch) && (getLocalPlayerNumber() != 16 || debug) ; Local slot = 16 while in lobby/replay - this will stop replay announcements
 	{
-		game_status := "game", warpgate_status := "not researched", gateway_count := warpgate_warning_set := 0
-		
+		isInMatch := true
 		AW_MaxWorkersReached := TmpDisableAutoWorker := 0
 		aResourceLocations := []
 		global aStringTable := []
@@ -845,10 +850,10 @@ clock:
 		GameType := GetGameType(aPlayer)
 		If IsInList(aLocalPlayer.Type, "Referee", "Spectator")
 			return
-
+		; No longer required but leaving it for now
 		setLowLevelInputHooks(False) ; try to remove them first, as can get here from just saving/applying settings in options GUI
 
-		; Just load the minimap and overlay threads uncondiationally
+		; Just load the minimap and overlay threads unconditionally
 		; If they're not used they will not use any CPU once loaded.
 		; And saves having to worry about loading/closing them
 		; When toggling overlays etc
@@ -863,7 +868,8 @@ clock:
 		sleep, -1
 
 		SetMiniMap(minimap) ; Used for clicking - not just drawing
-		aResourceLocations := getMapInfoMineralsAndGeysers()
+		; If I was using the minerals for anything, then if this was called again due to just settings being changed (minerals would have been used up)
+		aResourceLocations := getMapInfoMineralsAndGeysers() 
 		if WinActive(GameIdentifier)
 			ReDrawAPM := ReDrawMiniMap := ReDrawIncome := ReDrawResources := ReDrawArmySize := ReDrawWorker := RedrawUnit := ReDrawIdleWorkers := ReDrawLocalPlayerColour := 1
 		if (MaxWindowOnStart && time < 5 && !WinActive(GameIdentifier)) 
@@ -894,14 +900,6 @@ clock:
 			settimer, cast_ForceInject, %FInjectHatchFrequency%	
 		}
 
-		; I've gotten the buffer full beep a couple of times while moving the mouse at the loading screen
-		; The timer shouldn't be positive until inside the game. 
-		; Perhaps when playing online the timer can go slightly positive for me, while someone is still loading
-		; the game on a slow computer. 
-		; I've tried to place the Installing hook call here after all the intense unit structure iterations
-
-		;setLowLevelInputHooks(True) ; No longer needed to be permanently installed - Custom AHK now performs functions			
-
 		if mineralon
 			settimer, money, 500, -5
 		if gas_on
@@ -928,11 +926,6 @@ clock:
 																		; and so wont prevent the minimap or overlay being drawn
 																		; note may delay some timers from launching for a fraction of a ms while its in thread, no timers interupt mode (but it takes less than 1 ms to run anyway)
 		} 																; Hence with these two timers running autogroup will occur at least once every 30 ms, but generally much more frequently
-
-		;SetTimer, overlay_timer, %OverlayRefresh%, -8	
-		;SetTimer, g_unitPanelOverlay_timer, %UnitOverlayRefresh%, -9	
-
-	
 		UserSavedAppliedSettings := 0
 	}
 return
@@ -1753,7 +1746,8 @@ ShellMessage(wParam, lParam)
 			;mt_Paused otherwise will redisplay the hidden and frozen overlays
 			if (ReDrawOverlays  && !mt_Paused && !IsInList(aLocalPlayer.Type, "Referee", "Spectator")) ; This will redraw immediately - but this isn't needed at all
 			{  		
-				aThreads.Overlays.AhkLabel.overlay_timer
+				aThreads.Overlays.AhkLabel.overlayTimer
+				aThreads.Overlays.AhkLabel.unitPanelOverlayTimer
 				ReDrawOverlays := False
 			}
 		}
@@ -2632,9 +2626,8 @@ ini_settings_write:
 		Tmp_GuiControl := ""
 		CreateHotkeys()	; to reactivate the hotkeys that were disabled by disableAllHotkeys()
 		UserSavedAppliedSettings := 1
-		If (game_status = "game") ; so if they change settings during match will update timers
+		If isInMatch  ; so if they change settings during match will update timers
 			UpdateTimers := 1
-
 	}
 Return
 
@@ -3983,13 +3976,13 @@ try
 				Gui, Add, Checkbox, xp y+10 vDrawLocalPlayerResources Checked%drawLocalPlayerResources%, Resource Overlay
 				Gui, Add, Checkbox, xp y+10 vDrawLocalPlayerArmy Checked%drawLocalPlayerArmy%, Army Size Overlay
 
-			Gui, Add, GroupBox, xs ys+295 w170 h120, Refresh Rates:
+			Gui, Add, GroupBox, xs ys+295 w170 h120, Refresh Intervals:
 			Gui, Add, Text, XS+20  yp+25, General:
 				Gui, Add, Edit, Number Right xp+80 yp-2 w55 vTT_OverlayRefresh
 					Gui, Add, UpDown,  Range50-5000 vOverlayRefresh, %OverlayRefresh%
-			;Gui, Add, Text, XS+20 yp+35, Unit Panel:
-			;	Gui, Add, Edit, Number Right xp+80 yp-2 w55 vTT_UnitOverlayRefresh
-			;		Gui, Add, UpDown,  Range100-15000 vUnitOverlayRefresh, %UnitOverlayRefresh%
+			Gui, Add, Text, XS+20 yp+35, Unit Panel:
+				Gui, Add, Edit, Number Right xp+80 yp-2 w55 vTT_UnitOverlayRefresh
+					Gui, Add, UpDown,  Range100-15000 vUnitOverlayRefresh, %UnitOverlayRefresh%
 			Gui, Add, Text, XS+20 yp+35, MiniMap:
 				Gui, Add, Edit, Number Right xp+80 yp-2 w55 vTT_MiniMapRefresh
 					Gui, Add, UpDown,  Range50-1500 vMiniMapRefresh, %MiniMapRefresh%				
@@ -4311,9 +4304,12 @@ try
 												. "`n`nNote: This is in ms and lower values result in the overlay being redrawn more frequently."
 		BlendUnits_TT := "This will draw the units 'blended together', like SC2 does.`nIn other words, units/buildings grouped together will only have one border around all of them"
 
-		TT_OverlayRefresh_TT := OverlayRefresh_TT := "Determines how frequently these overlays are refreshed:`nIncome, Resource, Army, Local Harvesters, Idle Workers, and Unit Panel."
+		TT_OverlayRefresh_TT := OverlayRefresh_TT := "Determines how frequently these overlays are refreshed:`nIncome, Resource, Army, Local Harvesters, and Idle Workers"
 												. "`n`nNote: This is in ms and lower values result in the overlays being redrawn more frequently."
-		;TT_UnitOverlayRefresh_TT := UnitOverlayRefresh_TT := "Determines how frequently the unit panel is refreshed.`nThis requires more resources than the other overlays and so it has its own refresh rate.`n`nLower this value if you want the progress bars to increase in a smoother manner."
+		TT_UnitOverlayRefresh_TT := UnitOverlayRefresh_TT := "Determines how frequently the unit panel is refreshed."
+							. "`n`nThis requires more resources than the other overlays and so it has its own refresh rate."
+							. "`nCare should be taken with low values, as this can significantly increase CPU usage when there are many units on the map e.g. late game 4v4."
+							. "`n`nLower this value if you want the progress bars to increase in a smoother manner."
 
 		DrawLocalPlayerColourOverlay_TT := "During team games and while using hostile colours (green, yellow, and red) a small circle is drawn which indiactes your local player colour.`n`n"
 											. "This is helpful when your allies refer to you by colour."
@@ -4826,13 +4822,13 @@ return
 
 
 P_Protoss_Joke:	
-	tSpeak("Tosser.")
+	tSpeak("Broh Toss")
 	return
 P_Terran_Joke:	
 	tSpeak("Terran")
 	return
 P_zerg_Joke:
-	tSpeak("Easy Mode")
+	tSpeak("For the swarm!")
 	return	
 
 B_HelpFile:
@@ -5229,11 +5225,11 @@ edit_hotkey:
 	if (SubStr(A_GuiControl, 1, 1) = "#") ;this is a method to prevent launching 
 	{
 		hotkey_name := SubStr(A_GuiControl, 2)	;this label (and hotkeygui) for a 2nd time 
-		if (hotkey_name = "AdjustOverlayKey")		
-			hotkey_var := HotkeyGUI("Options",%hotkey_name%,2046, "Select Hotkey:   " hotkey_name)  ;as due to toggle keywait cant use modifiers
+		;if (hotkey_name = "AdjustOverlayKey")		
+		;	hotkey_var := HotkeyGUI("Options",%hotkey_name%,2046, "Select Hotkey:   " hotkey_name)  ;as due to toggle keywait cant use modifiers
 ;		else if (hotkey_name = "castSelectArmy_key") ;disable the modifiers
 ;			hotkey_var := HotkeyGUI("Options",%hotkey_name%, 2+4+8+16+32+64+128+256+512+1024, "Select Hotkey:   " hotkey_name) ;the hotkey		
-		else if (hotkey_name = "Key_EmergencyRestart")  
+		if (hotkey_name = "Key_EmergencyRestart")  
 			; Force at least one Right side modifiers and force the wildcard option (disable and check)
 			; this is done as if have stuck modifier then this could prevent the hotkey firing.
 			hotkey_var := HotkeyGUI("Options",%hotkey_name%, 1, "Select Hotkey:   " hotkey_name, 0, 0, 10, 14) ;the hotkey
@@ -5555,8 +5551,9 @@ Text := "
 		Some units are automatically removed, these include interceptors, locusts, broodlings, completed creep tumours, reactors, and techlabs.
 	)"
 
-Gui, Add, Edit, x12 y+10 w360 h380 readonly -E0x200, % Text
+Gui, Add, Edit, HwndHwndEdit x12 y+10 w360 h380 readonly -E0x200, % Text
 Gui, UnitFilterInfo:Show,, MT Unit Filter Info
+selectText(HwndEdit, -1) ; Deselect edit box text
 return
 
 
@@ -10688,11 +10685,6 @@ controlclick,,StarCraft II,,L,,NA
 return 
 */
 
->!>+f10::
-run %comspec% /c ""C:\Users\Matthieu\Desktop\New folder (3)\MsgHookLister\x64\MsgListerApp.exe" /h > "C:\Users\Matthieu\Desktop\New folder (3)\MsgHookLister\x64\hooks.txt"",, Hide 
-sleep 1000 
-Run, "C:\Users\Matthieu\Desktop\New folder (3)\MsgHookLister\x64\hooks.txt"
-return 
 
 /*
 f1::
@@ -10740,7 +10732,11 @@ return
 
 */
 
-f1::
-send {space down}{a down}{b down}
-msgbox % debugAllKeyStates(True, True)
+>!>+f10::
+run %comspec% /c ""C:\Users\Matthieu\Desktop\New folder (3)\MsgHookLister\x64\MsgListerApp.exe" /h > "C:\Users\Matthieu\Desktop\New folder (3)\MsgHookLister\x64\hooks.txt"",, Hide 
+sleep 1000 
+Run, "C:\Users\Matthieu\Desktop\New folder (3)\MsgHookLister\x64\hooks.txt"
 return 
+
+
+

@@ -16,7 +16,7 @@ GameExe := "SC2.exe"
 
 #Include <Gdip> ;In the library folder
 #Include <SC2_MemoryAndGeneralFunctions> 
-Global aUnitID, aUnitName, aUnitSubGroupAlias, aUnitTargetFilter, aHexColours, MatrixColour
+Global aUnitID, aUnitName, aUnitSubGroupAlias, aUnitTargetFilter, aHexColours
 	, aUnitModel,  aPlayer, aLocalPlayer, minimap
 	, a_pBrushes := [], a_pPens := [], a_pBitmap
 
@@ -29,7 +29,7 @@ SetupColourArrays(aHexColours, MatrixColour)
 a_pPens := initialisePenColours(aHexColours)
 
 
-CreatepBitmaps(a_pBitmap, aUnitID)
+CreatepBitmaps(a_pBitmap, aUnitID, MatrixColour)
 global aUnitInfo := []
 readConfigFile(), hasReadConfig := True
 global aOverlayTitles := []
@@ -52,14 +52,25 @@ Return
 ; Need this, as sometimes call from main thread to gameChange() fails
 ; also, sometimes the call succeeds, but the timers remain on
 ; it's fucking retarded!
+; Update: This was probably due to using a very old version of AHK_H
+; But I don't really want to test this atm, so its being left as is.
 
 gClock:
 if (!time := getTime())
 	gameChange()
 return 
 
-overlay_timer: 	;DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdent=0, Background=0,Drag=0)
-	
+gosubAllOverlays:
+gosub, overlayTimer
+gosub, unitPanelOverlayTimer
+return
+
+; DIB size does not affect overlaying drawing speed
+; however if the overlay isn't blank/recreated and graphicsClear is
+; called, then this call takes ages (relatively speaking) esp. with big DIBs
+
+
+overlayTimer: 	;DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdent=0, Background=0,Drag=0)
 If (WinActive(GameIdentifier) || Dragoverlay) ;really only needed to ressize/scale not drag - as the movement is donve via  a post message - needed as overlay becomes the active window during drag etc
 {
 	If DrawIncomeOverlay
@@ -75,10 +86,20 @@ If (WinActive(GameIdentifier) || Dragoverlay) ;really only needed to ressize/sca
 	If DrawIdleWorkersOverlay
 		DrawIdleWorkersOverlay(ReDrawIdleWorkers, IdleWorkersOverlayScale, dragOverlay)
 	if (DrawLocalPlayerColourOverlay && (GameType != "1v1" && GameType != "FFA"))   ;easier just to redraw it each time as otherwise have to change internal for when dragging
-		DrawLocalPlayerColour(ReDrawLocalPlayerColour, LocalPlayerColourOverlayScale, DragOverlay)
+		DrawLocalPlayerColour(ReDrawLocalPlayerColour, LocalPlayerColourOverlayScale, DragOverlay)	
+}
+; sometimes the overlay timer doesnt work, so this is a backup which ensure theyre destroyed
+; I think it fails sometimes because its inside an overlay function or something
+else if (!WinActive(GameIdentifier) && !Dragoverlay && !areOverlaysWaitingToRedraw())
+	DestroyOverlays()
+Return
+
+unitPanelOverlayTimer:
+If (WinActive(GameIdentifier) || Dragoverlay)
+{
 	If (DrawUnitOverlay || DrawUnitUpgrades)
 	{
-		; 854 unit count (all players being drawn)
+		; 854 unit count (2v2 all 4 players being drawn)
 		; 10 ms for getEnemyUnitCount+FilterUnits 
 		; 25-30 ms for draw
 		getEnemyUnitCount(aEnemyUnits, aEnemyUnitConstruction, aEnemyCurrentUpgrades)
@@ -86,18 +107,18 @@ If (WinActive(GameIdentifier) || Dragoverlay) ;really only needed to ressize/sca
 		DrawUnitOverlay(RedrawUnit, UnitOverlayScale, OverlayIdent, Dragoverlay)
 	}
 }
-; sometimes the overlay timer doesnt work, so this is a backup which ensure theyre destroyed
-; I think it fails sometimes because its inside an overlay function or something
 else if (!WinActive(GameIdentifier) && !Dragoverlay && !areOverlaysWaitingToRedraw())
 	DestroyOverlays()
-sleep 10 ; keep CPU usage in check with very low refresh rates
-Return
+return 
+
   
 updateUserSettings()
 {	
 	Global hasReadConfig
 	readConfigFile()
 	hasReadConfig := True
+	; don't need to call GameChange if settings are changed during a match
+	; as the main thread will do that.
 }
 
 gameChange()
@@ -114,7 +135,6 @@ gameChange()
 	}
 	if (Time := getTime())
 	{
-		game_status := "game"
 		; aStringTable and aUnitModel are super global declared in memory and general functions
 		aUnitModel := [], aStringTable := [], MT_CurrentGame := []
 		if WinActive(GameIdentifier)
@@ -123,12 +143,14 @@ gameChange()
 		GameType := GetGameType(aPlayer)	
 		getLongestPlayerNames(LongestEnemyName, LongestName) ; Enemy, Enemy or Self
 		MT_CurrentGame.LongestEnemyName := LongestEnemyName, MT_CurrentGame.LongestName := LongestName
-		SetTimer, overlay_timer, %OverlayRefresh%
+		SetTimer, overlayTimer, %OverlayRefresh%
+		SetTimer, unitPanelOverlayTimer, %UnitOverlayRefresh%
 		settimer, gClock, 1000, -4 ; doesn't seem necessary any more. Updated AHK_H seems to always call the function from the main thread
 	}
 	else 
 	{
-		SetTimer, overlay_timer, off
+		SetTimer, overlayTimer, off
+		SetTimer, unitPanelOverlayTimer, off
 		SetTimer, gClock, off
 		DestroyOverlays()
 	}
@@ -139,18 +161,21 @@ increaseOverlayTimer()
 {
 	global 
 
-	SetTimer, overlay_timer, 50 ; increase freq so that increasing size occurs more rapidly
+	SetTimer, overlayTimer, 50 ; increase freq so that increasing size occurs more rapidly
+	SetTimer, unitPanelOverlayTimer, 50 
 	SetTimer, overlayTimerSetOriginal, -60000
 	return
 	overlayTimerSetOriginal:
-	SetTimer, overlay_timer, %OverlayRefresh%
+	SetTimer, overlayTimer, %OverlayRefresh%
+	SetTimer, unitPanelOverlayTimer, %UnitOverlayRefresh%
 	return
 }
 
 restoreOverlayTimer()
 {
 	global 
-	SetTimer, overlay_timer, %OverlayRefresh%
+	SetTimer, overlayTimer, %OverlayRefresh%
+	SetTimer, overlayTimer, %UnitOverlayRefresh%
 	return	
 }
 
@@ -181,7 +206,7 @@ overlayToggle(hotkey)
 			Else If (DrawUnitOverlay || DrawUnitUpgrades) 	; turn them all on
 				DrawResourcesOverlay := DrawArmySizeOverlay := DrawAPMOverlay := DrawIncomeOverlay := 1 	
 		}
-		gosub, overlay_timer
+		SetTimer, gosubAllOverlays, -5 
 	}	
 	Else If (hotkey = ToggleIncomeOverlayKey "")
 	{
@@ -221,7 +246,7 @@ overlayToggle(hotkey)
 		If (!DrawUnitOverlay && !DrawUnitUpgrades)
 			DrawUnitOverlay(-1)
 	}
-	gosub, overlay_timer ;this makes the change take effect immediately. 
+	SetTimer, gosubAllOverlays, -5 ;this makes the change take effect immediately. 
 	Return
 }
 toggleIdentifier()
@@ -231,8 +256,10 @@ toggleIdentifier()
 		OverlayIdent := 0
 	Else OverlayIdent ++
 	Iniwrite, %OverlayIdent%, %config_file%, Overlays, OverlayIdent
-	gosub, overlay_timer
-	Return
+	; Since this is called via sendMessage, (so it can read the OverlayIdent on return)
+	; lets use a timer to do the gosubs so main script isn't delayed.
+	SetTimer, gosubAllOverlays, -5 
+	return
 }
 
 HiWord(number)
@@ -316,9 +343,10 @@ DrawIdleWorkersOverlay(ByRef Redraw, UserScale=1,Drag=0, expand=1)
 		Iniwrite, %idleWorkersOverlayY%, %config_file%, Overlays, idleWorkersOverlayY
 	}
 	hbm := CreateDIBSection(400, 400)
-	hdc := CreateCompatibleDC()
-	obm := SelectObject(hdc, hbm)
-	G := Gdip_GraphicsFromHDC(hdc)
+	, hdc := CreateCompatibleDC()
+	, obm := SelectObject(hdc, hbm)
+	, G := Gdip_GraphicsFromHDC(hdc)
+	, Gdip_SetInterpolationMode(G, 2)
 	;DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0)	
 
 	pBitmap := a_pBitmap[aLocalPlayer["Race"],"Worker"]
@@ -346,7 +374,7 @@ DrawIdleWorkersOverlay(ByRef Redraw, UserScale=1,Drag=0, expand=1)
 
 ; Takes 4.4 ms    
 DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Drag=0)
-{	global aLocalPlayer, aHexColours, aPlayer, GameIdentifier, IncomeOverlayX, IncomeOverlayY, config_file, MatrixColour, a_pBitmap, overlayIncomeTransparency
+{	global aLocalPlayer, aHexColours, aPlayer, GameIdentifier, IncomeOverlayX, IncomeOverlayY, config_file, a_pBitmap, overlayIncomeTransparency
 	, drawLocalPlayerIncome
 	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0
 
@@ -384,12 +412,14 @@ DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Dr
 		WinGetPos,IncomeOverlayX,IncomeOverlayY,w,h		
 		IniWrite, %IncomeOverlayX%, %config_file%, Overlays, IncomeOverlayX
 		Iniwrite, %IncomeOverlayY%, %config_file%, Overlays, IncomeOverlayY		
-	}		
+	}
+
 	hbm := CreateDIBSection(A_ScreenWidth, A_ScreenHeight)
-	hdc := CreateCompatibleDC()
-	obm := SelectObject(hdc, hbm)
-	G := Gdip_GraphicsFromHDC(hdc)
-	;DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0)	
+	, hdc := CreateCompatibleDC()
+	, obm := SelectObject(hdc, hbm)
+	, G := Gdip_GraphicsFromHDC(hdc)
+	, Gdip_SetInterpolationMode(G, 2)
+	; DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0) ; This slows things down massively, slower with bigger dibs	
 	For index, player in aEnemyAndLocalPlayer
 	{
 		if ((slot_number := player["Slot"]) != aLocalPlayer["Slot"] || drawLocalPlayerIncome)
@@ -420,10 +450,10 @@ DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Dr
 			}
 			Else If (PlayerIdentifier = 3)
 			{		
-				pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"RaceFlat"]
+				pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"RaceFlatColour", aPlayer[slot_number, "Colour"]]
 				SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
 				Width *= UserScale *.5, Height *= UserScale *.5	
-				Gdip_DrawImage(G, pBitmap, 12*UserScale, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight, MatrixColour[aPlayer[slot_number, "Colour"]])
+				Gdip_DrawImage(G, pBitmap, 12*UserScale, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
 				pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Mineral",Background]
 				SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
 				Width *= UserScale *.5, Height *= UserScale *.5		
@@ -476,9 +506,9 @@ DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Dr
 	Return
 }
 
-; Takes ~ 3 ms (due to dib size)
+; Takes ~ 2 ms 
 DrawAPMOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, modeAPM_EPM=0,Drag=0)
-{	global aLocalPlayer, aHexColours, aPlayer, GameIdentifier, APMOverlayX, APMOverlayY, config_file, MatrixColour, a_pBitmap, overlayAPMTransparency
+{	global aLocalPlayer, aHexColours, aPlayer, GameIdentifier, APMOverlayX, APMOverlayY, config_file, a_pBitmap, overlayAPMTransparency
 	, APMOverlayMode
 	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0
 
@@ -518,9 +548,10 @@ DrawAPMOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, modeAPM_EPM=0,Drag
 		Iniwrite, %APMOverlayY%, %config_file%, Overlays, APMOverlayY		
 	}		
 	hbm := CreateDIBSection(A_ScreenWidth, A_ScreenHeight)
-	hdc := CreateCompatibleDC()
-	obm := SelectObject(hdc, hbm)
-	G := Gdip_GraphicsFromHDC(hdc)
+	, hdc := CreateCompatibleDC()
+	, obm := SelectObject(hdc, hbm)
+	, G := Gdip_GraphicsFromHDC(hdc)
+	, Gdip_SetInterpolationMode(G, 2)
 	;DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0)	
 	DestX := 0
 	For index, player in aEnemyAndLocalPlayer
@@ -561,10 +592,10 @@ DrawAPMOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, modeAPM_EPM=0,Drag
 			}
 			Else If (PlayerIdentifier = 3)
 			{		
-				pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"RaceFlat"]
+				pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"RaceFlatColour", aPlayer[slot_number, "Colour"]]
 				SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
 				Width *= UserScale *.5, Height *= UserScale *.5	
-				Gdip_DrawImage(G, pBitmap, 12*UserScale, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight, MatrixColour[aPlayer[slot_number, "Colour"]])
+				Gdip_DrawImage(G, pBitmap, 12*UserScale, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
 				DestX := Width+10*UserScale
 				DestY += Height//4
 			}
@@ -599,9 +630,9 @@ DrawAPMOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, modeAPM_EPM=0,Drag
 	Return
 }
 
-; Takes 4.45 ms (slow due to dib size)
+; Takes 4.45 ms
 DrawResourcesOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Drag=0)
-{	global aLocalPlayer, aHexColours, aPlayer, GameIdentifier, config_file, ResourcesOverlayX, ResourcesOverlayY, MatrixColour, a_pBitmap, overlayResourceTransparency
+{	global aLocalPlayer, aHexColours, aPlayer, GameIdentifier, config_file, ResourcesOverlayX, ResourcesOverlayY, a_pBitmap, overlayResourceTransparency
 			, drawLocalPlayerResources
 	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0		
 
@@ -643,9 +674,10 @@ DrawResourcesOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0
 	}
 
 	hbm := CreateDIBSection(A_ScreenWidth, A_ScreenHeight)
-	hdc := CreateCompatibleDC()
-	obm := SelectObject(hdc, hbm)
-	G := Gdip_GraphicsFromHDC(hdc)
+	, hdc := CreateCompatibleDC()
+	, obm := SelectObject(hdc, hbm)
+	, G := Gdip_GraphicsFromHDC(hdc)
+	, Gdip_SetInterpolationMode(G, 2)
 	;DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0)		
 
 	; Users have requested that their own local player appear in some overlays
@@ -680,10 +712,10 @@ DrawResourcesOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0
 				DestX := LongestNameSize+10*UserScale
 			}
 			Else If (PlayerIdentifier = 3)
-			{	pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"RaceFlat"]
+			{	pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"RaceFlatColour", aPlayer[slot_number, "Colour"]]
 				SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
 				Width *= UserScale *.5, Height *= UserScale *.5	
-				Gdip_DrawImage(G, pBitmap, 12*UserScale, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight, MatrixColour[aPlayer[slot_number, "Colour"]])
+				Gdip_DrawImage(G, pBitmap, 12*UserScale, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
 				;Gdip_DisposeImage(pBitmap)
 				pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Mineral",Background]
 				SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
@@ -733,16 +765,16 @@ DrawResourcesOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0
 		WindowHeight := A_ScreenHeight
 
 	Gdip_DeleteGraphics(G)
-	UpdateLayeredWindow(hwnd1, hdc,,, WindowWidth, WindowHeight, overlayResourceTransparency)
-	SelectObject(hdc, obm)
-	DeleteObject(hbm)
-	DeleteDC(hdc)
+	, UpdateLayeredWindow(hwnd1, hdc,,, WindowWidth, WindowHeight, overlayResourceTransparency)
+	, SelectObject(hdc, obm)
+	, DeleteObject(hbm)
+	, DeleteDC(hdc)
 	Return
 }
 
-; Takes 7 ms for 2 (enemy) players (slow due to DIB size)
+; Takes 7 ms for 2 (enemy) players
 DrawArmySizeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Drag=0)
-{	global aLocalPlayer, aHexColours, aPlayer, GameIdentifier, config_file, ArmySizeOverlayX, ArmySizeOverlayY, MatrixColour, a_pBitmap, overlayArmyTransparency
+{	global aLocalPlayer, aHexColours, aPlayer, GameIdentifier, config_file, ArmySizeOverlayX, ArmySizeOverlayY, a_pBitmap, overlayArmyTransparency
 	, drawLocalPlayerArmy
 	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0	
 		
@@ -781,9 +813,10 @@ DrawArmySizeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,
 		Iniwrite, %ArmySizeOverlayY%, %config_file%, Overlays, ArmySizeOverlayY	
 	}
 	hbm := CreateDIBSection(A_ScreenWidth, A_ScreenHeight)
-	hdc := CreateCompatibleDC()
-	obm := SelectObject(hdc, hbm)
-	G := Gdip_GraphicsFromHDC(hdc)
+	, hdc := CreateCompatibleDC()
+	, obm := SelectObject(hdc, hbm)
+	, G := Gdip_GraphicsFromHDC(hdc)
+	, Gdip_SetInterpolationMode(G, 2)
 	;DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0)
 	For index, player in aEnemyAndLocalPlayer
 	{	
@@ -821,7 +854,7 @@ DrawArmySizeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,
 				pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"RaceFlat"] 
 				SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
 				Width *= UserScale *.5, Height *= UserScale *.5	
-				Gdip_DrawImage(G, pBitmap, 12*UserScale, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight, MatrixColour[aPlayer[slot_number, "Colour"]])
+				Gdip_DrawImage(G, pBitmap, 12*UserScale, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
 				;Gdip_DisposeImage(pBitmap)
 				pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Mineral",Background]
 				SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
@@ -878,10 +911,10 @@ DrawArmySizeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,
 		WindowHeight := A_ScreenHeight
 
 	Gdip_DeleteGraphics(G)
-	UpdateLayeredWindow(hwnd1, hdc,,, WindowWidth, WindowHeight, overlayArmyTransparency)
-	SelectObject(hdc, obm) 
-	DeleteObject(hbm)  
-	DeleteDC(hdc) 
+	, UpdateLayeredWindow(hwnd1, hdc,,, WindowWidth, WindowHeight, overlayArmyTransparency)
+	, SelectObject(hdc, obm) 
+	, DeleteObject(hbm)  
+	, DeleteDC(hdc) 
 	Return
 }
 ; Takes 0.6 ms
@@ -925,13 +958,11 @@ DrawWorkerOverlay(ByRef Redraw, UserScale=1,Drag=0)
 		IniWrite, %WorkerOverlayX%, %config_file%, Overlays, WorkerOverlayX
 		Iniwrite, %WorkerOverlayY%, %config_file%, Overlays, WorkerOverlayY
 	}
-	; With a dib of full screen size this takes 3 ms (avg over 500 runs)
-	; with a dib of 400x400 it takes 0.6 ms
-
 	hbm := CreateDIBSection(400, 400)
-	hdc := CreateCompatibleDC()
-	obm := SelectObject(hdc, hbm)
-	G := Gdip_GraphicsFromHDC(hdc)
+	, hdc := CreateCompatibleDC()
+	, obm := SelectObject(hdc, hbm)
+	, G := Gdip_GraphicsFromHDC(hdc)
+	, Gdip_SetInterpolationMode(G, 2)
 	;DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0)	
 
 	pBitmap := a_pBitmap[aLocalPlayer["Race"],"Worker"]
@@ -943,9 +974,9 @@ DrawWorkerOverlay(ByRef Redraw, UserScale=1,Drag=0)
 
 	; Don't have to worry about size checks here, as not passing these params to updateLayeredWindow()
 	UpdateLayeredWindow(hwnd1, hdc,,,,, overlayHarvesterTransparency)
-	SelectObject(hdc, obm) 
-	DeleteObject(hbm)  
-	DeleteDC(hdc) 
+	, SelectObject(hdc, obm) 
+	, DeleteObject(hbm)  
+	, DeleteDC(hdc) 
 	Return
 }
 
@@ -1409,10 +1440,11 @@ FilterUnits(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aUnitPanelUni
 }
 
 ; Gdip_GetImageWidth() takes almost no time 0.0009 ms.
+; using commas ',' to place expression into 1 line saves ~ 1.5ms (over 45ms draw 3v3 - 6 players being drawn)
 
 DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 {
-	GLOBAL aEnemyUnits, aEnemyUnitConstruction, a_pBitmap, aPlayer, aLocalPlayer, aHexColours, GameIdentifier, config_file, UnitOverlayX, UnitOverlayY, MatrixColour 
+	GLOBAL aEnemyUnits, aEnemyUnitConstruction, a_pBitmap, aPlayer, aLocalPlayer, aHexColours, GameIdentifier, config_file, UnitOverlayX, UnitOverlayY 
 		, aUnitInfo, SplitUnitPanel, aEnemyCurrentUpgrades, DrawUnitOverlay, DrawUnitUpgrades, aMiscUnitPanelInfo, aUnitID, overlayMatchTransparency
 		, unitPanelDrawStructureProgress, unitPanelDrawUnitProgress, unitPanelDrawUpgradeProgress 
 	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0
@@ -1465,17 +1497,19 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 	; Note: CC and nexus - there number counts seem to mess with the background shaded box colour 
 	; this occurs on all Gdip_SetSmoothingMode values - certain picture background colour
 	
-	Gdip_SetSmoothingMode(G, 4)
+	, Gdip_SetSmoothingMode(G, 4)
+	, Gdip_SetInterpolationMode(G, 2)	; fast and draws (almost?) same quality as mode 7 HighQualityBicubic. Refer to benchmark picture for data
+
 
 	Height := DestY := 0
-	rowMultiplier := (DrawUnitOverlay ? (SplitUnitPanel ? 2 : 1) : 0) + (DrawUnitUpgrades ? 1 : 0)
+	, rowMultiplier := (DrawUnitOverlay ? (SplitUnitPanel ? 2 : 1) : 0) + (DrawUnitUpgrades ? 1 : 0)
 	
 	for slot_number, priorityObject in aEnemyUnits ; slotnumber = owner and slotnumber is an object
 	{
 		Height += 7*userscale	;easy way to increase different players next line
 		; destY is height of each players first panel row.
-		DestY := (rowMultiplier * Height + ((unitPanelDrawUnitProgress || unitPanelDrawStructureProgress ) ? 8 * UserScale : 0)) * (A_Index - 1)
-		destUnitSplitY :=  DestY + ((unitPanelDrawUnitProgress || unitPanelDrawStructureProgress ) ? 5 * UserScale : 0)
+		, DestY := (rowMultiplier * Height + ((unitPanelDrawUnitProgress || unitPanelDrawStructureProgress ) ? 8 * UserScale : 0)) * (A_Index - 1)
+		, destUnitSplitY :=  DestY + ((unitPanelDrawUnitProgress || unitPanelDrawStructureProgress ) ? 5 * UserScale : 0)
 		
 		If (PlayerIdentifier = 1 Or PlayerIdentifier = 2 )
 		{	
@@ -1497,11 +1531,11 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 		}
 		Else If (PlayerIdentifier = 3)
 		{	
-			pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"RaceFlat"]
-			SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
-			Width *= UserScale *.5, Height *= UserScale *.5	
-			Gdip_DrawImage(G, pBitmap, 12*UserScale, DestY + Height/5, Width, Height, 0, 0, SourceWidth, SourceHeight, MatrixColour[aPlayer[slot_number, "Colour"]])
-			DestX := Width+15*UserScale 
+			pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"RaceFlatColour", aPlayer[slot_number, "Colour"]]
+			, SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
+			, Width *= UserScale *.5, Height *= UserScale *.5	
+			, Gdip_DrawImage(G, pBitmap, 12*UserScale, DestY + Height/5, Width, Height, 0, 0, SourceWidth, SourceHeight)
+			, DestX := Width+15*UserScale 
 		}
 		else DestX := 0
 
@@ -1518,19 +1552,18 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 					if !(pBitmap := a_pBitmap[unit])
 						continue ; as i dont have a picture for that unit - not a real unit?
 					SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap) 
-					Width *= UserScale *.5, Height *= UserScale *.5	; all unit/buildings/updagres are 38x38 after being halved
+					, Width *= UserScale *.5, Height *= UserScale *.5	; all unit/buildings/updagres are 38x38 after being halved
 					
 					; Doing like this as it's a requested feature and im too lazy to change everything to make it simpler
 					if (!aUnitInfo[unit, "isStructure"] && SplitUnitPanel)
 					{
 						prevStructureX := DestX
-						prevStructureY := DestY
-						DestX := destUnitSplitX
-						DestY := destUnitSplitY + Height * 1.1	; 1.1 so the transparent backgrounds of the count and count underconstruction dont overlap
+						, prevStructureY := DestY
+						, DestX := destUnitSplitX
+						, DestY := destUnitSplitY + Height * 1.1	; 1.1 so the transparent backgrounds of the count and count underconstruction dont overlap
 					} 
-
 					Gdip_DrawImage(G, pBitmap, DestX, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
-					Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, DestX + .6*Width, DestY + .6*Height, Width/2.5, Height/2.5, 5)
+					, Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, DestX + .6*Width, DestY + .6*Height, Width/2.5, Height/2.5, 5)
 					if (unitCount >= 10)
 						gdip_TextToGraphics(G, unitCount, "x"(DestX + .5*Width + .18*Width/2) "y"(DestY + .5*Height + .3*Height/2)  " Bold cFFFFFFFF r4 s" 11*UserScale, Font)
 					Else
@@ -1566,7 +1599,7 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 					{
 						progress := aEnemyUnitConstruction[slot_number, priority, unit].progress
 					;	Gdip_FillRoundedRectangle(G, a_pBrush[TransparentBlack], DestX, DestY + .6*Height, Width/2.5, Height/2.5, 5)
-						Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, DestX + .6*Width, DestY, Width/2.5, Height/2.5, 5)
+						, Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, DestX + .6*Width, DestY, Width/2.5, Height/2.5, 5)
 						if (unitCount >= 10)
 							gdip_TextToGraphics(G, unitCount, "x"(DestX + .5*Width + .16*Width/2) "y"(DestY + .10*Height/2)  " Bold Italic cFFFFFFFF r4 s" 11*UserScale, Font)
 						Else
@@ -1577,17 +1610,17 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 							Gdip_SetSmoothingMode(G, 0)
 							; floor helps keep a consistent height for the bar - as the y address may be a a float + the float the height can cause inconsistent results 
 							; I.e. one bar might appear slightly taller 
-							Gdip_FillRectangle(G, a_pBrushes.TransparentBlack, DestX + 5 * UserScale *.5, floor(DestY+Height + 5 * UserScale *.5), Width - 10 * UserScale *.5, Height/16)
-							Gdip_FillRectangle(G, a_pBrushes.Green, DestX + 5 * UserScale *.5, floor(DestY+Height + 5 * UserScale *.5), Width*progress - progress * 10 * UserScale *.5, Height/16)
-							Gdip_SetSmoothingMode(G, 4)
+							, Gdip_FillRectangle(G, a_pBrushes.TransparentBlack, DestX + 5 * UserScale *.5, floor(DestY+Height + 5 * UserScale *.5), Width - 10 * UserScale *.5, Height/16)
+							, Gdip_FillRectangle(G, a_pBrushes.Green, DestX + 5 * UserScale *.5, floor(DestY+Height + 5 * UserScale *.5), Width*progress - progress * 10 * UserScale *.5, Height/16)
+							, Gdip_SetSmoothingMode(G, 4)
 						}
 							aEnemyUnitConstruction[slot_number, priority].remove(unit, "")
 					}
 					if (!aUnitInfo[unit, "isStructure"] && SplitUnitPanel)
 					{
 						destUnitSplitX += (Width+5*UserScale)
-						DestX := prevStructureX
-						DestY := prevStructureY
+						, DestX := prevStructureX
+						, DestY := prevStructureY
 					}
 					else DestX += (Width+5*UserScale)
 				}
@@ -1607,14 +1640,14 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 					if (unit != "TotalCount" && pBitmap := a_pBitmap[unit])				;	i.e. there are no already completed buildings of same type
 					{
 						SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
-						Width *= UserScale *.5, Height *= UserScale *.5	
+						, Width *= UserScale *.5, Height *= UserScale *.5	
 						
 						if (!aUnitInfo[unit, "isStructure"] && SplitUnitPanel)
 						{
 							prevStructureX := DestX
-							prevStructureY := DestY
-							DestX := destUnitSplitX
-							DestY := destUnitSplitY + Height * 1.1 ; 1.1 so the tranparent backgrounds of the count and count underconstruction dont overlap 
+							, prevStructureY := DestY
+							, DestX := destUnitSplitX
+							, DestY := destUnitSplitY + Height * 1.1 ; 1.1 so the tranparent backgrounds of the count and count underconstruction dont overlap 
 						} 
 				
 						Gdip_DrawImage(G, pBitmap, DestX, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
@@ -1628,16 +1661,16 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 						{
 							Gdip_SetSmoothingMode(G, 0)
 							;Gdip_FillRectangle(G, a_pBrushes.TransparentBlack, DestX + 5 * UserScale *.5, DestY+Height, Width - 10 * UserScale *.5, Height/15) ; DestY+Height
-							Gdip_FillRectangle(G, a_pBrushes.TransparentBlack, DestX + 5 * UserScale *.5, floor(DestY+Height + 5 * UserScale *.5), Width - 10 * UserScale *.5, Height/16)
-							Gdip_FillRectangle(G, a_pBrushes.Green, DestX + 5 * UserScale *.5, floor(DestY+Height + 5 * UserScale *.5), Width*item.progress - item.progress * 10 * UserScale *.5, Height/16)
-							Gdip_SetSmoothingMode(G, 4)
+							, Gdip_FillRectangle(G, a_pBrushes.TransparentBlack, DestX + 5 * UserScale *.5, floor(DestY+Height + 5 * UserScale *.5), Width - 10 * UserScale *.5, Height/16)
+							, Gdip_FillRectangle(G, a_pBrushes.Green, DestX + 5 * UserScale *.5, floor(DestY+Height + 5 * UserScale *.5), Width*item.progress - item.progress * 10 * UserScale *.5, Height/16)
+							, Gdip_SetSmoothingMode(G, 4)
 						}
 
 						if (!aUnitInfo[unit, "isStructure"] && SplitUnitPanel)
 						{
 							destUnitSplitX += (Width+5*UserScale)
-							DestX := prevStructureX
-							DestY := prevStructureY
+							, DestX := prevStructureX
+							, DestY := prevStructureY
 						}
 						else DestX += (Width+5*UserScale)
 					}
@@ -1654,21 +1687,21 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 			;destUpgradesY := DestY  + Height * 1.1 * (rowMultiplier - 1)
 
 			offset := (SplitUnitPanel ? 2 : 1) * ((unitPanelDrawUnitProgress || unitPanelDrawStructureProgress) ? 5 : 0) * userscale
-			destUpgradesY := DestY  + Height * 1.1 * (rowMultiplier - 1) + offset
-			UpgradeX := firstColumnX
+			, destUpgradesY := DestY  + Height * 1.1 * (rowMultiplier - 1) + offset
+			, UpgradeX := firstColumnX
 
 			for itemName, item in aEnemyCurrentUpgrades[slot_number]
 			{
 				if (pBitmap := a_pBitmap[itemName])
 				{
 					SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
-					Width *= UserScale *.5, Height *= UserScale *.5	
-					Gdip_DrawImage(G, pBitmap, UpgradeX, destUpgradesY, Width, Height, 0, 0, SourceWidth, SourceHeight)					
+					, Width *= UserScale *.5, Height *= UserScale *.5	
+					, Gdip_DrawImage(G, pBitmap, UpgradeX, destUpgradesY, Width, Height, 0, 0, SourceWidth, SourceHeight)					
 
 					if (item.count > 1) ; This is for nukes - think its the only upgrade which can have a count > 1
 					{
 						Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, UpgradeX + .6*Width, destUpgradesY, Width/2.5, Height/2.5, 5)
-						gdip_TextToGraphics(G, item.count, "x"(UpgradeX + .5*Width + .4*Width/2) "y"(destUpgradesY + .15*Height/2)  " Bold Italic cFFFFFFFF r4 s" 11*UserScale, Font)
+						, gdip_TextToGraphics(G, item.count, "x"(UpgradeX + .5*Width + .4*Width/2) "y"(destUpgradesY + .15*Height/2)  " Bold Italic cFFFFFFFF r4 s" 11*UserScale, Font)
 					}
 ;					Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, DestX, destUpgradesY+5+Height, Width, Height/10, 3)
 ;					Gdip_FillRoundedRectangle(G, a_pBrushes.Green, DestX, destUpgradesY+5+Height, Width*progress, Height/10, progress < 3 ? progress : 3)
@@ -1677,9 +1710,9 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 					if unitPanelDrawUpgradeProgress
 					{
 						Gdip_SetSmoothingMode(G, 0)
-						Gdip_FillRectangle(G, a_pBrushes.TransparentBlack, UpgradeX + 5 * UserScale *.5, floor(destUpgradesY+Height), Width - 10 * UserScale *.5, Height/16)
-						Gdip_FillRectangle(G, a_pBrushes.Green, UpgradeX + 5 * UserScale *.5, floor(destUpgradesY+Height), Width*item.progress - item.progress * 10 * UserScale *.5, Height/16)
-						Gdip_SetSmoothingMode(G, 4)
+						, Gdip_FillRectangle(G, a_pBrushes.TransparentBlack, UpgradeX + 5 * UserScale *.5, floor(destUpgradesY+Height), Width - 10 * UserScale *.5, Height/16)
+						, Gdip_FillRectangle(G, a_pBrushes.Green, UpgradeX + 5 * UserScale *.5, floor(destUpgradesY+Height), Width*item.progress - item.progress * 10 * UserScale *.5, Height/16)
+						, Gdip_SetSmoothingMode(G, 4)
 					}
 
 					if aMiscUnitPanelInfo[slot_number, "ChronoUpgrade", itemName] ; its chronoed
@@ -1695,7 +1728,7 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 
 	; 4*height easy way to ensure the last split unit panel or upgrade doesn't get cut off
 	WindowHeight := DestY + 4*Height
-	WindowWidth += width *3 ; because x begins on the left side of where the icon is drawn hence need to add 1 extra icon width to maximum width - actually 1.x something due to the fact that the black count square is past the edge of the picture
+	, WindowWidth += width *3 ; because x begins on the left side of where the icon is drawn hence need to add 1 extra icon width to maximum width - actually 1.x something due to the fact that the black count square is past the edge of the picture
 
 	; If just showing upgrades and no names/race icons (though possible but unlikely when showing all),
 	; window height width could be null as could destY and width. This would cause the updatelayered to fail
@@ -1719,17 +1752,17 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 		WindowHeight := A_ScreenHeight
 
 	Gdip_DeleteGraphics(G) ; .0005ms
-	UpdateLayeredWindow(hwnd1, hdc,,, WindowWidth, WindowHeight, overlayMatchTransparency)
-	SelectObject(hdc, obm) ; All Three of these only take a total of ~ 0.22 ms. So in the end its faster to recreate/delete these than to GDI clear the graphics
-	DeleteObject(hbm)
-	DeleteDC(hdc)
+	, UpdateLayeredWindow(hwnd1, hdc,,, WindowWidth, WindowHeight, overlayMatchTransparency)
+	, SelectObject(hdc, obm) ; All Three of these only take a total of ~ 0.22 ms. So in the end its faster to recreate/delete these than to GDI clear the graphics
+	, DeleteObject(hbm)
+	, DeleteDC(hdc)
 	Return
 }
 
 /* Performance impact of changing DIB size
 	Since the DIB size limits the drawing size and it would be nice to allow
 	a UI to be larger than the screen (in practice this would never be required)
-	Also remeber that you cant update the layered window with a size larger than the DIB size
+	Also remember that you cant update the layered window with a size larger than the DIB size
 	Test:
 		thread, NoTimers, True
 		getEnemyUnitCount(aEnemyUnits, aEnemyUnitConstruction, aEnemyCurrentUpgrades)
@@ -1747,4 +1780,6 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 	when DIB 2*size of screen
 	hbm := CreateDIBSection(A_ScreenWidth, A_ScreenHeight)
 	Results: 1496, 1506, 1481 ms 
+
+	Update: I believe this was due to calling gdi graphicsClear (which isn't required)
 */

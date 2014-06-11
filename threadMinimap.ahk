@@ -32,7 +32,7 @@ GameExe := "SC2.exe"
 #Include <Gdip> 
 #Include <SC2_MemoryAndGeneralFunctions> 
 ; pToken := Gdip_Startup() ; DO NOT get a new token. Not needed and causes crash on exit when calling gdipShutdown()
-Global aUnitID, aUnitName, aUnitSubGroupAlias, aUnitTargetFilter, aHexColours, MatrixColour
+Global aUnitID, aUnitName, aUnitSubGroupAlias, aUnitTargetFilter, aHexColours
 	, aUnitModel,  aPlayer, aLocalPlayer, minimap
 	, a_pBrushes := [], a_pPens := [], a_pBitmap
 
@@ -44,7 +44,7 @@ SetupColourArrays(aHexColours, MatrixColour)
 ; so they are updated when user changes custom colour highlights
 a_pPens := initialisePenColours(aHexColours)
 
-CreatepBitmaps(a_pBitmap, aUnitID)
+CreatepBitmaps(a_pBitmap, aUnitID, MatrixColour)
 global aUnitInfo := []
 readConfigFile(), hasReadConfig := True
 aChangeling := { 	aUnitID["ChangelingZealot"]: True
@@ -57,15 +57,12 @@ return
 
 ; Need this, as sometimes call from main thread to gameChange() fails
 ; also, sometimes the call succeeds, but the timers remain on
-; it's fucking retarded!
+; it's fucking retarded! - Update: Probably due to using an old version of AHK_H. 
 
 gClock:
 if (!time := getTime())
 	gameChange()
 return 
-
-
-
 
 toggleMinimap()
 {
@@ -86,6 +83,8 @@ updateUserSettings()
 	Global hasReadConfig
 	readConfigFile()
 	hasReadConfig := True
+	; don't need to call GameChange if settings are changed during a match
+	; as the main thread will do that.
 }
 
 gameChange(UserSavedAppliedSettings := False)
@@ -102,7 +101,7 @@ gameChange(UserSavedAppliedSettings := False)
 	}
 	if (Time := getTime())
 	{
-		game_status := "game", warpgate_status := "not researched", gateway_count := warpgate_warning_set := 0
+		isWarpGateTechComplete := gateway_count := warpgate_warning_set := 0
 		TimeReadRacesSet := 0
 		; aStringTable and aUnitModel are super global declared in memory and general functions
 		aUnitModel := [] 		
@@ -116,19 +115,23 @@ gameChange(UserSavedAppliedSettings := False)
 		setupMiniMapUnitLists(aMiniMapUnits) ; aMiniMapUnits is super global
 		EnemyBaseList := GetEBases()
 		
-		If (DrawMiniMap || DrawAlerts || DrawSpawningRaces || DrawPlayerCameras || warpgate_warn_on
-		|| alert_array[GameType, "Enabled"])
-			SetTimer, MiniMap_Timer, %MiniMapRefresh%, -7
+		; Lets just always run this routine. It's easier than toggling timer on/off when user changes settings
+		; via hotkey. And although it does create a DIB, it still wouldn't use any CPU while running 
+		; and not drawing.
+		;If (DrawMiniMap || DrawAlerts || DrawSpawningRaces || DrawPlayerCameras || warpgate_warn_on
+		;|| alert_array[GameType, "Enabled"])
+		SetTimer, MiniMap_Timer, %MiniMapRefresh%, -7
+
+		; Resume warning is written inside the doUnitDetection when called via Save
 		if ((ResumeWarnings || UserSavedAppliedSettings) && alert_array[GameType, "Enabled"])  
 			doUnitDetection(0, 0, 0, "Resume")
 		Else
 			doUnitDetection(0, 0, 0, "Reset") ; clear the variables within the function			
 		if (warpgate_warn_on || supplyon || workeron || alert_array[GameType, "Enabled"])
 			settimer, unit_bank_read, %UnitDetectionTimer_ms%, -6
-		if workeron
-			settimer, worker, 1000, -5
-		if supplyon
-			settimer, supply, 200, -5
+		else settimer, unit_bank_read, off
+		settimer, worker, % workeron ? 1000 : "off", -5
+		settimer, supply, % supplyon ? 200 : "off", -5
 		settimer, gClock, 1000, -4
 	}
 	else 
@@ -189,45 +192,37 @@ DrawMiniMap()
 		; Set the width and height we want as our drawing area, to draw everything in. This will be the dimensions of our bitmap
 		; Create a layered window ;E0x20 click thru (+E0x80000 : must be used for UpdateLayeredWindow to work!) that is always on top (+AlwaysOnTop), has no taskbar entry or caption		
 		Gui, MiniMapOverlay: -Caption Hwndhwnd1 +E0x20 +E0x80000 +LastFound +ToolWindow +AlwaysOnTop
-		; Show the window
 		Gui, MiniMapOverlay: Show, NA, %overlayTitle%
-		; Get a handle to this window we have created in order to update it later
-	;	hwnd1 := WinExist()
 	}
 	; Create a gdi bitmap with width and height of what we are going to draw into it. This is the entire drawing area for everything
 	;only draw on left side of the screen - DIB size influences speed considerably
 	; but im too lazy to convert (drawing pos) the code so that DIB with fully screen height isn't required.
+	; Update: DIB size does not influence draw speed. But it does slow down the call to GraphicsClear
+	; but since creating a new dib every time, this call isn't required!
 	hbm := CreateDIBSection(A_ScreenWidth/4, A_ScreenHeight) 
-	; Get a device context compatible with the screen
-	hdc := CreateCompatibleDC()
-	; Select the bitmap into the device context
-	obm := SelectObject(hdc, hbm)
-	; Get a pointer to the graphics of the bitmap, for use with drawing functions
-	G := Gdip_GraphicsFromHDC(hdc) ;needs to be here
-	;DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0)	
-	Region := Gdip_GetClipRegion(G)
-	Gdip_SetClipRect(G, minimap.ScreenLeft, minimap.ScreenTop, minimap.Width, minimap.Height, 0)
+	, hdc := CreateCompatibleDC()
+	, obm := SelectObject(hdc, hbm)
+	, G := Gdip_GraphicsFromHDC(hdc) ;needs to be here
+	;DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0)	;DO NOT USE. Slow and not required
+	, Region := Gdip_GetClipRegion(G)
+	, Gdip_SetClipRect(G, minimap.ScreenLeft, minimap.ScreenTop, minimap.Width, minimap.Height, 0)
 
 	if DrawMiniMap
 	{
-		;setDrawingQuality(G)
 		Gdip_SetSmoothingMode(G, 4)
-
 		A_MiniMapUnits := []
-
  		getEnemyUnitsMiniMap(A_MiniMapUnits)
-
  		if DrawUnitDestinations
  			drawUnitDestinations(G, A_MiniMapUnits)
 		for index, unit in A_MiniMapUnits
 			drawUnitRectangle(G, unit.X, unit.Y, unit.Radius + minimap.AddToRadius, unit.Radius + minimap.AddToRadius)	;draw rectangles first
 		for index, unit in A_MiniMapUnits
 			FillUnitRectangle(G, unit.X, unit.Y,  unit.Radius, unit.Radius, unit.Colour)
-
 	}
+	Gdip_SetInterpolationMode(G, 2)	
 	If (DrawSpawningRaces) && (getTime() - round(TimeReadRacesSet) <= 14) ;round used to change undefined var to 0 for resume so dont display races
 	{	
-		Gdip_SetInterpolationMode(G, 7)				;TimeReadRacesSet gets set to 0 at start of match
+		;TimeReadRacesSet gets set to 0 at start of match
 		loop, parse, EnemyBaseList, |
 		{		
 			type := getUnitType(A_LoopField)
@@ -288,12 +283,11 @@ DrawMiniMap()
 	if DrawPlayerCameras
 		drawPlayerCameras(G)
 	Gdip_DeleteRegion(Region)
-	Gdip_DeleteGraphics(G)
-	UpdateLayeredWindow(hwnd1, hdc, 0, 0, A_ScreenWidth/4, A_ScreenHeight, overlayMinimapTransparency) ;only draw on left side of the screen
-	SelectObject(hdc, obm) ; needed else eats ram ; Select the object back into the hdc
-	DeleteObject(hbm)   ; needed else eats ram 	; Now the bitmap may be deleted
-	DeleteDC(hdc) ; Also the device context related to the bitmap may be deleted
-
+	, Gdip_DeleteGraphics(G)
+	, UpdateLayeredWindow(hwnd1, hdc, 0, 0, A_ScreenWidth/4, A_ScreenHeight, overlayMinimapTransparency) ;only draw on left side of the screen
+	, SelectObject(hdc, obm) ; needed else eats ram ; Select the object back into the hdc
+	, DeleteObject(hbm)   ; needed else eats ram 	; Now the bitmap may be deleted
+	, DeleteDC(hdc) ; Also the device context related to the bitmap may be deleted
 Return
 }
 
@@ -416,10 +410,13 @@ createPens(penSize)
 		a_pPens[Colour] := Gdip_CreatePen(0xcFF hexValue, penSize)
 	return a_pPens
 }
-
+; If hotkey/function called twice (the second call occurs before the timer runs) the second call
+; won't do anything i.e. it wont extend the time that these remain hidden
 temporarilyHideMinimap()
 {
 	Global DrawMiniMap, DrawPlayerCameras, DrawAlerts, DrawSpawningRaces
+	static ReDrawMiniMap, ReDrawPlayerCams, ReDrawAlerts, ReDrawSpawningRaces
+
 	if (DrawMiniMap || DrawPlayerCameras || DrawAlerts || DrawSpawningRaces)
 	{
 		if DrawPlayerCameras
@@ -431,18 +428,19 @@ temporarilyHideMinimap()
 		if DrawMiniMap
 			DrawMiniMap := False, ReDrawMiniMap := True
 		gosub, MiniMap_Timer ; so minimap disappears instantly 
-		Thread, Priority, -2147483648
-		sleep, 2500
-		if ReDrawMiniMap
-			DrawMiniMap := True
-		if ReDrawPlayerCams 
-			DrawPlayerCameras := true
-		if ReDrawAlerts
-			DrawAlerts := True
-		if ReDrawSpawningRaces
-			DrawSpawningRaces := True
-		gosub, MiniMap_Timer
+		SetTimer, __temporarilyHideMinimapResume, -2500
 	}
+	return
+	__temporarilyHideMinimapResume:
+	if ReDrawMiniMap
+		DrawMiniMap := True, ReDrawMiniMap := False
+	if ReDrawPlayerCams 
+		DrawPlayerCameras := true, ReDrawPlayerCams := False
+	if ReDrawAlerts
+		DrawAlerts := True, ReDrawAlerts := False
+	if ReDrawSpawningRaces
+		DrawSpawningRaces := True, ReDrawSpawningRaces := False
+	gosub, MiniMap_Timer
 	return
 }
 
@@ -549,9 +547,9 @@ while (A_Index <= UnitBankCount)
 												, "Owner":  unit_owner})
 				} 
 			}
-			Else if (unit_type = aUnitID["WarpGate"] && warpgate_status <> "researched") ; as unit_type must = warpgate_id
+			Else if (unit_type = aUnitID["WarpGate"] && !isWarpGateTechComplete) ; as unit_type must = warpgate_id
 			{
-				warpgate_status := "researched"
+				isWarpGateTechComplete := True
 			;	settimer warpgate_warn, 1000
 			}
 		}
@@ -581,7 +579,7 @@ return
 ; note: wargate warning only drawn for a set amount of time as the 'time' is only read in once in the unit bank section - so if user has a long follow up delay, that wont be accompanied by a minimap alert
 
 warpgate_warn:
-	if  (warpgate_status != "researched")
+	if  (!isWarpGateTechComplete)
 		return
 	if gateway_count  ; this prvents the minmap warning showing converted gateways until they naturally time out in the drawing section
 		for index, object in aGatewayWarnings
