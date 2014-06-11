@@ -180,6 +180,7 @@ DllCall("RegisterShellHookWindow", UInt, getScriptHandle())
 
 pToken := Gdip_Startup()
 Global aUnitID, aUnitName, aUnitSubGroupAlias, aUnitTargetFilter
+Global aAGHotkeys := []
 SetupUnitIDArray(aUnitID, aUnitName)
 getSubGroupAliasArray(aUnitSubGroupAlias)
 setupTargetFilters(aUnitTargetFilter)
@@ -220,7 +221,6 @@ if A_OSVersion in WIN_8,WIN_7,WIN_VISTA
 #Include <setLowLevelInputHooks>
 #Include <WindowsAPI> 
 #include %A_ScriptDir%\Included Files\Colour Selector.ahk
-;#include %A_ScriptDir%\Included Files\Class_BufferInputFast.AHk ; not used anymore 
 #include %A_ScriptDir%\Included Files\Class_ChangeButtonNames.AHk
 
 
@@ -1338,8 +1338,8 @@ cast_inject:
 	inject_set := getTime()  
 	if auto_inject_alert
 		settimer, auto_inject, 250
-	If GetKeyState(cast_inject_key, "P")
-		KeyWait, %cast_inject_key%, T.25	; have to have this short, as sometimes the script sees this key as down when its NOT and so waits for the entire time for it to be let go - so if a user presses  this key multiple times to inject (as hatches arent ready) some of those presses will be ingnored
+	If GetKeyState(gethotkeySuffix(cast_inject_key), "P")   ; The line below should now be fixed due to changes in hook/AHK source code.
+		KeyWait, % gethotkeySuffix(cast_inject_key), T.3	; have to have this short, as sometimes the script sees this key as down when its NOT and so waits for the entire time for it to be let go - so if a user presses  this key multiple times to inject (as hatches arent ready) some of those presses will be ingnored
 Return
 
 
@@ -2270,6 +2270,7 @@ ini_settings_write:
 		group := A_index -1
 		IniWrite, % AGAddToGroup%group%, %config_file%, %section%, AGAddToGroup%group%
 		IniWrite, % AGSetGroup%group%, %config_file%, %section%, AGSetGroup%group%
+		IniWrite, % AGInvokeGroup%group%, %config_file%, %section%, AGInvokeGroup%group%
 	}		
 
 	;[Advanced Auto Inject Settings]
@@ -2738,16 +2739,16 @@ try
 			Gui, Add, Edit, Readonly yp-2 xs+85 w65 center vInject_spawn_larva, %Inject_spawn_larva%
 				Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#Inject_spawn_larva,  Edit
 
-		;	Gui, Add, Text, X%XTabX% yp+35 w70, Burrow Key:
-		;		Gui, Add, Edit, Readonly yp-2 xs+85 w65 center vHotkeysZergBurrow, %HotkeysZergBurrow%
-		;			Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#HotkeysZergBurrow,  Edit			
+		;	Gui, Add, Text, X%XTabX% yp40, Control Group: %A_space%(Unit Selection Storage)
+		;		Gui, Add, Edit, Readonly y+10 xs+60 w90 center vInject_control_group , %Inject_control_group%
+		;			Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#Inject_control_group,  Edit	
 
-			Gui, Add, Text, X%XTabX% yp40, Control Group: %A_space%(Unit Selection Storage)
-				Gui, Add, Edit, Readonly y+10 xs+60 w90 center vInject_control_group , %Inject_control_group%
-					Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#Inject_control_group,  Edit	
+			Gui, Add, Text, X%XTabX% yp40, Storage Ctrl Group:
+			Gui, Add, DropDownList,  % "x+45 w45 center vInject_control_group Choose" (Inject_control_group = 0 ? 10 : Inject_control_group), 1|2|3|4|5|6||7|8|9|0
+
 
 		;Gui, Add, GroupBox, xs y+40 w200 h160, Advanced Settings
-		Gui, Add, GroupBox, xs y+71 w200 h160, Advanced Settings
+		Gui, Add, GroupBox, xs ys+250 w200 h160, Advanced Settings
 					Gui, Add, Text, xs+20 yp+20 vSG1, Sleep time (ms):`n(Lower is faster)
 						GuiControlGet, XTab2, Pos, SG1 ;XTabX = x loc
 					Gui, Add, Edit, Number Right xs+125 yp-2 w45 vEdit_pos_var 
@@ -2758,13 +2759,13 @@ try
 					Gui, Add, Edit, Number Right xs+125 yp-2 w45 vEdit_Inject_SleepVariance
 						Gui, Add, UpDown,  Range0-100000 vInject_SleepVariance, % (Inject_SleepVariance - 1) * 100  
 
-					Gui, Add, Checkbox, x%XTab2X% y+12 vCanQueenMultiInject checked%CanQueenMultiInject%,
-					Gui, Add, Text, x+0 yp-5, Queen Can Inject`nMultiple Hatcheries ; done as checkbox with 2 lines text is too close to checkbox
+					Gui, Add, Checkbox, x%XTab2X% y+8 vCanQueenMultiInject checked%CanQueenMultiInject%, Queen Can Inject`nMultiple Hatcheries 
+					;Gui, Add, Text, x+0 yp-5, Queen Can Inject`nMultiple Hatcheries ; done as checkbox with 2 lines text is too close to checkbox
 
-					Gui, Add, Checkbox, x%XTab2X% y+12 vInject_RestoreSelection checked%Inject_RestoreSelection%,
-					Gui, Add, Text, x+0 yp, Restore Unit Selection 				
-					Gui, Add, Checkbox, x%XTab2X% y+10 vInject_RestoreScreenLocation checked%Inject_RestoreScreenLocation%,
-					Gui, Add, Text, x+0 yp, Restore Screen Location
+					Gui, Add, Checkbox, x%XTab2X% y+12 vInject_RestoreSelection checked%Inject_RestoreSelection%, Restore Unit Selection 		
+					;Gui, Add, Text, x+0 yp, Restore Unit Selection 				
+					Gui, Add, Checkbox, x%XTab2X% y+10 vInject_RestoreScreenLocation checked%Inject_RestoreScreenLocation%, Restore Screen Location
+					;Gui, Add, Text, x+0 yp, Restore Screen Location
 
 	Gui, Add, GroupBox, w200 h180 ys xs+210 section, Backspace Methods
 			Gui, Add, Text, xs+10 yp+25, Drag Origin:
@@ -2790,11 +2791,8 @@ try
 
 	Gui, Add, GroupBox, xs y+15 w200 h160, MiniMap && Backspace Ctrl Group
 			Gui, Add, Text, xs+10 yp+25, Queen Control Group:
-				if (MI_Queen_Group = 0)
-					droplist_var := 10
-				else 
-					droplist_var := MI_Queen_Group  	; i have a dropdown menu now so user has to put a number, cant use another key as I use this to check the control groups
-				Gui, Add, DropDownList,  x+30 w45 center vMI_Queen_Group Choose%droplist_var%, 1|2|3|4|5|6|7|8|9|0
+			; i have a dropdown menu now so user has to put a number, cant use another key as I use this to check the control groups
+				Gui, Add, DropDownList,  % "x+30 w45 center vMI_Queen_Group Choose" (MI_Queen_Group = 0 ? 10 : MI_Queen_Group), 1|2|3|4|5|6|7||8|9|0
 			;	Gui, Add, Edit, Readonly y+10 xs+60 w90 center vMI_Queen_Group, %MI_Queen_Group%
 			;		Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#MI_Queen_Group,  Edit			
 
@@ -2880,23 +2878,27 @@ try
 			Gui, Font	
 
 
-	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vKeys_TAB, SC2 Keys				
-		Gui, Add, GroupBox, w280 h160, Starcraft Settings && Keys
+	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vKeys_TAB, SC2 Keys|Set/Add Group|Invoke Group
+		Gui, Add, GroupBox, w280 h185, Common Keys:
 			Gui, Add, Text, xp+10 yp+30 w90, Pause Game: 
-				Gui, Add, Edit, Readonly yp-2 x+10 w120  center vpause_game , %pause_game%
-					Gui, Add, Button, yp-2 x+5 gEdit_SendHotkey v#pause_game,  Edit
+			Gui, Add, Edit, Readonly yp-2 x+10 w120  center vpause_game , %pause_game%
+			Gui, Add, Button, yp-2 x+5 gEdit_SendHotkey v#pause_game,  Edit
 
 			Gui, Add, Text, X%XTabX% yp+35 w90, Escape/Cancel:
-				Gui, Add, Edit, Readonly yp-2 x+10 w120  center vescape , %escape%
-					Gui, Add, Button, yp-2 x+5 gEdit_SendHotkey v#escape,  Edit
+			Gui, Add, Edit, Readonly yp-2 x+10 w120  center vescape , %escape%
+			Gui, Add, Button, yp-2 x+5 gEdit_SendHotkey v#escape,  Edit
 
 			Gui, Add, Text, X%XTabX% yp+35 w90, Base Camera:
-				Gui, Add, Edit, Readonly yp-2 x+10 w120  center vbase_camera , %base_camera%
-					Gui, Add, Button, yp-2 x+5 gEdit_SendHotkey v#base_camera,  Edit
+			Gui, Add, Edit, Readonly yp-2 x+10 w120  center vbase_camera , %base_camera%
+			Gui, Add, Button, yp-2 x+5 gEdit_SendHotkey v#base_camera,  Edit
 
 			Gui, Add, Text, X%XTabX% yp+35 w90, Next Subgroup:
-				Gui, Add, Edit, Readonly yp-2 x+10 w120  center vNextSubgroupKey , %NextSubgroupKey%
-					Gui, Add, Button, yp-2 x+5 gEdit_SendHotkey v#NextSubgroupKey,  Edit
+			Gui, Add, Edit, Readonly yp-2 x+10 w120  center vNextSubgroupKey , %NextSubgroupKey%
+			Gui, Add, Button, yp-2 x+5 gEdit_SendHotkey v#NextSubgroupKey,  Edit
+
+			Gui, Add, Text, X%XTabX% yp+35 w90, Select Army:
+			Gui, Add, Edit, Readonly yp-2 x+10 w120 center vSc2SelectArmy_Key , %Sc2SelectArmy_Key%
+			Gui, Add, Button, yp-2 x+5 gEdit_SendHotkey v#Sc2SelectArmy_Key,  Edit					
 
 			gui, font, s10
 			tmpX := XTabX-15
@@ -2904,6 +2906,42 @@ try
 			Gui, Add, Text,  X%tmpX% y+5 +wrap, (either change these settings here or in the SC2 Hotkey options/menu)
 			gui, font, 		
 
+			Gui, Tab, Set/Add Group
+			Gui, Add, GroupBox, x+25 Y+25 w175 h380 section, Add To Control Group Hotkeys
+			loop 10 
+			{
+				group := A_index -1
+				if (A_index = 1)
+					Gui, Add, Text, xs+20 ys+30 w10, %group%
+				else 
+					Gui, Add, Text, xs+20 y+15 w10, %group%
+				Gui, Add, Edit, Readonly yp-2 x+15 w65 center vAGAddToGroup%group%, % AGAddToGroup%group%
+					Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#AGAddToGroup%group%,  Edit
+			}
+
+			Gui, Add, GroupBox, xs+205 Ys w175 h380 section, Set Control Group Hotkeys
+			loop 10 
+			{
+				group := A_index -1
+				if (A_index = 1)
+					Gui, Add, Text, xs+20 ys+30 w10, %group%
+				else 
+					Gui, Add, Text, xs+20 y+15 w10, %group%
+				Gui, Add, Edit, Readonly yp-2 x+15 w65 center vAGSetGroup%group%, % AGSetGroup%group%
+					Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#AGSetGroup%group%,  Edit
+			}
+			Gui, Tab, Invoke Group 
+			Gui, Add, GroupBox, x+25 Y+25 w175 h380 section, Invoke Group
+			loop 10 
+			{
+				group := A_index -1
+				if (A_index = 1)
+					Gui, Add, Text, xs+20 ys+30 w10, %group%
+				else 
+					Gui, Add, Text, xs+20 y+15 w10, %group%
+				Gui, Add, Edit, Readonly yp-2 x+15 w65 center vAGInvokeGroup%group%, % AGInvokeGroup%group%
+					Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#AGInvokeGroup%group%,  Edit
+			}
 
 	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vWarnings_TAB, Supply||Macro|Macro2|Warpgates
 	Gui, Tab, Supply	
@@ -3212,19 +3250,19 @@ try
 		loop, parse, l_GameType, `,
 			BAS_on_%A_LoopField% := alert_array[A_LoopField, "Enabled"]
 		
-		Gui, Add, GroupBox, x+45 y+60 w100 h160 section, Enable Warnings
+		Gui, Add, GroupBox, x+45 y+60 w120 h110 section, Enable Warnings
 			Gui, Add, Checkbox, xp+15 yp+25 vBAS_on_1v1 checked%BAS_on_1v1%, 1v1
-			Gui, Add, Checkbox, y+15 vBAS_on_2v2 checked%BAS_on_2v2%, 2v2
-			Gui, Add, Checkbox, y+15 vBAS_on_3v3 checked%BAS_on_3v3%, 3v3
-			Gui, Add, Checkbox, y+15 vBAS_on_4v4 checked%BAS_on_4v4%, 4v4
-			Gui, Add, Checkbox, y+15 vBAS_on_FFA checked%BAS_on_FFA%, FFA 
+			Gui, Add, Checkbox, x+15 yp vBAS_on_2v2 checked%BAS_on_2v2%, 2v2
+			Gui, Add, Checkbox, xs+15 y+15 vBAS_on_3v3 checked%BAS_on_3v3%, 3v3
+			Gui, Add, Checkbox, x+15 yp vBAS_on_4v4 checked%BAS_on_4v4%, 4v4
+			Gui, Add, Checkbox, xs+15 y+15 vBAS_on_FFA checked%BAS_on_FFA%, FFA 
 		
-		Gui, Add, GroupBox, Xs+120 ys w200 h55, Playback Last Alert			
+		Gui, Add, GroupBox, Xs+140 ys w200 h55, Playback Last Alert			
 			Gui, Add, Text, xp+10 yp+25 w40,Hotkey:
 				Gui, Add, Edit, Readonly yp-2 x+5 w100  center vPlayback_Alert_Key , %Playback_Alert_Key%
 					Gui, Add, Button, yp-2 x+5 gEdit_hotkey v#Playback_Alert_Key,  Edit	
 		Gui, Font, s10
-		Gui, Add, Button, center Xs+120 ys+100 w200 h60 gAlert_List_Editor vAlert_List_Editor, Launch Alert List Editor
+		Gui, Add, Button, center Xs+140 ys+60 w200 h50 gAlert_List_Editor vAlert_List_Editor, Launch Alert List Editor
 		Gui, Font,
 
 	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vBug_TAB, Report Bug
@@ -3257,12 +3295,15 @@ try
 	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vChronoBoost_TAB, Settings||Structures|Structures2
 	Gui, Tab, Settings	
 		Gui, Add, GroupBox, w200 h190 y+20 section, SC2 Keys && Control Groups			
-			Gui, Add, Text, xp+10 yp+25 , Stored Selection Control Group:
-				Gui, Add, Edit, Readonly xp+25 y+10  w100  center vCG_control_group , %CG_control_group%
-					Gui, Add, Button, yp-2 x+5 gEdit_SendHotkey v#CG_control_group,  Edit				
-			Gui, Add, Text, xs+10 yp+35 ,Nexus Control Group:
-				Gui, Add, Edit, Readonly xp+25 y+10  w100  center vCG_nexus_Ctrlgroup_key , %CG_nexus_Ctrlgroup_key%
-					Gui, Add, Button, yp-2 x+5 gEdit_SendHotkey v#CG_nexus_Ctrlgroup_key,  Edit		
+			Gui, Add, Text, xp+10 yp+25 , Storage Ctrl Group:
+			Gui, Add, DropDownList,  % "xs+125 w45 center vCG_control_group Choose" (CG_control_group = 0 ? 10 : (CG_control_group = "Off" ? 11 : CG_control_group)), 1|2|3|4|5|6|7||8|9|0|Off
+				
+			;	Gui, Add, Edit, Readonly xp+25 y+10  w100  center vCG_control_group , %CG_control_group%
+			;		Gui, Add, Button, yp-2 x+5 gEdit_SendHotkey v#CG_control_group,  Edit				
+			Gui, Add, Text, xs+10 yp+35, Nexus Ctrl Group:
+			Gui, Add, DropDownList, xs+125 yp w45 center vCG_nexus_Ctrlgroup_key Choose%CG_nexus_Ctrlgroup_key%, 1|2|3|4||5|6|7|8|9|0
+			;	Gui, Add, Edit, Readonly xp+25 y+10  w100  center vCG_nexus_Ctrlgroup_key , %CG_nexus_Ctrlgroup_key%
+			;		Gui, Add, Button, yp-2 x+5 gEdit_SendHotkey v#CG_nexus_Ctrlgroup_key,  Edit		
 			Gui, Add, Text, xs+10 yp+35 ,Chrono Boost Key:
 				Gui, Add, Edit, Readonly xp+25 y+10  w100  center vchrono_key , %chrono_key%
 					Gui, Add, Button, yp-2 x+5 gEdit_SendHotkey v#chrono_key,  Edit	
@@ -3275,7 +3316,6 @@ try
 			Gui, Add, Text, xs+10 yp+35, Chrono Remainder:`n    (1 = 25 mana)
 			Gui, Add, Edit, Number Right xp+120 yp-2 w45 vTT_CG_chrono_remainder 
 				Gui, Add, UpDown,  Range0-1000 vCG_chrono_remainder, %CG_chrono_remainder%		
-
 
 	Gui, Tab, Structures	
 		Gui, Add, GroupBox, w285 h60 y+20 section, Warpgates && Gateways
@@ -3345,7 +3385,7 @@ try
 				Gui, Add, Edit, Readonly yp-2 x+5 w100  center vCastChrono_FleetBeacon_Key , %CastChrono_FleetBeacon_Key%
 					Gui, Add, Button, yp-2 x+5 gEdit_hotkey v#CastChrono_FleetBeacon_Key,  Edit					
 
-	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vAutoGroup_TAB, Terran||Protoss|Zerg|Delays|Hotkeys|Info	
+	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vAutoGroup_TAB, Terran||Protoss|Zerg|Delays|Info	
 	Short_Race_List := "Terr|Prot|Zerg"
 	loop, parse, Short_Race_List, |
 	{
@@ -3410,40 +3450,13 @@ try
 			
 			Gui, Add, Text, xs+10 y+25 w90, Safety Buffer (ms):
 			Gui, Add, Edit, Number Right x+20 yp-2 w45 vTT_AGBufferDelay 
-			Gui, Add, UpDown,  Range40-290 vAGBufferDelay , %AGBufferDelay%
+			Gui, Add, UpDown,  Range40-200 vAGBufferDelay , %AGBufferDelay%
 
 		Gui, Add, GroupBox, xs+205 ys w175 h155 section, Restrict Grouping
 			Gui, Add, Text, xs+10 ys+35 w90, Safety Buffer (ms):
 			Gui, Add, Edit, Number Right x+20 yp-2 w45 vTT_AGRestrictBufferDelay 
-			Gui, Add, UpDown,  Range40-290 vAGRestrictBufferDelay , %AGRestrictBufferDelay%
+			Gui, Add, UpDown,  Range40-200 vAGRestrictBufferDelay , %AGRestrictBufferDelay%
 			
-	Gui, Tab, HotKeys
-
-	Gui, Add, GroupBox, x+25 Y+25 w175 h380 section, Add To Control Group Hotkeys
-	loop 10 
-	{
-		group := A_index -1
-		if (A_index = 1)
-			Gui, Add, Text, xs+20 ys+30 w10, %group%
-		else 
-			Gui, Add, Text, xs+20 y+15 w10, %group%
-		Gui, Add, Edit, Readonly yp-2 x+15 w65 center vAGAddToGroup%group%, % AGAddToGroup%group%
-			Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#AGAddToGroup%group%,  Edit
-	}
-
-	Gui, Add, GroupBox, xs+205 Ys w175 h380 section, Set Control Group Hotkeys
-	loop 10 
-	{
-		group := A_index -1
-		if (A_index = 1)
-			Gui, Add, Text, xs+20 ys+30 w10, %group%
-		else 
-			Gui, Add, Text, xs+20 y+15 w10, %group%
-		Gui, Add, Edit, Readonly yp-2 x+15 w65 center vAGSetGroup%group%, % AGSetGroup%group%
-			Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#AGSetGroup%group%,  Edit
-	}
-
-
 	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vQuickSelect_TAB, Terran||Protoss|Zerg|Info
 
 	loop, parse, l_Races, `,
@@ -3497,7 +3510,16 @@ try
 		Gui, Font, s10 BOLD
 		Gui, add, text, x+25 y+12 w380, Quick Select 
 		Gui, Font, s10 norm
-		Gui, add, text, xp y+15 w380, This allows you to instantly select any number of (army) unit types with a single hotkey.`n`nIn other words, it is like selecting a predefined control group, but you never have to issue the initial grouping command.`n`nNote:`n`nYou will need to ensure the 'Select Army' hotkey found under 'Misc Automation'->'Select Army' matches your SC2 hotkey. This funtion does not need to be enabled.
+		Gui, add, text, xp y+15 w380, 
+		( LTrim
+			This allows you to instantly select any number of (army) unit types with a single hotkey.
+			In other words, it is like selecting a predefined control group, but you never have to issue the initial grouping command.		
+		)
+		Gui, Font, s10 BOLD
+		Gui, add, text, xp y+25 cRed, Note:
+		Gui, Font, s10 norm
+		Gui, add, text, xp y+10 w380, You will need to ensure the 'Select Army' key found under 'SC2 keys'->'Common' (on the left) matches your SC2 hotkey.
+
 		Gui, Font, s9
 	;	Gui, add, text, xp y+15 w380, Test 
 		;Gui, add, text, xp y+15 w380, Test 
@@ -3600,33 +3622,36 @@ try
 
 	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vMiscAutomation_TAB, Select Army||Spread|Remove Units|Easy Select/Unload
 	Gui, Tab, Select Army
-		Gui, add, GroupBox, y+15 w405 h180
+		Gui, add, GroupBox, y+15 w405 h155, Select Army
 		Gui, Add, Checkbox, Xs yp+25 vSelectArmyEnable Checked%SelectArmyEnable% , Enable Select Army Function		
 		Gui, Add, Text, yp+35, Hotkey:
 		Gui, Add, Edit, Readonly yp-2 xs+85 center w65 vcastSelectArmy_key gedit_hotkey, %castSelectArmy_key%
 		Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#castSelectArmy_key,  Edit ;have to use a trick eg '#' as cant write directly to above edit var, or it will activate its own label!
 
-		Gui, Add, Text, Xs yp+35 w70, Select Army:
-		Gui, Add, Edit, Readonly yp-2 xs+85 w65 center vSc2SelectArmy_Key , %Sc2SelectArmy_Key%
-			Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#Sc2SelectArmy_Key,  Edit
-
 		Gui, Add, Checkbox, Xs yp+35 vSelectArmyControlGroupEnable Checked%SelectArmyControlGroupEnable%, Control group the units
-		Gui, Add, Text, Xs+30 yp+20 w70, Ctrl Group:
+		Gui, Add, Text, Xs yp+20 w70, Ctrl Group:
 		Gui, Add, Edit, Readonly yp-2 xs+85 w65 center vSc2SelectArmyCtrlGroup , %Sc2SelectArmyCtrlGroup%
 			Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#Sc2SelectArmyCtrlGroup,  Edit
-		
+	
 		;Gui, Add, Text, Xs yp+40, Deselect These Units:
-		Gui, add, GroupBox, xs-15 y+40 w405 h205, Deselect These Units
+		Gui, add, GroupBox, xs-15 y+35 w405 h155, Deselect These Units
 		Gui, Add, Checkbox, Xs yp+25 vSelectArmyDeselectXelnaga Checked%SelectArmyDeselectXelnaga%, Xelnaga (tower) units
-		Gui, Add, Checkbox, Xs yp+20 vSelectArmyOnScreen Checked%SelectArmyOnScreen%, Outside of the camera view
+		Gui, Add, Checkbox, xs+200 yp vSelectArmyOnScreen Checked%SelectArmyOnScreen%, Outside of the camera view
 		Gui, Add, Checkbox, Xs yp+20 vSelectArmyDeselectPatrolling Checked%SelectArmyDeselectPatrolling%, Patrolling units
-		Gui, Add, Checkbox, Xs yp+20 vSelectArmyDeselectLoadedTransport Checked%SelectArmyDeselectLoadedTransport%, Loaded transports
+		Gui, Add, Checkbox, xs+200 yp vSelectArmyDeselectFollowing Checked%SelectArmyDeselectFollowing%, On follow command
 		Gui, Add, Checkbox, Xs yp+20 vSelectArmyDeselectQueuedDrops Checked%SelectArmyDeselectQueuedDrops%, Transports queued to drop
-		Gui, Add, Checkbox, Xs yp+20 vSelectArmyDeselectHoldPosition Checked%SelectArmyDeselectHoldPosition%, On hold position
-		Gui, Add, Checkbox, Xs yp+20 vSelectArmyDeselectFollowing Checked%SelectArmyDeselectFollowing%, On follow command
-		Gui, add, text, Xs y+15, Units:
-		Gui, Add, Edit, yp-2 x+10 w300 section  center r1 vl_DeselectArmy, %l_DeselectArmy%
+		Gui, Add, Checkbox, xs+200 yp vSelectArmyDeselectHoldPosition Checked%SelectArmyDeselectHoldPosition%, On hold position
+		Gui, Add, Checkbox, Xs yp+20 vSelectArmyDeselectLoadedTransport Checked%SelectArmyDeselectLoadedTransport%, Loaded transports
+		
+		Gui, add, text, Xs y+20, Units:
+		Gui, Add, Edit, yp-2 x+10 w300 center r1 vl_DeselectArmy, %l_DeselectArmy%
 		Gui, Add, Button, yp-2 x+10 gEdit_AG v#l_DeselectArmy,  Edit
+
+		Gui, Font, s10 BOLD
+		Gui, add, text, xs y+30 cRed, Note:
+		Gui, Font, s10 norm
+		Gui, add, text, xs y+10 w380, You will need to ensure the 'Select Army' key found under 'SC2 keys'->'Common' (on the left) matches your SC2 hotkey.
+		Gui, Font, s9		
 
 	Gui, Tab, Spread
 		Gui, Add, Checkbox, y+25 x+25 vSplitUnitsEnable Checked%SplitUnitsEnable% , Enable Spread Unit Function	
@@ -4265,12 +4290,12 @@ try
 		TT_AGBufferDelay_TT := AGBufferDelay_TT := "When an auto-group action IS attempted user input will be buffered for this period of time, I.E. button presses and mouse movements`nwill be delayed during this period."
 				. "`n`nThis helps ensure the currently selected units are ones which should be grouped."
 				. "`nIf incorrect groupings are occurring, you can try increasing this value."
-				. "`nValid values are: 40-290 ms"
+				. "`nValid values are: 40-200 ms"
 
 		TT_AGRestrictBufferDelay_TT := AGRestrictBufferDelay_TT := "When a 'restrict grouping' action is performed user input will be buffered for this period of time, I.E. button presses and mouse movements`nwill be delayed during this period."
 				. "`n`nThis helps ensure the currently selected units are ones which should be grouped."
 				. "`nIf incorrect groupings are occurring, you can try increasing this value."
-				. "`nValid values are: 40-290 ms"
+				. "`nValid values are: 40-200 ms"
 
 
 		Loop, 10
@@ -4278,6 +4303,7 @@ try
 			group := A_Index - 1
 			AGAddToGroup%group%_TT := #AGAddToGroup%group%_TT := "The SC2 hotkey used to ADD units to control group " group "`n`nThis is usually Shift + " group
 			AGSetGroup%group%_TT := #AGSetGroup%group%_TT := "The SC2 hotkey used to set the current unit selection to control group " group "`n`nThis is usually Control + " group
+			AGInvokeGroup%group%_TT := #AGInvokeGroup%group%_TT := "The SC2 hotkey used to invoke/restore the control group " group "`n`nThis is usually " group
 		}
 
 
@@ -4336,7 +4362,7 @@ try
 		ModifierBeepSelectArmy_TT := "Will play a beep if a modifer key is being held down.`nModifiers include the ctrl, alt, shift and windows keys."
 		castSelectArmy_key_TT := #castSelectArmy_key_TT := "The button used to invoke this function."
 		SelectArmyDeselectXelnaga_TT := "Units controlling the xelnaga watch towers will be removed from the selection group."
-		SelectArmyOnScreen_TT := "When checked, only the units currently on screen will be selected.`n`nThis is new and hasn't been tested much.`nNote: If no units are on screen, then your previously select units will remain selected."
+		SelectArmyOnScreen_TT := "When checked, only the units currently on screen will be selected.`n`nThis is new and hasn't been tested much.`nNote: If no units are on screen, then your previously selected units will remain selected."
 		
 		SelectArmyDeselectPatrolling_TT := "Units with a patrol command queued will be removed from the selection group.`n`nThis is very useful if you dont want to select some units e.g. banes/lings at your base or a drop ship waiting outside a base!`nJust set them to patrol and they will not be selected with your army."
 				. "`n`nNote: Units set to follow a patrolling unit will also me removed."
@@ -7419,8 +7445,8 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 		If (Local QueenCount := getGroupedQueensWhichCanInject(oSelection, ForceInject)) ; this wont fetch burrowed queens!! so dont have to do a check below - as burrowed queens can make cameramove when clicking their hatch
 		{
 			if (ForceInject || Inject_RestoreSelection)
-				input.pSend("^" Inject_control_group), stopWatchCtrlID := stopwatch()
-			input.pSend(MI_Queen_Group)
+				input.pSend(aAGHotkeys.set[Inject_control_group]), stopWatchCtrlID := stopwatch()
+			input.pSend(aAGHotkeys.Invoke[MI_Queen_Group])
 			dsleep(20)
 
 			if ForceInject
@@ -7569,10 +7595,10 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 		If(Local QueenCount := getGroupedQueensWhichCanInject(oSelection))  ; this wont fetch burrowed queens!! so dont have to do a check below - as burrowed queens can make cameramove when clicking their hatch
 		{
 			if Inject_RestoreSelection
-				input.pSend("^" Inject_control_group), stopWatchCtrlID := stopwatch()
+				input.pSend(aAGHotkeys.set[Inject_control_group]), stopWatchCtrlID := stopwatch()
 			if Inject_RestoreScreenLocation
 				input.pSend(BI_create_camera_pos_x)
-			input.pSend(MI_Queen_Group)
+			input.pSend(aAGHotkeys.Invoke[MI_Queen_Group])
 			For Index, CurrentHatch in oHatcheries
 			{
 				Local := FoundQueen := 0
@@ -7620,8 +7646,8 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 		; 	Note: When a queen has inadequate energy for an inject, after pressing the inject larva key nothing will actually happen 
 		;	so the subsequent left click on the hatch will actually select the hatch (as the spell wasn't cast)
 		;	this was what part of the reason queens were somtimes being cancelled
-		if  Inject_RestoreSelection
-			input.pSend("^" Inject_control_group), stopWatchCtrlID := stopwatch()
+		if Inject_RestoreSelection
+			input.pSend(aAGHotkeys.set[Inject_control_group]), stopWatchCtrlID := stopwatch()
 
 		HatchIndex := getBuildingList(aUnitID["Hatchery"], aUnitID["Lair"], aUnitID["Hive"])
 		if Inject_RestoreScreenLocation
@@ -7675,11 +7701,10 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 		elapsedTimeGrouping := stopwatch(stopWatchCtrlID)	
 		if (elapsedTimeGrouping < 20)
 			dSleep(ceil(20 - elapsedTimeGrouping))
-		input.pSend(Inject_control_group)
+		input.pSend(aAGHotkeys.Invoke[Inject_control_group])
 		dsleep(15)
-		;if HighlightedGroup
-		;	sleep(2) ; After restoring a control group, needs at least 1 ms so tabs will register
-		input.pSend(sRepeat(NextSubgroupKey, HighlightedGroup))
+		if HighlightedGroup
+			input.pSend(sRepeat(NextSubgroupKey, HighlightedGroup))
 	}
 }
 
@@ -8059,7 +8084,7 @@ quickSelect(aDeselect)
 */
 
 	if (aDeselect.StoreSelection != "Off")
-		input.pSend("^" aAGHotkeys.Set[aDeselect.StoreSelection])
+		input.pSend(aAGHotkeys.Set[aDeselect.StoreSelection])
 	dsleep(15)
 	input.RevertKeyState()
 	setLowLevelInputHooks(False)

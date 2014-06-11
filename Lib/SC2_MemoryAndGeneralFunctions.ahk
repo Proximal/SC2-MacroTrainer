@@ -3627,8 +3627,10 @@ readConfigFile()
 		group := A_index -1
 		IniRead, AGAddToGroup%group%, %config_file%, %section%, AGAddToGroup%group%, +%group%
 		IniRead, AGSetGroup%group%, %config_file%, %section%, AGSetGroup%group%, ^%group%
+		IniRead, AGInvokeGroup%group%, %config_file%, %section%, AGInvokeGroup%group%, %group%
 		aAGHotkeys["add", group] := AGAddToGroup%group%
 		aAGHotkeys["set", group] := AGSetGroup%group%
+		aAGHotkeys["invoke", group] := AGInvokeGroup%group%
 	}		
 
 
