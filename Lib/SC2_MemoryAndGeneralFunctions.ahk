@@ -3615,7 +3615,6 @@ readConfigFile()
 		}
 
 	}
-	IniRead, AG_Delay, %config_file%, %section%, AG_Delay, 0
 	IniRead, AGBufferDelay, %config_file%, %section%, AGBufferDelay, 50
 	IniRead, AGKeyReleaseDelay, %config_file%, %section%, AGKeyReleaseDelay, 60
 	IniRead, AGRestrictBufferDelay, %config_file%, %section%, AGRestrictBufferDelay, 90

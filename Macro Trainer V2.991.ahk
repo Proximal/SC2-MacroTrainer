@@ -952,7 +952,7 @@ Cast_ChronoStructure:
 
 
 	input.releaseKeys(True) ; don't use postmessage.
-	dsleep(30)
+	sleep, 40
 	if ("" UserPressedHotkey = Cast_ChronoStargate_Key) ; force evaluation as strings otherwise +1 = 1
 		Cast_ChronoStructure(aUnitID.Stargate)
 	Else if ("" UserPressedHotkey = Cast_ChronoForge_Key)
@@ -1069,7 +1069,7 @@ Cast_ChronoStructure(StructureToChrono)
 	MouseGetPos, start_x, start_y
 	HighlightedGroup := getSelectionHighlightedGroup()
 	max_chronod := nexus_chrono_count - CG_chrono_remainder
-	input.pSend("^" CG_control_group CG_nexus_Ctrlgroup_key)
+	input.pSend((CG_control_group != "Off" ? aAGHotkeys.set[CG_control_group] : "") aAGHotkeys.Invoke[CG_nexus_Ctrlgroup_key])
 	timerID := stopwatch()
 	sleep, 30 	; Can use real sleep here as not a silent automation
 	for  index, oject in oStructureToChrono
@@ -1089,10 +1089,14 @@ Cast_ChronoStructure(StructureToChrono)
 	elapsedTimeGrouping := stopwatch(timerID)	
 	if (elapsedTimeGrouping < 20)
 		sleep, % ceil(20 - elapsedTimeGrouping)	
-	input.pSend(CG_control_group)
-	sleep, 30
-	if HighlightedGroup
-		input.pSend(sRepeat(NextSubgroupKey, HighlightedGroup))
+	if (CG_control_group != "Off")
+	{	
+		input.pSend(aAGHotkeys.Invoke[CG_control_group])
+		sleep, 30
+		if HighlightedGroup
+			input.pSend(sRepeat(NextSubgroupKey, HighlightedGroup))
+	}
+	sleep 20
 	Return 
 }
 
@@ -1103,12 +1107,11 @@ return
 
 AutoGroupIdle:
 Auto_Group:
-	AutoGroup(A_AutoGroup, AG_Delay)
+	AutoGroup(A_AutoGroup)
 	Return
 
-AutoGroup(byref A_AutoGroup, AGDelay = 0)
+AutoGroup(byref A_AutoGroup)
 { 	global GameIdentifier, aButtons, AGBufferDelay, AGKeyReleaseDelay, aAGHotkeys
-	static PrevSelectedUnits, SelctedTime
 
 	; needed to ensure the function running again while it is still running
 	;  as can arrive here from AutoGroupIdle or 
@@ -1165,12 +1168,8 @@ AutoGroup(byref A_AutoGroup, AGDelay = 0)
 		}
 
 	}
-	if (CurrentlySelected != PrevSelectedUnits || WrongUnit)
-	{
-		PrevSelectedUnits := CurrentlySelected
-		SelctedTime := A_Tickcount
-	}
-	if (A_Tickcount - SelctedTime >= AGDelay) && oSelection.Count && !WrongUnit && (CtrlType_i = SelectedTypes) && (controlGroup != "") && WinActive(GameIdentifier) && !isGamePaused() ; note <> "" as there is group 0! cant use " controlGroup "
+
+	if (oSelection.Count && !WrongUnit && CtrlType_i = SelectedTypes) && (controlGroup != "") && WinActive(GameIdentifier) && !isGamePaused() ; note <> "" as there is group 0! cant use " controlGroup "
 	;&& !isMenuOpen() && MT_InputIdleTime() >= AGKeyReleaseDelay && !checkAllKeyStates(False, True) && !readModifierState() 
 	&& !isMenuOpen() && A_mtTimeIdle >= AGKeyReleaseDelay 
 	&& !(getkeystate("Shift", "P") && getkeystate("Control", "P") && getkeystate("Alt", "P")
@@ -2259,7 +2258,6 @@ ini_settings_write:
 			i++
 		}
 	}
-	IniWrite, %AG_Delay%, %config_file%, %section%, AG_Delay
 	IniWrite, %AGBufferDelay%, %config_file%, %section%, AGBufferDelay
 	IniWrite, %AGKeyReleaseDelay%, %config_file%, %section%, AGKeyReleaseDelay
 	IniWrite, %AGRestrictBufferDelay%, %config_file%, %section%, AGRestrictBufferDelay
@@ -2805,9 +2803,9 @@ try
 			Gui, Add, Text, X%OriginTabX% y+15 cFF0000, Note:
 			gui, font, norm s11
 			gui, Add, Text, w410 y+15, If a queen has inadequate energy (or is too far from her hatchery), her hatchery will not be injected.
-			gui, Add, Text, w410 y+20, The Minimap && Backspace CtrlGroup methods require queens to be hotkeyd. In other words, hatches without a nearby HOTKEYED queen will not be injected.
+			gui, Add, Text, w410 y+20, The Minimap && Backspace CtrlGroup methods require queens to be hotkeyed. In other words, hatches without a nearby HOTKEYED queen will not be injected.
 			gui, Add, Text, w410 y+20, Both Backspace methods require the camera hotkeys be set.
-			gui, Add, Text, w410 y+20, Auto-Injects will not occur while the modifier keys are pressed.
+			;gui, Add, Text, w410 y+20, Auto-Injects will not occur while the modifier keys are pressed.
 			gui, font, norm s11
 
 			gui, Add, Text, X%OriginTabX% w410 y+15, The Backspace CtrlGroup method is actually the minimap method, but made to look as if the user is pressing 'backspace'.
@@ -2907,7 +2905,7 @@ try
 			gui, font, 		
 
 			Gui, Tab, Set/Add Group
-			Gui, Add, GroupBox, x+25 Y+25 w175 h380 section, Add To Control Group Hotkeys
+			Gui, Add, GroupBox, x+25 Y+25 w175 h380 section, Add To Control Group Keys
 			loop 10 
 			{
 				group := A_index -1
@@ -2919,7 +2917,7 @@ try
 					Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#AGAddToGroup%group%,  Edit
 			}
 
-			Gui, Add, GroupBox, xs+205 Ys w175 h380 section, Set Control Group Hotkeys
+			Gui, Add, GroupBox, xs+205 Ys w175 h380 section, Set Control Group Keys
 			loop 10 
 			{
 				group := A_index -1
@@ -2931,7 +2929,7 @@ try
 					Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#AGSetGroup%group%,  Edit
 			}
 			Gui, Tab, Invoke Group 
-			Gui, Add, GroupBox, x+25 Y+25 w175 h380 section, Invoke Group
+			Gui, Add, GroupBox, x+25 Y+25 w175 h380 section, Invoke Control Group Keys
 			loop 10 
 			{
 				group := A_index -1
@@ -3296,7 +3294,7 @@ try
 	Gui, Tab, Settings	
 		Gui, Add, GroupBox, w200 h190 y+20 section, SC2 Keys && Control Groups			
 			Gui, Add, Text, xp+10 yp+25 , Storage Ctrl Group:
-			Gui, Add, DropDownList,  % "xs+125 w45 center vCG_control_group Choose" (CG_control_group = 0 ? 10 : (CG_control_group = "Off" ? 11 : CG_control_group)), 1|2|3|4|5|6|7||8|9|0|Off
+			Gui, Add, DropDownList,  % "xs+125 yp w45 center vCG_control_group Choose" (CG_control_group = 0 ? 10 : (CG_control_group = "Off" ? 11 : CG_control_group)), 1|2|3|4|5|6|7||8|9|0|Off
 				
 			;	Gui, Add, Edit, Readonly xp+25 y+10  w100  center vCG_control_group , %CG_control_group%
 			;		Gui, Add, Button, yp-2 x+5 gEdit_SendHotkey v#CG_control_group,  Edit				
@@ -3385,7 +3383,7 @@ try
 				Gui, Add, Edit, Readonly yp-2 x+5 w100  center vCastChrono_FleetBeacon_Key , %CastChrono_FleetBeacon_Key%
 					Gui, Add, Button, yp-2 x+5 gEdit_hotkey v#CastChrono_FleetBeacon_Key,  Edit					
 
-	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vAutoGroup_TAB, Terran||Protoss|Zerg|Delays|Info	
+	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vAutoGroup_TAB, Terran|Protoss|Zerg|Delays|Info||Info2	
 	Short_Race_List := "Terr|Prot|Zerg"
 	loop, parse, Short_Race_List, |
 	{
@@ -3422,29 +3420,69 @@ try
 			checked := A_UnitGroupSettings["LimitGroup", Tmp_LongRace, i,"Enabled"]
 			Gui, Add, Checkbox, yp+4 x+20 vLG_%Tmp_LongRace%%i% checked%checked%
 		}	
-	}				
+	}
+
 	Gui, Tab, Info
 		Gui, Font, s10
 		Gui, Font, s10 BOLD
 		Gui, add, text, x+25 y+12 w380,Auto Unit Grouping
 		Gui, Font, s10 norm
-		Gui, add, text, xp y+15 w380,This function will add (shift + control group) selected units to their preselected control groups, providing:`n`n• One of the selected units in not in said control group.`n• All of the selected units 'belong'  in this control group.`n`nUnits are added after all keys/buttons have been released.
+		Gui, add, text, xp y+15 w380,
+		(LTrim
+		This function will add selected units to their predetermined control groups, providing:
+
+		• One of the selected units in not in said control group.
+		• All of the selected units 'belong'  in this control group.
+
+		Units are added after all keys/buttons have been released.
+		)
 		Gui, Font, s10 BOLD
 		Gui, add, text, y+15 w380,Restrict Unit Grouping
 		Gui, Font, s10 norm
-		Gui, add, text, y+15 w380,If units have been specified for a particular control group, when manually control grouping (ctrl+group or shift+group), only these preselected units can be added to that control group.`n`nIf the selection contains a unit which doesn't belong in this group, the grouping command will be ignored.`n`nThis prevents users erroneously adding units to control groups.`n`n Any unit can be added to a blank control group.
+		Gui, add, text, y+15 w380,
+		(LTrim
+		If units have been specified for a particular control group, when manually control grouping (add-to or set group), only these preselected units can be added to that control group.
+
+		If the selection contains a unit which doesn't belong in this group, the grouping command will be ignored.
+
+		This prevents erroneously adding units to a control group.
+
+		Any unit can be added to a blank control group.
+		)
 		Gui, Font, s10 BOLD
-		Gui, add, text, xp y+12 cRED , Note:
+		Gui, add, text, xp y+12 cRED, Note:
 		Gui, Font, s10 norm
 		Gui, add, text, xp+50 yp w340, Auto and Restrict Unit grouping functions are not exclusive, i.e. they can be used together or alone!
-		Gui, Font, s9 norm
-	Gui, Tab, Delays
-		Gui, Add, GroupBox, x+25 Y+25 w175 h155 section, Auto Grouping
-			Gui, Add, Text, xs+10 ys+35 w90, Delay (ms):
-			Gui, Add, Edit, Number Right x+20 yp-2 w45 vTT_AGDelay 
-			Gui, Add, UpDown,  Range0-1500 vAG_Delay, %AG_Delay%
+		Gui, Font, s9 norm	
 
-			Gui, Add, Text, xs+10 y+25 w90, Key Event Delay (ms):
+	Gui, Tab, Info2
+		Gui, Font, s10
+		Gui, Font, s10 BOLD
+		Gui, add, text, x+25 y+12 w380, SC Key Setup
+		Gui, Font, s10 norm
+		Gui, add, text, xp y+15 w380,
+		(LTrim
+		When using Auto-Grouping you must ensure the corresponding group keys listed in "Set Control Group keys" match your SC2 hotkey setup. (under SC2 Keys on the left)
+
+		Restrict unit grouping uses both "Add To Control Group Keys" and "Set Control Group keys". 
+		)
+		Gui, Font, s10 BOLD
+		Gui, add, text, xp y+12 w380, Reliability
+		Gui, Font, s10 norm
+		Gui, add, text, xp y+20 w380, 
+		(LTrim 
+		Due to how SC works, it's impossible for an external program like MacroTrainer to perform auto-groupings with 100`% accuracy.
+
+		This function will work perfectly for some, average for others, or it may be completely unusable.
+
+		Increasing the "Key Event Delay" and the "Safety Buffer" within the delays section should help prevent misgroupings. 
+		(Read their associated tooltips for more information)
+		)
+		Gui, Font, s9 norm
+
+	Gui, Tab, Delays
+		Gui, Add, GroupBox, x+25 Y+25 w175 h120 section, Auto Grouping
+			Gui, Add, Text, xs+10 ys+35 w90, Key Event Delay (ms):
 			Gui, Add, Edit, Number Right x+20 yp-2 w45 vTT_AGKeyReleaseDelay
 			Gui, Add, UpDown,  Range50-700 vAGKeyReleaseDelay , %AGKeyReleaseDelay%
 			
@@ -3452,7 +3490,7 @@ try
 			Gui, Add, Edit, Number Right x+20 yp-2 w45 vTT_AGBufferDelay 
 			Gui, Add, UpDown,  Range40-200 vAGBufferDelay , %AGBufferDelay%
 
-		Gui, Add, GroupBox, xs+205 ys w175 h155 section, Restrict Grouping
+		Gui, Add, GroupBox, xs+205 ys w175 h120 section, Restrict Grouping
 			Gui, Add, Text, xs+10 ys+35 w90, Safety Buffer (ms):
 			Gui, Add, Edit, Number Right x+20 yp-2 w45 vTT_AGRestrictBufferDelay 
 			Gui, Add, UpDown,  Range40-200 vAGRestrictBufferDelay , %AGRestrictBufferDelay%
@@ -3489,7 +3527,7 @@ try
 
 			Gui, Add, DropDownList,  x+15 yp-3 w45 center vQuickSelect%A_LoopField%StoreSelection Choose1, Off||1|2|3|4|5|6|7|8|9|0
 			QuickSelect%A_LoopField%StoreSelection_TT := "Stores the units in this control group."
-													. "`n`nNote: This uses the specified 'set control group' hotkeys as defined in the auto grouping hotkey section."
+													. "`n`nNote: This uses the specified 'set control group' keys as defined in the SC2 Keys section (on the left)."
 
 			Gui, add, GroupBox, xs+200 ys+55 w165 h190, Remove
 			Gui, Add, Checkbox, Xp+10 yp+25  vquickSelect%A_LoopField%DeselectXelnaga Checked%Checked%, Xelnaga (tower) units
@@ -4094,7 +4132,7 @@ try
 		auto_inject_time_TT := TT_auto_inject_time_TT :=  "This is in 'SC2' Seconds."
 		#cast_inject_key_TT := cast_inject_key_TT := "When pressed the program will inject all of your hatcheries.`n`nThis Hotkey is ONLY active while playing as zerg!"
 		Auto_inject_sleep_TT := "Lower this to make the inject round faster, BUT this will make it more obvious that it is being automated!"
-		CanQueenMultiInject_TT := "During minimap injects (and auto-Injects) a queen may attempt to inject multiple hatcheries providing:`nShe is the only nearby queen and she has enough energy.`n`nThis may increase the chance of having queens go walkabouts (especially during an auto inject) - but so far I have not observed this during testing. "
+		CanQueenMultiInject_TT := "During minimap injects (and auto-Injects) a SINGLE queen may attempt to inject multiple hatcheries providing:`nShe is the only nearby queen and she has enough energy.`n`nThis may increase the chance of having queens go walkabouts - but I have never observed this. "
 		Inject_RestoreSelection_TT := "This will store your currently selected units in a control group, which is recalled at the end inject round."
 		Inject_RestoreScreenLocation_TT := "This will save your screen/camera location and restore it at the end of the inject round.`n`n"
 								. "This option only affects the 'backspace' methods."
@@ -4190,9 +4228,12 @@ try
 				. "`nThis can be used to make the automations a little more subtle."
 
 		EnableAutoWorkerTerranStart_TT := EnableAutoWorkerProtossStart_TT := "Enables/Disables this function."
-		AutoWorkerStorage_T_Key_TT := #AutoWorkerStorage_T_Key_TT := AutoWorkerStorage_P_Key_TT := #AutoWorkerStorage_P_Key_TT := "During an automation cycle your selected units will be temporarily stored in this control group.`n`nSpecify a control group that you do NOT use in game."
-
-		#Base_Control_Group_T_Key_TT := Base_Control_Group_T_Key_TT := Base_Control_Group_P_Key_TT := #Base_Control_Group_P_Key_TT := "The control group which contains your command centres/orbitals/planetary-fortresses/nexi.`n`n"
+		AutoWorkerStorage_T_Key_TT := #AutoWorkerStorage_T_Key_TT 
+		:= AutoWorkerStorage_P_Key_TT := #AutoWorkerStorage_P_Key_TT := "During an automation cycle your selected units will be temporarily stored in this control group.`n`nSpecify a control group that you do NOT use in game."
+																	. "`n`nYou must ensure the corresponding ""Set Control Group keys"" and ""Invoke Group Keys"" (under SC2 Keys on the left) matches your SC2 hotkey setup."
+		#Base_Control_Group_T_Key_TT := Base_Control_Group_T_Key_TT 
+		:= Base_Control_Group_P_Key_TT := #Base_Control_Group_P_Key_TT := "The control group which contains your command centres/orbitals/planetary-fortresses/nexi."
+																	. "`n`nYou must ensure the corresponding ""Invoke Group Keys"" (under SC2 Keys on the left) matches your SC2 hotkey setup."
 
 		AutoWorkerMakeWorker_T_Key_TT := #AutoWorkerMakeWorker_T_Key_TT := "The keyboard hotkey used to build an SCV.`nUsually 'S'."
 		AutoWorkerMakeWorker_P_Key_TT := #AutoWorkerMakeWorker_P_Key_TT := "The keyboard hotkey used to build a probe.`nUsually 'E'."
@@ -4207,7 +4248,9 @@ try
 
 		Inject_spawn_larva_TT := #Inject_spawn_larva_TT := "This needs to correspond to your SC2 'spawn larva' button.`n`nThis key is sent during an inject to invoke Zerg's 'spawn larva' ability."
 
-		MI_Queen_Group_TT := #MI_Queen_Group_TT := "The queens in this control are used to inject hatcheries.`n`nHence you must add your injecting queens to this control group!"
+		MI_Queen_Group_TT := #MI_Queen_Group_TT := "The queens in this control are used to inject hatcheries."
+								. "`n`nHence you must add your injecting queens to this control group!"
+								. "`n`nYou must ensure the corresponding ""Invoke Group Keys"" (under SC2 Keys on the left) matches your SC2 hotkey setup."			
 		F_InjectOff_Key_TT := #F_InjectOff_Key_TT := "During a match this hotkey will toggle (either disable or enable) automatic injects."
 
 		SplitUnitPanel_TT := "When enabled, the overlay will display units on separate a line to structures."
@@ -4267,7 +4310,20 @@ try
 				. "If you want instant chronoboosts, a value of 0 ms works reliably for me.`n"
 				. "If 0 ms is not reliable for you, try increasing the sleep time by one or two ms. (it doesn't require much)"
 		CG_chrono_remainder_TT := TT_CG_chrono_remainder_TT := "This is how many full chronoboosts will remain afterwards between all your nexi.`nA setting of 1 will leave 1 full chronoboost (or 25 energy) on one of your nexi."
-		CG_control_group_TT := Inject_control_group_TT := #CG_control_group_TT := #Inject_control_group_TT := "This stores the currently selected units into a temporary control group, so that the current unit selection may be restored after the automated cycle.`nNote: Ensure that this is set to a control group you do not use."
+		 Inject_control_group_TT :=  #Inject_control_group_TT := "This refers to the control group used to store the current unit selection."
+				. "`nThis allows the selected units to be restored after performing the automation."
+				. "`n`nNote: Use a control group which you DO NOT use in game."
+				. "`n`nYou must ensure the corresponding ""Set Control Group keys"" and ""Invoke Group Keys"" (under SC2 Keys on the left) matches your SC2 hotkey setup."
+
+		CG_control_group_TT := #CG_control_group_TT := "This refers to the control group used to store the current unit selection."
+				. "`nThis allows the selected units to be restored after performing the automation."
+				. "`n`n If ""Off"" is selected, the current unit selection will not be saved or restored."
+				. "`n`nNote: Use a control group which you DO NOT use in game."
+				. "`n`nYou must ensure the corresponding ""Set Control Group keys"" and ""Invoke Group Keys"" (under SC2 Keys on the left) matches your SC2 hotkey setup."
+
+		CG_nexus_Ctrlgroup_key_TT := "The control group which contains your nexuses."
+				. "`n`nYou must ensure the corresponding ""Invoke Group Keys"" (under SC2 Keys on the left) matches your SC2 hotkey setup."
+
 		WorkerSplitType_TT := "Defines how many workers are rallied to each mineral patch."
 
 		Auto_inject_sleep_TT := Edit_pos_var_TT := "Sets the amount of time that the program sleeps for during each automation cycle.`nThis has a large effect on the speed, and hence how 'human' the automation appears'.`n`n"
@@ -6529,7 +6585,8 @@ autoWorkerProductionCheck()
 	; lowest 55% completed of a svc before another is made- so 7.65 s remaining on scv build time
 	; 7.65 * 15.3866 = 876.9072 - so rax should have more than 876 hp
 	; obviously this wont work correctly if the rax is being attacked 
-	; Now uses construction % not hp
+	
+	; Update:Now uses construction % not hp
 
 	if (MaxWokersTobeMade && TotalCompletedBasesInCtrlGroup <= 2 && aLocalPlayer["Race"] = "Terran" && !MT_CurrentGame.HasSleptForObital)
 	{
@@ -6769,15 +6826,16 @@ autoWorkerProductionCheck()
 				if (AutoWorkerAlwaysGroup || setControlGroup || oSelection.IndicesString != subStr(L_ControlstorageIndexes, 2))  
 				{
 					setControlGroup := True
-					input.pSend("^" controlstorageGroup)
+					input.pSend(aAGHotkeys.set[controlstorageGroup])
 					stopWatchCtrlID := stopwatch()	
 				}
-				
-				input.pSend(mainControlGroup) ; safer to always send base ctrl group
-				dSleep(10) ; wont have that many units grouped with the buildings so 10ms should be plenty
+				input.pSend(aAGHotkeys.Invoke[mainControlGroup]) ; safer to always send base ctrl group
+				dSleep(10) ; wont have that many units grouped with the buildings so 10ms should be plenty. 
 				numGetSelectionSorted(oSelection)
 			}
-
+			; Some times recently completed CCs aren't removed. 
+			; Perhaps not giving enough time for selection window to fully load so the
+			; deselect clicks are being ignored
 			if removeRecentlyCompletedCC
 			{
 				aDeselect := []
@@ -6789,8 +6847,10 @@ autoWorkerProductionCheck()
 							aDeselect.insert(unit.unitPortrait)
 					}
 				}
+				dSleep(10)
 				reverseArray(aDeselect)
 				clickUnitPortraits(aDeselect)
+				dSleep(5)
 		;		dsleep(2) ; not sure if a sleep here is required
 			}
 
@@ -6851,7 +6911,7 @@ autoWorkerProductionCheck()
 				}
 				else dsleep(15)
 
-				input.pSend(controlstorageGroup)
+				input.pSend(aAGHotkeys.Invoke[controlstorageGroup])
 				dSleep(15)
 				if HighlightedGroup
 					input.pSend(sRepeat(NextSubgroupKey, HighlightedGroup))				
@@ -7971,11 +8031,14 @@ quickSelect(aDeselect)
 		return		
 	}
 
-	if isCastingReticleActive() 	; so can deselect units if attacking reticle was present
-		input.pSend(Escape) 		; is a dsleep() >= 15 is performed after select army key is pressed this is not required - 12isnt enough
+	if isCastingReticleActive() 	; so can deselect units if attacking/drop/rally reticle was present
+		input.pSend(Escape) 		; in ideal conditions a dsleep() >= 15 is performed after select army key is pressed this is not required - 12isnt enough
 									; as SC will have enough time to get rid of the selection reticle itself
+
 	if aDeselect.OnScreen
-	{							
+	{		
+		; If reticle was present, no delay is needed between sending escape and box dragging. 
+		; Tested by lowering CPU speed to 1.6G Hz and running linx with this function 					
 		input.pSend("{click D " 0 " " 0 "}{Click U " A_ScreenWidth " "  A_ScreenHeight "}") ;  A_ScreenHeight-240 "}")
 		dSleep(80) 		
 	}					
