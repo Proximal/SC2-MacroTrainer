@@ -3107,9 +3107,14 @@ try
 				Gui, Add, Edit,  Number Right x+5 yp-2 w55 vTT_delay_warpgate_warn_followup
 					Gui, Add, UpDown, Range1-20000 Vdelay_warpgate_warn_followup, %delay_warpgate_warn_followup%						
 
-			Gui, Add, Text, x+30 ys section w75, Warning:
+			Gui, Add, Text, x+30 ys w75, Warning:
 				Gui, Add, Edit, yp-2 x+10 w110 Vw_warpgate center, %w_warpgate%		
-
+		
+		Gui, Font, s10 BOLD
+		Gui, add, text, xs ys+110 cRED, Note:
+		Gui, Font, s10 norm
+		Gui, add, text, xp+50 yp w340, These warning will become active AFTER you convert your first warpgate.
+		Gui, Font, s9 norm	
 
 	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vMisc_TAB, Misc Abilities
 		Gui, Add, GroupBox, w240 h150 section, Misc Hotkeys
@@ -3660,16 +3665,18 @@ try
 
 	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vMiscAutomation_TAB, Select Army||Spread|Remove Units|Easy Select/Unload
 	Gui, Tab, Select Army
-		Gui, add, GroupBox, y+15 w405 h155, Select Army
+		Gui, add, GroupBox, y+15 w405 h130, Select Army
 		Gui, Add, Checkbox, Xs yp+25 vSelectArmyEnable Checked%SelectArmyEnable% , Enable Select Army Function		
 		Gui, Add, Text, yp+35, Hotkey:
 		Gui, Add, Edit, Readonly yp-2 xs+85 center w65 vcastSelectArmy_key gedit_hotkey, %castSelectArmy_key%
 		Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#castSelectArmy_key,  Edit ;have to use a trick eg '#' as cant write directly to above edit var, or it will activate its own label!
 
-		Gui, Add, Checkbox, Xs yp+35 vSelectArmyControlGroupEnable Checked%SelectArmyControlGroupEnable%, Control group the units
-		Gui, Add, Text, Xs yp+20 w70, Ctrl Group:
-		Gui, Add, Edit, Readonly yp-2 xs+85 w65 center vSc2SelectArmyCtrlGroup , %Sc2SelectArmyCtrlGroup%
-			Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#Sc2SelectArmyCtrlGroup,  Edit
+		;Gui, Add, Checkbox, Xs yp+35 vSelectArmyControlGroupEnable Checked%SelectArmyControlGroupEnable%, Control group the units
+		Gui, Add, Text, Xs yp+35 w70, Ctrl Group:
+		Gui, Add, DropDownList,  % "xs+85 yp w45 Center vSc2SelectArmyCtrlGroup Choose" (Sc2SelectArmyCtrlGroup = 0 ? 10 : (Sc2SelectArmyCtrlGroup = "Off" ? 11 : Sc2SelectArmyCtrlGroup)), 1|2|3|4|5|6|7||8|9|0|Off||
+
+		;Gui, Add, Edit, Readonly yp-2 xs+85 w65 center vSc2SelectArmyCtrlGroup , %Sc2SelectArmyCtrlGroup%
+		;	Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#Sc2SelectArmyCtrlGroup,  Edit
 	
 		;Gui, Add, Text, Xs yp+40, Deselect These Units:
 		Gui, add, GroupBox, xs-15 y+35 w405 h155, Deselect These Units
@@ -3697,8 +3704,8 @@ try
 		Gui, Add, Edit, Readonly yp-2 xs+85 center w65 vcastSplitUnit_key gedit_hotkey, %castSplitUnit_key%
 		Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#castSplitUnit_key,  Edit
 		Gui, Add, Text, Xs yp+35 w70, Ctrl Group Storage:
-		Gui, Add, Edit, Readonly yp xs+85 w65 center vSplitctrlgroupStorage_key , %SplitctrlgroupStorage_key%
-			Gui, Add, Button, yp x+10 gEdit_SendHotkey v#SplitctrlgroupStorage_key,  Edit
+		Gui, Add, DropDownList,  % "xs+85 yp w45 Center vSplitctrlgroupStorage_key Choose" (SplitctrlgroupStorage_key = 0 ? 10 : SplitctrlgroupStorage_key), 1|2|3|4|5|6|7|8|9||0
+
 		Gui, Add, Text, Xs yp+100 w360, This can be used to spread your workers when being attack by hellbats/hellions.`n`nWhen 30`% of the selected units are worksers, the units will be spread over a much larger area
 		Gui, Add, Text, Xs yp+80 w360, Note: When spreading army/attacking units this is designed to spread your units BEFORE the engagement - Dont use it while being attacked!`n`n****This is in a very beta stage and will be improved later***
 
@@ -3715,10 +3722,9 @@ try
 			Gui, Add, Edit, Readonly yp-2 xs+105 center w65 vcastRemoveDamagedUnits_key gedit_hotkey, %castRemoveDamagedUnits_key%
 			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#castRemoveDamagedUnits_key,  Edit	
 			Gui, Add, Text, xs+15 yp+35, Storeage Group:
-			Gui, Add, Edit, Readonly yp-2 xs+105 center w65 vRemoveDamagedUnitsCtrlGroup gedit_hotkey, %RemoveDamagedUnitsCtrlGroup%
-			Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#RemoveDamagedUnitsCtrlGroup,  Edit		
+			Gui, Add, DropDownList,  % "xs+125 yp w45 Center vRemoveDamagedUnitsCtrlGroup Choose" (RemoveDamagedUnitsCtrlGroup = 0 ? 10 : RemoveDamagedUnitsCtrlGroup), 1|2|3|4|5|6|7|8|9||0
 			Gui, Add, Text, xs+15 yp+35, Health Level `%:
-			Gui, Add, Edit, Number Right xs+165 yp-2 w45 vEdit_RemoveDamagedUnitsHealthLevel
+			Gui, Add, Edit, Number Right xs+125 yp-2 w45 vEdit_RemoveDamagedUnitsHealthLevel
 				Gui, Add, UpDown,  Range1-99 vRemoveDamagedUnitsHealthLevel, % Round(RemoveDamagedUnitsHealthLevel * 100) 
 			Gui, Add, Text, Xs+15 yp+35 w360, Units with health/shields lower than the set 'health level' will be removed from selection and moved to the current mouse cursor position.`n`nThis is very helpful when microing units!
 	
@@ -4377,8 +4383,9 @@ try
 		ToggleUnitOverlayKey_TT := #ToggleUnitOverlayKey_TT := "Toggles the unit panel between the following states:"
 							. "`n`n  -Units/structures"
 							. "`n  -Units/structures + Upgrades"
-							. "`n  -Upgrades."
-							. "`n  -Off."
+							. "`n  -Upgrades"
+							. "`n  -Off"
+		ToggleIdentifierKey_TT := #ToggleIdentifierKey_TT := "Cycles the player identifier in the overlay.`n`nI.E. Hidden, names, or icons."
 
 		AdjustOverlayKey_TT := #AdjustOverlayKey_TT := "Used to move and resize the overlays."
 		TT_UserMiniMapXScale_TT := TT_UserMiniMapYScale_TT := UserMiniMapYScale_TT := UserMiniMapXScale_TT := "Adjusts the relative size of units on the minimap."
@@ -4447,15 +4454,20 @@ try
 
 		castRemoveDamagedUnits_key_TT := #castRemoveDamagedUnits_key_TT := castRemoveUnit_key_TT := #castRemoveUnit_key_TT 
 			:= castSplitUnit_key_TT := #castSplitUnit_key_TT := "The hotkey used to invoke this function."
-		SplitctrlgroupStorage_key_TT := #SplitctrlgroupStorage_key_TT := "This ctrl group is used during the function.`nAssign it to a control group you DON'T use!"
+		RemoveDamagedUnitsCtrlGroup_TT := SplitctrlgroupStorage_key_TT := #SplitctrlgroupStorage_key_TT := "This refers to the control group used to store the current unit selection."
+				. "`nThis allows the selected units to be restored after performing the automation."
+				. "`n`nNote: Use a control group which you DO NOT use in game."
+				. "`n`nYou must ensure the corresponding ""Set Control Group keys"" and ""Invoke Group Keys"" (under SC2 Keys on the left) match your SC2 hotkey setup."
+
 		TT_DeselectSleepTime_TT :=  DeselectSleepTime_TT := "Time between deselecting units from the unit panel.`nThis is used by the split and select army, and deselect unit functions"
 
 		Edit_RemoveDamagedUnitsHealthLevel_TT := RemoveDamagedUnitsHealthLevel_TT := "Units with health/shields lower than this percent will be removed from selection`n"
 										. "and moved to the current mouse cursor position."
-		RemoveDamagedUnitsCtrlGroup_TT := #RemoveDamagedUnitsCtrlGroup_TT := "The selected units are stored in this control group during the function."
-																	. "`n`nSet this to a control group you DO NOT use."
 
 		#Sc2SelectArmyCtrlGroup_TT := Sc2SelectArmyCtrlGroup_TT := "The control Group (key) in which to store the army.`nE.G. 1,2,3-0"
+															. "`n`nSelect 'Off' to disable grouping."
+															. "`n`nYou must ensure the corresponding ""Set Control Group keys"" match your SC2 hotkey setup."
+
 		l_DeselectArmy_TT := #l_DeselectArmy_TT := "These unit types will be deselected."
 		EasyUnloadHotkey_TT := #EasyUnloadHotkey_TT := "This hotkey performs two function depending on if it is double tapped or held down."
 													. "`n`nDouble tap this key to select any loaded transports visible on the screen."
@@ -7938,8 +7950,8 @@ selectArmy()
 									, SelectArmyDeselectQueuedDrops, l_ActiveDeselectArmy, SelectArmyOnScreen)
 	clickUnitPortraits(aUnitPortraitLocations)
 	dSleep(15)
-	if SelectArmyControlGroupEnable
-		input.pSend("^" Sc2SelectArmyCtrlGroup)
+	if (Sc2SelectArmyCtrlGroup != "Off")
+		input.pSend(aAGHotkeys.set[Sc2SelectArmyCtrlGroup])
 	dSleep(15)
 	if (timerArmyID && stopwatch(timerArmyID) > 35) ; remove the timer and if took long time to select units sleep for longer
 		dSleep(15) 									; as every now and again all units can get grouped with previous button press
@@ -8803,7 +8815,7 @@ SplitUnits(SplitctrlgroupStorage_key)
 ;	sleep, % SleepSplitUnits
 	
 	HighlightedGroup := getSelectionHighlightedGroup()
-	input.pSend("^" SplitctrlgroupStorage_key)
+	input.pSend(aAGHotkeys.set[SplitctrlgroupStorage_key])
 	timerID := stopwatch()
 
 	aSelectedUnits := []
@@ -8911,9 +8923,10 @@ SplitUnits(SplitctrlgroupStorage_key)
 	if (elapsedTimeGrouping < 20)
 		dSleep(ceil(20 - elapsedTimeGrouping))
 
-	sendSequence := SplitctrlgroupStorage_key
-	input.pSend(SplitctrlgroupStorage_key sRepeat(NextSubgroupKey, HighlightedGroup))
+	input.pSend(aAGHotkeys.Invoke[SplitctrlgroupStorage_key])
 	dsleep(15)
+	if HighlightedGroup
+		input.pSend(sRepeat(NextSubgroupKey, HighlightedGroup))
 	return
 }
 
@@ -10514,10 +10527,10 @@ removeDamagedUnit()
 			input.pSend(Escape) 		; is a dsleep() >= 15 is performed after select army key is pressed this is not required - 12isnt enough
 										; as SC will have enough time to get rid of the selection reticle itself		
 		timerRemove := stopwatch()
-		input.pSend("^" RemoveDamagedUnitsCtrlGroup)
+		input.pSend(aAGHotkeys.set[RemoveDamagedUnitsCtrlGroup])
 		clickUnitPortraits(highHP) 	; remove high HP units
 		input.pSend("{Click Right}")
-		input.pSend(RemoveDamagedUnitsCtrlGroup) 	; restore initial selection
+		input.pSend(aAGHotkeys.Invoke[RemoveDamagedUnitsCtrlGroup]) 	; restore initial selection
 		while (getSelectionCount() != count && stopwatch(timerRemove, False) < 50 && A_Index < 60)
 			dsleep(1)
 		dSleep(15)
