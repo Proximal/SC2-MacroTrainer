@@ -1760,6 +1760,18 @@ g_HideMiniMap:
 aThreads.MiniMap.ahkPostFunction("temporarilyHideMinimap")
 return
 
+gEasyUnloadDescription:
+msgbox,, Easy Unload/Select,
+		(LTrim 
+		This hotkey performs two functions depending on if it is double tapped or held down.
+
+		Double tap this key to select any loaded transports visible on the screen.
+		(Ensure the mouse is not hovering above a medivac)
+
+		Hold this button and wave the mouse over the loaded transports to begin unloading them.
+		)
+return 
+
 gYoutubeEasyUnload:
 	run http://youtu.be/D11tsrjPUTU
 	return
@@ -3729,7 +3741,7 @@ try
 			Gui, Add, Text, Xs+15 yp+35 w360, Units with health/shields lower than the set 'health level' will be removed from selection and moved to the current mouse cursor position.`n`nThis is very helpful when microing units!
 	
 	Gui, Tab, Easy Select/Unload
-		Gui, Add, GroupBox, x+95 y+30 w95 h100 section, Enable
+		Gui, Add, GroupBox, x+95 y+20 w95 h100 section, Enable
 			Gui, Add, Checkbox, xp+10 yp+25 vEasyUnloadTerranEnable Checked%EasyUnloadTerranEnable%, Terran	
 			Gui, Add, Checkbox, xp y+10 vEasyUnloadProtossEnable Checked%EasyUnloadProtossEnable%, Protoss	
 			Gui, Add, Checkbox, xp y+10 vEasyUnloadZergEnable Checked%EasyUnloadZergEnable%, Zerg
@@ -3765,7 +3777,8 @@ try
 				Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#EasyUnload_Z_Key,  Edit
 		Gui, Add, GroupBox, xs y+25 w205 h60, How-To Guide
 			Gui, Font, s11     
-			Gui, Add, Button, xp+80 yp+25 w50 h25 ggYoutubeEasyUnload, Help
+			Gui, Add, Button, xp+30 yp+25 w50 h25 ggYoutubeEasyUnload, Video
+			Gui, Add, Button, x+45 yp w50 h25 ggEasyUnloadDescription, About
 			Gui, Font,
 
 /*
@@ -4232,14 +4245,15 @@ try
 		TT_AutoWorkerAPMProtection_TT := AutoWorkerAPMProtection_TT
 		:= TT_FInjectAPMProtection_TT := FInjectAPMProtection_TT := "Automations will be delayed while your instantaneous APM is greater than this value.`n"
 				. "`nThis can be used to make the automations a little more subtle."
+				. "`n`nAlthough this shouldn't occur, if you are experiencing misgroupings or altered rally points lowering this value may help."
 
 		EnableAutoWorkerTerranStart_TT := EnableAutoWorkerProtossStart_TT := "Enables/Disables this function."
 		AutoWorkerStorage_T_Key_TT := #AutoWorkerStorage_T_Key_TT 
 		:= AutoWorkerStorage_P_Key_TT := #AutoWorkerStorage_P_Key_TT := "During an automation cycle your selected units will be temporarily stored in this control group.`n`nSpecify a control group that you do NOT use in game."
-																	. "`n`nYou must ensure the corresponding ""Set Control Group keys"" and ""Invoke Group Keys"" (under SC2 Keys on the left) matches your SC2 hotkey setup."
+																	. "`n`nYou must ensure the corresponding ""Set Control Group keys"" and ""Invoke Group Keys"" (under SC2 Keys on the left) match your SC2 hotkey setup."
 		#Base_Control_Group_T_Key_TT := Base_Control_Group_T_Key_TT 
 		:= Base_Control_Group_P_Key_TT := #Base_Control_Group_P_Key_TT := "The control group which contains your command centres/orbitals/planetary-fortresses/nexi."
-																	. "`n`nYou must ensure the corresponding ""Invoke Group Keys"" (under SC2 Keys on the left) matches your SC2 hotkey setup."
+																	. "`n`nYou must ensure the corresponding ""Invoke Group Keys"" (under SC2 Keys on the left) match your SC2 hotkey setup."
 
 		AutoWorkerMakeWorker_T_Key_TT := #AutoWorkerMakeWorker_T_Key_TT := "The keyboard hotkey used to build an SCV.`nUsually 'S'."
 		AutoWorkerMakeWorker_P_Key_TT := #AutoWorkerMakeWorker_P_Key_TT := "The keyboard hotkey used to build a probe.`nUsually 'E'."
@@ -4256,7 +4270,7 @@ try
 
 		MI_Queen_Group_TT := #MI_Queen_Group_TT := "The queens in this control are used to inject hatcheries."
 								. "`n`nHence you must add your injecting queens to this control group!"
-								. "`n`nYou must ensure the corresponding ""Invoke Group Keys"" (under SC2 Keys on the left) matches your SC2 hotkey setup."			
+								. "`n`nYou must ensure the corresponding ""Invoke Group Keys"" (under SC2 Keys on the left) match your SC2 hotkey setup."			
 		F_InjectOff_Key_TT := #F_InjectOff_Key_TT := "During a match this hotkey will toggle (either disable or enable) automatic injects."
 
 		SplitUnitPanel_TT := "When enabled, the overlay will display units on separate a line to structures."
@@ -4319,16 +4333,16 @@ try
 		 Inject_control_group_TT :=  #Inject_control_group_TT := "This refers to the control group used to store the current unit selection."
 				. "`nThis allows the selected units to be restored after performing the automation."
 				. "`n`nNote: Use a control group which you DO NOT use in game."
-				. "`n`nYou must ensure the corresponding ""Set Control Group keys"" and ""Invoke Group Keys"" (under SC2 Keys on the left) matches your SC2 hotkey setup."
+				. "`n`nYou must ensure the corresponding ""Set Control Group keys"" and ""Invoke Group Keys"" (under SC2 Keys on the left) match your SC2 hotkey setup."
 
 		CG_control_group_TT := #CG_control_group_TT := "This refers to the control group used to store the current unit selection."
 				. "`nThis allows the selected units to be restored after performing the automation."
 				. "`n`n If ""Off"" is selected, the current unit selection will not be saved or restored."
 				. "`n`nNote: Use a control group which you DO NOT use in game."
-				. "`n`nYou must ensure the corresponding ""Set Control Group keys"" and ""Invoke Group Keys"" (under SC2 Keys on the left) matches your SC2 hotkey setup."
+				. "`n`nYou must ensure the corresponding ""Set Control Group keys"" and ""Invoke Group Keys"" (under SC2 Keys on the left) match your SC2 hotkey setup."
 
 		CG_nexus_Ctrlgroup_key_TT := "The control group which contains your nexuses."
-				. "`n`nYou must ensure the corresponding ""Invoke Group Keys"" (under SC2 Keys on the left) matches your SC2 hotkey setup."
+				. "`n`nYou must ensure the corresponding ""Invoke Group Keys"" (under SC2 Keys on the left) match your SC2 hotkey setup."
 
 		WorkerSplitType_TT := "Defines how many workers are rallied to each mineral patch."
 
@@ -4365,7 +4379,7 @@ try
 			group := A_Index - 1
 			AGAddToGroup%group%_TT := #AGAddToGroup%group%_TT := "The SC2 hotkey used to ADD units to control group " group "`n`nThis is usually Shift + " group
 			AGSetGroup%group%_TT := #AGSetGroup%group%_TT := "The SC2 hotkey used to set the current unit selection to control group " group "`n`nThis is usually Control + " group
-			AGInvokeGroup%group%_TT := #AGInvokeGroup%group%_TT := "The SC2 hotkey used to invoke/restore the control group " group "`n`nThis is usually " group
+			AGInvokeGroup%group%_TT := #AGInvokeGroup%group%_TT := "The SC2 hotkey used to invoke/restore control group " group "`n`nThis is usually " group
 		}
 
 
@@ -4469,10 +4483,11 @@ try
 															. "`n`nYou must ensure the corresponding ""Set Control Group keys"" match your SC2 hotkey setup."
 
 		l_DeselectArmy_TT := #l_DeselectArmy_TT := "These unit types will be deselected."
-		EasyUnloadHotkey_TT := #EasyUnloadHotkey_TT := "This hotkey performs two function depending on if it is double tapped or held down."
+		EasyUnloadHotkey_TT := #EasyUnloadHotkey_TT := "This hotkey performs two functions depending on if it is double tapped or held down."
 													. "`n`nDouble tap this key to select any loaded transports visible on the screen."
 													. "`n`n Hold this button and wave the mouse over the loaded transports to begin unloading them."
-		EasyUnloadStorageKey_TT := "The selected/unloaded transports will be stored in this control group"											
+		EasyUnloadStorageKey_TT := "The selected/unloaded transports will be stored in this control group."		
+							. "`n`nYou must ensure the corresponding ""Set Control Group keys"", ""Add to Control Group Keys"",`nand ""Invoke Group Keys"" (under SC2 Keys on the left) match your SC2 hotkey setup."									
 
 		F_Inject_ModifierBeep_TT := "If the modifier keys (Shift, Ctrl, or Alt) or Windows Keys are held down when an Inject is attempted, a beep will heard.`nRegardless of this setting, the inject round will not begin until after these keys have been released."
 		BlockingStandard_TT := BlockingFunctional_TT := BlockingNumpad_TT := BlockingMouseKeys_TT := BlockingMultimedia_TT := BlockingMultimedia_TT := BlockingModifier_TT := "During certain automations these keys will be buffered or blocked to prevent interruption to the automation and your game play."
@@ -9125,22 +9140,19 @@ gethotkeySuffix(hotkey, containsPrefix := "", containsWildCard := "")
 	return FinalKey
 }
 
-gEasyUnloadQueued:
+gEasyUnloadQueued: ; This label has been disabled
 gEasyUnload:
 thread, NoTimers, true
-;thisEasyUnloadHotkey := A_ThisHotkey ; as will change if thread interrupted
-;unloadKeySuffix := ahkHotkeyFix(thisEasyUnloadHotkey, True)
-castEasyUnload(A_ThisHotkey, A_ThisLabel = "gEasyUnloadQueued")
-;ahkHotkeyFix(unloadKeySuffix, False)
+castEasyUnload(A_ThisHotkey)
 return
 
 ; If user double taps the immediate unload hotkey, all locally owned loaded transports
 ; will be selected
 
 
-castEasyUnload(hotkey, queueUnload)
+castEasyUnload(hotkey)
 {	
-	global EasyUnload_T_Key, EasyUnload_P_Key, EasyUnload_Z_Key, EasyUnloadStorageKey
+	global EasyUnload_T_Key, EasyUnload_P_Key, EasyUnload_Z_Key, EasyUnloadStorageKey, Escape
 	static tickCount := 0
 
 	if aLocalPlayer.Race = "Terran"
@@ -9151,46 +9163,39 @@ castEasyUnload(hotkey, queueUnload)
 		unloadAll_Key := EasyUnload_Z_Key
 	else return
 
-
-	
 	; In case the user has modifiers in the hotkey
 	; Ahk doesn't seem to be blocking these from interfering with SC2
 	; should really send these with Input, but that will cause issues
 	; and when the user releases the keys, windows outside of sc2 should register this as im not blocking input
 	; or using critical 
 
-;	if (upSequence := getModifierUpSequenceFromString(hotkey))
-;		Input.psend(upSequence)
 	hotkey := gethotkeySuffix(hotkey)
-
-	if !queueUnload
+	if (A_TickCount - tickCount < 250)
 	{
-		if (A_TickCount - tickCount < 250)
-		{
-			tickCount := A_TickCount
-			castEasySelectLoadedTransport()
-		;	if upSequence
-		;		Input.psend(getModifierDownSequenceFromKeyboard())			
-			return
-		}
-		sleepTick := tickCount := A_TickCount
-		loop
-		{
-			if !GetKeyState(hotkey, "P")
-				return 
-			sleep 5
-		} until (A_TickCount - sleepTick >= 50) ; key press duration
+		tickCount := A_TickCount
+		castEasySelectLoadedTransport()		
+		return
 	}
+	sleepTick := tickCount := A_TickCount
+	loop
+	{
+		if !GetKeyState(hotkey, "P")
+			return 
+		sleep 5
+	} until (A_TickCount - sleepTick >= 50) ; key press duration
+	
+	setGroup := aAGHotkeys.set[EasyUnloadStorageKey]
+	addGroup := aAGHotkeys.Add[EasyUnloadStorageKey]
+	invokeGroup := aAGHotkeys.Invoke[EasyUnloadStorageKey]
+	ctrlGroup := EasyUnloadStorageKey
 
 	input.pReleaseKeys()
+	if isCastingReticleActive() 	
+		input.pSend(Escape) 	
 	lClickedUnits := ""
 	aDroppTick := []
 	while GetKeyState(hotkey, "P")
 	{
-
-	;	ToolTip, % "hotkey: " GetKeyState(hotkey)
-
-
 		If ((unitIndex := getCursorUnit()) >= 0)
 		{
 			if (isUnitLocallyOwned(unitIndex)  
@@ -9198,36 +9203,29 @@ castEasyUnload(hotkey, queueUnload)
 			|| type = aUnitID.WarpPrism || type = aUnitID.WarpPrismPhasing || type = aUnitID.overlord))
 			{
 				hasCargo := getCargoCount(unitIndex, isUnloading)
-				if (!queueUnload && hasCargo && !isUnloading) || (queueUnload && hasCargo && !isTransportDropQueued(unitIndex))
+				if (hasCargo && !isUnloading)
 				{
 					; it takes a while before the isUnloading changes in real games on bnet
 					; ie command delay. So check tick count so dont spam it
 					; with 250ms on NA server from Aus i still get two beeps (which is ok) - dont want to take too long
 					; in case SC ignored the first command e.g. the click missed the medivac
-
-				;	if (!aDroppTick.hasKey(unitIndex) || A_TickCount - aDroppTick[unitIndex] >= 250)
+					if !setCtrlGroup
+						input.pSend("{click}" setGroup unloadAll_Key "{click}", False)
+					else
+						 input.pSend("{click}" addGroup unloadAll_Key "{click}", False)
+					setCtrlGroup := True
+					
+					if unitIndex not in %lClickedUnits%
 					{
-					;	aDroppTick[unitIndex] := A_TickCount
-						if !setCtrlGroup
-							queueUnload ? input.pSend("{click}^" EasyUnloadStorageKey "{Shift Down}" unloadAll_Key "{click}{Shift Up}", False)
-										: input.pSend("{click}^" EasyUnloadStorageKey unloadAll_Key "{click}", False)
-						else
-							queueUnload ? input.pSend("{click}{Shift Down}" EasyUnloadStorageKey unloadAll_Key "{click}{Shift Up}", False)
-										: input.pSend("{click}+" EasyUnloadStorageKey unloadAll_Key "{click}", False)
-						setCtrlGroup := True
-						
-						if unitIndex not in %lClickedUnits%
-						{
-							lClickedUnits .= unitIndex ","
-							soundplay, %A_Temp%\gentleBeep.wav
-						}
+						lClickedUnits .= unitIndex ","
+						soundplay, %A_Temp%\gentleBeep.wav
 					}
 				}
-				else if !isInControlGroup(EasyUnloadStorageKey, unitIndex)
+				else if !isInControlGroup(ctrlGroup, unitIndex)
 				{
 					if !setCtrlGroup
-						input.pSend("{click}^" EasyUnloadStorageKey, False)
-					else input.pSend("{click}+" EasyUnloadStorageKey, False)
+						input.pSend("{click}" setGroup, False)
+					else input.pSend("{click}" addGroup, False)
 					setCtrlGroup := True
 					if unitIndex not in %lClickedUnits%
 					{
@@ -9254,7 +9252,7 @@ castEasyUnload(hotkey, queueUnload)
 		sleep 5 ; if 0 or -1, game will lag then hundreds of clicks will appear in screen
 	}
 	if setCtrlGroup
-		input.pSend(EasyUnloadStorageKey, False)
+		input.pSend(invokeGroup, False)
 	; to restore the modifier keys if the user is still holding them down
 	; e.g. is they want to shift click somewhere without first releasing the shift key
 	; disabled to prevent stuck modifers in in certain situations 
