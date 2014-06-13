@@ -2178,7 +2178,7 @@ ini_settings_write:
 	IniWrite, %pause_game%, %config_file%, Starcraft Settings & Keys, pause_game
 	IniWrite, %base_camera%, %config_file%, Starcraft Settings & Keys, base_camera
 	IniWrite, %NextSubgroupKey%, %config_file%, Starcraft Settings & Keys, NextSubgroupKey
-	IniWrite, %escape%, %config_file%, Starcraft Settings & Keys, {escape}
+	IniWrite, %escape%, %config_file%, Starcraft Settings & Keys, escape
 	
 	; [MiniMap Inject]
 	section := "MiniMap Inject"
@@ -4177,6 +4177,7 @@ try
 		inject_reset_key_TT := "The hotkey used to reset (or start) the timer."
 		Alert_List_Editor_TT := "Use this to edit and create alerts for any SC2 unit or building."
 		#base_camera_TT := base_camera_TT := "The key used to cycle between hatcheries/bases."
+		escape_TT := #escape_TT := "The key which cancels the current action.`nUsually 'escape'."
 		#NextSubgroupKey_TT := NextSubgroupKey_TT := "The key used to cycle forward though a selection group."
 		#control_group_TT := control_group_TT := "Set this to a control group you DON'T use - It stores your unit selection during an inject round."
 		create_camera_pos_x_TT := #create_camera_pos_x_TT := "The hotkey used to 'save' a camera location. - Ensure this isn't one you use."
@@ -4213,8 +4214,10 @@ try
 		loop, 7
 		{
 			UnitHighlightList%A_index%_TT := #UnitHighlightList%A_index%_TT
-			:= "Units of this type will be drawn using the specified colour"
+			:= "Units of this type will be drawn using the specified colour."
+			. "`n`nTo disable this feature, simply remove the units listed in this field."
 		 	#UnitHighlightList%A_Index%Colour_TT := "Click Me!`n`nUnits of this type will appear this colour."
+		 									. "`n`nTo disable this feature, simply remove the units listed in the above field."
 		}
 
 		DrawAPMOverlay_TT := "This enables/disables the overlay."
@@ -5321,28 +5324,24 @@ sapiMenuVolumeTester(message)
 }
 
 Edit_SendHotkey:
-	if (SubStr(A_GuiControl, 1, 1) = "#") ;this is a method to prevent launching 
+	if (SubStr(A_GuiControl, 1, 1) = "#") ;this is a method to prevent launching. Edit: launching when what else happens ????? these var names are stupid. 
 	{
-		hotkey_name := SubStr(A_GuiControl, 2)	;this label (and sendgui) for a 2nd time 
-		hotkey_var := SendGUI("Options",%hotkey_name%,,,"Select Key:   " hotkey_name) ;the hotkey
+		hotkey_name := SubStr(A_GuiControl, 2)	;This will contain the name of the hotkey variable
+		GuiControlGet, currentKey,, %hotkey_name%
+		hotkey_var := SendGUI("Options", currentKey,,,"Select Key:   " hotkey_name) ;the hotkey
 		if (hotkey_var <> "")
 			GUIControl,, %hotkey_name%, %hotkey_var%
 	}
 Return
 
+;		Example of how to disable modifiers
+;		hotkey_var := HotkeyGUI("Options",%hotkey_name%, 2+4+8+16+32+64+128+256+512+1024, "Select Hotkey:   " hotkey_name) 	
+
 edit_hotkey:
 	if (SubStr(A_GuiControl, 1, 1) = "#") ;this is a method to prevent launching 
 	{
 		hotkey_name := SubStr(A_GuiControl, 2)	;this label (and hotkeygui) for a 2nd time 
-		;if (hotkey_name = "AdjustOverlayKey")		
-		;	hotkey_var := HotkeyGUI("Options",%hotkey_name%,2046, "Select Hotkey:   " hotkey_name)  ;as due to toggle keywait cant use modifiers
-;		else if (hotkey_name = "castSelectArmy_key") ;disable the modifiers
-;			hotkey_var := HotkeyGUI("Options",%hotkey_name%, 2+4+8+16+32+64+128+256+512+1024, "Select Hotkey:   " hotkey_name) ;the hotkey		
-		if (hotkey_name = "Key_EmergencyRestart")  
-			; Force at least one Right side modifiers and force the wildcard option (disable and check)
-			; this is done as if have stuck modifier then this could prevent the hotkey firing.
-			hotkey_var := HotkeyGUI("Options",%hotkey_name%, 1, "Select Hotkey:   " hotkey_name, 0, 0, 10, 14) ;the hotkey
-		else if instr(hotkey_name, "quickSelect")
+		if instr(hotkey_name, "quickSelect")
 		{
 			if instr(hotkey_name, "Terran")
 				race := "Terran"
@@ -5353,8 +5352,16 @@ edit_hotkey:
 			GuiControlGet, hotkey, , quickSelect%Race%_Key
 			hotkey_var := HotkeyGUI("Options", hotkey,, "Select Hotkey:   " hotkey_name) ;the hotkey
 		}
-		Else 
-			hotkey_var := HotkeyGUI("Options",%hotkey_name%,, "Select Hotkey:   " hotkey_name) ;the hotkey
+		else 
+		{
+			GuiControlGet, currentKey,, %hotkey_name%
+			; Force at least one Right side modifiers and force the wildcard option (disable and check)
+			; this is done as if have stuck modifier then this could prevent the hotkey firing.
+			if (hotkey_name = "Key_EmergencyRestart")  
+				hotkey_var := HotkeyGUI("Options", currentKey, 1, "Select Hotkey:   " hotkey_name, 0, 0, 10, 14) ;the hotkey
+			Else 
+				hotkey_var := HotkeyGUI("Options", currentKey,, "Select Hotkey:   " hotkey_name) ;the hotkey							
+		}
 		if (hotkey_var <> "")
 			GUIControl,, %hotkey_name%, %hotkey_var%
 	}
