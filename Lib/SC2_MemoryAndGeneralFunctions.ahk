@@ -3280,7 +3280,10 @@ tSpeak(Message, SAPIVol := "", SAPIRate := "")
 
 
 ; One of the first functions i ever wrote. Very messy. But it works and im lazy
-
+; Should have made it so that it uses the unit type as a lookup rather than iterating the warning types.
+; But then would have to modify quite a bit, as you can have multiple warning for the same unit type
+; Also it's possible a unit won't be warned if an already warned unit dies and its unit index is reused
+; for another unit which should be warned. Should compare timeAlive value
 
 doUnitDetection(unit, type, owner, mode = "")
 {	
@@ -3298,7 +3301,6 @@ doUnitDetection(unit, type, owner, mode = "")
 	}
 	else If (Mode = "Save")
 	{
-
 		loop, parse, l_WarningArrays, `,
 		{
 			For index, Object in %A_loopfield%

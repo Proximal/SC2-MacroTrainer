@@ -47,12 +47,7 @@
 
 */
 
-
 SetWorkingDir %A_ScriptDir%  ; Ensures a consistent starting directory.
-; SingleInstance Force Doesn't do anything now, as I renamed the hidden/main GUI
-; with a random name. This is OCD (better to be safe) in case blizzard starts scanning
-; for macro trainer windows.
-; Have written a substitute routine to help ensure single instance.
 #SingleInstance force 
 #MaxHotkeysPerInterval 99999	; a user requested feature (they probably have their own macro script)
 #InstallMouseHook
@@ -64,7 +59,7 @@ SetWorkingDir %A_ScriptDir%  ; Ensures a consistent starting directory.
 #NoEnv  ; Recommended for performance and compatibility with future AutoHotkey releases.
 #MaxThreads 20 ; don't know if this will affect anything
 SetStoreCapslockMode, off ; needed in case a user bind something to the capslock key in sc2 - other AHK always sends capslock to adjust for case.
-;ListLines(False) 
+ListLines(False) 
 SetControlDelay -1 	; make this global so buttons dont get held down during controlclick
 SetKeyDelay, -1	 	; Incase SendInput reverts to Event - and for controlsend delay
 SetMouseDelay, -1
@@ -166,7 +161,7 @@ MT_CurrentInstance := [] ; Used to store random info about the current run
 program := []
 program.info := {"IsUpdating": 0} ; program.Info.IsUpdating := 0 ;has to stay here as first instance of creating infor object
 
-ProgramVersion := 2.990
+ProgramVersion := 3.00
 
 l_GameType := "1v1,2v2,3v3,4v4,FFA"
 l_Races := "Terran,Protoss,Zerg"
@@ -3280,6 +3275,16 @@ try
 		Gui, Add, Button, center Xs+140 ys+60 w200 h50 gAlert_List_Editor vAlert_List_Editor, Launch Alert List Editor
 		Gui, Font,
 
+	Gui, Add, GroupBox, Xs ys+130 w340 h145, About
+		Gui, Add, Text, xp+15 yp+25 w320, 
+		(LTrim 
+		This function provides a verbal warning for the specified item (unit/building).
+
+		It can also display a visual 'X' marker on the minimap, thereby indicating the items location.
+
+		To enable this visual feature check the 'Display Alerts' checkbox listed under MiniMap/Overlays --> MiniMap --> General.
+		)		
+
 	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vBug_TAB, Report Bug
 		Gui, Add, Text, x+60 y+20 section, Your Email Address:%A_Space%%A_Space%%A_Space%%A_Space%%A_Space%(optional) 
 		Gui, Add, Edit, xp y+10 w350 vReport_Email,
@@ -3727,7 +3732,7 @@ try
 			Gui, Add, Text, xp yp+25, Hotkey:
 			Gui, Add, Edit, Readonly yp-2 xs+105 center w65 vcastRemoveUnit_key gedit_hotkey, %castRemoveUnit_key%
 			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#castRemoveUnit_key,  Edit
-			Gui, Add, Text, Xs+15 yp+45 w360, This removes the first unit (top left of selection card) from the selected units.`n`nThis is very usefuly for 'cloning' workers to geisers or sending 1 ling towards a group of banelings etc.
+			Gui, Add, Text, Xs+15 yp+45 w360, This removes the first unit (top left of selection card) from the selected units.`n`nThis is very useful for 'cloning' workers to geisers or sending 1 ling towards a group of banelings etc.
 		Gui, add, GroupBox, xs ys+185 w405 h210, Remove Damaged Units
 			Gui, Add, Checkbox, yp+25 xs+15 vRemoveDamagedUnitsEnable Checked%RemoveDamagedUnitsEnable%, Enable	
 			Gui, Add, Text, xp yp+25, Hotkey:
@@ -4329,9 +4334,9 @@ try
 		TT_FInjectHatchMaxHatches_TT := FInjectHatchMaxHatches_TT := "The maximum number of hatches to be injected during an inject round"
 
 		TT_AM_KeyDelay_TT := AM_KeyDelay_TT := TT_I_KeyDelay_TT := I_KeyDelay_TT := TT_CG_KeyDelay_TT := CG_KeyDelay_TT := "This sets the delay between key/mouse events`nLower numbers are faster, but they may cause problems.`n0-10`n`nWith regards to speed, changing the 'sleep' time will generally have a larger impact."
-		TT_ChronoBoostSleep_TT := ChronoBoostSleep_TT := "Sets the amount of time that the program sleeps for during each automation cycle.`nThis has a large effect on the speed, and hence how 'human' the automation appears'.`n`n"
+		TT_ChronoBoostSleep_TT := ChronoBoostSleep_TT := "Sets the amount of time that the program sleeps for during each automation cycle.`nThis has a large effect on the speed, and hence how 'human' the automation appears.`n`n"
 				. "If you want instant chronoboosts, a value of 0 ms works reliably for me.`n"
-				. "If 0 ms is not reliable for you, try increasing the sleep time by one or two ms. (it doesn't require much)"
+				. "If 0 ms is not reliable for you, try increasing the sleep time in one or two ms increments. (it doesn't require much)"
 		CG_chrono_remainder_TT := TT_CG_chrono_remainder_TT := "This is how many full chronoboosts will remain afterwards between all your nexi.`nA setting of 1 will leave 1 full chronoboost (or 25 energy) on one of your nexi."
 		 Inject_control_group_TT :=  #Inject_control_group_TT := "This refers to the control group used to store the current unit selection."
 				. "`nThis allows the selected units to be restored after performing the automation."
@@ -5664,7 +5669,7 @@ Text := "
 
 		It is best to actually use the unit panel first and then decide on which units you wish to filter.
 
-		Some units are automatically removed, these include interceptors, locusts, broodlings, completed creep tumours, reactors, and techlabs.
+		Some units are automatically removed, these include interceptors, locusts, broodlings, completed creep tumours, completed reactors, and completed techlabs.
 	)"
 
 Gui, Add, Edit, HwndHwndEdit x12 y+10 w360 h380 readonly -E0x200, % Text
@@ -8647,7 +8652,9 @@ debugData()
 	. "MinTimer: " MinTimer "`n"
 	. "MaxTimer: " MaxTimer "`n"
 	. "QPFreq: " Frequency "`n"
-	. "QpTick: " CurrentTick "`n`n"
+	. "QpTick: " CurrentTick "`n"
+	. "KeyRepeatRate: " getKeyRepeatRate() "`n"
+	. "KeyDelay: " getKeyDelay() "`n`n"
 	. "==========================================="
 	. "`n"
 	. "XRes: " SC2HorizontalResolution() ", " A_ScreenWidth  "`n"

@@ -110,7 +110,7 @@ gameChange(UserSavedAppliedSettings := False)
 		if WinActive(GameIdentifier)
 			ReDrawMiniMap := ReDrawIncome := ReDrawResources := ReDrawArmySize := ReDrawWorker := RedrawUnit := ReDrawIdleWorkers := ReDrawLocalPlayerColour := 1
 		getPlayers(aPlayer, aLocalPlayer)
-		GameType := GetGameType(aPlayer)		
+		GameType := GetGameType(aPlayer)	; used by unit detection (and used inside it)	
 		SetMiniMap(minimap)
 		setupMiniMapUnitLists(aMiniMapUnits) ; aMiniMapUnits is super global
 		EnemyBaseList := GetEBases()
