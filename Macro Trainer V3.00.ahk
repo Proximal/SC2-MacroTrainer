@@ -301,6 +301,7 @@ if (!versionMatch && clientVersion && A_IsCompiled) ; clientVersion check if tru
 		IniWrite, %clientVersion%, %config_file%, clientVersionWarning, clientVersionWarning
 		msgbox, % 48 + 4096, Version Mismatch, % "Current Client Version: " clientVersion
 			. "`n`nMacro Trainer does not support this SC version and will most likely function incorrectly or not all."
+			. "`n`nTry playing a game against an AI to see if it works. (Use a standard ladder map)"
 			. "`n`nAn update will be released shortly."
 			, 20 ; timeout 
 	}
@@ -330,7 +331,7 @@ if A_OSVersion in WIN_7,WIN_VISTA ; win8 should probably be here too should read
 		,	% "Desktop Widows Management (DWM) is disabled!`n`n" 
 		.	"This will cause significant performance issues while using this program.`n"
 		.  	"Your FPS can be expected to decrease by 70%`n`n" 
-		.	"Click  'Help' to launch some URLs explaining how to do enable DWM.`n`n"
+		.	"Click  'Help' to launch some URLs explaining how to enable DWM.`n`n"
 		.	"You will not see this warning again!"	
 		IniWrite, % MT_DWMwarned := True, %config_file%, Misc Info, MT_DWMwarned
 		ifMsgbox Ok ; 'Help'
@@ -395,53 +396,44 @@ return
 ;<#Space::
 
 g_EmergencyRestart:	
-;Thread, Priority, 2147483647 ; doubt this does anything. But due to problem with using the hotkeycommand try it
-		Thread, NoTimers, True
-		if (state := setLowLevelInputHooks(False, True)) ; remove the hook for any sendInput/sendEvents
-			 setLowLevelInputHooks(false)	
-		; if ahk loses track of logical state, can still get stuck keys, which this wont fix
-		; or if user is holding down a logically stuck key which is also a hotkey, as the OS won't see the key release - and this
-		; function won't release it either.
-		releaseLogicallyStuckKeys(True) 		
-		settimer, EmergencyInputCountReset, -5000
-		EmergencyInputCount++		 
-		If (EmergencyInputCount = 1)
-			CreateHotkeys()
-		else If (EmergencyInputCount >= 3)
-		{
-			IniWrite, Hotkey, %config_file%, Misc Info, RestartMethod ; could have achieved this using running the new program with a parameter then checking %1%
-			SoundPlay, %A_Temp%\Windows Ding.wav
-			gosub, g_Restart
-			return
-		}
-		if state
-		    setLowLevelInputHooks(True)		
-		SoundPlay, %A_Temp%\Windows Ding2.wav	
-	return	
+Thread, NoTimers, True
+setLowLevelInputHooks(false)	
+; if ahk loses track of logical state, can still get stuck keys, which this wont fix
+releaseLogicallyStuckKeys(True) 		
+settimer, EmergencyInputCountReset, -5000
+EmergencyInputCount++		 
+If (EmergencyInputCount = 1)
+	CreateHotkeys()
+else If (EmergencyInputCount >= 3)
+{
+	IniWrite, Hotkey, %config_file%, Misc Info, RestartMethod ; could have achieved this using running the new program with a parameter then checking %1%
+	SoundPlay, %A_Temp%\Windows Ding.wav
+	gosub, g_Restart
+	return
+}
+SoundPlay, %A_Temp%\Windows Ding2.wav	
+return	
 
 g_reload:
 ; This is from the menu tray icon, so release the keys in case the user has stuck keys
 ; and doesn't know about the restart hotkey
-releaseAllModifiers()
+
+; Disabled as releaseLogicallyStuckKeys will do that same thing and if invoked via tray icon, 
+; reading the state of the keys from SC will do nothing as SC resets its internal keystate when
+; it loses window focus
+; Also hopefully all the changes in v3.00 will make stuck keys a thing of the past - they're extremely rare anyway atm. 
+;releaseAllModifiers() 
 releaseLogicallyStuckKeys(True) 
-;if (A_ThisLabel = "g_reload")
 IniWrite, Icon, %config_file%, Misc Info, RestartMethod
 g_Restart:
 Thread, NoTimers, True
-suspend, on ; removing AHKs hooks helps reduce the lock time if the issue occurs
-setLowLevelInputHooks(False) ; remove hooks here should help 
-;critical, on ; ive noticed if you spam restarts, it can cause it to lock up the system 
-	; critical doesn't help
-	; the issue is caused by one script not exiting correctly
-	; and the other waiting for it exit
-	; looping exitapp in the exit routine seems to help
-	; These changes seem to have fixed the issue. Removing the hooks here was probably the main part
+; removing AHKs hooks helps reduce the lock time if the crash issue occurs
+; This shouldn't be required anymore as I've fixed the crash on exit issues.
+;suspend, on 
+setLowLevelInputHooks(False) ; This shouldn't do anything anymore - as they are only installed when required
 if (time && alert_array[GameType, "Enabled"])
 	aThreads.MiniMap.ahkFunction("doUnitDetection", 0, 0, 0, "Save")	
 restartTrainer := True
-; This sleep can not be present, this time delay increases the chances of the issue occuring
-; It also increases the severity - cant control the mouse if its present
-;sleep 200	; so the last ding from the hotkey gets played
 ExitApp	;does the shutdown procedure.
 return 
 
@@ -1063,6 +1055,7 @@ Cast_ChronoStructure(StructureToChrono)
 	
 	MouseGetPos, start_x, start_y
 	HighlightedGroup := getSelectionHighlightedGroup()
+	selectionPage := getUnitSelectionPage()
 	max_chronod := nexus_chrono_count - CG_chrono_remainder
 	input.pSend((CG_control_group != "Off" ? aAGHotkeys.set[CG_control_group] : "") aAGHotkeys.Invoke[CG_nexus_Ctrlgroup_key])
 	timerID := stopwatch()
@@ -1085,13 +1078,7 @@ Cast_ChronoStructure(StructureToChrono)
 	if (elapsedTimeGrouping < 20)
 		sleep, % ceil(20 - elapsedTimeGrouping)	
 	if (CG_control_group != "Off")
-	{	
-		input.pSend(aAGHotkeys.Invoke[CG_control_group])
-		sleep, 30
-		if HighlightedGroup
-			input.pSend(sRepeat(NextSubgroupKey, HighlightedGroup))
-	}
-	sleep 20
+		restoreSelection(CG_control_group, selectionPage, HighlightedGroup)
 	Return 
 }
 
@@ -6765,6 +6752,8 @@ autoWorkerProductionCheck()
 		dSleep(40) ; increase safety ensure selection buffer fully updated
 
 		HighlightedGroup := getSelectionHighlightedGroup()
+		selectionPage := getUnitSelectionPage()
+
 		If numGetSelectionSorted(oSelection) ; = 0 as nothing is selected so cant restore this/control group it
 		{ 
 			if !oSelection.IsGroupable
@@ -6949,15 +6938,10 @@ autoWorkerProductionCheck()
 						dSleep(ceil(20 - elapsedTimeGrouping))
 				}
 				else dsleep(15)
-
-				input.pSend(aAGHotkeys.Invoke[controlstorageGroup])
-				dSleep(15)
-				if HighlightedGroup
-					input.pSend(sRepeat(NextSubgroupKey, HighlightedGroup))				
+				restoreSelection(controlstorageGroup, selectionPage, HighlightedGroup)			
 			}
 			else if tabPositionChanged ; eg the ebay or floating CC is selected is the selected tab in the already selected base control group
 				input.pSend(sRepeat(NextSubgroupKey, oSelection["Types"]  - tabPosition + HighlightedGroup ))	
-
 			WorkerMade := True
 		}
 		Input.revertKeyState()
@@ -7156,7 +7140,7 @@ getPlayerFreeSupply(player="")
 	else return 0 ; as a negative value counts as true and would prevent using this in 'if freesupply() do' scenario
 }
 
-
+; Note: When SC2 loses window focus it resets its resets/zeroes its internal keystates
 ReleaseAllModifiers() 
 { 	
 	Global GameExe
@@ -7514,9 +7498,10 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 			, start_x, start_y
 			, QueenMultiInjects, MaxInjects, CurrentQueenInjectCount
 			, HatchIndex, Dx1, Dy1, Dx2, Dy2, QueenIndex
-			, stopWatchCtrlID 
+			, stopWatchCtrlID, Xpage, Ypage, x, y
 
 	LOCAL HighlightedGroup := getSelectionHighlightedGroup()
+	LOCAL selectionPage := getUnitSelectionPage()
 
 	if ForceInject
 		sleepTime := 0
@@ -7575,7 +7560,8 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 					if (lRemoveQueens := SubStr(lRemoveQueens, 1, -1))
 					{
 						local selectionCount := getSelectionCount()
-						ClickSelectUnitsPortriat(lRemoveQueens, "+", True)
+						ClickSelectUnitsPortriat(lRemoveQueens, "+")
+						clickSelectionPage(1)
 						while (getSelectionCount() != selectionCount - removedCount && A_Index <= 20)
 							dSleep(1)
 						dsleep(5)
@@ -7800,56 +7786,62 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 		elapsedTimeGrouping := stopwatch(stopWatchCtrlID)	
 		if (elapsedTimeGrouping < 20)
 			dSleep(ceil(20 - elapsedTimeGrouping))
-		input.pSend(aAGHotkeys.Invoke[Inject_control_group])
-		dsleep(15)
-		if HighlightedGroup
-			input.pSend(sRepeat(NextSubgroupKey, HighlightedGroup))
+		restoreSelection(Inject_control_group, selectionPage, HighlightedGroup)
 	}
+	return
 }
 
-OldBackSpaceCtrlGroupInject()
-{
- if  (1 = 2) ; I.E. I have disabled this feature until i get around to finding the centred hatch better ((Method="Backspace Adv") || (Method = "Backspace CtrlGroup")) ;cos i changed the name in an update
-	{		
-		send % BI_create_camera_pos_x
-		send % MI_Queen_Group
-		HatchIndex := getBuildingList(aUnitID["Hatchery"], aUnitID["Lair"], aUnitID["Hive"]) 
-		click_x := A_ScreenWidth/2 , click_y := A_ScreenHeight/2
-		If HumanMouse
-		{	click_x += rand((-75/1920)*A_ScreenWidth,(75/1080)*A_ScreenHeight), click_y -= 100+rand((-75/1920)*A_ScreenWidth,(75/1080)*A_ScreenHeight)
-			MouseMoveHumanSC2("x" click_x  "y" click_y "t" rand(HumanMouseTimeLo, HumanMouseTimeHi))
-		}
-		else
-		{	click_x := A_ScreenWidth/2 , click_y := A_ScreenHeight/2
-			MouseMove, click_x, click_y
-		}		
-		if (QueenIndex := filterSlectionTypeByEnergy(25, aUnitID["Queen"]))
-			loop, % getBaseCameraCount()	
-			{
-				Hatch_i := A_index
-				send % base_camera
-				if (A_Index = 1)
-				{
-					HatchList := []
-					sleep, 600 ; give time for cam to update slower since WOL 2.04
-					CurrentHatch := getCamCenteredUnit(HatchIndex) ;get centered hatch ID
-					HatchIndex := SortBasesByBaseCam(HatchIndex, CurrentHatch) ; sort the Hatches by age(to agree with camera list)
-					loop, parse, HatchIndex, |
-						HatchList[A_Index] := A_loopfield
-				}
-				else Sleep, %sleepTime%	;sleep needs to be here (to give time to update selection buffer?)				
-				loop, parse, QueenIndex, |  	;like this to re-check energy if she injects a macro hatch - checking queen index was previouosly here
-				{
-					If areUnitsNearEachOther(A_LoopField, HatchList[Hatch_i] , MI_QueenDistance, MI_QueenDistance)
-					{
-						send % Inject_spawn_larva 	;when # hatches > queens (ie queens going walkabouts)		
-						send {click Left %click_x%, %click_y%}				
-						Break
-					}
-				}
-			}			
-	;	send % BI_camera_pos_x
+/*
+f1::
+sleep 500
+input.pSend("{tab}{Tab}")
+dsleep(2)
+ClickUnitPortrait(0, X, Y, Xpage, Ypage, 1 + 1) ; for this function numbers start at 1, hence +1
+input.pClick(Xpage, Ypage)
+return
+f2::
+sleep 500
+input.psend(6)
+dsleep(15)
+restoreSelection(7, 3)
+return 
+*/
+
+; This function is designed to restore the unit selection and selection window exactly as it was
+; prior to an automation i.e. selected units, selection page, and tab (sub group) position.
+
+; The page cannot be changed until the tab position has been changed (otherwise the tabs are ignored)
+; When changing between selections/groups the page position will remain the same, unless there are not
+; enough pages in the new selection - then it will be left of the highest page.
+; The Tab/subgroup is always reset to the first (0) when changing selections.
+
+restoreSelection(controlGroup, selectionPage, highlightedTab)
+{ 
+	global NextSubgroupKey
+
+	input.pSend(aAGHotkeys.Invoke[controlGroup])
+	dsleep(15) ; This might not be long enough in big battles/large control group
+	if (highlightedTab && highlightedTab < getSelectionTypeCount())	; highlightedTab is zero based - TypeCount is 1 based hence < not <=
+	{
+		input.pSend(sRepeat(NextSubgroupKey, highlightedTab))
+	s := stopwatch()
+		; Although unlikely due to speed of automation, it is possible for a unit to die and for there to be 1 less
+		; sub group now present, hence if trying to access the previously highest (and now now non existent) subgroup 
+		; this could stall here. Perhaps have a look for a max subgroup pos
+		while (getSelectionHighlightedGroup() != highlightedTab && A_Index < 40) ; Raised from 25
+			dsleep(1)
+	log(stopwatch(s))
+		dsleep(4) ; This static sleep wasn't required during testing but i added it anyway. (as i didn't do in-depth testing)
+	
+	}	
+	; There's no point checking if the selection page still exists - if it doesn't the click
+	; will be ignored anyway
+	if selectionPage 
+	{
+		ClickUnitPortrait(0, X, Y, Xpage, Ypage, selectionPage + 1) ; for this function numbers start at 1, hence +1
+		input.pClick(Xpage, Ypage)
 	}
+	return	
 }
 
  zergGetHatcheriesToInject(byref Object)
@@ -7976,6 +7968,7 @@ selectArmy()
 									, SelectArmyDeselectHoldPosition, SelectArmyDeselectFollowing, SelectArmyDeselectLoadedTransport 
 									, SelectArmyDeselectQueuedDrops, l_ActiveDeselectArmy, SelectArmyOnScreen)
 	clickUnitPortraits(aUnitPortraitLocations)
+	clickSelectionPage(1)
 	dSleep(15)
 	if (Sc2SelectArmyCtrlGroup != "Off")
 		input.pSend(aAGHotkeys.set[Sc2SelectArmyCtrlGroup])
@@ -8106,7 +8099,7 @@ quickSelect(aDeselect)
 	|| aDeselect.DeselectLoadedTransport || aDeselect.DeselectQueuedDrops)
 		checkStates := True
 
-	if (aDeselect.Units.MaxIndex() = 1 && !checkStates) && 0 ; this is disabled until i fix the sort with units in same tab eg tanks/stanks + hellions/hellbats
+	if 0 && (aDeselect.Units.MaxIndex() = 1 && !checkStates) ; this is disabled until i fix the sort with units in same tab eg tanks/stanks + hellions/hellbats
 	{
 		clickUnitType := aDeselect["Units", 1]
 		if aSelected.TabPositions.HasKey(clickUnitType)
@@ -8161,7 +8154,7 @@ quickSelect(aDeselect)
 		; lowest portraits i.e. on the left side of a selection group
 
 		if clickPortraits.MaxIndex()
-			reverseArray(clickPortraits), clickUnitPortraitsWithModifiers(clickPortraits)	
+			reverseArray(clickPortraits), clickUnitPortraitsWithModifiers(clickPortraits), clickSelectionPage(1)	
 	}
 /*
 	; doing everything in one go now (not removed ctrl removing units then patrolling units)
@@ -8283,6 +8276,7 @@ findPortraitsToRemoveFromArmy(byref aSelected := "", DeselectXelnaga = 1, Desele
 ; the units in aSelection.units need to be sorted so that they represent the locations in the unit panel
 ; i.e. the first unit in aSelection.units is at the top left of the unit panel
 
+; This is currently only used in split unit function. So not gonna spend time fixing it
 DeselectUnitsFromPanel(aRemoveUnits, aSelection := "")	
 {
 	if aRemoveUnits.MaxIndex()
@@ -8319,9 +8313,7 @@ DeselectUnitsFromPanel(aRemoveUnits, aSelection := "")
 	{
 		ClickUnitPortrait(0, X, Y, Xpage, Ypage, 1) ; this selects page 1 when done
 		MTclick(Xpage, Ypage)
-	;	send {click Left %Xpage%, %Ypage%}
 	}	
-
 	return
 }
 	; no sleep was required for a 144 terran army
@@ -8341,7 +8333,6 @@ DeselectUnitsFromPanel(aRemoveUnits, aSelection := "")
 ; the portraits should be sorted in descending order
 clickUnitPortraits(aUnitPortraitLocations, Modifers := "+")
 {
-	startPage := getUnitSelectionPage()
 	; Send modifiers down once at start so don't needlessly send up/down for each click 
 	; though i dont think it really matters
 	; Also, page numbers can be clicked with the shift/ctrl/alt keys down
@@ -8362,26 +8353,55 @@ clickUnitPortraits(aUnitPortraitLocations, Modifers := "+")
 				; Tested with 50 ms sleep max on a test map with 490 collosi and full panel of Terran units and
 				; got the buffer full beep and then all units were selected
 
-				while (getUnitSelectionPage() = currentPage && A_Index < 35) ; Raised from 25
+				; Raised from 25 - don't have to worry now about hooks being removed for the entire game
+				while (getUnitSelectionPage() = currentPage && A_Index < 45) 
 					dsleep(1)
 				dsleep(7) ; small static delay
 			}
-			input.pSend("{click " x " " y "}")			
+			input.pSend("{click " x " " y "}")	
 		}
 	}
 	if downModifers
 		input.pSend(getModifierUpSequenceFromString(Modifers))
-
-	if (startPage != getUnitSelectionPage())
-	{
-		currentPage := getUnitSelectionPage()
-		ClickUnitPortrait(0, X, Y, Xpage, Ypage, startPage + 1) ; for this page numbers start at 1, hence +1
-		MTclick(Xpage, Ypage)
-		while (getUnitSelectionPage() = currentPage && A_Index < 35)
-			dsleep(1)
-	}
 	return	
 }
+
+; 1 - 6
+; Caller is responsible for ensuring the page exists to be clicked.
+; If it doesn't and and waitForchange is used, then could stall for 35 ms
+clickSelectionPage(page := 1, waitForChange := False)
+{
+	ClickUnitPortrait(0, X, Y, Xpage, Ypage, page)
+	MTclick(Xpage, Ypage)
+	while (waitForChange && getUnitSelectionPage() != page - 1 && A_Index < 35)
+		dsleep(1)
+	return
+}
+
+
+; Took 1-14 ms for selection value to update when removing 10 units marines from a group of 47 marines
+; Also, with the way i remove units it's definitely possible for getSelectionCount() to decrease in increments.
+; It won't necessarily decrease in one hit -
+/*
+f1::
+keywait, F1
+critical
+count := getSelectionCount()
+log("start: " count)
+
+input.pSend("{shift down}")
+loop 10
+{
+	ClickUnitPortrait(A_Index -1, X, Y, Xpage, Ypage) 
+	input.pSend("{click " x " " y "}")	
+}
+input.pSend("{shift up}")
+tt := stopwatch()
+while (getSelectionCount() != count - 10)
+	dsleep(1), log(getSelectionCount())
+log(getSelectionCount() " " stopwatch(tt))
+return 
+*/
 
 ; accepts an array which contains indivdual objects with portrait and modifiers keys
 ; can click on any portrait with specified modifier 
@@ -8389,8 +8409,6 @@ clickUnitPortraits(aUnitPortraitLocations, Modifers := "+")
 
 clickUnitPortraitsWithModifiers(aUnitPortraitLocationsAndModifiers)
 {
-	startPage := getUnitSelectionPage()
-
 	for i, object in aUnitPortraitLocationsAndModifiers
 	{
 		portrait := object.portrait
@@ -8408,7 +8426,7 @@ clickUnitPortraitsWithModifiers(aUnitPortraitLocationsAndModifiers)
 			{	
 				currentPage := getUnitSelectionPage()
 				MTclick(Xpage, Ypage)
-				while (getUnitSelectionPage() = currentPage && A_Index < 30)
+				while (getUnitSelectionPage() = currentPage && A_Index < 45)
 					dsleep(1)
 				dsleep(7) ; small static delay
 			}
@@ -8417,17 +8435,106 @@ clickUnitPortraitsWithModifiers(aUnitPortraitLocationsAndModifiers)
 	}
 	if currentModifiers
 		input.pSend(getModifierUpSequenceFromString(currentModifiers))
-
-	if (startPage != getUnitSelectionPage())
-	{
-		currentPage := getUnitSelectionPage()
-		ClickUnitPortrait(0, X, Y, Xpage, Ypage, startPage + 1) ; for this page numbers start at 1, hence +1
-		MTclick(Xpage, Ypage)
-		while (getUnitSelectionPage() = currentPage && A_Index < 25)
-			dsleep(1)
-	}
 	return	
 }
+
+; unitIndex is a comma delimited list
+
+ClickSelectUnitsPortriat(unitIndexList, Modifers := "")	;can put ^ to do a control click
+{
+	numGetSelectionSorted(aSelected, True) ; reversed
+	if (unitIndexList && downModifers := getModifierDownSequenceFromString(Modifers))
+		input.pSend(downModifers)
+
+	for i, unit in aSelected.units
+	{
+		if (unit.unitPortrait >= 144) 
+			continue 
+		unitIndex := unit.UnitIndex
+		if unitIndex in %unitIndexList% ;can only deselect up to unitselectionindex 143 (as thats the maximun on the card)
+		{
+			if ClickUnitPortrait(unit.unitPortrait, X, Y, Xpage, Ypage) ; -1 as selection index begins at 0 i.e 1st unit at pos 0 top left
+			{
+				currentPage := getUnitSelectionPage()
+				MTclick(Xpage, Ypage)	 ;clicks on the page number
+				while (getUnitSelectionPage() = currentPage && A_Index < 45)
+					dsleep(1)
+				dsleep(7) ; small static delay			
+			}
+			input.pSend("{click " x " " y "}")	
+		}
+	}
+
+	if downModifers
+		input.pSend(getModifierUpSequenceFromString(Modifers))
+	return
+}
+; portrait numbers begin at 0 i.e. first page contains portraits 0-23
+; clickTabPage is the real tab number ! its not off by 1! i.e. tab 1 = 1
+
+; You can have a max of 6 pages 1-6. 
+; This function will stuff up if unit portraits higher than 144 units are called. 
+; So always check the units portrait location before calling
+ClickUnitPortrait(SelectionIndex=0, byref X=0, byref Y=0, byref Xpage=0, byref Ypage=0, ClickPageTab = 0) ;SelectionIndex begins at 0 topleft unit
+{
+	static AspectRatio, Xu0, Yu0, Size, Xpage1, Ypage1, Ypage6, YpageDistance
+	if (AspectRatio != newAspectRatio := getScreenAspectRatio())
+	{
+		AspectRatio := newAspectRatio
+		If (AspectRatio = "16:10")
+		{
+			Xu0 := (578/1680)*A_ScreenWidth, Yu0 := (888/1050)*A_ScreenHeight	;X,Yu0 = the middle of unit portrait 0 ( the top left unit)
+			Size := (56/1680)*A_ScreenWidth										;the unit portrait is square 56x56
+			Xpage1 := (528/1680)*A_ScreenWidth, Ypage1 := (877/1050)*A_ScreenHeight, Ypage6 := (1016/1050)*A_ScreenHeight	;Xpage1 & Ypage6 are locations of the Portrait Page numbers 1-5 
+		}	
+		Else If (AspectRatio = "5:4")
+		{	
+			Xu0 := (400/1280)*A_ScreenWidth, Yu0 := (876/1024)*A_ScreenHeight
+			Size := (51.57/1280)*A_ScreenWidth
+			Xpage1 := (352/1280)*A_ScreenWidth, Ypage1 := (864/1024)*A_ScreenHeight, Ypage6 := (992/1024)*A_ScreenHeight
+		}	
+		Else If (AspectRatio = "4:3")
+		{	
+			Xu0 := (400/1280)*A_ScreenWidth, Yu0 := (812/960)*A_ScreenHeight
+			Size := (51.14/1280)*A_ScreenWidth
+			Xpage1 := (350/1280)*A_ScreenWidth, Ypage1 := (800/960)*A_ScreenHeight, Ypage6 := (928/960)*A_ScreenHeight
+		}
+		Else if (AspectRatio = "16:9")
+		{
+			Xu0 := (692/1920)*A_ScreenWidth, Yu0 := (916/1080)*A_ScreenHeight
+			Size := (57/1920)*A_ScreenWidth	;its square
+			Xpage1 := (638/1920)*A_ScreenWidth, Ypage1 := (901/1080)*A_ScreenHeight, Ypage6 := (1044/1080)*A_ScreenHeight
+
+		}
+		YpageDistance := (Ypage6 - Ypage1)/5		;because there are 6 pages - 6-1
+	}
+
+	if ClickPageTab	;use this to return the selection back to a specified page
+	{
+		PageIndex := ClickPageTab - 1
+		Xpage := Xpage1, Ypage := Ypage1 + (PageIndex * YpageDistance)
+		return 1
+	}
+
+	; You can have a max of 6 pages 1-6. 
+	; This function will stuff up if unit portraits higher than 144 units are called. 
+	; So always check the units portrait location before calling
+	PageIndex := floor(SelectionIndex / 24)
+	, SelectionIndex -= 24 * PageIndex
+	, Offset_y := floor(SelectionIndex / 8) 
+	, Offset_x := SelectionIndex -= 8 * Offset_y		
+	, x := Xu0 + (Offset_x *Size), Y := Yu0 + (Offset_y *Size)
+
+	; A delay may be required for selection page to update
+	; could use an overide value - but not sure if the click would register
+	if (PageIndex != getUnitSelectionPage())
+	{
+		Xpage := Xpage1, Ypage := Ypage1 + (PageIndex * YpageDistance)
+		return 1 ; indicating that you must left click the index page first
+	}
+	return 0	
+}
+
 
 clickUnitPortraitsWithModifiersDemo(aUnitPortraitLocationsAndModifiers)
 {
@@ -8471,11 +8578,6 @@ clickUnitPortraitsWithModifiersDemo(aUnitPortraitLocationsAndModifiers)
 	soundplay *-1
 	return	
 }
-
-
-
-
-
 ; this is used to visualise and check the click locations are correct 
 clickUnitPortraitsDemo(aUnitPortraitLocations, Modifers := "+")
 {
@@ -8505,105 +8607,6 @@ clickUnitPortraitsDemo(aUnitPortraitLocations, Modifers := "+")
 	}
 	soundplay *-1
 	return	
-}
-
-; unitIndex is a comma delimited list
-
-ClickSelectUnitsPortriat(unitIndexList, Modifers := "", restoreStartPage := False)	;can put ^ to do a control click
-{
-	startPage := getUnitSelectionPage()
-	numGetSelectionSorted(aSelected, True) ; reversed
-	if (unitIndexList && downModifers := getModifierDownSequenceFromString(Modifers))
-		input.pSend(downModifers)
-
-	for i, unit in aSelected.units
-	{
-		if (unit.unitPortrait >= 144) 
-			continue 
-		unitIndex := unit.UnitIndex
-		if unitIndex in %unitIndexList% ;can only deselect up to unitselectionindex 143 (as thats the maximun on the card)
-		{
-			if ClickUnitPortrait(unit.unitPortrait, X, Y, Xpage, Ypage) ; -1 as selection index begins at 0 i.e 1st unit at pos 0 top left
-			{
-				currentPage := getUnitSelectionPage()
-				MTclick(Xpage, Ypage)	 ;clicks on the page number
-				while (getUnitSelectionPage() = currentPage && A_Index < 25)
-					dsleep(1)
-				dsleep(7) ; small static delay			
-			}
-			input.pSend("{click " x " " y "}")	
-		}
-	}
-
-	if downModifers
-		input.pSend(getModifierUpSequenceFromString(Modifers))
-	if (restoreStartPage && startPage != getUnitSelectionPage())
-	{
-		currentPage := getUnitSelectionPage()
-		ClickUnitPortrait(0, X, Y, Xpage, Ypage, startPage + 1) ; for this page numbers start at 1, hence +1
-		MTclick(Xpage, Ypage)
-		while (getUnitSelectionPage() = currentPage && A_Index < 25)
-			dsleep(1)
-	}
-	return
-}
-; portrait numbers begin at 0 i.e. first page contains portraits 0-23
-; clickTabPage is the real tab number ! its not off by 1! i.e. tab 1 = 1
-ClickUnitPortrait(SelectionIndex=0, byref X=0, byref Y=0, byref Xpage=0, byref Ypage=0, ClickPageTab = 0) ;SelectionIndex begins at 0 topleft unit
-{
-	static AspectRatio, Xu0, Yu0, Size, Xpage1, Ypage1, Ypage6, YpageDistance
-	if (AspectRatio != newAspectRatio := getScreenAspectRatio())
-	{
-		AspectRatio := newAspectRatio
-		If (AspectRatio = "16:10")
-		{
-			Xu0 := (578/1680)*A_ScreenWidth, Yu0 := (888/1050)*A_ScreenHeight	;X,Yu0 = the middle of unit portrait 0 ( the top left unit)
-			Size := (56/1680)*A_ScreenWidth										;the unit portrait is square 56x56
-			Xpage1 := (528/1680)*A_ScreenWidth, Ypage1 := (877/1050)*A_ScreenHeight, Ypage6 := (1016/1050)*A_ScreenHeight	;Xpage1 & Ypage6 are locations of the Portrait Page numbers 1-5 
-		}	
-		Else If (AspectRatio = "5:4")
-		{	
-			Xu0 := (400/1280)*A_ScreenWidth, Yu0 := (876/1024)*A_ScreenHeight
-			Size := (51.57/1280)*A_ScreenWidth
-			Xpage1 := (352/1280)*A_ScreenWidth, Ypage1 := (864/1024)*A_ScreenHeight, Ypage6 := (992/1024)*A_ScreenHeight
-		}	
-		Else If (AspectRatio = "4:3")
-		{	
-			Xu0 := (400/1280)*A_ScreenWidth, Yu0 := (812/960)*A_ScreenHeight
-			Size := (51.14/1280)*A_ScreenWidth
-			Xpage1 := (350/1280)*A_ScreenWidth, Ypage1 := (800/960)*A_ScreenHeight, Ypage6 := (928/960)*A_ScreenHeight
-		}
-		Else if (AspectRatio = "16:9")
-		{
-			Xu0 := (692/1920)*A_ScreenWidth, Yu0 := (916/1080)*A_ScreenHeight
-			Size := (57/1920)*A_ScreenWidth	;its square
-			Xpage1 := (638/1920)*A_ScreenWidth, Ypage1 := (901/1080)*A_ScreenHeight, Ypage6 := (1044/1080)*A_ScreenHeight
-
-		}
-		YpageDistance := (Ypage6 - Ypage1)/5		;because there are 6 pages - 6-1
-	}
-
-	if ClickPageTab	;use this to return the selection back to a specified page
-	{
-		PageIndex := ClickPageTab - 1
-		Xpage := Xpage1, Ypage := Ypage1 + (PageIndex * YpageDistance)
-		return 1
-	}
-
-	PageIndex := floor(SelectionIndex / 24)
-	SelectionIndex -= 24 * PageIndex
-	Offset_y := floor(SelectionIndex / 8) 
-	Offset_x := SelectionIndex -= 8 * Offset_y		
-	x := Xu0 + (Offset_x *Size), Y := Yu0 + (Offset_y *Size)
-
-	; A delay may be required for selection page to update
-	; could use an overide value - but not sure if the click would register
-	if (PageIndex != getUnitSelectionPage())
-	{
-		Xpage := Xpage1, Ypage := Ypage1 + (PageIndex * YpageDistance)
-		return 1 ; indicating that you must left click the index page first
-	}
-	return 0	
 }
 
 sortSelectedUnitsByDistance(byref aSelectedUnits, Amount = 3)	;takes a simple array which contains the selection indexes (begins at 0)
@@ -9343,6 +9346,7 @@ castEasySelectLoadedTransport()
 		{
 			reverseArray(aClicks)
 			clickUnitPortraitsWithModifiers(aClicks)
+			clickSelectionPage(1) ; 99% chance would end up on page 1 anyway.
 		}
 	}
 	Input.revertKeyState()
@@ -10506,6 +10510,8 @@ gRemoveDamagedUnit:
 removeDamagedUnit()
 return
 
+; I should really spend more time testing the required delays for this function.
+; But it seems to work as is.
 removeDamagedUnit()
 {
 	global RemoveDamagedUnitsHealthLevel, RemoveDamagedUnitsCtrlGroup, Escape
@@ -10538,17 +10544,32 @@ removeDamagedUnit()
 		if isCastingReticleActive() 	; so can deselect units if attacking reticle was present
 			input.pSend(Escape) 		; is a dsleep() >= 15 is performed after select army key is pressed this is not required - 12isnt enough
 										; as SC will have enough time to get rid of the selection reticle itself		
-		timerRemove := stopwatch()
+		timerGrouping := stopwatch()
 		input.pSend(aAGHotkeys.set[RemoveDamagedUnitsCtrlGroup])
+		reverseArray(highHP)
 		clickUnitPortraits(highHP) 	; remove high HP units
+
+		; I would have thought a delay would be required here.
+		; To prevent the removed highHP units being rallied with the reaming lowHP
+		; but this doesn't seem to be the case - though in a real game/game-lag it is probably true.
+		; But I've added one anyway.
+		while (getSelectionCount() != count - highHP.MaxIndex() && A_Index < 35)
+			dsleep(1)
+		dSleep(5) ; Add a static delay just in case.
 		input.pSend("{Click Right}")
 		input.pSend(aAGHotkeys.Invoke[RemoveDamagedUnitsCtrlGroup]) 	; restore initial selection
-		while (getSelectionCount() != count && stopwatch(timerRemove, False) < 50 && A_Index < 60)
-			dsleep(1)
+		; If a unit dies then this could stall for ~50ms. Not a big issue.
+		; But this is certainly a possibility. When deselecting 13 units
+		; (of all types) from 135 it will take 110-120 ms to get here.
+		while (getSelectionCount() != count && A_Index < 50)
+		|| (stopwatch(timerGrouping, False) < 20)
+			dsleep(1), tCount++
 		dSleep(15)
+		reverseArray(lowHP)
 		clickUnitPortraits(lowHP) 	; remove damaged units
+		clickSelectionPage(1)
 		dSleep(15)
-		stopwatch(timerRemove)
+		stopwatch(timerGrouping)
 	}
 	Input.revertKeyState()
 	setLowLevelInputHooks(False)
@@ -10671,21 +10692,26 @@ releaseLogicallyStuckKeys(force := false)
     ; if it starts while the key is already logically down (and its not repeating ie an injected key down)
     ; this is mainly so the program will correctly clear any stuck keys on startup - before getKeystate/ahk
     ; correctly knows their state.
+
+    ; I'm not sure if the above is true - regarding AHK not knowing the keystate when loaded
     for index, key in aKeys
     {
     	if (force && GetAsyncKeyState(key)) || (!force && GetAsyncKeyState(key) && !getkeystate(key, "P"))
         	s .= "{" key " Up}"   
     }
     if s
-        send("{blind}" s)
-    return s
+    	send, % "{blind}" s
+    ;   send("{blind}" s)
+     return s
 }
 GetAsyncKeyState(key)
 {
     return 0x8000 & DllCall("GetAsyncKeyState", "UInt", getkeyVk(key), "Short") ? 1 : 0
 }
 
-
+/*
+This type of send should no longer be required. 
+As the custom LL hooks are only installed during automations
 send(sequence)
 {
     if (state := setLowLevelInputHooks(False, True)) ; get the state
@@ -10695,6 +10721,7 @@ send(sequence)
         setLowLevelInputHooks(True)
     return 
 }
+*/
 
 reloadHooks()
 {

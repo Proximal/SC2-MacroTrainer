@@ -272,7 +272,8 @@ loadMemoryAddresses(base, version := "")
 		 B_SelectionStructure := base + 0x31D8508
 
 		; Note: This is actually the second control group in the group structure. 
-		; The structure begins with ctrl group 0, then goes to 1, But i used ctrl group 1 as base for simplicity 
+		; The structure begins with ctrl group 0, then goes to 1, But I originally used ctrl group 1 as base cos 
+		; im an idiot. 
 		; when getting info for group 1, the negative offset will work fine 
 
 		 B_CtrlGroupOneStructure := base + 0x31DD730
@@ -528,8 +529,9 @@ getSelectedUnitIndex(i=0) ;IF Blank just return the first selected unit (at posi
 	Return ReadMemory(B_SelectionStructure + O_scUnitIndex + i * S_scStructure, GameIdentifier) >> 18	;how the game does it
 	; returns the same thing ; Return ReadMemory(B_SelectionStructure + O_scUnitIndex + i * S_scStructure, GameIdentifier, 2) /4
 }
-
-getSelectionTypeCount()	; begins at 1
+; begins at 1
+; Tab/subgroup count
+getSelectionTypeCount()	
 {	global
 	Return	ReadMemory(B_SelectionStructure + O_scTypeCount, GameIdentifier, 2)
 }
@@ -537,7 +539,6 @@ getSelectionHighlightedGroup()	; begins at 0
 {	global
 	Return ReadMemory(B_SelectionStructure + O_scTypeHighlighted, GameIdentifier, 2)
 }
-
 getSelectionCount()
 { 	global 
 	Return ReadMemory(B_SelectionStructure, GameIdentifier, 2)
@@ -2163,11 +2164,25 @@ numGetUnitSelectionObject(ByRef aSelection, mode = 0)
 		}
 	return aSelection["Count"]
 }
-
-getUnitSelectionPage()	;0-5 indicates which unit page is currently selected (in game its 1-6)
+; 0-5 indicates which unit page is currently selected (in game its 1-6)
+; 0 is displayed when no unit is selected as well as 1 unit (i.e. when the page tabs are not visible)
+getUnitSelectionPage()	
 {	global 	
 	return pointer(GameIdentifier, P_SelectionPage, O1_SelectionPage, O2_SelectionPage, O3_SelectionPage)
 }
+; Starts at 0 - like the SC selection page value
+; Like SC max of 5 (0-5)
+; Remember when only 1 or no unit is selected in SC no selection pages are visible.
+; And this will return 0 just like getUnitSelectionPage()
+getMaxPageValue(count := "")
+{
+	if (count = "")
+		count := getSelectionCount()
+	if (count <= 0)
+		return 0
+	return (i := Ceil(count / 24)) > 5 ? 5 : i - 1
+}
+
 /*
 numgetUnitTargetFilter(ByRef Memory, unit)
 {
