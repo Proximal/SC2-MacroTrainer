@@ -530,6 +530,7 @@ g_GLHF:
 	setLowLevelInputHooks(False)
 return 
 
+; Remove the top left unit in currently displayed selection panel page.
 g_DeselectUnit:
 if (getSelectionCount() > 1)
 {
@@ -2724,11 +2725,11 @@ try
 			Gui, Add, Text, X%tmp_xvar% yp+45 vSillyGUIControlIdentVariable, Inject Hotkey:
 				GuiControlGet, XTab, Pos, SillyGUIControlIdentVariable ;XTabX = x loc
 
-			Gui, Add, Edit, Readonly yp-2 xs+85 center w65 vcast_inject_key gedit_hotkey, %cast_inject_key%
+			Gui, Add, Edit, Readonly yp-2 xs+85 center w65 R1 vcast_inject_key gedit_hotkey, %cast_inject_key%
 			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#cast_inject_key,  Edit ;have to use a trick eg '#' as cant write directly to above edit var, or it will activate its own label!
 
 			Gui, Add, Text, X%XTabX% yp+35 w70, Spawn Larva:
-			Gui, Add, Edit, Readonly yp-2 xs+85 w65 center vInject_spawn_larva, %Inject_spawn_larva%
+			Gui, Add, Edit, Readonly yp-2 xs+85 w65 R1 center vInject_spawn_larva, %Inject_spawn_larva%
 				Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#Inject_spawn_larva,  Edit
 
 		;	Gui, Add, Text, X%XTabX% yp40, Control Group: %A_space%(Unit Selection Storage)
@@ -2768,11 +2769,11 @@ try
 			Gui, Add, DropDownList,x+60 yp-2 w50 vDrag_origin Choose%droplist_var%, Left|Right|
 
 			Gui, Add, Text, xs+10 yp+40, Create Camera: %A_space% %A_space% (Location Storge)
-				Gui, Add, Edit, Readonly y+10 xs+60 w90 center vBI_create_camera_pos_x , %BI_create_camera_pos_x%
+				Gui, Add, Edit, Readonly y+10 xs+60 w90 R1 center vBI_create_camera_pos_x , %BI_create_camera_pos_x%
 					Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#BI_create_camera_pos_x,  Edit
 
 			Gui, Add, Text, xs+10 yp+40, Camera Position: %A_space% %A_space% (Goto Location)
-				Gui, Add, Edit, Readonly y+10 xs+60 w90 center vBI_camera_pos_x , %BI_camera_pos_x%
+				Gui, Add, Edit, Readonly y+10 xs+60 w90 R1 center vBI_camera_pos_x , %BI_camera_pos_x%
 					Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#BI_camera_pos_x,  Edit
 
 	Gui, Add, GroupBox, w200 h62 y+10 xs,
@@ -2796,17 +2797,15 @@ try
 			gui, font, norm bold s10
 			Gui, Add, Text, X%OriginTabX% y+15 cFF0000, Note:
 			gui, font, norm s11
-			gui, Add, Text, w410 y+15, If a queen has inadequate energy (or is too far from her hatchery), her hatchery will not be injected.
+			gui, Add, Text, w410 y+15, If a queen has inadequate energy (or is too far from her hatchery), her hatchery will not be injected. 
 			gui, Add, Text, w410 y+20, The Minimap && Backspace CtrlGroup methods require queens to be hotkeyed. In other words, hatches without a nearby HOTKEYED queen will not be injected.
-			gui, Add, Text, w410 y+20, Both Backspace methods require the camera hotkeys be set.
+			gui, Add, Text, w410 y+20, Both Backspace methods require the camera hotkeys to be set.
 			;gui, Add, Text, w410 y+20, Auto-Injects will not occur while the modifier keys are pressed.
 			gui, font, norm s11
-
-			gui, Add, Text, X%OriginTabX% w410 y+15, The Backspace CtrlGroup method is actually the minimap method, but made to look as if the user is pressing 'backspace'.
 			gui, font, norm bold s10
 			Gui, Add, Text, X%OriginTabX% y+20 cFF0000, Problems:
 			gui, font, norm s11
-			gui, Add, Text, w410 y+15, If you are consistently missing hatcheries, try increasing the sleep time. 
+			gui, Add, Text, w410 y+15, If you are consistently missing hatcheries while using the one button inject method, try increasing the sleep time. 
 			gui, Add, Text, w410 y+15, If something really goes wrong, you can reload the program by pressing "RWin && space" three times.
 			gui, font, norm s10
 			gui, font, 		
@@ -2819,10 +2818,10 @@ try
 						Gui, Add, UpDown, Range1-100000 vmanual_inject_time, %manual_inject_time%
 					GuiControlGet, settings2R, Pos, manual_inject_timer
 					Gui, Add, Text, x%settings2RX% yp+35 w90, Start/Stop Hotkey:
-					Gui, Add, Edit, Readonly yp x+20 w120  vinject_start_key center gedit_hotkey, %inject_start_key%
+					Gui, Add, Edit, Readonly yp x+20 w120 R1 vinject_start_key center gedit_hotkey, %inject_start_key%
 					Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#inject_start_key,  Edit
 					Gui, Add, Text, x%settings2RX% yp+35 w90, Reset Hotkey:
-					Gui, Add, Edit, Readonly yp x+20 w120  vinject_reset_key center gedit_hotkey, %inject_reset_key%
+					Gui, Add, Edit, Readonly yp x+20 w120 R1 vinject_reset_key center gedit_hotkey, %inject_reset_key%
 					Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#inject_reset_key,  Edit
 					Gui, Add, Text,yp+60 x%settings2RX% w340,  This is a very basic timer. It will simply beep every x seconds
 			
@@ -2832,12 +2831,12 @@ try
 				Gui, Add, Edit, Number Right x+13 yp-2 w45 
 					Gui, Add, UpDown, Range1-100000 vInjectTimerAdvancedTime, %InjectTimerAdvancedTime%
 				Gui, Add, Text, x%settings2RX% yp+35 w90, SC2 Spawn`nLarva Key:	
-					Gui, Add, Edit, Readonly yp+2 xs+85 w120 center vInjectTimerAdvancedLarvaKey, %InjectTimerAdvancedLarvaKey%
+					Gui, Add, Edit, Readonly yp+2 xs+85 w120 center R1 vInjectTimerAdvancedLarvaKey, %InjectTimerAdvancedLarvaKey%
 					Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#InjectTimerAdvancedLarvaKey,  Edit
 				Gui, Add, Text,yp+60 x%settings2RX% w340,  This will beep x (in game) seconds after your last inject
 
 	Gui, Tab,  Auto
-		Gui, Add, GroupBox, y+20 w225 h215, Fully Automated Injects
+		Gui, Add, GroupBox, y+20 w225 h215 section, Fully Automated Injects
 			Gui, Add, Checkbox,xp+10 yp+30 vF_Inject_Enable checked%F_Inject_Enable%, Enable
 		
 			Gui, Add, Text,y+15 x%settings2RX% w140, Max injects per round: 
@@ -2853,18 +2852,25 @@ try
 					Gui, Add, UpDown,  Range0-100000 vFInjectAPMProtection, %FInjectAPMProtection%		
 
 			Gui, Add, Text, x%settings2RX% yp+30, Enable/Disable Hotkey:
-				Gui, Add, Edit, Readonly y+10 xp+45 w120  vF_InjectOff_Key center gedit_hotkey, %F_InjectOff_Key%
+				Gui, Add, Edit, Readonly y+10 xp+45 w120 R1 vF_InjectOff_Key center gedit_hotkey, %F_InjectOff_Key%
 				Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#F_InjectOff_Key,  Edit				
 
-		Gui, Add, Text,yp+57 x%settings2RX% w340,  Note:`n`nAuto injects will begin after you control group your queen to the correct (inject) queen control group.`n`nAuto injects are performed using the 'MiniMap' macro.`n`nPlease ensure you have correctly set the settings under the 'basic' inject tab. This includes the 'minimap' settings as well as the 'spawn larva key' and control group storage settings.
+		Gui, Add, GroupBox, xs yp+57 w385 h165, About/Notes:
+		Gui, Add, Text,yp+57 xp+10 yp+25 w365,
+		(LTrim 
+		Auto injects will begin after you control group your queen to the correct (inject) queen control group.
 
+		Auto injects are performed using the 'MiniMap' macro. In addition to the normal rules, individual queens will not auto-inject while they are performing or queued to perform attacks, transfuses, build tumours, patrol, or spawn larva.
+
+		Please ensure you have correctly set the settings under the 'basic' inject tab. This includes the 'minimap' settings as well as the 'spawn larva key' and control group storage settings.
+		)
 
 	Gui, Tab,  Alert
 			Gui, Add, GroupBox,  w210 h140, Basic Inject Alert Type
 			Gui, Add, Checkbox,xp+10 yp+30 vW_inject_ding_on checked%W_inject_ding_on%, Windows Ding
 			Gui, Add, Checkbox,yp+25 vW_inject_speech_on checked%W_inject_speech_on%, Spoken Warning
 			Gui, Add, Text,y+15 w125, Spoken Warning:
-			Gui, Add, Edit, w180 vW_inject_spoken center, %w_inject_spoken%
+			Gui, Add, Edit, w180 vW_inject_spoken center R1, %w_inject_spoken%
 			Gui, Font, s10
 			Gui, Add, Text, y+60 w360, Note: Due to an inconsistency with the programming language, some systems may not hear the 'windows ding'.
 			Gui, Font	
@@ -2873,23 +2879,23 @@ try
 	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vKeys_TAB, SC2 Keys|Set/Add Group|Invoke Group
 		Gui, Add, GroupBox, w280 h185, Common Keys:
 			Gui, Add, Text, xp+10 yp+30 w90, Pause Game: 
-			Gui, Add, Edit, Readonly yp-2 x+10 w120  center vpause_game , %pause_game%
+			Gui, Add, Edit, Readonly yp-2 x+10 w120 R1 center vpause_game , %pause_game%
 			Gui, Add, Button, yp-2 x+5 gEdit_SendHotkey v#pause_game,  Edit
 
 			Gui, Add, Text, X%XTabX% yp+35 w90, Escape/Cancel:
-			Gui, Add, Edit, Readonly yp-2 x+10 w120  center vescape , %escape%
+			Gui, Add, Edit, Readonly yp-2 x+10 w120 R1 center vescape , %escape%
 			Gui, Add, Button, yp-2 x+5 gEdit_SendHotkey v#escape,  Edit
 
 			Gui, Add, Text, X%XTabX% yp+35 w90, Base Camera:
-			Gui, Add, Edit, Readonly yp-2 x+10 w120  center vbase_camera , %base_camera%
+			Gui, Add, Edit, Readonly yp-2 x+10 w120 R1 center vbase_camera , %base_camera%
 			Gui, Add, Button, yp-2 x+5 gEdit_SendHotkey v#base_camera,  Edit
 
 			Gui, Add, Text, X%XTabX% yp+35 w90, Next Subgroup:
-			Gui, Add, Edit, Readonly yp-2 x+10 w120  center vNextSubgroupKey , %NextSubgroupKey%
+			Gui, Add, Edit, Readonly yp-2 x+10 w120 R1 center vNextSubgroupKey , %NextSubgroupKey%
 			Gui, Add, Button, yp-2 x+5 gEdit_SendHotkey v#NextSubgroupKey,  Edit
 
 			Gui, Add, Text, X%XTabX% yp+35 w90, Select Army:
-			Gui, Add, Edit, Readonly yp-2 x+10 w120 center vSc2SelectArmy_Key , %Sc2SelectArmy_Key%
+			Gui, Add, Edit, Readonly yp-2 x+10 w120 R1 center vSc2SelectArmy_Key , %Sc2SelectArmy_Key%
 			Gui, Add, Button, yp-2 x+5 gEdit_SendHotkey v#Sc2SelectArmy_Key,  Edit					
 
 			gui, font, s10
@@ -2907,7 +2913,7 @@ try
 					Gui, Add, Text, xs+20 ys+30 w10, %group%
 				else 
 					Gui, Add, Text, xs+20 y+15 w10, %group%
-				Gui, Add, Edit, Readonly yp-2 x+15 w65 center vAGAddToGroup%group%, % AGAddToGroup%group%
+				Gui, Add, Edit, Readonly yp-2 x+15 w65 R1 center vAGAddToGroup%group%, % AGAddToGroup%group%
 					Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#AGAddToGroup%group%,  Edit
 			}
 
@@ -2919,7 +2925,7 @@ try
 					Gui, Add, Text, xs+20 ys+30 w10, %group%
 				else 
 					Gui, Add, Text, xs+20 y+15 w10, %group%
-				Gui, Add, Edit, Readonly yp-2 x+15 w65 center vAGSetGroup%group%, % AGSetGroup%group%
+				Gui, Add, Edit, Readonly yp-2 x+15 w65 R1 center vAGSetGroup%group%, % AGSetGroup%group%
 					Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#AGSetGroup%group%,  Edit
 			}
 			Gui, Tab, Invoke Group 
@@ -2931,7 +2937,7 @@ try
 					Gui, Add, Text, xs+20 ys+30 w10, %group%
 				else 
 					Gui, Add, Text, xs+20 y+15 w10, %group%
-				Gui, Add, Edit, Readonly yp-2 x+15 w65 center vAGInvokeGroup%group%, % AGInvokeGroup%group%
+				Gui, Add, Edit, Readonly yp-2 x+15 w65 R1 center vAGInvokeGroup%group%, % AGInvokeGroup%group%
 					Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#AGInvokeGroup%group%,  Edit
 			}
 
@@ -2997,7 +3003,7 @@ try
 						Gui, Add, UpDown, Range0-200 Vadditional_delay_supply, %additional_delay_supply%
 
 				Gui, Add, Text,y+15 xs w125, Spoken Warning:
-					Gui, Add, Edit, w180 Vw_supply center, %w_supply%
+					Gui, Add, Edit, w180 R1 Vw_supply center, %w_supply%
 
 	Gui, Tab, Macro	
 		Gui, Add, GroupBox, w185 h175 section, Minerals
@@ -3015,7 +3021,7 @@ try
 					Gui, Add, UpDown, Range1-20000 Vadditional_delay_minerals, %additional_delay_minerals%
 
 			Gui, Add, Text, X%XTabX% y+5 w125, Spoken Warning:
-				Gui, Add, Edit, w165 Vw_mineral center, %w_mineral%		
+				Gui, Add, Edit, w165 R1 Vw_mineral center, %w_mineral%		
 
 		Gui, Add, GroupBox, x%OriginTabX% y+20  w185 h205, Gas
 			Gui, Add, Checkbox, xp+10 yp+20  Vgas_on checked%gas_on%, Enable Alert
@@ -3033,7 +3039,7 @@ try
 					Gui, Add, UpDown, Range1-20000 Vadditional_delay_gas, %additional_delay_gas%
 
 			Gui, Add, Text, xs y+5 w125, Spoken Warning:
-				Gui, Add, Edit, w165 Vw_gas center, %w_gas%		
+				Gui, Add, Edit, w165 R1 Vw_gas center, %w_gas%		
 
 		Gui, Add, GroupBox, y%OriginTaby% X+35 w185 h175 section Vmacro_R_TopGroup, Idle Worker	;h185
 		GuiControlGet, macro_R_TopGroup, Pos, macro_R_TopGroup
@@ -3052,7 +3058,7 @@ try
 					Gui, Add, UpDown, Range1-20000 Vadditional_idle_workers, %additional_idle_workers%
 
 			Gui, Add, Text, xs y+5 w125, Spoken Warning:
-				Gui, Add, Edit, w165 Vw_idle center, %w_idle%	
+				Gui, Add, Edit, w165 R1 Vw_idle center, %w_idle%	
 
 	Gui, Tab, Macro2
 		;Gui, Add, GroupBox, y+20 x%macro_R_TopGroupX% w185 h205, Worker Production	
@@ -3076,13 +3082,13 @@ try
 					Gui, Add, UpDown, Range1-20000 Vadditional_delay_worker_production, %additional_delay_worker_production%
 
 			Gui, Add, Text, xs y+10 w85, Terran Warning:
-				Gui, Add, Edit, yp x+0 W85 Vw_workerprod_T center, %w_workerprod_T%	
+				Gui, Add, Edit, yp x+0 W85 R1 Vw_workerprod_T center, %w_workerprod_T%	
 
 			Gui, Add, Text, xs y+5 w85,Protoss Warning:
-				Gui, Add, Edit, yp x+0 W85 Vw_workerprod_P center, %w_workerprod_P%	
+				Gui, Add, Edit, yp x+0 W85 R1 Vw_workerprod_P center, %w_workerprod_P%	
 
 			Gui, Add, Text, xs y+5 w85,Zerg Warning:
-				Gui, Add, Edit, yp x+0 W85 Vw_workerprod_Z center, %w_workerprod_Z%	
+				Gui, Add, Edit, yp x+0 W85 R1 Vw_workerprod_Z center, %w_workerprod_Z%	
 
 	Gui, Tab, Warpgates
 	Gui, Add, GroupBox, y+20 w410 h135, Forgotten Gateway/Warpgate Warning
@@ -3102,7 +3108,7 @@ try
 					Gui, Add, UpDown, Range1-20000 Vdelay_warpgate_warn_followup, %delay_warpgate_warn_followup%						
 
 			Gui, Add, Text, x+30 ys w75, Warning:
-				Gui, Add, Edit, yp-2 x+10 w110 Vw_warpgate center, %w_warpgate%		
+				Gui, Add, Edit, yp-2 x+10 w110 R1 Vw_warpgate center, %w_warpgate%		
 		
 		Gui, Font, s10 BOLD
 		Gui, add, text, xs ys+110 cRED, Note:
@@ -3222,12 +3228,12 @@ try
 
 		Gui, Add, GroupBox, Xs+171 ys+290 w245 h60, Emergency Restart Key
 			Gui, Add, Text, xp+10 yp+25 w40,Hotkey:
-				Gui, Add, Edit, Readonly yp-2 x+15 w100  center vKey_EmergencyRestart , %Key_EmergencyRestart%
+				Gui, Add, Edit, Readonly yp-2 x+15 w100 R1 center vKey_EmergencyRestart , %Key_EmergencyRestart%
 					Gui, Add, Button, yp-2 x+15 gEdit_hotkey v#Key_EmergencyRestart,  Edit	
 
 		Gui, Add, GroupBox, Xs ys+360 w161 h60, Custom Program Name
 		Gui, Add, Text, xp+10 yp+25 w40,Name:
-			Gui, Add, Edit, yp-2 x+5 w100  center vMTCustomProgramName, %MTCustomProgramName%
+			Gui, Add, Edit, yp-2 x+5 w100 R1 center vMTCustomProgramName, %MTCustomProgramName%
 
 		; Can't just use the menu, Icon change command to change the icon, 
 		; as the compiled icon will still show up in the sound mixer
@@ -3256,7 +3262,7 @@ try
 		
 		Gui, Add, GroupBox, Xs+140 ys w200 h55, Playback Last Alert			
 			Gui, Add, Text, xp+10 yp+25 w40,Hotkey:
-				Gui, Add, Edit, Readonly yp-2 x+5 w100  center vPlayback_Alert_Key , %Playback_Alert_Key%
+				Gui, Add, Edit, Readonly yp-2 x+5 w100 R1 center vPlayback_Alert_Key , %Playback_Alert_Key%
 					Gui, Add, Button, yp-2 x+5 gEdit_hotkey v#Playback_Alert_Key,  Edit	
 		Gui, Font, s10
 		Gui, Add, Button, center Xs+140 ys+60 w200 h50 gAlert_List_Editor vAlert_List_Editor, Launch Alert List Editor
@@ -3312,7 +3318,7 @@ try
 			;	Gui, Add, Edit, Readonly xp+25 y+10  w100  center vCG_nexus_Ctrlgroup_key , %CG_nexus_Ctrlgroup_key%
 			;		Gui, Add, Button, yp-2 x+5 gEdit_SendHotkey v#CG_nexus_Ctrlgroup_key,  Edit		
 			Gui, Add, Text, xs+10 yp+35 ,Chrono Boost Key:
-				Gui, Add, Edit, Readonly xp+25 y+10  w100  center vchrono_key , %chrono_key%
+				Gui, Add, Edit, Readonly xp+25 y+10  w100 R1 center vchrono_key , %chrono_key%
 					Gui, Add, Button, yp-2 x+5 gEdit_SendHotkey v#chrono_key,  Edit	
 
 		Gui, Add, GroupBox, ys x+40  w200 h190 section, Misc. Settings				
@@ -3328,32 +3334,32 @@ try
 		Gui, Add, GroupBox, w285 h60 y+20 section, Warpgates && Gateways
 			Gui, Add, Checkbox, xp+10 yp+25 vCG_Enable checked%CG_Enable%, Enable
 			Gui, Add, Text, x+20 yp w40,Hotkey:
-				Gui, Add, Edit, Readonly yp-2 x+5 w100  center vCast_ChronoGate_Key , %Cast_ChronoGate_Key%
+				Gui, Add, Edit, Readonly yp-2 x+5 w100 R1 center vCast_ChronoGate_Key , %Cast_ChronoGate_Key%
 					Gui, Add, Button, yp-2 x+5 gEdit_hotkey v#Cast_ChronoGate_Key,  Edit				
 
 		Gui, Add, GroupBox, w285 h60 xs yp+55 section, Forges	
 			Gui, Add, Checkbox, xp+10 yp+25 vChronoBoostEnableForge checked%ChronoBoostEnableForge%, Enable
 			Gui, Add, Text, x+20 yp w40,Hotkey:
-				Gui, Add, Edit, Readonly yp-2 x+5 w100  center vCast_ChronoForge_Key , %Cast_ChronoForge_Key%
+				Gui, Add, Edit, Readonly yp-2 x+5 w100 R1 center vCast_ChronoForge_Key , %Cast_ChronoForge_Key%
 					Gui, Add, Button, yp-2 x+5 gEdit_hotkey v#Cast_ChronoForge_Key,  Edit	
 
 		Gui, Add, GroupBox, w285 h60 xs yp+55 section, Stargates	
 			Gui, Add, Checkbox, xp+10 yp+25 vChronoBoostEnableStargate checked%ChronoBoostEnableStargate%, Enable
 			Gui, Add, Text, x+20 yp w40,Hotkey:
-				Gui, Add, Edit, Readonly yp-2 x+5 w100  center vCast_ChronoStargate_Key , %Cast_ChronoStargate_Key%
+				Gui, Add, Edit, Readonly yp-2 x+5 w100 R1 center vCast_ChronoStargate_Key , %Cast_ChronoStargate_Key%
 					Gui, Add, Button, yp-2 x+5 gEdit_hotkey v#Cast_ChronoStargate_Key,  Edit
 
 			Gui, Add, GroupBox, w285 h60 xs yp+55 section, Robotics Facility	
 			Gui, Add, Checkbox, xp+10 yp+25 vChronoBoostEnableRoboticsFacility checked%ChronoBoostEnableRoboticsFacility%, Enable
 			Gui, Add, Text, x+20 yp w40,Hotkey:
-				Gui, Add, Edit, Readonly yp-2 x+5 w100  center vCast_ChronoRoboticsFacility_Key , %Cast_ChronoRoboticsFacility_Key%
+				Gui, Add, Edit, Readonly yp-2 x+5 w100 R1 center vCast_ChronoRoboticsFacility_Key , %Cast_ChronoRoboticsFacility_Key%
 					Gui, Add, Button, yp-2 x+5 gEdit_hotkey v#Cast_ChronoRoboticsFacility_Key,  Edit					
 
 
 		Gui, Add, GroupBox, w285 h60 xs yp+55 section, Nexi	
 			Gui, Add, Checkbox, xp+10 yp+25 vChronoBoostEnableNexus checked%ChronoBoostEnableNexus%, Enable
 			Gui, Add, Text, x+20 yp w40,Hotkey:
-				Gui, Add, Edit, Readonly yp-2 x+5 w100  center vCast_ChronoNexus_Key , %Cast_ChronoNexus_Key%
+				Gui, Add, Edit, Readonly yp-2 x+5 w100 R1 center vCast_ChronoNexus_Key , %Cast_ChronoNexus_Key%
 					Gui, Add, Button, yp-2 x+5 gEdit_hotkey v#Cast_ChronoNexus_Key,  Edit	
 
 		Gui, Add, Button, x460 y430 gg_ChronoRulesURL w130, Rules/Criteria
@@ -3365,31 +3371,31 @@ try
 		Gui, Add, GroupBox, w285 h60 y+20 section, Cybernetics Core
 			Gui, Add, Checkbox, xp+10 yp+25 vChronoBoostEnableCyberneticsCore checked%ChronoBoostEnableCyberneticsCore%, Enable
 			Gui, Add, Text, x+20 yp w40,Hotkey:
-				Gui, Add, Edit, Readonly yp-2 x+5 w100  center vCastChrono_CyberneticsCore_key, %CastChrono_CyberneticsCore_key%
+				Gui, Add, Edit, Readonly yp-2 x+5 w100 R1 center vCastChrono_CyberneticsCore_key, %CastChrono_CyberneticsCore_key%
 					Gui, Add, Button, yp-2 x+5 gEdit_hotkey v#CastChrono_CyberneticsCore_key,  Edit		
 
 		Gui, Add, GroupBox, w285 h60 xs yp+55 section, Twilight Council	
 			Gui, Add, Checkbox, xp+10 yp+25 vChronoBoostEnableTwilightCouncil checked%ChronoBoostEnableTwilightCouncil%, Enable
 			Gui, Add, Text, x+20 yp w40,Hotkey:
-				Gui, Add, Edit, Readonly yp-2 x+5 w100  center vCastChrono_TwilightCouncil_Key, %CastChrono_TwilightCouncil_Key%
+				Gui, Add, Edit, Readonly yp-2 x+5 w100 R1 center vCastChrono_TwilightCouncil_Key, %CastChrono_TwilightCouncil_Key%
 					Gui, Add, Button, yp-2 x+5 gEdit_hotkey v#CastChrono_TwilightCouncil_Key,  Edit	
 
 		Gui, Add, GroupBox, w285 h60 xs yp+55 section, Templar Archives	
 			Gui, Add, Checkbox, xp+10 yp+25 vChronoBoostEnableTemplarArchives checked%ChronoBoostEnableTemplarArchives%, Enable
 			Gui, Add, Text, x+20 yp w40,Hotkey:
-				Gui, Add, Edit, Readonly yp-2 x+5 w100  center vCastChrono_TemplarArchives_Key, %CastChrono_TemplarArchives_Key%
+				Gui, Add, Edit, Readonly yp-2 x+5 w100 R1 center vCastChrono_TemplarArchives_Key, %CastChrono_TemplarArchives_Key%
 					Gui, Add, Button, yp-2 x+5 gEdit_hotkey v#CastChrono_TemplarArchives_Key,  Edit
 
 		Gui, Add, GroupBox, w285 h60 xs yp+55 section, Robotics Bay
 			Gui, Add, Checkbox, xp+10 yp+25 vChronoBoostEnableRoboticsBay checked%ChronoBoostEnableRoboticsBay%, Enable
 			Gui, Add, Text, x+20 yp w40,Hotkey:
-				Gui, Add, Edit, Readonly yp-2 x+5 w100  center vCastChrono_RoboticsBay_Key , %CastChrono_RoboticsBay_Key%
+				Gui, Add, Edit, Readonly yp-2 x+5 w100 R1 center vCastChrono_RoboticsBay_Key , %CastChrono_RoboticsBay_Key%
 					Gui, Add, Button, yp-2 x+5 gEdit_hotkey v#CastChrono_RoboticsBay_Key,  Edit
 
 		Gui, Add, GroupBox, w285 h60 xs yp+55 section, Fleet Beacon
 			Gui, Add, Checkbox, xp+10 yp+25 vChronoBoostEnableFleetBeacon checked%ChronoBoostEnableFleetBeacon%, Enable
 			Gui, Add, Text, x+20 yp w40,Hotkey:
-				Gui, Add, Edit, Readonly yp-2 x+5 w100  center vCastChrono_FleetBeacon_Key , %CastChrono_FleetBeacon_Key%
+				Gui, Add, Edit, Readonly yp-2 x+5 w100 R1 center vCastChrono_FleetBeacon_Key , %CastChrono_FleetBeacon_Key%
 					Gui, Add, Button, yp-2 x+5 gEdit_hotkey v#CastChrono_FleetBeacon_Key,  Edit					
 
 	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vAutoGroup_TAB, Terran|Protoss|Zerg|Delays|Info||Info2	
@@ -3525,7 +3531,7 @@ try
 
 			Gui, Add, Checkbox, xs+15 yp+25 vquickSelect%A_LoopField%Enabled Checked%Checked%, Enable
 			Gui, Add, Text, yp+40, Hotkey:
-				Gui, Add, Edit, Readonly yp-2 x+10 center w65 vquickSelect%A_LoopField%_Key gedit_hotkey, %A_Space%
+				Gui, Add, Edit, Readonly yp-2 x+10 center w65 R1 vquickSelect%A_LoopField%_Key gedit_hotkey, %A_Space%
 			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#quickSelect%A_LoopField%_Key,  Edit	
 
 			Gui, Add, Text, xs+15 y+10, Units
@@ -3576,7 +3582,7 @@ try
 	Gui, Tab, Auto
 		Gui, Add, Text, x+25 y+20 section, Toggle State:
 
-			Gui, Add, Edit, Readonly yp-2 x+10 center w65 vToggleAutoWorkerState_Key gedit_hotkey, %ToggleAutoWorkerState_Key%
+			Gui, Add, Edit, Readonly yp-2 x+10 center w65 R1 vToggleAutoWorkerState_Key gedit_hotkey, %ToggleAutoWorkerState_Key%
 		Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#ToggleAutoWorkerState_Key,  Edit ;have to use a trick eg '#' as cant write directly to above edit var, or it will activate its own label!
 
 		Gui, Add, Text, xs+220 ys w85, APM Delay:
@@ -3607,7 +3613,7 @@ try
 
 
 			Gui, Add, Text, X%thisXTabX% yp+35 w100, Make SCV Key:
-			Gui, Add, Edit, Readonly yp-2 x+1 w65 center vAutoWorkerMakeWorker_T_Key, %AutoWorkerMakeWorker_T_Key%
+			Gui, Add, Edit, Readonly yp-2 x+1 w65 R1 center vAutoWorkerMakeWorker_T_Key, %AutoWorkerMakeWorker_T_Key%
 				Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#AutoWorkerMakeWorker_T_Key,  Edit
 
 			Gui, Add, Text, xs+240 ys+55, Max SCVs:
@@ -3637,7 +3643,7 @@ try
 				Gui, Add, DropDownList,  xs+130 yp w45 center vAutoWorkerStorage_P_Key Choose%droplist_var%, 1|2|3|4|5|6|7|8|9|0	
 
 			Gui, Add, Text, X%thisXTabX% yp+35 w100, Make Probe Key:
-			Gui, Add, Edit, Readonly yp-2 x+1 w65 center vAutoWorkerMakeWorker_P_Key, %AutoWorkerMakeWorker_P_Key%
+			Gui, Add, Edit, Readonly yp-2 x+1 w65 R1 center vAutoWorkerMakeWorker_P_Key, %AutoWorkerMakeWorker_P_Key%
 				Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#AutoWorkerMakeWorker_P_Key,  Edit
 
 			Gui, Add, Text, xs+240 ys+55, Max Probes:
@@ -3672,7 +3678,7 @@ try
 		Gui, add, GroupBox, y+15 w405 h130, Select Army
 		Gui, Add, Checkbox, Xs yp+25 vSelectArmyEnable Checked%SelectArmyEnable% , Enable Select Army Function		
 		Gui, Add, Text, yp+35, Hotkey:
-		Gui, Add, Edit, Readonly yp-2 xs+85 center w65 vcastSelectArmy_key gedit_hotkey, %castSelectArmy_key%
+		Gui, Add, Edit, Readonly yp-2 xs+85 center w65 R1 vcastSelectArmy_key gedit_hotkey, %castSelectArmy_key%
 		Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#castSelectArmy_key,  Edit ;have to use a trick eg '#' as cant write directly to above edit var, or it will activate its own label!
 
 		;Gui, Add, Checkbox, Xs yp+35 vSelectArmyControlGroupEnable Checked%SelectArmyControlGroupEnable%, Control group the units
@@ -3705,7 +3711,7 @@ try
 	Gui, Tab, Spread
 		Gui, Add, Checkbox, y+25 x+25 vSplitUnitsEnable Checked%SplitUnitsEnable% , Enable Spread Unit Function	
 		Gui, Add, Text, section yp+35, Hotkey:
-		Gui, Add, Edit, Readonly yp-2 xs+85 center w65 vcastSplitUnit_key gedit_hotkey, %castSplitUnit_key%
+		Gui, Add, Edit, Readonly yp-2 xs+85 center w65 R1 vcastSplitUnit_key gedit_hotkey, %castSplitUnit_key%
 		Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#castSplitUnit_key,  Edit
 		Gui, Add, Text, Xs yp+35 w70, Ctrl Group Storage:
 		Gui, Add, DropDownList,  % "xs+85 yp w45 Center vSplitctrlgroupStorage_key Choose" (SplitctrlgroupStorage_key = 0 ? 10 : SplitctrlgroupStorage_key), 1|2|3|4|5|6|7|8|9||0
@@ -3717,13 +3723,13 @@ try
 		Gui, add, GroupBox, y+15 w405 h165 section, Remove Single Unit
 			Gui, Add, Checkbox, yp+25 xs+15 vRemoveUnitEnable Checked%RemoveUnitEnable%, Enable	
 			Gui, Add, Text, xp yp+25, Hotkey:
-			Gui, Add, Edit, Readonly yp-2 xs+105 center w65 vcastRemoveUnit_key gedit_hotkey, %castRemoveUnit_key%
+			Gui, Add, Edit, Readonly yp-2 xs+105 center w65 R1 vcastRemoveUnit_key gedit_hotkey, %castRemoveUnit_key%
 			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#castRemoveUnit_key,  Edit
 			Gui, Add, Text, Xs+15 yp+45 w360, This removes the first unit (top left of selection card) from the selected units.`n`nThis is very useful for 'cloning' workers to geisers or sending 1 ling towards a group of banelings etc.
 		Gui, add, GroupBox, xs ys+185 w405 h210, Remove Damaged Units
 			Gui, Add, Checkbox, yp+25 xs+15 vRemoveDamagedUnitsEnable Checked%RemoveDamagedUnitsEnable%, Enable	
 			Gui, Add, Text, xp yp+25, Hotkey:
-			Gui, Add, Edit, Readonly yp-2 xs+105 center w65 vcastRemoveDamagedUnits_key gedit_hotkey, %castRemoveDamagedUnits_key%
+			Gui, Add, Edit, Readonly yp-2 xs+105 center w65 R1 vcastRemoveDamagedUnits_key gedit_hotkey, %castRemoveDamagedUnits_key%
 			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#castRemoveDamagedUnits_key,  Edit	
 			Gui, Add, Text, xs+15 yp+35, Storeage Group:
 			Gui, Add, DropDownList,  % "xs+125 yp w45 Center vRemoveDamagedUnitsCtrlGroup Choose" (RemoveDamagedUnitsCtrlGroup = 0 ? 10 : RemoveDamagedUnitsCtrlGroup), 1|2|3|4|5|6|7|8|9||0
@@ -3748,7 +3754,7 @@ try
 
 		Gui, Add, GroupBox, xs ys+110 w205 h55, Unload Hotkey
 			Gui, Add, Text, Xp+10 yp+25 w85, Immediate:
-				Gui, Add, Edit, Readonly yp-2 xs+85 center w65 vEasyUnloadHotkey gedit_hotkey, %EasyUnloadHotkey%
+				Gui, Add, Edit, Readonly yp-2 xs+85 center w65 R1 vEasyUnloadHotkey gedit_hotkey, %EasyUnloadHotkey%
 				Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#EasyUnloadHotkey,  Edit 	
 
 	;		Gui, Add, Text, Xs+10 yp+35 w85, Queued:
@@ -3757,15 +3763,15 @@ try
 		
 		Gui, Add, GroupBox, xs y+25 w205 h120, SC2 Unload All Button
 			Gui, Add, Text, Xp+10 yp+25 w85, Terran:
-			Gui, Add, Edit, Readonly yp-2 xs+85 w65 center vEasyUnload_T_Key, %EasyUnload_T_Key%
+			Gui, Add, Edit, Readonly yp-2 xs+85 w65 R1 center vEasyUnload_T_Key, %EasyUnload_T_Key%
 				Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#EasyUnload_T_Key,  Edit
 			
 			Gui, Add, Text, Xs+10 yp+35 w85, Protoss:
-			Gui, Add, Edit, Readonly yp-2 xs+85 w65 center vEasyUnload_P_Key, %EasyUnload_P_Key%
+			Gui, Add, Edit, Readonly yp-2 xs+85 w65 R1 center vEasyUnload_P_Key, %EasyUnload_P_Key%
 				Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#EasyUnload_P_Key,  Edit
 			
 			Gui, Add, Text, Xs+10 yp+35 w85, Zerg:
-			Gui, Add, Edit, Readonly yp-2 xs+85 w65 center vEasyUnload_Z_Key, %EasyUnload_Z_Key%
+			Gui, Add, Edit, Readonly yp-2 xs+85 w65 R1 center vEasyUnload_Z_Key, %EasyUnload_Z_Key%
 				Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#EasyUnload_Z_Key,  Edit
 		Gui, Add, GroupBox, xs y+25 w205 h60, How-To Guide
 			Gui, Font, s11     
@@ -4066,44 +4072,44 @@ try
 		Gui, add, GroupBox, y+25 w280 h330, Overlay Hotkeys
 
 			Gui, Add, Text, section xp+15 yp+25, Temp. Hide MiniMap:
-			Gui, Add, Edit, Readonly yp-2 xp+120 center w85 vTempHideMiniMapKey gedit_hotkey, %TempHideMiniMapKey%
+			Gui, Add, Edit, Readonly yp-2 xp+120 center w85 R1 vTempHideMiniMapKey gedit_hotkey, %TempHideMiniMapKey%
 			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#TempHideMiniMapKey,  Edit 	
 
 			Gui, Add, Text, xs yp+35, Toggle Minimap:
-			Gui, Add, Edit, Readonly yp-2 xp+120 center w85 vToggleMinimapOverlayKey gedit_hotkey, %ToggleMinimapOverlayKey%
+			Gui, Add, Edit, Readonly yp-2 xp+120 center w85 R1 vToggleMinimapOverlayKey gedit_hotkey, %ToggleMinimapOverlayKey%
 			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#ToggleMinimapOverlayKey,  Edit 	
 
 			Gui, Add, Text, xs yp+35, Toggle Income:
-			Gui, Add, Edit, Readonly yp-2 xp+120 center w85 vToggleIncomeOverlayKey gedit_hotkey, %ToggleIncomeOverlayKey%
+			Gui, Add, Edit, Readonly yp-2 xp+120 center w85 R1 vToggleIncomeOverlayKey gedit_hotkey, %ToggleIncomeOverlayKey%
 			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#ToggleIncomeOverlayKey,  Edit 		
 
 			Gui, Add, Text, xs yp+35, Toggle Resources:
-			Gui, Add, Edit, Readonly yp-2 xp+120 center w85 vToggleResourcesOverlayKey gedit_hotkey, %ToggleResourcesOverlayKey%
+			Gui, Add, Edit, Readonly yp-2 xp+120 center w85 R1 vToggleResourcesOverlayKey gedit_hotkey, %ToggleResourcesOverlayKey%
 			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#ToggleResourcesOverlayKey,  Edit 		
 
 			Gui, Add, Text, xs yp+35, Toggle Army Size:
-			Gui, Add, Edit, Readonly yp-2 xp+120 center w85 vToggleArmySizeOverlayKey gedit_hotkey, %ToggleArmySizeOverlayKey%
+			Gui, Add, Edit, Readonly yp-2 xp+120 center w85 R1 vToggleArmySizeOverlayKey gedit_hotkey, %ToggleArmySizeOverlayKey%
 			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#ToggleArmySizeOverlayKey,  Edit 		
 
 			Gui, Add, Text, xs yp+35, Toggle Workers:
-			Gui, Add, Edit, Readonly yp-2 xp+120 center w85 vToggleWorkerOverlayKey gedit_hotkey, %ToggleWorkerOverlayKey%
+			Gui, Add, Edit, Readonly yp-2 xp+120 center w85 R1 vToggleWorkerOverlayKey gedit_hotkey, %ToggleWorkerOverlayKey%
 			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#ToggleWorkerOverlayKey,  Edit 		
 
 			Gui, Add, Text, xs yp+35, Toggle Unit Panel:
-			Gui, Add, Edit, Readonly yp-2 xp+120 center w85 vToggleUnitOverlayKey gedit_hotkey, %ToggleUnitOverlayKey%
+			Gui, Add, Edit, Readonly yp-2 xp+120 center w85 R1 vToggleUnitOverlayKey gedit_hotkey, %ToggleUnitOverlayKey%
 			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#ToggleUnitOverlayKey,  Edit 		
 
 			Gui, Add, Text, xs yp+35, Cycle Overlays:
-			Gui, Add, Edit, Readonly yp-2 xp+120 center w85 vCycleOverlayKey gedit_hotkey, %CycleOverlayKey%
+			Gui, Add, Edit, Readonly yp-2 xp+120 center w85 R1 vCycleOverlayKey gedit_hotkey, %CycleOverlayKey%
 			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#CycleOverlayKey,  Edit 		
 
 			Gui, Add, Text, xs yp+35, Cycle Identifier:
-			Gui, Add, Edit, Readonly yp-2 xp+120 center w85 vToggleIdentifierKey gedit_hotkey, %ToggleIdentifierKey%
+			Gui, Add, Edit, Readonly yp-2 xp+120 center w85 R1 vToggleIdentifierKey gedit_hotkey, %ToggleIdentifierKey%
 			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#ToggleIdentifierKey,  Edit 		
 			gui, font, Underline
 			Gui, Add, Text, xs yp+35, *Adjust Overlays:
 			gui, font, Norm 
-			Gui, Add, Edit, Readonly yp-2 xp+120 center w85 vAdjustOverlayKey gedit_hotkey, %AdjustOverlayKey%
+			Gui, Add, Edit, Readonly yp-2 xp+120 center w85 R1 vAdjustOverlayKey gedit_hotkey, %AdjustOverlayKey%
 			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#AdjustOverlayKey,  Edit 
 			Gui, Add, Text, xs y+25, * See 'Info' Tab for Instructions		
 
@@ -4341,7 +4347,7 @@ try
 
 		WorkerSplitType_TT := "Defines how many workers are rallied to each mineral patch."
 
-		Auto_inject_sleep_TT := Edit_pos_var_TT := "Sets the amount of time that the program sleeps for during each automation cycle.`nThis has a large effect on the speed, and hence how 'human' the automation appears'.`n`n"
+		Auto_inject_sleep_TT := Edit_pos_var_TT := "Sets the amount of time that the program sleeps for during each automation cycle for the 'one button inject' method.`nThis has a large effect on the speed, and hence how 'human' the automation appears'.`n`n"
 				. "The lowest reliable values will vary for users, but for myself the minimap method can be used with a sleep time of 0 ms.`n"
 				. "The backspace methods require at least 8 ms."
 
@@ -7490,8 +7496,6 @@ getCamCenteredUnit(UnitList) ; |delimited ** ; needs a minimum of 70+ ms to upda
 	return unit_closest
 }
 
-
-
 castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendWhileBlocked("^" CG_control_group)
 {	global
 	LOCAL 	click_x, click_y, BaseCount, oSelection, SkipUsedQueen, MissedHatcheries, QueenCount, FoundQueen
@@ -7911,7 +7915,6 @@ for a 146 terran army deslecting all but 1 unit
 g_SelectArmy:
 selectArmy()
 return 
-; Das Keyboard Professional S
 
 selectArmy()
 {
@@ -8154,7 +8157,8 @@ quickSelect(aDeselect)
 		; lowest portraits i.e. on the left side of a selection group
 
 		if clickPortraits.MaxIndex()
-			reverseArray(clickPortraits), clickUnitPortraitsWithModifiers(clickPortraits), clickSelectionPage(1)	
+			reverseArray(clickPortraits), clickUnitPortraitsWithModifiers(clickPortraits)
+		clickSelectionPage(1)	; unconditionally click page 1
 	}
 /*
 	; doing everything in one go now (not removed ctrl removing units then patrolling units)
