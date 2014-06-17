@@ -20,6 +20,7 @@ Helpful AHK Code/
 # minimap thread extract #
 ###############
 threadMiniMapFull.ahk
+threadOverlaysFull.ahk
 
 # Don't Ignore #
 ############

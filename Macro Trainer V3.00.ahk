@@ -53,8 +53,8 @@ SetWorkingDir %A_ScriptDir%  ; Ensures a consistent starting directory.
 #InstallMouseHook
 #InstallKeybdHook
 #UseHook
-;#KeyHistory 0 ; don't need it
-#KeyHistory 500 ; don't need it
+#KeyHistory 0 ; don't need it
+;#KeyHistory 500 ; testing
 #Persistent
 #NoEnv  ; Recommended for performance and compatibility with future AutoHotkey releases.
 #MaxThreads 20 ; don't know if this will affect anything
@@ -4405,6 +4405,7 @@ try
 							. "`n  -Upgrades"
 							. "`n  -Off"
 		ToggleIdentifierKey_TT := #ToggleIdentifierKey_TT := "Cycles the player identifier in the overlay.`n`nI.E. Hidden, names, or icons."
+		CycleOverlayKey_TT := #CycleOverlayKey_TT := "Cycles through most of the overlays. (disabling/enabling)"
 
 		AdjustOverlayKey_TT := #AdjustOverlayKey_TT := "Used to move and resize the overlays."
 		TT_UserMiniMapXScale_TT := TT_UserMiniMapYScale_TT := UserMiniMapYScale_TT := UserMiniMapXScale_TT := "Adjusts the relative size of units on the minimap."
@@ -10393,14 +10394,6 @@ return
 		tSpeak("Follow")
 		
 ; fold//
-
-
-
-
-
-
-
-
 */
 
 
@@ -10877,12 +10870,12 @@ return
 
 
 */
-
+/*
 >!>+f10::
 run %comspec% /c ""C:\Users\Matthieu\Desktop\New folder (3)\MsgHookLister\x64\MsgListerApp.exe" /h > "C:\Users\Matthieu\Desktop\New folder (3)\MsgHookLister\x64\hooks.txt"",, Hide 
 sleep 1000 
 Run, "C:\Users\Matthieu\Desktop\New folder (3)\MsgHookLister\x64\hooks.txt"
 return 
-
+*/
 
 
