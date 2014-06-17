@@ -13,6 +13,9 @@ Helpful AHK Code/
 /*.exe
 *.o
 *.so
+*.sdf
+*.ipch
+*.suo
 
 # minimap thread extract #
 ###############

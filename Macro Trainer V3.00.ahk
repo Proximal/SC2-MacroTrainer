@@ -3329,6 +3329,7 @@ try
 			Gui, Add, Text, xs+10 yp+35, Chrono Remainder:`n    (1 = 25 mana)
 			Gui, Add, Edit, Number Right xp+120 yp-2 w45 vTT_CG_chrono_remainder 
 				Gui, Add, UpDown,  Range0-1000 vCG_chrono_remainder, %CG_chrono_remainder%		
+	Gui, Add, Button, x460 y430 gg_ChronoRulesURL w130, Rules/Criteria
 
 	Gui, Tab, Structures	
 		Gui, Add, GroupBox, w285 h60 y+20 section, Warpgates && Gateways
@@ -3397,6 +3398,8 @@ try
 			Gui, Add, Text, x+20 yp w40,Hotkey:
 				Gui, Add, Edit, Readonly yp-2 x+5 w100 R1 center vCastChrono_FleetBeacon_Key , %CastChrono_FleetBeacon_Key%
 					Gui, Add, Button, yp-2 x+5 gEdit_hotkey v#CastChrono_FleetBeacon_Key,  Edit					
+	Gui, Add, Button, x460 y430 gg_ChronoRulesURL w130, Rules/Criteria
+
 
 	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vAutoGroup_TAB, Terran|Protoss|Zerg|Delays|Info||Info2	
 	Short_Race_List := "Terr|Prot|Zerg"
@@ -3580,21 +3583,22 @@ try
 
 	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vAutoWorker_TAB, Auto||Info		
 	Gui, Tab, Auto
-		Gui, Add, Text, x+25 y+20 section, Toggle State:
+		Gui, Add, GroupBox, x+25 Y+10 w370 h85 section, General 
+		Gui, Add, Text, xp+10 yp+20, Toggle State:
 
 			Gui, Add, Edit, Readonly yp-2 x+10 center w65 R1 vToggleAutoWorkerState_Key gedit_hotkey, %ToggleAutoWorkerState_Key%
 		Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#ToggleAutoWorkerState_Key,  Edit ;have to use a trick eg '#' as cant write directly to above edit var, or it will activate its own label!
 
-		Gui, Add, Text, xs+220 ys w85, APM Delay:
-			Gui, Add, Edit, Number Right x+15 yp-2 w50 vTT_AutoWorkerAPMProtection
+		Gui, Add, Text, xs+10 y+15 w85, APM Delay:
+			Gui, Add, Edit, Number Right x+4 yp-2 w50 vTT_AutoWorkerAPMProtection
 					Gui, Add, UpDown,  Range0-100000 vAutoWorkerAPMProtection, %AutoWorkerAPMProtection%		
 
 	;	Gui, Add, Text, xs+220 yp+25 w85, Queue While Supply Blocked:			
-		Gui, Add, Checkbox, xs+220 y+10 vAutoWorkerQueueSupplyBlock Checked%AutoWorkerQueueSupplyBlock%, Queue While Supply Blocked
+		Gui, Add, Checkbox, xs+205 ys+20 vAutoWorkerQueueSupplyBlock Checked%AutoWorkerQueueSupplyBlock%, Queue While Supply Blocked
 		Gui, Add, Checkbox, xp yp+20 vAutoWorkerAlwaysGroup Checked%AutoWorkerAlwaysGroup%, Always group selection **  
 
 		thisXTabX := XTabX + 12
-		Gui, Add, GroupBox, xs Y+10 w370 h150 section, Terran 
+		Gui, Add, GroupBox, xs Y+45 w370 h150 section, Terran 
 			Gui, Add, Checkbox, xp+10 yp+25 vEnableAutoWorkerTerranStart Checked%EnableAutoWorkerTerranStart%, Enable
 
 			Gui, Add, Text, X%thisXTabX% y+15 w100, Base Ctrl Group:
@@ -3625,7 +3629,7 @@ try
 						Gui, Add, UpDown,  Range1-100000 vAutoWorkerMaxWorkerPerBaseTerran, %AutoWorkerMaxWorkerPerBaseTerran%	
 
 
-		Gui, Add, GroupBox, xs ys+170 w370 h150 section, Protoss 
+		Gui, Add, GroupBox, xs ys+165 w370 h150 section, Protoss 
 			Gui, Add, Checkbox, xp+10 yp+25 vEnableAutoWorkerProtossStart Checked%EnableAutoWorkerProtossStart%, Enable
 
 			Gui, Add, Text, X%thisXTabX% y+15 w100, Base Ctrl Group:
@@ -7828,15 +7832,12 @@ restoreSelection(controlGroup, selectionPage, highlightedTab)
 	if (highlightedTab && highlightedTab < getSelectionTypeCount())	; highlightedTab is zero based - TypeCount is 1 based hence < not <=
 	{
 		input.pSend(sRepeat(NextSubgroupKey, highlightedTab))
-	s := stopwatch()
 		; Although unlikely due to speed of automation, it is possible for a unit to die and for there to be 1 less
 		; sub group now present, hence if trying to access the previously highest (and now now non existent) subgroup 
 		; this could stall here. Perhaps have a look for a max subgroup pos
 		while (getSelectionHighlightedGroup() != highlightedTab && A_Index < 40) ; Raised from 25
 			dsleep(1)
-	log(stopwatch(s))
-		dsleep(4) ; This static sleep wasn't required during testing but i added it anyway. (as i didn't do in-depth testing)
-	
+		dsleep(4) ; This static sleep wasn't required during testing but i added it anyway. (as i didn't do in-depth testing)	
 	}	
 	; There's no point checking if the selection page still exists - if it doesn't the click
 	; will be ignored anyway
@@ -9388,7 +9389,7 @@ if 1
 }
 return 
 
-
+/*
 ; testing not being used
 g_SimpleSplitter:
 thread, Interrupt, off
@@ -9401,7 +9402,7 @@ while (GetKeyState(A_ThisHotkey, "P") && (selectionCount := getSelectionCount())
 }
 return 
 
-/*
+
 Terran build structure
 has a remaining time counter (ie decrease as being built) (really +0x2c)
 
@@ -9428,6 +9429,7 @@ in strcuture pointed by p1
 
 
 ; converts the unit data (extracted from SC2 MPQ files) into an AHK object
+/*
 ParseUnitData(aUnitName)
 {
 	unitData := [], UnitName := 0
@@ -9561,7 +9563,7 @@ getUnitAbilitiesString(unit)
 msgbox % getArchonMorphTime(pAbilities)
 
 return 
-
+*/
 
 
 
@@ -10426,9 +10428,9 @@ launchOverlayThread()
 		if !aThreads.Overlays
 			aThreads.Overlays := AhkDllThread("Included Files\ahkH\AutoHotkey.dll")
 		if 0 
-			FileInstall, threadOverlays.ahk, Ignore	
+			FileInstall, threadOverlaysFull.ahk, Ignore	
 		if A_IsCompiled
-			overlayScript := LoadScriptString("threadOverlays.ahk")
+			overlayScript := LoadScriptString("threadOverlaysFull.ahk")
 		else 
 			FileRead, overlayScript, threadOverlays.ahk			
 		aThreads.Overlays.ahktextdll(overlayScript)
