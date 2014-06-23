@@ -1072,7 +1072,7 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 	       Continue
 		owner := numgetUnitOwner(MemDump, Unit) 
 
-	    if  (aPlayer[Owner, "Team"] <> aLocalPlayer["Team"] && Owner) || (Owner) 
+	    if  (aPlayer[Owner, "Team"] <> aLocalPlayer["Team"] && Owner) ;|| (Owner) 
 	    {
 	    	pUnitModel := numgetUnitModelPointer(MemDump, Unit)
 	    	Type := numgetUnitModelType(pUnitModel)
@@ -1529,11 +1529,12 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 	, Gdip_SetInterpolationMode(G, 2)	; fast and draws (almost?) same quality as mode 7 HighQualityBicubic. Refer to benchmark picture for data
 
 
-	DestxMax := Height := DestY := 0
+	Height := DestY := 0
 	, rowMultiplier := (DrawUnitOverlay ? (SplitUnitPanel ? 2 : 1) : 0) + (DrawUnitUpgrades ? 1 : 0)
 	
 	for slot_number, priorityObject in aEnemyUnits ; slotnumber = owner and slotnumber is an object
 	{
+		DestXPlayerMax := 0
 		Height += 7*userscale	;easy way to increase different players next line
 		; destY is height of each players first panel row.
 		, DestY := (rowMultiplier * Height + ((unitPanelDrawUnitProgress || unitPanelDrawStructureProgress ) ? 8 * UserScale : 0)) * (A_Index - 1)
@@ -1591,8 +1592,8 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 						, DestX := destUnitSplitX
 						, DestY := destUnitSplitY + Height * 1.1	; 1.1 so the transparent backgrounds of the count and count underconstruction dont overlap
 					}
-					if (DestxMax < DestX)
-						DestxMax := DestX		
+					if (DestXPlayerMax < DestX)
+						DestXPlayerMax := DestX		
 					Gdip_DrawImage(G, pBitmap, DestX, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
 
 					; Draw the MSC energy in place of unit count - as can only have one MSC.
@@ -1682,9 +1683,9 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 			}
 
 			; This is fine for both split/non-split panels 
-			; Add 1 image width to destination, as DestxMax was not incremented at the end of the last loop. 
+			; Add 1 image width to destination, as DestXPlayerMax was not incremented at the end of the last loop. 
 			; (so it's currently placed at the start of the last drawn picture)
-			DestX := DestxMax += (Width+5*UserScale) 
+			DestX := DestXPlayerMax += (Width+5*UserScale) 
 
 			destUnitSplitX := DestX += (Width+5*UserScale) ; constructing units / buildings in construction appear 1 'blank spot' further to the right
 
@@ -1732,6 +1733,7 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 							destUnitSplitX += (Width+5*UserScale)
 							, DestX := prevStructureX
 							, DestY := prevStructureY
+							
 						}
 						else DestX += (Width+5*UserScale)
 					}
@@ -1845,16 +1847,6 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 	Update: I believe this was due to calling gdi graphicsClear (which isn't required)
 */
 
-
-f2::
-critical, 500
-		getEnemyUnitCount(aEnemyUnits, aEnemyUnitConstruction, aEnemyCurrentUpgrades)
-objtree(aEnemyUnitConstruction, "aEnemyUnitConstruction")
-sleep 50
-FilterUnits(aEnemyUnits, aEnemyUnitConstruction, aUnitPanelUnits)
-objtree(aEnemyUnitConstruction, "aEnemyUnitConstructionPost")
-objtree(aEnemyUnits, "aEnemyUnits")
-return 
 
 
 
