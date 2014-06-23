@@ -1,3 +1,9 @@
+; A cleaner solution would be to use AHK to change the icon, hence don't need to include 
+; resHacker in compiled exe (saving space)
+; But I can't be bothered testing/learning about atm.
+; AHK example.
+; http://www.autohotkey.com/board/topic/78200-ahk-l-compiled-exebin-icon-changer-v11-updated/
+
 ResourHackIcons(dotIcoFile)
 {
 	if !A_IsCompiled

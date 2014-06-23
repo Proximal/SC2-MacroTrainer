@@ -1,3 +1,59 @@
+/* SC2 Hotkey Rules
+	
+	If no key is assigned then ini key is blank e.g.
+		AlertRecall=
+	If an alternate hotkey is present, looks like
+		TownCamera=Backspace,Space
+
+	Modifiers are written out in this order:
+		Control+Alt+Shift+Keyname
+
+	Apparently nothing can be bound to the wheel (i thought you COULD do that in sc2....)
+
+	Neutral modifier keys only.
+
+	Build/control card hotkeys like build worker, observer, move, patrol etc (anything on the control card)
+		can only contain one key.
+		Can not be a modifier alone
+	
+	Global Hotkeys
+		Can be a single modifier e.g. Control
+		Can have multi modifier only hotkey e.g. Control+Shift+Alt
+		Can have multi modifier hotkey Control+Shift+Alt+D
+		PrintScreen can not be bound
+		"Shift+[" in SC2 GUI is written out as Shift+BracketOpen
+		"Caps Lock" = CapsLock
+		"=" = Equals
+		"Pause" = Pause
+		"ScrollLock" = ScrollLock
+
+
+
+*/
+
+/*
+	The file Variables.txt within the root account folder has a key which lists the current 
+	hotkey profile
+
+	hotkeyprofile=testhotkey
+
+
+*/
+
+
+getSCHotkeys()
+{
+;	hotkeyIniFile
+	
+	variablesFilePath := getAccountFolder() "Variables.txt"
+
+
+}
+
+
+
+; This function was written a year or two ago. I would do things differently now,
+; But lets go with it.
 ; takes a hotkey stored in SC2s syntax and the corresponding AHK Send command
 
 convertSC2HotkeyStringIntoSendCommand(String)
@@ -47,10 +103,12 @@ StringReplace, String, String, Shift+, +, All 	;this will also act to remove SC2
 	for SC2Key, AhkKey in aTranslate
 		StringReplace, String, String, %SC2Key%, %AhkKey%, All 
 
-	if String in !,#,+,^,{,} ; string must be 1 character length to match
-		return "{" String "}"
+	; I don't think this is required as you can't bind those characters
+	; At least, they're not written to the hotkey file like that
+	;if String in !,#,+,^,{,} ; string must be 1 character length to match
+	;	return "{" String "}"
 
-	static aModifiers := ["+", "^", "!"]
+	aModifiers := ["+", "^", "!"]
 	;lets remove the modifiers so can see command length
 	for index, modifier in 	aModifiers
 		if inStr(string, modifier)
@@ -72,5 +130,7 @@ StringReplace, String, String, Shift+, +, All 	;this will also act to remove SC2
 	if (string = "+=") 		; AHK cant send this correctly != and +- work fine
 		string := "+{=}" 	; +!= works fine too as does !+= and ^+=
 
-		return string
+	; lower-case, if want to use with AHKs sendinput a 'H' is equivalent to '+H'
+	StringLower, string, string
+	return string
 }

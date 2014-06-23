@@ -851,7 +851,7 @@ DrawArmySizeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,
 			}
 			Else If (PlayerIdentifier = 3)
 			{		
-				pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"RaceFlat"] 
+				pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"RaceFlatColour", aPlayer[slot_number, "Colour"]]
 				SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
 				Width *= UserScale *.5, Height *= UserScale *.5	
 				Gdip_DrawImage(G, pBitmap, 12*UserScale, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
@@ -963,7 +963,6 @@ DrawWorkerOverlay(ByRef Redraw, UserScale=1,Drag=0)
 	, obm := SelectObject(hdc, hbm)
 	, G := Gdip_GraphicsFromHDC(hdc)
 	, Gdip_SetInterpolationMode(G, 2)
-	;DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0)	
 
 	pBitmap := a_pBitmap[aLocalPlayer["Race"],"Worker"]
 	SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
@@ -1060,8 +1059,8 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 {
 	GLOBAL DeadFilterFlag, aPlayer, aLocalPlayer, aUnitTargetFilter, aUnitInfo, aMiscUnitPanelInfo
 	aEnemyUnits := [], aEnemyUnitConstruction := [], aEnemyCurrentUpgrades := [], aMiscUnitPanelInfo := []
-	 
-	static aUnitMorphingNames := {"Egg": True, "BanelingCocoon": True, "BroodLordCocoon": True, "OverlordCocoon": True, MothershipCore: True}
+	 ; Mothership cant really morph - but might as well add it  inside the MSC section
+	static aUnitMorphingNames := {"Egg": True, "BanelingCocoon": True, "BroodLordCocoon": True, "OverlordCocoon": True, "MothershipCore": True, "Mothership": True }
 ;	if !aEnemyUnitPriorities	;because having  GLOBAL aEnemyUnitPriorities := [] results in it getting cleared each function run
 ;		aEnemyUnitPriorities := []
 
@@ -1073,7 +1072,7 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 	       Continue
 		owner := numgetUnitOwner(MemDump, Unit) 
 
-	    if  (aPlayer[Owner, "Team"] <> aLocalPlayer["Team"] && Owner) ;|| (Owner) 
+	    if  (aPlayer[Owner, "Team"] <> aLocalPlayer["Team"] && Owner) || (Owner) 
 	    {
 	    	pUnitModel := numgetUnitModelPointer(MemDump, Unit)
 	    	Type := numgetUnitModelType(pUnitModel)
@@ -1091,20 +1090,18 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 				pAbilities := numgetUnitAbilityPointer(MemDump, unit)
 
 				if (Type = aUnitID.Archon )
-					progress := getArchonMorphTime(numgetUnitAbilityPointer(MemDump, unit))
+					progress := getArchonMorphTime(pAbilities)
 				;if (TargetFilter & aUnitTargetFilter.Structure)	
 				else			
 					progress := getBuildProgress(pAbilities, Type)
-
-
 
 				aEnemyUnitConstruction[Owner, Priority, Type] := {"progress": progress > aEnemyUnitConstruction[Owner, Priority, Type].Progress
 																				? progress 
 																				: aEnemyUnitConstruction[Owner, Priority, Type].Progress
 																, "count": round(aEnemyUnitConstruction[Owner, Priority, Type].Count) + 1}
-				aEnemyUnitConstruction[Owner, "TotalCount"] := round(aEnemyUnitConstruction[Owner, "TotalCount"]) + 1
+				aEnemyUnitConstruction[Owner, "TotalCount"] := round(aEnemyUnitConstruction[Owner, "TotalCount"]) + 1 ; Only used to calculate current zerg drone count. 
+				; These will be buildings, but there could be a couple of units here e.g. archon - so if a zerg has a similar unit, then it will throw off the drone count
 				
-
 			}		; this is a cheat and very lazy way of incorporating a count into the array without stuffing the for loop and having another variable
 			Else 
 			{
@@ -1216,7 +1213,7 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 							progress := getUnitMorphTime(unit, Type)
 							QueuedPriority := aUnitInfo[Type := aUnitID.Overseer, "Priority"], Count := 1
 						}
-						else if (Type = aUnitId.MothershipCore)
+						else if (Type = aUnitId.MothershipCore || Type = aUnitId.Mothership)
 						{
 							if isMotherShipCoreMorphing(unit)
 							{
@@ -1225,6 +1222,8 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 							}
 							else 
 							{
+								aMiscUnitPanelInfo["MotherShipEnergy", owner] := getUnitEnergy(unit)
+								; Since only can have 1 mothership[core] could have just used the 'count' to store the energy
 								aEnemyUnits[Owner, Priority, Type] := round(aEnemyUnits[Owner, Priority, Type]) + 1 ; ? aEnemyUnits[Owner, Priority, Type] + 1 : 1
 								continue
 							}
@@ -1279,7 +1278,7 @@ FilterUnits(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aUnitPanelUni
 							, "Zerg": ["Drone","Hive","Lair", "Hatchery"]}
 
 	STATIC aAddMorphing := {"Zerg": {BanelingCocoon: "Baneling"}}
-
+	
 	; aUnitPanelUnits is an object which contains the custom filtered (removed) user selected units
 	;	aUnitPanelUnits ----Race
 	;						|------- FilteredCompleted
@@ -1311,14 +1310,32 @@ FilterUnits(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aUnitPanelUni
 	(unit)			   |------247--->Count
 
 */
+	; Since i've added progress and count to the unit panel, i've had to turn priorityObject[priority, unitId] into an object itself containing progress and count - rather than just equalling 
+	; the count 
+
 	for owner, priorityObject in aEnemyUnits
 	{
 	;	aDeleteKeys := []					;****have to 'save' the delete keys, as deleting them during a for loop will cause you to go +2 keys on next loop, not 1
 		race := aPlayer[owner, "Race"]		;it doesn't matter if it attempts to delete the same key a second time (doesn't effect anything)
 
-		if (race = "Zerg" && priorityObject[aUnitInfo[aUnitID["Drone"], "Priority"], aUnitID["Drone"]] && aEnemyUnitConstruction[Owner, "TotalCount"])
-			priorityObject[aUnitInfo[aUnitID["Drone"], "Priority"], aUnitID["Drone"]] -= aEnemyUnitConstruction[Owner, "TotalCount"] ; as drones morphing are still counted as 'alive' so have to remove them		
+		; as drones morphing are still counted as 'alive' so have to remove them. Could possibly use some of the target filters e.g. hidden
+		; But thats also true if they are loaded into an overlord. There might be a way to determine this, or use an additional target filter.
 
+		; For zerg, these units are considered underConstruction and they do not consume a drone. They also have the structure flag
+		; NydusCanal (head). Only one of these can be made at a time as well.
+		; CreepTumorQueen (queen laid tumour)
+		; CreepTumor = 124 (the 'constructing' one when spread from an active tumour)
+		; morphing banes, overseers, broodlords, and completed (buried) tumours all give 0 as under construction 
+
+		if (race = "Zerg" && priorityObject[aUnitInfo[aUnitID["Drone"], "Priority"], aUnitID["Drone"]] && aEnemyUnitConstruction[Owner, "TotalCount"])
+		{
+			priorityObject[aUnitInfo[aUnitID["Drone"], "Priority"], aUnitID["Drone"]] -= aEnemyUnitConstruction[Owner, "TotalCount"] 
+																						- round(aEnemyUnitConstruction[owner, aUnitInfo[aUnitID["NydusCanal"], "Priority"], aUnitID["NydusCanal"], "Count"]) 
+																						- round(aEnemyUnitConstruction[owner, aUnitInfo[aUnitID["CreepTumorQueen"], "Priority"], aUnitID["CreepTumorQueen"], "Count"])
+																						- round(aEnemyUnitConstruction[owner, aUnitInfo[aUnitID["CreepTumor"], "Priority"], aUnitID["CreepTumor"], "Count"])
+			if (priorityObject[aUnitInfo[aUnitID["Drone"], "Priority"], aUnitID["Drone"]] <= 0)
+				priorityObject[aUnitInfo[aUnitID["Drone"], "Priority"]].remove(aUnitID["Drone"], "")
+		}
 		for index, removeUnit in aRemovedUnits[race]
 		{
 			removeUnit := aUnitID[removeUnit]
@@ -1397,24 +1414,35 @@ FilterUnits(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aUnitPanelUni
 	{
 		race := aPlayer[owner, "Race"]	
 
-		for subUnit, mainUnit in aAddConstruction[Race]
+		for subUnit, mainUnit in aAddConstruction[Race] ; As this point only Terrans will enter this loop. And its only for rectors/techLabs
 		{
 			subunit := aUnitID[subUnit]
 			subPriority := aUnitInfo[subunit, "Priority"]
-			if (total := priorityObject[subPriority, subunit])
+			if (total := priorityObject[subPriority, subunit, "Count"])
 			{
+				subProgress := priorityObject[subPriority, subunit, "progress"]
 				mainUnit := aUnitID[mainUnit]
 				if !priority := aUnitInfo[mainUnit, "Priority"]
-					priority := subPriority		;take a change, hopefully they will have same priority can cause issues
+					priority := subPriority		;take a chance, hopefully they will have same priority can cause issues
 
 				; since its possible that the main unit hasn't been allocated a isStructure
 				; use the isStructure from the subUnit which will be the same, and has already been assigned
+				; Also, as it stands this is only required for terrans, and so all of these units are techlab/reactors
+				; so they're structures 
 				if (aUnitInfo[mainUnit, "isStructure"] = "")
 					aUnitInfo[mainUnit, "isStructure"] := aUnitInfo[subUnit, "isStructure"]
 
-				if priorityObject[priority, mainUnit]
-					priorityObject[priority, mainUnit] += total
-				else priorityObject[priority, mainUnit] := total
+				if priorityObject[priority, mainUnit, "Count"]
+				{
+					priorityObject[priority, mainUnit, "Count"] += total
+					if (priorityObject[priority, mainUnit, "progress"] < subProgress)
+						priorityObject[priority, mainUnit, "progress"] := subProgress
+				}
+				else 
+				{
+					priorityObject[priority, mainUnit, "Count"] := total
+					priorityObject[priority, mainUnit, "progress"] := subProgress
+				}
 				priorityObject[subPriority].remove(subunit, "")
 				aEnemyUnitConstruction[Owner, "TotalCount"] -= total 	;these counts still seem to be out, but works for zerg?
 			}		
@@ -1501,7 +1529,7 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 	, Gdip_SetInterpolationMode(G, 2)	; fast and draws (almost?) same quality as mode 7 HighQualityBicubic. Refer to benchmark picture for data
 
 
-	Height := DestY := 0
+	DestxMax := Height := DestY := 0
 	, rowMultiplier := (DrawUnitOverlay ? (SplitUnitPanel ? 2 : 1) : 0) + (DrawUnitUpgrades ? 1 : 0)
 	
 	for slot_number, priorityObject in aEnemyUnits ; slotnumber = owner and slotnumber is an object
@@ -1553,22 +1581,50 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 						continue ; as i dont have a picture for that unit - not a real unit?
 					SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap) 
 					, Width *= UserScale *.5, Height *= UserScale *.5	; all unit/buildings/updagres are 38x38 after being halved
-					
+				
+
 					; Doing like this as it's a requested feature and im too lazy to change everything to make it simpler
-					if (!aUnitInfo[unit, "isStructure"] && SplitUnitPanel)
+					if (SplitUnitPanel && !aUnitInfo[unit, "isStructure"])
 					{
 						prevStructureX := DestX
 						, prevStructureY := DestY
 						, DestX := destUnitSplitX
 						, DestY := destUnitSplitY + Height * 1.1	; 1.1 so the transparent backgrounds of the count and count underconstruction dont overlap
-					} 
+					}
+					if (DestxMax < DestX)
+						DestxMax := DestX		
 					Gdip_DrawImage(G, pBitmap, DestX, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
-					, Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, DestX + .6*Width, DestY + .6*Height, Width/2.5, Height/2.5, 5)
-					if (unitCount >= 10)
-						gdip_TextToGraphics(G, unitCount, "x"(DestX + .5*Width + .18*Width/2) "y"(DestY + .5*Height + .3*Height/2)  " Bold cFFFFFFFF r4 s" 11*UserScale, Font)
-					Else
-						gdip_TextToGraphics(G, unitCount, "x"(DestX + .5*Width + .35*Width/2) "y"(DestY + .5*Height + .3*Height/2)  " Bold cFFFFFFFF r4 s" 11*UserScale, Font)
 
+					; Draw the MSC energy in place of unit count - as can only have one MSC.
+					if (unit = aUnitID.MothershipCore || unit = aUnitID.Mothership)
+					{
+						; For the motherShip - the energy is a little hard to read, due to the its background picture
+						energy := aMiscUnitPanelInfo["MotherShipEnergy", slot_number]
+						if (energy < 100)
+						{
+							Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, DestX + .6*Width, DestY + .6*Height, Width/2.5, Height/2.5, 5)
+							if (energy < 10)
+								gdip_TextToGraphics(G, energy, "x"(DestX + .5*Width + .4*Width/2) "y"(DestY + .5*Height + .3*Height/2)  " Bold Italic cFFCD00FF r4 s" 11*UserScale, Font)	
+							else 
+								gdip_TextToGraphics(G, energy, "x"(DestX + .5*Width + .18*Width/2) "y"(DestY + .5*Height + .3*Height/2) " Bold Italic cFFCD00FF r4 s" 11*UserScale, Font)
+						}
+						else  ;(energy >= 100)
+						{
+							; Since MSC energy can be three digits (in the 100s), make the transparent back ground a bit wider - move the start pos back,
+							; but ensure it still ends at the same pos as the other unit count transparent backgrounds.
+							; use .45*width for text x pos, as since text (and italic) the text will way be slightly to the right
+							Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, DestX + .5*Width, DestY + .6*Height, (Width/2.5) +  .1*Width, Height/2.5, 5)
+							, gdip_TextToGraphics(G, energy, "x"(DestX + .45*Width) "y"(DestY + .5*Height + .3*Height/2)  " Bold Italic cFFCD00FF r4 s" 11*UserScale, Font)
+						}
+					}
+					else 
+					{
+						Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, DestX + .6*Width, DestY + .6*Height, Width/2.5, Height/2.5, 5)
+						if (unitCount >= 10)
+							gdip_TextToGraphics(G, unitCount, "x"(DestX + .5*Width + .18*Width/2) "y"(DestY + .5*Height + .3*Height/2)  " Bold cFFFFFFFF r4 s" 11*UserScale, Font)
+						Else
+							gdip_TextToGraphics(G, unitCount, "x"(DestX + .5*Width + .35*Width/2) "y"(DestY + .5*Height + .3*Height/2)  " Bold cFFFFFFFF r4 s" 11*UserScale, Font)					
+					}
 					; Draws in top Left corner of picture scan count for orbitals or chrono count for protoss structures
 					if ((chronos := aMiscUnitPanelInfo["chrono", slot_number, unit]))
 					{
@@ -1594,7 +1650,6 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 							gdip_TextToGraphics(G, chronoScanCount, "x"(DestX + .2*Width/2) "y"(DestY + .5*Height + .3*Height/2) " Bold Italic cFF00FFFF r4 s" 11*UserScale, Font)
 					}
 
-
 					if (unitCount := aEnemyUnitConstruction[slot_number, priority, unit].count)	; so there are some of this unit being built lets draw the count on top of the completed units
 					{
 						progress := aEnemyUnitConstruction[slot_number, priority, unit].progress
@@ -1616,7 +1671,7 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 						}
 							aEnemyUnitConstruction[slot_number, priority].remove(unit, "")
 					}
-					if (!aUnitInfo[unit, "isStructure"] && SplitUnitPanel)
+					if (SplitUnitPanel && !aUnitInfo[unit, "isStructure"])
 					{
 						destUnitSplitX += (Width+5*UserScale)
 						, DestX := prevStructureX
@@ -1625,7 +1680,13 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 					else DestX += (Width+5*UserScale)
 				}
 			}
-			 destUnitSplitX := DestX += (Width+5*UserScale) ; constructing units / buildings in construction appear further to the right
+
+			; This is fine for both split/non-split panels 
+			; Add 1 image width to destination, as DestxMax was not incremented at the end of the last loop. 
+			; (so it's currently placed at the start of the last drawn picture)
+			DestX := DestxMax += (Width+5*UserScale) 
+
+			destUnitSplitX := DestX += (Width+5*UserScale) ; constructing units / buildings in construction appear 1 'blank spot' further to the right
 
 			; in case no units in construction
 
@@ -1783,3 +1844,18 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 
 	Update: I believe this was due to calling gdi graphicsClear (which isn't required)
 */
+
+
+f2::
+critical, 500
+		getEnemyUnitCount(aEnemyUnits, aEnemyUnitConstruction, aEnemyCurrentUpgrades)
+objtree(aEnemyUnitConstruction, "aEnemyUnitConstruction")
+sleep 50
+FilterUnits(aEnemyUnits, aEnemyUnitConstruction, aUnitPanelUnits)
+objtree(aEnemyUnitConstruction, "aEnemyUnitConstructionPost")
+objtree(aEnemyUnits, "aEnemyUnits")
+return 
+
+
+
+		

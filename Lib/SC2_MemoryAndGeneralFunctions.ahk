@@ -1768,7 +1768,7 @@ findAbilityTypePointer(pAbilities, unitType, abilityString)
 		if (!p := ReadMemory(p1 + B_AbilityStringPointer + (A_Index - 1)*4, GameIdentifier))
 			return 0
 		if (abilityString = string := ReadMemory_Str(ReadMemory(p + 0x4, GameIdentifier), GameIdentifier))
-			return pAbilities + (aUnitAbilitiesOffsets[unitType, abilityString] :=  O_IndexParentTypes + (A_Index - 1)*4)	
+			return pAbilities + (aUnitAbilitiesOffsets[unitType, abilityString] := O_IndexParentTypes + (A_Index - 1)*4)	
 	} until (A_Index > 100)
 	return  0 ; something went wrong
 }
@@ -3809,11 +3809,16 @@ readConfigFile()
 		IniRead, %A_LoopField%Scale, %config_file%, %section%, %A_LoopField%Scale, 1
 		if (%A_LoopField%Scale < .5)	;so cant get -scales (or invisibly small)
 			%A_LoopField%Scale := .5
+		; Use < for min position and >= for max as it draws to the right.
+		; Also, its still possible for the overlay to be a pixel or two before the right edge of the
+		; screen and still not be visible! or lead to a drawing/updateLayeredWindow fail.
+		; Added a -30 check to max Pos so should always be able to see/click it to move
+		; providing the draw doesn't fail
 		IniRead, %A_LoopField%X, %config_file%, %section%, %A_LoopField%X, % A_ScreenWidth/2
-		if (%A_LoopField%X = "" || %A_LoopField%X < XminScreen || %A_LoopField%X > XmaxScreen) ; guard against blank key
+		if (%A_LoopField%X = "" || %A_LoopField%X < XminScreen || %A_LoopField%X >= XmaxScreen - 30) ; guard against blank key
 			%A_LoopField%X := A_ScreenWidth/2
 		IniRead, %A_LoopField%Y, %config_file%, %section%, %A_LoopField%Y, % A_ScreenHeight/2	
-		if (%A_LoopField%Y = "" || %A_LoopField%Y < YminScreen || %A_LoopField%Y > YmaxScreen)
+		if (%A_LoopField%Y = "" || %A_LoopField%Y < YminScreen || %A_LoopField%Y >= YmaxScreen - 30)
 			%A_LoopField%Y := A_ScreenHeight/2
 	}
 
@@ -4200,14 +4205,14 @@ If pointer not 0 then has a reactor or techlab
 */ 
 
 ; total build time and Time Remaining are blank if unit exists as part of the map i.e. via the mapeditor 
-
+; I added the nydusCanal here instead of having another separate function.
 getBuildProgress(pAbilities, type)
 {
 	static O_TotalBuildTime := 0x28, O_TimeRemaining := 0x2C
 	; + 0x28 = total build time
 	; + 0x2C = Time Remaining
 
-	if pBuild := findAbilityTypePointer(pAbilities, type, "BuildInProgress")
+	if pBuild := findAbilityTypePointer(pAbilities, type, type != aUnitID["NydusCanal"] ? "BuildInProgress" : "BuildinProgressNydusCanal")
 	{
 		B_Build := ReadMemory(pBuild, GameIdentifier)
 		totalTime := readmemory(B_Build + O_TotalBuildTime, GameIdentifier)

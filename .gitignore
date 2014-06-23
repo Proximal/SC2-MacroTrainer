@@ -44,6 +44,7 @@ threadOverlaysFull.ahk
 *.log
 *.sql
 *.sqlite
+log.txt
 
 # OS generated files #
 ######################

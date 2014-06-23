@@ -730,10 +730,10 @@ WinWaitActive, %GameIdentifier%,, 2 ; wait max 2 seconds
 aThreads.Overlays.AhkAssign.Dragoverlay := Dragoverlay := False	 
 aThreads.Overlays.AhkLabel.overlayTimer
 aThreads.Overlays.AhkLabel.unitPanelOverlayTimer
-aThreads.Overlays.AhkFunction.("DestroyOverlays")
+aThreads.Overlays.AhkFunction("DestroyOverlays")
 aThreads.Overlays.AhkLabel.overlayTimer
 aThreads.Overlays.AhkLabel.unitPanelOverlayTimer
-aThreads.Overlays.AhkFunction.("restoreOverlayTimer")
+aThreads.Overlays.AhkFunction("restoreOverlayTimer")
 Return	
 
 Toggle_Identifier:
@@ -1568,7 +1568,7 @@ advancedInjectTimer()
 				; possible for the user to not click on the hatch miss or click menu/friends/options (which would arrive here) or , then to hit esc or rbutton to cancel 
 				; but this loop will then either time out or catch the next inject, so it doesn't really matter.
 
-				loopTick := A_Tickcount
+				lButtonTick := A_Tickcount
 				; If inject against Ai the below loop finds the larva command after ~15/30 OS_Ticks and on the second loop
 				; For a queen which is right next to a hatch, she will have the 'spawnLarva' ability queued for ~1670 ms! 
 				; Hence heaps of time for a loop to catch it even with generous sleeps
@@ -1590,7 +1590,7 @@ advancedInjectTimer()
 					Thread, Priority, -2147483648
 					sleep 200
 					Thread, Priority, 0
-					if (A_Tickcount - loopTick > 5000)
+					if (A_Tickcount - lButtonTick > 5000)
 						return
 				}
 			}
@@ -1721,7 +1721,7 @@ ShellMessage(wParam, lParam)
 		if (SC2hWnd != lParam && !ReDrawOverlays && !Dragoverlay)
 		{
 			ReDrawOverlays  := True
-			aThreads.Overlays.AhkFunction.("DestroyOverlays")
+			aThreads.Overlays.AhkFunction("DestroyOverlays")
 		}
 		else if (SC2hWnd = lParam && getTime())
 		{
@@ -1736,7 +1736,6 @@ ShellMessage(wParam, lParam)
 	}
 	return
 }
-
 
 ; This will temporarily disable the minimap, but still draw detected units/non-converted gates
 g_HideMiniMap:
@@ -4149,7 +4148,7 @@ try
 		ZergPic_TT := "The OP race"
 		TerranPic_TT := "The artist formerly known as being OP"
 		ProtossPic_TT := "The slightly less OP race"
-		auto_inject_alert_TT := "This alert will sound X seconds after your last auto inject, prompting you to inject again."
+		auto_inject_alert_TT := "This alert will sound X seconds after your last one-button inject, prompting you to inject again."
 		auto_inject_time_TT := TT_auto_inject_time_TT :=  "This is in 'SC2' Seconds."
 		#cast_inject_key_TT := cast_inject_key_TT := "When pressed the program will inject all of your hatcheries.`n`nThis Hotkey is ONLY active while playing as zerg!"
 		Auto_inject_sleep_TT := "Lower this to make the inject round faster, BUT this will make it more obvious that it is being automated!"
@@ -4987,7 +4986,7 @@ Screenshots and replays may be attached below.
 (please remove this text when filling in this form).
 
 )	
-	if (Report_Email && !isValidEmail(Report_Email))
+	if (Report_Email != "" && !isValidEmail(Report_Email))
 	{
 		msgbox, 49, Invalid Email Address, % "Your email address appears to be invalid.`n`n"
 					. "Press 'OK' to send the bug report anyway."
@@ -5007,11 +5006,16 @@ Screenshots and replays may be attached below.
 			LV_GetText(AttachmentPath, A_Index) ; start at 1 as 0 retrieves the column header
 			attachments .= AttachmentPath ","
 		}
-		if attachments
-			attachments := Trim(attachments, " `t`,")
+
+		if FileExist(A_Temp "\MacroTRainerDebugData.txt")
+			FileDelete, %A_Temp%\MacroTRainerDebugData.txt
+		FileAppend, % DebugData(), %A_Temp%\MacroTRainerDebugData.txt
+		attachments .= A_Temp "\MacroTRainerDebugData.txt,"
+		attachments := Trim(attachments, " `t`,")
 
 		if ((error := bugReportPoster(Report_Email, "Bug Report:`n`n" Report_TXT, attachments, ticketNumber)) >= 1)
 		{
+			FileDelete, %A_Temp%\MacroTRainerDebugData.txt ; Try to delete as there is a return here
 			GuiControl, ,Report_TXT, %Report_TXT%`n`n`nAuto Bug Report Error:`n%error%
 			msgbox, % 49 + 4096, Error, % "There was an error submitting your report"
 				. "`n`nError: " error
@@ -5036,6 +5040,7 @@ Screenshots and replays may be attached below.
 			GuiControl, ,Report_TXT, `n`n`n`n`n`n%a_tab%%a_tab%Thank You!
 			msgbox, 64, , Report Sent`n`nTicket Number: %ticketNumber%, 10
 		}
+		FileDelete, %A_Temp%\MacroTRainerDebugData.txt ; Try to delete
 	}
 	return
 
@@ -5118,9 +5123,7 @@ LV_ModifyCol()  ; Auto-size all columns to fit their contents
 return 
 
 
-return
 g_RemoveEmailAttachment:
-
 Gui, ListView, EmailAttachmentListViewID ;note all future and current threads now refer to this listview!
 EmailRowNumber := 0
 UserTriedToRemoveIniAttachment := False  
@@ -7291,6 +7294,7 @@ CreateHotkeys()
 	{	
 		hotkey,  ~^%InjectTimerAdvancedLarvaKey%, g_InjectTimerAdvanced, on
 		hotkey,  ~+%InjectTimerAdvancedLarvaKey%, g_InjectTimerAdvanced, on
+		hotkey,  ~^+%InjectTimerAdvancedLarvaKey%, g_InjectTimerAdvanced, on
 		hotkey,  ~%InjectTimerAdvancedLarvaKey%, g_InjectTimerAdvanced, on
 	}
 
@@ -7438,6 +7442,7 @@ disableAllHotkeys()
 	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Zerg") && InjectTimerAdvancedEnable && !isMenuOpen() && time		
 			try hotkey,  ~^%InjectTimerAdvancedLarvaKey%, off
 			try hotkey,  ~+%InjectTimerAdvancedLarvaKey%, off
+			try hotkey, ~^+%InjectTimerAdvancedLarvaKey%, off
 			try hotkey,  ~%InjectTimerAdvancedLarvaKey%, off
 
 	Hotkey, If, WinActive(GameIdentifier) && time && !isMenuOpen() && SelectArmyEnable
@@ -8645,16 +8650,18 @@ sortSelectedUnitsByDistance(byref aSelectedUnits, Amount = 3)	;takes a simple ar
 
 debugData()
 { 	global aPlayer, O_mTop, GameIdentifier
-	, A_UnitGroupSettings, aLocalPlayer
+	, A_UnitGroupSettings, aLocalPlayer, aUnitName
 	Player := getLocalPlayerNumber()
-	unit := getSelectedUnitIndex()
+	
+	SysGet, VirtualScreenWidth, 78
+	SysGet, VirtualScreenHeight, 79	
+	DesktopScreenCoordinates(XminVritual, YminVritual, XmaxVritual, YmaxVritual)
+
 	DllCall("QueryPerformanceFrequency", "Int64*", Frequency), DllCall("QueryPerformanceCounter", "Int64*", CurrentTick)
 	getSystemTimerResolutions(MinTimer, MaxTimer)
 	result := "Trainer Vr: " getProgramVersion() "`n"
 	. "Script & Path: " A_ScriptFullPath "`n"
 	. "Is64bitOS: " A_Is64bitOS "`n"
-	. "PtrSize: " A_PtrSize "`n"
-	. "IsUnicode: " A_IsUnicode "`n"
 	. "OSVersion: " A_OSVersion "`n"
 	. "Language Code: " A_Language "`n"
 	. "Language: " getSystemLanguage() "`n"
@@ -8665,17 +8672,23 @@ debugData()
 	. "KeyRepeatRate: " getKeyRepeatRate() "`n"
 	. "KeyDelay: " getKeyDelay() "`n`n"
 	. "==========================================="
-	. "`n"
-	. "XRes: " SC2HorizontalResolution() ", " A_ScreenWidth  "`n"
-	. "YRes: " SC2VerticalResolution() ", " A_ScreenHeight "`n"
+	. "`nScreen Info:`n"
+	. "SC2 Res: " SC2HorizontalResolution() ", " SC2VerticalResolution() "`n"
+	. "Primary Monitor: " A_ScreenWidth ", " A_ScreenHeight "`n"
+	. "Virtual min pos: " XminVritual ", " YminVritual "`n"
+	. "Virtual max pos: " XmaxVritual ", "  YmaxVritual "`n"
+	. "Virtual Size: " VirtualScreenWidth ", " VirtualScreenHeight "`n"
 	. "Screen DPI: " A_ScreenDPI "`n" 
-	. "Replay Folder: "  getReplayFolder() "`n"
-	. "Account Folder: "  getAccountFolder() "`n"
+	. "==========================================="
+	. "`nSC2 Folders: 	'?' represent replaced account numbers - maintains privacy.`n"	
+	. "Replay Folder: "  RegExReplace(getReplayFolder(), "\d{4}\\", "????\")  "`n"
+	. "Account Folder: "  RegExReplace(getAccountFolder(), "\d{4}\\", "????\") "`n"
 	. "Game Exe: "	StarcraftExePath() "`n"
 	. "Game Dir: "	StarcraftInstallPath() "`n"
 	. "==========================================="
 	. "`n"
 	. "`n"
+	. "Game Data:`n"
 	result .= "GetGameType: " GetGameType(aPlayer) "`n"
 	. "Enemy Team Size: " getEnemyTeamsize() "`n"
 	. "Time: " gettime() "`n"
@@ -8708,17 +8721,21 @@ debugData()
 	. "`n"
 	. "Unit Count: " getUnitCount() "`n"
 	. "Highest Unit Index: " getHighestUnitIndex() "`n"
-	. "Selected Unit: `n"
-	. A_Tab "Index u1: " getSelectedUnitIndex() "`n"
-	. A_Tab "Type u1: " getunittype(getSelectedUnitIndex()) "`n"
-	. A_Tab "Priority u1: " getUnitSubGroupPriority(getSelectedUnitIndex()) "`n"
+	. "Selection Count: " getSelectionCount() "`n"
+	. "Selection Page: " getUnitSelectionPage() "`n"
+	. "Selection SubGroup: " getSelectionHighlightedGroup() "`n"
+	. "Selected Unit One: `n"
+	. A_Tab "Index: " (unit := getSelectedUnitIndex()) "`n"
+	. A_Tab "Type: " (type := getunittype(unit)) "`n"
+	. A_Tab "Name: " aUnitName[type] "`n"
+	. A_Tab "Priority: " getUnitSubGroupPriority(unit) "`n"
 	. A_Tab "Count: " getSelectionCount() "`n"
-	. A_Tab "Owner: " getUnitOwner(getSelectedUnitIndex()) "`n"
-	. A_Tab "Timer: " getUnitTimer(getSelectedUnitIndex()) "`n"
-	. A_Tab "Injected: " isHatchInjected(getSelectedUnitIndex()) "`n"
-	. A_Tab "Chronoed: " isUnitChronoed(getSelectedUnitIndex()) "`n"
-	. A_Tab "Mmap Radius: " getMiniMapRadius(getSelectedUnitIndex()) "`n" 
-	. A_Tab "Energy: " getUnitEnergy(getSelectedUnitIndex()) "`n" 
+	. A_Tab "Owner: " getUnitOwner(unit) "`n"
+	. A_Tab "Timer: " getUnitTimer(unit) "`n"
+	. A_Tab "Injected: " isHatchInjected(unit) "`n"
+	. A_Tab "Chronoed: " isUnitChronoed(unit) "`n"
+	. A_Tab "Mmap Radius: " getMiniMapRadius(unit) "`n" 
+	. A_Tab "Energy: " getUnitEnergy(unit) "`n" 
 	. A_Tab "PosZ Round: " round(getUnitPositionZ(unit), 1) "`n"
 	. A_tab "PosZ : " getUnitPositionZ(unit) "`n"
 	. "Map: `n"
@@ -10878,4 +10895,55 @@ Run, "C:\Users\Matthieu\Desktop\New folder (3)\MsgHookLister\x64\hooks.txt"
 return 
 */
 
+
+; This changes when the game reloads.
+; Some slightly modified pointer.
+; bot nexus
+; CB 		8ef9317
+; cloak 	88e0ad9
+; PO 		8ef90e7
+
+
+; right nexus
+; CB 		8ef9317
+; cloak 	88e0ad9
+; PO 		8ef90e7
+
+
+
+
+; There is a attackProtossBuilding ability in the ability structure.
+; When PO is active there's a value which indicates this here.
+; But couldn't find a link to the timer
+
+; Can call this to determine if PO is active and its reaming duration (%)
+getPhotonOverChargeDuration(unit)
+{
+	static O_upBuffs := 0xEC ; This is probably a pointer to some buff structure
+	if !unitBuff := ReadMemory(B_uStructure + unit * S_uStructure + O_upBuffs, GameIdentifier)
+		return 0
+	msgbox % chex(unitBuff)
+	; unitBuff is the base of this structure and points to itself. 
+	; p+4 is probably some innate  ability so start at p+8 
+	while (p := ReadMemory(unitBuff + 0x08 + 4*(A_Index-1), GameIdentifier)) 
+	{
+		msgbox % ReadMemory(p + 0x3C, GameIdentifier)
+		
+		 ; Need to determine if this BUff is a PO - Could be chrono.
+		 ; I haven't spent time investigating these.
+		 ; Could also just check if the total time = that of a PO. But that's pretty shitty.
+		 ; Photon Over charge = mothership cloak = 32
+		 ; chrono = 40
+		 ; None = 3	(or default?)	
+		if (ReadMemory(p + 0x3C, GameIdentifier) = 32) ; wrong could be cloak so either need more RE or be lazy and check the spell duration
+		{		
+
+			totalTime :=  ReadMemory(base := ReadMemory(p + 0x58, GameIdentifier), GameIdentifier) ; total time
+			, remainingTime := ReadMemory(base+ 0x10, GameIdentifier)
+			msgbox % chex(base)
+			return round(remainingTime / totalTime, 2)
+		}
+	}
+	return 0
+}
 

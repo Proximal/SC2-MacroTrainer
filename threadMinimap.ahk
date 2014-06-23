@@ -175,7 +175,7 @@ Return
 DrawMiniMap()
 {	global
 	local UnitRead_i, unit, type, Owner, Radius, Filter, EndCount, colour, ResourceOverlay_i, unitcount
-	, DrawX, DrawY, Width, height, i, hbm, hdc, obm, G,  Region, pBitmap, PlayerColours, A_MiniMapUnits, hwnd1, unit, x, y
+	, DrawX, DrawY, Width, height, i, hbm, hdc, obm, G,  Region, pBitmap, PlayerColours, aUnitsToDraw, hwnd1, unit, x, y
 	static overlayCreated := 0, overlayTitle := ""
 
 	if (ReDrawMiniMap and WinActive(GameIdentifier))
@@ -210,13 +210,17 @@ DrawMiniMap()
 	if DrawMiniMap
 	{
 		Gdip_SetSmoothingMode(G, 4)
-		A_MiniMapUnits := []
- 		getEnemyUnitsMiniMap(A_MiniMapUnits)
+ 		getEnemyUnitsMiniMap(aUnitsToDraw)
  		if DrawUnitDestinations
- 			drawUnitDestinations(G, A_MiniMapUnits)
-		for index, unit in A_MiniMapUnits
+ 			drawUnitDestinations(G, aUnitsToDraw)
+		for index, unit in aUnitsToDraw.Normal
 			drawUnitRectangle(G, unit.X, unit.Y, unit.Radius + minimap.AddToRadius, unit.Radius + minimap.AddToRadius)	;draw rectangles first
-		for index, unit in A_MiniMapUnits
+		for index, unit in aUnitsToDraw.Custom
+			drawUnitRectangle(G, unit.X, unit.Y, unit.Radius + minimap.AddToRadius, unit.Radius + minimap.AddToRadius)					
+		for index, unit in aUnitsToDraw.Normal
+			FillUnitRectangle(G, unit.X, unit.Y,  unit.Radius, unit.Radius, unit.Colour)	
+		; Fill the custom highlighted units last, so that their colours won't be drawn over.			
+		for index, unit in aUnitsToDraw.Custom
 			FillUnitRectangle(G, unit.X, unit.Y,  unit.Radius, unit.Radius, unit.Colour)
 	}
 	Gdip_SetInterpolationMode(G, 2)	
@@ -291,27 +295,27 @@ DrawMiniMap()
 Return
 }
 
-getEnemyUnitsMiniMap(byref A_MiniMapUnits)
+getEnemyUnitsMiniMap(byref aUnitsToDraw)
 {  LOCAL Unitcount, UnitAddress, pUnitModel, Filter, MemDump, Radius, x, y, PlayerColours, MemDump, PlayerColours, Unitcount, owner, unitName
- 	, Colour, Type
-  A_MiniMapUnits := []
+ 	, Colour, Type, QueuedCommands
+  aUnitsToDraw := [], aUnitsToDraw.Normal := [], aUnitsToDraw.Custom := []
+
   PlayerColours := arePlayerColoursEnabled()
   QueuedCommands := ""
   Unitcount := DumpUnitMemory(MemDump)
   while (A_Index <= Unitcount)
   {
-     UnitAddress := (A_Index - 1) * S_uStructure
-     Filter := numget(MemDump, UnitAddress + O_uTargetFilter, "Int64")
-     if (Filter & DeadFilterFlag)
+     
+     Filter := numget(MemDump, (UnitAddress := (A_Index - 1) * S_uStructure) + O_uTargetFilter, "Int64")
+     ; Hidden e.g. marines in medivac/bunker etc. 
+     ; Otherwise these unit colours get drawn over the top - medivac highlight colour is hidden.
+     if (Filter & DeadFilterFlag) || (Filter & aUnitTargetFilter.Hidden)  
         Continue
-
-     pUnitModel := numget(MemDump, UnitAddress + O_uModelPointer, "Int")  
-     Type := numgetUnitModelType(pUnitModel)
-
-     owner := numget(MemDump, UnitAddress + O_uOwner, "Char")     
-     if aMiniMapUnits.Exclude.HasKey(type)
+     
+     if aMiniMapUnits.Exclude.HasKey(Type := numgetUnitModelType(pUnitModel := numget(MemDump, UnitAddress + O_uModelPointer, "Int")))
            Continue
 
+     owner := numget(MemDump, UnitAddress + O_uOwner, "Char")   
      if  (aPlayer[Owner, "Team"] <> aLocalPlayer["Team"] && Owner && type >= aUnitID["Colossus"] && !aChangeling.HasKey(type)) 
      || (aChangeling.HasKey(type) && aPlayer[Owner, "Team"] = aLocalPlayer["Team"] ) ; as a changeling owner becomes whoever it is mimicking - its team also becomes theirs
      {
@@ -321,8 +325,8 @@ getEnemyUnitsMiniMap(byref A_MiniMapUnits)
            	Radius := minimap.UnitMinimumRadius
           
 	       x :=  numget(MemDump, UnitAddress + O_uX, "int")/4096
-           y :=  numget(MemDump, UnitAddress + O_uY, "int")/4096
-
+           , y :=  numget(MemDump, UnitAddress + O_uY, "int")/4096
+           , customFlag := True
         ;  Radius += (minimap.AddToRadius/2)
           
      
@@ -334,70 +338,71 @@ getEnemyUnitsMiniMap(byref A_MiniMapUnits)
            Else if (HighlightInvisible && Filter & aUnitTargetFilter.Cloaked) ; this will include burrowed units (so dont need to check their flags)
            	  Colour := "UnitHighlightInvisibleColour" 				; Have this at bot so if an invis unit has a custom highlight it will be drawn with that colour
            Else if PlayerColours
-              Colour := aPlayer[Owner, "Colour"]
-           Else Colour := "Red" 
+              Colour := aPlayer[Owner, "Colour"], customFlag := False
+           Else Colour := "Red", customFlag := False
 
-           if (GameType != "1v1" && HostileColourAssist)
+           if (HostileColourAssist && GameType != "1v1")
            {
 	           unitName := aUnitName[type]
 	           if unitName in CommandCenter,CommandCenterFlying,OrbitalCommand,PlanetaryFortress,Nexus,Hatchery,Lair,Hive
 	          		Colour := aPlayer[Owner, "Colour"]
 	       }
-	       if DrawUnitDestinations
+	       	if DrawUnitDestinations
 	       		getUnitQueuedCommands(A_Index - 1, QueuedCommands)
-           A_MiniMapUnits.insert({"X": x, "Y": y
-           						, "Colour": Colour
-           						, "Radius": Radius*2
-           						, unit: A_index -1
-           						, "queuedCommands": QueuedCommands})  
-
+          	if customFlag
+           		aUnitsToDraw.Custom.insert({"X": x, "Y": y, "Colour": Colour, "Radius": Radius*2, unit: A_index -1, "queuedCommands": QueuedCommands})  
+           	else
+           		aUnitsToDraw.Normal.insert({"X": x, "Y": y, "Colour": Colour, "Radius": Radius*2, unit: A_index -1, "queuedCommands": QueuedCommands})  
      }
   }
   Return
 }
 
-drawUnitDestinations(pGraphics, byRef A_MiniMapUnits)
-{
-	for indexOuter, unit in A_MiniMapUnits
+drawUnitDestinations(pGraphics, byRef aUnitsToDraw)
+{	
+	loop, 2 ; Using a 2x loop should be faster than an another for loop on top
 	{
-		for indexQueued, command in unit.QueuedCommands
+		for indexOuter, unit in (A_Index = 1 ? aUnitsToDraw.Normal : aUnitsToDraw.Custom)
 		{
-			if (command.ability = "attack")
-				colour := "Red"
-			else if (command.ability = "move")
+			for indexQueued, command in unit.QueuedCommands
 			{
-				if (command.State = aUnitMoveStates.Patrol)
-					colour := "Blue"
+				if (command.ability = "attack")
+					colour := "Red"
+				else if (command.ability = "move")
+				{
+					if (command.State = aUnitMoveStates.Patrol)
+						colour := "Blue"
+					else colour := "Green"
+
+				}
+				else if (command.ability = "MedivacTransport"
+				|| command.ability = "WarpPrismTransport"
+				|| command.ability = "OverlordTransport")
+				{
+					colour := "Orange"
+				}
+				; as destinations are drawn first, the picture gets drawn over by unit boxes
+				else if (command.ability = "TacNukeStrike")
+				{	
+					convertCoOrdindatesToMiniMapPos(x := command.targetX, y := command.targetY)
+					Width := Gdip_GetImageWidth(pBitmap := a_pBitmap["pingNuke"]), Height := Gdip_GetImageHeight(pBitmap)	
+					Gdip_DrawImage(pGraphics, pBitmap, (X - Width/2), (Y - Height/2), Width, Height, 0, 0, Width, Height)
+					colour := "Yellow"
+					; better to actually just let it draw a yellow line so if not shift queued, can see units move path
+					;continue 
+				}
 				else colour := "Green"
 
+				; some commands will have x,y,z targets of 0 (causing them to be drawn off the map)
+				if !command.targetX
+					break
+				if (indexQueued = unit.QueuedCommands.MinIndex())
+					x := unit.x, y := unit.y 	
+				Else 
+					x := targetX, y := targetY
+				convertCoOrdindatesToMiniMapPos(targetX := command.targetX, targetY := command.targetY)	
+				Gdip_DrawLine(pGraphics, a_pPens[colour], x, y, targetX, targetY)
 			}
-			else if (command.ability = "MedivacTransport"
-			|| command.ability = "WarpPrismTransport"
-			|| command.ability = "OverlordTransport")
-			{
-				colour := "Orange"
-			}
-			; as destinations are drawn first, the picture gets drawn over by unit boxes
-			else if (command.ability = "TacNukeStrike")
-			{	
-				convertCoOrdindatesToMiniMapPos(x := command.targetX, y := command.targetY)
-				Width := Gdip_GetImageWidth(pBitmap := a_pBitmap["pingNuke"]), Height := Gdip_GetImageHeight(pBitmap)	
-				Gdip_DrawImage(pGraphics, pBitmap, (X - Width/2), (Y - Height/2), Width, Height, 0, 0, Width, Height)
-				colour := "Yellow"
-				; better to actually just let it draw a yellow line so if not shift queued, can see units move path
-				;continue 
-			}
-			else colour := "Green"
-
-			; some commands will have x,y,z targets of 0 (causing them to be drawn off the map)
-			if !command.targetX
-				break
-			if (indexQueued = unit.QueuedCommands.MinIndex())
-				x := unit.x, y := unit.y 	
-			Else 
-				x := targetX, y := targetY
-			convertCoOrdindatesToMiniMapPos(targetX := command.targetX, targetY := command.targetY)	
-			Gdip_DrawLine(pGraphics, a_pPens[colour], x, y, targetX, targetY)
 		}
 	}
 	return
