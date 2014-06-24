@@ -1,4 +1,4 @@
-#persistent
+﻿#persistent
 #NoEnv  ; think this is default with AHK_H
 #NoTrayIcon
 SetWorkingDir %A_ScriptDir%
@@ -1072,7 +1072,7 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 	       Continue
 		owner := numgetUnitOwner(MemDump, Unit) 
 
-	    if  (aPlayer[Owner, "Team"] <> aLocalPlayer["Team"] && Owner) ;|| (Owner) 
+	    if  (aPlayer[Owner, "Team"] <> aLocalPlayer["Team"] && Owner) ;|| Owner
 	    {
 	    	pUnitModel := numgetUnitModelPointer(MemDump, Unit)
 	    	Type := numgetUnitModelType(pUnitModel)
@@ -1261,7 +1261,7 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 FilterUnits(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aUnitPanelUnits)	;care have used aUnitID everywhere else!!
 {	global aUnitInfo
 	;	aEnemyUnits[Owner, Type]
-	STATIC aRemovedUnits := {"Terran": ["BarracksTechLab","BarracksReactor","FactoryTechLab","FactoryReactor","StarportTechLab","StarportReactor"]
+	STATIC aRemovedUnits := {"Terran": ["TechLab","BarracksTechLab","BarracksReactor","FactoryTechLab","Reactor","FactoryReactor","StarportTechLab","StarportReactor"]
 							, "Protoss": ["Interceptor"]
 							, "Zerg": ["CreepTumorBurrowed","Broodling","Locust"]}
 
@@ -1313,6 +1313,7 @@ FilterUnits(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aUnitPanelUni
 	; Since i've added progress and count to the unit panel, i've had to turn priorityObject[priority, unitId] into an object itself containing progress and count - rather than just equalling 
 	; the count 
 
+
 	for owner, priorityObject in aEnemyUnits
 	{
 	;	aDeleteKeys := []					;****have to 'save' the delete keys, as deleting them during a for loop will cause you to go +2 keys on next loop, not 1
@@ -1351,7 +1352,7 @@ FilterUnits(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aUnitPanelUni
 			{														;** actually its the other unit priority which may be blank
 				mainUnit := aUnitID[mainUnit]
 				if !priority := aUnitInfo[mainUnit, "Priority"]
-					priority := subPriority		;take a chance, hopefully they will have same priority
+					priority := subPriority		;take a chance, hopefully they will have same priority. This isn't true for burrowed vs. unburrowed spell casters e.g queen/infestor
 
 				; since its possible that the main unit hasn't been allocated a isStructure
 				; use the isStructure from the subUnit which will be the same, and has already been assigned
@@ -1380,18 +1381,36 @@ FilterUnits(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aUnitPanelUni
 				mainUnit := aUnitID[mainUnit]
 				if !priority := aUnitInfo[mainUnit, "Priority"]
 					priority := 16		; just for baneling
-				aEnemyUnitConstruction[owner, Priority, mainUnit] :=  round(aEnemyUnitConstruction[owner, Priority, mainUnit]) + total
+				aEnemyUnitConstruction[owner, Priority, mainUnit] := round(aEnemyUnitConstruction[owner, Priority, mainUnit]) + total
 				priorityObject[subPriority].remove(subunit, "") ; remove the baneling cocoon
 			}
 		}
 
 
+		; It's possible for the priority to be blank for the 'Add units' unit types. As we add the sub unit to the main unit (and there might not be any main units)
+		; This can only occur when the unit panel/program is started mid match and no 'main' units currently exist to have their priorities cached
+		; But this situation is very rare. And fixes itself as soon as a 'main' unit is seen
+		; Could do a work around by iterating the object until you find the main unit ID, but this seems overkill for a such a very rare scenario.
+		; and there is little consequence, other than a filtered unit temporarily showing up in the unit panel
+		/* e.g work around 
+			if ("" = priority := aUnitInfo[removeUnit, "Priority"])
+			{
+				for priorityTmp, unitIDObject in priorityObject
+				{
+					if unitIDObject.HasKey(removeUnit)
+					{
+						priority := priorityTmp 
+						break ; priority has been set
+					}
+				}
+			}
+		*/
 
 		for index, removeUnit in aUnitPanelUnits[race, "FilteredCompleted"]
 		{
 			removeUnit := aUnitID[removeUnit]
-			priority := aUnitInfo[removeUnit, "Priority"]
-			priorityObject[priority].remove(removeUnit, "")
+			if ("" != priority := aUnitInfo[removeUnit, "Priority"])
+				priorityObject[priority].remove(removeUnit, "")
 		}
 
 		for index, unit in aUnitOrder[race]
@@ -1470,11 +1489,13 @@ FilterUnits(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aUnitPanelUni
 ; Gdip_GetImageWidth() takes almost no time 0.0009 ms.
 ; using commas ',' to place expression into 1 line saves ~ 1.5ms (over 45ms draw 3v3 - 6 players being drawn)
 
+; Note all the unit/structure/upgrade pictures are the same size. If adding new pictures to the unit panel, ensure they are resized if required.
+; The SC dds/pictures are a standard 76x76
 DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 {
 	GLOBAL aEnemyUnits, aEnemyUnitConstruction, a_pBitmap, aPlayer, aLocalPlayer, aHexColours, GameIdentifier, config_file, UnitOverlayX, UnitOverlayY 
 		, aUnitInfo, SplitUnitPanel, aEnemyCurrentUpgrades, DrawUnitOverlay, DrawUnitUpgrades, aMiscUnitPanelInfo, aUnitID, overlayMatchTransparency
-		, unitPanelDrawStructureProgress, unitPanelDrawUnitProgress, unitPanelDrawUpgradeProgress 
+		, unitPanelDrawStructureProgress, unitPanelDrawUnitProgress, unitPanelDrawUpgradeProgress, unitPanelAlignNewUnits 
 	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0
 
 	If (Redraw = -1)
@@ -1524,34 +1545,33 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 	; This is toggled to mode 0 (default) when drawing the progress bars - best of both worlds!
 	; Note: CC and nexus - there number counts seem to mess with the background shaded box colour 
 	; this occurs on all Gdip_SetSmoothingMode values - certain picture background colour
-	
+
 	, Gdip_SetSmoothingMode(G, 4)
 	, Gdip_SetInterpolationMode(G, 2)	; fast and draws (almost?) same quality as mode 7 HighQualityBicubic. Refer to benchmark picture for data
 
 
 	Height := DestY := 0
 	, rowMultiplier := (DrawUnitOverlay ? (SplitUnitPanel ? 2 : 1) : 0) + (DrawUnitUpgrades ? 1 : 0)
-	
+
 	for slot_number, priorityObject in aEnemyUnits ; slotnumber = owner and slotnumber is an object
 	{
-		DestXPlayerMax := 0
 		Height += 7*userscale	;easy way to increase different players next line
 		; destY is height of each players first panel row.
 		, DestY := (rowMultiplier * Height + ((unitPanelDrawUnitProgress || unitPanelDrawStructureProgress ) ? 8 * UserScale : 0)) * (A_Index - 1)
 		, destUnitSplitY :=  DestY + ((unitPanelDrawUnitProgress || unitPanelDrawStructureProgress ) ? 5 * UserScale : 0)
-		
-		If (PlayerIdentifier = 1 Or PlayerIdentifier = 2 )
+
+		If (PlayerIdentifier = 1 || PlayerIdentifier = 2 )
 		{	
 			IF (PlayerIdentifier = 2)
 				OptionsName := " Bold cFF" aHexColours[aPlayer[slot_number, "Colour"]] " r4 s" 17*UserScale
-			Else IF (PlayerIdentifier = 1)
+			Else ;IF (PlayerIdentifier = 1)
 				OptionsName := " Bold cFFFFFFFF r4 s" 17*UserScale		
 			gdip_TextToGraphics(G, getPlayerName(slot_number), "x0" "y"(DestY +12*UserScale)  OptionsName, Font) ;get string size	
 		;	StringSplit, TextSize, TextData, | ;retrieve the length of the string		
 			if !LongestNameSize
 			{
 				LongestNameData :=	gdip_TextToGraphics(G, MT_CurrentGame.LongestEnemyName
-														, "x0" "y"(DestY)  " Bold c00FFFFFF r4 s" 17*UserScale	, Font) ; text is invisible ;get string size	
+														, "x0" "y"(DestY)  " Bold c00FFFFFF r4 s" 17*UserScale, Font) ; text is invisible ;get string size	
 				StringSplit, LongestNameSize, LongestNameData, | ;retrieve the length of the string
 				LongestNameSize := LongestNameSize3
 			}
@@ -1569,9 +1589,10 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 		else DestX := 0
 
 		; this moves the destionX to the right to account for the race-icon/name
-		firstColumnX  := destUnitSplitX := DestX
+		firstColumnX  := maxStructureDestX := maxUnitDestX := DestX
+		; destY is height of each players first panel row. And takes account showing upgrades and progress bars
+		structureY := DestY
 
-		
 		if DrawUnitOverlay
 		{
 			for priority, object in priorityObject
@@ -1582,18 +1603,15 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 						continue ; as i dont have a picture for that unit - not a real unit?
 					SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap) 
 					, Width *= UserScale *.5, Height *= UserScale *.5	; all unit/buildings/updagres are 38x38 after being halved
-				
 
-					; Doing like this as it's a requested feature and im too lazy to change everything to make it simpler
-					if (SplitUnitPanel && !aUnitInfo[unit, "isStructure"])
+					if SplitUnitPanel 
 					{
-						prevStructureX := DestX
-						, prevStructureY := DestY
-						, DestX := destUnitSplitX
-						, DestY := destUnitSplitY + Height * 1.1	; 1.1 so the transparent backgrounds of the count and count underconstruction dont overlap
+						if aUnitInfo[unit, "isStructure"] 
+							DestX := maxStructureDestX, DestY := structureY
+						else 
+							DestX := maxUnitDestX, DestY := destUnitSplitY + Height * 1.1
 					}
-					if (DestXPlayerMax < DestX)
-						DestXPlayerMax := DestX		
+
 					Gdip_DrawImage(G, pBitmap, DestX, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
 
 					; Draw the MSC energy in place of unit count - as can only have one MSC.
@@ -1660,7 +1678,7 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 							gdip_TextToGraphics(G, unitCount, "x"(DestX + .5*Width + .16*Width/2) "y"(DestY + .10*Height/2)  " Bold Italic cFFFFFFFF r4 s" 11*UserScale, Font)
 						Else
 							gdip_TextToGraphics(G, unitCount, "x"(DestX + .5*Width + .3*Width/2) "y"(DestY + .10*Height/2)  " Bold Italic cFFFFFFFF r4 s" 11*UserScale, Font)
-						
+
 						if (unitPanelDrawStructureProgress && aUnitInfo[unit, "isStructure"]) || (unitPanelDrawUnitProgress && !aUnitInfo[unit, "isStructure"])
 						{
 							Gdip_SetSmoothingMode(G, 0)
@@ -1672,24 +1690,31 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 						}
 							aEnemyUnitConstruction[slot_number, priority].remove(unit, "")
 					}
-					if (SplitUnitPanel && !aUnitInfo[unit, "isStructure"])
+
+					if SplitUnitPanel
 					{
-						destUnitSplitX += (Width+5*UserScale)
-						, DestX := prevStructureX
-						, DestY := prevStructureY
+						if aUnitInfo[unit, "isStructure"] 
+							maxStructureDestX += (Width+5*UserScale)
+						else 
+							maxUnitDestX += (Width+5*UserScale)	
 					}
 					else DestX += (Width+5*UserScale)
 				}
+			}	
+
+			; Move all positions one block to the right. To provide a visual gap between existing and new units (which don't exit on the map)
+			DestX += (Width+5*UserScale) 	; Used when split panel is disabled	
+			maxStructureDestX += (Width+5*UserScale) 
+			maxUnitDestX += (Width+5*UserScale) 
+
+			; Align to the longest production row so the new units (structures and units) which don't already exist on the map
+			; start being drawn at the same x position
+			if unitPanelAlignNewUnits
+			{
+				if (maxStructureDestX < maxUnitDestX)
+					maxStructureDestX := maxUnitDestX
+				else maxUnitDestX := maxStructureDestX
 			}
-
-			; This is fine for both split/non-split panels 
-			; Add 1 image width to destination, as DestXPlayerMax was not incremented at the end of the last loop. 
-			; (so it's currently placed at the start of the last drawn picture)
-			DestX := DestXPlayerMax += (Width+5*UserScale) 
-
-			destUnitSplitX := DestX += (Width+5*UserScale) ; constructing units / buildings in construction appear 1 'blank spot' further to the right
-
-			; in case no units in construction
 
 			; I think if the unit panel is split, all of these units should be structures
 			; so I dont have to worry about checking structure or not
@@ -1703,22 +1728,22 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 					{
 						SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
 						, Width *= UserScale *.5, Height *= UserScale *.5	
-						
-						if (!aUnitInfo[unit, "isStructure"] && SplitUnitPanel)
+
+						if SplitUnitPanel 
 						{
-							prevStructureX := DestX
-							, prevStructureY := DestY
-							, DestX := destUnitSplitX
-							, DestY := destUnitSplitY + Height * 1.1 ; 1.1 so the tranparent backgrounds of the count and count underconstruction dont overlap 
-						} 
-				
+								if aUnitInfo[unit, "isStructure"] 
+									DestX := maxStructureDestX, DestY := structureY
+								else 
+									DestX := maxUnitDestX, DestY := destUnitSplitY + Height * 1.1
+						}
+						
 						Gdip_DrawImage(G, pBitmap, DestX, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
 						Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, DestX + .6*Width, DestY, Width/2.5, Height/2.5, 5)
 						if (item.count >= 10)
 							gdip_TextToGraphics(G, item.count, "x"(DestX + .5*Width + .16*Width/2) "y"(DestY + .10*Height/2)  " Bold Italic cFFFFFFFF r4 s" 11*UserScale, Font)
 						Else
 							gdip_TextToGraphics(G, item.count, "x"(DestX + .5*Width + .3*Width/2) " y"(DestY + .10*Height/2)  " Bold Italic cFFFFFFFF r4 s" 11*UserScale, Font)
-						
+
 						if (unitPanelDrawStructureProgress && aUnitInfo[unit, "isStructure"]) || (unitPanelDrawUnitProgress && !aUnitInfo[unit, "isStructure"])
 						{
 							Gdip_SetSmoothingMode(G, 0)
@@ -1728,29 +1753,35 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 							, Gdip_SetSmoothingMode(G, 4)
 						}
 
-						if (!aUnitInfo[unit, "isStructure"] && SplitUnitPanel)
+						if SplitUnitPanel
 						{
-							destUnitSplitX += (Width+5*UserScale)
-							, DestX := prevStructureX
-							, DestY := prevStructureY
-							
+							if aUnitInfo[unit, "isStructure"] 
+								maxStructureDestX += (Width+5*UserScale)
+							else 
+								maxUnitDestX += (Width+5*UserScale)	
 						}
 						else DestX += (Width+5*UserScale)
+
 					}
 				}
 			}
-				; This is here to find the longest unit panel (as they will be different size for different players)
-			if (DestX + Width > WindowWidth)
+			; This is here to find the longest unit panel (as they will be different size for different players)
+			if SplitUnitPanel
+			{
+				if (maxStructureDestX > WindowWidth)
+					WindowWidth := maxStructureDestX
+				else if (maxUnitDestX > WindowWidth)
+					WindowWidth := maxUnitDestX
+			}
+			else if (DestX > WindowWidth)
 				WindowWidth := DestX
-			else if (destUnitSplitX + Width > WindowWidth)
-				WindowWidth := destUnitSplitX
 		}
 		if DrawUnitUpgrades
 		{
 			;destUpgradesY := DestY  + Height * 1.1 * (rowMultiplier - 1)
 
 			offset := (SplitUnitPanel ? 2 : 1) * ((unitPanelDrawUnitProgress || unitPanelDrawStructureProgress) ? 5 : 0) * userscale
-			, destUpgradesY := DestY  + Height * 1.1 * (rowMultiplier - 1) + offset
+			, destUpgradesY := structureY  + Height * 1.1 * (rowMultiplier - 1) + offset
 			, UpgradeX := firstColumnX
 
 			for itemName, item in aEnemyCurrentUpgrades[slot_number]
@@ -1784,14 +1815,16 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 				}
 			}
 			; This is here to find the longest unit panel (as they will be different size for different players)
-			if (UpgradeX + Width > WindowWidth)
+			if (UpgradeX > WindowWidth)
 				WindowWidth := UpgradeX
 		}
 	}
 
 	; 4*height easy way to ensure the last split unit panel or upgrade doesn't get cut off
+	; because x begins on the left side of where the icon is drawn hence need to add 1 extra icon width to maximum width 
+	; - actually 1.X something due to the fact that the black count square is past the edge of the picture
 	WindowHeight := DestY + 4*Height
-	, WindowWidth += width *3 ; because x begins on the left side of where the icon is drawn hence need to add 1 extra icon width to maximum width - actually 1.x something due to the fact that the black count square is past the edge of the picture
+	, WindowWidth += width *3 
 
 	; If just showing upgrades and no names/race icons (though possible but unlikely when showing all),
 	; window height width could be null as could destY and width. This would cause the updatelayered to fail
@@ -1821,6 +1854,7 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 	, DeleteDC(hdc)
 	Return
 }
+
 
 /* Performance impact of changing DIB size
 	Since the DIB size limits the drawing size and it would be nice to allow

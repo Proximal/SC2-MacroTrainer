@@ -152,6 +152,7 @@ url.changelog := "http://www.users.on.net/~jb10/MT_ChangeLog.html"
 url.HelpFile := "http://www.users.on.net/~jb10/MTSite/helpfulAdvice.html"
 url.Downloads := "http://www.users.on.net/~jb10/MTSite/downloads.html"
 url.ChronoRules := "http://www.users.on.net/~jb10/MTSite/chronoBoost.html"
+url.Overlays := "http://www.users.on.net/~jb10/MTSite/miniMapOverlays.html"
 url.Homepage := "http://www.users.on.net/~jb10/MTSite/overview.html"
 url.buyBeer := "http://www.users.on.net/~jb10/MTSite/buyBeer.html"
 url.PixelColour := url.homepage "Macro Trainer/PIXEL COLOUR.htm"
@@ -1755,17 +1756,20 @@ msgbox,, Easy Unload/Select,
 return 
 
 gYoutubeEasyUnload:
-	run http://youtu.be/D11tsrjPUTU
-	return
+run http://youtu.be/D11tsrjPUTU
+return
 
 Homepage:
-	run % url.homepage
-	return
+run % url.homepage
+return
 
 g_buyBeer:
-	run % url.buyBeer
-	return
+run % url.buyBeer
+return
 
+gUnitPanelGuide:
+run % url.Overlays
+return
 
 ;------------
 ;	Exit
@@ -2510,6 +2514,7 @@ ini_settings_write:
 			OverlayIdent := 3	
 	Iniwrite, %OverlayIdent%, %config_file%, %section%, OverlayIdent	
 	Iniwrite, %SplitUnitPanel%, %config_file%, %section%, SplitUnitPanel	
+	Iniwrite, %unitPanelAlignNewUnits%, %config_file%, %section%, unitPanelAlignNewUnits	
 	Iniwrite, %DrawUnitUpgrades%, %config_file%, %section%, DrawUnitUpgrades
 	Iniwrite, %unitPanelDrawStructureProgress%, %config_file%, %section%, unitPanelDrawStructureProgress
 	Iniwrite, %unitPanelDrawUnitProgress%, %config_file%, %section%, unitPanelDrawUnitProgress
@@ -4024,13 +4029,16 @@ try
 
 				Gui, Add, GroupBox, xs ys+195 w170 h220, Match Overlay:
 				Gui, Add, Checkbox, xp+10 yp+25 vDrawUnitUpgrades Checked%DrawUnitUpgrades%, Show Upgrades
-				Gui, Add, Checkbox, xp y+12 vDrawUnitOverlay Checked%DrawUnitOverlay%, Show Unit Count/Production
-				Gui, Add, Checkbox, xp y+12 vSplitUnitPanel Checked%SplitUnitPanel% , Split Units/Buildings
-				Gui, Add, Checkbox, xp y+12 vUnitPanelDrawStructureProgress Checked%unitPanelDrawStructureProgress%, Show Structure Progress 
-				Gui, Add, Checkbox, xp y+12 vUnitPanelDrawUnitProgress Checked%unitPanelDrawUnitProgress%, Show Unit Progress 
-				Gui, Add, Checkbox, xp y+12 vUnitPanelDrawUpgradeProgress Checked%unitPanelDrawUpgradeProgress%, Show Upgrade Progress 
+				Gui, Add, Checkbox, xp y+10 vDrawUnitOverlay Checked%DrawUnitOverlay%, Show Unit Count/Production
+				Gui, Add, Checkbox, xp y+10 vSplitUnitPanel ggToggleAlignUnitGUI Checked%SplitUnitPanel% , Split Units/Buildings
+				Gui, Add, Checkbox, % "xp y+10 vUnitPanelAlignNewUnits Checked%unitPanelAlignNewUnits% disabled" !SplitUnitPanel, Align New units
+				Gui, Add, Checkbox, xp y+10 vUnitPanelDrawStructureProgress Checked%unitPanelDrawStructureProgress%, Show Structure Progress 
+				Gui, Add, Checkbox, xp y+10 vUnitPanelDrawUnitProgress Checked%unitPanelDrawUnitProgress%, Show Unit Progress 
+				Gui, Add, Checkbox, xp y+10 vUnitPanelDrawUpgradeProgress Checked%unitPanelDrawUpgradeProgress%, Show Upgrade Progress 
 
-				Gui, Add, Button, center xp+15 y+15 w100 h30 vUnitPanelFilterButton Gg_GUICustomUnitPanel, Unit Filter
+				;Gui, Add, Button, center xp+15 y+10 w100 h30 vUnitPanelFilterButton Gg_GUICustomUnitPanel, Unit Filter
+				Gui, Add, Button, center xp y+10 w70 h30 vUnitPanelFilterButton Gg_GUICustomUnitPanel, Unit Filter
+				Gui, Add, Button, center x+10 yp w70 h30 vUnitPanelGuideButton GgUnitPanelGuide, Guide
 
 			Gui, Add, GroupBox, ys XS+205 w170 h185 section, Overlays Misc:
 		;	Gui, Add, Checkbox, yp+25 xp+10 vOverlayBackgrounds Checked%OverlayBackgrounds% , Show Icon Background						
@@ -4277,7 +4285,23 @@ try
 								. "`n`nYou must ensure the corresponding ""Invoke Group Keys"" (under SC2 Keys on the left) match your SC2 hotkey setup."			
 		F_InjectOff_Key_TT := #F_InjectOff_Key_TT := "During a match this hotkey will toggle (either disable or enable) automatic injects."
 
-		SplitUnitPanel_TT := "When enabled, the overlay will display units on separate a line to structures."
+		SplitUnitPanel_TT := "When enabled the overlay will display units on separate a line to structures."
+
+		UnitPanelAlignNewUnits_TT := "
+						( LTrim
+							This setting is only active when the unit panel is split (structures/buildings). 
+							It determines where the first new unit and first new structure are drawn.
+							
+							When enabled new units and new structures will be drawn aligned along the x-axis. 
+							When disabled new units and new structures will be drawn along their own x-axes independent of one another.
+
+							A 'new' unit/structure is a unit which is in production and the unit owner does not already have an existing (completed) unit of this type. 
+							
+							Click the guide button below for a clearer illustration. (Pictures highlighting this setting are listed under ""Unit Panel"")
+						)"
+		UnitPanelGuideButton_TT := "Opens the Macro Trainer overlay web page."
+							. "`nClick the ""Visual Help Guide"" link for a guide to the information presented in the unit panel."
+
 		unitPanelDrawStructureProgress_TT := "Displays a progress bar below any structure under construction."
 		unitPanelDrawUnitProgress_TT := "Displays a progress bar below any unit in production."
 		unitPanelDrawUpgradeProgress_TT := "Displays a progress bar below the current upgrades."
@@ -4548,7 +4572,10 @@ GuiControl, % "show" instr(selection, "Minimap"), overlayMinimapTransparency
 GuiControl, % "show" instr(selection, "APM"), overlayAPMTransparency
 return
 
-
+gToggleAlignUnitGUI:
+GuiControlGet, state,, SplitUnitPanel
+GUIControl, Enable%state%, unitPanelAlignNewUnits
+return 
 
 ; Still need to save the currently displayed item (incase user hasnt clicked a button
 ; which goes here to save)
@@ -10947,3 +10974,11 @@ getPhotonOverChargeDuration(unit)
 	return 0
 }
 
+
+
+f1::
+unit := getSelectedUnitIndex()
+type := getUnitType(unit)
+Priority := getUnitSubGroupPriority(unit)
+msgbox % aUnitName[type] "`n" Priority
+return 

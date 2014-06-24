@@ -3839,6 +3839,7 @@ readConfigFile()
 	IniRead, CycleOverlayKey, %config_file%, %section%, CycleOverlayKey, <#Enter
 	IniRead, OverlayIdent, %config_file%, %section%, OverlayIdent, 2
 	IniRead, SplitUnitPanel, %config_file%, %section%, SplitUnitPanel, 1
+	IniRead, unitPanelAlignNewUnits, %config_file%, %section%, unitPanelAlignNewUnits, 1
 	IniRead, DrawUnitUpgrades, %config_file%, %section%, DrawUnitUpgrades, 1
 	IniRead, unitPanelDrawStructureProgress, %config_file%, %section%, unitPanelDrawStructureProgress, 1
 	IniRead, unitPanelDrawUnitProgress, %config_file%, %section%, unitPanelDrawUnitProgress, 1
