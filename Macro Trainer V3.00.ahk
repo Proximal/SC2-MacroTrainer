@@ -4031,7 +4031,7 @@ try
 				Gui, Add, Checkbox, xp+10 yp+25 vDrawUnitUpgrades Checked%DrawUnitUpgrades%, Show Upgrades
 				Gui, Add, Checkbox, xp y+10 vDrawUnitOverlay Checked%DrawUnitOverlay%, Show Unit Count/Production
 				Gui, Add, Checkbox, xp y+10 vSplitUnitPanel ggToggleAlignUnitGUI Checked%SplitUnitPanel% , Split Units/Buildings
-				Gui, Add, Checkbox, % "xp y+10 vUnitPanelAlignNewUnits Checked%unitPanelAlignNewUnits% disabled" !SplitUnitPanel, Align New units
+				Gui, Add, Checkbox, % "xp y+10 vUnitPanelAlignNewUnits Checked" unitPanelAlignNewUnits " disabled" !SplitUnitPanel, Align New units
 				Gui, Add, Checkbox, xp y+10 vUnitPanelDrawStructureProgress Checked%unitPanelDrawStructureProgress%, Show Structure Progress 
 				Gui, Add, Checkbox, xp y+10 vUnitPanelDrawUnitProgress Checked%unitPanelDrawUnitProgress%, Show Unit Progress 
 				Gui, Add, Checkbox, xp y+10 vUnitPanelDrawUpgradeProgress Checked%unitPanelDrawUpgradeProgress%, Show Upgrade Progress 
@@ -4596,10 +4596,17 @@ if instr(A_GuiControl, "New")
 		msgbox, % 64 + 8192 + 262144, New Item, The current unit field is empty.`n`nPlease add some units before creating a new item.
 		return
 	}
-	if saveCurrentQuickSelect(race, aQuickSelectCopy)
-		return 
-	aQuickSelectCopy[race "IndexGUI"]  := aQuickSelectCopy[race "MaxIndexGUI"] := round(aQuickSelectCopy[race "MaxIndexGUI"] + 1)	
-	blankQuickSelectGUI(race)
+	saveCurrentQuickSelect(race, aQuickSelectCopy)
+	if blankIndex := quickSelectFindPosiitionWithNoUnits(race, aQuickSelectCopy) 
+	{
+		aQuickSelectCopy[race "IndexGUI"] := blankIndex
+		showQuickSelectItem(race, aQuickSelectCopy)
+	}
+	else 
+	{
+		aQuickSelectCopy[race "IndexGUI"] := aQuickSelectCopy[race "MaxIndexGUI"] := round(aQuickSelectCopy[race "MaxIndexGUI"] + 1)	
+		blankQuickSelectGUI(race)
+	}
 }
 else if instr(A_GuiControl, "Delete")
 {
@@ -4663,6 +4670,24 @@ checkQuickSelectHotkey(race, byRef aQuickSelectCopy)
 	}
 }
 
+; Doesn't check for validity of units. But nother functions/checks should ensure this anyway.
+quickSelectHasUnits(race, byRef aQuickSelectCopy, arrayPosition)
+{
+	return round(aQuickSelectCopy[Race, arrayPosition, "units"].MaxIndex())
+}
+
+quickSelectFindPosiitionWithNoUnits(race, byRef aQuickSelectCopy)
+{
+	loop, 1000
+	{
+		if !IsObject(aQuickSelectCopy[race, A_Index])
+			break
+		if !aQuickSelectCopy[race, A_Index, "units"].MaxIndex()
+			return A_Index
+	}
+	return 0
+}
+
 ; need to save the current displayed items as they might not be saved yet
 ; e.g. terran item 3 of 3 is displayed but might not be saved
 
@@ -4720,7 +4745,10 @@ iniReadQuickSelect(byRef aQuickSelectCopy, byRef aQuickSelect)
 		loop 
 		{
 			arrayPosition++
-			itemNumber := arrayPosition
+			; itemNumber := arrayPosition
+			; Use A_Index, as if no unit exists, then will decrement arrayPosition
+			; causing an infinite loop as it reads the same ini key
+			itemNumber := A_Index
 			IniRead, enabled, %config_file%, %section%, %itemNumber%_enabled, error
 
 			if (enabled = "error")
@@ -4765,7 +4793,7 @@ iniReadQuickSelect(byRef aQuickSelectCopy, byRef aQuickSelect)
 		    aQuickSelectCopy[Race, arrayPosition, "DeselectHoldPosition"] := DeselectHoldPosition
 		    aQuickSelectCopy[Race, arrayPosition, "DeselectFollowing"] := DeselectFollowing
 		    if !unitExists
-		    	aQuickSelectCopy[Race].remove(arrayPosition)
+		    	aQuickSelectCopy[Race].remove(arrayPosition--) ;post-decrement 
 		}
 		aQuickSelectCopy[race "MaxIndexGui"] := Round(aQuickSelectCopy[race].MaxIndex())
 	}	
@@ -10974,11 +11002,3 @@ getPhotonOverChargeDuration(unit)
 	return 0
 }
 
-
-
-f1::
-unit := getSelectedUnitIndex()
-type := getUnitType(unit)
-Priority := getUnitSubGroupPriority(unit)
-msgbox % aUnitName[type] "`n" Priority
-return 
