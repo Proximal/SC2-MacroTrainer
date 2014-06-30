@@ -62,26 +62,24 @@ class Input
 		;,	lastKeyboardTick, lastMouseTick
 		, 	Control, WinTitle, WinText,	ExcludeTitle, ExcludeText
 
-	
-	; releaseKeys() uses SendInput to release any logically down
-	; keys. If checkMouse is true, then the mouse keys will be 
-	; checked and released as appropriate.
+	; To restore box drags correctly requires a pass through hotkey on lbutton 
+	; So we can determine the x, y location of the start of the box drag (where the left button
+	; was first pressed down)
+	; i.e.
+	; *~LButton::
+	;	input.setLastLeftClickPos()
+	;	return
+	setLastLeftClickPos()
+	{
+		MouseGetPos, x, y
+		input.LastLeftClickX := x
+		input.LastLeftClickY := y
+		return
+	}
 
-	; releaseKeys() should only be used when your hook is blocking
-	; physical non-injected input. And when this is done, revertKeyState()
-	; should not be called when your automation has finished, as there is no
-	; guarantee that the keys are still down leading to stuck keys. 
-
-
-	; Note: Logical vs physical hotkey key states
-	; if the hotkey has no modifiers, then physical state will be down
-	; and the logical will be up (as expected). But if the hotkey has modifiers then 
-	; the prefix modifiers will be down 
-
-	releaseKeys(checkMouse := False)
+	getReleaseSequence(checkMouse := True, sendInput := False)
 	{
 		this.downSequence := this.dragLeftClick := ""
-
 		for index, key in this.keys 
 		{
 			if GetKeyState(key) 	; check the logical state (as AHK will block the physical)
@@ -89,12 +87,12 @@ class Input
 				; This masks the windows keyup - if its seen as coming up by itself it will make the win bar appear
 				; i.e. just as if you pressed it by itself. (This is how AHK does it)
 				; This isn't needed when releasing via postmessage.
-				if (key = "LWin" || key = "RWin")
+				if (sendInput) && (key = "LWin" || key = "RWin")
 					upsequence .= "{LControl Down}{LControl Up}"
-				upsequence .= "{" key " Up}", this.downSequence .= "{" key " Down}" 
-			}
+				upsequence .= "{" key " Up}", this.downSequence .= "{" key " Down}"
+			} 
+
 		}
-		
 		if GetKeyState("NumLock", "T")
 		{
 			for index, key in this.numLockKeys
@@ -113,35 +111,40 @@ class Input
 					key := this.aMouseClickButtons[key]
 					upsequence .= "{click " key " Up}"
 					if instr(key, "l") ; for left button drag click
-					{
-						this.dragLeftClick := True
-						this.downSequence .= "{click " input.LastLeftClickX " " input.LastLeftClickY " " key " Down}"
-					}
+						this.dragLeftClick := True, this.downSequence .= "{click " input.LastLeftClickX " " input.LastLeftClickY " " key " Down}" 	
 					else this.downSequence .= "{click " key " Down}"
-				}
+				}	
 			}
-		}
-		if upsequence
+		}					
+		; This will indicate that we should sleep for at least 15ms (after activating critical)
+		; to prevent out of order command sequence with sendinput vs. post message
+		return upsequence
+	}
+
+	
+	; releaseKeys() uses SendInput to release any logically down
+	; keys. If checkMouse is true, then the mouse keys will be 
+	; checked and released as appropriate.
+
+	; releaseKeys() should only be used when your hook is blocking
+	; physical non-injected input. And when this is done, revertKeyState()
+	; should not be called when your automation has finished, as there is no
+	; guarantee that the keys are still down leading to stuck keys. 
+
+
+	; Note: Logical vs physical hotkey key states
+	; if the hotkey has no modifiers, then physical state will be down
+	; and the logical will be up (as expected). But if the hotkey has modifiers then 
+	; the prefix modifiers will be down 
+
+	releaseKeys(checkMouse := True)
+	{
+		if (upsequence := this.getReleaseSequence(checkMouse, True))
 		{
 			SendInput, {BLIND}%upsequence%
 			return upsequence 	; This will indicate that we should sleep for 15ms (after activating critical)
 		}	 					; to prevent out of order command sequence with sendinput vs. post message
 		return 
-	}
-
-	; To restore box drags correctly requires a pass through hotkey on lbutton 
-	; So we can determine the x, y location of the start of the box drag (where the left button
-	; was first pressed down)
-	; i.e.
-	; *~LButton::
-	;	input.setLastLeftClickPos()
-	;	return
-	setLastLeftClickPos()
-	{
-		MouseGetPos, x, y
-		input.LastLeftClickX := x
-		input.LastLeftClickY := y
-		return
 	}
 	; pReleaseKeys() is the same as releaseKeys(), except it uses post message to release the keys.
 	; The main advantage of this is that if you place the AHK thread into critical (and you have your own
@@ -154,53 +157,21 @@ class Input
 	; but i haven't noticed the need. Actually this probably isn't true as hooks work on a 
 	; first in last out system.
 
-	pReleaseKeys(checkMouse := False)
+	pReleaseKeys(checkMouse := True)
 	{
-		this.downSequence := this.dragLeftClick := ""
-		for index, key in this.keys 
-		{
-			if GetKeyState(key) 	; check the logical state (as AHK will block the physical)
-				upsequence .= "{" key " Up}", this.downSequence .= "{" key " Down}" 
-
-		}
-		if GetKeyState("NumLock", "T")
-		{
-			for index, key in this.numLockKeys
-			{
-				if GetKeyState(key) 
-					upsequence .= "{" key " Up}", this.downSequence .= "{" key " Down}" 
-			}
-		}
-
-		if checkMouse
-		{
-			for index, key in this.MouseButtons 
-			{
-				if GetKeyState(key) 	; check the logical state
-				{
-					key := this.aMouseClickButtons[key]
-					upsequence .= "{click " key " Up}"
-					if instr(key, "l") ; for left button drag click
-						this.dragLeftClick := True, this.downSequence .= "{click " input.LastLeftClickX " " input.LastLeftClickY " " key " Down}" 	
-					else this.downSequence .= "{click " key " Down}"
-					
-				}
-					
-			}
-		}
-		if upsequence
+		if (upsequence := this.getReleaseSequence(checkMouse, False))
 		{
 			this.pSend(upsequence)
-			return upsequence 	; This will indicate that we should sleep for 15ms (after activating critical)
-		}	 					; to prevent out of order command sequence with sendinput vs. post message
+			return upsequence 	
+		}	 					
 		return 
 	}
-
+	; This ignoreKey was just for testing stuff
 	revertKeyState(ignoreKey := "")
 	{
 		if this.downSequence
 		{
-			if ignoreKey
+			if (ignoreKey != "")
 			{
 				s := this.downSequence
 				StringReplace, s, s, {%ignoreKey% Down}

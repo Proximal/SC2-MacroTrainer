@@ -14,6 +14,12 @@
 InstallSC2Files()
 { 	global
 	FileCreateDir, %A_Temp%\UnitPanelMacroTrainer
+	FileCreateDir, %A_Temp%\MacroTrainerFiles\GUI
+
+	FileInstall, Included Files\GUI\Add Plus Green.ico, %A_Temp%\MacroTrainerFiles\GUI\Add Plus Green.ico, 1 
+	FileInstall, Included Files\GUI\Remove Minus Red.ico, %A_Temp%\MacroTrainerFiles\GUI\Remove Minus Red.ico, 1 
+	FileInstall, Included Files\GUI\Down Arrow Blue.ico, %A_Temp%\MacroTrainerFiles\GUI\Down Arrow Blue.ico, 1 
+	FileInstall, Included Files\GUI\Up Arrow Blue.ico, %A_Temp%\MacroTrainerFiles\GUI\Up Arrow Blue.ico, 1 
 	FileInstall, Included Files\On.wav, %A_Temp%\On.wav, 1 
 	FileInstall, Included Files\Off.wav, %A_Temp%\Off.wav, 1 
 	FileInstall, Included Files\gentleBeep.wav, %A_Temp%\gentleBeep.wav, 1 

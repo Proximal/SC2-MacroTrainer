@@ -522,7 +522,7 @@ return
 g_GLHF:
 	critical, 1000
 	setLowLevelInputHooks(True)
-	input.pReleaseKeys()
+	input.pReleaseKeys(True)
 	if !isChatOpen()
 		input.pSend("+{Enter}")
 	input.pSendChars("GL♥HF!")
@@ -2104,6 +2104,7 @@ ini_settings_write:
 			msgbox % "There was an error while updating the hotkey state.`n`nYour previous hotkeys may still be active until you restart the program.`n`nIf you have just edited the options, then this error is NOT very important, but it has been copied to the clipboard if you wish to report it.`n`nNote:`nIf you have just started the program and are receiving this error, then either your hotkeys in your MT_config.ini are corrupted or you are using a non-English keyboard layout. If the latter, you can try changing your keyboard layout to ""English"".`n`nError: " error.message "`nLine: " error.line "`nSpecifically: " error.Extra
 		}
 		saveCurrentDisplayedItemsQuickSelect(aQuickSelectCopy)
+		saveCurrentAutoChronoItem(aAutoChronoCopy)
 		IF (Tmp_GuiControl = "save")
 		{
 			Gui, Submit
@@ -2213,6 +2214,8 @@ ini_settings_write:
 	IniWrite, %CastChrono_RoboticsBay_Key%, %config_file%, %section%, CastChrono_RoboticsBay_Key
 	IniWrite, %CastChrono_FleetBeacon_Key%, %config_file%, %section%, CastChrono_FleetBeacon_Key
 
+
+	iniWriteAndUpdateAutoChrono(aAutoChronoCopy, aAutoChrono)
 	
 	;[Auto Control Group]
 	Short_Race_List := "Terr|Prot|Zerg"
@@ -2681,7 +2684,7 @@ IfWinExist
 ; gui variables 
 ; because there computer was to slow to load the gui window the first time
 
-try 
+;try 
 {
 	Gui, Options:New
 	gui, font, norm s9	;here so if windows user has +/- font size this standardises it. But need to do other menus one day
@@ -3309,7 +3312,7 @@ try
 		Gui, Add, Button, xp yp+35 w50 h25 gg_RemoveEmailAttachment, Remove
 		Gui, Add, Button, vB_Report gB_Report xp+195 y+8 w80 h50, Send
 
-	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vChronoBoost_TAB, Settings||Structures|Structures2
+	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vChronoBoost_TAB, Settings||Structures|Structures2|New
 	Gui, Tab, Settings	
 		Gui, Add, GroupBox, w200 h190 y+20 section, SC2 Keys && Control Groups			
 			Gui, Add, Text, xp+10 yp+25 , Storage Ctrl Group:
@@ -3403,6 +3406,52 @@ try
 				Gui, Add, Edit, Readonly yp-2 x+5 w100 R1 center vCastChrono_FleetBeacon_Key , %CastChrono_FleetBeacon_Key%
 					Gui, Add, Button, yp-2 x+5 gEdit_hotkey v#CastChrono_FleetBeacon_Key,  Edit					
 	Gui, Add, Button, x460 y430 gg_ChronoRulesURL w130, Rules/Criteria
+
+
+
+Gui, Tab, New
+
+	aAutoChronoCopy["IndexGUI"] := 1
+	if !aAutoChronoCopy["MaxIndexGUI"]
+		aAutoChronoCopy["MaxIndexGUI"] := 1
+
+	Gui, Add, GroupBox, x+25 Y+25 w380 h65 section vGroupBoxAutoChrono, % " Chrono Navigation " aAutoChronoCopy["IndexGUI"] " of " aAutoChronoCopy["MaxIndexGUI"]
+		 Gui, Add, Button, xp+15 yp+25 w65 h25 vPreviousAutoChrono gAutoChronoGui, Previous
+		 Gui, Add, Button, x+20 w65 h25 vNextAutoChrono gAutoChronoGui, Next
+		 Gui, Add, Button, x+45 w65 h25 vNewAutoChrono gAutoChronoGui, New
+		 Gui, Add, Button, x+20 w65 h25 vDeleteAutoChrono gAutoChronoGui, Delete
+
+	Gui, Add, GroupBox, xs Ys+85 w380 h300 section vGroupBoxItemAutoChrono, % "Chrono Item " aAutoChronoCopy["IndexGUI"] 
+		Gui, Add, Checkbox, xs+15 yp+25 vAutoChronoEnabled, Enable
+		Gui, Add, Text, yp+40, Hotkey:
+			Gui, Add, Edit, Readonly yp-2 x+10 center w65 R1 vAutoChrono_Key gedit_hotkey, %A_Space%
+		Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#AutoChrono_Key,  Edit	
+
+		;Gui, Add, Edit, y+5 w160  r7 vAutoChronoStructures, %A_Space%
+
+		;Gui, Add, ListBox, % "x5 y+10 w150 h280 VF_drop_Name sort " (multiSelectionDelimiter ? "Multi" : ""), %list%
+
+		; Specify -LV0x10 to prevent the user from dragging column headers to the left or right to reorder them.
+		Gui, Add, ListView, section xs+200 ys+25  h230 w160 vAutoChronoListView NoSortHdr NoSort, Structures/Order
+
+		
+		Gui, Add, Button, xs ys+235 gAddUnitAutoChrono vAddUnitAutoChrono hWndhWndButton w25 h25 ;y+6
+		GuiButtonIcon(hWndButton, A_Temp "\MacroTrainerFiles\GUI\Add Plus Green.ico", 1, "w15 h15 a4")
+		Gui, Add, Button, x+10 gRemoveUnitAutoChrono vRemoveUnitAutoChrono hWndhWndButton w25 h25
+		GuiButtonIcon(hWndButton, A_Temp "\MacroTrainerFiles\GUI\Remove Minus Red.ico", 1, "w15 h15 a4")
+
+		Gui, Add, Button, x+40 yp gMoveUpUnitAutoChrono vMoveUpUnitAutoChrono hWndhWndButton w25 h25
+		GuiButtonIcon(hWndButton, A_Temp "\MacroTrainerFiles\GUI\Up Arrow Blue.ico", 1, "w15 h15 a4")
+		Gui, Add, Button, x+10 yp gMoveDownUnitAutoChrono vMoveDownUnitAutoChrono hWndhWndButton w25 h25
+		GuiButtonIcon(hWndButton, A_Temp "\MacroTrainerFiles\GUI\Down Arrow Blue.ico", 1, "w15 h15 a4")
+		;GuiButtonIcon(hWndButton, "Down Green.ico", 1, "w15 h15 a4")
+
+		;Gui, Add, Text, xs+200 ys+25, Store Selection:
+
+	state := aAutoChronoCopy["MaxIndexGUI"] > 1 ? True : False
+	GUIControl, Enable%state%, NextAutoChrono
+	GUIControl,  Enable%state%, PreviousAutoChrono
+	showAutoChronoItem(aAutoChronoCopy)
 
 
 	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vAutoGroup_TAB, Terran|Protoss|Zerg|Delays|Info||Info2	
@@ -3534,9 +3583,9 @@ try
 			 Gui, Add, Button, x+45 w65 h25 vNew%A_LoopField%QuickSelect gg_QuickSelectGui, New
 			 Gui, Add, Button, x+20 w65 h25 vDelete%A_LoopField%QuickSelect gg_QuickSelectGui, Delete
 
-		Gui, Add, GroupBox, xs Ys+85 w380 h275 section vGroupBoxItem%A_LoopField%QuickSelect, % "Quick  Select Item " aQuickSelectCopy[A_LoopField "IndexGUI"] 
+		Gui, Add, GroupBox, xs Ys+85 w380 h275 section vGroupBoxItem%A_LoopField%QuickSelect, % "Quick Select Item " aQuickSelectCopy[A_LoopField "IndexGUI"] 
 
-			Gui, Add, Checkbox, xs+15 yp+25 vquickSelect%A_LoopField%Enabled Checked%Checked%, Enable
+			Gui, Add, Checkbox, xs+15 yp+25 vquickSelect%A_LoopField%Enabled, Enable
 			Gui, Add, Text, yp+40, Hotkey:
 				Gui, Add, Edit, Readonly yp-2 x+10 center w65 R1 vquickSelect%A_LoopField%_Key gedit_hotkey, %A_Space%
 			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#quickSelect%A_LoopField%_Key,  Edit	
@@ -3552,13 +3601,13 @@ try
 													. "`n`nNote: This uses the specified 'set control group' keys as defined in the SC2 Keys section (on the left)."
 
 			Gui, add, GroupBox, xs+200 ys+55 w165 h190, Remove
-			Gui, Add, Checkbox, Xp+10 yp+25  vquickSelect%A_LoopField%DeselectXelnaga Checked%Checked%, Xelnaga (tower) units
-			Gui, Add, Checkbox, Xp yp+24 vquickSelect%A_LoopField%OnScreen Checked%Checked%, Outside of camera view
-			Gui, Add, Checkbox, Xp yp+24 vquickSelect%A_LoopField%DeselectPatrolling Checked%Checked%, Patrolling units
-			Gui, Add, Checkbox, Xp yp+24 vquickSelect%A_LoopField%DeselectLoadedTransport Checked%Checked%, Loaded transports
-			Gui, Add, Checkbox, Xp yp+24 vquickSelect%A_LoopField%DeselectQueuedDrops Checked%Checked%, Transports queued to drop
-			Gui, Add, Checkbox, Xp yp+24 vquickSelect%A_LoopField%DeselectHoldPosition Checked%Checked%, On hold position
-			Gui, Add, Checkbox, Xp yp+24 vquickSelect%A_LoopField%DeselectFollowing Checked%Checked%, On follow command
+			Gui, Add, Checkbox, Xp+10 yp+25  vquickSelect%A_LoopField%DeselectXelnaga, Xelnaga (tower) units
+			Gui, Add, Checkbox, Xp yp+24 vquickSelect%A_LoopField%OnScreen, Outside of camera view
+			Gui, Add, Checkbox, Xp yp+24 vquickSelect%A_LoopField%DeselectPatrolling, Patrolling units
+			Gui, Add, Checkbox, Xp yp+24 vquickSelect%A_LoopField%DeselectLoadedTransport, Loaded transports
+			Gui, Add, Checkbox, Xp yp+24 vquickSelect%A_LoopField%DeselectQueuedDrops, Transports queued to drop
+			Gui, Add, Checkbox, Xp yp+24 vquickSelect%A_LoopField%DeselectHoldPosition, On hold position
+			Gui, Add, Checkbox, Xp yp+24 vquickSelect%A_LoopField%DeselectFollowing, On follow command
 		
 		state := aQuickSelectCopy[A_LoopField "MaxIndexGUI"] > 1 ? True : False
 		GUIControl, Enable%state%, Next%A_LoopField%QuickSelect
@@ -4358,6 +4407,11 @@ try
 				. "If you want instant chronoboosts, a value of 0 ms works reliably for me.`n"
 				. "If 0 ms is not reliable for you, try increasing the sleep time in one or two ms increments. (it doesn't require much)"
 		CG_chrono_remainder_TT := TT_CG_chrono_remainder_TT := "This is how many full chronoboosts will remain afterwards between all your nexi.`nA setting of 1 will leave 1 full chronoboost (or 25 energy) on one of your nexi."
+		AddUnitAutoChrono_TT := "Adds a new structure to the current list."
+		RemoveUnitAutoChrono_TT := "Removes selected structure(s)."
+		MoveUpUnitAutoChrono_TT := "Increases the selected structure's chrono priority."
+		MoveDownUnitAutoChrono_TT := "Decreases the selected structure's chrono priority."
+
 		 Inject_control_group_TT :=  #Inject_control_group_TT := "This refers to the control group used to store the current unit selection."
 				. "`nThis allows the selected units to be restored after performing the automation."
 				. "`n`nNote: Use a control group which you DO NOT use in game."
@@ -4709,8 +4763,11 @@ iniWriteAndUpdateQuickSelect(byRef aQuickSelectCopy, byRef aQuickSelect)
 		race := A_LoopField
 		section := "quick select " race
 		IniDelete, %config_file%, %section% ;clear the list
-		for itemNumber, object in aQuickSelectCopy[race]
-		{
+		for index, object in aQuickSelectCopy[race]
+		{	
+			; Use the loop index in case something went wrong and there is a gap in the index of the object 1-->2-->4 
+			; as iniread function will stop at first non-existent item
+			itemNumber := A_Index 
 			for key, value in object
 			{
 				if (key = "units")
@@ -5102,6 +5159,9 @@ Screenshots and replays may be attached below.
 ;could hide everything each time, then unhide once, but that causes every so slightly more blinking on gui changes
 ; Note this is launched automatically when the GUI is first created, as the first TV item (Home) is automatically selected
 OptionsTree:
+	
+	; In case ever add another tree view ensure correct one is being accessed/manipulated
+	Gui, TreeView, GUIListViewIdentifyingVariableForRedraw
 	; Key = MenuTitles: Value = Tab ID
 	if !isObject(aGUITabs)
 		aGUITabs := { 	"Home": "Home_TAB" 
@@ -5938,15 +5998,14 @@ class TwoPanelSelection_LV
 		{
 			for index, item in items
 				if (!isItemInListView(Item, Panel) && ( (checkPanel && !isItemInListView(Item, checkPanel)) || !checkPanel) )
-					addItemsToListview(item, Panel)
+					addItemToListview(item, Panel)
 		}
 		Else
 			if (!isItemInListView(Items, Panel) && ( (checkPanel && !isItemInListView(Item, checkPanel)) || !checkPanel) )
-				addItemsToListview(Items, Panel)
+				addItemToListview(Items, Panel)
 		this.ModifyCol()
 		return
 	}
-
 	MoveSelectedAvailableToCurrent()
 	{
 		aSelected := retrieveSelectedItemsFromListView(this.Available)
@@ -5957,6 +6016,7 @@ class TwoPanelSelection_LV
 		return
 
 	}
+
 	MoveSelectedCurrentToAvailable()
 	{
 		aSelected := retrieveSelectedItemsFromListView(this.current)
@@ -5975,7 +6035,7 @@ class TwoPanelSelection_LV
 			for index, item in items
 			{
 				if !isItemInListView(Item, Deistination)
-					addItemsToListview(item, Deistination)
+					addItemToListview(item, Deistination)
 				if RemoveOriginals
 					removeItemFromListView(Item, Origin)
 			}
@@ -5983,7 +6043,7 @@ class TwoPanelSelection_LV
 		Else
 		{
 			if !isItemInListView(Items, Deistination)
-					addItemsToListview(Items, Deistination)	
+					addItemToListview(Items, Deistination)	
 			if RemoveOriginals
 					removeItemFromListView(Items, Origin)
 		}
@@ -6006,6 +6066,7 @@ class TwoPanelSelection_LV
 		else LV_ModifyCol()	
 		return
 	}
+	; returns the row number if item is present
 	isItemInListView(Item, ListView="")
 	{
 		if ListView
@@ -6015,10 +6076,11 @@ class TwoPanelSelection_LV
 		{
 			LV_GetText(OutputVar, a_index)
 			if (OutputVar = Item)
-				return 1
+				return a_index
 		}
 		return 0
 	}
+	; The index of the array equals the row number
 	retrieveSelectedItemsFromListView(ListView="", byref count = "")
 	{ 
 
@@ -6028,16 +6090,15 @@ class TwoPanelSelection_LV
 		while (nextItem := LV_GetNext(nextItem)) ;return next item number for selected items - then returns 0 when done
 		{
 			LV_GetText(OutputVar, nextItem)
-			a.insert(OutputVar)
+			a[nextItem] := OutputVar
 			count++
 		}
-
 		return a
 	}
 
 
 
-	addItemsToListview(item, ListView="")
+	addItemToListview(item, ListView="")
 	{
 		if ListView
 			Gui, ListView, %ListView% ;note all future and current threads now refer to this listview!
@@ -6334,11 +6395,12 @@ Edit_AG:	;AutoGroup and Unit include/exclude come here
 	list := %list%
 
 	IfInString, A_GuiControl, UnitHighlight
-		TMP_EditAG_Units .= AG_GUI_ADD("", TMP_EditAG_Units ? ", " : "", list), delimiter := ","
+		TMP_EditAG_Units .= (TMP_EditAG_Units ? ", " : "") GUISelectionList("Select Unit",list, "|", ","), delimiter := ","
 	Else IfInString, A_GuiControl, quickSelect
-		TMP_EditAG_Units .= AG_GUI_ADD("", TMP_EditAG_Units ? "`n" : "", list), delimiter := "`n"
+		TMP_EditAG_Units .= (TMP_EditAG_Units ? "`n" : "") GUISelectionList("Select Unit", list, "|", "`n"), delimiter := "`n"
 	Else
-		TMP_EditAG_Units .= AG_GUI_ADD(SubStr(A_GuiControl, 0, 1), TMP_EditAG_Units ? ", " : "", list), delimiter := "," ;retrieve the last character of name ie control number 0/1/2 etc		
+		TMP_EditAG_Units .= (TMP_EditAG_Units ? ", " : "") GUISelectionList("Auto Group " SubStr(A_GuiControl, 0, 1), list, "|", ","), delimiter := "," ;retrieve the last character of name ie control number 0/1/2 etc		
+	
 	list := checkList := ""
 	loop, parse, TMP_EditAG_Units, %delimiter%
 	{
@@ -6352,18 +6414,19 @@ Edit_AG:	;AutoGroup and Unit include/exclude come here
 	GUIControl,, %TMP_AG_ControlName%, % Trim(list, "`,`n `t")
 Return
 
-AG_GUI_ADD(Control_Group = "", delimiter := ",", list := "Error")
+; If multiSelectionDelimiter is true (not null/0) then multiple items can be selected and returned.
+; multiSelectionDelimiter should be the delimiter used to separate the returned items
+
+GUISelectionList(Title = "", list := "Error", listdelimiter := "|", multiSelectionDelimiter := "|")
 {
 	static F_drop_Name 	; as a controls variable must by global or static
 
-	If (Control_Group = "")
-		Title := "Select Unit"
-	else Title := "Auto Group " Control_Group
+	StringReplace, list, list, %listdelimiter%, |, All
 
 	Gui, Add2AG:+LastFound
 	GuiHWND := WinExist() 
 	Gui, Add2AG:Add, Text, x5 y+10, Select Unit Type:
-	Gui, Add2AG:Add, ListBox, x5 y+10 w150 h280 VF_drop_Name  sort, %list%
+	Gui, Add2AG:Add, ListBox, % "x5 y+10 w150 h280 VF_drop_Name sort " (multiSelectionDelimiter ? "Multi" : ""), %list%
 	Gui, Add2AG:Add, Button, y+20 x5 w60 h35 gB_ADDAdd2AG, Add
 	Gui, Add2AG:Add, Button, yp+0 x95 w60 h35  gB_closeAdd2AG, Close
 	GUI, Add2AG:+AlwaysOnTop +ToolWindow
@@ -6383,7 +6446,11 @@ AG_GUI_ADD(Control_Group = "", delimiter := ",", list := "Error")
 	;pause off
 
 	if !close
-		Return delimiter != False ? delimiter F_drop_Name : F_drop_Name
+	{
+		if multiSelectionDelimiter
+			StringReplace, F_drop_Name, F_drop_Name, |, %multiSelectionDelimiter%, All
+		Return F_drop_Name
+	}
 	Return 
 
 	B_closeAdd2AG:
@@ -6397,59 +6464,6 @@ AG_GUI_ADD(Control_Group = "", delimiter := ",", list := "Error")
 
 }
 
-/* old
-AG_GUI_ADD(Control_Group = "", comma=1, Race=1)
-{
-	static F_drop_Name 	; as a controls variable must by global or static
-	global l_UnitNames, l_UnitNamesTerran, l_UnitNamesProtoss, l_UnitNamesZerg
-
-	If (Control_Group = "")
-		Title := "Select Unit"
-	else Title := "Auto Group " Control_Group
-	if (race = "Terran")
-		list := l_UnitNamesTerran
-	else if (race = "Protoss")
-		list := l_UnitNamesProtoss
-	else if (race = "Zerg")
-		list := l_UnitNamesZerg
-	else list := l_UnitNames
-
-
-
-	Gui, Add2AG:Add, Text, x5 y+10, Select Unit Type:
-	Gui, Add2AG:Add, ListBox, x5 y+10 w150 h280 VF_drop_Name  sort, %list%
-	Gui, Add2AG:Add, Button, y+20 x5 w60 h35 gB_ADD, Add
-	Gui, Add2AG:Add, Button, yp+0 x95 w60 h35  gB_close, Close
-	GUI, Add2AG:+AlwaysOnTop +ToolWindow
-	GUI, Add2AG:Show, w160 h380, %Title%
-	Gui, Add2AG:+OwnerOptions
-	Gui, Options:+Disabled
- 	;return ;cant use return here, otherwise script will continue running immeditely after the functionc call
-	pause	
-						; ****also note, the function will jump to bclose but aftwards will continue from here linearly down
-	B_ADD:				;hence have to check whether to return any value
-	Gui, Options:-Disabled
-	Gui, Options:Show		;required to keep from minimising
-	Gui, Add2AG:Submit
-	Gui Add2AG:Destroy
-	;GuiControlGet, Edit_Unit_name,, F_drop_Name
-	pause off
-
-	if (close <> 1)
-		Return comma = 1 ? ", " F_drop_Name : F_drop_Name
-	Return 
-
-	B_Close:
-	Add2AGGUIEscape:
-    Add2AGGUIClose:
-	Close := 1
-	Gui, Options:-Disabled
-	Gui Add2AG:Destroy
-	pause off
-	Return ;this is needed to for the above if (if the cancel/escape gui)
-
-}
-*/
 
 ; there is an 'if' section in the bufferinput send that checks if the user pressed the Esc key
 ; if they did, it gosubs here
@@ -7971,8 +7985,6 @@ for a 146 terran army deslecting all but 1 unit
  10ms - 1 in ~7 times most of the units weren't deselected
  15ms - worked 100%
 */
-
-;f1::
 
 g_SelectArmy:
 selectArmy()
@@ -10978,7 +10990,7 @@ getPhotonOverChargeDuration(unit)
 	if !unitBuff := ReadMemory(B_uStructure + unit * S_uStructure + O_upBuffs, GameIdentifier)
 		return 0
 	msgbox % chex(unitBuff)
-	; unitBuff is the base of this structure and points to itself. 
+	; unitBuff is the base of this structure and points to itself (value & -2). 
 	; p+4 is probably some innate  ability so start at p+8 
 	while (p := ReadMemory(unitBuff + 0x08 + 4*(A_Index-1), GameIdentifier)) 
 	{
@@ -10987,6 +10999,7 @@ getPhotonOverChargeDuration(unit)
 		 ; Need to determine if this BUff is a PO - Could be chrono.
 		 ; I haven't spent time investigating these.
 		 ; Could also just check if the total time = that of a PO. But that's pretty shitty.
+		 ; And wouldn't work by itself - as oracle reveal has the same max time - 60 seconds
 		 ; Photon Over charge = mothership cloak = 32
 		 ; chrono = 40
 		 ; None = 3	(or default?)	
@@ -11000,5 +11013,504 @@ getPhotonOverChargeDuration(unit)
 		}
 	}
 	return 0
+}
+
+/*
+f1::
+unit := getSelectedUnitIndex()
+unitBuff := ReadMemory(B_uStructure + unit * S_uStructure + 0xEC, GameIdentifier)
+msgbox % chex(unitBuff)
+pointer := ReadMemory(unitBuff, GameIdentifier) & -2
+pointer := ReadMemory(pointer + 4 + 1*4, GameIdentifier) ; get first behaviour
+
+msgbox % chex(p := ReadMemory(pointer + 0x58, GameIdentifier)+4)
+msgbox % chex(ReadMemory(p, GameIdentifier) & -2)
+
+
+
+
+ return
+f2::
+unit := getSelectedUnitIndex()
+
+c := getUnitBuff(unit, aBuffs := [])
+objtree(aBuffs)
+msgbox % c " " getUnitBuff(unit, "MothershipCoreApplyPurifyAB")
+return 
+; Buff = MothershipCoreApplyPurifyAB
+
+/*
+Finds the buffs applied to a unit. Percent complete.
+
+If the byref variable buffNameOrObject is an object then any current buff is stored in it and the buff count is returned (0 if none)
+The object will not be blanked - so do this if required.
+
+Otherwise buffNameOrObject can be the buff string to search for. It will return the percent Complete if found else 0
+
+There's a fair amount of info on buffs/behaviours on SC2Mapster
+And this would shed some light on some of the info/structures
+
+Some buff strings:
+	ChronoBoost
+	CloakingField
+	MothershipCoreApplyPurifyAB  (Photon overcharge)
+
+*/
+
+getUnitBuff(unit, byRef buffNameOrObject)
+{
+	static aBuffStringOffsets := []
+
+	; If no buffs applied pointer = 0 - so if buff finishes this will change back to 0
+	if !buffArray := ReadMemory(B_uStructure + unit * S_uStructure + O_uBuffPointer, GameIdentifier)
+		return 0
+	; I spent almost 0 time investigating these structures - so there should probably be more pointer checking conditions
+	; and counts
+
+	; The value at buffArray is a pointer to itself (& -2)
+	; A nexus will have an innate ability at buffArray + 0x04 - haven't checked other structures. Maybe train?
+	; A zealot will not have this innate ability - the first 'real'/inducible  buff will be at buffArray + 4
+	; This is like a list c++ list? if A comes before B and then A expires, B moves back to position A. Like the other SC2 lists
+	buffCount := 0
+
+	; loop 20 times max as safety. In case buffs expire during read and this memory area is now used
+	; for something else.
+	while (p := ReadMemory(buffArray + 0x04 + 4*(A_Index-1), GameIdentifier)) && (A_Index < 20) ; 
+	{
+		if !baseTimer := ReadMemory(p + 0x58, GameIdentifier)
+			continue
+		if !p := ReadMemory(baseTimer + 0x4, GameIdentifier) & -2
+			continue
+		if !p := ReadMemory(p + 0x4, GameIdentifier)
+			continue
+		; first pointer to string/buff name
+		; This is empty for the first innate nexus buff (it may be located elsewhere in this struct)
+		if !p := ReadMemory(p + 0xA8, GameIdentifier) 
+			continue
+		aBuffStringOffsets.HasKey(p)
+			? buffString := aBuffStringOffsets[p]
+			: aBuffStringOffsets[p] := buffString := ReadMemory_Str(ReadMemory(p + 0x4, GameIdentifier), GameIdentifier)
+
+		if buffString
+		{
+			totalTime :=  ReadMemory(baseTimer, GameIdentifier)
+			, remainingTime := ReadMemory(baseTimer+ 0x10, GameIdentifier)
+			, percent := round(remainingTime / totalTime, 2)
+
+			if IsObject(buffNameOrObject)
+				buffNameOrObject.insert(buffString, percent), buffCount++
+			else if (buffNameOrObject = buffString)
+				return percent			
+		}	
+	}
+	if IsObject(buffNameOrObject)
+		return buffCount ; cant use max.Index() as strings are keys
+	return 0 ; Specified buff not applied/found
+}
+
+
+
+
+/*
+
+f2::
+tooltip % getWarpGateCooldown(getSelectedUnitIndex())
+return 
+f1::
+;tooltip % getWarpGateCooldown(getSelectedUnitIndex())/4096
+
+aChrono := { (aUnitID["WarpGate"]): 1
+			, (aUnitID["Forge"]): 2
+			, (aUnitID["Stargate"]): 3}
+Cast_ChronoStructureNew(aChrono)
+
+return 
+
+*/
+
+
+
+; aStructuresToChrono is an array which keys are the unit types and their values are the chrono order
+; lower chrono order is chronoed first
+Cast_ChronoStructureNew(aStructuresToChrono)
+{	GLOBAL aUnitID, CG_control_group, chrono_key, CG_nexus_Ctrlgroup_key, CG_chrono_remainder, ChronoBoostSleep
+	, HumanMouse, HumanMouseTimeLo, HumanMouseTimeHi, NextSubgroupKey
+
+	oStructureToChrono := [], a_gatewaysConvertingToWarpGates := [], a_WarpgatesOnCoolDown := []
+
+	numGetControlGroupObject(oNexusGroup, CG_nexus_Ctrlgroup_key)
+	for index, unit in oNexusGroup.units
+	{
+		if (unit.type = aUnitID.Nexus && !isUnderConstruction(unit.unitIndex))
+			nexus_chrono_count += Floor(unit.energy/25)
+	}
+
+	IF !nexus_chrono_count
+		return
+	Unitcount := DumpUnitMemory(MemDump)
+	while (A_Index <= Unitcount)
+	{
+		unit := A_Index - 1
+		if isTargetDead(TargetFilter := numgetUnitTargetFilter(MemDump, unit)) || !isOwnerLocal(numgetUnitOwner(MemDump, Unit))
+		|| isTargetUnderConstruction(TargetFilter)
+	       Continue
+    	if aStructuresToChrono.HasKey(Type := numgetUnitModelType(numgetUnitModelPointer(MemDump, Unit))) && !isUnitChronoed(unit)
+    	{
+	    	IF ( type = aUnitID["WarpGate"]) && (cooldown := getWarpGateCooldown(unit))
+				a_WarpgatesOnCoolDown.insert({"Unit": unit, "Cooldown": cooldown})
+			Else IF (type = aUnitID["Gateway"] && isGatewayConvertingToWarpGate(unit))
+					a_gatewaysConvertingToWarpGates.insert(unit) 
+			else
+			{	
+				progress :=  getBuildStats(unit, QueueSize)	; need && QueueSize as if progress reports 0 when idle it will be added to the list
+				if ( (progress < .95 && QueueSize) || QueueSize > 1) ; as queue size of 1 means theres only 1 item in queue being produced
+					oStructureToChrono.insert({Unit: unit, QueueSize: QueueSize, progress: progress, userOrder: round(aStructuresToChrono[type])})
+			}
+    	}														  
+	}	
+
+	if a_WarpgatesOnCoolDown.MaxIndex()
+		bubbleSort2DArray(a_WarpgatesOnCoolDown, "Cooldown", 0)	;so warpgates with longest cooldown get chronoed first
+	if a_gatewaysConvertingToWarpGates.MaxIndex()	
+		RandomiseArray(a_gatewaysConvertingToWarpGates)
+
+	; The 51 for QueueSize ensures that warpgates are chronoed before converting gateways when user presses the chrono warpgates/gateway key
+	for index, Warpgate in a_WarpgatesOnCoolDown 			
+		oStructureToChrono.insert({Unit: Warpgate.Unit, QueueSize: 51, progress: 1, userOrder: round(aStructuresToChrono[aUnitID.WarpGate])})	; among warpgates longest cooldown gets done first
+	; The 50 for QueueSize ensures that converting gateways are chronoed before producing gateways when user presses the chrono warpgates/gateway key
+	for index, unit in a_gatewaysConvertingToWarpGates
+		oStructureToChrono.insert({Unit: unit, QueueSize: 50, progress: 1, userOrder: round(aStructuresToChrono[aUnitID.Gateway])}) 	; among these gateways, order is random
+
+	bubbleSort2DArray(oStructureToChrono, "progress", 1) ; so the strucutes with least progress gets chronoed (providing have same queue size)
+	bubbleSort2DArray(oStructureToChrono, "QueueSize", 0) ; so One with the longest queue gets chronoed first
+	bubbleSort2DArray(oStructureToChrono, "userOrder", 1) ; So lower priority Number gets chronoed first
+	If !oStructureToChrono.maxIndex()
+		return
+	
+	MouseGetPos, start_x, start_y
+	HighlightedGroup := getSelectionHighlightedGroup()
+	selectionPage := getUnitSelectionPage()
+	max_chronod := nexus_chrono_count - CG_chrono_remainder
+	input.pSend((CG_control_group != "Off" ? aAGHotkeys.set[CG_control_group] : "") aAGHotkeys.Invoke[CG_nexus_Ctrlgroup_key])
+	timerID := stopwatch()
+	sleep, 30 	; Can use real sleep here as not a silent automation
+	for  index, oject in oStructureToChrono
+	{
+		If (A_index > max_chronod)
+			Break	
+
+	sleep 3000
+	If (A_index > 6)
+		Break	
+
+
+
+		sleep, %ChronoBoostSleep%
+		getUnitMiniMapMousePos(oject.unit, click_x, click_y)
+		input.pSend(chrono_key)
+		If HumanMouse
+			MouseMoveHumanSC2("x" click_x "y" click_y "t" rand(HumanMouseTimeLo, HumanMouseTimeHi))
+		MTclick(click_x, click_y)
+	}
+	If HumanMouse
+		MouseMoveHumanSC2("x" start_x "y" start_y "t" rand(HumanMouseTimeLo, HumanMouseTimeHi))
+	elapsedTimeGrouping := stopwatch(timerID)	
+	if (elapsedTimeGrouping < 20)
+		sleep, % ceil(20 - elapsedTimeGrouping)	
+	if (CG_control_group != "Off")
+		restoreSelection(CG_control_group, selectionPage, HighlightedGroup)
+	Return 
+}
+	
+
+
+
+AutoChronoGui:
+if instr(A_GuiControl, "New")
+{
+	if !retrieveItemsFromListView("AutoChronoListView").MaxIndex()
+	{
+		msgbox, % 64 + 8192 + 262144, New Item, The current unit field is empty.`n`nPlease add some units before creating a new item.
+		return
+	}
+	saveCurrentAutoChronoItem(aAutoChronoCopy)
+	if blankIndex := autoChronoFindPosiitionWithNoUnits(aAutoChronoCopy) 
+	{
+		aAutoChronoCopy["IndexGUI"] := blankIndex
+		showAutoChronoItem(aAutoChronoCopy)
+	}
+	else 
+	{
+		aAutoChronoCopy["IndexGUI"] := aAutoChronoCopy["MaxIndexGUI"] := round(aAutoChronoCopy["MaxIndexGUI"] + 1)	
+		blankAutoChronoGUI()
+	}
+}
+else if instr(A_GuiControl, "Delete")
+{
+
+	aAutoChronoCopy["Items"].remove(aAutoChronoCopy["IndexGUI"])
+
+	if (aAutoChronoCopy["MaxIndexGUI"] = 1)
+	{
+		blankAutoChronoGUI()
+		return
+	}
+	if (aAutoChronoCopy["IndexGUI"] > 1)
+		aAutoChronoCopy["IndexGUI"] := round(aAutoChronoCopy["IndexGUI"] - 1)
+	aAutoChronoCopy["MaxIndexGUI"] := round(aAutoChronoCopy["MaxIndexGUI"] - 1)
+	showAutoChronoItem(aAutoChronoCopy)
+}
+else if instr(A_GuiControl, "Next")
+{
+	if (aAutoChronoCopy["MaxIndexGUI"] = 1)
+		return 
+	saveCurrentAutoChronoItem(aAutoChronoCopy)
+	if (aAutoChronoCopy["IndexGUI"] >= aAutoChronoCopy["MaxIndexGUI"])
+		aAutoChronoCopy["IndexGUI"] := 1
+	else 
+		aAutoChronoCopy["IndexGUI"] := round(aAutoChronoCopy["IndexGUI"] + 1)
+	showAutoChronoItem(aAutoChronoCopy)	
+}
+else if instr(A_GuiControl, "Previous")
+{
+	if (aAutoChronoCopy["MaxIndexGUI"] = 1)
+		return 
+	saveCurrentAutoChronoItem(aAutoChronoCopy)
+	if (aAutoChronoCopy["IndexGUI"] <= 1)
+		aAutoChronoCopy["IndexGUI"] := aAutoChronoCopy["MaxIndexGUI"]
+	else 
+		aAutoChronoCopy["IndexGUI"] := round(aAutoChronoCopy["IndexGUI"] - 1)
+	showAutoChronoItem(aAutoChronoCopy)	
+}
+; so doesnt get set to 0
+if (aAutoChronoCopy["IndexGUI"] <= 0)
+	aAutoChronoCopy["IndexGUI"] := 1
+if (aAutoChronoCopy["MaxIndexGUI"] <= 0)
+	aAutoChronoCopy["MaxIndexGUI"] := 1	
+GUIControl, , GroupBoxAutoChrono, % "Chrono Navigation " aAutoChronoCopy["IndexGUI"] " of " aAutoChronoCopy["MaxIndexGUI"]	
+GUIControl, , GroupBoxItemAutoChrono, % "Chrono Item " aAutoChronoCopy["IndexGUI"]
+state := aAutoChronoCopy["MaxIndexGUI"] > 1 ? True : False
+GUIControl, Enable%state%, NextAutoChrono
+GUIControl,  Enable%state%, PreviousAutoChrono
+return 
+
+
+MoveUpUnitAutoChrono:
+for row, unitName in retrieveSelectedItemsFromListView("AutoChronoListView") ; MultiSelect disabled so should only be 1 item
+{
+	if (row > 1)
+	{
+		removeItemFromListView(unitName)
+		LV_Insert(row -1, "Select Focus", unitName)
+	}
+}
+GuiControl, Focus, AutoChronoListView ; so that the selected item background is blue (as user pressed the up/down button)
+return
+; When moving down easiest to start with the bottom row then work up
+MoveDownUnitAutoChrono:
+aSelectedRows := retrieveSelectedItemsFromListView("AutoChronoListView") 
+while aSelectedRows.MaxIndex()
+{
+	if (aSelectedRows.MaxIndex() < LV_GetCount())
+	{
+		removeItemFromListView(aSelectedRows[aSelectedRows.MaxIndex()])
+		LV_Insert(aSelectedRows.MaxIndex() + 1, "Select Focus", aSelectedRows[aSelectedRows.MaxIndex()])
+	}
+	aSelectedRows.remove(aSelectedRows.MaxIndex())
+}
+GuiControl, Focus, AutoChronoListView ; so that the selected item background is blue (as user pressed the up/down button)
+return
+
+
+AddUnitAutoChrono:
+Gui, ListView, AutoChronoListView
+if newItems := GUISelectionList("Select Structure(s):"
+			, "WarpGate|Gateway|Forge|Stargate|RoboticsFacility|Nexus|CyberneticsCore|TwilightCouncil|TemplarArchive|RoboticsBay|FleetBeacon"
+			, "|", "|")
+{
+	firstAddedItem := ""
+	loop, parse, newItems, |
+	{
+		if !isItemInListView(A_LoopField)
+			addItemToListview(A_LoopField), (firstAddedItem = "" ? firstAddedItem := A_LoopField : "")
+	}
+	if firstAddedItem
+	{
+		LV_Modify(0, "-Select") ; Deselect all otherwise if item was already selected it will be selected along with the first added new item
+		LV_Modify(isItemInListView(firstAddedItem), "Select Focus")
+		GuiControl, Focus, AutoChronoListView
+	}
+}
+return
+
+RemoveUnitAutoChrono:
+Gui, ListView, AutoChronoListView
+for i, item in aSelectedRows := retrieveSelectedItemsFromListView()
+	removeItemFromListView(item)
+if aSelectedRows.MinIndex() && LV_GetCount()
+{
+	LV_Modify(aSelectedRows.MinIndex() <= LV_GetCount() ? aSelectedRows.MinIndex() : LV_GetCount(), "Select Focus" )
+	GuiControl, Focus, AutoChronoListView ; so that the selected item background is blue (as user pressed the up/down button)
+}
+return
+
+
+f1::
+objtree(aAutoChronoCopy)
+return 
+
+f2::
+soundplay *-1
+Gui, ListView, AutoChronoListView
+GuiControl, Focus, AutoChronoListView 
+msgbox % LV_Modify(0, "Focus Select")   ; Select all.
+return 
+
+iniReadAutoChrono(byRef aAutoChronoCopy, byRef aAutoChrono)
+{
+
+	aAutoChronoCopy := [], aAutoChrono := []
+
+	arrayPosition := 0
+	; ive just added the forge and stargate here as, the warpages already here
+	;[Chrono Boost Gateway/Warpgate]
+	section := "Auto Chrono Items"
+	loop 
+	{
+		arrayPosition++
+		; itemNumber := arrayPosition
+		; Use A_Index, as if no unit exists, then will decrement arrayPosition
+		; causing an infinite loop as it reads the same ini key
+		itemNumber := A_Index
+		IniRead, enabled, %config_file%, %section%, %itemNumber%_enabled, error
+
+		if (enabled = "error")
+			break 
+
+		IniRead, hotkey, %config_file%, %section%, %itemNumber%_hotkey, %A_Space%
+		IniRead, units, %config_file%, %section%, %itemNumber%_units, %A_Space%
+
+	    aAutoChronoCopy["Items", arrayPosition] := []
+	    aAutoChronoCopy["Items", arrayPosition, "enabled"] := enabled
+	    aAutoChronoCopy["Items", arrayPosition, "hotkey"] := hotkey
+	    aAutoChronoCopy["Items", arrayPosition, "units"] := []
+
+	    unitExists := false
+	    ; sort, units, D`, U ; Do not use sort to remove duplicates - as it will also sort them.
+
+	    userPriority := 1
+	    loop, parse, units, `,
+	    {
+	    	unitName := A_LoopField
+
+	    	if aUnitID.HasKey(unitName) && !aAutoChronoCopy["Items", arrayPosition, "units"].HasKey(aUnitID[unitName])
+	    	{
+	    		; don't use insert as using integer keys so it will move them around
+	    		aAutoChronoCopy["Items", arrayPosition, "units", aUnitID[unitName]] := userPriority++
+	    		unitExists := True
+	    	}
+	    }
+	    if !unitExists
+	    	aAutoChronoCopy["Items"].remove(arrayPosition--) ;post-decrement 
+	}
+	aAutoChronoCopy["MaxIndexGui"] := Round(aAutoChronoCopy["Items"].MaxIndex())
+	
+	aAutoChrono := aAutoChronoCopy
+	return 
+}
+
+iniWriteAndUpdateAutoChrono(byRef aAutoChronoCopy, byRef aAutoChrono)
+{
+	
+	section := "Auto Chrono Items"
+	IniDelete, %config_file%, %section% ;clear the list
+	for i, object in aAutoChronoCopy["Items"]
+	{
+		; Use the loop index in case something went wrong and there is a gap in the index of the object 1-->2-->4 
+		; as iniread function will stop at first non-existent item
+		itemNumber := A_Index 
+		for key, value in object
+		{
+			if (key = "units")
+			{
+				value := "" , aDuplicateCheck := [] ; can't use sort to remove duplicates as their order is important. (there shouldn't be any anyway)
+				aOrder := []
+				for unitId, userOrder in object["units"]
+				{
+					if aUnitName.HasKey(unitId) && !aDuplicateCheck.HasKey(unitId)
+						aOrder[userOrder] := aUnitName[unitId], aDuplicateCheck[unitId] := True
+				}
+				; Have to use another array to rank via user order - otherwise for loop would iterate in order of unitType/ID number
+				for userOrder, unitName in aOrder
+					value .= unitName ","
+				value := Trim(value, " `t`,") ; remove the last comma
+			}
+			IniWrite, %value%, %config_file%, %section%, %itemNumber%_%key%
+		}
+	}
+	aAutoChrono := aAutoChronoCopy
+	return
+}
+
+
+saveCurrentAutoChronoItem(byRef aAutoChronoCopy)
+{
+	GuiControlGet, enabled,, AutoChronoEnabled
+	GuiControlGet, hotkey,, AutoChrono_Key
+
+	arrayPosition := aAutoChronoCopy["IndexGUI"]
+
+	aAutoChronoCopy["Items", arrayPosition] := []
+	aAutoChronoCopy["Items", arrayPosition, "enabled"] := enabled
+	aAutoChronoCopy["Items", arrayPosition, "hotkey"] := hotkey
+	aAutoChronoCopy["Items", arrayPosition, "units"] := []
+	userPriority := 1
+	for i, unitName in retrieveItemsFromListView("AutoChronoListView")
+	{
+		if aUnitID.haskey(unitName) && !aAutoChronoCopy["Items", arrayPosition, "units"].HasKey(aUnitID[unitName])
+			aAutoChronoCopy["Items", arrayPosition, "units", aUnitID[unitName]] := userPriority++
+	}
+	; lets just save it anyway so that if the click previous to go back and they havent filled in the units part, 
+	; they wont lose what they just entered
+;	if !aAutoChronoCopy[Race, arrayPosition, "units"].maxIndex()
+;	{
+;		GUIControl, , quickSelect%Race%UnitsArmy,
+;		aAutoChronoCopy[Race].remove(arrayPosition)
+;		return 1 ; No real units were in the text field
+;	}
+	return 
+}
+
+autoChronoFindPosiitionWithNoUnits(byRef aAutoChronoCopy)
+{
+	loop, 1000
+	{
+		if !IsObject(aAutoChronoCopy["Items", A_Index])
+			break
+		if !aAutoChronoCopy["Items", A_Index, "units"].MaxIndex()
+			return A_Index
+	}
+	return 0
+}
+
+showAutoChronoItem(byRef aAutoChronoCopy)
+{
+	arrayPosition := aAutoChronoCopy["IndexGUI"]
+	removeAllItemsFromListView("AutoChronoListView")
+	for typeID, userOrder in aAutoChronoCopy["Items", arrayPosition, "units"]
+	{
+		if aUnitName.haskey(typeID)
+			LV_Insert(userOrder, "", aUnitName[typeID])
+	}
+	GUIControl,, AutoChronoEnabled, % round(aAutoChronoCopy["Items", arrayPosition, "enabled"])
+	GUIControl,, AutoChrono_Key, % aAutoChronoCopy["Items", arrayPosition, "hotkey"]
+	return
+}
+blankAutoChronoGUI()
+{
+	GUIControl,, AutoChronoEnabled, 0
+	GUIControl,, AutoChrono_Key,
+	removeAllItemsFromListView("AutoChronoListView")
+	return
 }
 

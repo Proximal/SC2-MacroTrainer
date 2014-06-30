@@ -63,6 +63,7 @@ Global B_LocalCharacterNameID
 , O_P_uAbilityPointer
 , O_uChronoState
 , O_uInjectState
+, O_uBuffPointer
 , O_uHpDamage
 , O_uShieldDamage
 , O_uEnergy
@@ -253,6 +254,7 @@ loadMemoryAddresses(base, version := "")
 										; there are other offsets which can be used for chrono/inject state
 			 O_uChronoState := 0xE6				; pre 210 chrono and inject offsets were the same
 			 O_uInjectState := 0xE7 ; +5 Weird this was 5 not 4 (and its values changed) chrono state just +4
+			 O_uBuffPointer := 0xEC
 
 			 O_uHpDamage := 0x114
 			 O_uShieldDamage := 0x118
@@ -733,8 +735,6 @@ isPlayerActive(player)
 	Return (ReadMemory((B_pStructure + O_pStatus) + (player-1) * S_pStructure, GameIdentifier, 1) & 1)
 }
 
-
-
 getPlayerTeam(player="") ;team begins at 0
 {	global
 	If (player = "")
@@ -752,7 +752,7 @@ getPlayerColour(i)
 	}
 	Return aPlayerColour[ReadMemory((B_pStructure + O_pColour) + (i-1) * S_pStructure, GameIdentifier)]
 }
-getLocalPlayerNumber() ;starts @ 1
+getLocalPlayerNumber() ;starts @ 1 (because the real first player in player structure is player0 = neutral, but i begin my structure at player1)
 {	global
 	Return ReadMemory(B_LocalPlayerSlot, GameIdentifier, 1) ;Local player slot is 1 Byte!!
 }
@@ -1060,6 +1060,7 @@ isGamePaused()
 	Return ReadMemory(B_IsGamePaused, GameIdentifier)
 }
 
+; Note: This is always true if the user is holding the drag camera button (middle mouse by default)
 
 isMenuOpen()
 { 	global
@@ -1142,7 +1143,6 @@ getLocalUnitHoldingXelnaga(Xelnaga)
 	}
 	return -1
 }
-
 
 ; call this function at the start of every match
 findXelnagas(byRef aXelnagas)
@@ -1567,7 +1567,7 @@ getBuildStatsPF(unit, byref QueueSize := "",  QueuePosition := 0) ; dirty hack u
 	STATIC O_pQueueArray := 0x34, O_IndexParentTypes := 0x18, O_unitsQueued := 0x28
 	CAbilQueue := ReadMemory(getUnitAbilityPointer(unit) + 0x5C, GameIdentifier)
 
-	localQueSize := ReadMemory(CAbilQueue + O_unitsQueued, GameIdentifier, 1) ; This is acutally the queue size
+	localQueSize := ReadMemory(CAbilQueue + O_unitsQueued, GameIdentifier, 1) ; This is actually the queue size
 
 	if IsByRef(QueueSize)
 		QueueSize := localQueSize
@@ -1975,7 +1975,7 @@ numGetControlGroupObject(Byref oControlGroup, Group)
 ;			(hallucinated units come immediately before non-hallucinated counterparts)
 ; 				lower unit Index comes first
 
-; Units with different unitID/SubgroupAliases are tabbable 
+; Units with different unitID/SubgroupAliases are tabable 
 
 ; hallucinated units come before their real counterparts. They can also be tabbed between
 ; hallucinated units are also selected with the select army hotkey (unless theyre probes)
@@ -2650,7 +2650,6 @@ deletePens(byRef a_pPens)
 	return 
 }
 
-
 drawUnitRectangle(G, x, y, width, height, colour := "black")
 { 	
 	global minimap
@@ -2923,6 +2922,12 @@ deletepBitMaps(byRef a_pBitmap)
 	return
 }
 
+
+; player0 = neutral 
+; player1-14 = players/refs/specs/none/computer
+; player15 = hostile
+; There are really 16 player slots. But I begin my player structure at player1 (too lazy to change it).
+
 ;----------------------
 ;	player_team_sorter
 ;-----------------------
@@ -2930,6 +2935,7 @@ getPlayers(byref aPlayer, byref aLocalPlayer, byref aEnemyAndLocalPlayer := "")
 {
 	aPlayer := [], aLocalPlayer := [], aEnemyAndLocalPlayer := []
 	; this should probably be 15, as I skip the first always neutral player in my player functions
+	; My base player structure starts at player1 not player0
 	Loop, 15	;doing it this way allows for custom games with blank slots ;can get weird things if 16 (but filtering them for nonplayers)
 	{
 		if !getPlayerName(A_Index) ;empty slot custom games?
@@ -3544,6 +3550,8 @@ readConfigFile()
 	IniRead, CastChrono_TemplarArchives_Key, %config_file%, %section%, CastChrono_TemplarArchives_Key, <!F1 
 	IniRead, CastChrono_RoboticsBay_Key, %config_file%, %section%, CastChrono_RoboticsBay_Key, <!F2
 	IniRead, CastChrono_FleetBeacon_Key, %config_file%, %section%, CastChrono_FleetBeacon_Key, <!F3
+	if IsFunc(FunctionName := "iniReadAutoChrono") ; function not in minimapthread
+		%FunctionName%(aAutoChronoCopy, aAutoChrono)
 
 	;[Advanced Auto Inject Settings]
 	IniRead, auto_inject_sleep, %config_file%, Advanced Auto Inject Settings, auto_inject_sleep, 50
