@@ -11003,9 +11003,8 @@ return
 ; Buff = MothershipCoreApplyPurifyAB
 
 
-*/
 
-f2::
+
 loop 
 {
 	MouseGetPos, x, y, WinTitle, control, 2
@@ -11016,26 +11015,5 @@ loop
 	sleep 50
 }
 return 
-
-f1::
-
-unit := getSelectedUnitIndex()
-;getUnitAbilitiesString(unit)
-tooltip % isPhotonOverChargeActive(unit) " - " progress := getUnitBuff(unit, "MothershipCoreApplyPurifyAB")
-return 
-
-
-
-/*
-pAbilities: 24d57b64 Unit ID: 0
-uStruct: 4a23000 - 4a231c0
-0 | Pointer Address 24d57b7c | RallyNexus
-1 | Pointer Address 24d57b80 | TimeWarp
-2 | Pointer Address 24d57b84 | BuildInProgress
-3 | Pointer Address 24d57b88 | NexusTrain
-4 | Pointer Address 24d57b8c | que5Passive
-5 | Pointer Address 24d57b90 | NexusTrainMothershipCore
-6 | Pointer Address 24d57b94 | NexusInvulnerability
-7 | Pointer Address 24d57b98 | attackProtossBuilding
-8 | Pointer Address 24d57b9c | stopProtossBuilding
+*/
 

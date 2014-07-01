@@ -1247,6 +1247,27 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 			}
 	   	}
 	}
+
+	; This is a good method to account for woker count (zerg). I believe I have nailed the tallying method so I will keep using this method.
+	; The other reason is when fucking around in the map editor and you spawn as a race different to the created units you will end
+	; up with two types of workers listed. Perhaps people use this unit panel in custom non-melee games? doubtful. But this could cause a similar issue.
+	
+	; This will overwrite the tallied worker count above. And you don't have to worry about zerg structures, creep tumours or burrowed drones
+	; I believe data in player table is updated slower (e.g. player can take 70+ ms) but this shouldn't be visible on the overlay - i.e. a worker finish production
+	; but the count doesn't immediately go up.
+	;for slotNumber, player in aPlayer
+	;{
+	;	if (player.Team != aLocalPlayer.Team)
+	;	{
+	;		if workers := getPlayerWorkerCount(player.slot) ; Don't assign a value of 0
+	;		{
+	;			workerType := aUnitID[player.Race = "Terran" ? "SCV" : (player.Race = "Protoss" ? "Probe" : "Drone")]
+	;			aEnemyUnits[player.slot, aUnitInfo[workerType, "Priority"], workerType] := workers
+	;		}
+	;	}
+	;}
+
+
 	Return
 }
 
@@ -1279,7 +1300,7 @@ FilterUnits(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aUnitPanelUni
 										, BarracksFlying: "Barracks", FactoryFlying: "Factory", StarportFlying: "Starport", SiegeTankSieged: "SiegeTank",  ThorHighImpactPayload: "Thor", VikingAssault: "VikingFighter"}
 							, "Zerg": {DroneBurrowed: "Drone", ZerglingBurrowed: "Zergling", HydraliskBurrowed: "Hydralisk", UltraliskBurrowed: "Ultralisk", RoachBurrowed: "Roach"
 							, InfestorBurrowed: "Infestor", BanelingBurrowed: "Baneling", QueenBurrowed: "Queen", SporeCrawlerUprooted: "SporeCrawler", SpineCrawlerUprooted: "SpineCrawler"}} 
-
+							
 	STATIC aAddConstruction := {"Terran": {BarracksTechLab: "TechLab", BarracksReactor: "Reactor", FactoryTechLab: "TechLab", FactoryReactor: "Reactor", StarportTechLab: "TechLab", StarportReactor: "Reactor"}}
 
 
@@ -1347,6 +1368,7 @@ FilterUnits(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aUnitPanelUni
 			if (priorityObject[aUnitInfo[aUnitID["Drone"], "Priority"], aUnitID["Drone"]] <= 0)
 				priorityObject[aUnitInfo[aUnitID["Drone"], "Priority"]].remove(aUnitID["Drone"], "")
 		}
+
 		for index, removeUnit in aRemovedUnits[race]
 		{
 			removeUnit := aUnitID[removeUnit]
@@ -1498,9 +1520,6 @@ FilterUnits(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aUnitPanelUni
 			 	priorityObject[priority].remove(aUnitID[unit], "")	
 			}	
 	}
-	;objtree(aEnemyUnits)
-	;objtree(aEnemyUnitConstruction)
-	;msgbox 
 	return
 }
 
