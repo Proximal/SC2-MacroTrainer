@@ -1228,14 +1228,23 @@ getWarpGateCooldown(WarpGate) ; unitIndex
 {	global B_uStructure, S_uStructure, O_P_uAbilityPointer, GameIdentifier
 	u_AbilityPointer := B_uStructure + WarpGate * S_uStructure + O_P_uAbilityPointer
 	ablilty := ReadMemory(u_AbilityPointer, GameIdentifier) & 0xFFFFFFFC
-	p1 := ReadMemory(ablilty + 0x28, GameIdentifier)	
+	p1 := ReadMemory(ablilty + 0x28, GameIdentifier)	; Ability WarpGateTrain
 	if !(p2 := ReadMemory(p1 + 0x1C, GameIdentifier)) ; 0 if it has never warped in a unit
 		return 0
 	p3 := ReadMemory(p2 + 0xC, GameIdentifier)
 	cooldown := ReadMemory(p3 + 0x4, GameIdentifier)
 	; as found in map editor some warpgates gave -1....but this could just be due to it being in the mapeditor (and was never a gateway...but doubtful)
 	; or i could have just stuffed something up when testing no harm in being safe.
-	if (cooldown >= 0) 		
+	; Edit 1/7/14
+	; Sometimes this value is 0xFFFFF800 or 0xfffff000 on a warpagte when NOT on cooldown
+	; This was in a custom game against no AI (instant victory) and I gave myself extra resources
+	; I don't know if there are other non-cooldown values
+	; When against an AI (no extra resources) this value was always 0
+	; But for safety sake add a basic check
+	; so check if the 32 bit is not set (it will never be set when on cooldown - too high)
+	; A better method would be to look for a byte in the WarpGateTrain indicating its on cooldown.
+	; but im tired.
+	if (cooldown >= 0 && !(cooldown >> 31 & 1)) 		
 		return cooldown
 	else return 0
 }
@@ -3525,32 +3534,12 @@ readConfigFile()
 	; ive just added the forge and stargate here as, the warpages already here
 	;[Chrono Boost Gateway/Warpgate]
 	section := "Chrono Boost Gateway/Warpgate"
-	IniRead, CG_Enable, %config_file%, %section%, enable, 1
-	IniRead, Cast_ChronoGate_Key, %config_file%, %section%, Cast_ChronoGate_Key, F5
 	IniRead, CG_control_group, %config_file%, %section%, CG_control_group, 9
 	IniRead, CG_nexus_Ctrlgroup_key, %config_file%, %section%, CG_nexus_Ctrlgroup_key, 4
 	IniRead, chrono_key, %config_file%, %section%, chrono_key, c
 	IniRead, CG_chrono_remainder, %config_file%, %section%, CG_chrono_remainder, 2
 	IniRead, ChronoBoostSleep, %config_file%, %section%, ChronoBoostSleep, 50
-	IniRead, ChronoBoostEnableForge, %config_file%, %section%, ChronoBoostEnableForge, 0
-	IniRead, ChronoBoostEnableStargate, %config_file%, %section%, ChronoBoostEnableStargate, 0
-	IniRead, ChronoBoostEnableNexus, %config_file%, %section%, ChronoBoostEnableNexus, 0
-	IniRead, ChronoBoostEnableRoboticsFacility, %config_file%, %section%, ChronoBoostEnableRoboticsFacility, 0
-	IniRead, ChronoBoostEnableCyberneticsCore, %config_file%, %section%, ChronoBoostEnableCyberneticsCore, 0
-	IniRead, ChronoBoostEnableTwilightCouncil, %config_file%, %section%, ChronoBoostEnableTwilightCouncil, 0
-	IniRead, ChronoBoostEnableTemplarArchives, %config_file%, %section%, ChronoBoostEnableTemplarArchives, 0
-	IniRead, ChronoBoostEnableRoboticsBay, %config_file%, %section%, ChronoBoostEnableRoboticsBay, 0
-	IniRead, ChronoBoostEnableFleetBeacon, %config_file%, %section%, ChronoBoostEnableFleetBeacon, 0
-	IniRead, Cast_ChronoForge_Key, %config_file%, %section%, Cast_ChronoForge_Key, ^F5
-	IniRead, Cast_ChronoStargate_Key, %config_file%, %section%, Cast_ChronoStargate_Key, +F5
-	IniRead, Cast_ChronoNexus_Key, %config_file%, %section%, Cast_ChronoNexus_Key, >!F5
-	IniRead, Cast_ChronoRoboticsFacility_Key, %config_file%, %section%, Cast_ChronoRoboticsFacility_Key, >!F6
-	IniRead, CastChrono_CyberneticsCore_key, %config_file%, %section%, CastChrono_CyberneticsCore_key, <!F5
-	IniRead, CastChrono_TwilightCouncil_Key, %config_file%, %section%, CastChrono_TwilightCouncil_Key, <!F6
-	IniRead, CastChrono_TemplarArchives_Key, %config_file%, %section%, CastChrono_TemplarArchives_Key, <!F1 
-	IniRead, CastChrono_RoboticsBay_Key, %config_file%, %section%, CastChrono_RoboticsBay_Key, <!F2
-	IniRead, CastChrono_FleetBeacon_Key, %config_file%, %section%, CastChrono_FleetBeacon_Key, <!F3
-	if IsFunc(FunctionName := "iniReadAutoChrono") ; function not in minimapthread
+	if IsFunc(FunctionName := "iniReadAutoChrono") ; function only in main thread
 		%FunctionName%(aAutoChronoCopy, aAutoChrono)
 
 	;[Advanced Auto Inject Settings]
@@ -4229,6 +4218,86 @@ getBuildProgress(pAbilities, type)
 		return round((totalTime - remainingTime) / totalTime, 2) ; 0.73
 	}
 	else return 1 ; something went wrong so assume its complete 
+}
+
+/*
+Finds the buffs applied to a unit. Percent complete.
+
+If the byref variable buffNameOrObject is an object then any current buff is stored in it and the buff count is returned (0 if none)
+The object will not be blanked - so do this if required.
+
+Otherwise buffNameOrObject can be the buff string to search for. It will return the percent Complete if found else 0
+
+There's a fair amount of info on buffs/behaviours on SC2Mapster
+And this would shed some light on some of the info/structures
+
+Some buff strings:
+	ChronoBoost
+	CloakingField
+	MothershipCoreApplyPurifyAB  (Photon overcharge)
+
+*/
+
+getUnitBuff(unit, byRef buffNameOrObject)
+{
+	static aBuffStringOffsets := []
+
+	; If no buffs applied pointer = 0 - so if buff finishes this will change back to 0
+	if !buffArray := ReadMemory(B_uStructure + unit * S_uStructure + O_uBuffPointer, GameIdentifier)
+		return 0
+	; I spent almost 0 time investigating these structures - so there should probably be more pointer checking conditions
+	; and counts
+
+	; The value at buffArray is a pointer to itself (& -2)
+	; A nexus will have an innate ability at buffArray + 0x04 - haven't checked other structures. Maybe train?
+	; A zealot will not have this innate ability - the first 'real'/inducible  buff will be at buffArray + 4
+	; This is like a list c++ list? if A comes before B and then A expires, B moves back to position A. Like the other SC2 lists
+	buffCount := 0
+
+	; loop 20 times max as safety. In case buffs expire during read and this memory area is now used
+	; for something else.
+	while (p := ReadMemory(buffArray + 0x04 + 4*(A_Index-1), GameIdentifier)) && (A_Index < 20) ; 
+	{
+		if !baseTimer := ReadMemory(p + 0x58, GameIdentifier)
+			continue
+		if !p := ReadMemory(baseTimer + 0x4, GameIdentifier) & -2
+			continue
+		if !p := ReadMemory(p + 0x4, GameIdentifier)
+			continue
+		; first pointer to string/buff name
+		; This is empty for the first innate nexus buff (it may be located elsewhere in this struct)
+		if !p := ReadMemory(p + 0xA8, GameIdentifier) 
+			continue
+		aBuffStringOffsets.HasKey(p)
+			? buffString := aBuffStringOffsets[p]
+			: aBuffStringOffsets[p] := buffString := ReadMemory_Str(ReadMemory(p + 0x4, GameIdentifier), GameIdentifier)
+
+		if buffString
+		{
+			totalTime :=  ReadMemory(baseTimer, GameIdentifier)
+			, remainingTime := ReadMemory(baseTimer+ 0x10, GameIdentifier)
+			, percent := round(remainingTime / totalTime, 2)
+
+			if IsObject(buffNameOrObject)
+				buffNameOrObject.insert(buffString, percent), buffCount++
+			else if (buffNameOrObject = buffString)
+				return percent			
+		}	
+	}
+	if IsObject(buffNameOrObject)
+		return buffCount ; cant use max.Index() as strings are keys
+	return 0 ; Specified buff not applied/found
+}
+
+; Unit must be a nexus else function returns 'true' due to readMemory returning "Fail"
+isPhotonOverChargeActive(unit)
+{	
+	; attackProtossBuilding structure + 0x54 - 1 Active 0 not.
+	; Correctly returns 0 For nexus under construction as well (as they will have the same ability structure/addresses).
+	; Check if = 1, in case something went wrong - but it shouldn't if calling for a nexus. 
+	return (1 = ReadMemory(ReadMemory(findAbilityTypePointer(getUnitAbilityPointer(unit), aUnitID["Nexus"], "attackProtossBuilding"), GameIdentifier) + 0x54, GameIdentifier)
+			? True 
+			: False)
 }
 
 getunitAddress(unit)

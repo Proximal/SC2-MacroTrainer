@@ -1072,12 +1072,12 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 	       Continue
 		owner := numgetUnitOwner(MemDump, Unit) 
 
-	    if  (aPlayer[Owner, "Team"] <> aLocalPlayer["Team"] && Owner) ;|| Owner
+	    if  (aPlayer[Owner, "Team"] <> aLocalPlayer["Team"] && Owner) || Owner
 	    {
 	    	pUnitModel := numgetUnitModelPointer(MemDump, Unit)
 	    	Type := numgetUnitModelType(pUnitModel)
 
-	    	if  (Type < aUnitID["Colossus"])
+	    	if  (Type < aUnitID["Colossus"]) ; First 'real' unit
 				continue	
 			if (!Priority := aUnitInfo[Type, "Priority"]) ; faster than reading the priority each time - this is splitting hairs!!!
 				aUnitInfo[Type, "Priority"] := Priority := numgetUnitModelPriority(pUnitModel)
@@ -1119,6 +1119,16 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 						{
 							if (chronoBoosts := floor(numgetUnitEnergy(MemDump, unit)/25))
 								aMiscUnitPanelInfo["chronoBoosts", owner] := round(aMiscUnitPanelInfo["chronoBoosts", owner]) + chronoBoosts 
+							; Don't really need to call isPhotonOverChargeActive()
+							if isPhotonOverChargeActive(unit) && progress := getUnitBuff(unit, "MothershipCoreApplyPurifyAB")
+							{
+								aEnemyUnitConstruction[Owner, 50, "MothershipCoreApplyPurifyAB"] := {"progress": !aEnemyUnitConstruction[Owner, 50, "MothershipCoreApplyPurifyAB"].Progress || progress < aEnemyUnitConstruction[Owner, 50, "MothershipCoreApplyPurifyAB"].Progress
+																								? progress 
+																								: aEnemyUnitConstruction[Owner, 50, "MothershipCoreApplyPurifyAB"].Progress
+																				, "count": round(aEnemyUnitConstruction[Owner, 50, "MothershipCoreApplyPurifyAB"].Count) + 1}
+								, aUnitInfo["MothershipCoreApplyPurifyAB", "isStructure"]  := True ; Dirty Hack so It appears on the Structure line
+								, aUnitInfo["MothershipCoreApplyPurifyAB", "Priority"]  := 50 ; So it will always appear on far right and also allows remove via underconstruction filter
+							}
 						}
 					}
 					else if (aPlayer[owner, "Race"] = "Terran") && (Type = aUnitID["OrbitalCommand"] || Type = aUnitID["OrbitalCommandFlying"])
@@ -1471,7 +1481,12 @@ FilterUnits(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aUnitPanelUni
 		{
 			removeUnit := aUnitID[removeUnit]
 			priority := aUnitInfo[removeUnit, "Priority"]
-			priorityObject[priority].remove(removeUnit, "")
+			; This is a dirty hack for the poton overchar listed in 'Under Construction'
+			; Since unitID for PhotonOverCharge is a string -> "MothershipCoreApplyPurifyAB", can't use object.remove(intKey, "")
+			; so use just .remove(key) - it won't alter the values of the other Int Keys
+			if removeUnit is not integer 
+				priorityObject[priority].remove(removeUnit)
+			else priorityObject[priority].remove(removeUnit, "")
 		}
 	
 		for index, unit in aUnitOrder[race]		;this will ensure the change in priority matches the changes made above to make the order correct, so they can be added together.
@@ -1483,6 +1498,9 @@ FilterUnits(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aUnitPanelUni
 			 	priorityObject[priority].remove(aUnitID[unit], "")	
 			}	
 	}
+	;objtree(aEnemyUnits)
+	;objtree(aEnemyUnitConstruction)
+	;msgbox 
 	return
 }
 

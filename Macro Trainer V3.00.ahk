@@ -391,6 +391,9 @@ return
 ;-----------------------
 ; End of execution
 ;-----------------------
+; Contains labels/routines for the chrono boost section of the GUI
+#Include, Included Files\chronoGUIMainScript.ahk
+
 
 ;2147483647  - highest priority so if i ever give something else a high priority, this key combo will still interupt (if thread isnt critical)
 ;#MaxThreadsBuffer on
@@ -934,40 +937,117 @@ setupSelectArmyUnits(l_input, aUnitID)
 ;-------------------------
 
 Cast_ChronoStructure:
-	UserPressedHotkey := A_ThisHotkey ; as this variable can get changed very quickly
-	Thread, NoTimers, True
-	;input.hookBlock(True, True)
+Thread, NoTimers, True
+item := ""
+for index, object in aAutoChrono["Items"]
+{
+	; concatenating literal string forces comparison as strings, else 1 = +1 
+	; Also check if enabled - as user could have same hotkey for multiple items but one is disabled.
+	if ("" object.hotkey = A_ThisHotkey && object.enabled)
+	{
+		item := index
+		break
+	}
+}
+if (item != "") ; item should never be blank but im just leaving it like this just in case as i cant be bothered checking
+{
 	MTBlockInput, On
-
-
 	input.releaseKeys(True) ; don't use postmessage.
 	sleep, 40
-	if ("" UserPressedHotkey = Cast_ChronoStargate_Key) ; force evaluation as strings otherwise +1 = 1
-		Cast_ChronoStructure(aUnitID.Stargate)
-	Else if ("" UserPressedHotkey = Cast_ChronoForge_Key)
-		Cast_ChronoStructure(aUnitID.Forge)
-	Else if ("" UserPressedHotkey = Cast_ChronoNexus_Key)
-		Cast_ChronoStructure(aUnitID.Nexus)
-	Else If ("" UserPressedHotkey = Cast_ChronoGate_Key)
-		Cast_ChronoStructure(aUnitID.WarpGate) ; this will also do gateways	
-	Else If ("" UserPressedHotkey = Cast_ChronoRoboticsFacility_Key)
-		Cast_ChronoStructure(aUnitID.RoboticsFacility)
-	Else If ("" UserPressedHotkey = CastChrono_CyberneticsCore_key)
-		Cast_ChronoStructure(aUnitID.CyberneticsCore)
-	Else If ("" UserPressedHotkey = CastChrono_TwilightCouncil_Key)
-		Cast_ChronoStructure(aUnitID.TwilightCouncil)
-	Else If ("" UserPressedHotkey = CastChrono_TemplarArchives_Key)
-		Cast_ChronoStructure(aUnitID.TemplarArchive)
-	Else If ("" UserPressedHotkey = CastChrono_RoboticsBay_Key)
-		Cast_ChronoStructure(aUnitID.RoboticsBay)
-	Else If ("" UserPressedHotkey = CastChrono_FleetBeacon_Key)
-		Cast_ChronoStructure(aUnitID.FleetBeacon)
-	;input.hookBlock()
+	Cast_ChronoStructure(aAutoChrono["Items", item, "Units"])
 	MTBlockInput, Off
+}
 return
 
+; aStructuresToChrono is an array which keys are the unit types and their values are the chrono order
+; lower chrono order is chronoed first
+Cast_ChronoStructure(aStructuresToChrono)
+{	GLOBAL aUnitID, CG_control_group, chrono_key, CG_nexus_Ctrlgroup_key, CG_chrono_remainder, ChronoBoostSleep
+	, HumanMouse, HumanMouseTimeLo, HumanMouseTimeHi, NextSubgroupKey
 
-Cast_ChronoStructure(StructureToChrono)
+	oStructureToChrono := [], a_gatewaysConvertingToWarpGates := [], a_WarpgatesOnCoolDown := []
+
+	numGetControlGroupObject(oNexusGroup, CG_nexus_Ctrlgroup_key)
+	for index, unit in oNexusGroup.units
+	{
+		if (unit.type = aUnitID.Nexus && !isUnderConstruction(unit.unitIndex))
+			nexus_chrono_count += Floor(unit.energy/25)
+	}
+
+	IF !nexus_chrono_count
+		return
+	Unitcount := DumpUnitMemory(MemDump)
+	while (A_Index <= Unitcount)
+	{
+		unit := A_Index - 1
+		if isTargetDead(TargetFilter := numgetUnitTargetFilter(MemDump, unit)) || !isOwnerLocal(numgetUnitOwner(MemDump, Unit))
+		|| isTargetUnderConstruction(TargetFilter)
+	       Continue
+    	if aStructuresToChrono.HasKey(Type := numgetUnitModelType(numgetUnitModelPointer(MemDump, Unit))) && !isUnitChronoed(unit)
+    	{
+	    	IF ( type = aUnitID["WarpGate"]) && (cooldown := getWarpGateCooldown(unit))
+				a_WarpgatesOnCoolDown.insert({"Unit": unit, "Cooldown": cooldown})
+			Else IF (type = aUnitID["Gateway"] && isGatewayConvertingToWarpGate(unit))
+					a_gatewaysConvertingToWarpGates.insert(unit) 
+			else
+			{	
+				progress :=  getBuildStats(unit, QueueSize)	; need && QueueSize as if progress reports 0 when idle it will be added to the list
+				if ( (progress < .95 && QueueSize) || QueueSize > 1) ; as queue size of 1 means theres only 1 item in queue being produced
+					oStructureToChrono.insert({Unit: unit, QueueSize: QueueSize, progress: progress, userOrder: round(aStructuresToChrono[type])})
+			}
+    	}														  
+	}	
+
+	if a_WarpgatesOnCoolDown.MaxIndex()
+		bubbleSort2DArray(a_WarpgatesOnCoolDown, "Cooldown", 0)	;so warpgates with longest cooldown get chronoed first
+	if a_gatewaysConvertingToWarpGates.MaxIndex()	
+		RandomiseArray(a_gatewaysConvertingToWarpGates)
+
+	; The 51 for QueueSize ensures that warpgates are chronoed before converting gateways when user presses the chrono warpgates/gateway key
+	for index, Warpgate in a_WarpgatesOnCoolDown 			
+		oStructureToChrono.insert({Unit: Warpgate.Unit, QueueSize: 51, progress: 1, userOrder: round(aStructuresToChrono[aUnitID.WarpGate])})	; among warpgates longest cooldown gets done first
+	; The 50 for QueueSize ensures that converting gateways are chronoed before producing gateways when user presses the chrono warpgates/gateway key
+	for index, unit in a_gatewaysConvertingToWarpGates
+		oStructureToChrono.insert({Unit: unit, QueueSize: 50, progress: 1, userOrder: round(aStructuresToChrono[aUnitID.Gateway])}) 	; among these gateways, order is random
+
+	bubbleSort2DArray(oStructureToChrono, "progress", 1) ; so the strucutes with least progress gets chronoed (providing have same queue size)
+	bubbleSort2DArray(oStructureToChrono, "QueueSize", 0) ; so One with the longest queue gets chronoed first
+	bubbleSort2DArray(oStructureToChrono, "userOrder", 1) ; So lower priority Number gets chronoed first
+	If !oStructureToChrono.maxIndex()
+		return
+	
+	MouseGetPos, start_x, start_y
+	HighlightedGroup := getSelectionHighlightedGroup()
+	selectionPage := getUnitSelectionPage()
+	max_chronod := nexus_chrono_count - CG_chrono_remainder
+	input.pSend((CG_control_group != "Off" ? aAGHotkeys.set[CG_control_group] : "") aAGHotkeys.Invoke[CG_nexus_Ctrlgroup_key])
+	timerID := stopwatch()
+	sleep, 30 	; Can use real sleep here as not a silent automation
+	for  index, oject in oStructureToChrono
+	{
+		If (A_index > max_chronod)
+			Break
+	sleep 1000	
+		sleep, %ChronoBoostSleep%
+		getUnitMiniMapMousePos(oject.unit, click_x, click_y)
+		input.pSend(chrono_key)
+		If HumanMouse
+			MouseMoveHumanSC2("x" click_x "y" click_y "t" rand(HumanMouseTimeLo, HumanMouseTimeHi))
+		MTclick(click_x, click_y)
+	}
+	If HumanMouse
+		MouseMoveHumanSC2("x" start_x "y" start_y "t" rand(HumanMouseTimeLo, HumanMouseTimeHi))
+	elapsedTimeGrouping := stopwatch(timerID)	
+	if (elapsedTimeGrouping < 20)
+		sleep, % ceil(20 - elapsedTimeGrouping)	
+	if (CG_control_group != "Off")
+		restoreSelection(CG_control_group, selectionPage, HighlightedGroup)
+	Return 
+}
+
+
+
+Cast_ChronoStructureOld(StructureToChrono)
 {	GLOBAL aUnitID, CG_control_group, chrono_key, CG_nexus_Ctrlgroup_key, CG_chrono_remainder, ChronoBoostSleep
 	, HumanMouse, HumanMouseTimeLo, HumanMouseTimeHi, NextSubgroupKey
 
@@ -2188,33 +2268,11 @@ ini_settings_write:
 	
 	;[Chrono Boost Gateway/Warpgate]
 	section := "Chrono Boost Gateway/Warpgate"
-	IniWrite, %CG_Enable%, %config_file%, %section%, enable
-	IniWrite, %Cast_ChronoGate_Key%, %config_file%, %section%, Cast_ChronoGate_Key
 	IniWrite, %CG_control_group%, %config_file%, %section%, CG_control_group
 	IniWrite, %CG_nexus_Ctrlgroup_key%, %config_file%, %section%, CG_nexus_Ctrlgroup_key
 	IniWrite, %chrono_key%, %config_file%, %section%, chrono_key
 	IniWrite, %CG_chrono_remainder%, %config_file%, %section%, CG_chrono_remainder
 	IniWrite, %ChronoBoostSleep%, %config_file%, %section%, ChronoBoostSleep
-	IniWrite, %ChronoBoostEnableForge%, %config_file%, %section%, ChronoBoostEnableForge
-	IniWrite, %ChronoBoostEnableStargate%, %config_file%, %section%, ChronoBoostEnableStargate
-	IniWrite, %ChronoBoostEnableNexus%, %config_file%, %section%, ChronoBoostEnableNexus
-	IniWrite, %ChronoBoostEnableRoboticsFacility%, %config_file%, %section%, ChronoBoostEnableRoboticsFacility
-	IniWrite, %ChronoBoostEnableCyberneticsCore%, %config_file%, %section%, ChronoBoostEnableCyberneticsCore
-	IniWrite, %ChronoBoostEnableTwilightCouncil%, %config_file%, %section%, ChronoBoostEnableTwilightCouncil
-	IniWrite, %ChronoBoostEnableTemplarArchives%, %config_file%, %section%, ChronoBoostEnableTemplarArchives
-	IniWrite, %ChronoBoostEnableRoboticsBay%, %config_file%, %section%, ChronoBoostEnableRoboticsBay
-	IniWrite, %ChronoBoostEnableFleetBeacon%, %config_file%, %section%, ChronoBoostEnableFleetBeacon
-	IniWrite, %Cast_ChronoForge_Key%, %config_file%, %section%, Cast_ChronoForge_Key
-	IniWrite, %Cast_ChronoStargate_Key%, %config_file%, %section%, Cast_ChronoStargate_Key
-	IniWrite, %Cast_ChronoNexus_Key%, %config_file%, %section%, Cast_ChronoNexus_Key
-	IniWrite, %Cast_ChronoRoboticsFacility_Key%, %config_file%, %section%, Cast_ChronoRoboticsFacility_Key
-	IniWrite, %CastChrono_CyberneticsCore_key%, %config_file%, %section%, CastChrono_CyberneticsCore_key
-	IniWrite, %CastChrono_TwilightCouncil_Key%, %config_file%, %section%, CastChrono_TwilightCouncil_Key
-	IniWrite, %CastChrono_TemplarArchives_Key%, %config_file%, %section%, CastChrono_TemplarArchives_Key
-	IniWrite, %CastChrono_RoboticsBay_Key%, %config_file%, %section%, CastChrono_RoboticsBay_Key
-	IniWrite, %CastChrono_FleetBeacon_Key%, %config_file%, %section%, CastChrono_FleetBeacon_Key
-
-
 	iniWriteAndUpdateAutoChrono(aAutoChronoCopy, aAutoChrono)
 	
 	;[Auto Control Group]
@@ -3120,7 +3178,7 @@ IfWinExist
 		Gui, Font, s10 BOLD
 		Gui, add, text, xs ys+110 cRED, Note:
 		Gui, Font, s10 norm
-		Gui, add, text, xp+50 yp w340, These warning will become active AFTER you convert your first warpgate.
+		Gui, add, text, xp+50 yp w340, These warnings will become active AFTER you convert your first warpgate.
 		Gui, Font, s9 norm	
 
 	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vMisc_TAB, Misc Abilities
@@ -3312,9 +3370,9 @@ IfWinExist
 		Gui, Add, Button, xp yp+35 w50 h25 gg_RemoveEmailAttachment, Remove
 		Gui, Add, Button, vB_Report gB_Report xp+195 y+8 w80 h50, Send
 
-	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vChronoBoost_TAB, Settings||Structures|Structures2|New
+	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vChronoBoost_TAB, Settings||Structures
 	Gui, Tab, Settings	
-		Gui, Add, GroupBox, w200 h190 y+20 section, SC2 Keys && Control Groups			
+		Gui, Add, GroupBox, w190 h160 x+15 y+25 section, SC2 Keys && Control Groups			
 			Gui, Add, Text, xp+10 yp+25 , Storage Ctrl Group:
 			Gui, Add, DropDownList,  % "xs+125 yp w45 center vCG_control_group Choose" (CG_control_group = 0 ? 10 : (CG_control_group = "Off" ? 11 : CG_control_group)), 1|2|3|4|5|6|7||8|9|0|Off
 				
@@ -3328,7 +3386,7 @@ IfWinExist
 				Gui, Add, Edit, Readonly xp+25 y+10  w100 R1 center vchrono_key , %chrono_key%
 					Gui, Add, Button, yp-2 x+5 gEdit_SendHotkey v#chrono_key,  Edit	
 
-		Gui, Add, GroupBox, ys x+40  w200 h190 section, Misc. Settings				
+		Gui, Add, GroupBox, ys x+40  w190 h160 section, Misc. Settings				
 			tmpx := MenuTabX + 25
 			Gui, Add, Text, xp+10 yp+35, Sleep time (ms):
 			Gui, Add, Edit, Number Right xp+120 yp-2 w45 vTT_ChronoBoostSleep 
@@ -3336,80 +3394,9 @@ IfWinExist
 			Gui, Add, Text, xs+10 yp+35, Chrono Remainder:`n    (1 = 25 mana)
 			Gui, Add, Edit, Number Right xp+120 yp-2 w45 vTT_CG_chrono_remainder 
 				Gui, Add, UpDown,  Range0-1000 vCG_chrono_remainder, %CG_chrono_remainder%		
-	Gui, Add, Button, x460 y430 gg_ChronoRulesURL w130, Rules/Criteria
-
-	Gui, Tab, Structures	
-		Gui, Add, GroupBox, w285 h60 y+20 section, Warpgates && Gateways
-			Gui, Add, Checkbox, xp+10 yp+25 vCG_Enable checked%CG_Enable%, Enable
-			Gui, Add, Text, x+20 yp w40,Hotkey:
-				Gui, Add, Edit, Readonly yp-2 x+5 w100 R1 center vCast_ChronoGate_Key , %Cast_ChronoGate_Key%
-					Gui, Add, Button, yp-2 x+5 gEdit_hotkey v#Cast_ChronoGate_Key,  Edit				
-
-		Gui, Add, GroupBox, w285 h60 xs yp+55 section, Forges	
-			Gui, Add, Checkbox, xp+10 yp+25 vChronoBoostEnableForge checked%ChronoBoostEnableForge%, Enable
-			Gui, Add, Text, x+20 yp w40,Hotkey:
-				Gui, Add, Edit, Readonly yp-2 x+5 w100 R1 center vCast_ChronoForge_Key , %Cast_ChronoForge_Key%
-					Gui, Add, Button, yp-2 x+5 gEdit_hotkey v#Cast_ChronoForge_Key,  Edit	
-
-		Gui, Add, GroupBox, w285 h60 xs yp+55 section, Stargates	
-			Gui, Add, Checkbox, xp+10 yp+25 vChronoBoostEnableStargate checked%ChronoBoostEnableStargate%, Enable
-			Gui, Add, Text, x+20 yp w40,Hotkey:
-				Gui, Add, Edit, Readonly yp-2 x+5 w100 R1 center vCast_ChronoStargate_Key , %Cast_ChronoStargate_Key%
-					Gui, Add, Button, yp-2 x+5 gEdit_hotkey v#Cast_ChronoStargate_Key,  Edit
-
-			Gui, Add, GroupBox, w285 h60 xs yp+55 section, Robotics Facility	
-			Gui, Add, Checkbox, xp+10 yp+25 vChronoBoostEnableRoboticsFacility checked%ChronoBoostEnableRoboticsFacility%, Enable
-			Gui, Add, Text, x+20 yp w40,Hotkey:
-				Gui, Add, Edit, Readonly yp-2 x+5 w100 R1 center vCast_ChronoRoboticsFacility_Key , %Cast_ChronoRoboticsFacility_Key%
-					Gui, Add, Button, yp-2 x+5 gEdit_hotkey v#Cast_ChronoRoboticsFacility_Key,  Edit					
 
 
-		Gui, Add, GroupBox, w285 h60 xs yp+55 section, Nexi	
-			Gui, Add, Checkbox, xp+10 yp+25 vChronoBoostEnableNexus checked%ChronoBoostEnableNexus%, Enable
-			Gui, Add, Text, x+20 yp w40,Hotkey:
-				Gui, Add, Edit, Readonly yp-2 x+5 w100 R1 center vCast_ChronoNexus_Key , %Cast_ChronoNexus_Key%
-					Gui, Add, Button, yp-2 x+5 gEdit_hotkey v#Cast_ChronoNexus_Key,  Edit	
-
-		Gui, Add, Button, x460 y430 gg_ChronoRulesURL w130, Rules/Criteria
-
-		;	Gui, Add, Text, X%tmpx% y+85 cRed, Note:
-		;	Gui, Add, Text, x+10 yp+0, If gateways exist, they will be chrono boosted after the warpgates. 
-
-	Gui, Tab, Structures2
-		Gui, Add, GroupBox, w285 h60 y+20 section, Cybernetics Core
-			Gui, Add, Checkbox, xp+10 yp+25 vChronoBoostEnableCyberneticsCore checked%ChronoBoostEnableCyberneticsCore%, Enable
-			Gui, Add, Text, x+20 yp w40,Hotkey:
-				Gui, Add, Edit, Readonly yp-2 x+5 w100 R1 center vCastChrono_CyberneticsCore_key, %CastChrono_CyberneticsCore_key%
-					Gui, Add, Button, yp-2 x+5 gEdit_hotkey v#CastChrono_CyberneticsCore_key,  Edit		
-
-		Gui, Add, GroupBox, w285 h60 xs yp+55 section, Twilight Council	
-			Gui, Add, Checkbox, xp+10 yp+25 vChronoBoostEnableTwilightCouncil checked%ChronoBoostEnableTwilightCouncil%, Enable
-			Gui, Add, Text, x+20 yp w40,Hotkey:
-				Gui, Add, Edit, Readonly yp-2 x+5 w100 R1 center vCastChrono_TwilightCouncil_Key, %CastChrono_TwilightCouncil_Key%
-					Gui, Add, Button, yp-2 x+5 gEdit_hotkey v#CastChrono_TwilightCouncil_Key,  Edit	
-
-		Gui, Add, GroupBox, w285 h60 xs yp+55 section, Templar Archives	
-			Gui, Add, Checkbox, xp+10 yp+25 vChronoBoostEnableTemplarArchives checked%ChronoBoostEnableTemplarArchives%, Enable
-			Gui, Add, Text, x+20 yp w40,Hotkey:
-				Gui, Add, Edit, Readonly yp-2 x+5 w100 R1 center vCastChrono_TemplarArchives_Key, %CastChrono_TemplarArchives_Key%
-					Gui, Add, Button, yp-2 x+5 gEdit_hotkey v#CastChrono_TemplarArchives_Key,  Edit
-
-		Gui, Add, GroupBox, w285 h60 xs yp+55 section, Robotics Bay
-			Gui, Add, Checkbox, xp+10 yp+25 vChronoBoostEnableRoboticsBay checked%ChronoBoostEnableRoboticsBay%, Enable
-			Gui, Add, Text, x+20 yp w40,Hotkey:
-				Gui, Add, Edit, Readonly yp-2 x+5 w100 R1 center vCastChrono_RoboticsBay_Key , %CastChrono_RoboticsBay_Key%
-					Gui, Add, Button, yp-2 x+5 gEdit_hotkey v#CastChrono_RoboticsBay_Key,  Edit
-
-		Gui, Add, GroupBox, w285 h60 xs yp+55 section, Fleet Beacon
-			Gui, Add, Checkbox, xp+10 yp+25 vChronoBoostEnableFleetBeacon checked%ChronoBoostEnableFleetBeacon%, Enable
-			Gui, Add, Text, x+20 yp w40,Hotkey:
-				Gui, Add, Edit, Readonly yp-2 x+5 w100 R1 center vCastChrono_FleetBeacon_Key , %CastChrono_FleetBeacon_Key%
-					Gui, Add, Button, yp-2 x+5 gEdit_hotkey v#CastChrono_FleetBeacon_Key,  Edit					
-	Gui, Add, Button, x460 y430 gg_ChronoRulesURL w130, Rules/Criteria
-
-
-
-Gui, Tab, New
+	Gui, Tab, Structures
 
 	aAutoChronoCopy["IndexGUI"] := 1
 	if !aAutoChronoCopy["MaxIndexGUI"]
@@ -3421,38 +3408,31 @@ Gui, Tab, New
 		 Gui, Add, Button, x+45 w65 h25 vNewAutoChrono gAutoChronoGui, New
 		 Gui, Add, Button, x+20 w65 h25 vDeleteAutoChrono gAutoChronoGui, Delete
 
-	Gui, Add, GroupBox, xs Ys+85 w380 h300 section vGroupBoxItemAutoChrono, % "Chrono Item " aAutoChronoCopy["IndexGUI"] 
+	Gui, Add, GroupBox, xs Ys+85 w380 h280 section vGroupBoxItemAutoChrono, % "Chrono Item " aAutoChronoCopy["IndexGUI"] 
 		Gui, Add, Checkbox, xs+15 yp+25 vAutoChronoEnabled, Enable
-		Gui, Add, Text, yp+40, Hotkey:
+		Gui, Add, Text, yp+30, Hotkey:
 			Gui, Add, Edit, Readonly yp-2 x+10 center w65 R1 vAutoChrono_Key gedit_hotkey, %A_Space%
 		Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#AutoChrono_Key,  Edit	
-
-		;Gui, Add, Edit, y+5 w160  r7 vAutoChronoStructures, %A_Space%
-
-		;Gui, Add, ListBox, % "x5 y+10 w150 h280 VF_drop_Name sort " (multiSelectionDelimiter ? "Multi" : ""), %list%
-
-		; Specify -LV0x10 to prevent the user from dragging column headers to the left or right to reorder them.
-		Gui, Add, ListView, section xs+200 ys+25  h230 w160 vAutoChronoListView NoSortHdr NoSort, Structures/Order
-
 		
-		Gui, Add, Button, xs ys+235 gAddUnitAutoChrono vAddUnitAutoChrono hWndhWndButton w25 h25 ;y+6
+		; Specify -LV0x10 to prevent the user from dragging column headers to the left or right to reorder them.
+		; But this doesn't stop them resizing the only column. I could Auto resize after every event like the unit panel LV does.
+		; This is aligned with New and Delete buttons above
+		Gui, Add, ListView, section xs+210 ys+25 r11 w150 vAutoChronoListView -LV0x10 NoSortHdr NoSort, Structures/Order
+
+		Gui, Add, Button, xs ys+220 gAddUnitAutoChrono vAddUnitAutoChrono hWndhWndButton w25 h25 ;y+6
 		GuiButtonIcon(hWndButton, A_Temp "\MacroTrainerFiles\GUI\Add Plus Green.ico", 1, "w15 h15 a4")
 		Gui, Add, Button, x+10 gRemoveUnitAutoChrono vRemoveUnitAutoChrono hWndhWndButton w25 h25
 		GuiButtonIcon(hWndButton, A_Temp "\MacroTrainerFiles\GUI\Remove Minus Red.ico", 1, "w15 h15 a4")
-
-		Gui, Add, Button, x+40 yp gMoveUpUnitAutoChrono vMoveUpUnitAutoChrono hWndhWndButton w25 h25
+		Gui, Add, Button, x+30 yp gMoveUpUnitAutoChrono vMoveUpUnitAutoChrono hWndhWndButton w25 h25
 		GuiButtonIcon(hWndButton, A_Temp "\MacroTrainerFiles\GUI\Up Arrow Blue.ico", 1, "w15 h15 a4")
 		Gui, Add, Button, x+10 yp gMoveDownUnitAutoChrono vMoveDownUnitAutoChrono hWndhWndButton w25 h25
 		GuiButtonIcon(hWndButton, A_Temp "\MacroTrainerFiles\GUI\Down Arrow Blue.ico", 1, "w15 h15 a4")
-		;GuiButtonIcon(hWndButton, "Down Green.ico", 1, "w15 h15 a4")
 
-		;Gui, Add, Text, xs+200 ys+25, Store Selection:
-
-	state := aAutoChronoCopy["MaxIndexGUI"] > 1 ? True : False
-	GUIControl, Enable%state%, NextAutoChrono
-	GUIControl,  Enable%state%, PreviousAutoChrono
-	showAutoChronoItem(aAutoChronoCopy)
-
+		state := aAutoChronoCopy["MaxIndexGUI"] > 1 ? True : False
+		GUIControl, Enable%state%, NextAutoChrono
+		GUIControl,  Enable%state%, PreviousAutoChrono
+		showAutoChronoItem(aAutoChronoCopy)
+Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 
 	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vAutoGroup_TAB, Terran|Protoss|Zerg|Delays|Info||Info2	
 	Short_Race_List := "Terr|Prot|Zerg"
@@ -4724,7 +4704,7 @@ checkQuickSelectHotkey(race, byRef aQuickSelectCopy)
 	}
 }
 
-; Doesn't check for validity of units. But nother functions/checks should ensure this anyway.
+; Doesn't check for validity of units. But other functions/checks should ensure this anyway.
 quickSelectHasUnits(race, byRef aQuickSelectCopy, arrayPosition)
 {
 	return round(aQuickSelectCopy[Race, arrayPosition, "units"].MaxIndex())
@@ -5779,7 +5759,9 @@ Text := "
 
 		Filter 1: 'Completed' - This will remove completed (or fully built) units of the selected types.
 
-		Filter 2: 'Under Construction' - This will remove units which are under construction/being produced.
+		Filter 2: 'Under Construction' - This will remove units which are under construction/being produced. This includes the PhotonOverCharge ability for Protoss
+
+		These filters can be used to effectively create a production only, unit only, or structure only panel.
 
 		Please Note: 
 
@@ -5912,7 +5894,12 @@ if !IsObject(LV_UnitPanelFilter)
 			if aUnitPanelUnits[LoopRace,  ListType].maxindex()	;this prevents adding 1 'blank' spot/unit to the list when its empty
 				LV_UnitPanelFilter[ListType, LoopRace].AddItemsToCurrentPanel(aUnitPanelUnits[LoopRace,  ListType], 1)
 			if aUnitLists["UnitPanel", LoopRace].maxindex() ;this isnt really needed, as these lists always have units
+			{
 				LV_UnitPanelFilter[ListType, LoopRace].AddItemsToAvailablePanel(aUnitLists["UnitPanel", LoopRace], 1)
+				; So Photon Overcharge is only displayed in the underConstruction panel. Dirty hacks.
+				if (LoopRace = "Protoss" && ListType = "FilteredUnderConstruction")
+					LV_UnitPanelFilter[ListType, LoopRace].AddItemsToAvailablePanel("PhotonOverCharge", 1)
+			}
 			LV_UnitPanelFilter[ListType, LoopRace].storeItems()
 		}
 }
@@ -6395,11 +6382,11 @@ Edit_AG:	;AutoGroup and Unit include/exclude come here
 	list := %list%
 
 	IfInString, A_GuiControl, UnitHighlight
-		TMP_EditAG_Units .= (TMP_EditAG_Units ? ", " : "") GUISelectionList("Select Unit",list, "|", ","), delimiter := ","
+		TMP_EditAG_Units .= (TMP_EditAG_Units ? ", " : "") GUISelectionList("Select Unit",, list, "|", ","), delimiter := ","
 	Else IfInString, A_GuiControl, quickSelect
-		TMP_EditAG_Units .= (TMP_EditAG_Units ? "`n" : "") GUISelectionList("Select Unit", list, "|", "`n"), delimiter := "`n"
+		TMP_EditAG_Units .= (TMP_EditAG_Units ? "`n" : "") GUISelectionList("Select Unit",, list, "|", "`n"), delimiter := "`n"
 	Else
-		TMP_EditAG_Units .= (TMP_EditAG_Units ? ", " : "") GUISelectionList("Auto Group " SubStr(A_GuiControl, 0, 1), list, "|", ","), delimiter := "," ;retrieve the last character of name ie control number 0/1/2 etc		
+		TMP_EditAG_Units .= (TMP_EditAG_Units ? ", " : "") GUISelectionList(!instr(A_GuiControl, "Army") ? "Auto Group " SubStr(A_GuiControl, 0, 1) : "Select Unit",, list, "|", ","), delimiter := "," ;retrieve the last character of name ie control number 0/1/2 etc		
 	
 	list := checkList := ""
 	loop, parse, TMP_EditAG_Units, %delimiter%
@@ -6417,7 +6404,7 @@ Return
 ; If multiSelectionDelimiter is true (not null/0) then multiple items can be selected and returned.
 ; multiSelectionDelimiter should be the delimiter used to separate the returned items
 
-GUISelectionList(Title = "", list := "Error", listdelimiter := "|", multiSelectionDelimiter := "|")
+GUISelectionList(Title = "", textField := "Select Unit Type(s):", list := "Error", listdelimiter := "|", multiSelectionDelimiter := "|")
 {
 	static F_drop_Name 	; as a controls variable must by global or static
 
@@ -6425,7 +6412,7 @@ GUISelectionList(Title = "", list := "Error", listdelimiter := "|", multiSelecti
 
 	Gui, Add2AG:+LastFound
 	GuiHWND := WinExist() 
-	Gui, Add2AG:Add, Text, x5 y+10, Select Unit Type:
+	Gui, Add2AG:Add, Text, x5 y+10, %textField%
 	Gui, Add2AG:Add, ListBox, % "x5 y+10 w150 h280 VF_drop_Name sort " (multiSelectionDelimiter ? "Multi" : ""), %list%
 	Gui, Add2AG:Add, Button, y+20 x5 w60 h35 gB_ADDAdd2AG, Add
 	Gui, Add2AG:Add, Button, yp+0 x95 w60 h35  gB_closeAdd2AG, Close
@@ -7411,26 +7398,11 @@ CreateHotkeys()
 		hotkey, %F_InjectOff_Key%, Cast_DisableInject, on			
 
 	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && time
-		if CG_Enable
-			hotkey, %Cast_ChronoGate_Key%, Cast_ChronoStructure, on	
-		if ChronoBoostEnableForge
-			hotkey, %Cast_ChronoForge_Key%, Cast_ChronoStructure, on	
-		if ChronoBoostEnableStargate
-			hotkey, %Cast_ChronoStargate_Key%, Cast_ChronoStructure, on
-		if ChronoBoostEnableNexus
-			hotkey, %Cast_ChronoNexus_Key%, Cast_ChronoStructure, on	
-		if ChronoBoostEnableRoboticsFacility
-			hotkey, %Cast_ChronoRoboticsFacility_Key%, Cast_ChronoStructure, on	
-		if ChronoBoostEnableCyberneticsCore
-			hotkey, %CastChrono_CyberneticsCore_key%, Cast_ChronoStructure, on			
-		if ChronoBoostEnableTwilightCouncil
-			hotkey, %CastChrono_TwilightCouncil_Key%, Cast_ChronoStructure, on			
-		if ChronoBoostEnableTemplarArchives
-			hotkey, %CastChrono_TemplarArchives_Key%, Cast_ChronoStructure, on	
-		if ChronoBoostEnableRoboticsBay
-			hotkey, %CastChrono_RoboticsBay_Key%, Cast_ChronoStructure, on	
-		if ChronoBoostEnableFleetBeacon
-			hotkey, %CastChrono_FleetBeacon_Key%, Cast_ChronoStructure, on	
+		for i, object in aAutoChrono["Items"]
+		{
+			if (object.enabled && object.Units.MaxIndex())
+				try hotkey, % object.hotkey, Cast_ChronoStructure, on	
+		}
 
 	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Terran" || aLocalPlayer["Race"] = "Protoss")  && time
 		hotkey, %ToggleAutoWorkerState_Key%, g_UserToggleAutoWorkerState, on	
@@ -7526,16 +7498,8 @@ disableAllHotkeys()
 		try hotkey, %cast_inject_key%, off
 		try hotkey, %F_InjectOff_Key%, off	
 	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && time
-		try hotkey, %Cast_ChronoGate_Key%, off
-		try hotkey, %Cast_ChronoForge_Key%, off
-		try hotkey, %Cast_ChronoStargate_Key%, off		
-		try hotkey, %Cast_ChronoNexus_Key%, off	
-		try hotkey, %Cast_ChronoRoboticsFacility_Key%, off			
-		try hotkey, %CastChrono_CyberneticsCore_key%, off
-		try hotkey, %CastChrono_TwilightCouncil_Key%, off
-		try hotkey, %CastChrono_TemplarArchives_Key%, off
-		try hotkey, %CastChrono_RoboticsBay_Key%, off
-		try hotkey, %CastChrono_FleetBeacon_Key%, off
+		for i, object in aAutoChrono["Items"]
+			try hotkey, % object.hotkey, off
 	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Terran" || aLocalPlayer["Race"] = "Protoss")  && time
 		try hotkey, %ToggleAutoWorkerState_Key%, off		
 	Hotkey, If, WinActive(GameIdentifier) && (!isMenuOpen() || (isMenuOpen() && isChatOpen())) && time
@@ -8079,15 +8043,14 @@ g_QuickSelect:
 item := ""
 for index, object in aQuickSelect[aLocalPlayer.Race]
 {
-	if ("" object.hotkey = A_ThisHotkey) ; concatenating literal string forces comparison as strings, else 1 = +1 
+	if ("" object.hotkey = A_ThisHotkey && object.enabled) ; concatenating literal string forces comparison as strings, else 1 = +1 
 	{
 		item := index
 		break
 	}
 }
-if (item = "") ; item should never be blank but im just leaving it like this just in case as i cant be bothered checking
-	return 
-quickSelect(aQuickSelect[aLocalPlayer.Race, item])
+if (item != "") ; item should never be blank but im just leaving it like this just in case as i cant be bothered checking
+	quickSelect(aQuickSelect[aLocalPlayer.Race, item])
 return 
 
 ;  the ctrl+shift click remove entire group is disabled until i fix the sort with units in same tab eg tanks/stanks + hellions/hellbats
@@ -11039,478 +11002,40 @@ msgbox % c " " getUnitBuff(unit, "MothershipCoreApplyPurifyAB")
 return 
 ; Buff = MothershipCoreApplyPurifyAB
 
-/*
-Finds the buffs applied to a unit. Percent complete.
-
-If the byref variable buffNameOrObject is an object then any current buff is stored in it and the buff count is returned (0 if none)
-The object will not be blanked - so do this if required.
-
-Otherwise buffNameOrObject can be the buff string to search for. It will return the percent Complete if found else 0
-
-There's a fair amount of info on buffs/behaviours on SC2Mapster
-And this would shed some light on some of the info/structures
-
-Some buff strings:
-	ChronoBoost
-	CloakingField
-	MothershipCoreApplyPurifyAB  (Photon overcharge)
 
 */
 
-getUnitBuff(unit, byRef buffNameOrObject)
+f2::
+loop 
 {
-	static aBuffStringOffsets := []
-
-	; If no buffs applied pointer = 0 - so if buff finishes this will change back to 0
-	if !buffArray := ReadMemory(B_uStructure + unit * S_uStructure + O_uBuffPointer, GameIdentifier)
-		return 0
-	; I spent almost 0 time investigating these structures - so there should probably be more pointer checking conditions
-	; and counts
-
-	; The value at buffArray is a pointer to itself (& -2)
-	; A nexus will have an innate ability at buffArray + 0x04 - haven't checked other structures. Maybe train?
-	; A zealot will not have this innate ability - the first 'real'/inducible  buff will be at buffArray + 4
-	; This is like a list c++ list? if A comes before B and then A expires, B moves back to position A. Like the other SC2 lists
-	buffCount := 0
-
-	; loop 20 times max as safety. In case buffs expire during read and this memory area is now used
-	; for something else.
-	while (p := ReadMemory(buffArray + 0x04 + 4*(A_Index-1), GameIdentifier)) && (A_Index < 20) ; 
-	{
-		if !baseTimer := ReadMemory(p + 0x58, GameIdentifier)
-			continue
-		if !p := ReadMemory(baseTimer + 0x4, GameIdentifier) & -2
-			continue
-		if !p := ReadMemory(p + 0x4, GameIdentifier)
-			continue
-		; first pointer to string/buff name
-		; This is empty for the first innate nexus buff (it may be located elsewhere in this struct)
-		if !p := ReadMemory(p + 0xA8, GameIdentifier) 
-			continue
-		aBuffStringOffsets.HasKey(p)
-			? buffString := aBuffStringOffsets[p]
-			: aBuffStringOffsets[p] := buffString := ReadMemory_Str(ReadMemory(p + 0x4, GameIdentifier), GameIdentifier)
-
-		if buffString
-		{
-			totalTime :=  ReadMemory(baseTimer, GameIdentifier)
-			, remainingTime := ReadMemory(baseTimer+ 0x10, GameIdentifier)
-			, percent := round(remainingTime / totalTime, 2)
-
-			if IsObject(buffNameOrObject)
-				buffNameOrObject.insert(buffString, percent), buffCount++
-			else if (buffNameOrObject = buffString)
-				return percent			
-		}	
-	}
-	if IsObject(buffNameOrObject)
-		return buffCount ; cant use max.Index() as strings are keys
-	return 0 ; Specified buff not applied/found
+	MouseGetPos, x, y, WinTitle, control, 2
+	guicontrolget, output, Options: pos, %control%
+	ToolTip, % outputx ", " outputy 
+		. "`n" (outputx+outputw) ", " (outputy+outputh)
+		. "`n " outputW ", " outputH
+	sleep 50
 }
+return 
 
+f1::
+
+unit := getSelectedUnitIndex()
+;getUnitAbilitiesString(unit)
+tooltip % isPhotonOverChargeActive(unit) " - " progress := getUnitBuff(unit, "MothershipCoreApplyPurifyAB")
+return 
 
 
 
 /*
-
-f2::
-tooltip % getWarpGateCooldown(getSelectedUnitIndex())
-return 
-f1::
-;tooltip % getWarpGateCooldown(getSelectedUnitIndex())/4096
-
-aChrono := { (aUnitID["WarpGate"]): 1
-			, (aUnitID["Forge"]): 2
-			, (aUnitID["Stargate"]): 3}
-Cast_ChronoStructureNew(aChrono)
-
-return 
-
-*/
-
-
-
-; aStructuresToChrono is an array which keys are the unit types and their values are the chrono order
-; lower chrono order is chronoed first
-Cast_ChronoStructureNew(aStructuresToChrono)
-{	GLOBAL aUnitID, CG_control_group, chrono_key, CG_nexus_Ctrlgroup_key, CG_chrono_remainder, ChronoBoostSleep
-	, HumanMouse, HumanMouseTimeLo, HumanMouseTimeHi, NextSubgroupKey
-
-	oStructureToChrono := [], a_gatewaysConvertingToWarpGates := [], a_WarpgatesOnCoolDown := []
-
-	numGetControlGroupObject(oNexusGroup, CG_nexus_Ctrlgroup_key)
-	for index, unit in oNexusGroup.units
-	{
-		if (unit.type = aUnitID.Nexus && !isUnderConstruction(unit.unitIndex))
-			nexus_chrono_count += Floor(unit.energy/25)
-	}
-
-	IF !nexus_chrono_count
-		return
-	Unitcount := DumpUnitMemory(MemDump)
-	while (A_Index <= Unitcount)
-	{
-		unit := A_Index - 1
-		if isTargetDead(TargetFilter := numgetUnitTargetFilter(MemDump, unit)) || !isOwnerLocal(numgetUnitOwner(MemDump, Unit))
-		|| isTargetUnderConstruction(TargetFilter)
-	       Continue
-    	if aStructuresToChrono.HasKey(Type := numgetUnitModelType(numgetUnitModelPointer(MemDump, Unit))) && !isUnitChronoed(unit)
-    	{
-	    	IF ( type = aUnitID["WarpGate"]) && (cooldown := getWarpGateCooldown(unit))
-				a_WarpgatesOnCoolDown.insert({"Unit": unit, "Cooldown": cooldown})
-			Else IF (type = aUnitID["Gateway"] && isGatewayConvertingToWarpGate(unit))
-					a_gatewaysConvertingToWarpGates.insert(unit) 
-			else
-			{	
-				progress :=  getBuildStats(unit, QueueSize)	; need && QueueSize as if progress reports 0 when idle it will be added to the list
-				if ( (progress < .95 && QueueSize) || QueueSize > 1) ; as queue size of 1 means theres only 1 item in queue being produced
-					oStructureToChrono.insert({Unit: unit, QueueSize: QueueSize, progress: progress, userOrder: round(aStructuresToChrono[type])})
-			}
-    	}														  
-	}	
-
-	if a_WarpgatesOnCoolDown.MaxIndex()
-		bubbleSort2DArray(a_WarpgatesOnCoolDown, "Cooldown", 0)	;so warpgates with longest cooldown get chronoed first
-	if a_gatewaysConvertingToWarpGates.MaxIndex()	
-		RandomiseArray(a_gatewaysConvertingToWarpGates)
-
-	; The 51 for QueueSize ensures that warpgates are chronoed before converting gateways when user presses the chrono warpgates/gateway key
-	for index, Warpgate in a_WarpgatesOnCoolDown 			
-		oStructureToChrono.insert({Unit: Warpgate.Unit, QueueSize: 51, progress: 1, userOrder: round(aStructuresToChrono[aUnitID.WarpGate])})	; among warpgates longest cooldown gets done first
-	; The 50 for QueueSize ensures that converting gateways are chronoed before producing gateways when user presses the chrono warpgates/gateway key
-	for index, unit in a_gatewaysConvertingToWarpGates
-		oStructureToChrono.insert({Unit: unit, QueueSize: 50, progress: 1, userOrder: round(aStructuresToChrono[aUnitID.Gateway])}) 	; among these gateways, order is random
-
-	bubbleSort2DArray(oStructureToChrono, "progress", 1) ; so the strucutes with least progress gets chronoed (providing have same queue size)
-	bubbleSort2DArray(oStructureToChrono, "QueueSize", 0) ; so One with the longest queue gets chronoed first
-	bubbleSort2DArray(oStructureToChrono, "userOrder", 1) ; So lower priority Number gets chronoed first
-	If !oStructureToChrono.maxIndex()
-		return
-	
-	MouseGetPos, start_x, start_y
-	HighlightedGroup := getSelectionHighlightedGroup()
-	selectionPage := getUnitSelectionPage()
-	max_chronod := nexus_chrono_count - CG_chrono_remainder
-	input.pSend((CG_control_group != "Off" ? aAGHotkeys.set[CG_control_group] : "") aAGHotkeys.Invoke[CG_nexus_Ctrlgroup_key])
-	timerID := stopwatch()
-	sleep, 30 	; Can use real sleep here as not a silent automation
-	for  index, oject in oStructureToChrono
-	{
-		If (A_index > max_chronod)
-			Break	
-
-	sleep 3000
-	If (A_index > 6)
-		Break	
-
-
-
-		sleep, %ChronoBoostSleep%
-		getUnitMiniMapMousePos(oject.unit, click_x, click_y)
-		input.pSend(chrono_key)
-		If HumanMouse
-			MouseMoveHumanSC2("x" click_x "y" click_y "t" rand(HumanMouseTimeLo, HumanMouseTimeHi))
-		MTclick(click_x, click_y)
-	}
-	If HumanMouse
-		MouseMoveHumanSC2("x" start_x "y" start_y "t" rand(HumanMouseTimeLo, HumanMouseTimeHi))
-	elapsedTimeGrouping := stopwatch(timerID)	
-	if (elapsedTimeGrouping < 20)
-		sleep, % ceil(20 - elapsedTimeGrouping)	
-	if (CG_control_group != "Off")
-		restoreSelection(CG_control_group, selectionPage, HighlightedGroup)
-	Return 
-}
-	
-
-
-
-AutoChronoGui:
-if instr(A_GuiControl, "New")
-{
-	if !retrieveItemsFromListView("AutoChronoListView").MaxIndex()
-	{
-		msgbox, % 64 + 8192 + 262144, New Item, The current unit field is empty.`n`nPlease add some units before creating a new item.
-		return
-	}
-	saveCurrentAutoChronoItem(aAutoChronoCopy)
-	if blankIndex := autoChronoFindPosiitionWithNoUnits(aAutoChronoCopy) 
-	{
-		aAutoChronoCopy["IndexGUI"] := blankIndex
-		showAutoChronoItem(aAutoChronoCopy)
-	}
-	else 
-	{
-		aAutoChronoCopy["IndexGUI"] := aAutoChronoCopy["MaxIndexGUI"] := round(aAutoChronoCopy["MaxIndexGUI"] + 1)	
-		blankAutoChronoGUI()
-	}
-}
-else if instr(A_GuiControl, "Delete")
-{
-
-	aAutoChronoCopy["Items"].remove(aAutoChronoCopy["IndexGUI"])
-
-	if (aAutoChronoCopy["MaxIndexGUI"] = 1)
-	{
-		blankAutoChronoGUI()
-		return
-	}
-	if (aAutoChronoCopy["IndexGUI"] > 1)
-		aAutoChronoCopy["IndexGUI"] := round(aAutoChronoCopy["IndexGUI"] - 1)
-	aAutoChronoCopy["MaxIndexGUI"] := round(aAutoChronoCopy["MaxIndexGUI"] - 1)
-	showAutoChronoItem(aAutoChronoCopy)
-}
-else if instr(A_GuiControl, "Next")
-{
-	if (aAutoChronoCopy["MaxIndexGUI"] = 1)
-		return 
-	saveCurrentAutoChronoItem(aAutoChronoCopy)
-	if (aAutoChronoCopy["IndexGUI"] >= aAutoChronoCopy["MaxIndexGUI"])
-		aAutoChronoCopy["IndexGUI"] := 1
-	else 
-		aAutoChronoCopy["IndexGUI"] := round(aAutoChronoCopy["IndexGUI"] + 1)
-	showAutoChronoItem(aAutoChronoCopy)	
-}
-else if instr(A_GuiControl, "Previous")
-{
-	if (aAutoChronoCopy["MaxIndexGUI"] = 1)
-		return 
-	saveCurrentAutoChronoItem(aAutoChronoCopy)
-	if (aAutoChronoCopy["IndexGUI"] <= 1)
-		aAutoChronoCopy["IndexGUI"] := aAutoChronoCopy["MaxIndexGUI"]
-	else 
-		aAutoChronoCopy["IndexGUI"] := round(aAutoChronoCopy["IndexGUI"] - 1)
-	showAutoChronoItem(aAutoChronoCopy)	
-}
-; so doesnt get set to 0
-if (aAutoChronoCopy["IndexGUI"] <= 0)
-	aAutoChronoCopy["IndexGUI"] := 1
-if (aAutoChronoCopy["MaxIndexGUI"] <= 0)
-	aAutoChronoCopy["MaxIndexGUI"] := 1	
-GUIControl, , GroupBoxAutoChrono, % "Chrono Navigation " aAutoChronoCopy["IndexGUI"] " of " aAutoChronoCopy["MaxIndexGUI"]	
-GUIControl, , GroupBoxItemAutoChrono, % "Chrono Item " aAutoChronoCopy["IndexGUI"]
-state := aAutoChronoCopy["MaxIndexGUI"] > 1 ? True : False
-GUIControl, Enable%state%, NextAutoChrono
-GUIControl,  Enable%state%, PreviousAutoChrono
-return 
-
-
-MoveUpUnitAutoChrono:
-for row, unitName in retrieveSelectedItemsFromListView("AutoChronoListView") ; MultiSelect disabled so should only be 1 item
-{
-	if (row > 1)
-	{
-		removeItemFromListView(unitName)
-		LV_Insert(row -1, "Select Focus", unitName)
-	}
-}
-GuiControl, Focus, AutoChronoListView ; so that the selected item background is blue (as user pressed the up/down button)
-return
-; When moving down easiest to start with the bottom row then work up
-MoveDownUnitAutoChrono:
-aSelectedRows := retrieveSelectedItemsFromListView("AutoChronoListView") 
-while aSelectedRows.MaxIndex()
-{
-	if (aSelectedRows.MaxIndex() < LV_GetCount())
-	{
-		removeItemFromListView(aSelectedRows[aSelectedRows.MaxIndex()])
-		LV_Insert(aSelectedRows.MaxIndex() + 1, "Select Focus", aSelectedRows[aSelectedRows.MaxIndex()])
-	}
-	aSelectedRows.remove(aSelectedRows.MaxIndex())
-}
-GuiControl, Focus, AutoChronoListView ; so that the selected item background is blue (as user pressed the up/down button)
-return
-
-
-AddUnitAutoChrono:
-Gui, ListView, AutoChronoListView
-if newItems := GUISelectionList("Select Structure(s):"
-			, "WarpGate|Gateway|Forge|Stargate|RoboticsFacility|Nexus|CyberneticsCore|TwilightCouncil|TemplarArchive|RoboticsBay|FleetBeacon"
-			, "|", "|")
-{
-	firstAddedItem := ""
-	loop, parse, newItems, |
-	{
-		if !isItemInListView(A_LoopField)
-			addItemToListview(A_LoopField), (firstAddedItem = "" ? firstAddedItem := A_LoopField : "")
-	}
-	if firstAddedItem
-	{
-		LV_Modify(0, "-Select") ; Deselect all otherwise if item was already selected it will be selected along with the first added new item
-		LV_Modify(isItemInListView(firstAddedItem), "Select Focus")
-		GuiControl, Focus, AutoChronoListView
-	}
-}
-return
-
-RemoveUnitAutoChrono:
-Gui, ListView, AutoChronoListView
-for i, item in aSelectedRows := retrieveSelectedItemsFromListView()
-	removeItemFromListView(item)
-if aSelectedRows.MinIndex() && LV_GetCount()
-{
-	LV_Modify(aSelectedRows.MinIndex() <= LV_GetCount() ? aSelectedRows.MinIndex() : LV_GetCount(), "Select Focus" )
-	GuiControl, Focus, AutoChronoListView ; so that the selected item background is blue (as user pressed the up/down button)
-}
-return
-
-
-f1::
-objtree(aAutoChronoCopy)
-return 
-
-f2::
-soundplay *-1
-Gui, ListView, AutoChronoListView
-GuiControl, Focus, AutoChronoListView 
-msgbox % LV_Modify(0, "Focus Select")   ; Select all.
-return 
-
-iniReadAutoChrono(byRef aAutoChronoCopy, byRef aAutoChrono)
-{
-
-	aAutoChronoCopy := [], aAutoChrono := []
-
-	arrayPosition := 0
-	; ive just added the forge and stargate here as, the warpages already here
-	;[Chrono Boost Gateway/Warpgate]
-	section := "Auto Chrono Items"
-	loop 
-	{
-		arrayPosition++
-		; itemNumber := arrayPosition
-		; Use A_Index, as if no unit exists, then will decrement arrayPosition
-		; causing an infinite loop as it reads the same ini key
-		itemNumber := A_Index
-		IniRead, enabled, %config_file%, %section%, %itemNumber%_enabled, error
-
-		if (enabled = "error")
-			break 
-
-		IniRead, hotkey, %config_file%, %section%, %itemNumber%_hotkey, %A_Space%
-		IniRead, units, %config_file%, %section%, %itemNumber%_units, %A_Space%
-
-	    aAutoChronoCopy["Items", arrayPosition] := []
-	    aAutoChronoCopy["Items", arrayPosition, "enabled"] := enabled
-	    aAutoChronoCopy["Items", arrayPosition, "hotkey"] := hotkey
-	    aAutoChronoCopy["Items", arrayPosition, "units"] := []
-
-	    unitExists := false
-	    ; sort, units, D`, U ; Do not use sort to remove duplicates - as it will also sort them.
-
-	    userPriority := 1
-	    loop, parse, units, `,
-	    {
-	    	unitName := A_LoopField
-
-	    	if aUnitID.HasKey(unitName) && !aAutoChronoCopy["Items", arrayPosition, "units"].HasKey(aUnitID[unitName])
-	    	{
-	    		; don't use insert as using integer keys so it will move them around
-	    		aAutoChronoCopy["Items", arrayPosition, "units", aUnitID[unitName]] := userPriority++
-	    		unitExists := True
-	    	}
-	    }
-	    if !unitExists
-	    	aAutoChronoCopy["Items"].remove(arrayPosition--) ;post-decrement 
-	}
-	aAutoChronoCopy["MaxIndexGui"] := Round(aAutoChronoCopy["Items"].MaxIndex())
-	
-	aAutoChrono := aAutoChronoCopy
-	return 
-}
-
-iniWriteAndUpdateAutoChrono(byRef aAutoChronoCopy, byRef aAutoChrono)
-{
-	
-	section := "Auto Chrono Items"
-	IniDelete, %config_file%, %section% ;clear the list
-	for i, object in aAutoChronoCopy["Items"]
-	{
-		; Use the loop index in case something went wrong and there is a gap in the index of the object 1-->2-->4 
-		; as iniread function will stop at first non-existent item
-		itemNumber := A_Index 
-		for key, value in object
-		{
-			if (key = "units")
-			{
-				value := "" , aDuplicateCheck := [] ; can't use sort to remove duplicates as their order is important. (there shouldn't be any anyway)
-				aOrder := []
-				for unitId, userOrder in object["units"]
-				{
-					if aUnitName.HasKey(unitId) && !aDuplicateCheck.HasKey(unitId)
-						aOrder[userOrder] := aUnitName[unitId], aDuplicateCheck[unitId] := True
-				}
-				; Have to use another array to rank via user order - otherwise for loop would iterate in order of unitType/ID number
-				for userOrder, unitName in aOrder
-					value .= unitName ","
-				value := Trim(value, " `t`,") ; remove the last comma
-			}
-			IniWrite, %value%, %config_file%, %section%, %itemNumber%_%key%
-		}
-	}
-	aAutoChrono := aAutoChronoCopy
-	return
-}
-
-
-saveCurrentAutoChronoItem(byRef aAutoChronoCopy)
-{
-	GuiControlGet, enabled,, AutoChronoEnabled
-	GuiControlGet, hotkey,, AutoChrono_Key
-
-	arrayPosition := aAutoChronoCopy["IndexGUI"]
-
-	aAutoChronoCopy["Items", arrayPosition] := []
-	aAutoChronoCopy["Items", arrayPosition, "enabled"] := enabled
-	aAutoChronoCopy["Items", arrayPosition, "hotkey"] := hotkey
-	aAutoChronoCopy["Items", arrayPosition, "units"] := []
-	userPriority := 1
-	for i, unitName in retrieveItemsFromListView("AutoChronoListView")
-	{
-		if aUnitID.haskey(unitName) && !aAutoChronoCopy["Items", arrayPosition, "units"].HasKey(aUnitID[unitName])
-			aAutoChronoCopy["Items", arrayPosition, "units", aUnitID[unitName]] := userPriority++
-	}
-	; lets just save it anyway so that if the click previous to go back and they havent filled in the units part, 
-	; they wont lose what they just entered
-;	if !aAutoChronoCopy[Race, arrayPosition, "units"].maxIndex()
-;	{
-;		GUIControl, , quickSelect%Race%UnitsArmy,
-;		aAutoChronoCopy[Race].remove(arrayPosition)
-;		return 1 ; No real units were in the text field
-;	}
-	return 
-}
-
-autoChronoFindPosiitionWithNoUnits(byRef aAutoChronoCopy)
-{
-	loop, 1000
-	{
-		if !IsObject(aAutoChronoCopy["Items", A_Index])
-			break
-		if !aAutoChronoCopy["Items", A_Index, "units"].MaxIndex()
-			return A_Index
-	}
-	return 0
-}
-
-showAutoChronoItem(byRef aAutoChronoCopy)
-{
-	arrayPosition := aAutoChronoCopy["IndexGUI"]
-	removeAllItemsFromListView("AutoChronoListView")
-	for typeID, userOrder in aAutoChronoCopy["Items", arrayPosition, "units"]
-	{
-		if aUnitName.haskey(typeID)
-			LV_Insert(userOrder, "", aUnitName[typeID])
-	}
-	GUIControl,, AutoChronoEnabled, % round(aAutoChronoCopy["Items", arrayPosition, "enabled"])
-	GUIControl,, AutoChrono_Key, % aAutoChronoCopy["Items", arrayPosition, "hotkey"]
-	return
-}
-blankAutoChronoGUI()
-{
-	GUIControl,, AutoChronoEnabled, 0
-	GUIControl,, AutoChrono_Key,
-	removeAllItemsFromListView("AutoChronoListView")
-	return
-}
+pAbilities: 24d57b64 Unit ID: 0
+uStruct: 4a23000 - 4a231c0
+0 | Pointer Address 24d57b7c | RallyNexus
+1 | Pointer Address 24d57b80 | TimeWarp
+2 | Pointer Address 24d57b84 | BuildInProgress
+3 | Pointer Address 24d57b88 | NexusTrain
+4 | Pointer Address 24d57b8c | que5Passive
+5 | Pointer Address 24d57b90 | NexusTrainMothershipCore
+6 | Pointer Address 24d57b94 | NexusInvulnerability
+7 | Pointer Address 24d57b98 | attackProtossBuilding
+8 | Pointer Address 24d57b9c | stopProtossBuilding
 

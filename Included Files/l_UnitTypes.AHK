@@ -423,6 +423,7 @@ l_UnitTypes =
 	ProtossVespeneGeyser = 511,
 	VespeneGeyserPretty = 515, ; **This has same name as 262 geyser - so i give it a new one This is on a new 1v1 map Habitation Station LE - This geyser isn't in the map editor though (perhaps there's a setting to get it though)		
 	Artosilop = 562,
-	ThorHighImpactPayload = 588
+	ThorHighImpactPayload = 588,
+	PhotonOverCharge = MothershipCoreApplyPurifyAB ; No quotes. Dirty hack to allow removal of PO from unit panel
 )
 #LTrim, off

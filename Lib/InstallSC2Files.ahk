@@ -120,6 +120,7 @@ InstallSC2Files()
 	FileInstall, Included Files\Used_Icons\Units\Terran\vikingassault.png, %A_Temp%\UnitPanelMacroTrainer\vikingassault.png, 1
 	FileInstall, Included Files\Used_Icons\Units\Terran\vikingfighter.png, %A_Temp%\UnitPanelMacroTrainer\vikingfighter.png, 1
 	FileInstall, Included Files\Used_Icons\Units\Terran\widowmine.png, %A_Temp%\UnitPanelMacroTrainer\widowmine.png, 1
+	FileInstall, Included Files\Used_Icons\Abilities\Protoss\MothershipCoreApplyPurifyAB.png,  %A_Temp%\UnitPanelMacroTrainer\MothershipCoreApplyPurifyAB.png, 1	
 	FileInstall, Included Files\Used_Icons\Buildings\Protoss\assimilator.png,  %A_Temp%\UnitPanelMacroTrainer\assimilator.png, 1
 	FileInstall, Included Files\Used_Icons\Buildings\Protoss\cyberneticscore.png,  %A_Temp%\UnitPanelMacroTrainer\cyberneticscore.png, 1
 	FileInstall, Included Files\Used_Icons\Buildings\Protoss\darkshrine.png,  %A_Temp%\UnitPanelMacroTrainer\darkshrine.png, 1
