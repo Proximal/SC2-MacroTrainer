@@ -33,7 +33,7 @@ CreatepBitmaps(a_pBitmap, aUnitID, MatrixColour)
 global aUnitInfo := []
 readConfigFile(), hasReadConfig := True
 global aOverlayTitles := []
-for i, overlay in ["IncomeOverlay", "ResourcesOverlay", "ArmySizeOverlay", "WorkerOverlay", "IdleWorkersOverlay", "UnitOverlay", "LocalPlayerColourOverlay", "APMOverlay", "MacroTownHallOverlay"] ; here cos it can get non overlay titles
+for i, overlay in ["IncomeOverlay", "ResourcesOverlay", "ArmySizeOverlay", "WorkerOverlay", "IdleWorkersOverlay", "UnitOverlay", "LocalPlayerColourOverlay", "APMOverlay", "MacroTownHallOverlay", "LocalUpgradesOverlay"] ; here cos it can get non overlay titles
 	aOverlayTitles[overlay] := getRandomString_Az09(10, 20)
 
 global MT_CurrentGame 
@@ -108,6 +108,9 @@ If (WinActive(GameIdentifier) || Dragoverlay)
 		FilterUnits(aEnemyUnits, aEnemyUnitConstruction, aUnitPanelUnits)
 		DrawUnitOverlay(RedrawUnit, UnitOverlayScale, OverlayIdent, Dragoverlay)
 	}
+	If DrawLocalUpgradesOverlay
+		DrawLocalUpgradesOverlay(RedrawLocalUpgrades, LocalUpgradesOverlayScale, DragOverlay)
+
 }
 else if (!WinActive(GameIdentifier) && !Dragoverlay && !areOverlaysWaitingToRedraw())
 	DestroyOverlays()
@@ -184,7 +187,7 @@ restoreOverlayTimer()
 overlayToggle(hotkey)
 {
 	global
-	if (hotkey = CycleOverlayKey "")
+	if 0 ; (hotkey = CycleOverlayKey "")  ; This is disabled. Doubt anyway used it 
 	{
 		; if more than one overlays on. Turn then all off. Then cycle
 		; DrawIncomeOverlay, DrawResourcesOverlay, DrawArmySizeOverlay, DrawAPMOverlay, DrawUnitOverlay, All
@@ -1978,15 +1981,17 @@ DrawMacroTownHallOverlay(ByRef Redraw, UserScale=1, Drag=0)
 		pBitmap := a_pBitmap[aUnitID.Nexus], energyRequired := 25, textColour := " cFFCD00FF "
 	else pBitmap := a_pBitmap[aUnitID.Larva], textColour := " cFFFFFFFF "
 
-	macroCount := 0
+	macroCount := 0, aCheckedUnits := []
 	
 	loop 10
 	{
 		loop, % numgetControlGroupMemory(MemDump, A_Index - 1)
 		{
-			if aTownHalls.HasKey(getUnitType((unit := NumGet(MemDump, (A_Index - 1) * 4, "UInt") >> 18)))
+			if !aCheckedUnits.HasKey((unit := NumGet(MemDump, (A_Index - 1) * 4, "UInt") >> 18))
+			&& aTownHalls.HasKey(getUnitType(unit))
 			&& isUnitLocallyOwned(unit) && !(getUnitTargetFilter(unit) & (aUnitTargetFilter.Dead | aUnitTargetFilter.UnderConstruction))
 				macroCount += aLocalPlayer.Race = "Terran" || aLocalPlayer.Race = "Protoss" ? Floor(getUnitEnergy(unit)/energyRequired) : getTownHallLarvaCount(unit)
+			aCheckedUnits[unit] := True ; Prevents adding to macroCount when townHall exists in multiple ctrl Groups. Also speeds up a little bit for all other units.
 		}
 	}
 	hbm := CreateDIBSection(400, 400)
@@ -2083,20 +2088,11 @@ getLocalUpgrades(byRef aUpgrades)
 	return (hasItems)
 }
 
-f1::
-RedrawlocalUpgrade := True
-loop 
+DrawLocalUpgradesOverlay(ByRef Redraw, UserScale = 1, Drag = 0)
 {
-	drawLocalUpgrades(RedrawlocalUpgrade, 1, 0)
-	sleep 500
-}
-return 
+	global localUpgradesItemsPerRow, LocalUpgradesOverlayX, LocalUpgradesOverlayY, overlayLocalUpgradesTransparency
+	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0, upgradeCountPrevious := 0
 
-drawLocalUpgrades(ByRef Redraw, UserScale = 1, Drag = 0)
-{
-	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0
-
-	LocalUpgradesOverlayX := LocalUpgradesOverlayY := 500
 	If (Redraw = -1)
 	{
 		Try Gui, LocalUpgradesOverlay: Destroy
@@ -2130,63 +2126,71 @@ drawLocalUpgrades(ByRef Redraw, UserScale = 1, Drag = 0)
 		Iniwrite, %LocalUpgradesOverlayY%, %config_file%, Overlays, LocalUpgradesOverlayY		
 	}
 	DestX := DestY := 0
-	getLocalUpgrades(aUpgrades)
-
-	hbm := CreateDIBSection(A_ScreenWidth, A_ScreenHeight)
-	, hdc := CreateCompatibleDC()
-	, obm := SelectObject(hdc, hbm)
-	, G := Gdip_GraphicsFromHDC(hdc)	
-	, Gdip_SetSmoothingMode(G, 4)
-	, Gdip_SetInterpolationMode(G, 2)	
-
-	localUpgradesItemsPerRow := 1
-	rowCount := 0, windowWidth := WindowHeight := 20 ; give a minumum value so function call doesnt fail
-
-	; i is the unitName - but morphing structures will contain a prefixed string so DO NOT use it for anything.
-	for i, upgrade in aUpgrades
+	if !localUpgradesItemsPerRow
+		localUpgradesItemsPerRow := 9999 ; So it draws along a single row if set to 0 - or is null for some reason
+	upgradesExist := getLocalUpgrades(aUpgrades)
+	if (upgradesExist) || (!upgradesExist && upgradesExistPrevious) || drag
 	{
-		if !(pBitmap := a_pBitmap[aUnitID.HasKey(upgrade.name) ? aUnitID[upgrade.name] : upgrade.name])
-			continue ; as i dont have a picture for that unit - not a real unit?
-		SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap) 
-		, Width *= UserScale *.5, Height *= UserScale *.5	; all unit/buildings/updagres are 38x38 after being halved
+		if (drag && !upgradesExist) ; So use can see and drag it when nothing is present
+			aUpgrades := {	1: {name: "ResearchShieldWall", progress: .80, count: 1}	
+						,	2: {name: "Stimpack", progress: .80, count: 1}	
+						,	3: {name: "ResearchExtendedThermalLance", progress: .80, count: 1}	
+						,	4: {name: "ResearchWarpGate", progress: .80, count: 1}	
+						,	5: {name: "zerglingmovementspeed", progress: .80, count: 1}	
+						,	6: {name: "Lair", progress: .80, count: 2}	}
 
-		Gdip_DrawImage(G, pBitmap, DestX, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
-
-		;msgbox % itemName " | " SourceWidth ", " SourceHeight
-		;	. "`n" (Width - 10 * UserScale *.5) ", " Height/16
-
-		if (upgrade.Count > 1)
-		{
-			Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, DestX + .6*Width, DestY, Width/2.5, Height/2.5, 5)
-			, gdip_TextToGraphics(G, upgrade.Count, "x"(DestX + .5*Width + .3*Width/2) "y"(DestY + .10*Height/2)  " Bold Italic cFFFFFFFF r4 s" 11*UserScale, Font)
-		}
-
-		Gdip_SetSmoothingMode(G, 0)
-		, Gdip_FillRectangle(G, a_pBrushes.TransparentBlack, DestX + 5 * UserScale *.5, floor(DestY+Height + 5 * UserScale *.5), Width - 10 * UserScale *.5, Height/16)
-		, Gdip_FillRectangle(G, a_pBrushes.Green, DestX + 5 * UserScale *.5, floor(DestY+Height + 5 * UserScale *.5), Width*upgrade.progress - upgrade.progress * 10 * UserScale *.5, Height/16)
+		hbm := CreateDIBSection(A_ScreenWidth, A_ScreenHeight)
+		, hdc := CreateCompatibleDC()
+		, obm := SelectObject(hdc, hbm)
+		, G := Gdip_GraphicsFromHDC(hdc)	
 		, Gdip_SetSmoothingMode(G, 4)
+		, Gdip_SetInterpolationMode(G, 2)	
 
-		if (DestX > windowWidth) 
-			windowWidth := DestX
-		if (DestY > WindowHeight)
-			WindowHeight := DestY
-		if (++rowCount >= localUpgradesItemsPerRow)
-			DestX := 0, DestY += Height + 8 * UserScale, rowCount := 0
-		else DestX += Width+5*UserScale			
+		rowCount := 0, windowWidth := WindowHeight := 20 ; give a minumum value so function call doesnt fail
+
+		; i is the unitName - but morphing structures will contain a prefixed string to ensure they occur last so DO NOT use it for anything.
+		for i, upgrade in aUpgrades
+		{
+			if !(pBitmap := a_pBitmap[aUnitID.HasKey(upgrade.name) ? aUnitID[upgrade.name] : upgrade.name])
+				continue ; as i dont have a picture for that unit - not a real unit?
+			SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap) 
+			, Width *= UserScale *.5, Height *= UserScale *.5	; all unit/buildings/updagres are 38x38 after being halved
+
+			Gdip_DrawImage(G, pBitmap, DestX, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
+
+			if (upgrade.Count > 1)
+			{
+				Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, DestX + .6*Width, DestY, Width/2.5, Height/2.5, 5)
+				, gdip_TextToGraphics(G, upgrade.Count, "x"(DestX + .5*Width + .3*Width/2) "y"(DestY + .10*Height/2)  " Bold Italic cFFFFFFFF r4 s" 11*UserScale, Font)
+			}
+
+			Gdip_SetSmoothingMode(G, 0)
+			, Gdip_FillRectangle(G, a_pBrushes.TransparentBlack, DestX + 5 * UserScale *.5, floor(DestY+Height + 5 * UserScale *.5), Width - 10 * UserScale *.5, Height/12) ;Height/16
+			, Gdip_FillRectangle(G, a_pBrushes.Green, DestX + 5 * UserScale *.5, floor(DestY+Height + 5 * UserScale *.5), Width*upgrade.progress - upgrade.progress * 10 * UserScale *.5, Height/12)
+			, Gdip_SetSmoothingMode(G, 4)
+
+			if (DestX > windowWidth) 
+				windowWidth := DestX
+			if (DestY > WindowHeight)
+				WindowHeight := DestY
+			if (++rowCount >= localUpgradesItemsPerRow)
+				DestX := 0, DestY += Height + 10 * UserScale, rowCount := 0 ; made the y spacing a bit bigger as I've increased the progress bar height
+			else DestX += Width+5*UserScale			
+		}
+		windowWidth += 2*Width, WindowHeight += 2*Height ; If height and width blank from not entering loop, these will remain at 20
+		
+		; Not like this would ever occur with this overlay
+		if (WindowWidth > A_ScreenWidth)
+			WindowWidth := A_ScreenWidth
+		if (WindowHeight > A_ScreenHeight)
+			WindowHeight := A_ScreenHeight
+
+		Gdip_DeleteGraphics(G) 
+		, UpdateLayeredWindow(hwnd1, hdc,,, WindowWidth, WindowHeight, overlayLocalUpgradesTransparency)
+		, SelectObject(hdc, obm) 
+		, DeleteObject(hbm)
+		, DeleteDC(hdc)
 	}
-	windowWidth += 2*Width, WindowHeight += 2*Height ; If height and width blank from not entering loop, these will remain at 20
-	
-	; Not like this would ever occur with this overlay
-	if (WindowWidth > A_ScreenWidth)
-		WindowWidth := A_ScreenWidth
-	if (WindowHeight > A_ScreenHeight)
-		WindowHeight := A_ScreenHeight
-	overlayLocalUpgradesTransparency := 255
-
-	Gdip_DeleteGraphics(G) ; .0005ms
-	, UpdateLayeredWindow(hwnd1, hdc,,, WindowWidth, WindowHeight, overlayLocalUpgradesTransparency)
-	, SelectObject(hdc, obm) ; All Three of these only take a total of ~ 0.22 ms. So in the end its faster to recreate/delete these than to GDI clear the graphics
-	, DeleteObject(hbm)
-	, DeleteDC(hdc)
+	upgradesExistPrevious := upgradesExist
 	Return
 }

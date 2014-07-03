@@ -366,7 +366,7 @@ If WinGet("EXStyle", GameIdentifier) = SC2WindowEXStyles.FullScreen
 && (DrawMiniMap || DrawAlerts || DrawSpawningRaces
 || DrawIncomeOverlay || DrawResourcesOverlay || DrawArmySizeOverlay
 || DrawWorkerOverlay || DrawIdleWorkersOverlay || DrawLocalPlayerColourOverlay
-|| DrawUnitOverlay || DrawUnitUpgrades || DrawAPMOverlay || DrawMacroTownHallOverlay)
+|| DrawUnitOverlay || DrawUnitUpgrades || DrawAPMOverlay || DrawMacroTownHallOverlay || DrawLocalUpgradesOverlay)
 && !MT_Restart && A_IsCompiled ; so not restarted via hotkey or icon 
 {
 	ChangeButtonNames.set("SC2 Is NOT in 'windowed Fullscreen' mode!", "Disable", "Continue") 
@@ -382,7 +382,8 @@ If WinGet("EXStyle", GameIdentifier) = SC2WindowEXStyles.FullScreen
 	{
 		DrawMiniMap := DrawAlerts := DrawSpawningRaces := DrawIncomeOverlay := DrawResourcesOverlay
 		:= DrawArmySizeOverlay := DrawWorkerOverlay := DrawIdleWorkersOverlay 
-		:= DrawLocalPlayerColourOverlay := DrawUnitOverlay := DrawUnitUpgrades := DrawAPMOverlay := DrawMacroTownHallOverlay := 0
+		:= DrawLocalPlayerColourOverlay := DrawUnitOverlay := DrawUnitUpgrades 
+		:= DrawAPMOverlay := DrawMacroTownHallOverlay := DrawLocalUpgradesOverlay := 0
 		gosub, ini_settings_write
 	}
 }
@@ -760,7 +761,7 @@ Overlay_Toggle:
 			while !aThreads.Overlays.ahkReady()
 				sleep 10
 		}
-		aThreads.Overlays.ahkFunction("overlayToggle", A_ThisHotkey) ; easiestest to wait for function to finish and then update any changed vars
+		aThreads.Overlays.ahkFunction("overlayToggle", A_ThisHotkey) ; easiest to wait for function to finish and then update any changed vars
 		DrawIncomeOverlay := aThreads.Overlays.ahkgetvar.DrawIncomeOverlay
 		DrawResourcesOverlay := aThreads.Overlays.ahkgetvar.DrawResourcesOverlay
 		DrawArmySizeOverlay := aThreads.Overlays.ahkgetvar.DrawArmySizeOverlay
@@ -2552,7 +2553,7 @@ ini_settings_write:
 
 	;[Overlays]
 	section := "Overlays"
-	list := "IncomeOverlay,ResourcesOverlay,ArmySizeOverlay,WorkerOverlay,IdleWorkersOverlay,UnitOverlay,LocalPlayerColourOverlay,APMOverlay,MacroTownHallOverlay"
+	list := "IncomeOverlay,ResourcesOverlay,ArmySizeOverlay,WorkerOverlay,IdleWorkersOverlay,UnitOverlay,LocalPlayerColourOverlay,APMOverlay,MacroTownHallOverlay,LocalUpgradesOverlay"
 	loop, parse, list, `,
 	{
 		drawname := "Draw" A_LoopField,	drawvar := %drawname%
@@ -2566,7 +2567,7 @@ ini_settings_write:
 	Iniwrite, %ToggleMinimapOverlayKey%, %config_file%, %section%, ToggleMinimapOverlayKey	
 	Iniwrite, %AdjustOverlayKey%, %config_file%, %section%, AdjustOverlayKey	
 	Iniwrite, %ToggleIdentifierKey%, %config_file%, %section%, ToggleIdentifierKey	
-	Iniwrite, %CycleOverlayKey%, %config_file%, %section%, CycleOverlayKey	
+	;Iniwrite, %CycleOverlayKey%, %config_file%, %section%, CycleOverlayKey	
 		If (OverlayIdent = "Hidden")	
 			OverlayIdent := 0
 		Else If (OverlayIdent = "Name (White)")	
@@ -2592,10 +2593,12 @@ ini_settings_write:
 	Iniwrite, %drawLocalPlayerResources%, %config_file%, %section%, drawLocalPlayerResources
 	Iniwrite, %drawLocalPlayerIncome%, %config_file%, %section%, drawLocalPlayerIncome
 	Iniwrite, %drawLocalPlayerArmy%, %config_file%, %section%, drawLocalPlayerArmy
+	Iniwrite, %localUpgradesItemsPerRow%, %config_file%, %section%, localUpgradesItemsPerRow
 
 	; convert from 0-100 to 0-255
 	loopList := "overlayIncomeTransparency,overlayMatchTransparency,overlayResourceTransparency,overlayArmyTransparency,overlayAPMTransparency"
-			.	",overlayHarvesterTransparency,overlayIdleWorkerTransparency,overlayLocalColourTransparency,overlayMinimapTransparency,overlayMacroTownHallTransparency"
+			.	",overlayHarvesterTransparency,overlayIdleWorkerTransparency,overlayLocalColourTransparency,overlayMinimapTransparency"
+			.   ",overlayMacroTownHallTransparency,overlayLocalUpgradesTransparency"
 	loop, parse, loopList, `,
 	{
 		if (Tmp_GuiControl = "save" || Tmp_GuiControl = "Apply")
@@ -4057,69 +4060,77 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 
 	Gui, Tab, Overlays
 			;Gui, add, text, y+20 X%XTabX%, Display Overlays:
-			Gui, Add, GroupBox, y+15 x+25  w170 h185 section, Display Overlays:
-				Gui, Add, Checkbox, xp+10 yp+20 vDrawIncomeOverlay Checked%DrawIncomeOverlay%, Income Overlay
-				Gui, Add, Checkbox, xp y+10 vDrawResourcesOverlay Checked%DrawResourcesOverlay%, Resource Overlay
-				Gui, Add, Checkbox, xp y+10 vDrawArmySizeOverlay Checked%DrawArmySizeOverlay%, Army Size Overlay
-				Gui, Add, Checkbox, xp y+10 vDrawAPMOverlay Checked%DrawAPMOverlay%, APM overlay
-				Gui, Add, Checkbox, xp y+10 vDrawWorkerOverlay Checked%DrawWorkerOverlay%, Local Harvester Count
-				Gui, Add, Checkbox, xp y+10 vDrawIdleWorkersOverlay Checked%DrawIdleWorkersOverlay%, Idle Worker Count
-				Gui, Add, Checkbox, xp y+10 vDrawLocalPlayerColourOverlay Checked%DrawLocalPlayerColourOverlay%, Local Player Colour
+			Gui, Add, GroupBox, y+15 x+20 w195 h260 section, Display Overlays:
+				Gui, Add, Checkbox, xp+10 yp+20 vDrawIncomeOverlay Checked%DrawIncomeOverlay%, Income
+					Gui, Add, Checkbox, xp+95 yp vDrawLocalPlayerIncome Checked%drawLocalPlayerIncome%, Include Self
+				Gui, Add, Checkbox, xs+10 y+13 vDrawResourcesOverlay Checked%DrawResourcesOverlay%, Resources
+					Gui, Add, Checkbox, xp+95 yp vDrawLocalPlayerResources Checked%drawLocalPlayerResources%, Include Self
+				Gui, Add, Checkbox, xs+10 y+13 vDrawArmySizeOverlay Checked%DrawArmySizeOverlay%, Army Size
+					Gui, Add, Checkbox, xp+95 yp vDrawLocalPlayerArmy Checked%drawLocalPlayerArmy%, Include Self
+				Gui, Add, Checkbox, xs+10 y+15 vDrawAPMOverlay Checked%DrawAPMOverlay%, APM
+					Gui, Add, Checkbox, xp+95 yp vAPMOverlayMode Check3 Checked%APMOverlayMode%, Mode
+				Gui, Add, Checkbox, xs+10 y+13 vDrawIdleWorkersOverlay Checked%DrawIdleWorkersOverlay%, Idle Worker Count
+				Gui, Add, Checkbox, xp y+13 vDrawWorkerOverlay Checked%DrawWorkerOverlay%, Local Harvester Count
+				Gui, Add, Checkbox, xp y+13 vDrawLocalPlayerColourOverlay Checked%DrawLocalPlayerColourOverlay%, Local Player Colour
+				Gui, Add, Checkbox, xp y+13 vDrawMacroTownHallOverlay Checked%DrawMacroTownHallOverlay%, Town Hall Macro
+				Gui, Add, Checkbox, xp y+13 vDrawLocalUpgradesOverlay Checked%DrawLocalUpgradesOverlay%, Local Upgrades
+			
+			;	Gui, Add, Edit, Number Right x+25 yp-2 w50 vTT_localUpgradesItemsPerRow
+			;		Gui, Add, UpDown,  Range0-100 vlocalUpgradesItemsPerRow, %localUpgradesItemsPerRow%	
+				Gui, Add, Text, x+10 yp, Size:
+				Gui, Add, DropDownList, % "x+5 yp-3 w40 vlocalUpgradesItemsPerRow Choose" (localUpgradesItemsPerRow != "" ? localUpgradesItemsPerRow + 1 : 1), 0|1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16
 
-				Gui, Add, GroupBox, xs ys+195 w170 h220, Match Overlay:
+
+				Gui, Add, GroupBox, ys XS+220 w170 h260, Match Overlay:
 				Gui, Add, Checkbox, xp+10 yp+25 vDrawUnitUpgrades Checked%DrawUnitUpgrades%, Show Upgrades
-				Gui, Add, Checkbox, xp y+10 vDrawUnitOverlay Checked%DrawUnitOverlay%, Show Unit Count/Production
-				Gui, Add, Checkbox, xp y+10 vSplitUnitPanel ggToggleAlignUnitGUI Checked%SplitUnitPanel% , Split Units/Buildings
-				Gui, Add, Checkbox, % "xp y+10 vUnitPanelAlignNewUnits Checked" unitPanelAlignNewUnits " disabled" !SplitUnitPanel, Align New units
-				Gui, Add, Checkbox, xp y+10 vUnitPanelDrawStructureProgress Checked%unitPanelDrawStructureProgress%, Show Structure Progress 
-				Gui, Add, Checkbox, xp y+10 vUnitPanelDrawUnitProgress Checked%unitPanelDrawUnitProgress%, Show Unit Progress 
-				Gui, Add, Checkbox, xp y+10 vUnitPanelDrawUpgradeProgress Checked%unitPanelDrawUpgradeProgress%, Show Upgrade Progress 
+				Gui, Add, Checkbox, xp y+13 vDrawUnitOverlay Checked%DrawUnitOverlay%, Show Unit Count/Production
+				Gui, Add, Checkbox, xp y+13 vSplitUnitPanel ggToggleAlignUnitGUI Checked%SplitUnitPanel% , Split Units/Buildings
+				Gui, Add, Checkbox, % "xp y+13 vUnitPanelAlignNewUnits Checked" unitPanelAlignNewUnits " disabled" !SplitUnitPanel, Align New units
+				Gui, Add, Checkbox, xp y+13 vUnitPanelDrawStructureProgress Checked%unitPanelDrawStructureProgress%, Show Structure Progress 
+				Gui, Add, Checkbox, xp y+13 vUnitPanelDrawUnitProgress Checked%unitPanelDrawUnitProgress%, Show Unit Progress 
+				Gui, Add, Checkbox, xp y+13 vUnitPanelDrawUpgradeProgress Checked%unitPanelDrawUpgradeProgress%, Show Upgrade Progress 
 
 				;Gui, Add, Button, center xp+15 y+10 w100 h30 vUnitPanelFilterButton Gg_GUICustomUnitPanel, Unit Filter
-				Gui, Add, Button, center xp y+10 w70 h30 vUnitPanelFilterButton Gg_GUICustomUnitPanel, Unit Filter
+				Gui, Add, Button, center xp y+17 w70 h30 vUnitPanelFilterButton Gg_GUICustomUnitPanel, Unit Filter
 				Gui, Add, Button, center x+10 yp w70 h30 vUnitPanelGuideButton GgUnitPanelGuide, Guide
 
-			Gui, Add, GroupBox, ys XS+205 w170 h185 section, Overlays Misc:
-		;	Gui, Add, Checkbox, yp+25 xp+10 vOverlayBackgrounds Checked%OverlayBackgrounds% , Show Icon Background						
-				Gui, Add, Text, yp+25 xp+10 w80, Player Identifier:
+			Gui, Add, GroupBox, XS ys+270 w195 h55 section, Player Identifier:	
+			;	Gui, Add, Text, yp+25 xp+10 w80, Player Identifier:
 				if OverlayIdent in 0,1,2,3
 					droplist3_var := OverlayIdent + 1
 				Else droplist3_var := 3 
-				Gui, Add, DropDownList, xp+20 yp+25 vOverlayIdent Choose%droplist3_var%, Hidden|Name (White)|Name (Coloured)|Coloured Race Icon
-			
+				Gui, Add, DropDownList, xp+10 yp+20 vOverlayIdent Choose%droplist3_var%, Hidden|Name (White)|Name (Coloured)|Coloured Race Icon
+		
+			Gui, Add, GroupBox, XS ys+65 w195 h55, Opacity:	
 			; transparency is max 255/0xFF
-			Gui, Add, Text, yp+35 xp-20, Opacity:
-				Gui, Add, DropDownList, xp+50 yp-2 vOpacityOverlayIdent w90 gG_SwapOverlayOpacitySliders, Army||Harvester|Idle Worker|Income|Local Colour|Match/Unit|Minimap|Resource|APM
-					Gui, Add, Slider, ToolTip  NoTicks w140 xp-50 y+10   vOverlayArmyTransparency, % ceil(overlayArmyTransparency / 2.55) 
-					Gui, Add, Slider, ToolTip  NoTicks w140 xp yp  Hidden vOverlayIncomeTransparency, % ceil(overlayIncomeTransparency / 2.55) 
-					Gui, Add, Slider, ToolTip  NoTicks w140 xp yp  Hidden vOverlayMatchTransparency, % ceil(overlayMatchTransparency / 2.55) 
-					Gui, Add, Slider, ToolTip  NoTicks w140 xp yp  Hidden vOverlayResourceTransparency, % ceil(overlayResourceTransparency / 2.55) 
-					Gui, Add, Slider, ToolTip  NoTicks w140 xp yp  Hidden vOverlayHarvesterTransparency, % ceil(overlayHarvesterTransparency / 2.55) 
-					Gui, Add, Slider, ToolTip  NoTicks w140 xp yp  Hidden vOverlayIdleWorkerTransparency, % ceil(overlayIdleWorkerTransparency / 2.55) 
-					Gui, Add, Slider, ToolTip  NoTicks w140 xp yp  Hidden vOverlayLocalColourTransparency, % ceil(overlayLocalColourTransparency / 2.55) 
-					Gui, Add, Slider, ToolTip  NoTicks w140 xp yp  Hidden VOverlayMinimapTransparency, % ceil(overlayMinimapTransparency / 2.55) 
-					Gui, Add, Slider, ToolTip  NoTicks w140 xp yp  Hidden VOverlayAPMTransparency, % ceil(overlayAPMTransparency / 2.55) 
-				Gui, Add, Checkbox, xp y+5 vAPMOverlayMode Check3 Checked%APMOverlayMode%, APM overlay mode
-
-			Gui, Add, GroupBox, xs ys+195 w170 h90, Include Self in:		
-				Gui, Add, Checkbox, xp+10 yp+20 vDrawLocalPlayerIncome Checked%drawLocalPlayerIncome%, Income Overlay
-				Gui, Add, Checkbox, xp y+10 vDrawLocalPlayerResources Checked%drawLocalPlayerResources%, Resource Overlay
-				Gui, Add, Checkbox, xp y+10 vDrawLocalPlayerArmy Checked%drawLocalPlayerArmy%, Army Size Overlay
-
-			Gui, Add, GroupBox, xs ys+295 w170 h120, Refresh Intervals:
-			Gui, Add, Text, XS+20  yp+25, General:
-				Gui, Add, Edit, Number Right xp+80 yp-2 w55 vTT_OverlayRefresh
+			;Gui, Add, Text, yp+35 xs+10, Opacity:
+				Gui, Add, DropDownList, xp+10 yp+20 vOpacityOverlayIdent w100 gG_SwapOverlayOpacitySliders, Army||Harvester|Idle Worker|Income|Local Colour|Match/Unit|Minimap|Resource|APM|Town Hall|Local Upgrades
+					Gui, Add, Slider, ToolTip  NoTicks w80 x+0 yp+2   vOverlayArmyTransparency, % ceil(overlayArmyTransparency / 2.55) 
+					Gui, Add, Slider, ToolTip  NoTicks wp xp yp  Hidden vOverlayIncomeTransparency, % ceil(overlayIncomeTransparency / 2.55) 
+					Gui, Add, Slider, ToolTip  NoTicks wp xp yp  Hidden vOverlayMatchTransparency, % ceil(overlayMatchTransparency / 2.55) 
+					Gui, Add, Slider, ToolTip  NoTicks wp xp yp  Hidden vOverlayResourceTransparency, % ceil(overlayResourceTransparency / 2.55) 
+					Gui, Add, Slider, ToolTip  NoTicks wp xp yp  Hidden vOverlayHarvesterTransparency, % ceil(overlayHarvesterTransparency / 2.55) 
+					Gui, Add, Slider, ToolTip  NoTicks wp xp yp  Hidden vOverlayIdleWorkerTransparency, % ceil(overlayIdleWorkerTransparency / 2.55) 
+					Gui, Add, Slider, ToolTip  NoTicks wp xp yp  Hidden vOverlayLocalColourTransparency, % ceil(overlayLocalColourTransparency / 2.55) 
+					Gui, Add, Slider, ToolTip  NoTicks wp xp yp  Hidden vOverlayMinimapTransparency, % ceil(overlayMinimapTransparency / 2.55) 
+					Gui, Add, Slider, ToolTip  NoTicks wp xp yp  Hidden vOverlayAPMTransparency, % ceil(overlayAPMTransparency / 2.55) 
+					Gui, Add, Slider, ToolTip  NoTicks wp xp yp  Hidden vOverlayMacroTownHallTransparency, % ceil(overlayMacroTownHallTransparency / 2.55) 
+					Gui, Add, Slider, ToolTip  NoTicks wp xp yp  Hidden vOverlayLocalUpgradesTransparency, % ceil(overlayLocalUpgradesTransparency / 2.55) 
+				
+			Gui, Add, GroupBox, XS+220 ys w170 h120 section, Refresh Intervals:
+			Gui, Add, Text, xs+10  yp+25, General:
+				Gui, Add, Edit, Number Right xp+90 yp-2 w55 vTT_OverlayRefresh
 					Gui, Add, UpDown,  Range50-5000 vOverlayRefresh, %OverlayRefresh%
-			Gui, Add, Text, XS+20 yp+35, Unit Panel:
-				Gui, Add, Edit, Number Right xp+80 yp-2 w55 vTT_UnitOverlayRefresh
+			Gui, Add, Text, xs+10 yp+35, Unit Panel:
+				Gui, Add, Edit, Number Right xp+90 yp-2 w55 vTT_UnitOverlayRefresh
 					Gui, Add, UpDown,  Range100-15000 vUnitOverlayRefresh, %UnitOverlayRefresh%
-			Gui, Add, Text, XS+20 yp+35, MiniMap:
-				Gui, Add, Edit, Number Right xp+80 yp-2 w55 vTT_MiniMapRefresh
-					Gui, Add, UpDown,  Range50-1500 vMiniMapRefresh, %MiniMapRefresh%				
+			Gui, Add, Text, xs+10 yp+35, MiniMap:
+				Gui, Add, Edit, Number Right xp+90 yp-2 w55 vTT_MiniMapRefresh
+					Gui, Add, UpDown,  Range50-1500 vMiniMapRefresh, %MiniMapRefresh%	
 
 	Gui, Tab, Hotkeys 
 		
-		Gui, add, GroupBox, y+25 w280 h330, Overlay Hotkeys
+		Gui, add, GroupBox, y+25 w280 h305, Overlay Hotkeys
 
 			Gui, Add, Text, section xp+15 yp+25, Temp. Hide MiniMap:
 			Gui, Add, Edit, Readonly yp-2 xp+120 center w85 R1 vTempHideMiniMapKey gedit_hotkey, %TempHideMiniMapKey%
@@ -4149,9 +4160,9 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 			Gui, Add, Edit, Readonly yp-2 xp+120 center w85 R1 vToggleUnitOverlayKey gedit_hotkey, %ToggleUnitOverlayKey%
 			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#ToggleUnitOverlayKey,  Edit 		
 
-			Gui, Add, Text, xs yp+35, Cycle Overlays:
-			Gui, Add, Edit, Readonly yp-2 xp+120 center w85 R1 vCycleOverlayKey gedit_hotkey, %CycleOverlayKey%
-			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#CycleOverlayKey,  Edit 		
+			;Gui, Add, Text, xs yp+35, Cycle Overlays:
+			;Gui, Add, Edit, Readonly yp-2 xp+120 center w85 R1 vCycleOverlayKey gedit_hotkey, %CycleOverlayKey%
+			;Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#CycleOverlayKey,  Edit 		
 
 			Gui, Add, Text, xs yp+35, Cycle Identifier:
 			Gui, Add, Edit, Readonly yp-2 xp+120 center w85 R1 vToggleIdentifierKey gedit_hotkey, %ToggleIdentifierKey%
@@ -4161,7 +4172,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 			gui, font, Norm 
 			Gui, Add, Edit, Readonly yp-2 xp+120 center w85 R1 vAdjustOverlayKey gedit_hotkey, %AdjustOverlayKey%
 			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#AdjustOverlayKey,  Edit 
-			Gui, Add, Text, xs y+25, * See 'Info' Tab for Instructions		
+			Gui, Add, Text, xs y+30, * See 'Info' Tab for Instructions		
 
 	Gui, Tab, Info
 	;	Gui, Add, Text, section x+10 y+15,	
@@ -4273,8 +4284,8 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 
 		DrawWorkerOverlay_TT := "Displays your current harvester count with a worker icon"
 		DrawIdleWorkersOverlay_TT := "While idle workers exist, a worker icon will be displayed with the current idle count.`n`nThe size and position can be changed easily so that it grabs your attention."
-		DrawUnitOverlay_TT := "Displays an overlay similar to the 'observer panel', listing the current and in-production unit counts.`n`nUse the 'unit panel filter' to selectively remove/display units."
-		DrawUnitUpgrades_TT := "Displays the current enemy upgrades."
+		DrawUnitOverlay_TT := "Displays an overlay similar to the 'observer panel', listing the current and in-production unit counts.`n`nUse the 'unit panel filter' to selectively remove/display units.`n`nNote: To disable the match overlay uncheck both 'Show Upgrades' and 'Show Unit Count/Production'."
+		DrawUnitUpgrades_TT := "Displays the current enemy upgrades.`n`nNote: To disable the match overlay uncheck both 'Show Upgrades' and 'Show Unit Count/Production'."
 		UnitPanelFilterButton_TT := "Allows units to be selectively removed from the overlay."
 
 		ToggleAutoWorkerState_Key_TT := #ToggleAutoWorkerState_Key_TT := "Toggles (enables/disables) this function for the CURRENT match.`n`nWill only work during a match"
@@ -4459,7 +4470,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		
 		OpacityOverlayIdent_TT := "Select the overlay of interest then use the slider below to alter its transparency."
 
-		loopList := "overlayIncomeTransparency,overlayMatchTransparency,overlayResourceTransparency,overlayArmyTransparency,overlayHarvesterTransparency,overlayIdleWorkerTransparency,overlayLocalColourTransparency,overlayMinimapTransparency"
+		loopList := "overlayIncomeTransparency,overlayMatchTransparency,overlayResourceTransparency,overlayArmyTransparency,overlayHarvesterTransparency,overlayIdleWorkerTransparency,overlayLocalColourTransparency,overlayMinimapTransparency,overlayMacroTownHallTransparency,overlayLocalUpgradesTransparency"
 		loop, parse, loopList, `,
 			%A_LoopField%_TT := "Sets the transparency of the overlay."
 								. "`n`n100 = Fully opaque"
@@ -4500,7 +4511,24 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 								. "`nYellow - Nuclear strike"
 								. "`nRed - Attack move"
 
-		drawLocalPlayerIncome_TT := drawLocalPlayerResources_TT := drawLocalPlayerArmy_TT := "Displays your own values at the bottom of the overlay."						
+		drawLocalPlayerIncome_TT := "Displays your own values at the bottom of the income overlay."	
+		drawLocalPlayerResources_TT := "Displays your own values at the bottom of the resources overlay."						
+		drawLocalPlayerArmy_TT := "Displays your own values at the bottom of the army overlay."	
+
+		localUpgradesItemsPerRow_TT := "Defines the items per row displayed in the 'Local Upgrades' overlay."
+									. "`n`nValues:"
+									. "`n0: All items are drawn along a single row"
+									. "`n1-16: Each row will be limited to displaying this number of items."
+									. "`n`nNote: A setting of 1 effectively puts the overlay into vertical or column mode."
+
+		DrawMacroTownHallOverlay_TT := "Displays basic macro attributes for your current race."
+									. "`n`nTerran: Available scans/mules."
+									. "`nProtoss: Available chrono boosts."
+									. "`nZerg: Available larva."
+									. "`n`nNote: Non-Control-grouped town halls will not be included."										
+		DrawLocalUpgradesOverlay_TT := "Displays your current upgrade items."
+									. "`nThis includes morphing hatches, lairs, spires, and command centres."
+
 		APMOverlayMode_TT := "Set the drawing mode for the APM overlay."
 							. "`n`n Unchecked = Enemies"
 							. "`n Checked = Only Self APM"
@@ -4616,6 +4644,8 @@ GuiControl, % "show" instr(selection, "Idle Worker"), overlayIdleWorkerTranspare
 GuiControl, % "show" instr(selection, "Local Colour"), overlayLocalColourTransparency
 GuiControl, % "show" instr(selection, "Minimap"), overlayMinimapTransparency
 GuiControl, % "show" instr(selection, "APM"), overlayAPMTransparency
+GuiControl, % "show" instr(selection, "Town Hall"), overlayMacroTownHallTransparency
+GuiControl, % "show" instr(selection, "Local Upgrades"), overlayLocalUpgradesTransparency
 return
 
 gToggleAlignUnitGUI:
@@ -7381,7 +7411,7 @@ CreateHotkeys()
 		hotkey, %ToggleArmySizeOverlayKey%, Overlay_Toggle, on
 		hotkey, %ToggleWorkerOverlayKey%, Overlay_Toggle, on
 		hotkey, %ToggleUnitOverlayKey%, Overlay_Toggle, on
-		hotkey, %CycleOverlayKey%, Overlay_Toggle, on
+		; hotkey, %CycleOverlayKey%, Overlay_Toggle, on
 
 	if race_reading 
 		hotkey, %read_races_key%, find_races, on
@@ -7487,7 +7517,7 @@ disableAllHotkeys()
 		try hotkey, %ToggleArmySizeOverlayKey%, off			
 		try hotkey, %ToggleWorkerOverlayKey%, off	
 		try hotkey, %ToggleUnitOverlayKey%, off						
-		try hotkey, %CycleOverlayKey%, off		
+		; try hotkey, %CycleOverlayKey%, off		
 		Try	hotkey, %read_races_key%, off
 		try	hotkey, %inject_start_key%, off
 		try	hotkey, %inject_reset_key%, off	
@@ -10959,8 +10989,8 @@ uStruct: 38d3000 - 38d31c0
 
 
 
-
-;f1::
+*/
+f2::
 loop 
 {
 	MouseGetPos, x, y, WinTitle, control, 2

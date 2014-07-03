@@ -3042,7 +3042,8 @@ areOverlaysWaitingToRedraw()
 {
 	global 
 	if (!ReDrawIncome || !ReDrawResources || !ReDrawArmySize || !ReDrawWorker 
-	|| !ReDrawIdleWorkers || !RedrawUnit || !ReDrawLocalPlayerColour || !ReDrawMiniMap)
+	|| !ReDrawIdleWorkers || !RedrawUnit || !ReDrawLocalPlayerColour || !ReDrawMiniMap
+	|| !RedrawMacroTownHall || !RedrawLocalUpgrades)
 		return False 
 	return True 
 }
@@ -3064,10 +3065,12 @@ DestroyOverlays()
 	Try Gui, LocalPlayerColourOverlay: Destroy			
 	Try Gui, UnitOverlay: Destroy	
 	Try Gui, MacroTownHall: Destroy	
+	Try Gui, LocalUpgradesOverlay: Destroy	
 	
 	; as these arent in the minimap thread, if that call it, it will jump out
 	local lOverlayFunctions := "DrawAPMOverlay,DrawIncomeOverlay,DrawUnitOverlay,DrawResourcesOverlay"
 				. ",DrawArmySizeOverlay,DrawWorkerOverlay,DrawIdleWorkersOverlay,DrawMacroTownHallOverlay"
+				. ",DrawLocalUpgradesOverlay"
 	loop, parse, lOverlayFunctions, `,
 	{
 		; telling the function to destroy itself is more reliable that just using gui destroy
@@ -3076,7 +3079,8 @@ DestroyOverlays()
 	}
 	ReDrawOverlays := ReDrawAPM := ReDrawIncome := ReDrawResources 
 				:= ReDrawArmySize := ReDrawWorker := ReDrawIdleWorkers 
-				:= RedrawUnit := ReDrawLocalPlayerColour := ReDrawMiniMap := RedrawMacroTownHall := True
+				:= RedrawUnit := ReDrawLocalPlayerColour := ReDrawMiniMap 
+				:= RedrawMacroTownHall := RedrawLocalUpgrades := True
 	return True ; used by shell to check thread actually ran the function
 }
 
@@ -3774,7 +3778,7 @@ readConfigFile()
 	; This function will get return  the x,y coordinates for the top left, and bottom right of the 
 	; desktop screen (the area on both monitors)
 	DesktopScreenCoordinates(XminScreen, YminScreen, XmaxScreen, YmaxScreen)
-	list := "APMOverlay,IncomeOverlay,ResourcesOverlay,ArmySizeOverlay,WorkerOverlay,IdleWorkersOverlay,UnitOverlay,LocalPlayerColourOverlay,APMOverlay,MacroTownHallOverlay"
+	list := "APMOverlay,IncomeOverlay,ResourcesOverlay,ArmySizeOverlay,WorkerOverlay,IdleWorkersOverlay,UnitOverlay,LocalPlayerColourOverlay,MacroTownHallOverlay,LocalUpgradesOverlay"
 	loop, parse, list, `,
 	{
 		IniRead, Draw%A_LoopField%, %config_file%, %section%, Draw%A_LoopField%, 0
@@ -3808,7 +3812,7 @@ readConfigFile()
 	IniRead, ToggleWorkerOverlayKey, %config_file%, %section%, ToggleWorkerOverlayKey, <#W	
 	IniRead, AdjustOverlayKey, %config_file%, %section%, AdjustOverlayKey, Home
 	IniRead, ToggleIdentifierKey, %config_file%, %section%, ToggleIdentifierKey, <#Q
-	IniRead, CycleOverlayKey, %config_file%, %section%, CycleOverlayKey, <#Enter
+	;IniRead, CycleOverlayKey, %config_file%, %section%, CycleOverlayKey, <#Enter
 	IniRead, OverlayIdent, %config_file%, %section%, OverlayIdent, 2
 	IniRead, SplitUnitPanel, %config_file%, %section%, SplitUnitPanel, 1
 	IniRead, unitPanelAlignNewUnits, %config_file%, %section%, unitPanelAlignNewUnits, 1
@@ -3836,6 +3840,10 @@ readConfigFile()
 	IniRead, overlayLocalColourTransparency, %config_file%, %section%, overlayLocalColourTransparency, 255
 	IniRead, overlayMinimapTransparency, %config_file%, %section%, overlayMinimapTransparency, 255
 	IniRead, overlayMacroTownHallTransparency, %config_file%, %section%, overlayMacroTownHallTransparency, 255
+	IniRead, overlayLocalUpgradesTransparency, %config_file%, %section%, overlayLocalUpgradesTransparency, 255
+	
+	IniRead, localUpgradesItemsPerRow, %config_file%, %section%, localUpgradesItemsPerRow, 6
+
 
 	; [UnitPanelFilter]
 	section := "UnitPanelFilter"
