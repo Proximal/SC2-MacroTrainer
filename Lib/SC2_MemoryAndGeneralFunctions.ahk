@@ -499,6 +499,13 @@ isInControlGroup(group, unit)
 	Return 0			
 }	;	ctrl_unit_number := ReadMemory(B_CtrlGroupOneStructure + S_CtrlGroup * (group - 1) + O_scUnitIndex +(A_Index - 1) * S_scStructure, GameIdentifier, 2)/4
 */
+; Could dump the entire group (S_CtrlGroup). But that seems wasteful 
+numgetControlGroupMemory(BYREF MemDump, group)
+{
+	if count := getControlGroupCount(Group)
+		ReadRawMemory(B_CtrlGroupOneStructure + S_CtrlGroup * (group - 1) + O_scUnitIndex, GameIdentifier, MemDump, count * S_scStructure)
+	return count
+}
 
 getCtrlGroupedUnitIndex(group, i=0)
 {	global
@@ -851,12 +858,12 @@ getPlayerCurrentAPM(Player="")
 isUnderConstruction(building) ; starts @ 0 and only for BUILDINGS!
 { 	global  ; 0 means its completed
 ;	Return ReadMemory(B_uStructure + (building * S_uStructure) + O_uBuildStatus, GameIdentifier) ;- worked fine
-	return getUnitTargetFilterFast(building) & aUnitTargetFilter.UnderConstruction
+	return getUnitTargetFilter(building) & aUnitTargetFilter.UnderConstruction
 }
 
 isUnitAStructure(unit)
 {	GLOBAL 
-	return getUnitTargetFilterFast(unit) & aUnitTargetFilter.Structure
+	return getUnitTargetFilter(unit) & aUnitTargetFilter.Structure
 }
 
 getUnitEnergy(unit)
@@ -945,6 +952,10 @@ isTransportDropQueued(transportIndex)
 	}
 	return 0
 }
+
+; Patrol move can shift queue multiple patrol waypoints/paths but only the current one or first one (if there are other preceding move commands) will be returned.
+; If a another command (move/attack etc) is queued after a multi waypoint patrol, then SC will remove the extra patrol points and add
+; the move command. This function will return all of these correctly. 
 
 getUnitQueuedCommands(unit, byRef aQueuedMovements)
 {
@@ -2023,7 +2034,7 @@ numGetSelectionSorted(ByRef aSelection, ReverseOrder := False)
 		; unit panel order (backwards to how they would normally be enumerated)
 		priority := -1 * getUnitSubGroupPriority(unitIndex := numget(MemDump,(A_Index-1) * S_scStructure + O_scUnitIndex , "Int") >> 18)
 		, unitId := getUnitType(unitIndex)
-		, subGroupAlias := getUnitTargetFilterFast(unitIndex) & aUnitTargetFilter.Hallucination 
+		, subGroupAlias := getUnitTargetFilter(unitIndex) & aUnitTargetFilter.Hallucination 
 													? unitId  - .1 ; Dirty hack for hallucinations
 													: (aUnitSubGroupAlias.hasKey(unitId) 
 															? aUnitSubGroupAlias[unitId] 
@@ -2110,7 +2121,7 @@ numGetSelectionBubbleSort(ByRef aSelection, ReverseOrder := False)
 								; If the unit isn't hallucinated check if check has a subgroup alias
 								; if it does, then assign that subgroup alias, otherwise assign the unitID/type
 
-								, "subGroup": getUnitTargetFilterFast(unit) & aUnitTargetFilter.Hallucination 
+								, "subGroup": getUnitTargetFilter(unit) & aUnitTargetFilter.Hallucination 
 												? unitId  - .1 ; Dirty hack for hallucinations
 												: (aUnitSubGroupAlias.hasKey(unitId) 
 														? aUnitSubGroupAlias[unitId] 
@@ -2192,54 +2203,15 @@ getMaxPageValue(count := "")
 	return (i := Ceil(count / 24)) > 5 ? 5 : i - 1
 }
 
-/*
-numgetUnitTargetFilter(ByRef Memory, unit)
-{
-	local result 		;ahk has a problem with Uint64
-	loop 8 
-		result += numget(Memory, Unit * S_uStructure + O_uTargetFilter + A_index-1 , "Uchar") << 8*(A_Index-1)
-	return result
-  ; return numget(Memory, Unit * S_uStructure + O_uTargetFilter, "UDouble") ;not double!
-}
-*/
 numgetUnitTargetFilter(ByRef Memory, unit)
 {
 	return numget(Memory, Unit * S_uStructure + O_uTargetFilter, "Int64")
 }
+
 getUnitTargetFilter(Unit) ;starts @ 0 i.e. first unit at 0
 {
 	return ReadMemory(B_uStructure + Unit * S_uStructure + O_uTargetFilter, GameIdentifier, 8)
 }
-getUnitTargetFilterFast(unit)	;only marginally faster ~12%
-{	
-	return ReadMemory(B_uStructure + Unit * S_uStructure + O_uTargetFilter, GameIdentifier, 8)
-}
-
-/*
-getUnitTargetFilter(Unit) ;starts @ 0 i.e. first unit at 0
-{	local Memory, result 		;ReadRawMemory/numget is only ~11% faster
-
-	ReadRawMemory(B_uStructure + Unit * S_uStructure + O_uTargetFilter, GameIdentifier, Memory, 8)
-	loop 8 
-		result += numget(Memory, A_index-1 , "Uchar") << 8*(A_Index-1)
-	return result
-;	Return	ReadMemoryOld((B_uStructure + (Unit * S_uStructure)) + O_uTargetFilter, GameIdentifier, 8) ;This is required for the reading of the 8 bit target filter - cant work out how to do this properly with numget without looping a char
-}
-*/
-
-
-; AHK cant read 64 bit unsigned integers properly,
-; but doesnt really matter as using bitmask on them
-; and even then the bitmasks are less than the extreme non-supported values
-/*
-getUnitTargetFilterFast(unit)	;only marginally faster ~12%
-{	local Memory, result
-	ReadRawMemory(B_uStructure + Unit * S_uStructure + O_uTargetFilter, GameIdentifier, Memory, 8)
-	loop 8 
-		result += numget(Memory, A_index-1 , "Uchar") << 8*(A_Index-1)
-	return result
-}
-*/
 
 numgetUnitOwner(ByRef Memory, Unit)
 { global 
@@ -2803,7 +2775,7 @@ getUnitModelInfo(pUnitModel)
 
 isUnitDead(unit)
 { 	global 
-	return	getUnitTargetFilterFast(unit) & DeadFilterFlag
+	return	getUnitTargetFilter(unit) & DeadFilterFlag
 }
 
 
@@ -3091,10 +3063,11 @@ DestroyOverlays()
 	Try Gui, idleWorkersOverlay: Destroy			
 	Try Gui, LocalPlayerColourOverlay: Destroy			
 	Try Gui, UnitOverlay: Destroy	
+	Try Gui, MacroTownHall: Destroy	
 	
 	; as these arent in the minimap thread, if that call it, it will jump out
 	local lOverlayFunctions := "DrawAPMOverlay,DrawIncomeOverlay,DrawUnitOverlay,DrawResourcesOverlay"
-				. ",DrawArmySizeOverlay,DrawWorkerOverlay,DrawIdleWorkersOverlay"
+				. ",DrawArmySizeOverlay,DrawWorkerOverlay,DrawIdleWorkersOverlay,DrawMacroTownHallOverlay"
 	loop, parse, lOverlayFunctions, `,
 	{
 		; telling the function to destroy itself is more reliable that just using gui destroy
@@ -3103,7 +3076,7 @@ DestroyOverlays()
 	}
 	ReDrawOverlays := ReDrawAPM := ReDrawIncome := ReDrawResources 
 				:= ReDrawArmySize := ReDrawWorker := ReDrawIdleWorkers 
-				:= RedrawUnit := ReDrawLocalPlayerColour := ReDrawMiniMap := True
+				:= RedrawUnit := ReDrawLocalPlayerColour := ReDrawMiniMap := RedrawMacroTownHall := True
 	return True ; used by shell to check thread actually ran the function
 }
 
@@ -3778,6 +3751,8 @@ readConfigFile()
 	IniRead, RemoveDamagedUnitsCtrlGroup, %config_file%, %section%, RemoveDamagedUnitsCtrlGroup, 9
 	IniRead, RemoveDamagedUnitsHealthLevel, %config_file%, %section%, RemoveDamagedUnitsHealthLevel, 90
 	RemoveDamagedUnitsHealthLevel := round(RemoveDamagedUnitsHealthLevel / 100, 3)
+	IniRead, RemoveDamagedUnitsShieldLevel, %config_file%, %section%, RemoveDamagedUnitsShieldLevel, 15
+	RemoveDamagedUnitsShieldLevel := round(RemoveDamagedUnitsShieldLevel / 100, 3)
 
 	IniRead, EasyUnloadTerranEnable, %config_file%, %section%, EasyUnloadTerranEnable, 0
 	IniRead, EasyUnloadProtossEnable, %config_file%, %section%, EasyUnloadProtossEnable, 0
@@ -3799,7 +3774,7 @@ readConfigFile()
 	; This function will get return  the x,y coordinates for the top left, and bottom right of the 
 	; desktop screen (the area on both monitors)
 	DesktopScreenCoordinates(XminScreen, YminScreen, XmaxScreen, YmaxScreen)
-	list := "APMOverlay,IncomeOverlay,ResourcesOverlay,ArmySizeOverlay,WorkerOverlay,IdleWorkersOverlay,UnitOverlay,LocalPlayerColourOverlay,APMOverlay"
+	list := "APMOverlay,IncomeOverlay,ResourcesOverlay,ArmySizeOverlay,WorkerOverlay,IdleWorkersOverlay,UnitOverlay,LocalPlayerColourOverlay,APMOverlay,MacroTownHallOverlay"
 	loop, parse, list, `,
 	{
 		IniRead, Draw%A_LoopField%, %config_file%, %section%, Draw%A_LoopField%, 0
@@ -3860,6 +3835,7 @@ readConfigFile()
 	IniRead, overlayIdleWorkerTransparency, %config_file%, %section%, overlayIdleWorkerTransparency, 255
 	IniRead, overlayLocalColourTransparency, %config_file%, %section%, overlayLocalColourTransparency, 255
 	IniRead, overlayMinimapTransparency, %config_file%, %section%, overlayMinimapTransparency, 255
+	IniRead, overlayMacroTownHallTransparency, %config_file%, %section%, overlayMacroTownHallTransparency, 255
 
 	; [UnitPanelFilter]
 	section := "UnitPanelFilter"
@@ -4236,6 +4212,7 @@ Some buff strings:
 	CloakingField
 	MothershipCoreApplyPurifyAB  (Photon overcharge)
 
+ This needs more investigation and won't work for all buffs e.g. larva perhaps only timer buffs?
 */
 
 getUnitBuff(unit, byRef buffNameOrObject)
@@ -4288,6 +4265,18 @@ getUnitBuff(unit, byRef buffNameOrObject)
 		return buffCount ; cant use max.Index() as strings are keys
 	return 0 ; Specified buff not applied/found
 }
+
+; This seems to work for hatches, lairs and hives even when building/researching
+getTownHallLarvaCount(unit)
+{
+	if !buffArray := ReadMemory(B_uStructure + unit * S_uStructure + O_uBuffPointer, GameIdentifier)
+		return 0
+	if !p :=  ReadMemory(buffArray + 0x8, GameIdentifier)
+		return 0
+	; At +0x68 is a pointer to an array which stores the unit indexes for the spawned larva (indexes must be >> 18)
+	return ReadMemory(p + 0x5C, GameIdentifier)
+}
+
 
 ; Unit must be a nexus else function returns 'true' due to readMemory returning "Fail"
 isPhotonOverChargeActive(unit)

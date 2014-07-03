@@ -33,7 +33,7 @@ CreatepBitmaps(a_pBitmap, aUnitID, MatrixColour)
 global aUnitInfo := []
 readConfigFile(), hasReadConfig := True
 global aOverlayTitles := []
-for i, overlay in ["IncomeOverlay", "ResourcesOverlay", "ArmySizeOverlay", "WorkerOverlay", "IdleWorkersOverlay", "UnitOverlay", "LocalPlayerColourOverlay", "APMOverlay"] ; here cos it can get non overlay titles
+for i, overlay in ["IncomeOverlay", "ResourcesOverlay", "ArmySizeOverlay", "WorkerOverlay", "IdleWorkersOverlay", "UnitOverlay", "LocalPlayerColourOverlay", "APMOverlay", "MacroTownHallOverlay"] ; here cos it can get non overlay titles
 	aOverlayTitles[overlay] := getRandomString_Az09(10, 20)
 
 global MT_CurrentGame 
@@ -87,6 +87,8 @@ If (WinActive(GameIdentifier) || Dragoverlay) ;really only needed to ressize/sca
 		DrawIdleWorkersOverlay(ReDrawIdleWorkers, IdleWorkersOverlayScale, dragOverlay)
 	if (DrawLocalPlayerColourOverlay && (GameType != "1v1" && GameType != "FFA"))   ;easier just to redraw it each time as otherwise have to change internal for when dragging
 		DrawLocalPlayerColour(ReDrawLocalPlayerColour, LocalPlayerColourOverlayScale, DragOverlay)	
+	If DrawMacroTownHallOverlay || 1
+		DrawMacroTownHallOverlay(RedrawMacroTownHall, MacroTownHallOverlayScale, DragOverlay)
 }
 ; sometimes the overlay timer doesnt work, so this is a backup which ensure theyre destroyed
 ; I think it fails sometimes because its inside an overlay function or something
@@ -1072,7 +1074,7 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 	       Continue
 		owner := numgetUnitOwner(MemDump, Unit) 
 
-	    if  (aPlayer[Owner, "Team"] <> aLocalPlayer["Team"] && Owner) || Owner
+	    if  (aPlayer[Owner, "Team"] <> aLocalPlayer["Team"] && Owner) ;|| Owner
 	    {
 	    	pUnitModel := numgetUnitModelPointer(MemDump, Unit)
 	    	Type := numgetUnitModelType(pUnitModel)
@@ -1182,7 +1184,7 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 																					, "count": round(aEnemyUnitConstruction[Owner, Priority, MorphingType].count) + 1 }
 					}
 					; hatchery, lair, and hive have the same priority - 2, so just use the hatches priority as it had to already exist 
-					else if (Type = aUnitID["Hatchery"] || aUnitID["Lair"] || aUnitID["Spire"]) && MorphingType := isHatchLairOrSpireMorphing(unit)
+					else if (Type = aUnitID["Hatchery"] || Type = aUnitID["Lair"] || Type = aUnitID["Spire"]) && MorphingType := isHatchLairOrSpireMorphing(unit, Type)
 					{
 						aUnitInfo[MorphingType, "isStructure"] := True
 						progress := getUnitMorphTime(unit, type)
@@ -1917,8 +1919,274 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 
 	Update: I believe this was due to calling gdi graphicsClear (which isn't required)
 */
+townHallRedraw := True
+loop 
+{
+	DrawMacroTownHallOverlay(townHallRedraw, 2, 0)
+}
+return 
 
+DrawMacroTownHallOverlay(ByRef Redraw, UserScale=1, Drag=0)
+{
+	global overlayMacroTownHallTransparency, MacroTownHallOverlayX, MacroTownHallOverlayY
+	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := False, aTownHalls := []
 
+	;if (aLocalPlayer.Race != "Terran" || aLocalPlayer.Race != "Protoss")
+	;msgbox % MacroTownHallOverlayX " | " MacroTownHallOverlayY " | " overlayMacroTownHallTransparency
+	If (Redraw = -1)
+	{
+		Try Gui, MacroTownHall: Destroy
+		overlayCreated := False
+		Redraw := 0
+		Return
+	}	
+	Else if (ReDraw AND WinActive(GameIdentifier))
+	{
+		Try Gui, MacroTownHall: Destroy
+		overlayCreated := False
+		Redraw := 0
+	}	
+	If (!overlayCreated)
+	{
+		Gui, MacroTownHall: -Caption Hwndhwnd1 +E0x20 +E0x80000 +LastFound +ToolWindow +AlwaysOnTop
+		Gui, MacroTownHall: Show, NA X%MacroTownHallOverlayX% Y%MacroTownHallOverlayY% W400 H400, % aOverlayTitles["MacroTownHallOverlay"]
+		OnMessage(0x201, "OverlayMove_LButtonDown")
+		OnMessage(0x20A, "OverlayResize_WM_MOUSEWHEEL")
+		overlayCreated := True
 
+		aTownHalls := {	aUnitID.OrbitalCommand: True ; No flying as they can't scan/mule
+					, 	aUnitID.Nexus: True
+					, 	aUnitID.Hatchery : True, aUnitID.Lair : True, aUnitID.Hive : True}
+	}
+	If (Drag AND !DragPrevious)
+	{	
+		DragPrevious := True
+		Gui, MacroTownHall: -E0x20
+	}
+	Else if (!Drag AND DragPrevious)
+	{	
+		DragPrevious := False
+		Gui, MacroTownHall: +E0x20 +LastFound
+		WinGetPos, MacroTownHallOverlayX, MacroTownHallOverlayY		
+		IniWrite, %MacroTownHallOverlayX%, %config_file%, Overlays, MacroTownHallOverlayX
+		Iniwrite, %MacroTownHallOverlayY%, %config_file%, Overlays, MacroTownHallOverlayY
+	}
 
-		
+	if (aLocalPlayer.Race = "Terran")
+		pBitmap := a_pBitmap[aUnitID.OrbitalCommand], energyRequired := 50, textColour := " cFFCD00FF "
+	else if (aLocalPlayer.Race = "Protoss")
+		pBitmap := a_pBitmap[aUnitID.Nexus], energyRequired := 25, textColour := " cFFCD00FF "
+	else pBitmap := a_pBitmap[aUnitID.Larva], textColour := " cFFFFFFFF "
+
+	macroCount := 0
+	
+	loop 10
+	{
+		loop, % numgetControlGroupMemory(MemDump, A_Index - 1)
+		{
+			if aTownHalls.HasKey(getUnitType((unit := NumGet(MemDump, (A_Index - 1) * 4, "UInt") >> 18)))
+			&& isUnitLocallyOwned(unit) && !(getUnitTargetFilter(unit) & (aUnitTargetFilter.Dead | aUnitTargetFilter.UnderConstruction))
+				macroCount += aLocalPlayer.Race = "Terran" || aLocalPlayer.Race = "Protoss" ? Floor(getUnitEnergy(unit)/energyRequired) : getTownHallLarvaCount(unit)
+		}
+	}
+	hbm := CreateDIBSection(400, 400)
+	, hdc := CreateCompatibleDC()
+	, obm := SelectObject(hdc, hbm)
+	, G := Gdip_GraphicsFromHDC(hdc)
+	, Gdip_SetInterpolationMode(G, 2)
+	, SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
+	, Width *= UserScale *.4, Height *= UserScale *.4
+	, stringData := Gdip_TextToGraphics(G, macroCount, "x"(Width+2*UserScale) "y" (Height)  textColour "r4 s" 18*UserScale, Font)
+	StringSplit, stringData, stringData, | ; stringData2 = y pos - stringData4 = height (rectangle)
+	if (aLocalPlayer.Race = "Terran" || aLocalPlayer.Race = "Protoss" )
+		Gdip_DrawImage(G, pBitmap, 0, stringData2 - (stringData4/2), Width, Height, 0, 0, SourceWidth, SourceHeight)
+	else 
+		Gdip_DrawImage(G, pBitmap, 0, stringData2 - (stringData4/4), Width, Height, 0, 0, SourceWidth, SourceHeight)
+	Gdip_DeleteGraphics(G)	
+
+	; Don't have to worry about size checks here, as not passing these params to updateLayeredWindow()
+	UpdateLayeredWindow(hwnd1, hdc,,,,, overlayMacroTownHallTransparency)
+	, SelectObject(hdc, obm) 
+	, DeleteObject(hbm)  
+	, DeleteDC(hdc) 
+	Return
+}	
+
+getLocalUpgrades(byRef aUpgrades)
+{
+	static aUpgradeStructures := [], aMorphingStructures := []
+	
+	if !aUpgradeStructures.MaxIndex()
+	{
+		; Could also add MSC--> MotherShip and nexux MSC production.
+		upgradeStructures := "CommandCenter|EngineeringBay|Armory|BarracksTechLab|FactoryTechLab|StarportTechLab|GhostAcademy|FusionCore"
+					. "|Forge|CyberneticsCore|TwilightCouncil|FleetBeacon|RoboticsBay|TemplarArchive"
+					. "|Hatchery|Lair|Hive|SpawningPool|EvolutionChamber|RoachWarren|BanelingNest|HydraliskDen|InfestationPit|Spire|GreaterSpire|UltraliskCavern"
+		morphingStructures := "CommandCenter|Hatchery|Lair|Spire"
+		aUpgradeStructures := []
+		loop, parse, upgradeStructures, |
+		{
+			aUpgradeStructures[aUnitID[A_LoopField]] :=  True ; Don't use insert because integer keys derp derp.
+		}
+		aMorphingStructures := []
+		loop, parse, morphingStructures, |
+			aMorphingStructures[aUnitID[A_LoopField]] :=  True
+	}
+
+	aUpgrades := [] ; Key is unitName so a for loop will iterate alphabetically 
+	deadOrUnderConstruction := aUnitTargetFilter.Dead | aUnitTargetFilter.UnderConstruction ; comparing against single variable is faster than two object values.
+	loop, % DumpUnitMemory(MemDump)
+	{
+	    if (numgetUnitTargetFilter(MemDump, unit := A_Index - 1) & deadOrUnderConstruction)
+	    || numgetUnitOwner(MemDump, Unit) != aLocalPlayer["Slot"]
+	    || !aUpgradeStructures.HasKey(Type := numgetUnitModelType(numgetUnitModelPointer(MemDump, Unit)))
+	       Continue
+	    if aMorphingStructures.HasKey(Type)
+	    {
+	    	if (Type = aUnitID["CommandCenter"] && MorphingType := isCommandCenterMorphing(unit))
+	    	|| ((Type = aUnitID["Hatchery"] || Type = aUnitID["Lair"] || Type = aUnitID["Spire"]) && (MorphingType := isHatchLairOrSpireMorphing(unit, Type)))
+	    	{
+	    		progress := getUnitMorphTime(unit, type)
+	    		name := aUnitName[MorphingType]	 
+	    		; The "zzzz" is a simply dirty hack so these morphing upgrades are drawn last   
+	    		; This means you can't use the 	aUpgrades index/key to look stuff up when drawing	
+	    		aUpgrades["zzzz" name] := {Name: name, Progress: aUpgrades["zzzz" name].progress > progress ? aUpgrades["zzzz" name].progress : progress
+	    						, count: round(aUpgrades["zzzz" name].Count) + 1}
+	    		hasItems := True
+	    		continue ; as Morphings so won't have any production items
+	    	}
+	    	else if (Type = aUnitID["CommandCenter"])
+	    		continue ; as don't want to show SCVs
+	    }
+
+		if (queueSize := getStructureProductionInfo(unit, type, aQueueInfo))
+		{
+			for i, aProduction in aQueueInfo
+			{
+				; aProduction.Item is unit string so lookup for things like Queen or SCV will fail
+				; this count for upgrades allows the number of nukes being produced to be displayed
+				; upgrade/research item.  
+				if a_pBitmap.haskey(aProduction.Item) 
+				{
+					hasItems := True
+					name := aProduction.Item
+					progress := aProduction.progress
+	    			aUpgrades[name] := {Name: name, Progress: aUpgrades[name].progress > progress ? aUpgrades[name].progress : progress
+	    								, count: round(aUpgrades[name].Count) + 1}
+					; Lets add the chrono for protoss later
+					;if chronoed
+					;	aMiscUnitPanelInfo[owner, "ChronoUpgrade", aProduction.Item] := True
+				}
+			}
+		}
+	}
+	return (hasItems)
+}
+
+f1::
+RedrawlocalUpgrade := True
+loop 
+{
+	drawLocalUpgrades(RedrawlocalUpgrade, 1, 0)
+	sleep 500
+}
+return 
+
+drawLocalUpgrades(ByRef Redraw, UserScale = 1, Drag = 0)
+{
+	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0
+
+	LocalUpgradesOverlayX := LocalUpgradesOverlayY := 500
+	If (Redraw = -1)
+	{
+		Try Gui, LocalUpgradesOverlay: Destroy
+		overlayCreated := False
+		Redraw := 0
+		Return
+	}	
+	Else if (ReDraw AND WinActive(GameIdentifier))
+	{
+		Try Gui, LocalUpgradesOverlay: Destroy
+		overlayCreated := False
+		Redraw := 0
+	}
+	If (!overlayCreated)
+	{
+		Gui, LocalUpgradesOverlay: -Caption Hwndhwnd1 +E0x20 +E0x80000 +LastFound +ToolWindow +AlwaysOnTop
+		Gui, LocalUpgradesOverlay: Show, NA X%LocalUpgradesOverlayX% Y%LocalUpgradesOverlayY% W400 H400, % aOverlayTitles["LocalUpgradesOverlay"]
+		OnMessage(0x201, "OverlayMove_LButtonDown")
+		OnMessage(0x20A, "OverlayResize_WM_MOUSEWHEEL")
+		overlayCreated := True
+	}	
+	If (Drag AND !DragPrevious)
+	{	DragPrevious := 1
+		Gui, LocalUpgradesOverlay: -E0x20
+	}
+	Else if (!Drag AND DragPrevious)
+	{	DragPrevious := 0
+		Gui, LocalUpgradesOverlay: +E0x20 +LastFound
+		WinGetPos, LocalUpgradesOverlayX, LocalUpgradesOverlayY		
+		IniWrite, %LocalUpgradesOverlayX%, %config_file%, Overlays, LocalUpgradesOverlayX
+		Iniwrite, %LocalUpgradesOverlayY%, %config_file%, Overlays, LocalUpgradesOverlayY		
+	}
+	DestX := DestY := 0
+	getLocalUpgrades(aUpgrades)
+
+	hbm := CreateDIBSection(A_ScreenWidth, A_ScreenHeight)
+	, hdc := CreateCompatibleDC()
+	, obm := SelectObject(hdc, hbm)
+	, G := Gdip_GraphicsFromHDC(hdc)	
+	, Gdip_SetSmoothingMode(G, 4)
+	, Gdip_SetInterpolationMode(G, 2)	
+
+	localUpgradesItemsPerRow := 1
+	rowCount := 0, windowWidth := WindowHeight := 20 ; give a minumum value so function call doesnt fail
+
+	; i is the unitName - but morphing structures will contain a prefixed string so DO NOT use it for anything.
+	for i, upgrade in aUpgrades
+	{
+		if !(pBitmap := a_pBitmap[aUnitID.HasKey(upgrade.name) ? aUnitID[upgrade.name] : upgrade.name])
+			continue ; as i dont have a picture for that unit - not a real unit?
+		SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap) 
+		, Width *= UserScale *.5, Height *= UserScale *.5	; all unit/buildings/updagres are 38x38 after being halved
+
+		Gdip_DrawImage(G, pBitmap, DestX, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
+
+		;msgbox % itemName " | " SourceWidth ", " SourceHeight
+		;	. "`n" (Width - 10 * UserScale *.5) ", " Height/16
+
+		if (upgrade.Count > 1)
+		{
+			Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, DestX + .6*Width, DestY, Width/2.5, Height/2.5, 5)
+			, gdip_TextToGraphics(G, upgrade.Count, "x"(DestX + .5*Width + .3*Width/2) "y"(DestY + .10*Height/2)  " Bold Italic cFFFFFFFF r4 s" 11*UserScale, Font)
+		}
+
+		Gdip_SetSmoothingMode(G, 0)
+		, Gdip_FillRectangle(G, a_pBrushes.TransparentBlack, DestX + 5 * UserScale *.5, floor(DestY+Height + 5 * UserScale *.5), Width - 10 * UserScale *.5, Height/16)
+		, Gdip_FillRectangle(G, a_pBrushes.Green, DestX + 5 * UserScale *.5, floor(DestY+Height + 5 * UserScale *.5), Width*upgrade.progress - upgrade.progress * 10 * UserScale *.5, Height/16)
+		, Gdip_SetSmoothingMode(G, 4)
+
+		if (DestX > windowWidth) 
+			windowWidth := DestX
+		if (DestY > WindowHeight)
+			WindowHeight := DestY
+		if (++rowCount >= localUpgradesItemsPerRow)
+			DestX := 0, DestY += Height + 8 * UserScale, rowCount := 0
+		else DestX += Width+5*UserScale			
+	}
+	windowWidth += 2*Width, WindowHeight += 2*Height ; If height and width blank from not entering loop, these will remain at 20
+	
+	; Not like this would ever occur with this overlay
+	if (WindowWidth > A_ScreenWidth)
+		WindowWidth := A_ScreenWidth
+	if (WindowHeight > A_ScreenHeight)
+		WindowHeight := A_ScreenHeight
+	overlayLocalUpgradesTransparency := 255
+
+	Gdip_DeleteGraphics(G) ; .0005ms
+	, UpdateLayeredWindow(hwnd1, hdc,,, WindowWidth, WindowHeight, overlayLocalUpgradesTransparency)
+	, SelectObject(hdc, obm) ; All Three of these only take a total of ~ 0.22 ms. So in the end its faster to recreate/delete these than to GDI clear the graphics
+	, DeleteObject(hbm)
+	, DeleteDC(hdc)
+	Return
+}

@@ -366,7 +366,7 @@ If WinGet("EXStyle", GameIdentifier) = SC2WindowEXStyles.FullScreen
 && (DrawMiniMap || DrawAlerts || DrawSpawningRaces
 || DrawIncomeOverlay || DrawResourcesOverlay || DrawArmySizeOverlay
 || DrawWorkerOverlay || DrawIdleWorkersOverlay || DrawLocalPlayerColourOverlay
-|| DrawUnitOverlay || DrawAPMOverlay)
+|| DrawUnitOverlay || DrawUnitUpgrades || DrawAPMOverlay || DrawMacroTownHallOverlay)
 && !MT_Restart && A_IsCompiled ; so not restarted via hotkey or icon 
 {
 	ChangeButtonNames.set("SC2 Is NOT in 'windowed Fullscreen' mode!", "Disable", "Continue") 
@@ -382,7 +382,7 @@ If WinGet("EXStyle", GameIdentifier) = SC2WindowEXStyles.FullScreen
 	{
 		DrawMiniMap := DrawAlerts := DrawSpawningRaces := DrawIncomeOverlay := DrawResourcesOverlay
 		:= DrawArmySizeOverlay := DrawWorkerOverlay := DrawIdleWorkersOverlay 
-		:= DrawLocalPlayerColourOverlay := DrawUnitOverlay := DrawAPMOverlay := 0
+		:= DrawLocalPlayerColourOverlay := DrawUnitOverlay := DrawUnitUpgrades := DrawAPMOverlay := DrawMacroTownHallOverlay := 0
 		gosub, ini_settings_write
 	}
 }
@@ -488,7 +488,6 @@ SelectText( ControlID, start=0, end=-1 )
     SendMessage, 0xB1, start, end,, ahk_id %ControlID%
     return (ErrorLevel != "FAIL")
 }
-
 
 Stealth_Exit:
 	ExitApp
@@ -953,7 +952,7 @@ if (item != "") ; item should never be blank but im just leaving it like this ju
 {
 	MTBlockInput, On
 	input.releaseKeys(True) ; don't use postmessage.
-	sleep, 40
+	sleep, 60
 	Cast_ChronoStructure(aAutoChrono["Items", item, "Units"])
 	MTBlockInput, Off
 }
@@ -1027,7 +1026,6 @@ Cast_ChronoStructure(aStructuresToChrono)
 	{
 		If (A_index > max_chronod)
 			Break
-	sleep 1000	
 		sleep, %ChronoBoostSleep%
 		getUnitMiniMapMousePos(oject.unit, click_x, click_y)
 		input.pSend(chrono_key)
@@ -1391,7 +1389,8 @@ cast_inject:
 	;input.hookBlock(True, True)
 	MTBlockInput, On
 	if input.releaseKeys(True)
-		dsleep(30)
+		sleep 60
+	else sleep 40
 	castInjectLarva(auto_inject, 0, auto_inject_sleep) ;ie nomral injectmethod
 	If HumanMouse
 		MouseMoveHumanSC2("x" start_x "y" start_y "t" HumanMouseTimeLo)
@@ -2481,9 +2480,14 @@ ini_settings_write:
 	IniWrite, %castRemoveDamagedUnits_key%, %config_file%, %section%, castRemoveDamagedUnits_key	
 	IniWrite, %RemoveDamagedUnitsCtrlGroup%, %config_file%, %section%, RemoveDamagedUnitsCtrlGroup	
 	if (Tmp_GuiControl != "save" && Tmp_GuiControl != "Apply")
+	{
 		RemoveDamagedUnitsHealthLevel := round(RemoveDamagedUnitsHealthLevel * 100)
+		RemoveDamagedUnitsShieldLevel := round(RemoveDamagedUnitsShieldLevel * 100)
+	}
 	IniWrite, %RemoveDamagedUnitsHealthLevel%, %config_file%, %section%, RemoveDamagedUnitsHealthLevel	
+	IniWrite, %RemoveDamagedUnitsShieldLevel%, %config_file%, %section%, RemoveDamagedUnitsShieldLevel	
 	RemoveDamagedUnitsHealthLevel := round(RemoveDamagedUnitsHealthLevel / 100, 3)
+	RemoveDamagedUnitsShieldLevel := round(RemoveDamagedUnitsShieldLevel / 100, 3)
 
 	IniWrite, %EasyUnloadTerranEnable%, %config_file%, %section%, EasyUnloadTerranEnable
 	IniWrite, %EasyUnloadProtossEnable%, %config_file%, %section%, EasyUnloadProtossEnable
@@ -2548,7 +2552,7 @@ ini_settings_write:
 
 	;[Overlays]
 	section := "Overlays"
-	list := "IncomeOverlay,ResourcesOverlay,ArmySizeOverlay,WorkerOverlay,IdleWorkersOverlay,UnitOverlay,LocalPlayerColourOverlay,APMOverlay"
+	list := "IncomeOverlay,ResourcesOverlay,ArmySizeOverlay,WorkerOverlay,IdleWorkersOverlay,UnitOverlay,LocalPlayerColourOverlay,APMOverlay,MacroTownHallOverlay"
 	loop, parse, list, `,
 	{
 		drawname := "Draw" A_LoopField,	drawvar := %drawname%
@@ -2591,7 +2595,7 @@ ini_settings_write:
 
 	; convert from 0-100 to 0-255
 	loopList := "overlayIncomeTransparency,overlayMatchTransparency,overlayResourceTransparency,overlayArmyTransparency,overlayAPMTransparency"
-			.	",overlayHarvesterTransparency,overlayIdleWorkerTransparency,overlayLocalColourTransparency,overlayMinimapTransparency"
+			.	",overlayHarvesterTransparency,overlayIdleWorkerTransparency,overlayLocalColourTransparency,overlayMinimapTransparency,overlayMacroTownHallTransparency"
 	loop, parse, loopList, `,
 	{
 		if (Tmp_GuiControl = "save" || Tmp_GuiControl = "Apply")
@@ -3763,17 +3767,23 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 			Gui, Add, Edit, Readonly yp-2 xs+105 center w65 R1 vcastRemoveUnit_key gedit_hotkey, %castRemoveUnit_key%
 			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#castRemoveUnit_key,  Edit
 			Gui, Add, Text, Xs+15 yp+45 w360, This removes the first unit (top left of selection card) from the selected units.`n`nThis is very useful for 'cloning' workers to geisers or sending 1 ling towards a group of banelings etc.
-		Gui, add, GroupBox, xs ys+185 w405 h210, Remove Damaged Units
+		Gui, add, GroupBox, xs ys+195 w405 h190, Remove Damaged Units
 			Gui, Add, Checkbox, yp+25 xs+15 vRemoveDamagedUnitsEnable Checked%RemoveDamagedUnitsEnable%, Enable	
 			Gui, Add, Text, xp yp+25, Hotkey:
-			Gui, Add, Edit, Readonly yp-2 xs+105 center w65 R1 vcastRemoveDamagedUnits_key gedit_hotkey, %castRemoveDamagedUnits_key%
+			Gui, Add, Edit, Readonly yp-2 xs+64 center w65 R1 vcastRemoveDamagedUnits_key gedit_hotkey, %castRemoveDamagedUnits_key%
 			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#castRemoveDamagedUnits_key,  Edit	
 			Gui, Add, Text, xs+15 yp+35, Storeage Group:
 			Gui, Add, DropDownList,  % "xs+125 yp w45 Center vRemoveDamagedUnitsCtrlGroup Choose" (RemoveDamagedUnitsCtrlGroup = 0 ? 10 : RemoveDamagedUnitsCtrlGroup), 1|2|3|4|5|6|7|8|9||0
+
+			Gui, Add, Text, xs+15 yp+35, Shield Level `%:
+			Gui, Add, Edit, Number Right xs+125 yp-2 w45 vEdit_RemoveDamagedUnitsShieldLevel
+				Gui, Add, UpDown,  Range1-99 vRemoveDamagedUnitsShieldLevel, % Round(RemoveDamagedUnitsShieldLevel * 100) 
+
 			Gui, Add, Text, xs+15 yp+35, Health Level `%:
 			Gui, Add, Edit, Number Right xs+125 yp-2 w45 vEdit_RemoveDamagedUnitsHealthLevel
 				Gui, Add, UpDown,  Range1-99 vRemoveDamagedUnitsHealthLevel, % Round(RemoveDamagedUnitsHealthLevel * 100) 
-			Gui, Add, Text, Xs+15 yp+35 w360, Units with health/shields lower than the set 'health level' will be removed from selection and moved to the current mouse cursor position.`n`nThis is very helpful when microing units!
+
+			Gui, Add, Text, X380 y284 w195, Units with health/shields lower than the specified values will be removed from selection and moved to the current mouse cursor position.`n`nThis is very helpful when microing units!
 	
 	Gui, Tab, Easy Select/Unload
 		Gui, Add, GroupBox, x+95 y+20 w95 h100 section, Enable
@@ -4538,7 +4548,9 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 
 		TT_DeselectSleepTime_TT :=  DeselectSleepTime_TT := "Time between deselecting units from the unit panel.`nThis is used by the split and select army, and deselect unit functions"
 
-		Edit_RemoveDamagedUnitsHealthLevel_TT := RemoveDamagedUnitsHealthLevel_TT := "Units with health/shields lower than this percent will be removed from selection`n"
+		Edit_RemoveDamagedUnitsHealthLevel_TT := RemoveDamagedUnitsHealthLevel_TT := "Terran and Zerg units with health lower than or equal to this percent will be removed from selection`n"
+										. "and moved to the current mouse cursor position."
+		Edit_RemoveDamagedUnitsShieldLevel_TT := RemoveDamagedUnitsShieldLevel_TT := "Protoss units with shields lower than or equal to this percent will be removed from selection`n"
 										. "and moved to the current mouse cursor position."
 
 		#Sc2SelectArmyCtrlGroup_TT := Sc2SelectArmyCtrlGroup_TT := "The control Group (key) in which to store the army.`nE.G. 1,2,3-0"
@@ -9643,7 +9655,7 @@ getUnitAbilitiesString(unit)
 	loop
 	{
 		if (p := ReadMemory( address := p1  +  B_AbilityStringPointer + (A_Index - 1)*4, GameIdentifier))
-			s .= "`n"  A_Index - 1 " | Pointer Address " chex(pAbilities + O_IndexParentTypes + (A_Index - 1)*4) " | "  ReadMemory_Str(ReadMemory(p +4, GameIdentifier), GameIdentifier)
+			s .= "`n"  A_Index - 1 " | Pointer Address " chex(pAddress := pAbilities + O_IndexParentTypes + (A_Index - 1)*4) " | Pointer Value "  chex(ReadMemory(pAddress, GameIdentifier)) " | "  ReadMemory_Str(ReadMemory(p +4, GameIdentifier), GameIdentifier)
 	}
 	until p = 0
 	msgbox % clipboard := s
@@ -10560,7 +10572,7 @@ return
 ; But it seems to work as is.
 removeDamagedUnit()
 {
-	global RemoveDamagedUnitsHealthLevel, RemoveDamagedUnitsCtrlGroup, Escape
+	global RemoveDamagedUnitsHealthLevel, RemoveDamagedUnitsShieldLevel, RemoveDamagedUnitsCtrlGroup, Escape
 
 	if !getSelectionCount()
 		return
@@ -10580,7 +10592,7 @@ removeDamagedUnit()
 	for i, unit in aSelected.units
 	{           
 		; target filter .HasShields doesn't work! But this is faster anyway
-		if (aLocalPlayer["Race"] != "Protoss" && getUnitPercentHP(unit.unitIndex) > RemoveDamagedUnitsHealthLevel) || (aLocalPlayer["Race"] = "Protoss" && getUnitPercentShield(unit.unitIndex) > RemoveDamagedUnitsHealthLevel)
+		if (aLocalPlayer["Race"] != "Protoss" && getUnitPercentHP(unit.unitIndex) > RemoveDamagedUnitsHealthLevel) || (aLocalPlayer["Race"] = "Protoss" && getUnitPercentShield(unit.unitIndex) > RemoveDamagedUnitsShieldLevel)
 			highHP.insert(unit.unitPortrait) ; removes the high HP/sheld units
 		else 
 			lowHP.insert(unit.unitPortrait) 	
@@ -10926,85 +10938,29 @@ return
 */
 
 
-; This changes when the game reloads.
-; Some slightly modified pointer.
-; bot nexus
-; CB 		8ef9317
-; cloak 	88e0ad9
-; PO 		8ef90e7
 
-
-; right nexus
-; CB 		8ef9317
-; cloak 	88e0ad9
-; PO 		8ef90e7
-
-
-
-
-; There is a attackProtossBuilding ability in the ability structure.
-; When PO is active there's a value which indicates this here.
-; But couldn't find a link to the timer
-
-; Can call this to determine if PO is active and its reaming duration (%)
-getPhotonOverChargeDuration(unit)
-{
-	static O_upBuffs := 0xEC ; This is probably a pointer to some buff structure
-	if !unitBuff := ReadMemory(B_uStructure + unit * S_uStructure + O_upBuffs, GameIdentifier)
-		return 0
-	msgbox % chex(unitBuff)
-	; unitBuff is the base of this structure and points to itself (value & -2). 
-	; p+4 is probably some innate  ability so start at p+8 
-	while (p := ReadMemory(unitBuff + 0x08 + 4*(A_Index-1), GameIdentifier)) 
-	{
-		msgbox % ReadMemory(p + 0x3C, GameIdentifier)
-		
-		 ; Need to determine if this BUff is a PO - Could be chrono.
-		 ; I haven't spent time investigating these.
-		 ; Could also just check if the total time = that of a PO. But that's pretty shitty.
-		 ; And wouldn't work by itself - as oracle reveal has the same max time - 60 seconds
-		 ; Photon Over charge = mothership cloak = 32
-		 ; chrono = 40
-		 ; None = 3	(or default?)	
-		if (ReadMemory(p + 0x3C, GameIdentifier) = 32) ; wrong could be cloak so either need more RE or be lazy and check the spell duration
-		{		
-
-			totalTime :=  ReadMemory(base := ReadMemory(p + 0x58, GameIdentifier), GameIdentifier) ; total time
-			, remainingTime := ReadMemory(base+ 0x10, GameIdentifier)
-			msgbox % chex(base)
-			return round(remainingTime / totalTime, 2)
-		}
-	}
-	return 0
-}
+unit := getSelectedUnitIndex()
+;getUnitAbilitiesString(unit)
+ToolTip, % getTownHallLarvaCount(unit) " " aUnitName[getUnitType(262145 >> 18)]
+return 
 
 /*
-f1::
-unit := getSelectedUnitIndex()
-unitBuff := ReadMemory(B_uStructure + unit * S_uStructure + 0xEC, GameIdentifier)
-msgbox % chex(unitBuff)
-pointer := ReadMemory(unitBuff, GameIdentifier) & -2
-pointer := ReadMemory(pointer + 4 + 1*4, GameIdentifier) ; get first behaviour
 
-msgbox % chex(p := ReadMemory(pointer + 0x58, GameIdentifier)+4)
-msgbox % chex(ReadMemory(p, GameIdentifier) & -2)
-
-
-
-
- return
-f2::
-unit := getSelectedUnitIndex()
-
-c := getUnitBuff(unit, aBuffs := [])
-objtree(aBuffs)
-msgbox % c " " getUnitBuff(unit, "MothershipCoreApplyPurifyAB")
-return 
-; Buff = MothershipCoreApplyPurifyAB
+pAbilities: 246875b4 Unit ID: 0
+uStruct: 38d3000 - 38d31c0
+0 | Pointer Address 246875cc | Pointer Value 4a1b230 | RallyHatchery
+1 | Pointer Address 246875d0 | Pointer Value 4a1b2ac | que5CancelToSelection
+2 | Pointer Address 246875d4 | Pointer Value 4a1b328 | BuildInProgress
+3 | Pointer Address 246875d8 | Pointer Value 4a1b3a4 | UpgradeToLair
+4 | Pointer Address 246875dc | Pointer Value 4a1b420 | UpgradeToHive
+5 | Pointer Address 246875e0 | Pointer Value 4a1b49c | LairResearch
+6 | Pointer Address 246875e4 | Pointer Value 4a1b518 | TrainQueen
 
 
 
 
+
+;f1::
 loop 
 {
 	MouseGetPos, x, y, WinTitle, control, 2
@@ -11015,5 +10971,4 @@ loop
 	sleep 50
 }
 return 
-*/
 

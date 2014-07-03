@@ -2134,6 +2134,14 @@ Gdip_DrawString(pGraphics, sString, hFont, hFormat, pBrush, ByRef RectF)
 
 ;#####################################################################################
 
+; Returns pipe delimited text size data
+; X-coordinate of the upper-left corner of the rectangle.
+; Y-coordinate of the upper-left corner of the rectangle.
+; Width of the rectangle.
+; Height of the rectangle.
+; Chars
+; Lines
+
 Gdip_MeasureString(pGraphics, sString, hFont, hFormat, ByRef RectF)
 {
 	VarSetCapacity(RC, 16)

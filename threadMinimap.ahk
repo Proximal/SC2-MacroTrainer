@@ -370,7 +370,12 @@ drawUnitDestinations(pGraphics, byRef aUnitsToDraw)
 					colour := "Red"
 				else if (command.ability = "move")
 				{
-					if (command.State = aUnitMoveStates.Patrol)
+					; Not only the current patrol waypoint/destination will be drawn. That is, patrol move can shift queue multiple patrol waypoints/paths
+					; But only the current one or first one (if there are other preceding move commands) will be drawn.
+					; Obviously any preceding non-patrol move commands will also be drawn if these exist. 
+					; If another command is queued after a multi waypoint patrol, then SC will remove the extra patrol points and add
+					; the move command. This function will draw all of these correctly. 
+					if (command.State = aUnitMoveStates.Patrol) 
 						colour := "Blue"
 					else colour := "Green"
 
