@@ -4091,7 +4091,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 				Gui, Add, Checkbox, xp y+13 vUnitPanelDrawUpgradeProgress Checked%unitPanelDrawUpgradeProgress%, Show Upgrade Progress 
 
 				;Gui, Add, Button, center xp+15 y+10 w100 h30 vUnitPanelFilterButton Gg_GUICustomUnitPanel, Unit Filter
-				Gui, Add, Button, center xp y+17 w70 h30 vUnitPanelFilterButton Gg_GUICustomUnitPanel, Unit Filter
+				Gui, Add, Button, center xp y+24 w70 h30 vUnitPanelFilterButton Gg_GUICustomUnitPanel, Unit Filter
 				Gui, Add, Button, center x+10 yp w70 h30 vUnitPanelGuideButton GgUnitPanelGuide, Guide
 
 			Gui, Add, GroupBox, XS ys+270 w195 h55 section, Player Identifier:	
@@ -4491,9 +4491,9 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 												. "`n`nNote: This is in ms and lower values result in the overlay being redrawn more frequently."
 		BlendUnits_TT := "This will draw the units 'blended together', like SC2 does.`nIn other words, units/buildings grouped together will only have one border around all of them"
 
-		TT_OverlayRefresh_TT := OverlayRefresh_TT := "Determines how frequently these overlays are refreshed:`nIncome, Resource, Army, Local Harvesters, and Idle Workers"
+		TT_OverlayRefresh_TT := OverlayRefresh_TT := "Determines how frequently these overlays are refreshed:`nIncome, Resource, Army, Local Harvesters, Idle Workers, and Town Hall Macro."
 												. "`n`nNote: This is in ms and lower values result in the overlays being redrawn more frequently."
-		TT_UnitOverlayRefresh_TT := UnitOverlayRefresh_TT := "Determines how frequently the unit panel is refreshed."
+		TT_UnitOverlayRefresh_TT := UnitOverlayRefresh_TT := "Determines how frequently the unit panel and local upgrades overlays are refreshed."
 							. "`n`nThis requires more resources than the other overlays and so it has its own refresh rate."
 							. "`nCare should be taken with low values, as this can significantly increase CPU usage when there are many units on the map e.g. late game 4v4."
 							. "`n`nLower this value if you want the progress bars to increase in a smoother manner."
@@ -4515,7 +4515,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		drawLocalPlayerResources_TT := "Displays your own values at the bottom of the resources overlay."						
 		drawLocalPlayerArmy_TT := "Displays your own values at the bottom of the army overlay."	
 
-		localUpgradesItemsPerRow_TT := "Defines the items per row displayed in the 'Local Upgrades' overlay."
+		localUpgradesItemsPerRow_TT := "Defines the number of items displayed per row in the 'Local Upgrades' overlay."
 									. "`n`nValues:"
 									. "`n0: All items are drawn along a single row"
 									. "`n1-16: Each row will be limited to displaying this number of items."
@@ -9241,7 +9241,7 @@ return
 */
 
 
-gethotkeySuffix(hotkey, containsPrefix := "", containsWildCard := "")
+gethotkeySuffix(hotkey, byRef containsPrefix := "", byRef containsWildCard := "")
 {
 	containsPrefix := RegExMatch(hotkey, "\^|\+|\!|\&")
 
@@ -10967,13 +10967,6 @@ Run, "C:\Users\Matthieu\Desktop\New folder (3)\MsgHookLister\x64\hooks.txt"
 return 
 */
 
-
-
-unit := getSelectedUnitIndex()
-;getUnitAbilitiesString(unit)
-ToolTip, % getTownHallLarvaCount(unit) " " aUnitName[getUnitType(262145 >> 18)]
-return 
-
 /*
 
 pAbilities: 246875b4 Unit ID: 0
@@ -10990,15 +10983,26 @@ uStruct: 38d3000 - 38d31c0
 
 
 */
-f2::
+; This is useful for aligning various GUI controls
+;f2::
 loop 
 {
 	MouseGetPos, x, y, WinTitle, control, 2
 	guicontrolget, output, Options: pos, %control%
-	ToolTip, % outputx ", " outputy 
-		. "`n" (outputx+outputw) ", " (outputy+outputh)
-		. "`n " outputW ", " outputH
+	ToolTip, % outputx ", " outputy ; x, y
+		. "`n" (outputx+outputw) ", " (outputy+outputh) ; Right bottom corner x, y
+		. "`n " outputW ", " outputH ; w, h
 	sleep 50
 }
 return 
 
+f1::
+unit := getSelectedUnitIndex()
+type := getUnitType(unit)
+getStructureProductionInfo(unit, type, aQueueInfo)
+objtree(aQueueInfo)
+clipboard := aQueueInfo.1.item
+; TerranVehicleAndShipWeaponsLevel2
+return 
+;TerranVehicleAndShipWeaponsLevel2
+;TerranVehicleAndShipPlatingLevel2

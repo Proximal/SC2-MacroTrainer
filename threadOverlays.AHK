@@ -2077,10 +2077,8 @@ getLocalUpgrades(byRef aUpgrades)
 					name := aProduction.Item
 					progress := aProduction.progress
 	    			aUpgrades[name] := {Name: name, Progress: aUpgrades[name].progress > progress ? aUpgrades[name].progress : progress
-	    								, count: round(aUpgrades[name].Count) + 1}
-					; Lets add the chrono for protoss later
-					;if chronoed
-					;	aMiscUnitPanelInfo[owner, "ChronoUpgrade", aProduction.Item] := True
+	    								, count: round(aUpgrades[name].Count) + 1
+	    								, chrono: aLocalPlayer["Race"] = "Protoss" ? numgetIsUnitChronoed(MemDump, unit) : 0}
 				}
 			}
 		}
@@ -2091,7 +2089,7 @@ getLocalUpgrades(byRef aUpgrades)
 DrawLocalUpgradesOverlay(ByRef Redraw, UserScale = 1, Drag = 0)
 {
 	global localUpgradesItemsPerRow, LocalUpgradesOverlayX, LocalUpgradesOverlayY, overlayLocalUpgradesTransparency
-	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0, upgradeCountPrevious := 0
+	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0, upgradesExistPrevious := 0
 
 	If (Redraw = -1)
 	{
@@ -2131,7 +2129,7 @@ DrawLocalUpgradesOverlay(ByRef Redraw, UserScale = 1, Drag = 0)
 	upgradesExist := getLocalUpgrades(aUpgrades)
 	if (upgradesExist) || (!upgradesExist && upgradesExistPrevious) || drag
 	{
-		if (drag && !upgradesExist) ; So use can see and drag it when nothing is present
+		if (drag && !upgradesExist) ; So you can see and drag it when nothing is present
 			aUpgrades := {	1: {name: "ResearchShieldWall", progress: .80, count: 1}	
 						,	2: {name: "Stimpack", progress: .80, count: 1}	
 						,	3: {name: "ResearchExtendedThermalLance", progress: .80, count: 1}	
@@ -2163,6 +2161,8 @@ DrawLocalUpgradesOverlay(ByRef Redraw, UserScale = 1, Drag = 0)
 				Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, DestX + .6*Width, DestY, Width/2.5, Height/2.5, 5)
 				, gdip_TextToGraphics(G, upgrade.Count, "x"(DestX + .5*Width + .3*Width/2) "y"(DestY + .10*Height/2)  " Bold Italic cFFFFFFFF r4 s" 11*UserScale, Font)
 			}
+			if (upgrade.Chrono)
+				Gdip_FillEllipse(G, a_pBrushes["ScanChrono"], DestX + .2*Width/2, DestY + .2*Height/2, 6*UserScale, 6*UserScale)
 
 			Gdip_SetSmoothingMode(G, 0)
 			, Gdip_FillRectangle(G, a_pBrushes.TransparentBlack, DestX + 5 * UserScale *.5, floor(DestY+Height + 5 * UserScale *.5), Width - 10 * UserScale *.5, Height/12) ;Height/16

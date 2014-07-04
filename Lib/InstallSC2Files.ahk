@@ -256,6 +256,10 @@ InstallSC2Files()
 	FileInstall, Included Files\Used_Icons\Upgrades\Terran\TerranVehicleWeaponsLevel1.png, %A_Temp%\UnitPanelMacroTrainer\TerranVehicleWeaponsLevel1.png, 1
 	FileInstall, Included Files\Used_Icons\Upgrades\Terran\TerranVehicleWeaponsLevel2.png, %A_Temp%\UnitPanelMacroTrainer\TerranVehicleWeaponsLevel2.png, 1
 	FileInstall, Included Files\Used_Icons\Upgrades\Terran\TerranVehicleWeaponsLevel3.png, %A_Temp%\UnitPanelMacroTrainer\TerranVehicleWeaponsLevel3.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Terran\TerranVehicleAndShipWeaponsLevel1.png, %A_Temp%\UnitPanelMacroTrainer\TerranVehicleAndShipWeaponsLevel1.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Terran\TerranVehicleAndShipWeaponsLevel2.png, %A_Temp%\UnitPanelMacroTrainer\TerranVehicleAndShipWeaponsLevel2.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Terran\TerranVehicleAndShipWeaponsLevel3.png, %A_Temp%\UnitPanelMacroTrainer\TerranVehicleAndShipWeaponsLevel3.png, 1
+
 	FileInstall, Included Files\Used_Icons\Upgrades\Terran\UpgradeBuildingArmorLevel1.png, %A_Temp%\UnitPanelMacroTrainer\UpgradeBuildingArmorLevel1.png, 1
 
 	FileInstall, Included Files\Used_Icons\Upgrades\Zerg\ResearchLocustLifetimeIncrease.png, %A_Temp%\UnitPanelMacroTrainer\ResearchLocustLifetimeIncrease.png, 1
