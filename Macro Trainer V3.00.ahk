@@ -45,6 +45,8 @@
 	Local player colour
 	Disable Spread and RemoveUnit
 
+	remove log in unit panel for missing upgrades
+
 */
 
 SetWorkingDir %A_ScriptDir%  ; Ensures a consistent starting directory.
@@ -1798,6 +1800,7 @@ ShellMessage(wParam, lParam)
 	; Not such a big issue for the minimap, as everyone would be using a fast refresh rate for that
 	if (wParam = 32772 || wParam = 4) ;  HSHELL_WINDOWACTIVATED := 4 or 32772
 	{
+		; There's a narrow time window here where you can get inva
 
 		if (SC2hWnd != lParam && !ReDrawOverlays && !Dragoverlay)
 		{
@@ -1807,10 +1810,18 @@ ShellMessage(wParam, lParam)
 		else if (SC2hWnd = lParam && getTime())
 		{
 			;mt_Paused otherwise will redisplay the hidden and frozen overlays
-			if (ReDrawOverlays  && !mt_Paused && !IsInList(aLocalPlayer.Type, "Referee", "Spectator")) ; This will redraw immediately - but this isn't needed at all
+			if (ReDrawOverlays && !mt_Paused && !IsInList(aLocalPlayer.Type, "Referee", "Spectator")) ; This will redraw immediately - but this isn't needed at all
 			{  		
-				aThreads.Overlays.AhkLabel.overlayTimer
-				aThreads.Overlays.AhkLabel.unitPanelOverlayTimer
+				; If the overlay is called before it finishes reading the iniFile could get a GUI show error
+				; due to the x and y values being NULL.
+				; This is extremely small window (even when setting the function to always draw i.e. if True 
+				; it was still very difficult to induce) as to draw the overlay the overlay thread would have need to have read the
+				; enable/draw variable but not the closely placed x, y variable.
+				; But better to be safe so call gosubAllOverlays which checks if the ini file has been read fully.
+
+				aThreads.Overlays.AhkLabel.gosubAllOverlays ; does the overlayTimer and unitPanel
+				;aThreads.Overlays.AhkLabel.overlayTimer
+				;aThreads.Overlays.AhkLabel.unitPanelOverlayTimer
 				ReDrawOverlays := False
 			}
 		}
@@ -10995,7 +11006,7 @@ loop
 	sleep 50
 }
 return 
-
+/*
 f1::
 unit := getSelectedUnitIndex()
 type := getUnitType(unit)

@@ -1,7 +1,10 @@
+; This is a really disgusting shitty routine which i hacked together when first starting from someone else's bugged code.
+; Could use a nice windows choose colour function, but then I lose the transparency setting
+
 Goto, ColourSector>
 ColourSelectorSave:
 
-%CS_LaunchedColour% := CS_TransparencySlider CS_colour ;save the new colour to the variable stored in the variablde :(
+%CS_LaunchedColour% := CS_TransparencySlider CS_colour ;save the new colour to the variable stored in the variable :(
 CS_LaunchedColour := "_"  CS_LaunchedColour	;get the handle name
 if ( CS_LaunchedColour = "_UnitHighlightInvisibleColour" || CS_LaunchedColour = "_UnitHighlightHallucinationsColour")
 	paintPictureControl(%CS_LaunchedColour%, CS_colour, CS_TransparencySlider, 50,22) ; draw it with a width of 50, as I'm not sure how to make the function get the controls width from the other gui
@@ -35,7 +38,7 @@ Gui, Add, Button, gGuiClose w100 h35, Cancel
 CreateTransparencyScale(_TransScale)
 CreateColourRainbow(_BAR)
 
-CreateSpectrum(_PRGS_, 255, 0, 0, , True, Height, Width)
+CreateSpectrum(_PRGS_, 255, 0, 0, , Height, Width)
 CS_TransparencySlider := "0xFF" 
 Gui, Show, 
 Gui, +OwnerOptions
@@ -43,8 +46,9 @@ Gui, Options:+Disabled
 return
 
 Invoke_Slide:	;colour chart
-MouseGetPos,, CS
-GuiControl,, CS, % CS -= 33
+MouseGetPos,, CSY ; get the y pos relies on being in active window coordmode. Use window spy to find where the very top of the clickable colour slither is. This is the - offset valeu
+CSY := (CSY - 35) * 510/300 ; 510/300 = slider Range / colour slither height ; -35 = y offset of first clickable part of colour slither
+GuiControl,, CS, %CSY% 
 
 CS:		;slider
 Critical	;required to stop blinking
@@ -52,7 +56,8 @@ GuiControlGet, CS_TransparencySlider
 CS_TransparencySlider := DecToHex(CS_TransparencySlider)
 GuiControlGet, CS
 CalcCS(CS, 85, CSR, CSG, CSB)
-CreateSpectrum(_PRGS_, CSR, CSG, CSB, CS_TransparencySlider,, Height, Width)
+
+CreateSpectrum(_PRGS_, CSR, CSG, CSB, CS_TransparencySlider, Height, Width)
 paintPictureControl(_ColourIndicator, CS_colour, CS_TransparencySlider,,, 10)
 Critical, Off
 return
@@ -142,6 +147,10 @@ HexFromRGB(@colourR, @colourG, @colourB)
    SetFormat IntegerFast, D
    return colour
 }
+
+; CSDiv determines how many loops it takes to reach 255 on a single colour element
+; in other words how much a single element increases per CS or loop index
+
 CalcCS(CS, CSDiv, ByRef CSR, ByRef CSG, ByRef CSB)
 {
 	If (CS//CSDiv = 0 || CS//CSDiv = 3)
@@ -154,7 +163,7 @@ CalcCS(CS, CSDiv, ByRef CSR, ByRef CSG, ByRef CSB)
 }
 
 
-
+; This will actually draw outside the bitmap but it will still appear correct and work
 CreateColourRainbow(Handle, Width=15, Height=300)
 {
 	BAR := Gdip_CreateBitmap(Width, Height)
@@ -162,13 +171,13 @@ CreateColourRainbow(Handle, Width=15, Height=300)
 	Gdip_SetSmoothingMode(BG, 1)
 	Loop, 255 ;creates the slider colour display
 	{
-		CalcCS(A_Index, 42.5, CSR, CSG, CSB)
+		CalcCS(A_Index, Height/12, CSR, CSG, CSB) ; 
+		;CalcCS(A_Index, 42.5, CSR, CSG, CSB)
 		B_PBRUSH:=Gdip_CreateLineBrushFromRect(0, A_Index*2-1, Width, 2, "0xFF" . HexFromRGB(CSR, CSG, CSB), "0xFF" . HexFromRGB(CSR, CSG, CSB), 0, 0)
 		Gdip_FillRectangle(BG, B_PBRUSH, 0, A_Index*2-1, Width, 2)
 		Gdip_DeleteBrush(B_PBRUSH)
 	}
 	B_HBITMAP := Gdip_CreateHBITMAPFromBitmap(BAR)
-
 	SetImageX(Handle, B_HBITMAP)
 	Gdip_DeleteGraphics(BG)
 	Gdip_DisposeImage(BAR)
@@ -179,9 +188,8 @@ CreateTransparencyScale(Handle, Width=15, Height=300)
 {
 	BAR := Gdip_CreateBitmap(Width, Height)
 	BG := Gdip_GraphicsFromImage(BAR)
-	CalcCS(A_Index, 42.5, CSR, CSG, CSB)
-	B_PBRUSH:=Gdip_CreateLineBrushFromRect(0, A_Index*2-1, Width, Height, "0xFF000000" , "0xFFFFFFFF", 1, 2)
-	Gdip_FillRectangle(BG, B_PBRUSH, 0, A_Index*2-1, Width, Height)
+	B_PBRUSH:=Gdip_CreateLineBrushFromRect(0, 0, Width, Height, "0xFF000000" , "0xFFFFFFFF", 1, 2)
+	Gdip_FillRectangle(BG, B_PBRUSH, 0, 0, Width, Height)
 	Gdip_DeleteBrush(B_PBRUSH)
 	B_HBITMAP := Gdip_CreateHBITMAPFromBitmap(BAR)
 	SetImageX(Handle, B_HBITMAP)
@@ -191,36 +199,23 @@ CreateTransparencyScale(Handle, Width=15, Height=300)
 	Return
 }
 
-CreateSpectrum(Handle="ImSoVeryLazy", R=255,G=0,B=0, Transparency="0xFF", Setup=False, Width=300, Height=300)
+CreateSpectrum(Handle, R=255,G=0,B=0, Transparency="0xFF", Width=300, Height=300)
 {
-	static _PBRUSH_
 	_PROGRESS_:=Gdip_CreateBitmap(Width, Height)
 	_G_ := Gdip_GraphicsFromImage(_PROGRESS_)
 	Gdip_SetSmoothingMode(_G_, 1)
-	If (Handle = "ImSoVeryLazy" And Setup <> "Shutdown")
-		Msgbox Error No handle Used in Function: %A_ThisFunc%		
-   Else If (Setup)
-   {
-		pBrushBackground  := Gdip_BrushCreateSolid("0xFFF0F0F0") 	;cover the edges of the pic
-		Gdip_FillRectangle(_G_, pBrushBackground, 0, 0, Width, Height)
-	  Loop, 255
-	  {
-		 _PBRUSH_:=Gdip_CreateLineBrushFromRect(0, A_Index*2-1, Width, 2, Transparency . HexFromRGB(256 - A_Index, 256 - A_Index, 256 - A_Index), Transparency . HexFromRGB(R - A_Index, 0, 0), 0, 0)
-		 Gdip_FillRectangle(_G_, _PBRUSH_, 0, A_Index*2-1, Width, 2)
-	  }
-   }
-   Else If setup = "Shutdown"
+
+	pBrushBackground  := Gdip_BrushCreateSolid("0xFFF0F0F0") 	;cover the edges of the pic
+	Gdip_FillRectangle(_G_, pBrushBackground, 0, 0, Width, Height)
+
+	;Gdip_FillRectangle(_G_, pBrushBackground, 0, 0, Width, Height)
+ 	 Loop, 255
+  	{
+	 	_PBRUSH_:=Gdip_CreateLineBrushFromRect(0, A_Index*2-1, Width, 2, Transparency . HexFromRGB(256 - A_Index, 256 - A_Index, 256 - A_Index), Transparency . HexFromRGB((R - Ceil(A_Index / Floor(256 / R)) < 0) ? 0 : R - Ceil(A_Index / Floor(256 / R)), (G - Ceil(A_Index / Floor(256 / G)) < 0) ? 0 : G - Ceil(A_Index / Floor(256 / G)), (B - Ceil(A_Index / Floor(256 / B)) < 0) ? 0 : B - Ceil(A_Index / Floor(256 / B))), 0, 0)
+		Gdip_FillRectangle(_G_, _PBRUSH_, 0, A_Index*2-1, Width, 2)
 		Gdip_DeleteBrush(_PBRUSH_)
-   Else 
-   {
-		pBrushBackground  := Gdip_BrushCreateSolid("0xFFF0F0F0") 	;cover the edges of the pic
-		Gdip_FillRectangle(_G_, pBrushBackground, 0, 0, Width, Height)
-	  Loop, 255
-	  {
-		 _PBRUSH_:=Gdip_CreateLineBrushFromRect(0, A_Index*2-1, Width, 2, Transparency . HexFromRGB(256 - A_Index, 256 - A_Index, 256 - A_Index), Transparency . HexFromRGB((R - Ceil(A_Index / Floor(256 / R)) < 0) ? 0 : R - Ceil(A_Index / Floor(256 / R)), (G - Ceil(A_Index / Floor(256 / G)) < 0) ? 0 : G - Ceil(A_Index / Floor(256 / G)), (B - Ceil(A_Index / Floor(256 / B)) < 0) ? 0 : B - Ceil(A_Index / Floor(256 / B))), 0, 0)
-		 Gdip_FillRectangle(_G_, _PBRUSH_, 0, A_Index*2-1, Width, 2)
-	  }
-   }
+ 	}
+
 	 Gdip_DeleteBrush(pBrushBackground)
 	_HBITMAP_:=Gdip_CreateHBITMAPFromBitmap(_PROGRESS_)
 	SetImageX(Handle, _HBITMAP_)	

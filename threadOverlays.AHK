@@ -61,8 +61,14 @@ if (!time := getTime())
 return 
 
 gosubAllOverlays:
-gosub, overlayTimer
-gosub, unitPanelOverlayTimer
+; This is called via the shell hook (as well as form this thread). The if protects against an extremely small chance of trying to draw the overlay
+; before all of ini file overlay info has been read. The error would only occur if it has read the draw/enable variable but not
+; the x, y position variables. I could only induce it when forcing the overlay to draw.
+if hasReadConfig
+{
+	gosub, overlayTimer
+	gosub, unitPanelOverlayTimer
+}
 return
 
 ; DIB size does not affect overlaying drawing speed
@@ -87,7 +93,7 @@ If (WinActive(GameIdentifier) || Dragoverlay) ;really only needed to ressize/sca
 		DrawIdleWorkersOverlay(ReDrawIdleWorkers, IdleWorkersOverlayScale, dragOverlay)
 	if (DrawLocalPlayerColourOverlay && (GameType != "1v1" && GameType != "FFA"))   ;easier just to redraw it each time as otherwise have to change internal for when dragging
 		DrawLocalPlayerColour(ReDrawLocalPlayerColour, LocalPlayerColourOverlayScale, DragOverlay)	
-	If DrawMacroTownHallOverlay || 1
+	If DrawMacroTownHallOverlay
 		DrawMacroTownHallOverlay(RedrawMacroTownHall, MacroTownHallOverlayScale, DragOverlay)
 }
 ; sometimes the overlay timer doesnt work, so this is a backup which ensure theyre destroyed
@@ -1166,6 +1172,8 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 								if chronoed
 									aMiscUnitPanelInfo[owner, "ChronoUpgrade", aProduction.Item] := True
 							}
+							else if !A_IsCompiled
+								log(aProduction.Item " | " type)
 						}
 					}
 					; priority - CC = PF = 3, Orbital = 4

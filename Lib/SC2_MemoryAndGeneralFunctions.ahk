@@ -3074,8 +3074,17 @@ DestroyOverlays()
 	loop, parse, lOverlayFunctions, `,
 	{
 		; telling the function to destroy itself is more reliable that just using gui destroy
+		; The try is here as there is a narrow timing window after the overlay starts but before it finishes reading the ini
+		; file which could throw an AHK GUI window error due to invalue x, y pos (they havent been read yet)
+		; When called from the main thread via the shell hook message.
+		; This timing window could be bigger on slow computers.
+		; Actually I don't think it could be from here due to it being a creation/GUi, show error
+		; It would be from the shell hook, but when its creating not destroying the GUI
+		; Note this only occurred when I had manually set an overlay to draw as if it had not read the ini file.
+		; The draw/enable overlay value would be null. 
+		; Otherwise the timing window would be impossibly small
 		if IsFunc(A_LoopField)
-			%A_LoopField%(-1)
+			try %A_LoopField%(-1)
 	}
 	ReDrawOverlays := ReDrawAPM := ReDrawIncome := ReDrawResources 
 				:= ReDrawArmySize := ReDrawWorker := ReDrawIdleWorkers 
