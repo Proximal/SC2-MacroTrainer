@@ -2719,15 +2719,15 @@ ini_settings_write:
 		IniWrite, % Trim(list, "`n`, `t"), %config_file%, %section%, %A_LoopField%
 		; IniWrite, %UnitHighlightList1%, %config_file%, %section%, UnitHighlightList1	;the list
 	}
-
+	; dectohex() so colours are saved in 0xFFF95AB2 format - easier to look at in config file
 	loop, 7 ; 7 colours
-		IniWrite, % UnitHighlightList%A_Index%Colour, %config_file%, %section%, UnitHighlightList%A_Index%Colour ;the colour
+		IniWrite, % dectohex(UnitHighlightList%A_Index%Colour), %config_file%, %section%, UnitHighlightList%A_Index%Colour ;the colour
 
 	IniWrite, %HighlightInvisible%, %config_file%, %section%, HighlightInvisible
-	IniWrite, %UnitHighlightInvisibleColour%, %config_file%, %section%, UnitHighlightInvisibleColour
+	IniWrite, % dectohex(UnitHighlightInvisibleColour), %config_file%, %section%, UnitHighlightInvisibleColour
 
 	IniWrite, %HighlightHallucinations%, %config_file%, %section%, HighlightHallucinations
-	IniWrite, %UnitHighlightHallucinationsColour%, %config_file%, %section%, UnitHighlightHallucinationsColour
+	IniWrite, % dectohex(UnitHighlightHallucinationsColour), %config_file%, %section%, UnitHighlightHallucinationsColour
 
 
 	IniWrite, %DrawMiniMap%, %config_file%, %section%, DrawMiniMap
@@ -4867,7 +4867,14 @@ iniWriteAndUpdateQuickSelect(byRef aQuickSelectCopy, byRef aQuickSelect)
 	
 	; save the currently displayed items for each race (as they might not be saved already)
 	lRaces := "Terran,Protoss,Zerg"
-
+	; I've noticed sometimes the terran items will disappear (except for the first one - maybe couple)
+	; Cant pinpoint when this occurs. Perhaps if program restarts after deleting the section below
+	; but before finishing writing out the units??? 
+	; This only seems to occur when im restarting a lot and testing stuff in the options menu
+	; I've added a critcal section here - this should delay the restart hotkey firing (but not if closed via tray icon)
+	; But I doubt this is what is causing the issue - probably a bug elsewhere but I can't seem to work out how to invoke it
+	
+	critical, on
 	loop, parse, lRaces, `, 
 	{
 		race := A_LoopField
@@ -4895,6 +4902,7 @@ iniWriteAndUpdateQuickSelect(byRef aQuickSelectCopy, byRef aQuickSelect)
 		}
 	}
 	aQuickSelect := aQuickSelectCopy
+	critical, off
 	return
 }
 
@@ -11087,6 +11095,6 @@ return
 */
 
 
-f1::objtree(aAutoChronoCopy)
+
 
 

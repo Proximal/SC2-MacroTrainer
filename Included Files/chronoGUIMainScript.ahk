@@ -187,7 +187,11 @@ iniReadAutoChrono(byRef aAutoChronoCopy, byRef aAutoChrono)
 
 iniWriteAndUpdateAutoChrono(byRef aAutoChronoCopy, byRef aAutoChrono)
 {
-	
+	; See iniWriteAndUpdateQuickSelect() for reason for using critical.
+	; I haven't observed this happening with chrono items though. And I doub't it's
+	; the reason for missing terran quick select items. 
+
+	critical, on
 	section := "Auto Chrono Items"
 	IniDelete, %config_file%, %section% ;clear the list
 	for i, object in aAutoChronoCopy["Items"]
@@ -215,6 +219,7 @@ iniWriteAndUpdateAutoChrono(byRef aAutoChronoCopy, byRef aAutoChrono)
 		}
 	}
 	aAutoChrono := aAutoChronoCopy
+	critical, off
 	return
 }
 

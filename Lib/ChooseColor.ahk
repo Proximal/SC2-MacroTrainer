@@ -1,4 +1,9 @@
 
+; if pRGB or a custom colour in the palette has the alpha channel set
+; the colour displayed by choosecolor will be black. 
+; This AHK function however will strip the alpha channel before passing the value to
+; choosecolor
+
 /*!
     Function: ChooseColor([pRGB, hOwner, DlgX, DlgY, Palette])
         Displays a standard Windows dialog for choosing colors.
@@ -50,18 +55,18 @@ ChooseColor(pRGB := 0, hOwner := 0, DlgX := 0, DlgY := 0, Palette := "")
         loop 16
             NumPut(0x00FFFFFF, CustColors, (A_Index - 1) * 4, "UInt")
     }
-    
+        
     CustData := (DlgX << 16) | DlgY    ; Store X in high word, Y in the low word
 
 ;___Load user's custom colors
     for Index, Value in Palette
-        NumPut(BGR2RGB(Value), CustColors, (Index - 1) * 4, "UInt")
+        NumPut(BGR2RGB(Value & 0x00FFFFFF), CustColors, (Index - 1) * 4, "UInt") ;Remove the alpha channel as it will cause palette colour to be black
 
 ;___Set up a ChooseColor structure as described in the MSDN
     NumPut(StructSize, ChooseColor, 0, "UInt")
     NumPut(hOwner, ChooseColor, A_PtrSize, "UPtr")
     ; hInstance is null 
-    NumPut(BGR2RGB(pRGB), ChooseColor, 3 * A_PtrSize, "UInt")
+    NumPut(BGR2RGB(pRGB & 0x00FFFFFF), ChooseColor, 3 * A_PtrSize, "UInt") ;Remove the alpha channel as it will cause the displayed custom colour field to be black
     NumPut(&CustColors, ChooseColor, 4 * A_PtrSize, "UPtr")
  /*
 CC_ANYCOLOR - 256

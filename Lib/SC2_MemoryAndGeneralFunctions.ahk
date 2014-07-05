@@ -3889,8 +3889,7 @@ readConfigFile()
 	
 	; In version 3.01 colour picker was changed to the standard windows form/API. 
 	; Users will no longer be able to set the alpha channel as the API doesn't have this functionality.
-	; The AHK function also bitwise-ands the alpha channel to FF when you PASS a chosen colour (or custom palette) to it (and it still works).
-	; but the returned colour will be missing the alpha channel. This channel is added in the saving routine, but lets be
+	; The returned colour will be missing the alpha channel. This channel is added in the saving routine, but lets be
 	; ultra safe and just bitwise-or it here to ensure the alpha channel is full.   	
 					
 	UnitHighlightList1Colour |= 0xFF000000, UnitHighlightList2Colour |= 0xFF000000
@@ -3913,6 +3912,7 @@ readConfigFile()
 	; Have to bitwise-& 0xFFFFFF due to http://msdn.microsoft.com/en-us/library/windows/desktop/dd183449(v=vs.85).aspx
 	; When specifying an explicit RGB color, the COLORREF value has the following hexadecimal form:
     ; 0x00bbggrr - The high-order byte must be zero.
+    ; Note: I've modified the function so this is no longer required - can pass ARGB values.
 	if !isObject(aChooseColourCustomPalette)
 	{
 		aChooseColourCustomPalette := []
