@@ -3886,13 +3886,41 @@ readConfigFile()
 	IniRead, UnitHighlightList5Colour, %config_file%, %section%, UnitHighlightList5Colour, 0xFF00FFFF
 	IniRead, UnitHighlightList6Colour, %config_file%, %section%, UnitHighlightList6Colour, 0xFFFFC663
 	IniRead, UnitHighlightList7Colour, %config_file%, %section%, UnitHighlightList7Colour, 0xFF21FBFF
+	
+	; In version 3.01 colour picker was changed to the standard windows form/API. 
+	; Users will no longer be able to set the alpha channel as the API doesn't have this functionality.
+	; The AHK function also bitwise-ands the alpha channel to FF when you PASS a chosen colour (or custom palette) to it (and it still works).
+	; but the returned colour will be missing the alpha channel. This channel is added in the saving routine, but lets be
+	; ultra safe and just bitwise-or it here to ensure the alpha channel is full.   	
+					
+	UnitHighlightList1Colour |= 0xFF000000, UnitHighlightList2Colour |= 0xFF000000
+	UnitHighlightList3Colour |= 0xFF000000, UnitHighlightList4Colour |= 0xFF000000
+	UnitHighlightList5Colour |= 0xFF000000, UnitHighlightList6Colour |= 0xFF000000
+	UnitHighlightList7Colour |= 0xFF000000
+
 
 	IniRead, HighlightInvisible, %config_file%, %section%, HighlightInvisible, 1
 	IniRead, UnitHighlightInvisibleColour, %config_file%, %section%, UnitHighlightInvisibleColour, 0xFFB7FF00
+	UnitHighlightInvisibleColour |= 0xFF000000
 
 	IniRead, HighlightHallucinations, %config_file%, %section%, HighlightHallucinations, 1
 	IniRead, UnitHighlightHallucinationsColour, %config_file%, %section%, UnitHighlightHallucinationsColour, 0xFF808080
+	UnitHighlightHallucinationsColour |= 0xFF000000
 
+	; This allows the colour picker to update and keep the users added custom colour palette
+	; even when opening the GUI multiple times
+	; This custom colour pallette 
+	; Have to bitwise-& 0xFFFFFF due to http://msdn.microsoft.com/en-us/library/windows/desktop/dd183449(v=vs.85).aspx
+	; When specifying an explicit RGB color, the COLORREF value has the following hexadecimal form:
+    ; 0x00bbggrr - The high-order byte must be zero.
+	if !isObject(aChooseColourCustomPalette)
+	{
+		aChooseColourCustomPalette := []
+		loop 7
+			aChooseColourCustomPalette.insert(UnitHighlightList%A_Index%Colour & 0xFFFFFF)
+		aChooseColourCustomPalette.insert(UnitHighlightInvisibleColour & 0xFFFFFF)
+		aChooseColourCustomPalette.insert(UnitHighlightHallucinationsColour & 0xFFFFFF)
+	}
 	IniRead, UnitHighlightExcludeList, %config_file%, %section%, UnitHighlightExcludeList, CreepTumor, CreepTumorBurrowed
 	IniRead, DrawMiniMap, %config_file%, %section%, DrawMiniMap, 1
 	IniRead, TempHideMiniMapKey, %config_file%, %section%, TempHideMiniMapKey, !Space

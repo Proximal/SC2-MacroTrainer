@@ -218,7 +218,7 @@ if A_OSVersion in WIN_8,WIN_7,WIN_VISTA
 #Include <classInput>
 #Include <setLowLevelInputHooks>
 #Include <WindowsAPI> 
-#include %A_ScriptDir%\Included Files\Colour Selector.ahk
+;#include %A_ScriptDir%\Included Files\Colour Selector.ahk
 #include %A_ScriptDir%\Included Files\Class_ChangeButtonNames.AHk
 
 
@@ -397,6 +397,59 @@ return
 ; Contains labels/routines for the chrono boost section of the GUI
 #Include, Included Files\chronoGUIMainScript.ahk
 
+ColourSelector:
+; A_GuiControl = #AssociatedVariable
+; Removes the prefixed # and so gets the name of the associated variable 
+; allowing the colour to be retrieved and saved 
+; The hwnd variable name is this with a prefixed '_' ie _AssociatedVariable
+ChooseColourVariable := SubStr(A_GuiControl, 2)	
+pictureColour := %ChooseColourVariable% ; get the current colour value
+pictureHwnd := "_" ChooseColourVariable
+pictureHwnd := %pictureHwnd%
+Gui +hwndOptionsGuiHwnd ; get hwnd to disable options GUI until colour is picked
+; When specifying the selected colour the alpha channel is ignored. 
+; But the alpha channel must be 0 in the custom colour palette colours
+selectedColour := ChooseColor(pictureColour, OptionsGuiHwnd,,,aChooseColourCustomPalette)
+if !ErrorLevel ; User click ok/accept
+{
+	; Set Alpha channel to max as this function doesn't set it.
+	; Save the value in hex RGB format in the ini rather than a random decimal value.
+	; The alpha channel will be blank, so set it to FF
+	%ChooseColourVariable% := dectohex(selectedColour | 0xFF000000) 
+	paintPictureControl(pictureHwnd, %ChooseColourVariable%)
+}
+return
+
+paintPictureControl(Handle, Colour, RoundCorner := 0, ControlW := "", ControlH := "")
+{ 
+	; GuiControlGet will only work for the current GUI thread. Could add a another variable for
+	; this if required
+	If (ControlW = "" OR ControlH = "")
+		GuiControlGet, Control, Pos, %Handle%
+
+	pBitmap  := Gdip_CreateBitmap(ControlW, ControlH)
+	G := Gdip_GraphicsFromImage(pBitmap)
+	pBrushBackground  := Gdip_BrushCreateSolid("0xFFF0F0F0") 	;cover the edges of the pic
+	Gdip_FillRectangle(G, pBrushBackground, 0, 0, ControlW, ControlH)
+	pBrush  := Gdip_BrushCreateSolid(Colour)
+	if RoundCorner
+	{
+		Gdip_SetSmoothingMode(G, 4)
+		Gdip_FillRoundedRectangle(G, pBrush, 0, 0, ControlW, ControlH, RoundCorner)
+	}
+	Else 
+	{
+		Gdip_FillRectangle(G, pBrush, 0, 0, ControlW, ControlH)
+		pPen := Gdip_CreatePen(0xFF000000, 1)
+		Gdip_DrawRectangle(G, pPen, 0, 0, ControlW-1, ControlH-1) 
+		Gdip_DeletePen(pPen)	
+	}	
+	hBitmap := Gdip_CreateHBITMAPFromBitmap(pBitmap)
+	SetImage(Handle, HBitmap)	
+	Gdip_DeleteBrush(pBrush), Gdip_DeleteBrush(pBrushBackground), Gdip_DeleteGraphics(G)
+	Gdip_DisposeImage(pBitmap), DeleteObject(hBitmap)
+	Return
+}
 
 ;2147483647  - highest priority so if i ever give something else a high priority, this key combo will still interupt (if thread isnt critical)
 ;#MaxThreadsBuffer on
@@ -10993,9 +11046,9 @@ uStruct: 38d3000 - 38d31c0
 
 
 
-*/
+
 ; This is useful for aligning various GUI controls
-;f2::
+f2::
 loop 
 {
 	MouseGetPos, x, y, WinTitle, control, 2
