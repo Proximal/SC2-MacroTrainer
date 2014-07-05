@@ -213,15 +213,6 @@ if A_OSVersion in WIN_8,WIN_7,WIN_VISTA
 ;	Startup
 ;-----------------------
 
-#Include <Gdip>
-#Include <SC2_MemoryAndGeneralFunctions>
-#Include <classInput>
-#Include <setLowLevelInputHooks>
-#Include <WindowsAPI> 
-;#include %A_ScriptDir%\Included Files\Colour Selector.ahk
-#include %A_ScriptDir%\Included Files\Class_ChangeButtonNames.AHk
-
-
 ;CreatepBitmaps(a_pBitmap, aUnitID)
 ;aUnitInfo := []
 
@@ -394,6 +385,12 @@ return
 ;-----------------------
 ; End of execution
 ;-----------------------
+#Include <Gdip>
+#Include <SC2_MemoryAndGeneralFunctions>
+#Include <classInput>
+#Include <setLowLevelInputHooks>
+#Include <WindowsAPI> 
+#include %A_ScriptDir%\Included Files\Class_ChangeButtonNames.AHk
 ; Contains labels/routines for the chrono boost section of the GUI
 #Include, Included Files\chronoGUIMainScript.ahk
 
@@ -407,9 +404,9 @@ pictureColour := %ChooseColourVariable% ; get the current colour value
 pictureHwnd := "_" ChooseColourVariable
 pictureHwnd := %pictureHwnd%
 Gui +hwndOptionsGuiHwnd ; get hwnd to disable options GUI until colour is picked
-; When specifying the selected colour the alpha channel is ignored. 
-; But the alpha channel must be 0 in the custom colour palette colours
-selectedColour := ChooseColor(pictureColour, OptionsGuiHwnd,,,aChooseColourCustomPalette)
+; When specifying the selected colour the alpha channel is must be 00 (otherwise the displayed colour is black). 
+; The alpha channel must be 0 in the custom colour palette colours as well.
+selectedColour := ChooseColor(pictureColour & 0x00FFFFFF, OptionsGuiHwnd,,,aChooseColourCustomPalette)
 if !ErrorLevel ; User click ok/accept
 {
 	; Set Alpha channel to max as this function doesn't set it.
@@ -508,9 +505,35 @@ ExitApp:
 	ExitApp ; invokes the shutdown procedure
 return 
 
-g_ListVars:
+debugListVars:
 	ListVars
 	return
+
+; This is useful for aligning various GUI controls
+degbugGUIStats:
+GuiControlGet, currentText,, %A_GuiControl%
+if !instr(currentText, "Off")
+{
+	GuiControl,, %A_GuiControl%, Off
+	settimer, debugGUIStatsTimer, -1
+}
+else GuiControl,, %A_GuiControl%, Control Pos
+return 	
+
+debugGUIStatsTimer:
+Gui Options:+LastFound ; set last found for !winExist().
+loop 
+{
+	MouseGetPos, x, y, WinTitle, control, 2
+	guicontrolget, output, Options: pos, %control% ; Needs Options: pos if not launched via GUI button
+	ToolTip, % outputx ", " outputy A_Tab "x, y" ; x, y
+		. "`n" (outputx+outputw) ", " (outputy+outputh) A_Tab "x, y bot right corner" ; Right bottom corner x, y
+		. "`n" outputW ", " outputH A_Tab "w, h" ; w, h
+	sleep 50
+	GuiControlGet, currentText, Options:, degbugGUIVar
+} until !WinExist() || !instr(currentText, "Off")
+ToolTip 
+return
 
 g_GetDebugData:
 	clipboard := debugData := DebugData()
@@ -3358,9 +3381,10 @@ IfWinExist
 					Gui, Add, Button, x+5 yp w30 h23 vTest_VOL_All gTest_VOL, Test
 
 		Gui, Add, GroupBox, Xs+171 ys+116 w245 h170, Debugging
-			Gui, Add, Button, xp+10 yp+30  Gg_ListVars w75 h25,  List Variables
+			Gui, Add, Button, % "xp+10 yp+25 GdebugListVars w75 h25 disabled" round(A_IsCompiled),  List Variables
 			Gui, Add, Button, xp yp+30  Gg_GetDebugData w75 h25,  Debug Data
 			Gui, Add, Button, xp yp+30  Gg_DebugKey w75 h25,  Key States
+			Gui, Add, Button, xp yp+30  GdegbugGUIStats vdegbugGUIVar w75 h25, Control Pos
 
 		Gui, Add, GroupBox, Xs+171 ys+290 w245 h60, Emergency Restart Key
 			Gui, Add, Text, xp+10 yp+25 w40,Hotkey:
@@ -3799,7 +3823,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		;Gui, Add, Text, Xs yp+40, Deselect These Units:
 		Gui, add, GroupBox, xs-15 y+35 w405 h155, Deselect These Units
 		Gui, Add, Checkbox, Xs yp+25 vSelectArmyDeselectXelnaga Checked%SelectArmyDeselectXelnaga%, Xelnaga (tower) units
-		Gui, Add, Checkbox, xs+200 yp vSelectArmyOnScreen Checked%SelectArmyOnScreen%, Outside of the camera view
+		Gui, Add, Checkbox, xs+200 yp vSelectArmyOnScreen Checked%SelectArmyOnScreen%, Outside of camera view
 		Gui, Add, Checkbox, Xs yp+20 vSelectArmyDeselectPatrolling Checked%SelectArmyDeselectPatrolling%, Patrolling units
 		Gui, Add, Checkbox, xs+200 yp vSelectArmyDeselectFollowing Checked%SelectArmyDeselectFollowing%, On follow command
 		Gui, Add, Checkbox, Xs yp+20 vSelectArmyDeselectQueuedDrops Checked%SelectArmyDeselectQueuedDrops%, Transports queued to drop
@@ -4131,7 +4155,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 					Gui, Add, Checkbox, xp+95 yp vDrawLocalPlayerResources Checked%drawLocalPlayerResources%, Include Self
 				Gui, Add, Checkbox, xs+10 y+13 vDrawArmySizeOverlay Checked%DrawArmySizeOverlay%, Army Size
 					Gui, Add, Checkbox, xp+95 yp vDrawLocalPlayerArmy Checked%drawLocalPlayerArmy%, Include Self
-				Gui, Add, Checkbox, xs+10 y+15 vDrawAPMOverlay Checked%DrawAPMOverlay%, APM
+				Gui, Add, Checkbox, xs+10 y+13 vDrawAPMOverlay Checked%DrawAPMOverlay%, APM
 					Gui, Add, Checkbox, xp+95 yp vAPMOverlayMode Check3 Checked%APMOverlayMode%, Mode
 				Gui, Add, Checkbox, xs+10 y+13 vDrawIdleWorkersOverlay Checked%DrawIdleWorkersOverlay%, Idle Worker Count
 				Gui, Add, Checkbox, xp y+13 vDrawWorkerOverlay Checked%DrawWorkerOverlay%, Local Harvester Count
@@ -4146,7 +4170,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 
 
 				Gui, Add, GroupBox, ys XS+220 w170 h260, Match Overlay:
-				Gui, Add, Checkbox, xp+10 yp+25 vDrawUnitUpgrades Checked%DrawUnitUpgrades%, Show Upgrades
+				Gui, Add, Checkbox, xp+10 yp+20 vDrawUnitUpgrades Checked%DrawUnitUpgrades%, Show Upgrades
 				Gui, Add, Checkbox, xp y+13 vDrawUnitOverlay Checked%DrawUnitOverlay%, Show Unit Count/Production
 				Gui, Add, Checkbox, xp y+13 vSplitUnitPanel ggToggleAlignUnitGUI Checked%SplitUnitPanel% , Split Units/Buildings
 				Gui, Add, Checkbox, % "xp y+13 vUnitPanelAlignNewUnits Checked" unitPanelAlignNewUnits " disabled" !SplitUnitPanel, Align New units
@@ -4155,7 +4179,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 				Gui, Add, Checkbox, xp y+13 vUnitPanelDrawUpgradeProgress Checked%unitPanelDrawUpgradeProgress%, Show Upgrade Progress 
 
 				;Gui, Add, Button, center xp+15 y+10 w100 h30 vUnitPanelFilterButton Gg_GUICustomUnitPanel, Unit Filter
-				Gui, Add, Button, center xp y+24 w70 h30 vUnitPanelFilterButton Gg_GUICustomUnitPanel, Unit Filter
+				Gui, Add, Button, center xp y+27 w70 h30 vUnitPanelFilterButton Gg_GUICustomUnitPanel, Unit Filter
 				Gui, Add, Button, center x+10 yp w70 h30 vUnitPanelGuideButton GgUnitPanelGuide, Guide
 
 			Gui, Add, GroupBox, XS ys+270 w195 h55 section, Player Identifier:	
@@ -11047,18 +11071,7 @@ uStruct: 38d3000 - 38d31c0
 
 
 
-; This is useful for aligning various GUI controls
-f2::
-loop 
-{
-	MouseGetPos, x, y, WinTitle, control, 2
-	guicontrolget, output, Options: pos, %control%
-	ToolTip, % outputx ", " outputy ; x, y
-		. "`n" (outputx+outputw) ", " (outputy+outputh) ; Right bottom corner x, y
-		. "`n " outputW ", " outputH ; w, h
-	sleep 50
-}
-return 
+
 /*
 f1::
 unit := getSelectedUnitIndex()
@@ -11070,3 +11083,10 @@ clipboard := aQueueInfo.1.item
 return 
 ;TerranVehicleAndShipWeaponsLevel2
 ;TerranVehicleAndShipPlatingLevel2
+
+*/
+
+
+f1::objtree(aAutoChronoCopy)
+
+

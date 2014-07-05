@@ -263,10 +263,14 @@ showAutoChronoItem(byRef aAutoChronoCopy)
 {
 	arrayPosition := aAutoChronoCopy["IndexGUI"]
 	removeAllItemsFromListView("AutoChronoListView")
+	aOrder := []
 	for typeID, userOrder in aAutoChronoCopy["Items", arrayPosition, "units"]
+		aOrder[userOrder] := typeID
+
+	for userOrder, typeID in aOrder
 	{
 		if aUnitName.haskey(typeID)
-			LV_Insert(userOrder, "", aUnitName[typeID])
+			LV_ADD("", aUnitName[typeID])
 	}
 	GUIControl,, AutoChronoEnabled, % round(aAutoChronoCopy["Items", arrayPosition, "enabled"])
 	GUIControl,, AutoChrono_Key, % aAutoChronoCopy["Items", arrayPosition, "hotkey"]
