@@ -3465,7 +3465,7 @@ IfWinExist
 		Gui, Add, Button, xp yp+35 w50 h25 gg_RemoveEmailAttachment, Remove
 		Gui, Add, Button, vB_Report gB_Report xp+195 y+8 w80 h50, Send
 
-	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vChronoBoost_TAB, Settings||Structures
+	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vChronoBoost_TAB, Settings||Items
 	Gui, Tab, Settings	
 		Gui, Add, GroupBox, w190 h160 x+15 y+25 section, SC2 Keys && Control Groups			
 			Gui, Add, Text, xp+10 yp+25 , Storage Ctrl Group:
@@ -3491,7 +3491,7 @@ IfWinExist
 				Gui, Add, UpDown,  Range0-1000 vCG_chrono_remainder, %CG_chrono_remainder%		
 
 
-	Gui, Tab, Structures
+	Gui, Tab, Items
 
 	aAutoChronoCopy["IndexGUI"] := 1
 	if !aAutoChronoCopy["MaxIndexGUI"]
@@ -4444,7 +4444,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		unitPanelDrawUnitProgress_TT := "Displays a progress bar below any unit in production."
 		unitPanelDrawUpgradeProgress_TT := "Displays a progress bar below the current upgrades."
 
-		OverlayIdent_TT := "Changes or disables the method of identifying players in the overlays."
+		OverlayIdent_TT := "Changes or disables the method of identifying players in the overlays.`n`nThe 'cycle identifier' hotkey allows you to change this setting during a match."
 
 		Playback_Alert_Key_TT := #Playback_Alert_Key_TT := "Repeats the previous alert"
 

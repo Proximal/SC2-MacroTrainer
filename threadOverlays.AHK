@@ -1172,8 +1172,8 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 								if chronoed
 									aMiscUnitPanelInfo[owner, "ChronoUpgrade", aProduction.Item] := True
 							}
-							else if !A_IsCompiled
-								log(aProduction.Item " | " type)
+							;else if !A_IsCompiled
+							;	log(aProduction.Item " | " type)
 						}
 					}
 					; priority - CC = PF = 3, Orbital = 4
@@ -2009,6 +2009,8 @@ DrawMacroTownHallOverlay(ByRef Redraw, UserScale=1, Drag=0)
 	, Gdip_SetInterpolationMode(G, 2)
 	, SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
 	, Width *= UserScale *.4, Height *= UserScale *.4
+	; , !macroCount ? textColour := " c00FFFFFF" : "" ; so don't see any number if 0 ; disabled. Might add an option to hide overlay on 0 - but no room 
+	; in GUI options for this and CBF moving things around
 	, stringData := Gdip_TextToGraphics(G, macroCount, "x"(Width+2*UserScale) "y" (Height)  textColour "r4 s" 18*UserScale, Font)
 	StringSplit, stringData, stringData, | ; stringData2 = y pos - stringData4 = height (rectangle)
 	if (aLocalPlayer.Race = "Terran" || aLocalPlayer.Race = "Protoss" )
