@@ -5859,23 +5859,25 @@ WM_MOUSEMOVE()
 	static CurrControl, PrevControl, _TT  ; _TT is kept blank for use by the ToolTip command below.
 
     CurrControl := A_GuiControl
-    If (CurrControl <> PrevControl and not InStr(CurrControl, " "))
+    If (CurrControl != PrevControl && !InStr(CurrControl, " "))
     {
         ToolTip  ; Turn off any previous tooltip.
-        SetTimer, DisplayToolTip, 400
+        SetTimer, DisplayToolTip, -400
         PrevControl := CurrControl
     }
     return
 
     DisplayToolTip:
-
-    SetTimer, DisplayToolTip, Off
-	Try	ToolTip % %CurrControl%_TT  ; try guards against illegal character error
-    SetTimer, RemoveToolTip, 10000
+    ;SetTimer, DisplayToolTip, Off
+	Try	ToolTip % %CurrControl%_TT  ; try guards against illegal character error (when a controls text is passed as it doesn't have an associated variable)
+	; Average reading words/minute = 250-300. 180 when proof reading on a monitor (so use this)
+	; Average English word length is ~ 5 (could just use regex to find word count)
+   	try displayTime := strlen(%CurrControl%_TT) / 5 / 180 * 60000
+    SetTimer, RemoveToolTip, % -1 * (displayTime > 9000 ? displayTime : 9000)
     return
 
     RemoveToolTip:
-    SetTimer, RemoveToolTip, Off
+    ;SetTimer, RemoveToolTip, Off
     ToolTip
     return
 }
@@ -11093,7 +11095,6 @@ return
 ;TerranVehicleAndShipPlatingLevel2
 
 */
-
 
 
 
