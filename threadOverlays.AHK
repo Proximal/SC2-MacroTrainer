@@ -1930,12 +1930,6 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 
 	Update: I believe this was due to calling gdi graphicsClear (which isn't required)
 */
-townHallRedraw := True
-loop 
-{
-	DrawMacroTownHallOverlay(townHallRedraw, 2, 0)
-}
-return 
 
 DrawMacroTownHallOverlay(ByRef Redraw, UserScale=1, Drag=0)
 {
@@ -2027,7 +2021,7 @@ DrawMacroTownHallOverlay(ByRef Redraw, UserScale=1, Drag=0)
 	Return
 }	
 
-getLocalUpgrades(byRef aUpgrades)
+getLocalUpgrades(byRef aUpgrades, percentMode)
 {
 	static aUpgradeStructures := [], aMorphingStructures := []
 	
@@ -2061,12 +2055,14 @@ getLocalUpgrades(byRef aUpgrades)
 	    	if (Type = aUnitID["CommandCenter"] && MorphingType := isCommandCenterMorphing(unit))
 	    	|| ((Type = aUnitID["Hatchery"] || Type = aUnitID["Lair"] || Type = aUnitID["Spire"]) && (MorphingType := isHatchLairOrSpireMorphing(unit, Type)))
 	    	{
-	    		progress := getUnitMorphTime(unit, type)
+	    		progress := getUnitMorphTime(unit, type, percentMode)
 	    		name := aUnitName[MorphingType]	 
 	    		; The "zzzz" is a simply dirty hack so these morphing upgrades are drawn last   
 	    		; This means you can't use the 	aUpgrades index/key to look stuff up when drawing	
-	    		aUpgrades["zzzz" name] := {Name: name, Progress: aUpgrades["zzzz" name].progress > progress ? aUpgrades["zzzz" name].progress : progress
-	    						, count: round(aUpgrades["zzzz" name].Count) + 1}
+	    		aUpgrades["zzzz" name] := {Name: name, Progress: percentMode 
+	    															? (aUpgrades["zzzz" name].progress > progress ? aUpgrades["zzzz" name].progress : progress)
+	    															:  (aUpgrades["zzzz" name].progress && aUpgrades["zzzz" name].progress < progress ? aUpgrades["zzzz" name].progress : progress) ; time remaining
+	    								, count: round(aUpgrades["zzzz" name].Count) + 1}
 	    		hasItems := True
 	    		continue ; as Morphings so won't have any production items
 	    	}
@@ -2074,7 +2070,7 @@ getLocalUpgrades(byRef aUpgrades)
 	    		continue ; as don't want to show SCVs
 	    }
 
-		if (queueSize := getStructureProductionInfo(unit, type, aQueueInfo))
+		if (queueSize := getStructureProductionInfo(unit, type, aQueueInfo,, percentMode))
 		{
 			for i, aProduction in aQueueInfo
 			{
@@ -2086,7 +2082,10 @@ getLocalUpgrades(byRef aUpgrades)
 					hasItems := True
 					name := aProduction.Item
 					progress := aProduction.progress
-	    			aUpgrades[name] := {Name: name, Progress: aUpgrades[name].progress > progress ? aUpgrades[name].progress : progress
+					; Need to have the progress check as can 'research' multiple nukes simultaneously 
+	    			aUpgrades[name] := {Name: name, Progress: percentMode 
+	    															? (aUpgrades[name].progress > progress ? aUpgrades[name].progress : progress)
+	    															: (aUpgrades[name].progress && aUpgrades[name].progress < progress ? aUpgrades[name].progress : progress)
 	    								, count: round(aUpgrades[name].Count) + 1
 	    								, chrono: aLocalPlayer["Race"] = "Protoss" ? numgetIsUnitChronoed(MemDump, unit) : 0}
 				}
@@ -2099,8 +2098,10 @@ getLocalUpgrades(byRef aUpgrades)
 DrawLocalUpgradesOverlay(ByRef Redraw, UserScale = 1, Drag = 0)
 {
 	global localUpgradesItemsPerRow, LocalUpgradesOverlayX, LocalUpgradesOverlayY, overlayLocalUpgradesTransparency
+	 		, DrawLocalUpgradesOverlay
 	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0, upgradesExistPrevious := 0
 
+	percentMode := (DrawLocalUpgradesOverlay = 1) ; DrawLocalUpgradesOverlay = -1 seconds remaining mode
 	If (Redraw = -1)
 	{
 		Try Gui, LocalUpgradesOverlay: Destroy
@@ -2136,16 +2137,19 @@ DrawLocalUpgradesOverlay(ByRef Redraw, UserScale = 1, Drag = 0)
 	DestX := DestY := 0
 	if !localUpgradesItemsPerRow
 		localUpgradesItemsPerRow := 9999 ; So it draws along a single row if set to 0 - or is null for some reason
-	upgradesExist := getLocalUpgrades(aUpgrades)
+	upgradesExist := getLocalUpgrades(aUpgrades, percentMode)
 	if (upgradesExist) || (!upgradesExist && upgradesExistPrevious) || drag
 	{
 		if (drag && !upgradesExist) ; So you can see and drag it when nothing is present
-			aUpgrades := {	1: {name: "ResearchShieldWall", progress: .80, count: 1}	
-						,	2: {name: "Stimpack", progress: .80, count: 1}	
-						,	3: {name: "ResearchExtendedThermalLance", progress: .80, count: 1}	
-						,	4: {name: "ResearchWarpGate", progress: .80, count: 1}	
-						,	5: {name: "zerglingmovementspeed", progress: .80, count: 1}	
-						,	6: {name: "Lair", progress: .80, count: 2}	}
+		{
+			progress := percentMode ? .80 : 65
+			aUpgrades := {	1: {name: "ResearchShieldWall", progress: progress, count: 1}	
+						,	2: {name: "Stimpack", progress: progress, count: 1}	
+						,	3: {name: "ResearchExtendedThermalLance", progress: progress, count: 1}	
+						,	4: {name: "ResearchWarpGate", progress: progress, count: 1}	
+						,	5: {name: "zerglingmovementspeed", progress: progress, count: 1}	
+						,	6: {name: "Lair", progress: progress, count: 2}	}
+		}
 
 		hbm := CreateDIBSection(A_ScreenWidth, A_ScreenHeight)
 		, hdc := CreateCompatibleDC()
@@ -2160,9 +2164,9 @@ DrawLocalUpgradesOverlay(ByRef Redraw, UserScale = 1, Drag = 0)
 		for i, upgrade in aUpgrades
 		{
 			if !(pBitmap := a_pBitmap[aUnitID.HasKey(upgrade.name) ? aUnitID[upgrade.name] : upgrade.name])
-				continue ; as i dont have a picture for that unit - not a real unit?
+				continue ; as i dont have a picture for that unit
 			SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap) 
-			, Width *= UserScale *.5, Height *= UserScale *.5	; all unit/buildings/updagres are 38x38 after being halved
+			, Width *= UserScale *.5, Height *= UserScale *.5	; all unit/buildings/upgrades are 38x38 after being halved
 
 			Gdip_DrawImage(G, pBitmap, DestX, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
 
@@ -2174,17 +2178,28 @@ DrawLocalUpgradesOverlay(ByRef Redraw, UserScale = 1, Drag = 0)
 			if (upgrade.Chrono)
 				Gdip_FillEllipse(G, a_pBrushes["ScanChrono"], DestX + .2*Width/2, DestY + .2*Height/2, 6*UserScale, 6*UserScale)
 
-			Gdip_SetSmoothingMode(G, 0)
-			, Gdip_FillRectangle(G, a_pBrushes.TransparentBlack, DestX + 5 * UserScale *.5, floor(DestY+Height + 5 * UserScale *.5), Width - 10 * UserScale *.5, Height/12) ;Height/16
-			, Gdip_FillRectangle(G, a_pBrushes.Green, DestX + 5 * UserScale *.5, floor(DestY+Height + 5 * UserScale *.5), Width*upgrade.progress - upgrade.progress * 10 * UserScale *.5, Height/12)
-			, Gdip_SetSmoothingMode(G, 4)
+			
+			if percentMode
+			{
+				Gdip_SetSmoothingMode(G, 0)
+				, Gdip_FillRectangle(G, a_pBrushes.TransparentBlack, DestX + 5 * UserScale *.5, floor(DestY+Height + 5 * UserScale *.5), Width - 10 * UserScale *.5, Height/12) ;Height/16
+				, Gdip_FillRectangle(G, a_pBrushes.Green, DestX + 5 * UserScale *.5, floor(DestY+Height + 5 * UserScale *.5), Width*upgrade.progress - upgrade.progress * 10 * UserScale *.5, Height/12)
+				, Gdip_SetSmoothingMode(G, 4)
+			}
+			else 
+			{
+				; each picture has a 5 pixel blank surrounding border 5 * UserScale * .5 (the last .5 is the same factor used to reduce the drawn image size)
+				Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack,  DestX + 5 * UserScale *.5, floor(DestY+Height + 3 * UserScale *.5), Width - 10 * UserScale *.5, Height/2.5, 2)
+				, gdip_TextToGraphics(G, formatSeconds(upgrade.progress), "x"(DestX + Width//2) " y"floor(DestY+Height + 5 * UserScale *.5)  " centre cFFFFFFFF r4 s" 12*UserScale, Font)
+			}
+			
 
 			if (DestX > windowWidth) 
 				windowWidth := DestX
 			if (DestY > WindowHeight)
 				WindowHeight := DestY
 			if (++rowCount >= localUpgradesItemsPerRow)
-				DestX := 0, DestY += Height + 10 * UserScale, rowCount := 0 ; made the y spacing a bit bigger as I've increased the progress bar height
+				DestX := 0, DestY += Height + (percentMode ? 10 : 17) * UserScale, rowCount := 0 ; made the y spacing a bit bigger as I've increased the progress bar height
 			else DestX += Width+5*UserScale			
 		}
 		windowWidth += 2*Width, WindowHeight += 2*Height ; If height and width blank from not entering loop, these will remain at 20

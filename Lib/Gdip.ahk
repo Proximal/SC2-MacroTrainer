@@ -2052,14 +2052,14 @@ Gdip_TextToGraphics(pGraphics, Text, Options, Font="Arial", Width="", Height="",
 	Style := 0, Styles := "Regular|Bold|Italic|BoldItalic|Underline|Strikeout"
 	Loop, Parse, Styles, |
 	{
-		if RegExMatch(Options, "\b" A_loopField)
+		if RegExMatch(Options, "i)\b" A_loopField)
 		Style |= (A_LoopField != "StrikeOut") ? (A_Index-1) : 8
 	}
   
 	Align := 0, Alignments := "Near|Left|Centre|Center|Far|Right"
 	Loop, Parse, Alignments, |
 	{
-		if RegExMatch(Options, "\b" A_loopField)
+		if RegExMatch(Options, "i)\b" A_loopField)
 			Align |= A_Index//2.1      ; 0|0|1|1|2|2
 	}
 

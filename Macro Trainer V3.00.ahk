@@ -4161,7 +4161,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 				Gui, Add, Checkbox, xp y+13 vDrawWorkerOverlay Checked%DrawWorkerOverlay%, Local Harvester Count
 				Gui, Add, Checkbox, xp y+13 vDrawLocalPlayerColourOverlay Checked%DrawLocalPlayerColourOverlay%, Local Player Colour
 				Gui, Add, Checkbox, xp y+13 vDrawMacroTownHallOverlay Checked%DrawMacroTownHallOverlay%, Town Hall Macro
-				Gui, Add, Checkbox, xp y+13 vDrawLocalUpgradesOverlay Checked%DrawLocalUpgradesOverlay%, Local Upgrades
+				Gui, Add, Checkbox, xp y+13 vDrawLocalUpgradesOverlay Checked%DrawLocalUpgradesOverlay% Check3, Local Upgrades
 			
 			;	Gui, Add, Edit, Number Right x+25 yp-2 w50 vTT_localUpgradesItemsPerRow
 			;		Gui, Add, UpDown,  Range0-100 vlocalUpgradesItemsPerRow, %localUpgradesItemsPerRow%	
@@ -4373,7 +4373,8 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		DrawWorkerOverlay_TT := "Displays your current harvester count with a worker icon"
 		DrawIdleWorkersOverlay_TT := "While idle workers exist, a worker icon will be displayed with the current idle count.`n`nThe size and position can be changed easily so that it grabs your attention."
 		DrawUnitOverlay_TT := "Displays an overlay similar to the 'observer panel', listing the current and in-production unit counts.`n`nUse the 'unit panel filter' to selectively remove/display units.`n`nNote: To disable the match overlay uncheck both 'Show Upgrades' and 'Show Unit Count/Production'."
-		DrawUnitUpgrades_TT := "Displays the current enemy upgrades.`n`nNote: To disable the match overlay uncheck both 'Show Upgrades' and 'Show Unit Count/Production'."
+		DrawUnitUpgrades_TT := "Displays the current enemy upgrades.""`n`nNote: To disable the match overlay uncheck both 'Show Upgrades' and 'Show Unit Count/Production'."
+		
 		UnitPanelFilterButton_TT := "Allows units to be selectively removed from the overlay."
 
 		ToggleAutoWorkerState_Key_TT := #ToggleAutoWorkerState_Key_TT := "Toggles (enables/disables) this function for the CURRENT match.`n`nWill only work during a match"
@@ -4616,6 +4617,10 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 									. "`n`nNote: Non-Control-grouped town halls will not be included."										
 		DrawLocalUpgradesOverlay_TT := "Displays your current upgrade items."
 									. "`nThis includes morphing hatches, lairs, spires, and command centres."
+									. "`n`nThis has three modes: "
+									. "`n`nUnchecked = Off"
+									. "`nChecked = Progress bar (percent complete)"
+									. "`nGreyed  = Time remaining"
 
 		APMOverlayMode_TT := "Set the drawing mode for the APM overlay."
 							. "`n`n Unchecked = Enemies"

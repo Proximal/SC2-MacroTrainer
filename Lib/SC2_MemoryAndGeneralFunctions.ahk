@@ -1635,7 +1635,7 @@ getBuildStats(building, byref QueueSize := "", byRef item := "")
 ; hence this accounts for if a reactor is present
 ; it doesn't return the full list of units queued, just the one/two which are currently being produced
 ; byref totalQueueSize will return the total number of units queued though
-getStructureProductionInfo(unit, type, byRef aInfo, byRef totalQueueSize := "")
+getStructureProductionInfo(unit, type, byRef aInfo, byRef totalQueueSize := "", percent := True)
 {
 	STATIC O_pQueueArray := 0x34, O_IndexParentTypes := 0x18, O_unitsQueued := 0x28
 		, aOffsets := []
@@ -1668,7 +1668,8 @@ getStructureProductionInfo(unit, type, byRef aInfo, byRef totalQueueSize := "")
 		if !aStringTable.hasKey(pString := readMemory(B_QueuedUnitInfo + 0xD0, GameIdentifier))
 			aStringTable[pString] := ReadMemory_Str(readMemory(pString + 0x4, GameIdentifier), GameIdentifier)
 		item := aStringTable[pString]
-		if progress := getPercentageUnitCompleted(B_QueuedUnitInfo) ; 0.0 will be seen as false but doesnt really matter
+		; progress 0 if hasn't started so don't add it to the list
+		if progress := percent ? getPercentageUnitCompleted(B_QueuedUnitInfo) : getTimeUntilUnitCompleted(B_QueuedUnitInfo)  ; 0.0 will be seen as false but doesnt really matter
 			aInfo.insert({ "Item": item, "progress": progress})
 		else break ; unit with highest complete percent is ALWAYS first in this queuedArray
 	} 
@@ -1718,12 +1719,12 @@ getZergProductionFromEgg(eggUnitIndex)
 	p := readmemory(getUnitAbilityPointer(eggUnitIndex) + 0x1C, GameIdentifier)
 	p := readmemory(p + 0x34, GameIdentifier) 		; cAbilQueueUse
 	p := readmemory(p, GameIdentifier) 				; LarvaTrain  - this pointer structure will also have the production time/total
-	timeRemaing := readmemory(p + 0x6C, GameIdentifier) 	
+	timeRemaining := readmemory(p + 0x6C, GameIdentifier) 	
 	totalTime := readmemory(p + 0x68, GameIdentifier) 		
 	p := readmemory(p + 0xf4, GameIdentifier)
 	if !aStringTable.haskey(pString := readmemory(p, GameIdentifier) ) ; pString
 		aStringTable[pString] := ReadMemory_Str(readMemory(pString + 0x4, GameIdentifier), GameIdentifier)
-	item.Progress := round((totalTime - timeRemaing)/totalTime, 2) 
+	item.Progress := round((totalTime - timeRemaining)/totalTime, 2) 
 	item.Type := aUnitID[(item.Item := aStringTable[pString])] 
 	item.Count := item.Type = aUnitID.Zergling ? 2 : 1
 	return item
@@ -1850,6 +1851,18 @@ getPercentageUnitCompleted(B_QueuedUnitInfo)
 	RemainingTime := ReadMemory(B_QueuedUnitInfo + O_TimeRemaining, GameIdentifier)
 
 	return round( (TotalTime - RemainingTime) / TotalTime, 2) ;return .47 (ie 47%)
+}
+
+; returns seconds round to 2 decimal points
+; returns 0/false if hasnt started
+getTimeUntilUnitCompleted(B_QueuedUnitInfo)
+{	GLOBAL GameIdentifier
+	STATIC O_TotalTime := 0x68, O_TimeRemaining := 0x6C
+	TotalTime := ReadMemory(B_QueuedUnitInfo + O_TotalTime, GameIdentifier)
+	RemainingTime := ReadMemory(B_QueuedUnitInfo + O_TimeRemaining, GameIdentifier)
+	if (TotalTime = RemainingTime) ; hasn't started so don't add it to any lists
+		return 0
+	return round(RemainingTime / 65536, 2) ;return 6.47 
 }
 
 ; this doesnt correspond to the unit in production for all structures!
@@ -4091,9 +4104,9 @@ getStructureMorphProgress(pAbilities, unitType)
 {
 ;	pBuildInProgress := findAbilityTypePointer(pAbilities, unitType, "BuildInProgress")
 	p := pointer(GameIdentifier, findAbilityTypePointer(pAbilities, unitType, "BuildInProgress"), 0x10, 0xD4)
-	timeRemaing := ReadMemory(p + 0x98, GameIdentifier)
+	timeRemaining := ReadMemory(p + 0x98, GameIdentifier)
 	totalTime := ReadMemory(p + 0xB4, GameIdentifier)
-	return round((totalTime - timeRemaing)/totalTime, 2)
+	return round((totalTime - timeRemaining)/totalTime, 2)
 }
 ; similar to getStructureBuildProgress
 ; Note, this also works with corruptors -> gg.lords and overlord -> overseer, but not ling -> bane or HTs -> Archon
@@ -4101,9 +4114,9 @@ getStructureMorphProgress(pAbilities, unitType)
 getUnitMorphTimeOld(unit)
 {
 	p := ReadMemory(B_uStructure + unit * S_uStructure + O_P_uCmdQueuePointer, GameIdentifier)
-	timeRemaing := ReadMemory(p + 0x98, GameIdentifier)
+	timeRemaining := ReadMemory(p + 0x98, GameIdentifier)
 	totalTime := ReadMemory(p + 0xB4, GameIdentifier)
-	return round((totalTime - timeRemaing)/totalTime, 2)
+	return round((totalTime - timeRemaining)/totalTime, 2)
 }
 
 /*
@@ -4117,7 +4130,10 @@ getUnitMorphTimeOld(unit)
 	UpgradeToPlanetaryFortress
 */
 
-getUnitMorphTime(unit, unitType)
+; If percent False returns seconds remaining
+; otherwise returns % complete
+
+getUnitMorphTime(unit, unitType, percent := True)
 {
 	static targetIsPoint := 0x8, targetIsUnit := 0x10, hasRun := False, aMorphStrings
 
@@ -4151,9 +4167,13 @@ getUnitMorphTime(unit, unitType)
 
 				if (morphString = aStringTable[pString])
 				{
-					timeRemaing := numget(cmdDump, 0x98, "UInt")
+					timeRemaining := numget(cmdDump, 0x98, "UInt")
 					totalTime := numget(cmdDump, 0xB4, "UInt")			
-					return round((totalTime - timeRemaing)/totalTime, 2)
+					;return round((totalTime - timeRemaining)/totalTime, 2)
+					return round(percent 
+									? (totalTime - timeRemaining)/totalTime 
+									: timeRemaining / 65536 ; 2^16
+								, 2)
 				}
 			}
 
@@ -4169,16 +4189,16 @@ getBanelingMorphTime(pAbilities)
 {
 	p := pointer(GameIdentifier, findAbilityTypePointer(pAbilities, aUnitID.BanelingCocoon, "MorphZerglingToBaneling"), 0x12c, 0x0)
 	totalTime := ReadMemory(p + 0x68, GameIdentifier)
-	timeRemaing := ReadMemory(p + 0x6c, GameIdentifier)
-	return round((totalTime - timeRemaing)/totalTime, 2)
+	timeRemaining := ReadMemory(p + 0x6c, GameIdentifier)
+	return round((totalTime - timeRemaining)/totalTime, 2)
 }
 
 getArchonMorphTime(pAbilities)
 {
 	pMergeable := readmemory(findAbilityTypePointer(pAbilities, aUnitID.Archon, "Mergeable"), GameIdentifier)
 	totalTime := ReadMemory(pMergeable + 0x28, GameIdentifier)
-	timeRemaing :=ReadMemory(pMergeable + 0x2C, GameIdentifier)
-	return round((totalTime - timeRemaing)/totalTime, 2)
+	timeRemaining := ReadMemory(pMergeable + 0x2C, GameIdentifier) ; >> 16 to get in game seconds remaining
+	return round((totalTime - timeRemaining)/totalTime, 2)
 }
 
 ; In FactoryAddOns +10 is unit address of the factory
@@ -4235,11 +4255,12 @@ getBuildProgress(pAbilities, type)
 	{
 		B_Build := ReadMemory(pBuild, GameIdentifier)
 		totalTime := readmemory(B_Build + O_TotalBuildTime, GameIdentifier)
-		remainingTime := readmemory(B_Build + O_TimeRemaining, GameIdentifier)
+		remainingTime := readmemory(B_Build + O_TimeRemaining, GameIdentifier) ; >> 16 to get in game seconds remaining (/16 to get fraction of seconds)
 		return round((totalTime - remainingTime) / totalTime, 2) ; 0.73
 	}
 	else return 1 ; something went wrong so assume its complete 
 }
+
 
 /*
 Finds the buffs applied to a unit. Percent complete.
@@ -4391,4 +4412,18 @@ log(text, logFile := "log.txt")
 {
 	FileAppend, %text%`n, %logFile%
 	return 
+}
+
+; Convert the specified number of seconds to h:m:s format.
+; removes leading 0's and ':'
+; seconds is not zero padded when 0 hours and 0 minutes
+; 9 seconds = 9
+; 61 second = 1:01
+formatSeconds(seconds)  
+{
+	seconds := ceil(seconds) 
+    time = 19990101  ; *Midnight* of an arbitrary date.
+    time += %seconds%, seconds
+    FormatTime, mss, %time%, m:ss
+    return lTrim(seconds//3600 ":" mss, "0:") ; adds hour param first so supports more than 24 hours of seconds
 }
