@@ -2101,7 +2101,7 @@ DrawLocalUpgradesOverlay(ByRef Redraw, UserScale = 1, Drag = 0)
 	 		, DrawLocalUpgradesOverlay
 	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0, upgradesExistPrevious := 0
 
-	percentMode := (DrawLocalUpgradesOverlay = 1) ; DrawLocalUpgradesOverlay = -1 seconds remaining mode
+	percentMode := (DrawLocalUpgradesOverlay = 1) ; DrawLocalUpgradesOverlay = -1 seconds remaining mode, 1 = percent complete
 	If (Redraw = -1)
 	{
 		Try Gui, LocalUpgradesOverlay: Destroy

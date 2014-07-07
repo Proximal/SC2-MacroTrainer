@@ -899,6 +899,7 @@ clock:
 				aThreads.Overlays.ahkFunction("gameChange")
 		}	
 		inject_timer := TimeReadRacesSet := UpdateTimers := PrevWarning := WinNotActiveAtStart := ResumeWarnings := 0 ;ie so know inject timer is off
+		EnableAutoWorkerTerran := EnableAutoWorkerProtoss := False ; otherwise if they don't have start enabled they may need to press the hotkey twice to activate
 		setLowLevelInputHooks(False) ; Shouldn't be required anymore but I'm just gonna leave it anyway
 	}
 	Else if (time && !isInMatch) && (getLocalPlayerNumber() != 16 || debug) ; Local slot = 16 while in lobby/replay - this will stop replay announcements
@@ -960,7 +961,6 @@ clock:
 		{
 			Hotkey, If, WinActive(GameIdentifier) && time
 			hotkey, >!g, g_GLHF
-			hotkey, >!+b, gSendBM
 			Hotkey, If
 		}				
 
@@ -4614,7 +4614,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 									. "`n`nTerran: Available scans/mules."
 									. "`nProtoss: Available chrono boosts."
 									. "`nZerg: Available larva."
-									. "`n`nNote: Non-Control-grouped town halls will not be included."										
+									. "`n`nNote: Non-control-grouped town halls will not be included."										
 		DrawLocalUpgradesOverlay_TT := "Displays your current upgrade items and their chrono state (if Protoss)."
 									. "`nThis includes morphing hatches, lairs, spires, and command centres."
 									. "`n`nUnchecked = Off"
@@ -7466,41 +7466,21 @@ CreateHotkeys()
  	EventKeyDelay := -1
 
 	#If, WinActive(GameIdentifier)
-	#If, WinActive(GameIdentifier) && LwinDisable && getTime()	
-	#If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Zerg") && !isMenuOpen() && time
-	#If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Zerg") && InjectTimerAdvancedEnable && !isMenuOpen() && time
-	#If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Zerg") && (auto_inject <> "Disabled") && time
-	#If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && time
-	#If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Terran" || aLocalPlayer["Race"] = "Protoss")  && time
-	#If, WinActive(GameIdentifier) && time && !isMenuOpen() && EnableAutoWorker%LocalPlayerRace%
-	#If, WinActive(GameIdentifier) && time && !isMenuOpen() && SelectArmyEnable
-	#If, WinActive(GameIdentifier) && time && !isMenuOpen() && SplitUnitsEnable
-	#If, WinActive(GameIdentifier) && time && !isMenuOpen() && RemoveUnitEnable
-	#If, WinActive(GameIdentifier) && time && !isMenuOpen() && RemoveDamagedUnitsEnable	
-	#If, WinActive(GameIdentifier) && !isMenuOpen() && time
 	#If, WinActive(GameIdentifier) && (!isMenuOpen() || (isMenuOpen() && isChatOpen())) && time
 	#If, WinActive(GameIdentifier) && time
-	#If, WinActive(GameIdentifier) && !isMenuOpen() && EasyUnload%LocalPlayerRace%Enable && time
+	#If, WinActive(GameIdentifier) && time && !isMenuOpen()
+	#If, WinActive(GameIdentifier) && time && !isMenuOpen() && EnableAutoWorker`%LocalPlayerRace`%
 	#If
+
 	Hotkey, If, WinActive(GameIdentifier)
 		hotkey, %warning_toggle_key%, mt_pause_resume, on		
 		hotkey, *~LButton, g_LbuttonDown, on
 
-	Hotkey, If, WinActive(GameIdentifier) && LwinDisable && getTime()
-			hotkey, Lwin, g_DoNothing, on
-
-	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Zerg") && InjectTimerAdvancedEnable && !isMenuOpen() && time		
-	if InjectTimerAdvancedEnable
-	{	
-		hotkey,  ~^%InjectTimerAdvancedLarvaKey%, g_InjectTimerAdvanced, on
-		hotkey,  ~+%InjectTimerAdvancedLarvaKey%, g_InjectTimerAdvanced, on
-		hotkey,  ~^+%InjectTimerAdvancedLarvaKey%, g_InjectTimerAdvanced, on
-		hotkey,  ~%InjectTimerAdvancedLarvaKey%, g_InjectTimerAdvanced, on
-	}
-
 	Hotkey, If, WinActive(GameIdentifier) && (!isMenuOpen() || (isMenuOpen() && isChatOpen())) && time
 		hotkey, %ping_key%, ping, on									;on used to re-enable hotkeys as were 
 	Hotkey, If, WinActive(GameIdentifier) && time	;turned off during save to allow for swaping of keys
+		if LwinDisable
+			hotkey, Lwin, g_DoNothing, on
 		hotkey, %worker_count_local_key%, worker_count, on
 		hotkey, %worker_count_enemy_key%, worker_count, on
 		hotkey, %Playback_Alert_Key%, g_PrevWarning, on					
@@ -7515,69 +7495,77 @@ CreateHotkeys()
 		hotkey, %ToggleUnitOverlayKey%, Overlay_Toggle, on
 		; hotkey, %CycleOverlayKey%, Overlay_Toggle, on
 
-	if race_reading 
-		hotkey, %read_races_key%, find_races, on
-	if manual_inject_timer
-	{	
-		hotkey, %inject_start_key%, inject_start, on
-		hotkey, %inject_reset_key%, inject_reset, on
-	}	
+		if race_reading 
+			hotkey, %read_races_key%, find_races, on
+		if manual_inject_timer
+		{	
+			hotkey, %inject_start_key%, inject_start, on
+			hotkey, %inject_reset_key%, inject_reset, on
+		}	
 
 	; Note: for double reference need to use ` to escape % in current command so that is evaluated when hotkey fires
 	; could also do if, % "EasyUnload%LocalPlayerRac%"
+	;Hotkey, If, WinActive(GameIdentifier) && !isMenuOpen() && EasyUnload`%LocalPlayerRace`%Enable && time
 
-	Hotkey, If, WinActive(GameIdentifier) && !isMenuOpen() && EasyUnload`%LocalPlayerRace`%Enable && time
-		hotkey, %EasyUnloadHotkey%, gEasyUnload, on
-
-	Hotkey, If, WinActive(GameIdentifier) && time && !isMenuOpen() && SelectArmyEnable
-		hotkey, %castSelectArmy_key%, g_SelectArmy, on  ; buffer to make double tap better remove 50ms delay
-	Hotkey, If, WinActive(GameIdentifier) && time && !isMenuOpen() && SplitUnitsEnable
-		hotkey, %castSplitUnit_key%, g_SplitUnits, on	
-	Hotkey, If, WinActive(GameIdentifier) && time && !isMenuOpen() && RemoveUnitEnable
-		hotkey, %castRemoveUnit_key%, g_DeselectUnit, on		
-	Hotkey, If, WinActive(GameIdentifier) && time && !isMenuOpen() && RemoveDamagedUnitsEnable
-		hotkey, %castRemoveDamagedUnits_key%, gRemoveDamagedUnit, on	
-	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Zerg") && (auto_inject <> "Disabled") && time
-		hotkey, %cast_inject_key%, cast_inject, on	
-		hotkey, %F_InjectOff_Key%, Cast_DisableInject, on			
-
-	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && time
-		for i, object in aAutoChrono["Items"]
+	Hotkey, If, WinActive(GameIdentifier) && time && !isMenuOpen()
+		if (InjectTimerAdvancedEnable && aLocalPlayer["Race"] = "Zerg")
+		{	
+			hotkey,  ~^%InjectTimerAdvancedLarvaKey%, g_InjectTimerAdvanced, on
+			hotkey,  ~+%InjectTimerAdvancedLarvaKey%, g_InjectTimerAdvanced, on
+			hotkey,  ~^+%InjectTimerAdvancedLarvaKey%, g_InjectTimerAdvanced, on
+			hotkey,  ~%InjectTimerAdvancedLarvaKey%, g_InjectTimerAdvanced, on
+		}		
+		if (aLocalPlayer["Race"] = "Terran" && EasyUnloadTerranEnable)
+		|| (aLocalPlayer["Race"] = "Protoss" && EasyUnloadProtossEnable)
+		|| (aLocalPlayer["Race"] = "Zerg" && EasyUnloadZergEnable)
+			hotkey, %EasyUnloadHotkey%, gEasyUnload, on
+		if SelectArmyEnable
+			hotkey, %castSelectArmy_key%, g_SelectArmy, on  ; buffer to make double tap better remove 50ms delay
+		if SplitUnitsEnable
+			hotkey, %castSplitUnit_key%, g_SplitUnits, on	
+		if RemoveUnitEnable
+			hotkey, %castRemoveUnit_key%, g_DeselectUnit, on		
+		if RemoveDamagedUnitsEnable
+			hotkey, %castRemoveDamagedUnits_key%, gRemoveDamagedUnit, on	
+		if (aLocalPlayer["Race"] = "Protoss")
 		{
-			if (object.enabled && object.Units.MaxIndex())
-				try hotkey, % object.hotkey, Cast_ChronoStructure, on	
+			for i, object in aAutoChrono["Items"]
+			{
+				if (object.enabled && object.Units.MaxIndex())
+					try hotkey, % object.hotkey, Cast_ChronoStructure, on	
+			}
+		}
+		while (10 > group := A_index - 1)
+		{
+			if A_UnitGroupSettings["LimitGroup", aLocalPlayer["Race"], group, "Enabled"] 
+			{
+				
+				try hotkey, % aAGHotkeys.Add[group], g_LimitGrouping, on
+				try hotkey, % aAGHotkeys.Set[group], g_LimitGrouping, on
+				;hotkey, ^+%i%, g_LimitGrouping, on
+			}
+		}
+		; Have this after the limit grouping so quick select
+		; will override any duplicates
+		if aQuickSelect[aLocalPlayer["Race"]].maxIndex()
+		{
+			for i, object in aQuickSelect[aLocalPlayer["Race"]]
+			{
+				if (object.enabled && object.Units.MaxIndex())
+					try hotkey, % object.hotkey, g_QuickSelect, on
+			}
 		}
 
-	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Terran" || aLocalPlayer["Race"] = "Protoss")  && time
-		hotkey, %ToggleAutoWorkerState_Key%, g_UserToggleAutoWorkerState, on	
-	
+	Hotkey, If, WinActive(GameIdentifier) && time
+		if (aLocalPlayer["Race"] = "Zerg") && (auto_inject <> "Disabled")
+			hotkey, %cast_inject_key%, cast_inject, on	
+		if (aLocalPlayer["Race"] = "Zerg")
+			hotkey, %F_InjectOff_Key%, Cast_DisableInject, on	
+		if (aLocalPlayer["Race"] = "Terran" || aLocalPlayer["Race"] = "Protoss")
+			hotkey, %ToggleAutoWorkerState_Key%, g_UserToggleAutoWorkerState, on			
+
 	Hotkey, If, WinActive(GameIdentifier) && time && !isMenuOpen() && EnableAutoWorker`%LocalPlayerRace`% ; cant use !ischatopen() - as esc will close chat before memory reads value so wont see chat was open
 		hotkey, *~Esc, g_temporarilyDisableAutoWorkerProduction, on	
-	Hotkey, If, WinActive(GameIdentifier) && !isMenuOpen() && time
-
-	while (10 > group := A_index - 1)
-	{
-		if A_UnitGroupSettings["LimitGroup", aLocalPlayer["Race"], group, "Enabled"] 
-		{
-			
-			try hotkey, % aAGHotkeys.Add[group], g_LimitGrouping, on
-			try hotkey, % aAGHotkeys.Set[group], g_LimitGrouping, on
-			;hotkey, ^+%i%, g_LimitGrouping, on
-		}
-	}
-
-	; Have this after the limit grouping so quick select
-	; will override any duplicates
-
-	if aQuickSelect[aLocalPlayer["Race"]].maxIndex()
-	{
-		for i, object in aQuickSelect[aLocalPlayer["Race"]]
-		{
-			if (object.enabled && object.Units.MaxIndex())
-				try hotkey, % object.hotkey, g_QuickSelect, on
-		}
-	}
-		
 
 	Hotkey, If
 	; Note : I have the emergency hotkey here if the user decides to set another hotkey to <#Space, so it cant get changed
@@ -7598,15 +7586,17 @@ disableAllHotkeys()
 	global
 	Hotkey, If, WinActive(GameIdentifier)						
 		try hotkey, %warning_toggle_key%, off			; 	deactivate the hotkeys
-												; 	so they can be updated with their new keys
-												;	
-												; 
+														; 	so they can be updated with their new keys
+	Hotkey, If, WinActive(GameIdentifier) && (!isMenuOpen() || (isMenuOpen() && isChatOpen())) && time
+		try Hotkey, %ping_key%, off	 
 												; Anything with a try command has an 'if setting is on' section in the
 												; create hotkeys section
 												; still left the overall try just incase i missed something
 												; gives the user a friendlier error
-
+	Hotkey, If, WinActive(GameIdentifier) && (!isMenuOpen() || (isMenuOpen() && isChatOpen())) && time
+		hotkey, %ping_key%, off
 	Hotkey, If, WinActive(GameIdentifier) && time	
+		try hotkey, Lwin, off
 		try hotkey, %worker_count_local_key%, off
 		try hotkey, %worker_count_enemy_key%, off
 		try hotkey, %Playback_Alert_Key%, off
@@ -7624,43 +7614,36 @@ disableAllHotkeys()
 		try	hotkey, %inject_start_key%, off
 		try	hotkey, %inject_reset_key%, off	
 
-	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Zerg") && InjectTimerAdvancedEnable && !isMenuOpen() && time		
-			try hotkey,  ~^%InjectTimerAdvancedLarvaKey%, off
-			try hotkey,  ~+%InjectTimerAdvancedLarvaKey%, off
-			try hotkey, ~^+%InjectTimerAdvancedLarvaKey%, off
-			try hotkey,  ~%InjectTimerAdvancedLarvaKey%, off
-
-	Hotkey, If, WinActive(GameIdentifier) && time && !isMenuOpen() && SelectArmyEnable
+	
+	Hotkey, If, WinActive(GameIdentifier) && time && !isMenuOpen()	
+		try hotkey,  ~^%InjectTimerAdvancedLarvaKey%, off
+		try hotkey,  ~+%InjectTimerAdvancedLarvaKey%, off
+		try hotkey, ~^+%InjectTimerAdvancedLarvaKey%, off
+		try hotkey,  ~%InjectTimerAdvancedLarvaKey%, off
+		try hotkey, %EasyUnloadHotkey%, off
 		try hotkey, %castSelectArmy_key%, off
-	Hotkey, If, WinActive(GameIdentifier) && time && !isMenuOpen() && SplitUnitsEnable
 		try hotkey, %castSplitUnit_key%, off
-	Hotkey, If, WinActive(GameIdentifier) && time && !isMenuOpen() && RemoveUnitEnable
 		try hotkey, %castRemoveUnit_key%, off
-	Hotkey, If, WinActive(GameIdentifier) && time && !isMenuOpen() && RemoveDamagedUnitsEnable
 		try hotkey, %castRemoveDamagedUnits_key%, off
-	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Zerg") && (auto_inject <> "Disabled") && time
-		try hotkey, %cast_inject_key%, off
-		try hotkey, %F_InjectOff_Key%, off	
-	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Protoss") && time
 		for i, object in aAutoChrono["Items"]
 			try hotkey, % object.hotkey, off
-	Hotkey, If, WinActive(GameIdentifier) && (aLocalPlayer["Race"] = "Terran" || aLocalPlayer["Race"] = "Protoss")  && time
-		try hotkey, %ToggleAutoWorkerState_Key%, off		
-	Hotkey, If, WinActive(GameIdentifier) && (!isMenuOpen() || (isMenuOpen() && isChatOpen())) && time
-		try Hotkey, %ping_key%, off		
-	Hotkey, If, WinActive(GameIdentifier) && !isMenuOpen() && time
+		while (10 > group := A_index - 1)
+		{
+			try hotkey, % aAGHotkeys.Add[group], off
+			try hotkey, % aAGHotkeys.Set[group], off
+		}
 		loop, parse, l_races, `,
 		{
 			race := A_LoopField
 			for i, object in aQuickSelect[race]
 				try hotkey, % object.hotkey, off
-		}
-		while (10 > group := A_index - 1)
-		{
-			try hotkey, % aAGHotkeys.Add[group], off
-			try hotkey, % aAGHotkeys.Set[group], off
-		}	
+		}		
 
+	Hotkey, If, WinActive(GameIdentifier) && time
+		try hotkey, %cast_inject_key%, off
+		try hotkey, %F_InjectOff_Key%, off
+		try hotkey, %ToggleAutoWorkerState_Key%, off	
+		
 	Hotkey, If
 	return 
 }
