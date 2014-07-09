@@ -1133,7 +1133,7 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 							; Don't really need to call isPhotonOverChargeActive()
 							if isPhotonOverChargeActive(unit) && progress := getUnitBuff(unit, "MothershipCoreApplyPurifyAB")
 							{
-								aEnemyUnitConstruction[Owner, 50, "MothershipCoreApplyPurifyAB"] := {"progress": !aEnemyUnitConstruction[Owner, 50, "MothershipCoreApplyPurifyAB"].Progress || progress < aEnemyUnitConstruction[Owner, 50, "MothershipCoreApplyPurifyAB"].Progress
+								aEnemyUnitConstruction[Owner, 50, "MothershipCoreApplyPurifyAB"] := {"progress": progress > aEnemyUnitConstruction[Owner, 50, "MothershipCoreApplyPurifyAB"].Progress
 																								? progress 
 																								: aEnemyUnitConstruction[Owner, 50, "MothershipCoreApplyPurifyAB"].Progress
 																				, "count": round(aEnemyUnitConstruction[Owner, 50, "MothershipCoreApplyPurifyAB"].Count) + 1}

@@ -24,6 +24,8 @@ Compile the minimapThread.ahk using AHK_H 32Bit-MD (do not use compression). Thi
 Use resource hacker (\Included Files\Resource Hacker) or winRar to extract the script from the RCData folder.
 Save the script as threadMiniMapFull.ahk
 
+Repeat the above steps for the threadOverlays.AHK and save as threadOverlaysFull.AHK
+
 Compile "macro trainer vX.XX.ahk" as "macro trainer vX.XX.exe" using AHK_H 32Bit-MD (do not use compression as this will prevent the change icon feature functioning). Zip the exe along with msvcr100.dll into currentMacroTrainer.zip and upload to FTP server.
 
 

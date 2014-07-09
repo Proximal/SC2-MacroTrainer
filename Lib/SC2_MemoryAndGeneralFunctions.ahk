@@ -4319,7 +4319,7 @@ getUnitBuff(unit, byRef buffNameOrObject)
 		{
 			totalTime :=  ReadMemory(baseTimer, GameIdentifier)
 			, remainingTime := ReadMemory(baseTimer+ 0x10, GameIdentifier)
-			, percent := round(remainingTime / totalTime, 2)
+			, percent := round((totalTime - remainingTime) / totalTime, 2)
 
 			if IsObject(buffNameOrObject)
 				buffNameOrObject.insert(buffString, percent), buffCount++

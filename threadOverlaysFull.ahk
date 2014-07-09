@@ -902,13 +902,13 @@ return -1
 Style := 0, Styles := "Regular|Bold|Italic|BoldItalic|Underline|Strikeout"
 Loop, Parse, Styles, |
 {
-if RegExMatch(Options, "\b" A_loopField)
+if RegExMatch(Options, "i)\b" A_loopField)
 Style |= (A_LoopField != "StrikeOut") ? (A_Index-1) : 8
 }
 Align := 0, Alignments := "Near|Left|Centre|Center|Far|Right"
 Loop, Parse, Alignments, |
 {
-if RegExMatch(Options, "\b" A_loopField)
+if RegExMatch(Options, "i)\b" A_loopField)
 Align |= A_Index//2.1
 }
 xpos := (xpos1 != "") ? xpos2 ? IWidth*(xpos1/100) : xpos1 : 0
@@ -1445,6 +1445,7 @@ Global B_LocalCharacterNameID
 , O_P_uAbilityPointer
 , O_uChronoState
 , O_uInjectState
+, O_uBuffPointer
 , O_uHpDamage
 , O_uShieldDamage
 , O_uEnergy
@@ -1730,6 +1731,7 @@ O_P_uCmdQueuePointer := 0xD4
 O_P_uAbilityPointer := 0xDC
 O_uChronoState := 0xE6
 O_uInjectState := 0xE7
+O_uBuffPointer := 0xEC
 O_uHpDamage := 0x114
 O_uShieldDamage := 0x118
 O_uEnergy := 0x11c
@@ -1831,6 +1833,12 @@ if (unitIndex = (NumGet(Memory, O_scUnitIndex + (A_Index - 1) * S_scStructure, "
 Return 1
 }
 Return 0
+}
+numgetControlGroupMemory(BYREF MemDump, group)
+{
+if count := getControlGroupCount(Group)
+ReadRawMemory(B_CtrlGroupOneStructure + S_CtrlGroup * (group - 1) + O_scUnitIndex, GameIdentifier, MemDump, count * S_scStructure)
+return count
 }
 getCtrlGroupedUnitIndex(group, i=0)
 {	global
@@ -2107,11 +2115,11 @@ Return ReadMemory(B_pStructure + (Player - 1)*S_pStructure + O_pAPM, GameIdentif
 }
 isUnderConstruction(building)
 { 	global
-return getUnitTargetFilterFast(building) & aUnitTargetFilter.UnderConstruction
+return getUnitTargetFilter(building) & aUnitTargetFilter.UnderConstruction
 }
 isUnitAStructure(unit)
 {	GLOBAL
-return getUnitTargetFilterFast(unit) & aUnitTargetFilter.Structure
+return getUnitTargetFilter(unit) & aUnitTargetFilter.Structure
 }
 getUnitEnergy(unit)
 {	global
@@ -2341,7 +2349,7 @@ if !(p2 := ReadMemory(p1 + 0x1C, GameIdentifier))
 return 0
 p3 := ReadMemory(p2 + 0xC, GameIdentifier)
 cooldown := ReadMemory(p3 + 0x4, GameIdentifier)
-if (cooldown >= 0)
+if (cooldown >= 0 && !(cooldown >> 31 & 1))
 return cooldown
 else return 0
 }
@@ -2612,7 +2620,7 @@ if localQueSize
 return getPercentageUnitCompleted(B_QueuedUnitInfo)
 else return 0
 }
-getStructureProductionInfo(unit, type, byRef aInfo, byRef totalQueueSize := "")
+getStructureProductionInfo(unit, type, byRef aInfo, byRef totalQueueSize := "", percent := True)
 {
 STATIC O_pQueueArray := 0x34, O_IndexParentTypes := 0x18, O_unitsQueued := 0x28
 , aOffsets := []
@@ -2642,7 +2650,7 @@ while (A_Index <= totalQueueSize && B_QueuedUnitInfo := readmemory(queuedArray +
 if !aStringTable.hasKey(pString := readMemory(B_QueuedUnitInfo + 0xD0, GameIdentifier))
 aStringTable[pString] := ReadMemory_Str(readMemory(pString + 0x4, GameIdentifier), GameIdentifier)
 item := aStringTable[pString]
-if progress := getPercentageUnitCompleted(B_QueuedUnitInfo)
+if progress := percent ? getPercentageUnitCompleted(B_QueuedUnitInfo) : getTimeUntilUnitCompleted(B_QueuedUnitInfo)
 aInfo.insert({ "Item": item, "progress": progress})
 else break
 }
@@ -2686,12 +2694,12 @@ item := []
 p := readmemory(getUnitAbilityPointer(eggUnitIndex) + 0x1C, GameIdentifier)
 p := readmemory(p + 0x34, GameIdentifier)
 p := readmemory(p, GameIdentifier)
-timeRemaing := readmemory(p + 0x6C, GameIdentifier)
+timeRemaining := readmemory(p + 0x6C, GameIdentifier)
 totalTime := readmemory(p + 0x68, GameIdentifier)
 p := readmemory(p + 0xf4, GameIdentifier)
 if !aStringTable.haskey(pString := readmemory(p, GameIdentifier) )
 aStringTable[pString] := ReadMemory_Str(readMemory(pString + 0x4, GameIdentifier), GameIdentifier)
-item.Progress := round((totalTime - timeRemaing)/totalTime, 2)
+item.Progress := round((totalTime - timeRemaining)/totalTime, 2)
 item.Type := aUnitID[(item.Item := aStringTable[pString])]
 item.Count := item.Type = aUnitID.Zergling ? 2 : 1
 return item
@@ -2719,7 +2727,7 @@ loop
 if (!p := ReadMemory(p1 + B_AbilityStringPointer + (A_Index - 1)*4, GameIdentifier))
 return 0
 if (abilityString = string := ReadMemory_Str(ReadMemory(p + 0x4, GameIdentifier), GameIdentifier))
-return pAbilities + (aUnitAbilitiesOffsets[unitType, abilityString] :=  O_IndexParentTypes + (A_Index - 1)*4)
+return pAbilities + (aUnitAbilitiesOffsets[unitType, abilityString] := O_IndexParentTypes + (A_Index - 1)*4)
 } until (A_Index > 100)
 return  0
 }
@@ -2755,6 +2763,15 @@ STATIC O_TotalTime := 0x68, O_TimeRemaining := 0x6C
 TotalTime := ReadMemory(B_QueuedUnitInfo + O_TotalTime, GameIdentifier)
 RemainingTime := ReadMemory(B_QueuedUnitInfo + O_TimeRemaining, GameIdentifier)
 return round( (TotalTime - RemainingTime) / TotalTime, 2)
+}
+getTimeUntilUnitCompleted(B_QueuedUnitInfo)
+{	GLOBAL GameIdentifier
+STATIC O_TotalTime := 0x68, O_TimeRemaining := 0x6C
+TotalTime := ReadMemory(B_QueuedUnitInfo + O_TotalTime, GameIdentifier)
+RemainingTime := ReadMemory(B_QueuedUnitInfo + O_TimeRemaining, GameIdentifier)
+if (TotalTime = RemainingTime)
+return 0
+return round(RemainingTime / 65536, 2)
 }
 getPointerAddressToQueuedUnitInfo(pAbilities, CAbilQueueIndex, byref QueueSize := "")
 {	GLOBAL GameIdentifier
@@ -2853,7 +2870,7 @@ loop % aSelection.Count
 {
 priority := -1 * getUnitSubGroupPriority(unitIndex := numget(MemDump,(A_Index-1) * S_scStructure + O_scUnitIndex , "Int") >> 18)
 , unitId := getUnitType(unitIndex)
-, subGroupAlias := getUnitTargetFilterFast(unitIndex) & aUnitTargetFilter.Hallucination
+, subGroupAlias := getUnitTargetFilter(unitIndex) & aUnitTargetFilter.Hallucination
 ? unitId  - .1
 : (aUnitSubGroupAlias.hasKey(unitId)
 ? aUnitSubGroupAlias[unitId]
@@ -2912,7 +2929,7 @@ loop % aSelection.Count
 aSelection.units.insert({ "unitIndex": unit := numget(MemDump,(A_Index-1) * S_scStructure + O_scUnitIndex , "Int") >> 18
 , "unitId": unitId := getUnitType(unit)
 , "priority": getUnitSubGroupPriority(unit)
-, "subGroup": getUnitTargetFilterFast(unit) & aUnitTargetFilter.Hallucination
+, "subGroup": getUnitTargetFilter(unit) & aUnitTargetFilter.Hallucination
 ? unitId  - .1
 : (aUnitSubGroupAlias.hasKey(unitId)
 ? aUnitSubGroupAlias[unitId]
@@ -2985,10 +3002,6 @@ numgetUnitTargetFilter(ByRef Memory, unit)
 return numget(Memory, Unit * S_uStructure + O_uTargetFilter, "Int64")
 }
 getUnitTargetFilter(Unit)
-{
-return ReadMemory(B_uStructure + Unit * S_uStructure + O_uTargetFilter, GameIdentifier, 8)
-}
-getUnitTargetFilterFast(unit)
 {
 return ReadMemory(B_uStructure + Unit * S_uStructure + O_uTargetFilter, GameIdentifier, 8)
 }
@@ -3458,7 +3471,7 @@ return
 }
 isUnitDead(unit)
 { 	global
-return	getUnitTargetFilterFast(unit) & DeadFilterFlag
+return	getUnitTargetFilter(unit) & DeadFilterFlag
 }
 SetupUnitIDArray(byref aUnitID, byref aUnitName)
 {
@@ -3887,7 +3900,8 @@ l_UnitTypes =
 	ProtossVespeneGeyser = 511,
 	VespeneGeyserPretty = 515, ; **This has same name as 262 geyser - so i give it a new one This is on a new 1v1 map Habitation Station LE - This geyser isn't in the map editor though (perhaps there's a setting to get it though)		
 	Artosilop = 562,
-	ThorHighImpactPayload = 588
+	ThorHighImpactPayload = 588,
+	PhotonOverCharge = MothershipCoreApplyPurifyAB ; No quotes. Dirty hack to allow removal of PO from unit panel
 )
 #LTrim, off
 if !isobject(aUnitID)
@@ -4155,7 +4169,8 @@ areOverlaysWaitingToRedraw()
 {
 global
 if (!ReDrawIncome || !ReDrawResources || !ReDrawArmySize || !ReDrawWorker
-|| !ReDrawIdleWorkers || !RedrawUnit || !ReDrawLocalPlayerColour || !ReDrawMiniMap)
+|| !ReDrawIdleWorkers || !RedrawUnit || !ReDrawLocalPlayerColour || !ReDrawMiniMap
+|| !RedrawMacroTownHall || !RedrawLocalUpgrades)
 return False
 return True
 }
@@ -4171,16 +4186,20 @@ Try Gui, WorkerOverlay: Destroy
 Try Gui, idleWorkersOverlay: Destroy
 Try Gui, LocalPlayerColourOverlay: Destroy
 Try Gui, UnitOverlay: Destroy
+Try Gui, MacroTownHall: Destroy
+Try Gui, LocalUpgradesOverlay: Destroy
 local lOverlayFunctions := "DrawAPMOverlay,DrawIncomeOverlay,DrawUnitOverlay,DrawResourcesOverlay"
-. ",DrawArmySizeOverlay,DrawWorkerOverlay,DrawIdleWorkersOverlay"
+. ",DrawArmySizeOverlay,DrawWorkerOverlay,DrawIdleWorkersOverlay,DrawMacroTownHallOverlay"
+. ",DrawLocalUpgradesOverlay"
 loop, parse, lOverlayFunctions, `,
 {
 if IsFunc(A_LoopField)
-%A_LoopField%(-1)
+try %A_LoopField%(-1)
 }
 ReDrawOverlays := ReDrawAPM := ReDrawIncome := ReDrawResources
 := ReDrawArmySize := ReDrawWorker := ReDrawIdleWorkers
-:= RedrawUnit := ReDrawLocalPlayerColour := ReDrawMiniMap := True
+:= RedrawUnit := ReDrawLocalPlayerColour := ReDrawMiniMap
+:= RedrawMacroTownHall := RedrawLocalUpgrades := True
 return True
 }
 setDrawingQuality(G)
@@ -4507,31 +4526,13 @@ IniRead, delay_warpgate_warn, %config_file%, %section%, initial_time_delay, 10
 IniRead, delay_warpgate_warn_followup, %config_file%, %section%, follow_up_time_delay, 15
 IniRead, w_warpgate, %config_file%, %section%, spoken_warning, "WarpGate"
 section := "Chrono Boost Gateway/Warpgate"
-IniRead, CG_Enable, %config_file%, %section%, enable, 1
-IniRead, Cast_ChronoGate_Key, %config_file%, %section%, Cast_ChronoGate_Key, F5
 IniRead, CG_control_group, %config_file%, %section%, CG_control_group, 9
 IniRead, CG_nexus_Ctrlgroup_key, %config_file%, %section%, CG_nexus_Ctrlgroup_key, 4
 IniRead, chrono_key, %config_file%, %section%, chrono_key, c
 IniRead, CG_chrono_remainder, %config_file%, %section%, CG_chrono_remainder, 2
 IniRead, ChronoBoostSleep, %config_file%, %section%, ChronoBoostSleep, 50
-IniRead, ChronoBoostEnableForge, %config_file%, %section%, ChronoBoostEnableForge, 0
-IniRead, ChronoBoostEnableStargate, %config_file%, %section%, ChronoBoostEnableStargate, 0
-IniRead, ChronoBoostEnableNexus, %config_file%, %section%, ChronoBoostEnableNexus, 0
-IniRead, ChronoBoostEnableRoboticsFacility, %config_file%, %section%, ChronoBoostEnableRoboticsFacility, 0
-IniRead, ChronoBoostEnableCyberneticsCore, %config_file%, %section%, ChronoBoostEnableCyberneticsCore, 0
-IniRead, ChronoBoostEnableTwilightCouncil, %config_file%, %section%, ChronoBoostEnableTwilightCouncil, 0
-IniRead, ChronoBoostEnableTemplarArchives, %config_file%, %section%, ChronoBoostEnableTemplarArchives, 0
-IniRead, ChronoBoostEnableRoboticsBay, %config_file%, %section%, ChronoBoostEnableRoboticsBay, 0
-IniRead, ChronoBoostEnableFleetBeacon, %config_file%, %section%, ChronoBoostEnableFleetBeacon, 0
-IniRead, Cast_ChronoForge_Key, %config_file%, %section%, Cast_ChronoForge_Key, ^F5
-IniRead, Cast_ChronoStargate_Key, %config_file%, %section%, Cast_ChronoStargate_Key, +F5
-IniRead, Cast_ChronoNexus_Key, %config_file%, %section%, Cast_ChronoNexus_Key, >!F5
-IniRead, Cast_ChronoRoboticsFacility_Key, %config_file%, %section%, Cast_ChronoRoboticsFacility_Key, >!F6
-IniRead, CastChrono_CyberneticsCore_key, %config_file%, %section%, CastChrono_CyberneticsCore_key, <!F5
-IniRead, CastChrono_TwilightCouncil_Key, %config_file%, %section%, CastChrono_TwilightCouncil_Key, <!F6
-IniRead, CastChrono_TemplarArchives_Key, %config_file%, %section%, CastChrono_TemplarArchives_Key, <!F1
-IniRead, CastChrono_RoboticsBay_Key, %config_file%, %section%, CastChrono_RoboticsBay_Key, <!F2
-IniRead, CastChrono_FleetBeacon_Key, %config_file%, %section%, CastChrono_FleetBeacon_Key, <!F3
+if IsFunc(FunctionName := "iniReadAutoChrono")
+%FunctionName%(aAutoChronoCopy, aAutoChrono)
 IniRead, auto_inject_sleep, %config_file%, Advanced Auto Inject Settings, auto_inject_sleep, 50
 IniRead, Inject_SleepVariance, %config_file%, Advanced Auto Inject Settings, Inject_SleepVariance, 0
 Inject_SleepVariance := 1 + (Inject_SleepVariance/100)
@@ -4698,6 +4699,8 @@ IniRead, castRemoveDamagedUnits_key, %config_file%, %section%, castRemoveDamaged
 IniRead, RemoveDamagedUnitsCtrlGroup, %config_file%, %section%, RemoveDamagedUnitsCtrlGroup, 9
 IniRead, RemoveDamagedUnitsHealthLevel, %config_file%, %section%, RemoveDamagedUnitsHealthLevel, 90
 RemoveDamagedUnitsHealthLevel := round(RemoveDamagedUnitsHealthLevel / 100, 3)
+IniRead, RemoveDamagedUnitsShieldLevel, %config_file%, %section%, RemoveDamagedUnitsShieldLevel, 15
+RemoveDamagedUnitsShieldLevel := round(RemoveDamagedUnitsShieldLevel / 100, 3)
 IniRead, EasyUnloadTerranEnable, %config_file%, %section%, EasyUnloadTerranEnable, 0
 IniRead, EasyUnloadProtossEnable, %config_file%, %section%, EasyUnloadProtossEnable, 0
 IniRead, EasyUnloadZergEnable, %config_file%, %section%, EasyUnloadZergEnable, 0
@@ -4711,7 +4714,7 @@ IniRead, Playback_Alert_Key, %config_file%, Alert Location, Playback_Alert_Key, 
 alert_array := [],	alert_array := createAlertArray()
 section := "Overlays"
 DesktopScreenCoordinates(XminScreen, YminScreen, XmaxScreen, YmaxScreen)
-list := "APMOverlay,IncomeOverlay,ResourcesOverlay,ArmySizeOverlay,WorkerOverlay,IdleWorkersOverlay,UnitOverlay,LocalPlayerColourOverlay,APMOverlay"
+list := "APMOverlay,IncomeOverlay,ResourcesOverlay,ArmySizeOverlay,WorkerOverlay,IdleWorkersOverlay,UnitOverlay,LocalPlayerColourOverlay,MacroTownHallOverlay,LocalUpgradesOverlay"
 loop, parse, list, `,
 {
 IniRead, Draw%A_LoopField%, %config_file%, %section%, Draw%A_LoopField%, 0
@@ -4719,10 +4722,10 @@ IniRead, %A_LoopField%Scale, %config_file%, %section%, %A_LoopField%Scale, 1
 if (%A_LoopField%Scale < .5)
 %A_LoopField%Scale := .5
 IniRead, %A_LoopField%X, %config_file%, %section%, %A_LoopField%X, % A_ScreenWidth/2
-if (%A_LoopField%X = "" || %A_LoopField%X < XminScreen || %A_LoopField%X > XmaxScreen)
+if (%A_LoopField%X = "" || %A_LoopField%X < XminScreen || %A_LoopField%X >= XmaxScreen - 30)
 %A_LoopField%X := A_ScreenWidth/2
 IniRead, %A_LoopField%Y, %config_file%, %section%, %A_LoopField%Y, % A_ScreenHeight/2
-if (%A_LoopField%Y = "" || %A_LoopField%Y < YminScreen || %A_LoopField%Y > YmaxScreen)
+if (%A_LoopField%Y = "" || %A_LoopField%Y < YminScreen || %A_LoopField%Y >= YmaxScreen - 30)
 %A_LoopField%Y := A_ScreenHeight/2
 }
 IniRead, ToggleAPMOverlayKey, %config_file%, %section%, ToggleAPMOverlayKey, <#A
@@ -4735,9 +4738,9 @@ IniRead, ToggleArmySizeOverlayKey, %config_file%, %section%, ToggleArmySizeOverl
 IniRead, ToggleWorkerOverlayKey, %config_file%, %section%, ToggleWorkerOverlayKey, <#W
 IniRead, AdjustOverlayKey, %config_file%, %section%, AdjustOverlayKey, Home
 IniRead, ToggleIdentifierKey, %config_file%, %section%, ToggleIdentifierKey, <#Q
-IniRead, CycleOverlayKey, %config_file%, %section%, CycleOverlayKey, <#Enter
 IniRead, OverlayIdent, %config_file%, %section%, OverlayIdent, 2
 IniRead, SplitUnitPanel, %config_file%, %section%, SplitUnitPanel, 1
+IniRead, unitPanelAlignNewUnits, %config_file%, %section%, unitPanelAlignNewUnits, 1
 IniRead, DrawUnitUpgrades, %config_file%, %section%, DrawUnitUpgrades, 1
 IniRead, unitPanelDrawStructureProgress, %config_file%, %section%, unitPanelDrawStructureProgress, 1
 IniRead, unitPanelDrawUnitProgress, %config_file%, %section%, unitPanelDrawUnitProgress, 1
@@ -4759,6 +4762,9 @@ IniRead, overlayHarvesterTransparency, %config_file%, %section%, overlayHarveste
 IniRead, overlayIdleWorkerTransparency, %config_file%, %section%, overlayIdleWorkerTransparency, 255
 IniRead, overlayLocalColourTransparency, %config_file%, %section%, overlayLocalColourTransparency, 255
 IniRead, overlayMinimapTransparency, %config_file%, %section%, overlayMinimapTransparency, 255
+IniRead, overlayMacroTownHallTransparency, %config_file%, %section%, overlayMacroTownHallTransparency, 255
+IniRead, overlayLocalUpgradesTransparency, %config_file%, %section%, overlayLocalUpgradesTransparency, 255
+IniRead, localUpgradesItemsPerRow, %config_file%, %section%, localUpgradesItemsPerRow, 6
 section := "UnitPanelFilter"
 aUnitPanelUnits := []
 loop, parse, l_Races, `,
@@ -4787,10 +4793,24 @@ IniRead, UnitHighlightList4Colour, %config_file%, %section%, UnitHighlightList4C
 IniRead, UnitHighlightList5Colour, %config_file%, %section%, UnitHighlightList5Colour, 0xFF00FFFF
 IniRead, UnitHighlightList6Colour, %config_file%, %section%, UnitHighlightList6Colour, 0xFFFFC663
 IniRead, UnitHighlightList7Colour, %config_file%, %section%, UnitHighlightList7Colour, 0xFF21FBFF
+UnitHighlightList1Colour |= 0xFF000000, UnitHighlightList2Colour |= 0xFF000000
+UnitHighlightList3Colour |= 0xFF000000, UnitHighlightList4Colour |= 0xFF000000
+UnitHighlightList5Colour |= 0xFF000000, UnitHighlightList6Colour |= 0xFF000000
+UnitHighlightList7Colour |= 0xFF000000
 IniRead, HighlightInvisible, %config_file%, %section%, HighlightInvisible, 1
 IniRead, UnitHighlightInvisibleColour, %config_file%, %section%, UnitHighlightInvisibleColour, 0xFFB7FF00
+UnitHighlightInvisibleColour |= 0xFF000000
 IniRead, HighlightHallucinations, %config_file%, %section%, HighlightHallucinations, 1
 IniRead, UnitHighlightHallucinationsColour, %config_file%, %section%, UnitHighlightHallucinationsColour, 0xFF808080
+UnitHighlightHallucinationsColour |= 0xFF000000
+if !isObject(aChooseColourCustomPalette)
+{
+aChooseColourCustomPalette := []
+loop 7
+aChooseColourCustomPalette.insert(UnitHighlightList%A_Index%Colour & 0xFFFFFF)
+aChooseColourCustomPalette.insert(UnitHighlightInvisibleColour & 0xFFFFFF)
+aChooseColourCustomPalette.insert(UnitHighlightHallucinationsColour & 0xFFFFFF)
+}
 IniRead, UnitHighlightExcludeList, %config_file%, %section%, UnitHighlightExcludeList, CreepTumor, CreepTumorBurrowed
 IniRead, DrawMiniMap, %config_file%, %section%, DrawMiniMap, 1
 IniRead, TempHideMiniMapKey, %config_file%, %section%, TempHideMiniMapKey, !Space
@@ -4889,18 +4909,18 @@ return
 getStructureMorphProgress(pAbilities, unitType)
 {
 p := pointer(GameIdentifier, findAbilityTypePointer(pAbilities, unitType, "BuildInProgress"), 0x10, 0xD4)
-timeRemaing := ReadMemory(p + 0x98, GameIdentifier)
+timeRemaining := ReadMemory(p + 0x98, GameIdentifier)
 totalTime := ReadMemory(p + 0xB4, GameIdentifier)
-return round((totalTime - timeRemaing)/totalTime, 2)
+return round((totalTime - timeRemaining)/totalTime, 2)
 }
 getUnitMorphTimeOld(unit)
 {
 p := ReadMemory(B_uStructure + unit * S_uStructure + O_P_uCmdQueuePointer, GameIdentifier)
-timeRemaing := ReadMemory(p + 0x98, GameIdentifier)
+timeRemaining := ReadMemory(p + 0x98, GameIdentifier)
 totalTime := ReadMemory(p + 0xB4, GameIdentifier)
-return round((totalTime - timeRemaing)/totalTime, 2)
+return round((totalTime - timeRemaining)/totalTime, 2)
 }
-getUnitMorphTime(unit, unitType)
+getUnitMorphTime(unit, unitType, percent := True)
 {
 static targetIsPoint := 0x8, targetIsUnit := 0x10, hasRun := False, aMorphStrings
 if !hasRun
@@ -4927,9 +4947,12 @@ for i, morphString in aMorphStrings[unitType]
 {
 if (morphString = aStringTable[pString])
 {
-timeRemaing := numget(cmdDump, 0x98, "UInt")
+timeRemaining := numget(cmdDump, 0x98, "UInt")
 totalTime := numget(cmdDump, 0xB4, "UInt")
-return round((totalTime - timeRemaing)/totalTime, 2)
+return round(percent
+? (totalTime - timeRemaining)/totalTime
+: timeRemaining / 65536
+, 2)
 }
 }
 } Until (A_Index > 20 || !(targetFlag & targetIsPoint || targetFlag & targetIsUnit || targetFlag = 7)
@@ -4941,15 +4964,15 @@ getBanelingMorphTime(pAbilities)
 {
 p := pointer(GameIdentifier, findAbilityTypePointer(pAbilities, aUnitID.BanelingCocoon, "MorphZerglingToBaneling"), 0x12c, 0x0)
 totalTime := ReadMemory(p + 0x68, GameIdentifier)
-timeRemaing := ReadMemory(p + 0x6c, GameIdentifier)
-return round((totalTime - timeRemaing)/totalTime, 2)
+timeRemaining := ReadMemory(p + 0x6c, GameIdentifier)
+return round((totalTime - timeRemaining)/totalTime, 2)
 }
 getArchonMorphTime(pAbilities)
 {
 pMergeable := readmemory(findAbilityTypePointer(pAbilities, aUnitID.Archon, "Mergeable"), GameIdentifier)
 totalTime := ReadMemory(pMergeable + 0x28, GameIdentifier)
-timeRemaing :=ReadMemory(pMergeable + 0x2C, GameIdentifier)
-return round((totalTime - timeRemaing)/totalTime, 2)
+timeRemaining := ReadMemory(pMergeable + 0x2C, GameIdentifier)
+return round((totalTime - timeRemaining)/totalTime, 2)
 }
 getAddonStatus(pAbilities, unitType)
 {
@@ -4974,7 +4997,7 @@ return 0
 getBuildProgress(pAbilities, type)
 {
 static O_TotalBuildTime := 0x28, O_TimeRemaining := 0x2C
-if pBuild := findAbilityTypePointer(pAbilities, type, "BuildInProgress")
+if pBuild := findAbilityTypePointer(pAbilities, type, type != aUnitID["NydusCanal"] ? "BuildInProgress" : "BuildinProgressNydusCanal")
 {
 B_Build := ReadMemory(pBuild, GameIdentifier)
 totalTime := readmemory(B_Build + O_TotalBuildTime, GameIdentifier)
@@ -4982,6 +5005,54 @@ remainingTime := readmemory(B_Build + O_TimeRemaining, GameIdentifier)
 return round((totalTime - remainingTime) / totalTime, 2)
 }
 else return 1
+}
+getUnitBuff(unit, byRef buffNameOrObject)
+{
+static aBuffStringOffsets := []
+if !buffArray := ReadMemory(B_uStructure + unit * S_uStructure + O_uBuffPointer, GameIdentifier)
+return 0
+buffCount := 0
+while (p := ReadMemory(buffArray + 0x04 + 4*(A_Index-1), GameIdentifier)) && (A_Index < 20)
+{
+if !baseTimer := ReadMemory(p + 0x58, GameIdentifier)
+continue
+if !p := ReadMemory(baseTimer + 0x4, GameIdentifier) & -2
+continue
+if !p := ReadMemory(p + 0x4, GameIdentifier)
+continue
+if !p := ReadMemory(p + 0xA8, GameIdentifier)
+continue
+aBuffStringOffsets.HasKey(p)
+? buffString := aBuffStringOffsets[p]
+: aBuffStringOffsets[p] := buffString := ReadMemory_Str(ReadMemory(p + 0x4, GameIdentifier), GameIdentifier)
+if buffString
+{
+totalTime :=  ReadMemory(baseTimer, GameIdentifier)
+, remainingTime := ReadMemory(baseTimer+ 0x10, GameIdentifier)
+, percent := round((totalTime - remainingTime) / totalTime, 2)
+if IsObject(buffNameOrObject)
+buffNameOrObject.insert(buffString, percent), buffCount++
+else if (buffNameOrObject = buffString)
+return percent
+}
+}
+if IsObject(buffNameOrObject)
+return buffCount
+return 0
+}
+getTownHallLarvaCount(unit)
+{
+if !buffArray := ReadMemory(B_uStructure + unit * S_uStructure + O_uBuffPointer, GameIdentifier)
+return 0
+if !p :=  ReadMemory(buffArray + 0x8, GameIdentifier)
+return 0
+return ReadMemory(p + 0x5C, GameIdentifier)
+}
+isPhotonOverChargeActive(unit)
+{
+return (1 = ReadMemory(ReadMemory(findAbilityTypePointer(getUnitAbilityPointer(unit), aUnitID["Nexus"], "attackProtossBuilding"), GameIdentifier) + 0x54, GameIdentifier)
+? True
+: False)
 }
 getunitAddress(unit)
 {
@@ -5031,6 +5102,14 @@ log(text, logFile := "log.txt")
 FileAppend, %text%`n, %logFile%
 return
 }
+formatSeconds(seconds)
+{
+seconds := ceil(seconds)
+time = 19990101
+time += %seconds%, seconds
+FormatTime, mss, %time%, m:ss
+return lTrim(seconds//3600 ":" mss, "0:")
+}
 Global aUnitID, aUnitName, aUnitSubGroupAlias, aUnitTargetFilter, aHexColours
 , aUnitModel,  aPlayer, aLocalPlayer, minimap
 , a_pBrushes := [], a_pPens := [], a_pBitmap
@@ -5043,7 +5122,7 @@ CreatepBitmaps(a_pBitmap, aUnitID, MatrixColour)
 global aUnitInfo := []
 readConfigFile(), hasReadConfig := True
 global aOverlayTitles := []
-for i, overlay in ["IncomeOverlay", "ResourcesOverlay", "ArmySizeOverlay", "WorkerOverlay", "IdleWorkersOverlay", "UnitOverlay", "LocalPlayerColourOverlay", "APMOverlay"]
+for i, overlay in ["IncomeOverlay", "ResourcesOverlay", "ArmySizeOverlay", "WorkerOverlay", "IdleWorkersOverlay", "UnitOverlay", "LocalPlayerColourOverlay", "APMOverlay", "MacroTownHallOverlay", "LocalUpgradesOverlay"]
 aOverlayTitles[overlay] := getRandomString_Az09(10, 20)
 global MT_CurrentGame
 global aPlayer, aLocalPlayer
@@ -5061,8 +5140,11 @@ if (!time := getTime())
 gameChange()
 return
 gosubAllOverlays:
+if hasReadConfig
+{
 gosub, overlayTimer
 gosub, unitPanelOverlayTimer
+}
 return
 overlayTimer:
 If (WinActive(GameIdentifier) || Dragoverlay)
@@ -5081,6 +5163,8 @@ If DrawIdleWorkersOverlay
 DrawIdleWorkersOverlay(ReDrawIdleWorkers, IdleWorkersOverlayScale, dragOverlay)
 if (DrawLocalPlayerColourOverlay && (GameType != "1v1" && GameType != "FFA"))
 DrawLocalPlayerColour(ReDrawLocalPlayerColour, LocalPlayerColourOverlayScale, DragOverlay)
+If DrawMacroTownHallOverlay
+DrawMacroTownHallOverlay(RedrawMacroTownHall, MacroTownHallOverlayScale, DragOverlay)
 }
 else if (!WinActive(GameIdentifier) && !Dragoverlay && !areOverlaysWaitingToRedraw())
 DestroyOverlays()
@@ -5094,6 +5178,8 @@ getEnemyUnitCount(aEnemyUnits, aEnemyUnitConstruction, aEnemyCurrentUpgrades)
 FilterUnits(aEnemyUnits, aEnemyUnitConstruction, aUnitPanelUnits)
 DrawUnitOverlay(RedrawUnit, UnitOverlayScale, OverlayIdent, Dragoverlay)
 }
+If DrawLocalUpgradesOverlay
+DrawLocalUpgradesOverlay(RedrawLocalUpgrades, LocalUpgradesOverlayScale, DragOverlay)
 }
 else if (!WinActive(GameIdentifier) && !Dragoverlay && !areOverlaysWaitingToRedraw())
 DestroyOverlays()
@@ -5160,7 +5246,7 @@ return
 overlayToggle(hotkey)
 {
 global
-if (hotkey = CycleOverlayKey "")
+if 0
 {
 If ((ActiveOverlays := DrawIncomeOverlay + DrawResourcesOverlay + DrawArmySizeOverlay + DrawAPMOverlay + ((DrawUnitOverlay || DrawUnitUpgrades) ? 1 : 0)) > 1)
 {
@@ -5750,7 +5836,7 @@ DestX := LongestNameSize+10*UserScale
 }
 Else If (PlayerIdentifier = 3)
 {
-pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"RaceFlat"]
+pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"RaceFlatColour", aPlayer[slot_number, "Colour"]]
 SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
 Width *= UserScale *.5, Height *= UserScale *.5
 Gdip_DrawImage(G, pBitmap, 12*UserScale, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
@@ -5924,7 +6010,7 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 {
 GLOBAL DeadFilterFlag, aPlayer, aLocalPlayer, aUnitTargetFilter, aUnitInfo, aMiscUnitPanelInfo
 aEnemyUnits := [], aEnemyUnitConstruction := [], aEnemyCurrentUpgrades := [], aMiscUnitPanelInfo := []
-static aUnitMorphingNames := {"Egg": True, "BanelingCocoon": True, "BroodLordCocoon": True, "OverlordCocoon": True, MothershipCore: True}
+static aUnitMorphingNames := {"Egg": True, "BanelingCocoon": True, "BroodLordCocoon": True, "OverlordCocoon": True, "MothershipCore": True, "Mothership": True }
 loop, % Unitcount := DumpUnitMemory(MemDump)
 {
 TargetFilter := numgetUnitTargetFilter(MemDump, unit := A_Index - 1)
@@ -5945,7 +6031,7 @@ if (TargetFilter & aUnitTargetFilter.UnderConstruction)
 {
 pAbilities := numgetUnitAbilityPointer(MemDump, unit)
 if (Type = aUnitID.Archon )
-progress := getArchonMorphTime(numgetUnitAbilityPointer(MemDump, unit))
+progress := getArchonMorphTime(pAbilities)
 else
 progress := getBuildProgress(pAbilities, Type)
 aEnemyUnitConstruction[Owner, Priority, Type] := {"progress": progress > aEnemyUnitConstruction[Owner, Priority, Type].Progress
@@ -5970,6 +6056,15 @@ if (type = aUnitID["Nexus"])
 {
 if (chronoBoosts := floor(numgetUnitEnergy(MemDump, unit)/25))
 aMiscUnitPanelInfo["chronoBoosts", owner] := round(aMiscUnitPanelInfo["chronoBoosts", owner]) + chronoBoosts
+if isPhotonOverChargeActive(unit) && progress := getUnitBuff(unit, "MothershipCoreApplyPurifyAB")
+{
+aEnemyUnitConstruction[Owner, 50, "MothershipCoreApplyPurifyAB"] := {"progress": progress > aEnemyUnitConstruction[Owner, 50, "MothershipCoreApplyPurifyAB"].Progress
+? progress
+: aEnemyUnitConstruction[Owner, 50, "MothershipCoreApplyPurifyAB"].Progress
+, "count": round(aEnemyUnitConstruction[Owner, 50, "MothershipCoreApplyPurifyAB"].Count) + 1}
+, aUnitInfo["MothershipCoreApplyPurifyAB", "isStructure"]  := True
+, aUnitInfo["MothershipCoreApplyPurifyAB", "Priority"]  := 50
+}
 }
 }
 else if (aPlayer[owner, "Race"] = "Terran") && (Type = aUnitID["OrbitalCommand"] || Type = aUnitID["OrbitalCommandFlying"])
@@ -6009,7 +6104,7 @@ progress := getUnitMorphTime(unit, type)
 aEnemyUnitConstruction[Owner, Priority, MorphingType] := {"progress": (aEnemyUnitConstruction[Owner, Priority, MorphingType].progress > aProduction.progress ? aEnemyUnitConstruction[Owner, Priority, MorphingType].progress : progress)
 , "count": round(aEnemyUnitConstruction[Owner, Priority, MorphingType].count) + 1 }
 }
-else if (Type = aUnitID["Hatchery"] || aUnitID["Lair"] || aUnitID["Spire"]) && MorphingType := isHatchLairOrSpireMorphing(unit)
+else if (Type = aUnitID["Hatchery"] || Type = aUnitID["Lair"] || Type = aUnitID["Spire"]) && MorphingType := isHatchLairOrSpireMorphing(unit, Type)
 {
 aUnitInfo[MorphingType, "isStructure"] := True
 progress := getUnitMorphTime(unit, type)
@@ -6045,7 +6140,7 @@ else if (Type = aUnitID.OverlordCocoon)
 progress := getUnitMorphTime(unit, Type)
 QueuedPriority := aUnitInfo[Type := aUnitID.Overseer, "Priority"], Count := 1
 }
-else if (Type = aUnitId.MothershipCore)
+else if (Type = aUnitId.MothershipCore || Type = aUnitId.Mothership)
 {
 if isMotherShipCoreMorphing(unit)
 {
@@ -6054,6 +6149,7 @@ QueuedPriority := aUnitInfo[Type, "Priority"], Count := 1, Type := aUnitID.Mothe
 }
 else
 {
+aMiscUnitPanelInfo["MotherShipEnergy", owner] := getUnitEnergy(unit)
 aEnemyUnits[Owner, Priority, Type] := round(aEnemyUnits[Owner, Priority, Type]) + 1
 continue
 }
@@ -6071,7 +6167,7 @@ Return
 }
 FilterUnits(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aUnitPanelUnits)
 {	global aUnitInfo
-STATIC aRemovedUnits := {"Terran": ["BarracksTechLab","BarracksReactor","FactoryTechLab","FactoryReactor","StarportTechLab","StarportReactor"]
+STATIC aRemovedUnits := {"Terran": ["TechLab","BarracksTechLab","BarracksReactor","FactoryTechLab","Reactor","FactoryReactor","StarportTechLab","StarportReactor"]
 , "Protoss": ["Interceptor"]
 , "Zerg": ["CreepTumorBurrowed","Broodling","Locust"]}
 STATIC aAddUnits 	:=	{"Terran": {SupplyDepotLowered: "SupplyDepot", WidowMineBurrowed: "WidowMine", CommandCenterFlying: "CommandCenter", OrbitalCommandFlying: "OrbitalCommand"
@@ -6087,7 +6183,14 @@ for owner, priorityObject in aEnemyUnits
 {
 race := aPlayer[owner, "Race"]
 if (race = "Zerg" && priorityObject[aUnitInfo[aUnitID["Drone"], "Priority"], aUnitID["Drone"]] && aEnemyUnitConstruction[Owner, "TotalCount"])
+{
 priorityObject[aUnitInfo[aUnitID["Drone"], "Priority"], aUnitID["Drone"]] -= aEnemyUnitConstruction[Owner, "TotalCount"]
+- round(aEnemyUnitConstruction[owner, aUnitInfo[aUnitID["NydusCanal"], "Priority"], aUnitID["NydusCanal"], "Count"])
+- round(aEnemyUnitConstruction[owner, aUnitInfo[aUnitID["CreepTumorQueen"], "Priority"], aUnitID["CreepTumorQueen"], "Count"])
+- round(aEnemyUnitConstruction[owner, aUnitInfo[aUnitID["CreepTumor"], "Priority"], aUnitID["CreepTumor"], "Count"])
+if (priorityObject[aUnitInfo[aUnitID["Drone"], "Priority"], aUnitID["Drone"]] <= 0)
+priorityObject[aUnitInfo[aUnitID["Drone"], "Priority"]].remove(aUnitID["Drone"], "")
+}
 for index, removeUnit in aRemovedUnits[race]
 {
 removeUnit := aUnitID[removeUnit]
@@ -6118,14 +6221,14 @@ if (total := priorityObject[subPriority, subunit])
 mainUnit := aUnitID[mainUnit]
 if !priority := aUnitInfo[mainUnit, "Priority"]
 priority := 16
-aEnemyUnitConstruction[owner, Priority, mainUnit] :=  round(aEnemyUnitConstruction[owner, Priority, mainUnit]) + total
+aEnemyUnitConstruction[owner, Priority, mainUnit] := round(aEnemyUnitConstruction[owner, Priority, mainUnit]) + total
 priorityObject[subPriority].remove(subunit, "")
 }
 }
 for index, removeUnit in aUnitPanelUnits[race, "FilteredCompleted"]
 {
 removeUnit := aUnitID[removeUnit]
-priority := aUnitInfo[removeUnit, "Priority"]
+if ("" != priority := aUnitInfo[removeUnit, "Priority"])
 priorityObject[priority].remove(removeUnit, "")
 }
 for index, unit in aUnitOrder[race]
@@ -6146,16 +6249,25 @@ for subUnit, mainUnit in aAddConstruction[Race]
 {
 subunit := aUnitID[subUnit]
 subPriority := aUnitInfo[subunit, "Priority"]
-if (total := priorityObject[subPriority, subunit])
+if (total := priorityObject[subPriority, subunit, "Count"])
 {
+subProgress := priorityObject[subPriority, subunit, "progress"]
 mainUnit := aUnitID[mainUnit]
 if !priority := aUnitInfo[mainUnit, "Priority"]
 priority := subPriority
 if (aUnitInfo[mainUnit, "isStructure"] = "")
 aUnitInfo[mainUnit, "isStructure"] := aUnitInfo[subUnit, "isStructure"]
-if priorityObject[priority, mainUnit]
-priorityObject[priority, mainUnit] += total
-else priorityObject[priority, mainUnit] := total
+if priorityObject[priority, mainUnit, "Count"]
+{
+priorityObject[priority, mainUnit, "Count"] += total
+if (priorityObject[priority, mainUnit, "progress"] < subProgress)
+priorityObject[priority, mainUnit, "progress"] := subProgress
+}
+else
+{
+priorityObject[priority, mainUnit, "Count"] := total
+priorityObject[priority, mainUnit, "progress"] := subProgress
+}
 priorityObject[subPriority].remove(subunit, "")
 aEnemyUnitConstruction[Owner, "TotalCount"] -= total
 }
@@ -6164,7 +6276,9 @@ for index, removeUnit in aUnitPanelUnits[race, "FilteredUnderConstruction"]
 {
 removeUnit := aUnitID[removeUnit]
 priority := aUnitInfo[removeUnit, "Priority"]
-priorityObject[priority].remove(removeUnit, "")
+if removeUnit is not integer
+priorityObject[priority].remove(removeUnit)
+else priorityObject[priority].remove(removeUnit, "")
 }
 for index, unit in aUnitOrder[race]
 if (count := priorityObject[aUnitInfo[aUnitID[unit], "Priority"], aUnitID[unit]].count)
@@ -6181,7 +6295,7 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 {
 GLOBAL aEnemyUnits, aEnemyUnitConstruction, a_pBitmap, aPlayer, aLocalPlayer, aHexColours, GameIdentifier, config_file, UnitOverlayX, UnitOverlayY
 , aUnitInfo, SplitUnitPanel, aEnemyCurrentUpgrades, DrawUnitOverlay, DrawUnitUpgrades, aMiscUnitPanelInfo, aUnitID, overlayMatchTransparency
-, unitPanelDrawStructureProgress, unitPanelDrawUnitProgress, unitPanelDrawUpgradeProgress
+, unitPanelDrawStructureProgress, unitPanelDrawUnitProgress, unitPanelDrawUpgradeProgress, unitPanelAlignNewUnits
 static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0
 If (Redraw = -1)
 {
@@ -6228,17 +6342,17 @@ for slot_number, priorityObject in aEnemyUnits
 Height += 7*userscale
 , DestY := (rowMultiplier * Height + ((unitPanelDrawUnitProgress || unitPanelDrawStructureProgress ) ? 8 * UserScale : 0)) * (A_Index - 1)
 , destUnitSplitY :=  DestY + ((unitPanelDrawUnitProgress || unitPanelDrawStructureProgress ) ? 5 * UserScale : 0)
-If (PlayerIdentifier = 1 Or PlayerIdentifier = 2 )
+If (PlayerIdentifier = 1 || PlayerIdentifier = 2 )
 {
 IF (PlayerIdentifier = 2)
 OptionsName := " Bold cFF" aHexColours[aPlayer[slot_number, "Colour"]] " r4 s" 17*UserScale
-Else IF (PlayerIdentifier = 1)
+Else
 OptionsName := " Bold cFFFFFFFF r4 s" 17*UserScale
 gdip_TextToGraphics(G, getPlayerName(slot_number), "x0" "y"(DestY +12*UserScale)  OptionsName, Font)
 if !LongestNameSize
 {
 LongestNameData :=	gdip_TextToGraphics(G, MT_CurrentGame.LongestEnemyName
-, "x0" "y"(DestY)  " Bold c00FFFFFF r4 s" 17*UserScale	, Font)
+, "x0" "y"(DestY)  " Bold c00FFFFFF r4 s" 17*UserScale, Font)
 StringSplit, LongestNameSize, LongestNameData, |
 LongestNameSize := LongestNameSize3
 }
@@ -6253,7 +6367,8 @@ pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"RaceFlatColour", aPlayer[slot
 , DestX := Width+15*UserScale
 }
 else DestX := 0
-firstColumnX  := destUnitSplitX := DestX
+firstColumnX  := maxStructureDestX := maxUnitDestX := DestX
+structureY := DestY
 if DrawUnitOverlay
 {
 for priority, object in priorityObject
@@ -6264,19 +6379,39 @@ if !(pBitmap := a_pBitmap[unit])
 continue
 SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
 , Width *= UserScale *.5, Height *= UserScale *.5
-if (!aUnitInfo[unit, "isStructure"] && SplitUnitPanel)
+if SplitUnitPanel
 {
-prevStructureX := DestX
-, prevStructureY := DestY
-, DestX := destUnitSplitX
-, DestY := destUnitSplitY + Height * 1.1
+if aUnitInfo[unit, "isStructure"]
+DestX := maxStructureDestX, DestY := structureY
+else
+DestX := maxUnitDestX, DestY := destUnitSplitY + Height * 1.1
 }
 Gdip_DrawImage(G, pBitmap, DestX, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
-, Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, DestX + .6*Width, DestY + .6*Height, Width/2.5, Height/2.5, 5)
+if (unit = aUnitID.MothershipCore || unit = aUnitID.Mothership)
+{
+energy := aMiscUnitPanelInfo["MotherShipEnergy", slot_number]
+if (energy < 100)
+{
+Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, DestX + .6*Width, DestY + .6*Height, Width/2.5, Height/2.5, 5)
+if (energy < 10)
+gdip_TextToGraphics(G, energy, "x"(DestX + .5*Width + .4*Width/2) "y"(DestY + .5*Height + .3*Height/2)  " Bold Italic cFFCD00FF r4 s" 11*UserScale, Font)
+else
+gdip_TextToGraphics(G, energy, "x"(DestX + .5*Width + .18*Width/2) "y"(DestY + .5*Height + .3*Height/2) " Bold Italic cFFCD00FF r4 s" 11*UserScale, Font)
+}
+else
+{
+Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, DestX + .5*Width, DestY + .6*Height, (Width/2.5) +  .1*Width, Height/2.5, 5)
+, gdip_TextToGraphics(G, energy, "x"(DestX + .45*Width) "y"(DestY + .5*Height + .3*Height/2)  " Bold Italic cFFCD00FF r4 s" 11*UserScale, Font)
+}
+}
+else
+{
+Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, DestX + .6*Width, DestY + .6*Height, Width/2.5, Height/2.5, 5)
 if (unitCount >= 10)
 gdip_TextToGraphics(G, unitCount, "x"(DestX + .5*Width + .18*Width/2) "y"(DestY + .5*Height + .3*Height/2)  " Bold cFFFFFFFF r4 s" 11*UserScale, Font)
 Else
 gdip_TextToGraphics(G, unitCount, "x"(DestX + .5*Width + .35*Width/2) "y"(DestY + .5*Height + .3*Height/2)  " Bold cFFFFFFFF r4 s" 11*UserScale, Font)
+}
 if ((chronos := aMiscUnitPanelInfo["chrono", slot_number, unit]))
 {
 if (chronos = 1)
@@ -6316,16 +6451,25 @@ Gdip_SetSmoothingMode(G, 0)
 }
 aEnemyUnitConstruction[slot_number, priority].remove(unit, "")
 }
-if (!aUnitInfo[unit, "isStructure"] && SplitUnitPanel)
+if SplitUnitPanel
 {
-destUnitSplitX += (Width+5*UserScale)
-, DestX := prevStructureX
-, DestY := prevStructureY
+if aUnitInfo[unit, "isStructure"]
+maxStructureDestX += (Width+5*UserScale)
+else
+maxUnitDestX += (Width+5*UserScale)
 }
 else DestX += (Width+5*UserScale)
 }
 }
-destUnitSplitX := DestX += (Width+5*UserScale)
+DestX += (Width+5*UserScale)
+maxStructureDestX += (Width+5*UserScale)
+maxUnitDestX += (Width+5*UserScale)
+if unitPanelAlignNewUnits
+{
+if (maxStructureDestX < maxUnitDestX)
+maxStructureDestX := maxUnitDestX
+else maxUnitDestX := maxStructureDestX
+}
 for ConstructionPriority, priorityConstructionObject in aEnemyUnitConstruction[slot_number]
 {
 for unit, item in priorityConstructionObject
@@ -6334,12 +6478,12 @@ if (unit != "TotalCount" && pBitmap := a_pBitmap[unit])
 {
 SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
 , Width *= UserScale *.5, Height *= UserScale *.5
-if (!aUnitInfo[unit, "isStructure"] && SplitUnitPanel)
+if SplitUnitPanel
 {
-prevStructureX := DestX
-, prevStructureY := DestY
-, DestX := destUnitSplitX
-, DestY := destUnitSplitY + Height * 1.1
+if aUnitInfo[unit, "isStructure"]
+DestX := maxStructureDestX, DestY := structureY
+else
+DestX := maxUnitDestX, DestY := destUnitSplitY + Height * 1.1
 }
 Gdip_DrawImage(G, pBitmap, DestX, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
 Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, DestX + .6*Width, DestY, Width/2.5, Height/2.5, 5)
@@ -6354,25 +6498,31 @@ Gdip_SetSmoothingMode(G, 0)
 , Gdip_FillRectangle(G, a_pBrushes.Green, DestX + 5 * UserScale *.5, floor(DestY+Height + 5 * UserScale *.5), Width*item.progress - item.progress * 10 * UserScale *.5, Height/16)
 , Gdip_SetSmoothingMode(G, 4)
 }
-if (!aUnitInfo[unit, "isStructure"] && SplitUnitPanel)
+if SplitUnitPanel
 {
-destUnitSplitX += (Width+5*UserScale)
-, DestX := prevStructureX
-, DestY := prevStructureY
+if aUnitInfo[unit, "isStructure"]
+maxStructureDestX += (Width+5*UserScale)
+else
+maxUnitDestX += (Width+5*UserScale)
 }
 else DestX += (Width+5*UserScale)
 }
 }
 }
-if (DestX + Width > WindowWidth)
+if SplitUnitPanel
+{
+if (maxStructureDestX > WindowWidth)
+WindowWidth := maxStructureDestX
+else if (maxUnitDestX > WindowWidth)
+WindowWidth := maxUnitDestX
+}
+else if (DestX > WindowWidth)
 WindowWidth := DestX
-else if (destUnitSplitX + Width > WindowWidth)
-WindowWidth := destUnitSplitX
 }
 if DrawUnitUpgrades
 {
 offset := (SplitUnitPanel ? 2 : 1) * ((unitPanelDrawUnitProgress || unitPanelDrawStructureProgress) ? 5 : 0) * userscale
-, destUpgradesY := DestY  + Height * 1.1 * (rowMultiplier - 1) + offset
+, destUpgradesY := structureY  + Height * 1.1 * (rowMultiplier - 1) + offset
 , UpgradeX := firstColumnX
 for itemName, item in aEnemyCurrentUpgrades[slot_number]
 {
@@ -6398,7 +6548,7 @@ Gdip_FillEllipse(G, a_pBrushes["ScanChrono"], UpgradeX + .2*Width/2, destUpgrade
 UpgradeX += (Width+5*UserScale)
 }
 }
-if (UpgradeX + Width > WindowWidth)
+if (UpgradeX > WindowWidth)
 WindowWidth := UpgradeX
 }
 }
@@ -6417,6 +6567,256 @@ Gdip_DeleteGraphics(G)
 , SelectObject(hdc, obm)
 , DeleteObject(hbm)
 , DeleteDC(hdc)
+Return
+}
+DrawMacroTownHallOverlay(ByRef Redraw, UserScale=1, Drag=0)
+{
+global overlayMacroTownHallTransparency, MacroTownHallOverlayX, MacroTownHallOverlayY
+static Font := "Arial", overlayCreated, hwnd1, DragPrevious := False, aTownHalls := []
+If (Redraw = -1)
+{
+Try Gui, MacroTownHall: Destroy
+overlayCreated := False
+Redraw := 0
+Return
+}
+Else if (ReDraw AND WinActive(GameIdentifier))
+{
+Try Gui, MacroTownHall: Destroy
+overlayCreated := False
+Redraw := 0
+}
+If (!overlayCreated)
+{
+Gui, MacroTownHall: -Caption Hwndhwnd1 +E0x20 +E0x80000 +LastFound +ToolWindow +AlwaysOnTop
+Gui, MacroTownHall: Show, NA X%MacroTownHallOverlayX% Y%MacroTownHallOverlayY% W400 H400, % aOverlayTitles["MacroTownHallOverlay"]
+OnMessage(0x201, "OverlayMove_LButtonDown")
+OnMessage(0x20A, "OverlayResize_WM_MOUSEWHEEL")
+overlayCreated := True
+aTownHalls := {	aUnitID.OrbitalCommand: True
+, 	aUnitID.Nexus: True
+, 	aUnitID.Hatchery : True, aUnitID.Lair : True, aUnitID.Hive : True}
+}
+If (Drag AND !DragPrevious)
+{
+DragPrevious := True
+Gui, MacroTownHall: -E0x20
+}
+Else if (!Drag AND DragPrevious)
+{
+DragPrevious := False
+Gui, MacroTownHall: +E0x20 +LastFound
+WinGetPos, MacroTownHallOverlayX, MacroTownHallOverlayY
+IniWrite, %MacroTownHallOverlayX%, %config_file%, Overlays, MacroTownHallOverlayX
+Iniwrite, %MacroTownHallOverlayY%, %config_file%, Overlays, MacroTownHallOverlayY
+}
+if (aLocalPlayer.Race = "Terran")
+pBitmap := a_pBitmap[aUnitID.OrbitalCommand], energyRequired := 50, textColour := " cFFCD00FF "
+else if (aLocalPlayer.Race = "Protoss")
+pBitmap := a_pBitmap[aUnitID.Nexus], energyRequired := 25, textColour := " cFFCD00FF "
+else pBitmap := a_pBitmap[aUnitID.Larva], textColour := " cFFFFFFFF "
+macroCount := 0, aCheckedUnits := []
+loop 10
+{
+loop, % numgetControlGroupMemory(MemDump, A_Index - 1)
+{
+if !aCheckedUnits.HasKey((unit := NumGet(MemDump, (A_Index - 1) * 4, "UInt") >> 18))
+&& aTownHalls.HasKey(getUnitType(unit))
+&& isUnitLocallyOwned(unit) && !(getUnitTargetFilter(unit) & (aUnitTargetFilter.Dead | aUnitTargetFilter.UnderConstruction))
+macroCount += aLocalPlayer.Race = "Terran" || aLocalPlayer.Race = "Protoss" ? Floor(getUnitEnergy(unit)/energyRequired) : getTownHallLarvaCount(unit)
+aCheckedUnits[unit] := True
+}
+}
+hbm := CreateDIBSection(400, 400)
+, hdc := CreateCompatibleDC()
+, obm := SelectObject(hdc, hbm)
+, G := Gdip_GraphicsFromHDC(hdc)
+, Gdip_SetInterpolationMode(G, 2)
+, SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
+, Width *= UserScale *.4, Height *= UserScale *.4
+, stringData := Gdip_TextToGraphics(G, macroCount, "x"(Width+2*UserScale) "y" (Height)  textColour "r4 s" 18*UserScale, Font)
+StringSplit, stringData, stringData, |
+if (aLocalPlayer.Race = "Terran" || aLocalPlayer.Race = "Protoss" )
+Gdip_DrawImage(G, pBitmap, 0, stringData2 - (stringData4/2), Width, Height, 0, 0, SourceWidth, SourceHeight)
+else
+Gdip_DrawImage(G, pBitmap, 0, stringData2 - (stringData4/4), Width, Height, 0, 0, SourceWidth, SourceHeight)
+Gdip_DeleteGraphics(G)
+UpdateLayeredWindow(hwnd1, hdc,,,,, overlayMacroTownHallTransparency)
+, SelectObject(hdc, obm)
+, DeleteObject(hbm)
+, DeleteDC(hdc)
+Return
+}
+getLocalUpgrades(byRef aUpgrades, percentMode)
+{
+static aUpgradeStructures := [], aMorphingStructures := []
+if !aUpgradeStructures.MaxIndex()
+{
+upgradeStructures := "CommandCenter|EngineeringBay|Armory|BarracksTechLab|FactoryTechLab|StarportTechLab|GhostAcademy|FusionCore"
+. "|Forge|CyberneticsCore|TwilightCouncil|FleetBeacon|RoboticsBay|TemplarArchive"
+. "|Hatchery|Lair|Hive|SpawningPool|EvolutionChamber|RoachWarren|BanelingNest|HydraliskDen|InfestationPit|Spire|GreaterSpire|UltraliskCavern"
+morphingStructures := "CommandCenter|Hatchery|Lair|Spire"
+aUpgradeStructures := []
+loop, parse, upgradeStructures, |
+{
+aUpgradeStructures[aUnitID[A_LoopField]] :=  True
+}
+aMorphingStructures := []
+loop, parse, morphingStructures, |
+aMorphingStructures[aUnitID[A_LoopField]] :=  True
+}
+aUpgrades := []
+deadOrUnderConstruction := aUnitTargetFilter.Dead | aUnitTargetFilter.UnderConstruction
+loop, % DumpUnitMemory(MemDump)
+{
+if (numgetUnitTargetFilter(MemDump, unit := A_Index - 1) & deadOrUnderConstruction)
+|| numgetUnitOwner(MemDump, Unit) != aLocalPlayer["Slot"]
+|| !aUpgradeStructures.HasKey(Type := numgetUnitModelType(numgetUnitModelPointer(MemDump, Unit)))
+Continue
+if aMorphingStructures.HasKey(Type)
+{
+if (Type = aUnitID["CommandCenter"] && MorphingType := isCommandCenterMorphing(unit))
+|| ((Type = aUnitID["Hatchery"] || Type = aUnitID["Lair"] || Type = aUnitID["Spire"]) && (MorphingType := isHatchLairOrSpireMorphing(unit, Type)))
+{
+progress := getUnitMorphTime(unit, type, percentMode)
+name := aUnitName[MorphingType]
+aUpgrades["zzzz" name] := {Name: name, Progress: percentMode
+? (aUpgrades["zzzz" name].progress > progress ? aUpgrades["zzzz" name].progress : progress)
+:  (aUpgrades["zzzz" name].progress && aUpgrades["zzzz" name].progress < progress ? aUpgrades["zzzz" name].progress : progress)
+, count: round(aUpgrades["zzzz" name].Count) + 1}
+hasItems := True
+continue
+}
+else if (Type = aUnitID["CommandCenter"])
+continue
+}
+if (queueSize := getStructureProductionInfo(unit, type, aQueueInfo,, percentMode))
+{
+for i, aProduction in aQueueInfo
+{
+if a_pBitmap.haskey(aProduction.Item)
+{
+hasItems := True
+name := aProduction.Item
+progress := aProduction.progress
+aUpgrades[name] := {Name: name, Progress: percentMode
+? (aUpgrades[name].progress > progress ? aUpgrades[name].progress : progress)
+: (aUpgrades[name].progress && aUpgrades[name].progress < progress ? aUpgrades[name].progress : progress)
+, count: round(aUpgrades[name].Count) + 1
+, chrono: aLocalPlayer["Race"] = "Protoss" ? numgetIsUnitChronoed(MemDump, unit) : 0}
+}
+}
+}
+}
+return (hasItems)
+}
+DrawLocalUpgradesOverlay(ByRef Redraw, UserScale = 1, Drag = 0)
+{
+global localUpgradesItemsPerRow, LocalUpgradesOverlayX, LocalUpgradesOverlayY, overlayLocalUpgradesTransparency
+, DrawLocalUpgradesOverlay
+static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0, upgradesExistPrevious := 0
+percentMode := (DrawLocalUpgradesOverlay = 1)
+If (Redraw = -1)
+{
+Try Gui, LocalUpgradesOverlay: Destroy
+overlayCreated := False
+Redraw := 0
+Return
+}
+Else if (ReDraw AND WinActive(GameIdentifier))
+{
+Try Gui, LocalUpgradesOverlay: Destroy
+overlayCreated := False
+Redraw := 0
+}
+If (!overlayCreated)
+{
+Gui, LocalUpgradesOverlay: -Caption Hwndhwnd1 +E0x20 +E0x80000 +LastFound +ToolWindow +AlwaysOnTop
+Gui, LocalUpgradesOverlay: Show, NA X%LocalUpgradesOverlayX% Y%LocalUpgradesOverlayY% W400 H400, % aOverlayTitles["LocalUpgradesOverlay"]
+OnMessage(0x201, "OverlayMove_LButtonDown")
+OnMessage(0x20A, "OverlayResize_WM_MOUSEWHEEL")
+overlayCreated := True
+}
+If (Drag AND !DragPrevious)
+{	DragPrevious := 1
+Gui, LocalUpgradesOverlay: -E0x20
+}
+Else if (!Drag AND DragPrevious)
+{	DragPrevious := 0
+Gui, LocalUpgradesOverlay: +E0x20 +LastFound
+WinGetPos, LocalUpgradesOverlayX, LocalUpgradesOverlayY
+IniWrite, %LocalUpgradesOverlayX%, %config_file%, Overlays, LocalUpgradesOverlayX
+Iniwrite, %LocalUpgradesOverlayY%, %config_file%, Overlays, LocalUpgradesOverlayY
+}
+DestX := DestY := 0
+if !localUpgradesItemsPerRow
+localUpgradesItemsPerRow := 9999
+upgradesExist := getLocalUpgrades(aUpgrades, percentMode)
+if (upgradesExist) || (!upgradesExist && upgradesExistPrevious) || drag
+{
+if (drag && !upgradesExist)
+{
+progress := percentMode ? .80 : 65
+aUpgrades := {	1: {name: "ResearchShieldWall", progress: progress, count: 1}
+,	2: {name: "Stimpack", progress: progress, count: 1}
+,	3: {name: "ResearchExtendedThermalLance", progress: progress, count: 1}
+,	4: {name: "ResearchWarpGate", progress: progress, count: 1}
+,	5: {name: "zerglingmovementspeed", progress: progress, count: 1}
+,	6: {name: "Lair", progress: progress, count: 2}	}
+}
+hbm := CreateDIBSection(A_ScreenWidth, A_ScreenHeight)
+, hdc := CreateCompatibleDC()
+, obm := SelectObject(hdc, hbm)
+, G := Gdip_GraphicsFromHDC(hdc)
+, Gdip_SetSmoothingMode(G, 4)
+, Gdip_SetInterpolationMode(G, 2)
+rowCount := 0, windowWidth := WindowHeight := 20
+for i, upgrade in aUpgrades
+{
+if !(pBitmap := a_pBitmap[aUnitID.HasKey(upgrade.name) ? aUnitID[upgrade.name] : upgrade.name])
+continue
+SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
+, Width *= UserScale *.5, Height *= UserScale *.5
+Gdip_DrawImage(G, pBitmap, DestX, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
+if (upgrade.Count > 1)
+{
+Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, DestX + .6*Width, DestY, Width/2.5, Height/2.5, 5)
+, gdip_TextToGraphics(G, upgrade.Count, "x"(DestX + .5*Width + .3*Width/2) "y"(DestY + .10*Height/2)  " Bold Italic cFFFFFFFF r4 s" 11*UserScale, Font)
+}
+if (upgrade.Chrono)
+Gdip_FillEllipse(G, a_pBrushes["ScanChrono"], DestX + .2*Width/2, DestY + .2*Height/2, 6*UserScale, 6*UserScale)
+if percentMode
+{
+Gdip_SetSmoothingMode(G, 0)
+, Gdip_FillRectangle(G, a_pBrushes.TransparentBlack, DestX + 5 * UserScale *.5, floor(DestY+Height + 5 * UserScale *.5), Width - 10 * UserScale *.5, Height/12)
+, Gdip_FillRectangle(G, a_pBrushes.Green, DestX + 5 * UserScale *.5, floor(DestY+Height + 5 * UserScale *.5), Width*upgrade.progress - upgrade.progress * 10 * UserScale *.5, Height/12)
+, Gdip_SetSmoothingMode(G, 4)
+}
+else
+{
+Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack,  DestX + 5 * UserScale *.5, floor(DestY+Height + 3 * UserScale *.5), Width - 10 * UserScale *.5, Height/2.5, 2)
+, gdip_TextToGraphics(G, formatSeconds(upgrade.progress), "x"(DestX + Width//2) " y"floor(DestY+Height + 5 * UserScale *.5)  " centre cFFFFFFFF r4 s" 12*UserScale, Font)
+}
+if (DestX > windowWidth)
+windowWidth := DestX
+if (DestY > WindowHeight)
+WindowHeight := DestY
+if (++rowCount >= localUpgradesItemsPerRow)
+DestX := 0, DestY += Height + (percentMode ? 10 : 17) * UserScale, rowCount := 0
+else DestX += Width+5*UserScale
+}
+windowWidth += 2*Width, WindowHeight += 2*Height
+if (WindowWidth > A_ScreenWidth)
+WindowWidth := A_ScreenWidth
+if (WindowHeight > A_ScreenHeight)
+WindowHeight := A_ScreenHeight
+Gdip_DeleteGraphics(G)
+, UpdateLayeredWindow(hwnd1, hdc,,, WindowWidth, WindowHeight, overlayLocalUpgradesTransparency)
+, SelectObject(hdc, obm)
+, DeleteObject(hbm)
+, DeleteDC(hdc)
+}
+upgradesExistPrevious := upgradesExist
 Return
 }
 changeScriptMainWinTitle(newTitle := "")
@@ -6612,7 +7012,7 @@ DecToHex(Value)
 {
 oldfrmt := A_FormatInteger
 hex := Value
-SetFormat, IntegerFast, hex
+SetFormat, IntegerFast, Hex
 hex += 0
 hex .= ""
 SetFormat, IntegerFast, %oldfrmt%
