@@ -1,10 +1,13 @@
 /*
 	18/05/14
-	- 	Fixed issue with get getBaseAddressOfModule() returning the incorrect module 
-		when specified module name formed part of another modules name
+		- 	Fixed issue with get getBaseAddressOfModule() returning the incorrect module 
+			when specified module name formed part of another modules name
 	10/06/14
-	- 	Fixed a bug introduced by the above change, which prevented the function returning 
-		the base address of the process.
+		- 	Fixed a bug introduced by the above change, which prevented the function returning 
+			the base address of the process.
+	12/07/14 - version 1.0
+		- 	Added writeBuffer() method
+		-  	Added a version number to the class
 
 
 	RHCP's basic memory class:
@@ -22,9 +25,11 @@
 	ReadRawMemory() can be used to dump large chunks of memory, this is considerably faster when
 	reading data from a large structure compared to repeated calls to read().
 	Although, most people wouldn't notice the performance difference. This does however require you 
-	to retrieve the values using AHK's numget()/strGet() from the dumped memory
+	to retrieve the values using AHK's numget()/strGet() from the dumped memory.
+
+	In a similar fashion writeBuffer() allows a buffer to be be written in a single operation. 
 	
-	When the new operator is used this class returns a object which can be used to read that processes 
+	When the new operator is used this class returns an object which can be used to read that processes 
 	memory space.
 	To read another process simply create another object.
 
@@ -48,7 +53,14 @@
 				a 64 bit calc process address (I doubt pointers will work), but the getBaseAddressOfModule() example 
 				will not work unless the you are using a 64 bit version of ahk (it will return -4 indicating the operation is not possible)
 
+		The contents of this file can be copied directly into your script. Alternately you can copy the classMemory.ahk file into your library folder,
+		in which case you will need to use the #include directive in your script i.e. #Include <classMemory>
+		You can use this code to check if you have installed the class correctly.
+		if (memory.__Class != "Memory")
+			msgbox class memory not correctly installed. Or the (global class) variable "Memory" has been overwritten
+		else msgbox class memory correctly installed
 		
+
 		Open a process with sufficient access to read and write memory addresses (this is required before you can use the other functions)
 		You only need to do this once. But if the process closes, then you will need to reopen.
 		Also, if the target process is running as admin, then the script will also require admin rights!
@@ -59,6 +71,9 @@
 		
 		Get the base address of a module
 			msgbox % calc.getBaseAddressOfModule("GDI32.dll")
+
+		The rest of these examples are just for illustration (the addresses specified are probably not valid).
+		You can use cheat engine to find real addresses to read and write to for testing purposes.
 		
 		write 1234 to a UInt at address 0x0016CB60
 			calc.write(0x0016CB60, 1234, "UInt")
@@ -123,6 +138,11 @@ class memory
 	{
 		this.closeProcess(this.hProcess)
 		return
+	}
+
+	version()
+	{
+		return 1.0
 	}
 
 	; program can be an ahk_exe, ahk_class, ahk_pid, or simply the window title. e.g. "ahk_exe SC2.exe" or "Starcraft II"
@@ -234,10 +254,18 @@ class memory
 	write(address, value, type := "Uint", aOffsets*)
 	{
         if !bytes := this.aTypeSize[type]
-	        return "Non Supported data type" ; Unsigned64 bit not supported by AHK
+	        return  -1 ; Non Supported data type e.g. Unsigned64 bit not supported by AHK
 	    VarSetCapacity(buffer, bytes)
         NumPut(value, buffer, 0, type)
 	  	return DllCall("WriteProcessMemory", "UInt", this.hProcess, "UInt", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, "Ptr", &buffer, "Uint", bytes, "Ptr", 0) 
+	}
+
+	; Writes out a buffer. The bufferSize parameter is optional, if omitted it will be automatically determined.
+	writeBuffer(address, byRef buffer, byRef bufferSize := 0, aOffsets*)
+	{
+		if (bufferSize <= 0 && !bufferSize := VarSetCapacity(buffer))
+			return -1 ; Nothing to be written
+		return DllCall("WriteProcessMemory", "UInt", this.hProcess, "UInt", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, "Ptr", &buffer, "Uint", bufferSize, "Ptr", 0) 
 	}
 
 	; This can be used to read various numeric pointer types (the the other various read/write functions can do this too!)
