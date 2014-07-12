@@ -3688,7 +3688,7 @@ readConfigFile()
 	IniRead, HumanMouseTimeLo, %config_file%, %section%, HumanMouseTimeLo, 70
 	IniRead, HumanMouseTimeHi, %config_file%, %section%, HumanMouseTimeHi, 110
 
-	IniRead, UnitDetectionTimer_ms, %config_file%, %section%, UnitDetectionTimer_ms, 3500
+	;IniRead, UnitDetectionTimer_ms, %config_file%, %section%, UnitDetectionTimer_ms, 3500
 	
 
 	IniRead, MTCustomIcon, %config_file%, %section%, MTCustomIcon, %A_Space% ; I.e. False
@@ -4263,6 +4263,28 @@ getBuildProgress(pAbilities, type)
 
 
 /*
+Haven't checked other races - but currently this is only being used to for the supply cap 
+warning to check if a depot is actively being built.
+
+BuildInProgress Terran 
+	+ 0xC 	= 0x43 under construction 
+			= 0x63 when incomplete but not actively being constructed by SCV
+			= 0x23 fully built
+	+ 0x5C 	= 1 under construction 
+			= 0 when incomplete but not actively being constructed by SCV
+			= 0 When complete
+*/
+
+
+isBuildInProgressConstructionActive(pAbilities, type)
+{
+	if pBuild := findAbilityTypePointer(pAbilities, type, "BuildInProgress")
+		return ReadMemory(ReadMemory(pBuild, GameIdentifier) + 0x5C, GameIdentifier)
+	return 1 ; assume true
+}
+
+
+/*
 Finds the buffs applied to a unit. Percent complete.
 
 If the byref variable buffNameOrObject is an object then any current buff is stored in it and the buff count is returned (0 if none)
@@ -4426,4 +4448,44 @@ formatSeconds(seconds)
     time += %seconds%, seconds
     FormatTime, mss, %time%, m:ss
     return lTrim(seconds//3600 ":" mss, "0:") ; adds hour param first so supports more than 24 hours of seconds
+}
+
+modifyOverlay(overlay, byRef Redraw, byRef overlayCreated, byRef Drag, byRef DragPrevious, byRef x, byRef y, w, h, byRef hwnd1)
+{
+	If (Redraw = -1)
+	{
+		Try Gui, %overlay%: Destroy
+		overlayCreated := False
+		Redraw := 0
+		Return 0
+	}	
+	Else if (ReDraw AND WinActive(GameIdentifier))
+	{
+		Try Gui, %overlay%: Destroy
+		overlayCreated := False
+		Redraw := 0
+	}
+	If (!overlayCreated)
+	{
+		; Create a layered window ;E0x20 click thru (+E0x80000 : must be used for UpdateLayeredWindow to work!) that is always on top (+AlwaysOnTop), has no taskbar entry or caption
+		Gui, %overlay%: -Caption Hwndhwnd1 +E0x20 +E0x80000 +LastFound  +ToolWindow +AlwaysOnTop
+		Gui, %overlay%: Show, NA X%x% Y%y% W%w% H%h%, % aOverlayTitles[overlay]
+		OnMessage(0x201, "OverlayMove_LButtonDown")
+		OnMessage(0x20A, "OverlayResize_WM_MOUSEWHEEL")
+		overlayCreated := True
+	}	
+	If (Drag AND !DragPrevious)
+	{	
+		DragPrevious := 1
+		Gui, %overlay%: -E0x20
+	}
+	Else if (!Drag AND DragPrevious)
+	{	
+		DragPrevious := 0
+		Gui, %overlay%: +E0x20 +LastFound
+		WinGetPos, x, y		
+		IniWrite, %x%, %config_file%, Overlays, %overlay%X
+		Iniwrite, %y%, %config_file%, Overlays, %overlay%Y
+	}
+	return 1
 }

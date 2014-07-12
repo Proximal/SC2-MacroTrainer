@@ -128,7 +128,7 @@ gameChange(UserSavedAppliedSettings := False)
 		Else
 			doUnitDetection(0, 0, 0, "Reset") ; clear the variables within the function			
 		if (warpgate_warn_on || supplyon || workeron || alert_array[GameType, "Enabled"])
-			settimer, unit_bank_read, %UnitDetectionTimer_ms%, -6
+			settimer, unit_bank_read, 2000, -6   ; %UnitDetectionTimer_ms%
 		else settimer, unit_bank_read, off
 		settimer, worker, % workeron ? 1000 : "off", -5
 		settimer, supply, % supplyon ? 200 : "off", -5
@@ -501,6 +501,10 @@ drawPlayerCameras(pGraphics)
 }
 
 unit_bank_read:
+;thread, NoTimers, true
+;timerID := stopwatch()
+
+
 SupplyInProductionCount := gateway_count := warpgate_count := 0
 If (aLocalPlayer["Race"] = "Terran")
 	SupplyType := aUnitID["SupplyDepot"]
@@ -520,6 +524,9 @@ while (A_Index <= UnitBankCount)
 		Continue
 	; so these units are alive, and either local or enemy units (and not neutral player 0)
 	unit_type := numgetUnitModelType(numgetUnitModelPointer(UBMemDump, u_iteration))
+	if  (unit_type < aUnitID["Colossus"]) ; First 'real' unit
+		continue	
+
 	if (unit_owner = aLocalPlayer["Slot"])
 	{
 		If (unit_type = supplytype) 
@@ -531,7 +538,11 @@ while (A_Index <= UnitBankCount)
 					SupplyInProductionCount++	
 			}
 			else if (Filter & aUnitTargetFilter.UnderConstruction)
-				SupplyInProductionCount++				
+			{
+				; So If unit is protoss OR unit is terran AND the supply depot is actively being constructed by an SCV
+				If (aLocalPlayer["Race"] != "Terran" || isBuildInProgressConstructionActive(numgetUnitAbilityPointer(UBMemDump, u_iteration), unit_type))
+					SupplyInProductionCount++	
+			}			
 		}
 		if ( warpgate_warn_on AND (unit_type = aUnitID["Gateway"] OR unit_type = aUnitID["WarpGate"]) 
 			AND !(Filter & aUnitTargetFilter.UnderConstruction))
@@ -575,6 +586,8 @@ if warpgate_warn_on
 	gosub warpgate_warn
 SupplyInProduction := SupplyInProductionCount
 a_BaseList := a_BaseListTmp 
+
+;log(stopwatch(timerID))
 return
 
 

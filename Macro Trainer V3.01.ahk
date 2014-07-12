@@ -854,7 +854,7 @@ mt_pause_resume:
 	if (mt_Paused := !mt_Paused)
 	{
 		isInMatch := False ; with this clock = 0 when not in game 
-		timeroff("clock", "money", "gas", "scvidle", "supply", "worker", "inject", "Auto_Group", "AutoGroupIdle", "g_autoWorkerProductionCheck", "cast_ForceInject", "find_races_timer", "advancedInjectTimerFunctionLabel")
+		timeroff("clock", "money", "gas", "scvidle", "supply", "worker", "inject", "Auto_Group", "AutoGroupIdle", "g_autoWorkerProductionCheck", "cast_ForceInject", "auto_inject", "find_races_timer", "advancedInjectTimerFunctionLabel")
 		inject_timer := 0	;ie so know inject timer is off
 		Try DestroyOverlays()
 		aThreads.MiniMap.ahkPause.1
@@ -880,7 +880,7 @@ clock:
 	if (!time && isInMatch) || (UpdateTimers) ; time=0 outside game
 	{	
 		isInMatch := False ; with this clock = 0 when not in game (while in game at 0s clock = 44)	
-		timeroff("money", "gas", "scvidle", "supply", "worker", "inject", "Auto_Group", "AutoGroupIdle", "g_autoWorkerProductionCheck", "cast_ForceInject", "find_races_timer", "advancedInjectTimerFunctionLabel")
+		timeroff("money", "gas", "scvidle", "supply", "worker", "inject", "Auto_Group", "AutoGroupIdle", "g_autoWorkerProductionCheck", "cast_ForceInject", "auto_inject", "find_races_timer", "advancedInjectTimerFunctionLabel")
 		; Don't call these thread functions if just updating settings. 
 		; They will be called below. When everything is turned back on.
 		; Resetting the unit detections here probably increased the chances of the warning not
@@ -939,7 +939,7 @@ clock:
 		sleep, -1
 
 		SetMiniMap(minimap) ; Used for clicking - not just drawing
-		; If I was using the minerals for anything, then if this was called again due to just settings being changed (minerals would have been used up)
+		; If I was using the minerals for anything, then if this was called again due to just settings being changed/restart (minerals would have been used up)
 		aResourceLocations := getMapInfoMineralsAndGeysers() 
 		if WinActive(GameIdentifier)
 			ReDrawAPM := ReDrawMiniMap := ReDrawIncome := ReDrawResources := ReDrawArmySize := ReDrawWorker := RedrawUnit := ReDrawIdleWorkers := ReDrawLocalPlayerColour := 1
@@ -2606,7 +2606,7 @@ ini_settings_write:
 	Iniwrite, %HumanMouse%, %config_file%, %section%, HumanMouse
 	Iniwrite, %HumanMouseTimeLo%, %config_file%, %section%, HumanMouseTimeLo
 	Iniwrite, %HumanMouseTimeHi%, %config_file%, %section%, HumanMouseTimeHi
-	Iniwrite, %UnitDetectionTimer_ms%, %config_file%, %section%, UnitDetectionTimer_ms
+	;Iniwrite, %UnitDetectionTimer_ms%, %config_file%, %section%, UnitDetectionTimer_ms
 	Iniwrite, %MTCustomIcon%, %config_file%, %section%, MTCustomIcon
 
 	if (MTCustomProgramName && A_IsCompiled)
@@ -2864,10 +2864,10 @@ try
 			Gui, Add, Button, x+20 w54 h25 gIni_settings_write, Apply
 			Gui, Font, 
 
-	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% ys x165 vInjects_TAB, Info||Basic|Auto|Alert|Manual
+	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% ys x165 vInjects_TAB, Info||Basic|Auto|Settings|Alerts|Manual
 	GuiControlGet, MenuTab, Pos, Injects_TAB
 	Gui, Tab,  Basic
-		Gui, Add, GroupBox, w200 h240 section vOriginTab, One Button Inject
+		Gui, Add, GroupBox, w200 h100 section vOriginTab, One Button Inject
 				GuiControlGet, OriginTab, Pos
 			Gui, Add, Text,xp+10 yp+25, Method:		
 					If (auto_inject = 0 OR auto_inject = "Disabled")
@@ -2887,39 +2887,55 @@ try
 			Gui, Add, Edit, Readonly yp-2 xs+85 center w65 R1 vcast_inject_key gedit_hotkey, %cast_inject_key%
 			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#cast_inject_key,  Edit ;have to use a trick eg '#' as cant write directly to above edit var, or it will activate its own label!
 
-			Gui, Add, Text, X%XTabX% yp+35 w70, Spawn Larva:
-			Gui, Add, Edit, Readonly yp-2 xs+85 w65 R1 center vInject_spawn_larva, %Inject_spawn_larva%
-				Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#Inject_spawn_larva,  Edit
+
 
 		;	Gui, Add, Text, X%XTabX% yp40, Control Group: %A_space%(Unit Selection Storage)
 		;		Gui, Add, Edit, Readonly y+10 xs+60 w90 center vInject_control_group , %Inject_control_group%
 		;			Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#Inject_control_group,  Edit	
 
-			Gui, Add, Text, X%XTabX% yp40, Storage Ctrl Group:
-			Gui, Add, DropDownList,  % "x+45 w45 center vInject_control_group Choose" (Inject_control_group = 0 ? 10 : Inject_control_group), 1|2|3|4|5|6||7|8|9|0
+
+	Gui, Tab,  Settings
+
+		Gui, Add, GroupBox, x+15 Y+20 w200 h180 section, Common Settings
+			Gui, Add, Text, xs+10 yp+25 w70, Spawn Larva:
+			Gui, Add, Edit, Readonly yp-2 xs+85 w65 R1 center vInject_spawn_larva, %Inject_spawn_larva%
+				Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#Inject_spawn_larva,  Edit
+
+			Gui, Add, Text, xs+10 y+15, Ctrl Group Storage:
+			Gui, Add, DropDownList,  % "xp+133 yp-2 w45 center vInject_control_group Choose" (Inject_control_group = 0 ? 10 : Inject_control_group), 1|2|3|4|5|6||7|8|9|0
+
+			Gui, Add, Text, xs+10 y+15, Queen Control Group:
+			; i have a dropdown menu now so user has to put a number, cant use another key as I use this to check the control groups
+				Gui, Add, DropDownList,  % "xp+133 w45 center vMI_Queen_Group Choose" (MI_Queen_Group = 0 ? 10 : MI_Queen_Group), 1|2|3|4|5|6|7||8|9|0
+			;	Gui, Add, Edit, Readonly y+10 xs+60 w90 center vMI_Queen_Group, %MI_Queen_Group%
+			;		Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#MI_Queen_Group,  Edit			
+
+			Gui, Add, Text, xs+10 y+15, Max Queen Distance:`n%A_Space% %A_Space% (From Hatch)
+				Gui, Add, Edit, Number Right xp+132 yp w45 vTT2_MI_QueenDistance
+						Gui, Add, UpDown,  Range1-100000 vMI_QueenDistance, %MI_QueenDistance%	
+
+			;Gui, Add, GroupBox, xs y+40 w200 h160, Advanced Settings
+		Gui, Add, GroupBox, xs ys+205 w200 h170, Advanced Settings
+			Gui, Add, Text, xs+20 yp+20 vSG1, Sleep time (ms):`n(Lower is faster)
+				GuiControlGet, XTab2, Pos, SG1 ;XTabX = x loc
+			Gui, Add, Edit, Number Right xs+145 yp-2 w45 vEdit_pos_var 
+				Gui, Add, UpDown,  Range0-100000 vAuto_inject_sleep, %auto_inject_sleep%
+				GuiControlGet, settingsR, Pos, Edit_pos_var ;XTabX = x loc
+
+			Gui, Add, Text, xs+20 yp+35, Sleep variance `%:
+			Gui, Add, Edit, Number Right xs+145 yp-2 w45 vEdit_Inject_SleepVariance
+				Gui, Add, UpDown,  Range0-100000 vInject_SleepVariance, % (Inject_SleepVariance - 1) * 100  
+
+			Gui, Add, Checkbox, x%XTab2X% y+8 vCanQueenMultiInject checked%CanQueenMultiInject%, Queen Can Inject`nMultiple Hatcheries 
+			;Gui, Add, Text, x+0 yp-5, Queen Can Inject`nMultiple Hatcheries ; done as checkbox with 2 lines text is too close to checkbox
+
+			Gui, Add, Checkbox, x%XTab2X% y+12 vInject_RestoreSelection checked%Inject_RestoreSelection%, Restore Unit Selection 		
+			;Gui, Add, Text, x+0 yp, Restore Unit Selection 				
+			Gui, Add, Checkbox, x%XTab2X% y+10 vInject_RestoreScreenLocation checked%Inject_RestoreScreenLocation%, Restore Screen Location
+			;Gui, Add, Text, x+0 yp, Restore Screen Location
 
 
-		;Gui, Add, GroupBox, xs y+40 w200 h160, Advanced Settings
-		Gui, Add, GroupBox, xs ys+250 w200 h160, Advanced Settings
-					Gui, Add, Text, xs+20 yp+20 vSG1, Sleep time (ms):`n(Lower is faster)
-						GuiControlGet, XTab2, Pos, SG1 ;XTabX = x loc
-					Gui, Add, Edit, Number Right xs+125 yp-2 w45 vEdit_pos_var 
-						Gui, Add, UpDown,  Range0-100000 vAuto_inject_sleep, %auto_inject_sleep%
-						GuiControlGet, settingsR, Pos, Edit_pos_var ;XTabX = x loc
-
-					Gui, Add, Text, xs+20 yp+35, Sleep variance `%:
-					Gui, Add, Edit, Number Right xs+125 yp-2 w45 vEdit_Inject_SleepVariance
-						Gui, Add, UpDown,  Range0-100000 vInject_SleepVariance, % (Inject_SleepVariance - 1) * 100  
-
-					Gui, Add, Checkbox, x%XTab2X% y+8 vCanQueenMultiInject checked%CanQueenMultiInject%, Queen Can Inject`nMultiple Hatcheries 
-					;Gui, Add, Text, x+0 yp-5, Queen Can Inject`nMultiple Hatcheries ; done as checkbox with 2 lines text is too close to checkbox
-
-					Gui, Add, Checkbox, x%XTab2X% y+12 vInject_RestoreSelection checked%Inject_RestoreSelection%, Restore Unit Selection 		
-					;Gui, Add, Text, x+0 yp, Restore Unit Selection 				
-					Gui, Add, Checkbox, x%XTab2X% y+10 vInject_RestoreScreenLocation checked%Inject_RestoreScreenLocation%, Restore Screen Location
-					;Gui, Add, Text, x+0 yp, Restore Screen Location
-
-	Gui, Add, GroupBox, w200 h180 ys xs+210 section, Backspace Methods
+		Gui, Add, GroupBox, w200 h180 ys xs+210 section, Backspace Method
 			Gui, Add, Text, xs+10 yp+25, Drag Origin:
 			if (Drag_origin = "Right")
 				droplist_var :=2
@@ -2934,23 +2950,6 @@ try
 			Gui, Add, Text, xs+10 yp+40, Camera Position: %A_space% %A_space% (Goto Location)
 				Gui, Add, Edit, Readonly y+10 xs+60 w90 R1 center vBI_camera_pos_x , %BI_camera_pos_x%
 					Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#BI_camera_pos_x,  Edit
-
-	Gui, Add, GroupBox, w200 h62 y+10 xs,
-			Gui, Add, Checkbox, xs+10 yp+13 vauto_inject_alert checked%auto_inject_alert%, Enable Alert
-			Gui, Add, Text,xs+10 y+12, Time Between Alerts (s):
-			Gui, Add, Edit, Number Right x+25 yp-2 w45 vTT_auto_inject_time
-				Gui, Add, UpDown, Range1-100000 vauto_inject_time, %auto_inject_time% ;these belong to the above edit
-
-	Gui, Add, GroupBox, xs y+15 w200 h160, MiniMap && Backspace Ctrl Group
-			Gui, Add, Text, xs+10 yp+25, Queen Control Group:
-			; i have a dropdown menu now so user has to put a number, cant use another key as I use this to check the control groups
-				Gui, Add, DropDownList,  % "x+30 w45 center vMI_Queen_Group Choose" (MI_Queen_Group = 0 ? 10 : MI_Queen_Group), 1|2|3|4|5|6|7||8|9|0
-			;	Gui, Add, Edit, Readonly y+10 xs+60 w90 center vMI_Queen_Group, %MI_Queen_Group%
-			;		Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#MI_Queen_Group,  Edit			
-
-			Gui, Add, Text, xs+10 yp+40, Max Queen Distance:`n%A_Space% %A_Space% (From Hatch)
-				Gui, Add, Edit, Number Right xp+132 yp w45 vTT2_MI_QueenDistance
-						Gui, Add, UpDown,  Range1-100000 vMI_QueenDistance, %MI_QueenDistance%			
 
 	Gui, Tab,  Info
 			gui, font, norm bold s10
@@ -3024,7 +3023,7 @@ try
 		Please ensure you have correctly set the settings under the 'basic' inject tab. This includes the 'minimap' settings as well as the 'spawn larva key' and control group storage settings.
 		)
 
-	Gui, Tab,  Alert
+	Gui, Tab,  Alerts
 			Gui, Add, GroupBox,  w210 h140, Basic Inject Alert Type
 			Gui, Add, Checkbox,xp+10 yp+30 vW_inject_ding_on checked%W_inject_ding_on%, Windows Ding
 			Gui, Add, Checkbox,yp+25 vW_inject_speech_on checked%W_inject_speech_on%, Spoken Warning
@@ -3033,6 +3032,14 @@ try
 			Gui, Font, s10
 			Gui, Add, Text, y+60 w360, Note: Due to an inconsistency with the programming language, some systems may not hear the 'windows ding'.
 			Gui, Font	
+
+
+		Gui, Add, GroupBox, w200 h70 yp+40 xs, One Button Alert
+			Gui, Add, Checkbox, xs+10 yp+20 vauto_inject_alert checked%auto_inject_alert%, Enable Alert
+			Gui, Add, Text,xs+10 y+10, Time Between Alerts (s):
+			Gui, Add, Edit, Number Right x+25 yp-2 w45 vTT_auto_inject_time
+				Gui, Add, UpDown, Range1-100000 vauto_inject_time, %auto_inject_time% ;these belong to the above edit
+
 
 
 	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vKeys_TAB, SC2 Keys|Set/Add Group|Invoke Group

@@ -320,39 +320,12 @@ DrawIdleWorkersOverlay(ByRef Redraw, UserScale=1,Drag=0, expand=1)
 	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0				
 
 	DestX := DestY := 0
-	idleCount := getIdleWorkers()
-	If (Redraw = -1 || !idleCount)		;only draw overlay when idle workers present
-	{
-		Try Gui, idleWorkersOverlay: Destroy
-		overlayCreated := False
-		Redraw := 0
-		Return
-	}	
-	Else if (ReDraw AND WinActive(GameIdentifier) && idleCount)
-	{
-		Try Gui, idleWorkersOverlay: Destroy
-		overlayCreated := False
-		Redraw := 0
-	}	
-	If (!overlayCreated)
-	{
-		Gui, idleWorkersOverlay: -Caption Hwndhwnd1 +E0x20 +E0x80000 +LastFound  +ToolWindow +AlwaysOnTop
-		Gui, idleWorkersOverlay: Show, NA X%idleWorkersOverlayX% Y%idleWorkersOverlayY% W400 H400, % aOverlayTitles["idleWorkersOverlay"]
-		OnMessage(0x201, "OverlayMove_LButtonDown")
-		OnMessage(0x20A, "OverlayResize_WM_MOUSEWHEEL")
-		overlayCreated := True	
-	}
-	If (Drag AND !DragPrevious)
-	{	DragPrevious := 1
-		Gui, idleWorkersOverlay: -E0x20
-	}
-	Else if (!Drag AND DragPrevious)
-	{	DragPrevious := 0
-		Gui, idleWorkersOverlay: +E0x20 +LastFound
-		WinGetPos,idleWorkersOverlayX,idleWorkersOverlayY		
-		IniWrite, %idleWorkersOverlayX%, %config_file%, Overlays, idleWorkersOverlayX
-		Iniwrite, %idleWorkersOverlayY%, %config_file%, Overlays, idleWorkersOverlayY
-	}
+	if !idleCount := getIdleWorkers()
+		Redraw := -1 ;only draw overlay when idle workers present
+
+	if !modifyOverlay("idleWorkersOverlay", Redraw, overlayCreated, Drag, DragPrevious, idleWorkersOverlayX, idleWorkersOverlayY, 400, 400, hwnd1)
+		return
+
 	hbm := CreateDIBSection(400, 400)
 	, hdc := CreateCompatibleDC()
 	, obm := SelectObject(hdc, hbm)
@@ -391,39 +364,9 @@ DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Dr
 
 	DestX := i := 0
 	Options := " cFFFFFFFF r4 s" 17*UserScale					;these cant be static	
-	If (Redraw = -1)
-	{
-		Try Gui, IncomeOverlay: Destroy
-		overlayCreated := False
-		Redraw := 0
-		Return
-	}		
-	Else if (ReDraw AND WinActive(GameIdentifier))
-	{
-		Try Gui, IncomeOverlay: Destroy
-		overlayCreated := False
-		Redraw := 0
-	}	
-	If (!overlayCreated)
-	{
-		Gui, IncomeOverlay: -Caption Hwndhwnd1 +E0x20 +E0x80000 +LastFound  +ToolWindow +AlwaysOnTop
-		Gui, IncomeOverlay: Show, NA X%IncomeOverlayX% Y%IncomeOverlayY% W400 H400, % aOverlayTitles["IncomeOverlay"]
-	;	hwnd1 := WinExist()
-		OnMessage(0x201, "OverlayMove_LButtonDown")
-		OnMessage(0x20A, "OverlayResize_WM_MOUSEWHEEL")
-		overlayCreated := True
-	}
-	If (Drag AND !DragPrevious)
-	{	DragPrevious := 1
-		Gui, IncomeOverlay: -E0x20
-	}
-	Else if (!Drag AND DragPrevious)
-	{	DragPrevious := 0
-		Gui, IncomeOverlay: +E0x20 +LastFound
-		WinGetPos,IncomeOverlayX,IncomeOverlayY,w,h		
-		IniWrite, %IncomeOverlayX%, %config_file%, Overlays, IncomeOverlayX
-		Iniwrite, %IncomeOverlayY%, %config_file%, Overlays, IncomeOverlayY		
-	}
+
+	if !modifyOverlay("IncomeOverlay", Redraw, overlayCreated, Drag, DragPrevious, IncomeOverlayX, IncomeOverlayY, 400, 400, hwnd1)
+		return
 
 	hbm := CreateDIBSection(A_ScreenWidth, A_ScreenHeight)
 	, hdc := CreateCompatibleDC()
@@ -525,39 +468,10 @@ DrawAPMOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, modeAPM_EPM=0,Drag
 
 	DestX := i := 0
 	Options := " cFFFFFFFF Right r4 s" 20*UserScale					;these cant be static	
-	If (Redraw = -1)
-	{
-		Try Gui, APMOverlay: Destroy
-		overlayCreated := False
-		Redraw := 0
-		Return
-	}		
-	Else if (ReDraw AND WinActive(GameIdentifier))
-	{
-		Try Gui, APMOverlay: Destroy
-		overlayCreated := False
-		Redraw := 0
-	}	
-	If (!overlayCreated)
-	{
-		Gui, APMOverlay: -Caption Hwndhwnd1 +E0x20 +E0x80000 +LastFound  +ToolWindow +AlwaysOnTop
-		Gui, APMOverlay: Show, NA X%APMOverlayX% Y%APMOverlayY% W400 H400, % aOverlayTitles["APMOverlay"]
-	;	hwnd1 := WinExist()
-		OnMessage(0x201, "OverlayMove_LButtonDown")
-		OnMessage(0x20A, "OverlayResize_WM_MOUSEWHEEL")
-		overlayCreated := True
-	}
-	If (Drag AND !DragPrevious)
-	{	DragPrevious := 1
-		Gui, APMOverlay: -E0x20
-	}
-	Else if (!Drag AND DragPrevious)
-	{	DragPrevious := 0
-		Gui, APMOverlay: +E0x20 +LastFound
-		WinGetPos,APMOverlayX,APMOverlayY,w,h		
-		IniWrite, %APMOverlayX%, %config_file%, Overlays, APMOverlayX
-		Iniwrite, %APMOverlayY%, %config_file%, Overlays, APMOverlayY		
-	}		
+
+	if !modifyOverlay("APMOverlay", Redraw, overlayCreated, Drag, DragPrevious, APMOverlayX, APMOverlayY, 400, 400, hwnd1)
+		return
+
 	hbm := CreateDIBSection(A_ScreenWidth, A_ScreenHeight)
 	, hdc := CreateCompatibleDC()
 	, obm := SelectObject(hdc, hbm)
@@ -649,40 +563,9 @@ DrawResourcesOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0
 
 	DestX := i := 0
 	Options := " Right cFFFFFFFF r4 s" 17*UserScale 					;these cant be static	
-	If (Redraw = -1)
-	{
-		Try Gui, ResourcesOverlay: Destroy
-		overlayCreated := False
-		Redraw := 0
-		Return
-	}	
-	Else if (ReDraw AND WinActive(GameIdentifier))
-	{
-		Try Gui, ResourcesOverlay: Destroy
-		overlayCreated := False
-		Redraw := 0
-	}
-	If (!overlayCreated)
-	{
-		Gui, ResourcesOverlay: -Caption Hwndhwnd1 +E0x20 +E0x80000 +LastFound  +ToolWindow +AlwaysOnTop
-		Gui, ResourcesOverlay: Show, NA X%ResourcesOverlayX% Y%ResourcesOverlayY% W400 H400, % aOverlayTitles["ResourcesOverlay"]
 
-	;	hwnd1 := WinExist()
-		OnMessage(0x201, "OverlayMove_LButtonDown")
-		OnMessage(0x20A, "OverlayResize_WM_MOUSEWHEEL")
-		overlayCreated := True
-	}	
-	If (Drag AND !DragPrevious)
-	{	DragPrevious := 1
-		Gui, ResourcesOverlay: -E0x20
-	}
-	Else if (!Drag AND DragPrevious)
-	{	DragPrevious := 0
-		Gui, ResourcesOverlay: +E0x20 +LastFound
-		WinGetPos,ResourcesOverlayX,ResourcesOverlayY		
-		IniWrite, %ResourcesOverlayX%, %config_file%, Overlays, ResourcesOverlayX
-		Iniwrite, %ResourcesOverlayY%, %config_file%, Overlays, ResourcesOverlayY		
-	}
+	if !modifyOverlay("ResourcesOverlay", Redraw, overlayCreated, Drag, DragPrevious, ResourcesOverlayX, ResourcesOverlayY, 400, 400, hwnd1)
+		return
 
 	hbm := CreateDIBSection(A_ScreenWidth, A_ScreenHeight)
 	, hdc := CreateCompatibleDC()
@@ -791,38 +674,10 @@ DrawArmySizeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,
 		
 	DestX := i := 0
 	Options := " cFFFFFFFF r4 s" 17*UserScale					;these cant be static
-	If (Redraw = -1)
-	{
-		Try Gui, ArmySizeOverlay: Destroy
-		overlayCreated := False
-		Redraw := 0
-		Return
-	}	
-	Else if (ReDraw AND WinActive(GameIdentifier))
-	{
-		Try Gui, ArmySizeOverlay: Destroy
-		overlayCreated := False
-		Redraw := 0
-	}	
-	If (!overlayCreated)
-	{	; Create a layered window ;E0x20 click thru (+E0x80000 : must be used for UpdateLayeredWindow to work!) that is always on top (+AlwaysOnTop), has no taskbar entry or caption		
-		Gui, ArmySizeOverlay: -Caption Hwndhwnd1 +E0x20 +E0x80000 +LastFound  +ToolWindow +AlwaysOnTop
-		Gui, ArmySizeOverlay: Show, NA X%ArmySizeOverlayX% Y%ArmySizeOverlayY% W400 H400, % aOverlayTitles["ArmySizeOverlay"]
-		OnMessage(0x201, "OverlayMove_LButtonDown")
-		OnMessage(0x20A, "OverlayResize_WM_MOUSEWHEEL")
-		overlayCreated := True
-	}
-	If (Drag AND !DragPrevious)
-	{	DragPrevious := 1
-		Gui, ArmySizeOverlay: -E0x20
-	}
-	Else if (!Drag AND DragPrevious)
-	{	DragPrevious := 0
-		Gui, ArmySizeOverlay: +E0x20 +LastFound
-		WinGetPos,ArmySizeOverlayX,ArmySizeOverlayY		
-		IniWrite, %ArmySizeOverlayX%, %config_file%, Overlays, ArmySizeOverlayX
-		Iniwrite, %ArmySizeOverlayY%, %config_file%, Overlays, ArmySizeOverlayY	
-	}
+
+	if !modifyOverlay("ArmySizeOverlay", Redraw, overlayCreated, Drag, DragPrevious, ArmySizeOverlayX, ArmySizeOverlayY, 400, 400, hwnd1)
+		return
+
 	hbm := CreateDIBSection(A_ScreenWidth, A_ScreenHeight)
 	, hdc := CreateCompatibleDC()
 	, obm := SelectObject(hdc, hbm)
@@ -935,40 +790,10 @@ DrawWorkerOverlay(ByRef Redraw, UserScale=1,Drag=0)
 	Options := " cFFFFFFFF r4 s" 18*UserScale
 
 	DestX := DestY := 0
-	If (Redraw = -1)
-	{
-		Try Gui, WorkerOverlay: Destroy
-		overlayCreated := False
-		Redraw := 0
-		Return
-	}	
-	Else if (ReDraw AND WinActive(GameIdentifier))
-	{
-		Try Gui, WorkerOverlay: Destroy
-		overlayCreated := False
-		Redraw := 0
-	}	
-	If (!overlayCreated)
-	{
-		Gui, WorkerOverlay: -Caption Hwndhwnd1 +E0x20 +E0x80000 +LastFound  +ToolWindow +AlwaysOnTop
-		Gui, WorkerOverlay: Show, NA X%WorkerOverlayX% Y%WorkerOverlayY% W400 H400, % aOverlayTitles["WorkerOverlay"]
-		OnMessage(0x201, "OverlayMove_LButtonDown")
-		OnMessage(0x20A, "OverlayResize_WM_MOUSEWHEEL")
-		overlayCreated := True
-	}
-	If (Drag AND !DragPrevious)
-	{	
-		DragPrevious := True
-		Gui, WorkerOverlay: -E0x20
-	}
-	Else if (!Drag AND DragPrevious)
-	{	
-		DragPrevious := False
-		Gui, WorkerOverlay: +E0x20 +LastFound
-		WinGetPos,WorkerOverlayX,WorkerOverlayY		
-		IniWrite, %WorkerOverlayX%, %config_file%, Overlays, WorkerOverlayX
-		Iniwrite, %WorkerOverlayY%, %config_file%, Overlays, WorkerOverlayY
-	}
+	
+	if !modifyOverlay("WorkerOverlay", Redraw, overlayCreated, Drag, DragPrevious, WorkerOverlayX, WorkerOverlayY, 400, 400, hwnd1)
+		return
+
 	hbm := CreateDIBSection(400, 400)
 	, hdc := CreateCompatibleDC()
 	, obm := SelectObject(hdc, hbm)
@@ -997,70 +822,28 @@ DrawLocalPlayerColour(ByRef Redraw, UserScale=1,Drag=0)
 
 	playerColours := arePlayerColoursEnabled()
 
-	if (!playerColours && PreviousPlayerColours) ; this just toggles the colour circle when the player changes the Player COlour state. A bit messy with the stuff below but im lazy
-	{
-		Redraw := 1
-		PreviousPlayerColours := 0
-	}
+	; this just toggles the colour circle when the player changes the Player COlour state. A bit messy but im lazy
+	; But it should be faster than calling winExist() to check if the GUI window still exists
+	if (!playerColours && PreviousPlayerColours) 
+		Redraw := 1, PreviousPlayerColours := 0
 	else if (playerColours && !PreviousPlayerColours)
-	{
-		Try Gui, LocalPlayerColourOverlay: Destroy
-		overlayCreated := False
-		PreviousPlayerColours := 1
-		return
-	}
+		Redraw := -1
 	else if playerColours
 		return
 
-	If (Redraw = -1)
-	{
-		Try Gui, LocalPlayerColourOverlay: Destroy
-		overlayCreated := False
-		Redraw := 0
-		Return
-	}	
-	Else if (ReDraw AND WinActive(GameIdentifier))
-	{
-		Try Gui, LocalPlayerColourOverlay: Destroy
-		overlayCreated := False
-		Redraw := 0
-	}	
-	If (!overlayCreated)
-	{
-		Gui, LocalPlayerColourOverlay: -Caption Hwndhwnd1 +E0x20 +E0x80000 +LastFound  +ToolWindow +AlwaysOnTop
-		Gui, LocalPlayerColourOverlay: Show, NA X%LocalPlayerColourOverlayX% Y%LocalPlayerColourOverlayY% W200 H200, % aOverlayTitles["LocalPlayerColourOverlay"]
-		OnMessage(0x201, "OverlayMove_LButtonDown")
-		OnMessage(0x20A, "OverlayResize_WM_MOUSEWHEEL")
-		overlayCreated := True
-	}
-	If (Drag AND !DragPrevious)
-	{	DragPrevious := 1
-		Gui, LocalPlayerColourOverlay: -E0x20
-	}
-	Else if (!Drag AND DragPrevious)
-	{	DragPrevious := 0
-		Gui, LocalPlayerColourOverlay: +E0x20 +LastFound
-		WinGetPos,LocalPlayerColourOverlayX,LocalPlayerColourOverlayY		
-		IniWrite, %LocalPlayerColourOverlayX%, %config_file%, Overlays, LocalPlayerColourOverlayX
-		Iniwrite, %LocalPlayerColourOverlayY%, %config_file%, Overlays, LocalPlayerColourOverlayY
-	}
-
+	if !modifyOverlay("LocalPlayerColourOverlay", Redraw, overlayCreated, Drag, DragPrevious, LocalPlayerColourOverlayX, LocalPlayerColourOverlayY, 200, 200, hwnd1)
+		return
 	hbm := CreateDIBSection(200, 200)
-	hdc := CreateCompatibleDC()
-	obm := SelectObject(hdc, hbm)
-	G := Gdip_GraphicsFromHDC(hdc)
-	;DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0)	
-	Gdip_SetSmoothingMode(G, 4) 
-	colour := aLocalPlayer["Colour"]
-
-	Radius := 12 * UserScale
-	Gdip_FillEllipse(G, a_pBrushes[colour], 0, 0, Radius, Radius)
-
-	Gdip_DeleteGraphics(G)	
-	UpdateLayeredWindow(hwnd1, hdc,,,,, overlayLocalColourTransparency)
-	SelectObject(hdc, obm) 
-	DeleteObject(hbm)  
-	DeleteDC(hdc) 
+	, hdc := CreateCompatibleDC()
+	, obm := SelectObject(hdc, hbm)
+	, G := Gdip_GraphicsFromHDC(hdc)
+	, Gdip_SetSmoothingMode(G, 4) 
+	, Gdip_FillEllipse(G, a_pBrushes[aLocalPlayer["Colour"]], 0, 0, 12 * UserScale, 12 * UserScale)
+	, Gdip_DeleteGraphics(G)	
+	, UpdateLayeredWindow(hwnd1, hdc,,,,, overlayLocalColourTransparency)
+	, SelectObject(hdc, obm) 
+	, DeleteObject(hbm)  
+	, DeleteDC(hdc) 
 	Return
 }
 
@@ -1548,6 +1331,8 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 		, unitPanelDrawStructureProgress, unitPanelDrawUnitProgress, unitPanelDrawUpgradeProgress, unitPanelAlignNewUnits 
 	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0
 
+	
+/*
 	If (Redraw = -1)
 	{
 		Try Gui, UnitOverlay: Destroy
@@ -1580,6 +1365,13 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 		IniWrite, %UnitOverlayX%, %config_file%, Overlays, UnitOverlayX
 		Iniwrite, %UnitOverlayY%, %config_file%, Overlays, UnitOverlayY		
 	}
+
+*/
+	if !modifyOverlay("UnitOverlay", Redraw, overlayCreated, Drag, DragPrevious, UnitOverlayX, UnitOverlayY, 400, 400, hwnd1)
+		return
+
+
+
 	hbm := CreateDIBSection(A_ScreenWidth, A_ScreenHeight)
 	, hdc := CreateCompatibleDC()
 	, obm := SelectObject(hdc, hbm)
@@ -1934,48 +1726,16 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 DrawMacroTownHallOverlay(ByRef Redraw, UserScale=1, Drag=0)
 {
 	global overlayMacroTownHallTransparency, MacroTownHallOverlayX, MacroTownHallOverlayY
-	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := False, aTownHalls := []
+	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := False, aTownHalls
 
-	;if (aLocalPlayer.Race != "Terran" || aLocalPlayer.Race != "Protoss")
-	;msgbox % MacroTownHallOverlayX " | " MacroTownHallOverlayY " | " overlayMacroTownHallTransparency
-	If (Redraw = -1)
-	{
-		Try Gui, MacroTownHall: Destroy
-		overlayCreated := False
-		Redraw := 0
-		Return
-	}	
-	Else if (ReDraw AND WinActive(GameIdentifier))
-	{
-		Try Gui, MacroTownHall: Destroy
-		overlayCreated := False
-		Redraw := 0
-	}	
-	If (!overlayCreated)
-	{
-		Gui, MacroTownHall: -Caption Hwndhwnd1 +E0x20 +E0x80000 +LastFound +ToolWindow +AlwaysOnTop
-		Gui, MacroTownHall: Show, NA X%MacroTownHallOverlayX% Y%MacroTownHallOverlayY% W400 H400, % aOverlayTitles["MacroTownHallOverlay"]
-		OnMessage(0x201, "OverlayMove_LButtonDown")
-		OnMessage(0x20A, "OverlayResize_WM_MOUSEWHEEL")
-		overlayCreated := True
+	if !modifyOverlay("MacroTownHallOverlay", Redraw, overlayCreated, Drag, DragPrevious, MacroTownHallOverlayX, MacroTownHallOverlayY, 400, 400, hwnd1)
+		return
 
+	if !isObject(aTownHalls)
 		aTownHalls := {	aUnitID.OrbitalCommand: True ; No flying as they can't scan/mule
 					, 	aUnitID.Nexus: True
 					, 	aUnitID.Hatchery : True, aUnitID.Lair : True, aUnitID.Hive : True}
-	}
-	If (Drag AND !DragPrevious)
-	{	
-		DragPrevious := True
-		Gui, MacroTownHall: -E0x20
-	}
-	Else if (!Drag AND DragPrevious)
-	{	
-		DragPrevious := False
-		Gui, MacroTownHall: +E0x20 +LastFound
-		WinGetPos, MacroTownHallOverlayX, MacroTownHallOverlayY		
-		IniWrite, %MacroTownHallOverlayX%, %config_file%, Overlays, MacroTownHallOverlayX
-		Iniwrite, %MacroTownHallOverlayY%, %config_file%, Overlays, MacroTownHallOverlayY
-	}
+
 
 	if (aLocalPlayer.Race = "Terran")
 		pBitmap := a_pBitmap[aUnitID.OrbitalCommand], energyRequired := 50, textColour := " cFFCD00FF "
@@ -1984,7 +1744,7 @@ DrawMacroTownHallOverlay(ByRef Redraw, UserScale=1, Drag=0)
 	else pBitmap := a_pBitmap[aUnitID.Larva], textColour := " cFFFFFFFF "
 
 	macroCount := 0, aCheckedUnits := []
-	
+
 	loop 10
 	{
 		loop, % numgetControlGroupMemory(MemDump, A_Index - 1)
@@ -2102,38 +1862,10 @@ DrawLocalUpgradesOverlay(ByRef Redraw, UserScale = 1, Drag = 0)
 	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0, upgradesExistPrevious := 0
 
 	percentMode := (DrawLocalUpgradesOverlay = 1) ; DrawLocalUpgradesOverlay = -1 seconds remaining mode, 1 = percent complete
-	If (Redraw = -1)
-	{
-		Try Gui, LocalUpgradesOverlay: Destroy
-		overlayCreated := False
-		Redraw := 0
-		Return
-	}	
-	Else if (ReDraw AND WinActive(GameIdentifier))
-	{
-		Try Gui, LocalUpgradesOverlay: Destroy
-		overlayCreated := False
-		Redraw := 0
-	}
-	If (!overlayCreated)
-	{
-		Gui, LocalUpgradesOverlay: -Caption Hwndhwnd1 +E0x20 +E0x80000 +LastFound +ToolWindow +AlwaysOnTop
-		Gui, LocalUpgradesOverlay: Show, NA X%LocalUpgradesOverlayX% Y%LocalUpgradesOverlayY% W400 H400, % aOverlayTitles["LocalUpgradesOverlay"]
-		OnMessage(0x201, "OverlayMove_LButtonDown")
-		OnMessage(0x20A, "OverlayResize_WM_MOUSEWHEEL")
-		overlayCreated := True
-	}	
-	If (Drag AND !DragPrevious)
-	{	DragPrevious := 1
-		Gui, LocalUpgradesOverlay: -E0x20
-	}
-	Else if (!Drag AND DragPrevious)
-	{	DragPrevious := 0
-		Gui, LocalUpgradesOverlay: +E0x20 +LastFound
-		WinGetPos, LocalUpgradesOverlayX, LocalUpgradesOverlayY		
-		IniWrite, %LocalUpgradesOverlayX%, %config_file%, Overlays, LocalUpgradesOverlayX
-		Iniwrite, %LocalUpgradesOverlayY%, %config_file%, Overlays, LocalUpgradesOverlayY		
-	}
+	
+	if !modifyOverlay("LocalUpgradesOverlay", Redraw, overlayCreated, Drag, DragPrevious, LocalUpgradesOverlayX, LocalUpgradesOverlayY, 400, 400, hwnd1)
+		return
+
 	DestX := DestY := 0
 	if !localUpgradesItemsPerRow
 		localUpgradesItemsPerRow := 9999 ; So it draws along a single row if set to 0 - or is null for some reason
