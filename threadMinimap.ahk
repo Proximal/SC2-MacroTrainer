@@ -47,11 +47,12 @@ a_pPens := initialisePenColours(aHexColours)
 CreatepBitmaps(a_pBitmap, aUnitID, MatrixColour)
 global aUnitInfo := []
 readConfigFile(), hasReadConfig := True
-aChangeling := { 	aUnitID["ChangelingZealot"]: True
-				 ,	aUnitID["ChangelingMarineShield"]: True 
-				 ,	aUnitID["ChangelingMarine"]: True 
-				 ,	aUnitID["ChangelingZerglingWings"]: True 
-				 ,	aUnitID["ChangelingZergling"]: True }				
+; This changeling check is no longer required as reading the first unit owner now (not the third)
+;aChangeling := { 	aUnitID["ChangelingZealot"]: True
+;				 ,	aUnitID["ChangelingMarineShield"]: True 
+;				 ,	aUnitID["ChangelingMarine"]: True 
+;				 ,	aUnitID["ChangelingZerglingWings"]: True 
+;				 ,	aUnitID["ChangelingZergling"]: True }				
 gameChange()
 return
 
@@ -128,7 +129,7 @@ gameChange(UserSavedAppliedSettings := False)
 		Else
 			doUnitDetection(0, 0, 0, "Reset") ; clear the variables within the function			
 		if (warpgate_warn_on || supplyon || workeron || alert_array[GameType, "Enabled"])
-			settimer, unit_bank_read, 2000, -6   ; %UnitDetectionTimer_ms%
+			settimer, unit_bank_read, 2500, -6   ; %UnitDetectionTimer_ms% ; previous was 4000
 		else settimer, unit_bank_read, off
 		settimer, worker, % workeron ? 1000 : "off", -5
 		settimer, supply, % supplyon ? 200 : "off", -5
@@ -316,8 +317,10 @@ getEnemyUnitsMiniMap(byref aUnitsToDraw)
            Continue
 
      owner := numget(MemDump, UnitAddress + O_uOwner, "Char")   
-     if  (aPlayer[Owner, "Team"] <> aLocalPlayer["Team"] && Owner && type >= aUnitID["Colossus"] && !aChangeling.HasKey(type)) 
-     || (aChangeling.HasKey(type) && aPlayer[Owner, "Team"] = aLocalPlayer["Team"] ) ; as a changeling owner becomes whoever it is mimicking - its team also becomes theirs
+     ;if  (aPlayer[Owner, "Team"] <> aLocalPlayer["Team"] && Owner && type >= aUnitID["Colossus"] && !aChangeling.HasKey(type)) 
+     ;|| (aChangeling.HasKey(type) && aPlayer[Owner, "Team"] = aLocalPlayer["Team"] ) ; as a changeling owner becomes whoever it is mimicking - its team also becomes theirs
+     
+     if  (aPlayer[Owner, "Team"] != aLocalPlayer["Team"] && Owner && type >= aUnitID["Colossus"])  ; This changeling check is no longer required as reading the first unit owner now (not the third)
      {
           if (!Radius := aUnitInfo[Type, "Radius"])
               Radius := aUnitInfo[Type, "Radius"] := numgetUnitModelMiniMapRadius(pUnitModel)

@@ -239,10 +239,9 @@ loadMemoryAddresses(base, version := "")
 			 O_uModelPointer := 0x8
 			 O_uTargetFilter := 0x14
 			 O_uBuildStatus := 0x18		; buildstatus is really part of the 8 bit targ filter!
+			 O_uOwner := 0x27 ; There are 3 owner offsets (0x27, 0x40, 0x41) for changelings owner3 changes to the player it is mimicking
 			 O_XelNagaActive := 0x34 	; xel - dont use as doesnt work all the time
-			; something added in here in vr 2.10
-
-			 O_uOwner := 0x41  ; this and the rest below +4
+			; something added in here in vr 2.10		  
 			 O_uX := 0x4C
 			 O_uY := 0x50
 			 O_uZ := 0x54
@@ -3313,6 +3312,10 @@ tSpeak(Message, SAPIVol := "", SAPIRate := "")
 ; But then would have to modify quite a bit, as you can have multiple warning for the same unit type
 ; Also it's possible a unit won't be warned if an already warned unit dies and its unit index is reused
 ; for another unit which should be warned. Should compare timeAlive value
+
+; I should really update this so that it doesn't have to loop each alert
+; I.e have the alerts unitID listed as the key which contains one or more alters
+; so then a single if haskey() could be performed
 
 doUnitDetection(unit, type, owner, mode = "")
 {	
