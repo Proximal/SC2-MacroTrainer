@@ -1,5 +1,5 @@
 ; Parameters:
-;   Program - Can be any window title/class e.g "AHK_EXE SC2.exe"
+;   Program - Can be any window title/class e.g "AHK_EXE calc.exe"
 ;   Module - The file name of the module/dll to find e.g. "GDI32.dll", "Battle.net.dll" etc
 ;            If no module is specified, the address of the base module - main() (program) will be returned e.g. C:\Games\StarCraft II\Versions\Base28667\SC2.exe
 
@@ -26,7 +26,7 @@ getModuleBaseAddress(program, module := "")
     {
         DllCall("IsWow64Process", "Ptr", hProc, "Int*", result)
         if !result 
-            return -5 ; AHK is 32bit and target process is 64 bit, this function wont work 
+            return -5, DllCall("CloseHandle","Ptr",hProc)  ; AHK is 32bit and target process is 64 bit, this function wont work 
     }
     if (module = "")
     {        
