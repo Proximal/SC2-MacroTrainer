@@ -2864,10 +2864,10 @@ try
 			Gui, Add, Button, x+20 w54 h25 gIni_settings_write, Apply
 			Gui, Font, 
 
-	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% ys x165 vInjects_TAB, Info||Basic|Auto|Settings|Alerts|Manual
+	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% ys x165 vInjects_TAB, Info||Basic|Auto|Settings|Alerts
 	GuiControlGet, MenuTab, Pos, Injects_TAB
 	Gui, Tab,  Basic
-		Gui, Add, GroupBox, w200 h100 section vOriginTab, One Button Inject
+		Gui, Add, GroupBox, w200 h230 section vOriginTab, One Button Inject
 				GuiControlGet, OriginTab, Pos
 			Gui, Add, Text,xp+10 yp+25, Method:		
 					If (auto_inject = 0 OR auto_inject = "Disabled")
@@ -2877,26 +2877,45 @@ try
 					Else if (auto_inject = "Backspace Adv") || (auto_inject = "Backspace CtrlGroup")
 						droplist_var := 2  
 					Else droplist_var := 3
-					Gui, Add, DropDownList,x+10 yp-2 w130 vAuto_inject Choose%droplist_var%, MiniMap||Backspace CtrlGroup|Backspace|Disabled
+					Gui, Add, DropDownList,x+10 yp-2 w130 vAuto_inject Choose%droplist_var% gBasicInjectToggleOptionsGUI, MiniMap||Backspace CtrlGroup|Backspace|Disabled
 					tmp_xvar := OriginTabx + 10
 
 
-			Gui, Add, Text, X%tmp_xvar% yp+45 vSillyGUIControlIdentVariable, Inject Hotkey:
-				GuiControlGet, XTab, Pos, SillyGUIControlIdentVariable ;XTabX = x loc
-
+			Gui, Add, Text, xs+10 yp+45 vSillyGUIControlIdentVariable, Inject Hotkey:
+			GuiControlGet, XTab, Pos, SillyGUIControlIdentVariable ;XTabX = x loc
 			Gui, Add, Edit, Readonly yp-2 xs+85 center w65 R1 vcast_inject_key gedit_hotkey, %cast_inject_key%
 			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#cast_inject_key,  Edit ;have to use a trick eg '#' as cant write directly to above edit var, or it will activate its own label!
+			
+			Gui, Add, Text, xs+10 y+20, Sleep time (ms):`n(Lower is faster)
+			Gui, Add, Edit, Number Right xs+145 yp-2 w45 vEdit_pos_var 
+				Gui, Add, UpDown,  Range0-100000 vAuto_inject_sleep, %auto_inject_sleep%
 
+			Gui, Add, Text, xs+10 yp+35, Sleep variance `%:
+			Gui, Add, Edit, Number Right xs+145 yp-2 w45 vEdit_Inject_SleepVariance
+				Gui, Add, UpDown,  Range0-100000 vInject_SleepVariance, % (Inject_SleepVariance - 1) * 100  
 
+			Gui, Add, Checkbox, xs+10 y+12 vInject_RestoreSelection checked%Inject_RestoreSelection%, Restore Unit Selection 					
+			Gui, Add, Checkbox, xs+10 y+10 vInject_RestoreScreenLocation checked%Inject_RestoreScreenLocation%, Restore Screen Location
+			
 
-		;	Gui, Add, Text, X%XTabX% yp40, Control Group: %A_space%(Unit Selection Storage)
-		;		Gui, Add, Edit, Readonly y+10 xs+60 w90 center vInject_control_group , %Inject_control_group%
-		;			Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#Inject_control_group,  Edit	
+			hide := !instr(auto_inject, "Backspace")
+			Gui, Add, GroupBox, w200 h230 ys xs+210 section hidden%hide% vBackspaceGroupBoxID, Backspace Settings
+			Gui, Add, Text, xs+10 yp+25 hidden%hide% vBackspaceTextCameraStoreID, Create Camera: %A_space% %A_space% (Location Storge)
+				Gui, Add, Edit, Readonly y+10 xs+60 w90 R1 center vBI_create_camera_pos_x hidden%hide%, %BI_create_camera_pos_x%
+					Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#BI_create_camera_pos_x hidden%hide%,  Edit
+
+			Gui, Add, Text, xs+10 yp+40 hidden%hide% vBackspaceTextCameraGotoID, Camera Position: %A_space% %A_space% (Goto Location)
+				Gui, Add, Edit, Readonly y+10 xs+60 w90 R1 center vBI_camera_pos_x hidden%hide%, %BI_camera_pos_x%
+					Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#BI_camera_pos_x hidden%hide%,  Edit
+			Gui, Add, Text, % "xs+10 yp+40 vBackspaceDragTextID hidden" (auto_inject != "Backspace"), Drag Origin:
+			; Drag origin should be only be unhidden for true backspace method
+			Gui, Add, DropDownList, % "x+60 yp-2 w50 vDrag_origin Choose" (Drag_origin = "Right" ? 2 : 1) " hidden" (auto_inject != "Backspace"), Left|Right
+
 
 
 	Gui, Tab,  Settings
 
-		Gui, Add, GroupBox, x+15 Y+20 w200 h180 section, Common Settings
+		Gui, Add, GroupBox, x+15 Y+20 w200 h195 section, Common Settings
 			Gui, Add, Text, xs+10 yp+25 w70, Spawn Larva:
 			Gui, Add, Edit, Readonly yp-2 xs+85 w65 R1 center vInject_spawn_larva, %Inject_spawn_larva%
 				Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#Inject_spawn_larva,  Edit
@@ -2914,42 +2933,11 @@ try
 				Gui, Add, Edit, Number Right xp+132 yp w45 vTT2_MI_QueenDistance
 						Gui, Add, UpDown,  Range1-100000 vMI_QueenDistance, %MI_QueenDistance%	
 
-			;Gui, Add, GroupBox, xs y+40 w200 h160, Advanced Settings
-		Gui, Add, GroupBox, xs ys+205 w200 h170, Advanced Settings
-			Gui, Add, Text, xs+20 yp+20 vSG1, Sleep time (ms):`n(Lower is faster)
-				GuiControlGet, XTab2, Pos, SG1 ;XTabX = x loc
-			Gui, Add, Edit, Number Right xs+145 yp-2 w45 vEdit_pos_var 
-				Gui, Add, UpDown,  Range0-100000 vAuto_inject_sleep, %auto_inject_sleep%
-				GuiControlGet, settingsR, Pos, Edit_pos_var ;XTabX = x loc
-
-			Gui, Add, Text, xs+20 yp+35, Sleep variance `%:
-			Gui, Add, Edit, Number Right xs+145 yp-2 w45 vEdit_Inject_SleepVariance
-				Gui, Add, UpDown,  Range0-100000 vInject_SleepVariance, % (Inject_SleepVariance - 1) * 100  
-
-			Gui, Add, Checkbox, x%XTab2X% y+8 vCanQueenMultiInject checked%CanQueenMultiInject%, Queen Can Inject`nMultiple Hatcheries 
-			;Gui, Add, Text, x+0 yp-5, Queen Can Inject`nMultiple Hatcheries ; done as checkbox with 2 lines text is too close to checkbox
-
-			Gui, Add, Checkbox, x%XTab2X% y+12 vInject_RestoreSelection checked%Inject_RestoreSelection%, Restore Unit Selection 		
-			;Gui, Add, Text, x+0 yp, Restore Unit Selection 				
-			Gui, Add, Checkbox, x%XTab2X% y+10 vInject_RestoreScreenLocation checked%Inject_RestoreScreenLocation%, Restore Screen Location
-			;Gui, Add, Text, x+0 yp, Restore Screen Location
+			Gui, Add, Checkbox, xs+10 y+12 vCanQueenMultiInject checked%CanQueenMultiInject%, Queen Can Inject`nMultiple Hatcheries 
 
 
-		Gui, Add, GroupBox, w200 h180 ys xs+210 section, Backspace Method
-			Gui, Add, Text, xs+10 yp+25, Drag Origin:
-			if (Drag_origin = "Right")
-				droplist_var :=2
-			Else
-				droplist_var := 1
-			Gui, Add, DropDownList,x+60 yp-2 w50 vDrag_origin Choose%droplist_var%, Left|Right|
 
-			Gui, Add, Text, xs+10 yp+40, Create Camera: %A_space% %A_space% (Location Storge)
-				Gui, Add, Edit, Readonly y+10 xs+60 w90 R1 center vBI_create_camera_pos_x , %BI_create_camera_pos_x%
-					Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#BI_create_camera_pos_x,  Edit
 
-			Gui, Add, Text, xs+10 yp+40, Camera Position: %A_space% %A_space% (Goto Location)
-				Gui, Add, Edit, Readonly y+10 xs+60 w90 R1 center vBI_camera_pos_x , %BI_camera_pos_x%
-					Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#BI_camera_pos_x,  Edit
 
 	Gui, Tab,  Info
 			gui, font, norm bold s10
@@ -2968,79 +2956,71 @@ try
 			gui, font, norm s10
 			gui, font, 		
 
-	Gui, Tab,  Manual
-			Gui, Add, GroupBox,  w295 h165 section, Manual Inject Timer	;h185
-					Gui, Add, Checkbox,xp+10 yp+30 vmanual_inject_timer checked%manual_inject_timer%, Enable
-					Gui, Add, Text,y+15, Alert After (s): 
-					Gui, Add, Edit, Number Right x+5 yp-2 w45 
-						Gui, Add, UpDown, Range1-100000 vmanual_inject_time, %manual_inject_time%
-					GuiControlGet, settings2R, Pos, manual_inject_timer
-					Gui, Add, Text, x%settings2RX% yp+35 w90, Start/Stop Hotkey:
-					Gui, Add, Edit, Readonly yp x+20 w120 R1 vinject_start_key center gedit_hotkey, %inject_start_key%
-					Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#inject_start_key,  Edit
-					Gui, Add, Text, x%settings2RX% yp+35 w90, Reset Hotkey:
-					Gui, Add, Edit, Readonly yp x+20 w120 R1 vinject_reset_key center gedit_hotkey, %inject_reset_key%
-					Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#inject_reset_key,  Edit
-					Gui, Add, Text,yp+60 x%settings2RX% w340,  This is a very basic timer. It will simply beep every x seconds
-			
-			Gui, Add, GroupBox,  w295 h135  xs ys+230, Advanced Inject Timer
-				Gui, Add, Checkbox, xp+10 yp+30 vInjectTimerAdvancedEnable checked%InjectTimerAdvancedEnable%, Enable
-				Gui, Add, Text, y+15, Alert After (s): 
-				Gui, Add, Edit, Number Right x+13 yp-2 w45 
-					Gui, Add, UpDown, Range1-100000 vInjectTimerAdvancedTime, %InjectTimerAdvancedTime%
-				Gui, Add, Text, x%settings2RX% yp+35 w90, SC2 Spawn`nLarva Key:	
-					Gui, Add, Edit, Readonly yp+2 xs+85 w120 center R1 vInjectTimerAdvancedLarvaKey, %InjectTimerAdvancedLarvaKey%
-					Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#InjectTimerAdvancedLarvaKey,  Edit
-				Gui, Add, Text,yp+60 x%settings2RX% w340,  This will beep x (in game) seconds after your last inject
-
 	Gui, Tab,  Auto
 		Gui, Add, GroupBox, y+20 w225 h215 section, Fully Automated Injects
 			Gui, Add, Checkbox,xp+10 yp+30 vF_Inject_Enable checked%F_Inject_Enable%, Enable
 		
-			Gui, Add, Text,y+15 x%settings2RX% w140, Max injects per round: 
+			Gui, Add, Text,y+15 xs+10 w140, Max injects per round: 
 				Gui, Add, Edit, Number Right x+5 yp-2 w60 vTT_FInjectHatchMaxHatches
 					Gui, Add, UpDown, Range1-100000 vFInjectHatchMaxHatches, %FInjectHatchMaxHatches%
 
-			Gui, Add, Text,y+15 x%settings2RX% w140, Check Hatches Every (ms): 
+			Gui, Add, Text,y+15 xs+10 w140, Check Hatches Every (ms): 
 				Gui, Add, Edit, Number Right x+5 yp-2 w60 vTT_FInjectHatchFrequency
 					Gui, Add, UpDown, Range0-100000 vFInjectHatchFrequency, %FInjectHatchFrequency%					
 
-			Gui, Add, Text, y+15 x%settings2RX% w140, APM Delay:
+			Gui, Add, Text, y+15 xs+10 w140, APM Delay:
 				Gui, Add, Edit, Number Right x+5 yp-2 w60 vTT_FInjectAPMProtection
 					Gui, Add, UpDown,  Range0-100000 vFInjectAPMProtection, %FInjectAPMProtection%		
 
-			Gui, Add, Text, x%settings2RX% yp+30, Enable/Disable Hotkey:
+			Gui, Add, Text, xs+10 yp+30, Enable/Disable Hotkey:
 				Gui, Add, Edit, Readonly y+10 xp+45 w120 R1 vF_InjectOff_Key center gedit_hotkey, %F_InjectOff_Key%
 				Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#F_InjectOff_Key,  Edit				
 
-		Gui, Add, GroupBox, xs yp+57 w385 h165, About/Notes:
+		Gui, Add, GroupBox, xs yp+57 w385 h165, Notes:
 		Gui, Add, Text,yp+57 xp+10 yp+25 w365,
 		(LTrim 
 		Auto injects will begin after you control group your queen to the correct (inject) queen control group.
 
 		Auto injects are performed using the 'MiniMap' macro. In addition to the normal rules, individual queens will not auto-inject while they are performing or queued to perform attacks, transfuses, build tumours, patrol, or spawn larva.
 
-		Please ensure you have correctly set the settings under the 'basic' inject tab. This includes the 'minimap' settings as well as the 'spawn larva key' and control group storage settings.
+		Please ensure you have correctly set the 'Common Settings' under the 'Settings' tab.
 		)
 
 	Gui, Tab,  Alerts
-			Gui, Add, GroupBox,  w210 h140, Basic Inject Alert Type
-			Gui, Add, Checkbox,xp+10 yp+30 vW_inject_ding_on checked%W_inject_ding_on%, Windows Ding
-			Gui, Add, Checkbox,yp+25 vW_inject_speech_on checked%W_inject_speech_on%, Spoken Warning
-			Gui, Add, Text,y+15 w125, Spoken Warning:
-			Gui, Add, Edit, w180 vW_inject_spoken center R1, %w_inject_spoken%
-			Gui, Font, s10
-			Gui, Add, Text, y+60 w360, Note: Due to an inconsistency with the programming language, some systems may not hear the 'windows ding'.
-			Gui, Font	
+			Gui, Add, GroupBox,  w210 h85, Alert Types
+			Gui, Add, Checkbox,xp+10 yp+20 vW_inject_ding_on checked%W_inject_ding_on%, Windows Ding
+			Gui, Add, Checkbox,yp+25 vW_inject_speech_on checked%W_inject_speech_on%, Spoken Warning:
+			;Gui, Add, Text,y+15, Spoken Warning:
+			Gui, Add, Edit, x+5 yp-2 w85 vW_inject_spoken center R1, %w_inject_spoken%
 
+		Gui, Add, GroupBox,  w265 h120  xs ys+90 section, Advanced Inject Timer
+			Gui, Add, Checkbox, xp+10 yp+20 vInjectTimerAdvancedEnable checked%InjectTimerAdvancedEnable%, Enable
+			Gui, Add, Text, x+64 yp, Alert After (s): 
+			Gui, Add, Edit, Number Right x+13 yp-2 w45 
+				Gui, Add, UpDown, Range1-100000 vInjectTimerAdvancedTime, %InjectTimerAdvancedTime%
+			Gui, Add, Text, xs+10 yp+35 w90, Spawn Larva Key:	
+				Gui, Add, Edit, Readonly yp-2 x+20 w90 center R1 vInjectTimerAdvancedLarvaKey, %InjectTimerAdvancedLarvaKey%
+				Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#InjectTimerAdvancedLarvaKey,  Edit
+			Gui, Add, Text, xs+10 y+15 w245,  This will beep x (in game) seconds after your last inject.
 
-		Gui, Add, GroupBox, w200 h70 yp+40 xs, One Button Alert
+		Gui, Add, GroupBox,  w265 h155 xs ys+140 section, Manual Inject Timer	;h185
+				Gui, Add, Checkbox, xp+10 yp+20 vmanual_inject_timer checked%manual_inject_timer%, Enable
+				Gui, Add, Text, x+64 yp, Alert After (s): 
+				Gui, Add, Edit, Number Right x+13 yp-2 w45 
+					Gui, Add, UpDown, Range1-100000 vmanual_inject_time, %manual_inject_time%
+				Gui, Add, Text, xs+10 yp+35 w90, Start/Stop Hotkey:
+				Gui, Add, Edit, Readonly yp x+20 w90 R1 vinject_start_key center gedit_hotkey, %inject_start_key%
+				Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#inject_start_key,  Edit
+				Gui, Add, Text, xs+10 yp+35 w90, Reset Hotkey:
+				Gui, Add, Edit, Readonly yp x+20 w90 R1 vinject_reset_key center gedit_hotkey, %inject_reset_key%
+				Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#inject_reset_key,  Edit
+				Gui, Add, Text, xs+10 y+15 w245,  This is a very basic timer. It simply beeps every x seconds.
+
+		Gui, Add, GroupBox, w200 h85 x395 y34 section, One Button Inject Alert
 			Gui, Add, Checkbox, xs+10 yp+20 vauto_inject_alert checked%auto_inject_alert%, Enable Alert
 			Gui, Add, Text,xs+10 y+10, Time Between Alerts (s):
 			Gui, Add, Edit, Number Right x+25 yp-2 w45 vTT_auto_inject_time
 				Gui, Add, UpDown, Range1-100000 vauto_inject_time, %auto_inject_time% ;these belong to the above edit
-
-
 
 	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vKeys_TAB, SC2 Keys|Set/Add Group|Invoke Group
 		Gui, Add, GroupBox, w280 h185, Common Keys:
@@ -4302,6 +4282,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		TerranPic_TT := "The artist formerly known as being OP"
 		ProtossPic_TT := "The slightly less OP race"
 		auto_inject_alert_TT := "This alert will sound X seconds after your last one-button inject, prompting you to inject again."
+		W_inject_ding_on_TT := "Note: Due to an inconsistency with the programming language, some systems may not hear the 'windows ding'."
 		auto_inject_time_TT := TT_auto_inject_time_TT :=  "This is in 'SC2' Seconds."
 		#cast_inject_key_TT := cast_inject_key_TT := "When pressed the program will inject all of your hatcheries.`n`nThis Hotkey is ONLY active while playing as zerg!"
 		Auto_inject_sleep_TT := "Lower this to make the inject round faster, BUT this will make it more obvious that it is being automated!"
@@ -4751,6 +4732,18 @@ gToggleAlignUnitGUI:
 GuiControlGet, state,, SplitUnitPanel
 GUIControl, Enable%state%, unitPanelAlignNewUnits
 return 
+
+BasicInjectToggleOptionsGUI:
+GuiControlGet, selectedItem,, %A_GuiControl%
+for i, controlID in ["BackspaceGroupBoxID", "BackspaceDragTextID", "Drag_origin", "BackspaceTextCameraStoreID", "BI_create_camera_pos_x", "#BI_create_camera_pos_x", "BackspaceTextCameraGotoID", "BI_camera_pos_x", "#BI_camera_pos_x"]
+{
+	if 	(controlID = "BackspaceDragTextID" || controlID = "Drag_origin") ; This should only be shown for the true backspace method
+		GuiControl, % "hide" (selectedItem != "Backspace"), %controlID%
+	else GuiControl, % "hide" !instr(selectedItem, "Backspace" ), %controlID%
+}
+return 
+
+
 
 ; Still need to save the currently displayed item (incase user hasnt clicked a button
 ; which goes here to save)
