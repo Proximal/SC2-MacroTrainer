@@ -2842,7 +2842,7 @@ try
 	gui, font, norm s9	;here so if windows user has +/- font size this standardises it. But need to do other menus one day
 	;Gui, +ToolWindow  +E0x40000 ; E0x40000 gives it a icon on taskbar (+ToolWindow doesn't have an icon)
 	options_menu := "home32.png|radarB32.png|map32.png|Inject32.png|Group32.png|QuickGroup32.png|Worker32.png|reticule32.png|Robot32.png|key.png|warning32.ico|miscB32.png|bug32.png|settings.ico"
-	optionsMenuTitles := "Home|Detection List|MiniMap/Overlays|Injects|Auto Grouping|Quick Select|Auto Worker|Chrono Boost|Misc Automation|SC2 Keys|Warnings|Misc Abilities|Report Bug|Settings"
+	optionsMenuTitles := "Home|Detection List|MiniMap/Overlays|Injects|Auto Grouping|Quick Select|Auto Worker|Chrono Boost|Misc Automation|SC2 Keys|Warnings|Misc Abilities|Bug Report|Settings"
 
 	Gosub, g_CreateUnitListsAndObjects ; used for some menu items, and for the custom unit filter gui
 
@@ -2867,7 +2867,7 @@ try
 	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% ys x165 vInjects_TAB, Info||Basic|Auto|Settings|Alerts
 	GuiControlGet, MenuTab, Pos, Injects_TAB
 	Gui, Tab,  Basic
-		Gui, Add, GroupBox, w200 h230 section vOriginTab, One Button Inject
+		Gui, Add, GroupBox, y+15 w200 h230 section vOriginTab, One Button Inject
 				GuiControlGet, OriginTab, Pos
 			Gui, Add, Text,xp+10 yp+25, Method:		
 					If (auto_inject = 0 OR auto_inject = "Disabled")
@@ -2915,27 +2915,28 @@ try
 
 	Gui, Tab,  Settings
 
-		Gui, Add, GroupBox, x+15 Y+20 w200 h195 section, Common Settings
-			Gui, Add, Text, xs+10 yp+25 w70, Spawn Larva:
-			Gui, Add, Edit, Readonly yp-2 xs+85 w65 R1 center vInject_spawn_larva, %Inject_spawn_larva%
+		Gui, Add, GroupBox, Y+15 w225 h250 section, Common Settings
+			Gui, Add, Text, xs+10 yp+25, Spawn Larva Key:
+			Gui, Add, Edit, Readonly yp-2 xs+110 w65 R1 center vInject_spawn_larva, %Inject_spawn_larva%
 				Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#Inject_spawn_larva,  Edit
 
-			Gui, Add, Text, xs+10 y+15, Ctrl Group Storage:
-			Gui, Add, DropDownList,  % "xp+133 yp-2 w45 center vInject_control_group Choose" (Inject_control_group = 0 ? 10 : Inject_control_group), 1|2|3|4|5|6||7|8|9|0
+			Gui, Add, Text, xs+10 y+15, Control Group Storage:
+			Gui, Add, DropDownList,  % "xp+160 yp-2 w45 center vInject_control_group Choose" (Inject_control_group = 0 ? 10 : Inject_control_group), 1|2|3|4|5|6||7|8|9|0
 
 			Gui, Add, Text, xs+10 y+15, Queen Control Group:
 			; i have a dropdown menu now so user has to put a number, cant use another key as I use this to check the control groups
-				Gui, Add, DropDownList,  % "xp+133 w45 center vMI_Queen_Group Choose" (MI_Queen_Group = 0 ? 10 : MI_Queen_Group), 1|2|3|4|5|6|7||8|9|0
+				Gui, Add, DropDownList,  % "xp+160 w45 center vMI_Queen_Group Choose" (MI_Queen_Group = 0 ? 10 : MI_Queen_Group), 1|2|3|4|5|6|7||8|9|0
 			;	Gui, Add, Edit, Readonly y+10 xs+60 w90 center vMI_Queen_Group, %MI_Queen_Group%
 			;		Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#MI_Queen_Group,  Edit			
 
 			Gui, Add, Text, xs+10 y+15, Max Queen Distance:`n%A_Space% %A_Space% (From Hatch)
-				Gui, Add, Edit, Number Right xp+132 yp w45 vTT2_MI_QueenDistance
+				Gui, Add, Edit, Number Right xp+160 yp w45 vTT2_MI_QueenDistance
 						Gui, Add, UpDown,  Range1-100000 vMI_QueenDistance, %MI_QueenDistance%	
 
-			Gui, Add, Checkbox, xs+10 y+12 vCanQueenMultiInject checked%CanQueenMultiInject%, Queen Can Inject`nMultiple Hatcheries 
-
-
+			Gui, Add, Checkbox, xs+10 y+15 vCanQueenMultiInject checked%CanQueenMultiInject%, Queen Can Inject Multiple Hatcheries 
+			Gui, Add, Text, xs+10 y+25 w205, These settings apply to BOTH the One-Button (manual) and fully automated injects.
+		;Gui, Add, GroupBox, xs ys+210 w365 h165, Notes:
+			
 
 
 
@@ -2957,7 +2958,7 @@ try
 			gui, font, 		
 
 	Gui, Tab,  Auto
-		Gui, Add, GroupBox, y+20 w225 h215 section, Fully Automated Injects
+		Gui, Add, GroupBox, y+15 w225 h215 section, Fully Automated Injects
 			Gui, Add, Checkbox,xp+10 yp+30 vF_Inject_Enable checked%F_Inject_Enable%, Enable
 		
 			Gui, Add, Text,y+15 xs+10 w140, Max injects per round: 
@@ -2981,46 +2982,49 @@ try
 		(LTrim 
 		Auto injects will begin after you control group your queen to the correct (inject) queen control group.
 
-		Auto injects are performed using the 'MiniMap' macro. In addition to the normal rules, individual queens will not auto-inject while they are performing or queued to perform attacks, transfuses, build tumours, patrol, or spawn larva.
+		Auto injects are performed using the 'MiniMap' method. In addition to the normal rules, individual queens will not auto-inject while they are performing or queued to perform attacks, transfuses, build tumours, patrol, or spawn larva.
 
 		Please ensure you have correctly set the 'Common Settings' under the 'Settings' tab.
 		)
 
 	Gui, Tab,  Alerts
-			Gui, Add, GroupBox,  w210 h85, Alert Types
-			Gui, Add, Checkbox,xp+10 yp+20 vW_inject_ding_on checked%W_inject_ding_on%, Windows Ding
-			Gui, Add, Checkbox,yp+25 vW_inject_speech_on checked%W_inject_speech_on%, Spoken Warning:
+			Gui, Add, GroupBox, y+10 w417 h50 section, Alert Types
+			Gui, Add, Checkbox, xp+10 yp+20 vW_inject_ding_on checked%W_inject_ding_on%, Windows Ding
+			Gui, Add, Checkbox, x+80 yp vW_inject_speech_on checked%W_inject_speech_on%, Spoken Warning:
 			;Gui, Add, Text,y+15, Spoken Warning:
-			Gui, Add, Edit, x+5 yp-2 w85 vW_inject_spoken center R1, %w_inject_spoken%
+			Gui, Add, Edit, x+10 yp-2 w115 vW_inject_spoken center R1, %w_inject_spoken%
 
-		Gui, Add, GroupBox,  w265 h120  xs ys+90 section, Advanced Inject Timer
+		Gui, Add, GroupBox, w417 h75  xs ys+65 section, One Button Inject Alert
+			Gui, Add, Checkbox, xs+10 yp+20 vauto_inject_alert checked%auto_inject_alert%, Enable
+			Gui, Add, Text, x456 yp, Alert After (s): 
+			Gui, Add, Edit, Number Right x+25 yp-2 w45 vTT_auto_inject_time
+				Gui, Add, UpDown, Range1-100000 vauto_inject_time, %auto_inject_time% ;these belong to the above edit	
+			Gui, Add, Text, xs+10 y+10 w400,  This will sound x (in game) seconds after your last one-button inject.
+
+		Gui, Add, GroupBox,  w417 h105  xs ys+90 section, Advanced Inject Timer
 			Gui, Add, Checkbox, xp+10 yp+20 vInjectTimerAdvancedEnable checked%InjectTimerAdvancedEnable%, Enable
-			Gui, Add, Text, x+64 yp, Alert After (s): 
-			Gui, Add, Edit, Number Right x+13 yp-2 w45 
-				Gui, Add, UpDown, Range1-100000 vInjectTimerAdvancedTime, %InjectTimerAdvancedTime%
-			Gui, Add, Text, xs+10 yp+35 w90, Spawn Larva Key:	
+				
+			Gui, Add, Text, xs+10 yp+25 w90, Spawn Larva Key:	
 				Gui, Add, Edit, Readonly yp-2 x+20 w90 center R1 vInjectTimerAdvancedLarvaKey, %InjectTimerAdvancedLarvaKey%
 				Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#InjectTimerAdvancedLarvaKey,  Edit
-			Gui, Add, Text, xs+10 y+15 w245,  This will beep x (in game) seconds after your last inject.
+					Gui, Add, Text, x+28 yp+4, Alert After (s): 
+					Gui, Add, Edit, Number Right x+25 yp-2 w45 
+						Gui, Add, UpDown, Range1-100000 vInjectTimerAdvancedTime, %InjectTimerAdvancedTime%
+			Gui, Add, Text, xs+10 y+15 w400,  This will sound x (in game) seconds after your last inject.
 
-		Gui, Add, GroupBox,  w265 h155 xs ys+140 section, Manual Inject Timer	;h185
+		Gui, Add, GroupBox,  w417 h140 xs ys+120 section, Manual Inject Timer	;h185
 				Gui, Add, Checkbox, xp+10 yp+20 vmanual_inject_timer checked%manual_inject_timer%, Enable
-				Gui, Add, Text, x+64 yp, Alert After (s): 
-				Gui, Add, Edit, Number Right x+13 yp-2 w45 
-					Gui, Add, UpDown, Range1-100000 vmanual_inject_time, %manual_inject_time%
-				Gui, Add, Text, xs+10 yp+35 w90, Start/Stop Hotkey:
-				Gui, Add, Edit, Readonly yp x+20 w90 R1 vinject_start_key center gedit_hotkey, %inject_start_key%
+				Gui, Add, Text, xs+10 yp+25 w90, Start/Stop Hotkey:
+				Gui, Add, Edit, Readonly yp-2 x+20 w90 R1 vinject_start_key center gedit_hotkey, %inject_start_key%
 				Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#inject_start_key,  Edit
+					Gui, Add, Text, x+28 yp+4, Alert After (s): 
+					Gui, Add, Edit, Number Right x+25 yp-2 w45 
+						Gui, Add, UpDown, Range1-100000 vmanual_inject_time, %manual_inject_time%				
 				Gui, Add, Text, xs+10 yp+35 w90, Reset Hotkey:
-				Gui, Add, Edit, Readonly yp x+20 w90 R1 vinject_reset_key center gedit_hotkey, %inject_reset_key%
+				Gui, Add, Edit, Readonly yp-2 x+20 w90 R1 vinject_reset_key center gedit_hotkey, %inject_reset_key%
 				Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#inject_reset_key,  Edit
-				Gui, Add, Text, xs+10 y+15 w245,  This is a very basic timer. It simply beeps every x seconds.
+				Gui, Add, Text, xs+10 y+15 w400,  This is a very basic timer. It simply sounds every x seconds.
 
-		Gui, Add, GroupBox, w200 h85 x395 y34 section, One Button Inject Alert
-			Gui, Add, Checkbox, xs+10 yp+20 vauto_inject_alert checked%auto_inject_alert%, Enable Alert
-			Gui, Add, Text,xs+10 y+10, Time Between Alerts (s):
-			Gui, Add, Edit, Number Right x+25 yp-2 w45 vTT_auto_inject_time
-				Gui, Add, UpDown, Range1-100000 vauto_inject_time, %auto_inject_time% ;these belong to the above edit
 
 	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vKeys_TAB, SC2 Keys|Set/Add Group|Invoke Group
 		Gui, Add, GroupBox, w280 h185, Common Keys:
@@ -3425,7 +3429,7 @@ try
 		To enable this visual feature check the 'Display Alerts' checkbox listed under MiniMap/Overlays --> MiniMap --> General.
 		)		
 
-	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vBug_TAB, Report Bug
+	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vBug_TAB, Bug Report
 		Gui, Add, Text, x+60 y+20 section, Your Email Address:%A_Space%%A_Space%%A_Space%%A_Space%%A_Space%(optional) 
 		Gui, Add, Edit, xp y+10 w350 vReport_Email,
 		Gui, Add, Text, xp y+10, Problem Description:
@@ -3732,7 +3736,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 
 
 			Gui, Add, Text, X%thisXTabX% yp+35 w100, Make SCV Key:
-			Gui, Add, Edit, Readonly yp-2 x+1 w65 R1 center vAutoWorkerMakeWorker_T_Key, %AutoWorkerMakeWorker_T_Key%
+			Gui, Add, Edit, Readonly yp-2 x+2 w65 R1 center vAutoWorkerMakeWorker_T_Key, %AutoWorkerMakeWorker_T_Key%
 				Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#AutoWorkerMakeWorker_T_Key,  Edit
 
 			Gui, Add, Text, xs+240 ys+55, Max SCVs:
@@ -3762,7 +3766,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 				Gui, Add, DropDownList,  xs+130 yp w45 center vAutoWorkerStorage_P_Key Choose%droplist_var%, 1|2|3|4|5|6|7|8|9|0	
 
 			Gui, Add, Text, X%thisXTabX% yp+35 w100, Make Probe Key:
-			Gui, Add, Edit, Readonly yp-2 x+1 w65 R1 center vAutoWorkerMakeWorker_P_Key, %AutoWorkerMakeWorker_P_Key%
+			Gui, Add, Edit, Readonly yp-2 x+2 w65 R1 center vAutoWorkerMakeWorker_P_Key, %AutoWorkerMakeWorker_P_Key%
 				Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#AutoWorkerMakeWorker_P_Key,  Edit
 
 			Gui, Add, Text, xs+240 ys+55, Max Probes:
@@ -5298,7 +5302,7 @@ OptionsTree:
 					,	"SC2 Keys": "Keys_TAB"
 					,	"Warnings": "Warnings_TAB"
 					, 	"Misc Abilities": "Misc_TAB"
-					,	"Report Bug": "Bug_TAB"
+					,	"Bug Report": "Bug_TAB"
 					,	"Settings": "Settings_TAB"}	
 
 	OptionTreeEvent := A_GuiEvent
