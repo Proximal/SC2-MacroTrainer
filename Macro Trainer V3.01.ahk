@@ -1251,11 +1251,15 @@ Auto_Group:
 	AutoGroup(A_AutoGroup)
 	Return
 
+; 8 units / full selection card
+; 0.25 / 1.50
+; Old 0.14 /1.56
+
 AutoGroup(byref A_AutoGroup)
 { 	global GameIdentifier, aButtons, AGBufferDelay, AGKeyReleaseDelay, aAGHotkeys
 
 	; needed to ensure the function running again while it is still running
-	;  as can arrive here from AutoGroupIdle or 
+	;  as can arrive here from AutoGroupIdle or Auto_Group
 	Thread, NoTimers, true
 
 	; If user presses hotkey during this time (which would still interrupt this thread), it should not defeat the
@@ -1265,52 +1269,31 @@ AutoGroup(byref A_AutoGroup)
 	; and the new different unit with same index was selected - but this be very very rare
 
 	numGetUnitSelectionObject(oSelection)
-	, SelectedTypes := oSelection.Types
 	for index, Unit in oSelection.Units
-	{
-		type := unit.type				
-		If (aLocalPlayer.Slot != Unit.owner)
+	{		
+		If (aLocalPlayer.Slot != unit.owner)
+			return 
+		type := unit.type, CurrentlySelected .= "," unit.UnitIndex
+		if !activeList
 		{
-			 	WrongUnit := 1
-				break
-		}
-		CurrentlySelected .= "," unit.UnitIndex
-		found := 0
-		For Player_Ctrl_Group, ID_List in A_AutoGroup	;check the array - player_ctrl_group = key 1,2,3 etc, ID_List is the value
-		{
-			if type in %ID_List%
+			For Player_Ctrl_Group, ID_List in A_AutoGroup	;check the array - player_ctrl_group = key 1,2,3 etc, ID_List is the value
 			{
-				found := 1
-				If !InStr(CtrlList, type) ;ie not in it
+				if type in %ID_List%
 				{
-					CtrlType_i ++	;probably don't really need this count mechanism anymore
-					CtrlList .= type "|"				
-				}
-				If !isInControlGroup(Player_Ctrl_Group, unit.UnitIndex)  ; add to said ctrl group If not in group
-				{
-					if (controlGroup = "")
-						controlGroup := Player_Ctrl_Group
-					else 
-					{
-						if (controlGroup != Player_Ctrl_Group)
-						{
-							WrongUnit := 1
-							break, 2
-						}
-					}
-				}
-				break		
-			}				
+					activeList := ID_List, activeGroup := Player_Ctrl_Group	
+					break		
+				}				
+			}
+			if !activeList ; unit isnt in one of the lists
+				return 
 		}
-		if !found
-		{
-			WrongUnit := 1
-			break
-		}
-
+		if type not in %activeList%
+			return 
+		else if (controlGroup = "" && !isInControlGroup(activeGroup, unit.unitIndex))
+			controlGroup := activeGroup
 	}
 
-	if (oSelection.Count && !WrongUnit && CtrlType_i = SelectedTypes) && (controlGroup != "") && WinActive(GameIdentifier) && !isGamePaused() ; note <> "" as there is group 0! cant use " controlGroup "
+	if (controlGroup != "") && WinActive(GameIdentifier) && !isGamePaused() ; note <> "" as there is group 0! cant use " controlGroup "
 	;&& !isMenuOpen() && MT_InputIdleTime() >= AGKeyReleaseDelay && !checkAllKeyStates(False, True) && !readModifierState() 
 	&& !isMenuOpen() && A_mtTimeIdle >= AGKeyReleaseDelay 
 	&& !(getkeystate("Shift", "P") && getkeystate("Control", "P") && getkeystate("Alt", "P")
@@ -1328,28 +1311,156 @@ AutoGroup(byref A_AutoGroup)
 		if (CurrentlySelected = PostDelaySelected)
 		{
 			input.pSend(aAGHotkeys.Add[controlGroup])
-			;sleepOnExit := True
 			settimer, AutoGroupIdle, Off
 			settimer, Auto_Group, Off
+			soundplay *-1
 			SetTimer, resumeAutoGroup, -85
+			; Need to sleep for a while, as slow computers+lag can cause grouping command
+			; to be issued twice causing the camera to move. 
 		}
 		Input.revertKeyState()
 		setLowLevelInputHooks(False)
 		critical, off
 	}
+	Return
+}
+; This was a relatively simple function. But someone wanted multiple control groups for each unit
+; 
 
-	; someone said that the autogroup would make there camera jump to the building
-	; probably due to slow computer and the program reading the unit hasn't been grouped and so 
-	; sends the group command twice very quickly
-	;if sleepOnExit  
-	;{
-		
-	;	Thread, Priority, -2147483648
-	;	Thread, NoTimers, false
-	;	sleep 85
-	;	settimer, AutoGroupIdle, On, -9999 ;on re-enables timers with previous period
-	;	settimer, Auto_Group, On		
-	;}
+AutoGroupNewTesting(byref A_AutoGroup)
+{ 	global GameIdentifier, aButtons, AGBufferDelay, AGKeyReleaseDelay, aAGHotkeys
+
+	; needed to ensure the function running again while it is still running
+	;  as can arrive here from AutoGroupIdle or 
+	Thread, NoTimers, true
+	aGroupUnits := [], aGroupUnits.Items := [], aGroupUnits.Types := [], aAttemptTypes := []
+	; If user presses hotkey during this time (which would still interrupt this thread), it should not defeat the
+	; two unit checks - even if the selection changes
+	; as they will no longer match
+	; I guess it would be possible if the unit died between type and isincontrolGroup
+	; and the new different unit with same index was selected - but this be very very rare
+
+	numGetUnitSelectionObject(oSelection)
+    for index, unit in oSelection.Units
+    {
+        If (aLocalPlayer.Slot != Unit.owner)
+           return
+        CurrentlySelected .= "," unit.UnitIndex
+        if !A_AutoGroup.Units.HasKey(unit.type)
+            return ;"No group for this unit"
+        ; If unit type not already queued to be grouped       
+        if !aAttemptTypes.HasKey(unit.type) 
+        {
+            for group, in A_AutoGroup.Units[unit.type]
+            {
+                if !isInControlGroup(group, unit.UnitIndex)
+                {
+                	if !isObject(aAttemptTypes[unit.type])
+                		aAttemptTypes[unit.type] := []
+                    aAttemptTypes[unit.type, group] := unit.UnitIndex
+                }
+                s .= (A_Index != 1 ? "," : "") group  ; create a comma delimited string of the destined ctrl groups for comparison
+            }
+            ; aGroupUnits.Items Is used to check for control group mismatches (the same groups must exist in all items)
+            ; I.e. stalker group 1,2  and sentry group 2,3 = then units only added to group 2
+            ; Since being inserted into the object must check if type has already processed
+            ; otherwise will get repeated control groups in the grouping string
+            if !aGroupUnits.Types.HasKey(unit.type)
+                aGroupUnits.Items.Insert(s), aGroupUnits.Types[unit.type] := True
+            s := "" 
+        }        
+    }
+
+ 	if !aAttemptTypes.MaxIndex() || !aGroupUnits.Items.MaxIndex()
+        return 	;!aAttemptTypes.MaxIndex()  ? "Already grouped" : "No units to group" 
+    if aGroupUnits.Items.MaxIndex() = 1
+        groupString := aGroupUnits.Items.1
+    else 
+    {
+/*
+    aGroupUnits.Items contains destined control groups for each selected unit type (which has defined auto-group control group(s))
+    Find the groups which are common to all of these unit types
+    If no common groups, then abort 
+    E.G.                Example1    Example2        Example3
+        Items.1         1           1,3             1,2
+        Items.2         1,2         1,3,4,5         2,3
+        Items.3         1,2,3       1,2,3           5,6
+        Result          = 1         = 1,3           = null
+        (groupString = Result)
+
+    Although this adds more code than the old method (which didn't support multiple groups)
+    There will only be a handful on items in this list, and there will only be a couple of destined groups 
+    (99% of time just 1) for each item
+*/
+        group1 := aGroupUnits.Items.1
+        loop, parse, group1, `,
+        {
+            ; A_LoopField = the individual ctrl group numbers of the destined ctrl group string in items.1 e.g. 1 or 2 or 3 etc
+            Loop, % aGroupUnits.Items.MaxIndex() - 1
+            {
+                nextGroupString := aGroupUnits.Items[A_Index+1] ;Start at 2 as comparing to groups in 1
+                if A_LoopField in %nextGroupString%
+                    flag := true 
+                else 
+                    flag := false                     
+            } until !flag ; no point checking the other items as this group is not common to all and so wont be sent
+            if flag
+            {
+                if A_LoopField not in %groupString%
+                    groupString .= (groupString ? "," : "") A_LoopField
+            }
+        }
+	    ; Non-common ctrl groups have been removed. It's now possible that all the units already exist in the remaining common group.
+	    ; As the group which doesn't contain one of the units has been removed
+	    ; So check that at least one of them doesn't exist in the common group - otherwise it will get continually spammed
+	    flag := False
+	    loop, parse, groupString, `, 
+	    {
+	    	for type, object in aAttemptTypes
+	    	{
+	    		if object.HasKey(A_LoopField) ; A_LoopField = ctrl Group
+	    		{
+					flag := True
+					break
+	    		}
+	    	}
+	    }
+	   	if !flag 
+	   		return
+   	}
+   	if (groupString = "")
+		return ;"No common control group for units"
+
+   	;*/ 
+	if oSelection.Count && WinActive(GameIdentifier) && !isGamePaused() ; note <> "" as there is group 0! cant use " controlGroup "
+	&& !isMenuOpen() && A_mtTimeIdle >= AGKeyReleaseDelay 
+	&& !(getkeystate("Shift", "P") && getkeystate("Control", "P") && getkeystate("Alt", "P")
+	&& getkeystate("LWin", "P") && getkeystate("RWin", "P"))
+	&& !readModifierState() 
+	{			
+		critical, 1000
+		setLowLevelInputHooks(True)
+		input.pReleaseKeys(True)
+		dSleep(AGBufferDelay)
+		numGetUnitSelectionObject(oSelection)
+		for index, Unit in oSelection.Units
+			PostDelaySelected .= "," unit.UnitIndex
+
+		if (CurrentlySelected = PostDelaySelected)
+		{
+			loop, parse, groupString, `, 
+				sendString .= aAGHotkeys.Add[A_LoopField]
+			input.pSend(sendString)
+			; Turn off for slow computers/lag otherwise may send again and cause camera to jump before the buffer is updated
+			settimer, AutoGroupIdle, Off
+			settimer, Auto_Group, Off
+			SetTimer, resumeAutoGroup, -85
+			soundplay *-1
+		}
+		Input.revertKeyState()
+		setLowLevelInputHooks(False)
+		critical, off
+	}
 	Return
 }
    
@@ -7416,7 +7527,38 @@ getSelectionType(units*)
 	Return SubStr(list, 1, -1)
 }
 
+setupAutoGroupNewTesting(Race, ByRef A_AutoGroup, aUnitID, A_UnitGroupSettings)
+{
+	A_AutoGroup := [], A_AutoGroup.Groups := [], A_AutoGroup.Units := []
+	loop, 10
+	{	
+		ControlGroup := A_index - 1		;for control group 0			
+		List := A_UnitGroupSettings[Race, ControlGroup]				
+		StringReplace, List, List, %A_Space%, , All ; Remove Spaces
+		StringReplace, List, List, |, `,, All ;replace | with ,
+		List := Rtrim(List, "`, |") ;checks the last character
+		checkList := ""
+		If (List <> "")
+		{
+			loop, parse, List, `, 
+			{
+				if !aUnitID.HasKey(unitName := Trim(A_LoopField, "`n`, `t"))
+					continue 
+				unitID := aUnitID[unitName]
+				if !A_AutoGroup.Units.HasKey(unitID)
+					A_AutoGroup.Units[unitID] := []
+				A_AutoGroup.Units[unitID, ControlGroup] := True
 
+				if unitName not in %checkList%
+				{
+					A_AutoGroup.Groups[ControlGroup] .= (A_AutoGroup.Groups[ControlGroup] ? "," : "") unitID  ;assign the unit ID based on name from iniFile	
+					checkList .= unitName ","
+				}
+			}
+		}		 
+	}
+	Return
+}
 
 setupAutoGroup(Race, ByRef A_AutoGroup, aUnitID, A_UnitGroupSettings)
 {

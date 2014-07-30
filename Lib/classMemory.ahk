@@ -8,7 +8,10 @@
     12/07/14 - version 1.0
         -   Added writeBuffer() method
         -   Added a version number to the class
-
+    30/07/14 - version 1.1
+        -   EnumProcessModulesEx() is now used instead of EnumProcessModules().
+            This allows for getBaseAddressOfModule() in a 64 bit AHK process to enumerate
+            (and find) the modules in a 32 bit target process.
 
     RHCP's basic memory class:
 
@@ -45,7 +48,20 @@
 
     If the process has admin privileges, then the AHK script will also require admin privileges to work. 
 
-    
+    Commonly used methods:
+        read()
+        readString()
+        ReadRawMemory()
+        write()
+        writeString()
+        writeBuffer()
+        getProcessBaseAddress()
+        getBaseAddressOfModule()
+
+    Internal methods: (but can still be useful)
+        pointer()
+        getAddressFromOffsets()  
+
     Usage:
 
         **Note: If you wish to try this calc example, ensure you run the 32 bit version of calc.exe - 
@@ -142,18 +158,18 @@ class memory
 
     version()
     {
-        return 1.0
+        return 1.1
     }
 
     ; program can be an ahk_exe, ahk_class, ahk_pid, or simply the window title. e.g. "ahk_exe SC2.exe" or "Starcraft II"
     ; but its safer not to use the window title, as some things can have the same window title - e.g. a folder called "Starcraft II"
     ; would have the same window title as the game itself.
 
-    ; If returned process handle is zero then the program isn't running or you passed an incorrect program identifier parameter
-    ; If the returned process handle is blank, openProcess failed. If the target process has admin rights, then the script also needs to be ran as admin.
+    ; Return Values: 
+    ;   0 - The program isn't running or you passed an incorrect program identifier parameter
+    ;   Null/blank -  OpenProcess failed. If the target process has admin rights, then the script also needs to be ran as admin.
+    ;   Positive integer - A handle to the process.
 
-    ; To use the scripts current setting for SetTitleMatchMode, simply pass 0 or A_TitleMatchMode as
-    ; the windowMatchMode parameter
     openProcess(program, dwDesiredAccess := "", windowMatchMode := 3)
     {
         ; if an application closes/restarts the previous handle becomes invalid so reopen it to be safe (closing a now invalid handle is fine i.e. wont cause an issue)
@@ -273,10 +289,10 @@ class memory
 
     ; final type refers to the how the value is stored in the final pointer address
     ; Can pass an array of offsets by using *
-    ; eg, pointer(game, base, [0x10, 0x30, 0xFF]*)
-    ; or a := [0x10, 0x30, 0xFF]
+    ; eg, 
+    ; a := [0x10, 0x30, 0xFF]
     ; pointer(game, base, a*)
-    ; or just type them in manually
+    ; or pointer(game, base, 0x10, 0x30, 0xFF)
 
     pointer(base, finalType := "UInt", offsets*)
     { 
@@ -309,12 +325,10 @@ class memory
     ; Here are examples of such types: HANDLE, HWND, HMENU, HPALETTE, HBITMAP, etc. 
     ; http://www.viva64.com/en/k/0005/
 
-    ; The base adress for some programs is dynamic. This can retrieve the current base address of the main module (e.g. SC2.exe), 
+    ; The base adress for some programs is dynamic. This can retrieve the current base address of the main module (e.g. calc.exe), 
     ; which can then be added to your various offsets.  
     ; This function will return the correct address regardless of the 
     ; bitness (32 or 64 bit) of both the AHK exe and the target process.
-    ; That is they can both be 32 bit or 64 bit, or the target process
-    ; can be 32 bit while ahk is 64bit
 
     ; WindowTitle can be anything ahk_exe ahk_class etc
     getProcessBaseAddress(WindowTitle, windowMatchMode := 3)   
@@ -348,7 +362,9 @@ class memory
     ;   Positive integer - Module base address
     ;   -1 - Module not found
     ;   -2 - The process handle has been closed.
+    ;   -3 - EnumProcessModulesEx failed
     ;   -4 - The AHK script is 32 bit and you are trying to access the modules of a 64 bit target process. Or the target process has been closed.
+    ;   -5 - GetModuleInformation failed.
 
     ; Note: A 64 bit AHK can enumerate the modules of a target 64 or 32 bit process.
     ;       A 32 bit AHK can only enumerate the modules of a 32 bit process
@@ -359,54 +375,82 @@ class memory
     {
         if !this.hProcess
             return -2
-
         if (A_PtrSize = 4) ; AHK 32bit
         {
             DllCall("IsWow64Process", "Ptr", this.hProcess, "Int*", result)
             if !result 
                 return -4 ; AHK is 32bit and target process is 64 bit, this function wont work
         }
-
         if (module = "")
+            mainExeFullPath := this.GetModuleFileNameEx() ; mainExeName = main executable module of the process (will include full directory path)
+        if !moduleCount := this.EnumProcessModulesEx(lphModule)
+            return -3     
+        loop % moduleCount
         {
-            VarSetCapacity(mainExeNameBuffer, 2048 * (A_IsUnicode ? 2 : 1))
-            DllCall("psapi\GetModuleFileNameEx", "Ptr", this.hProcess, "Uint", 0
-                        , "Ptr", &mainExeNameBuffer, "Uint", 2048 / (A_IsUnicode ? 2 : 1))
-            mainExeFullPath := StrGet(&mainExeNameBuffer)
-        ; mainExeName = main executable module of the process (will include full directory path)
-        }
-        size := VarSetCapacity(lphModule, 4)
-        loop 
-        {
-            DllCall("psapi\EnumProcessModules", "Ptr", this.hProcess, "Ptr", &lphModule
-                    , "Uint", size, "Uint*", reqSize)
-            if ErrorLevel
-                return -3
-            else if (size >= reqSize)
-                break
-            else 
-                size := VarSetCapacity(lphModule, reqSize)  
-        }
-        VarSetCapacity(lpFilename, 2048 * (A_IsUnicode ? 2 : 1))
-        loop % reqSize / A_PtrSize ; sizeof(HMODULE) - enumerate the array of HMODULEs
-        {
-            DllCall("psapi\GetModuleFileNameEx", "Ptr", this.hProcess, "Uint", numget(lphModule, (A_index - 1) * A_PtrSize)
-                    , "Ptr", &lpFilename, "Uint", 2048 / (A_IsUnicode ? 2 : 1))
-
             ; module will contain directory path as well e.g C:\Windows\syswow65\GDI32.dll
-            moduleFullPath := StrGet(&lpFilename) 
+            moduleFullPath := this.GetModuleFileNameEx(hModule := numget(lphModule, (A_index - 1) * A_PtrSize))
             SplitPath, moduleFullPath, fileName ; strips the path so = GDI32.dll
             if (module = "" && mainExeFullPath = moduleFullPath) || (module != "" && module = filename)
             {
-                VarSetCapacity(MODULEINFO, A_PtrSize = 4 ? 12 : 24)
-                DllCall("psapi\GetModuleInformation", "Ptr", this.hProcess, "UInt", numget(lphModule, (A_index - 1) * A_PtrSize)
-                    , "Ptr", &MODULEINFO, "UInt", A_PtrSize = 4 ? 12 : 24)
-                return numget(MODULEINFO, 0, "Ptr")
+                if this.GetModuleInformation(hModule, aModuleInfo)
+                    return aModuleInfo.lpBaseOfDll
+                else return -5 ; Failed to get module info
             }
         }
         return -1 ; not found
     }
 
+    GetModuleFileNameEx(hModule := 0)
+    {
+        VarSetCapacity(lpFilename, 2048 * (A_IsUnicode ? 2 : 1))
+        DllCall("psapi\GetModuleFileNameEx"
+                    , "Ptr", this.hProcess
+                    , "Uint", hModule
+                    , "Ptr", &lpFilename
+                    , "Uint", 2048 / (A_IsUnicode ? 2 : 1))
+        return StrGet(&lpFilename)
+    }
+
+    ; dwFilterFlag
+    ;   LIST_MODULES_DEFAULT    0x0  
+    ;   LIST_MODULES_32BIT      0x01
+    ;   LIST_MODULES_64BIT      0x02
+    ;   LIST_MODULES_ALL        0x03
+    ; If the function is called by a 32-bit application running under WOW64, the dwFilterFlag option 
+    ; is ignored and the function provides the same results as the EnumProcessModules function.
+    EnumProcessModulesEx(byRef lphModule, dwFilterFlag := 0x03)
+    {
+        size := VarSetCapacity(lphModule, 4)
+        loop 
+        {
+            DllCall("psapi\EnumProcessModulesEx"
+                        , "Ptr", this.hProcess
+                        , "Ptr", &lphModule
+                        , "Uint", size
+                        , "Uint*", reqSize
+                        , "Uint", dwFilterFlag)
+            if ErrorLevel
+                return 0
+            else if (size >= reqSize)
+                break
+            else 
+                size := VarSetCapacity(lphModule, reqSize)  
+        }
+        return reqSize / A_PtrSize ; module count  ; sizeof(HMODULE) - enumerate the array of HMODULEs     
+    }
+
+    GetModuleInformation(hModule, byRef aModuleInfo)
+    {
+        VarSetCapacity(MODULEINFO, A_PtrSize * 3), aModuleInfo := []
+        return DllCall("psapi\GetModuleInformation"
+                    , "Ptr", this.hProcess
+                    , "UInt", hModule
+                    , "Ptr", &MODULEINFO
+                    , "UInt", A_PtrSize * 3)
+                , aModuleInfo := {  lpBaseOfDll: numget(MODULEINFO, 0, "Ptr")
+                                ,   SizeOfImage: numget(MODULEINFO, A_PtrSize, "UInt")
+                                ,   EntryPoint: numget(MODULEINFO, A_PtrSize * 2, "Ptr") }
+    }    
 }
 
     /*
