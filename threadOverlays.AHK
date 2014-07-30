@@ -316,12 +316,13 @@ http://support.microsoft.com/kb/311221
 ; no player IDs. When IDs (text/pic) are present it takes a bit longer
 ; Takes 0.76 ms
 DrawIdleWorkersOverlay(ByRef Redraw, UserScale=1,Drag=0, expand=1)
-{	global aLocalPlayer, GameIdentifier, config_file, IdleWorkersOverlayX, IdleWorkersOverlayY, a_pBitmap, overlayIdleWorkerTransparency
+{	global aLocalPlayer, GameIdentifier, config_file, IdleWorkersOverlayX, IdleWorkersOverlayY, a_pBitmap, overlayIdleWorkerTransparency, idleWorkerOverlayThreshold
 	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0				
 
 	DestX := DestY := 0
-	if !idleCount := getIdleWorkers()
-		Redraw := -1 ;only draw overlay when idle workers present
+	; idleWorkerOverlayThreshold min value is 1 (so hidden when 0 idle workers)
+	if (idleWorkerOverlayThreshold > idleCount := getIdleWorkers())
+		Redraw := -1 
 
 	if !modifyOverlay("idleWorkersOverlay", Redraw, overlayCreated, Drag, DragPrevious, idleWorkersOverlayX, idleWorkersOverlayY, 400, 400, hwnd1)
 		return
@@ -331,12 +332,9 @@ DrawIdleWorkersOverlay(ByRef Redraw, UserScale=1,Drag=0, expand=1)
 	, obm := SelectObject(hdc, hbm)
 	, G := Gdip_GraphicsFromHDC(hdc)
 	, Gdip_SetInterpolationMode(G, 2)
-	;DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0)	
-
-	pBitmap := a_pBitmap[aLocalPlayer["Race"],"Worker"]
-	SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
-
-	expandOnIdle := 4
+	, pBitmap := a_pBitmap[aLocalPlayer["Race"],"Worker"]
+	, SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
+	, expandOnIdle := 4
 	if expand
 	{
 		increased := floor(idlecount / expandOnIdle)/8
@@ -345,14 +343,14 @@ DrawIdleWorkersOverlay(ByRef Redraw, UserScale=1,Drag=0, expand=1)
 		UserScale += increased
 	}
 	Options := " cFFFFFFFF r4 s" 18*UserScale
-	Width *= UserScale *.5, Height *= UserScale *.5
-	Gdip_DrawImage(G, pBitmap, DestX, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)	
-	Gdip_TextToGraphics(G, idleCount, "x"(DestX+Width+2*UserScale) "y"(DestY+(Height//4)) Options, Font, TextWidthHeight, TextWidthHeight)
-	Gdip_DeleteGraphics(G)	
-	UpdateLayeredWindow(hwnd1, hdc,,,,, overlayIdleWorkerTransparency)
-	SelectObject(hdc, obm) 
-	DeleteObject(hbm)  
-	DeleteDC(hdc) 
+	, Width *= UserScale *.5, Height *= UserScale *.5
+	, Gdip_DrawImage(G, pBitmap, DestX, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)	
+	, Gdip_TextToGraphics(G, idleCount, "x"(DestX+Width+2*UserScale) "y"(DestY+(Height//4)) Options, Font, TextWidthHeight, TextWidthHeight)
+	, Gdip_DeleteGraphics(G)	
+	, UpdateLayeredWindow(hwnd1, hdc,,,,, overlayIdleWorkerTransparency)
+	, SelectObject(hdc, obm) 
+	, DeleteObject(hbm)  
+	, DeleteDC(hdc) 
 	Return
 }
 

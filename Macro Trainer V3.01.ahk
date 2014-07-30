@@ -2792,6 +2792,8 @@ ini_settings_write:
 	Iniwrite, %drawLocalPlayerIncome%, %config_file%, %section%, drawLocalPlayerIncome
 	Iniwrite, %drawLocalPlayerArmy%, %config_file%, %section%, drawLocalPlayerArmy
 	Iniwrite, %localUpgradesItemsPerRow%, %config_file%, %section%, localUpgradesItemsPerRow
+	Iniwrite, %IdleWorkerOverlayThreshold%, %config_file%, %section%, IdleWorkerOverlayThreshold
+
 
 	; convert from 0-100 to 0-255
 	loopList := "overlayIncomeTransparency,overlayMatchTransparency,overlayResourceTransparency,overlayArmyTransparency,overlayAPMTransparency"
@@ -3008,9 +3010,11 @@ try
 			Gui, Add, Checkbox, xs+10 y+12 vInject_RestoreSelection checked%Inject_RestoreSelection%, Restore Unit Selection 					
 			Gui, Add, Checkbox, xs+10 y+10 vInject_RestoreScreenLocation checked%Inject_RestoreScreenLocation%, Restore Screen Location
 			
+		Gui, Add, GroupBox, xs ys+250 w400 h70, Notes:
+			Gui, Add, Text,yp+57 xp+10 yp+25 w380, This is a semi-automated function. Each time the hotkey is pressed your hatches will be injected.
 
-			hide := !instr(auto_inject, "Backspace")
-			Gui, Add, GroupBox, w200 h230 ys xs+210 section hidden%hide% vBackspaceGroupBoxID, Backspace Settings
+		hide := !instr(auto_inject, "Backspace")
+		Gui, Add, GroupBox, w200 h230 ys xs+210 section hidden%hide% vBackspaceGroupBoxID, Backspace Settings
 			Gui, Add, Text, xs+10 yp+25 hidden%hide% vBackspaceTextCameraStoreID, Create Camera: %A_space% %A_space% (Location Storge)
 				Gui, Add, Edit, Readonly y+10 xs+60 w90 R1 center vBI_create_camera_pos_x hidden%hide%, %BI_create_camera_pos_x%
 					Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#BI_create_camera_pos_x hidden%hide%,  Edit
@@ -3021,7 +3025,6 @@ try
 			Gui, Add, Text, % "xs+10 yp+40 vBackspaceDragTextID hidden" (auto_inject != "Backspace"), Drag Origin:
 			; Drag origin should be only be unhidden for true backspace method
 			Gui, Add, DropDownList, % "x+60 yp-2 w50 vDrag_origin Choose" (Drag_origin = "Right" ? 2 : 1) " hidden" (auto_inject != "Backspace"), Left|Right
-
 
 
 	Gui, Tab,  Settings
@@ -3088,8 +3091,8 @@ try
 				Gui, Add, Edit, Readonly y+10 xp+45 w120 R1 vF_InjectOff_Key center gedit_hotkey, %F_InjectOff_Key%
 				Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#F_InjectOff_Key,  Edit				
 
-		Gui, Add, GroupBox, xs yp+57 w385 h165, Notes:
-		Gui, Add, Text,yp+57 xp+10 yp+25 w365,
+		Gui, Add, GroupBox, xs ys+235 w400 h165, Notes:
+		Gui, Add, Text, yp+57 xp+10 yp+25 w380,
 		(LTrim 
 		Auto injects will begin after you control group your queen to the correct (inject) queen control group.
 
@@ -4259,8 +4262,12 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 					Gui, Add, Checkbox, xp+95 yp vDrawLocalPlayerArmy Checked%drawLocalPlayerArmy%, Include Self
 				Gui, Add, Checkbox, xs+10 y+13 vDrawAPMOverlay Checked%DrawAPMOverlay%, APM
 					Gui, Add, Checkbox, xp+95 yp vAPMOverlayMode Check3 Checked%APMOverlayMode%, Mode
-				Gui, Add, Checkbox, xs+10 y+13 vDrawIdleWorkersOverlay Checked%DrawIdleWorkersOverlay%, Idle Worker Count
-				Gui, Add, Checkbox, xp y+13 vDrawWorkerOverlay Checked%DrawWorkerOverlay%, Local Harvester Count
+				Gui, Add, Checkbox, xs+10 y+13 vDrawIdleWorkersOverlay Checked%DrawIdleWorkersOverlay%, Idle Workers
+					Gui, Add, Text, x+15 yp, Min:
+					Gui, Add, Edit, Number Right x+18 yp-2 w40 vTT_IdleWorkerOverlayThreshold
+					Gui, Add, UpDown,  Range1-200 vIdleWorkerOverlayThreshold, %IdleWorkerOverlayThreshold%	
+
+				Gui, Add, Checkbox, xs+10 y+7 vDrawWorkerOverlay Checked%DrawWorkerOverlay%, Local Harvester Count
 				Gui, Add, Checkbox, xp y+13 vDrawLocalPlayerColourOverlay Checked%DrawLocalPlayerColourOverlay%, Local Player Colour
 				Gui, Add, Checkbox, xp y+13 vDrawMacroTownHallOverlay Checked%DrawMacroTownHallOverlay%, Town Hall Macro
 				Gui, Add, Checkbox, xp y+13 vDrawLocalUpgradesOverlay Checked%DrawLocalUpgradesOverlay% Check3, Local Upgrades
@@ -4474,7 +4481,9 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 						. "`nThe mode can be set with via the 'mode' checkbox on right"
 
 		DrawWorkerOverlay_TT := "Displays your current harvester count with a worker icon"
-		DrawIdleWorkersOverlay_TT := "While idle workers exist, a worker icon will be displayed with the current idle count.`n`nThe size and position can be changed easily so that it grabs your attention."
+		DrawIdleWorkersOverlay_TT := "A worker icon with the current idle worker count is displayed when idle count is greater than or equal to the minimum value.`n`nThe size and position can be changed easily so that it grabs your attention."
+		TT_IdleWorkerOverlayThreshold_TT := IdleWorkerOverlayThreshold_TT := "The idle worker overlay is only visible when your idle count is greater than or equal to this minimum value."
+
 		DrawUnitOverlay_TT := "Displays an overlay similar to the 'observer panel', listing the current and in-production unit counts.`n`nUse the 'unit panel filter' to selectively remove/display units.`n`nNote: To disable the match overlay uncheck both 'Show Upgrades' and 'Show Unit Count/Production'."
 		DrawUnitUpgrades_TT := "Displays the current enemy upgrades.""`n`nNote: To disable the match overlay uncheck both 'Show Upgrades' and 'Show Unit Count/Production'."
 		
@@ -8959,6 +8968,8 @@ debugData()
 	SysGet, VirtualScreenWidth, 78
 	SysGet, VirtualScreenHeight, 79	
 	DesktopScreenCoordinates(XminVritual, YminVritual, XmaxVritual, YmaxVritual)
+	process, exist, %GameExe%
+	pid := ErrorLevel
 
 	DllCall("QueryPerformanceFrequency", "Int64*", Frequency), DllCall("QueryPerformanceCounter", "Int64*", CurrentTick)
 	getSystemTimerResolutions(MinTimer, MaxTimer)
@@ -8973,7 +8984,8 @@ debugData()
 	. "QPFreq: " Frequency "`n"
 	. "QpTick: " CurrentTick "`n"
 	. "KeyRepeatRate: " getKeyRepeatRate() "`n"
-	. "KeyDelay: " getKeyDelay() "`n`n"
+	. "KeyDelay: " getKeyDelay() "`n"
+	. "SC PID: " pid "`n`n"
 	. "==========================================="
 	. "`nScreen Info:`n"
 	. "SC2 Res: " SC2HorizontalResolution() ", " SC2VerticalResolution() "`n"

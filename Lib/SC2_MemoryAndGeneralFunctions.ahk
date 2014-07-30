@@ -3868,6 +3868,7 @@ readConfigFile()
 	IniRead, overlayLocalUpgradesTransparency, %config_file%, %section%, overlayLocalUpgradesTransparency, 255
 	
 	IniRead, localUpgradesItemsPerRow, %config_file%, %section%, localUpgradesItemsPerRow, 6
+	IniRead, IdleWorkerOverlayThreshold, %config_file%, %section%, IdleWorkerOverlayThreshold, 1
 
 
 	; [UnitPanelFilter]
