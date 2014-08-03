@@ -166,7 +166,8 @@ loadMemoryAddresses(base, version := "")
 		B_LocalCharacterNameID := base + 0x04F15C14 ; stored as string Name#123
 		B_LocalPlayerSlot := base + 0x112E5F0 ; note 1byte and has a second 'copy' (ReplayWatchedPlayer) just after +1byte eg LS =16d=10h, hex 1010 (2bytes) & LS =01d = hex 0101
 		B_ReplayWatchedPlayer := B_LocalPlayerSlot + 0x1
-		B_pStructure := base + 0x35F55A8  			 
+		;B_pStructure := base + 0x35F55A8  ; start at Player1			 
+		B_pStructure := base + 0x35F4798 			 
 		S_pStructure := 0xE10
 			 O_pStatus := 0x0
 			 O_pXcam := 0x8
@@ -174,7 +175,6 @@ loadMemoryAddresses(base, version := "")
 			 O_pCamDistance := 0x10 ; 0xA - Dont know if this is correct - E
 			 O_pCamAngle := 0x14
 			 O_pCamRotation := 0x18
-			
 
 			 O_pTeam := 0x1C
 			 O_pType := 0x1D ;
@@ -559,29 +559,29 @@ getPlayerSupply(player="")
 { 	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]
-	Return round(ReadMemory(((B_pStructure + O_pSupply) + (player-1)*S_pStructure), GameIdentifier)  / 4096)		
+	Return round(ReadMemory(B_pStructure + O_pSupply + player*S_pStructure, GameIdentifier)  / 4096)		
 	; Round Returns 0 when memory returns Fail
 }
 getPlayerSupplyCap(player="")
 { 	Local SupplyCap 
 	If (player = "")
 		player := aLocalPlayer["Slot"]
-		SupplyCap := round(ReadMemory(((B_pStructure + O_pSupplyCap) + (player-1)*S_pStructure), GameIdentifier)  / 4096)
-		if (SupplyCap > 200)	; as this will actually report the amount of supply built i.e. can be more than 200
-			return 200
-		else return SupplyCap 
+	SupplyCap := round(ReadMemory(B_pStructure + O_pSupplyCap + player*S_pStructure, GameIdentifier)  / 4096)
+	if (SupplyCap > 200)	; as this will actually report the amount of supply built i.e. can be more than 200
+		return 200
+	else return SupplyCap 
 }
 getPlayerSupplyCapTotal(player="")
 { 	GLOBAL 
 	If (player = "")
 		player := aLocalPlayer["Slot"]	
-	Return round(ReadMemory(((B_pStructure + O_pSupplyCap) + (player-1)*S_pStructure), GameIdentifier)  / 4096)
+	Return round(ReadMemory(B_pStructure + O_pSupplyCap + player*S_pStructure, GameIdentifier)  / 4096)
 }
 getPlayerWorkerCount(player="")
-{ global
+{ 	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]
-	Return ReadMemory(((B_pStructure + O_pWorkerCount) + (player-1)*S_pStructure), GameIdentifier)
+	Return ReadMemory(B_pStructure + O_pWorkerCount + player*S_pStructure, GameIdentifier)
 }
 
 ;  Number of workers made (includes the 6 at the start of the game)
@@ -592,7 +592,7 @@ getPlayerWorkersBuilt(player="")
 { global
 	If (player = "")
 		player := aLocalPlayer["Slot"]
-	Return ReadMemory(((B_pStructure + O_pWorkersBuilt) + (player-1)*S_pStructure), GameIdentifier)
+	Return ReadMemory(B_pStructure + O_pWorkersBuilt + player*S_pStructure, GameIdentifier)
 }
 getPlayerWorkersLost(player="")
 { 	global aLocalPlayer
@@ -604,7 +604,7 @@ getPlayerHighestWorkerCount(player="")
 { global
 	If (player = "")
 		player := aLocalPlayer["Slot"]
-	Return ReadMemory(B_pStructure + O_pHighestWorkerCount + (player-1)*S_pStructure, GameIdentifier)
+	Return ReadMemory(B_pStructure + O_pHighestWorkerCount + player*S_pStructure, GameIdentifier)
 }
 getUnitType(Unit) ;starts @ 0 i.e. first unit at 0
 { global 
@@ -660,15 +660,15 @@ getHighestUnitIndex() 	; this is the highest alive units index - note its out by
 {	global				; if 1 unit is alive it will return 1 (NOT 0)
 	Return ReadMemory(B_uHighestIndex, GameIdentifier)	
 }
-getPlayerName(i) ; start at 0
+getPlayerName(player) ; start at 0
 {	global
-	Return ReadMemory_Str(B_pStructure + O_pName + (i-1) * S_pStructure, GameIdentifier) 
+	Return ReadMemory_Str(B_pStructure + O_pName + player*S_pStructure, GameIdentifier) 
 }
-getPlayerRace(i) ; start at 0
+getPlayerRace(player) ; start at 0
 {	global
 	local Race
-	; Race := ReadMemory_Str((B_rStructure + (i-1) * S_rStructure), ,GameIdentifier) ;old easy way
-	Race := ReadMemory_Str(ReadMemory(ReadMemory(B_pStructure + O_pRacePointer + (i-1)*S_pStructure, GameIdentifier) + 4, GameIdentifier), GameIdentifier) 
+	; Race := ReadMemory_Str((B_rStructure + (player-1) * S_rStructure), ,GameIdentifier) ;old easy way
+	Race := ReadMemory_Str(ReadMemory(ReadMemory(B_pStructure + O_pRacePointer + player*S_pStructure, GameIdentifier) + 4, GameIdentifier), GameIdentifier) 
 	If (Race == "Terr")
 		Race := "Terran"
 	Else if (Race == "Prot")
@@ -677,12 +677,14 @@ getPlayerRace(i) ; start at 0
 		Race := "Zerg"	
 	Else If (Race == "Neut")
 		Race := "Neutral"
+	Else If (Race == "Host")
+		Race := "Hostile"		
 	Else 
 		Race := "Race Error" ; so if it ever gets read out in speech, easily know its just from here and not some other error
 	Return Race
 }
 
-getPlayerType(i)
+getPlayerType(player)
 {	global
 	static oPlayerType := {	  0: "None"
 							, 1: "User" 	; I believe all human players in a game have this type regardless if ally or on enemy team
@@ -691,18 +693,16 @@ getPlayerType(i)
 							, 4: "Hostile"
 							, 5: "Referee"
 							, 6: "Spectator" }
-
-	Return oPlayerType[ ReadMemory((B_pStructure + O_pType) + (i-1) * S_pStructure, GameIdentifier, 1) ]
+	Return oPlayerType[ReadMemory(B_pStructure + O_pType + player * S_pStructure, GameIdentifier, 1)]
 }
 
-getPlayerVictoryStatus(i)
+getPlayerVictoryStatus(player)
 {	global
 	static oPlayerStatus := {	  0: "Playing"
 								, 1: "Victorious" 	
 								, 2: "Defeated"
 								, 3: "Tied" }
-
-	Return oPlayerStatus[ ReadMemory((B_pStructure + O_pVictoryStatus) + (i-1) * S_pStructure, GameIdentifier, 1) ]
+	Return oPlayerStatus[ReadMemory(B_pStructure + O_pVictoryStatus + player * S_pStructure, GameIdentifier, 1)]
 }
 
 /*
@@ -738,16 +738,16 @@ getPlayerActiveStatus(i)
 
 isPlayerActive(player)
 {
-	Return (ReadMemory((B_pStructure + O_pStatus) + (player-1) * S_pStructure, GameIdentifier, 1) & 1)
+	Return (ReadMemory(B_pStructure + O_pStatus + player * S_pStructure, GameIdentifier, 1) & 1)
 }
 
 getPlayerTeam(player="") ;team begins at 0
 {	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]	
-	Return ReadMemory((B_pStructure + O_pTeam) + (player-1) * S_pStructure, GameIdentifier, 1)
+	Return ReadMemory(B_pStructure + O_pTeam + player * S_pStructure, GameIdentifier, 1)
 }
-getPlayerColour(i)
+getPlayerColour(player)
 {	static aPlayerColour
 	if !isObject(aPlayerColour)
 	{
@@ -756,9 +756,9 @@ getPlayerColour(i)
 		Loop, Parse, Colour_List, |
 			aPlayerColour[a_index - 1] := A_LoopField
 	}
-	Return aPlayerColour[ReadMemory((B_pStructure + O_pColour) + (i-1) * S_pStructure, GameIdentifier)]
+	Return aPlayerColour[ReadMemory(B_pStructure + O_pColour + player*S_pStructure, GameIdentifier)]
 }
-getLocalPlayerNumber() ;starts @ 1 (because the real first player in player structure is player0 = neutral, but i begin my structure at player1)
+getLocalPlayerNumber() ;starts @ 1 (because the first player in the player structure is always player 0 = neutral)
 {	global
 	Return ReadMemory(B_LocalPlayerSlot, GameIdentifier, 1) ;Local player slot is 1 Byte!!
 }
@@ -766,79 +766,79 @@ getPlayerBaseCameraCount(player="")
 { 	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]	
-	Return ReadMemory((B_pStructure + O_pBaseCount) + (player-1) * S_pStructure, GameIdentifier)
+	Return ReadMemory(B_pStructure + O_pBaseCount + player * S_pStructure, GameIdentifier)
 }
 getPlayerMineralIncome(player="")
 { 	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]	
-	Return ReadMemory(B_pStructure + O_pMineralIncome + (player-1) * S_pStructure, GameIdentifier)
+	Return ReadMemory(B_pStructure + O_pMineralIncome + player * S_pStructure, GameIdentifier)
 }
 getPlayerGasIncome(player="")
 { 	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]	
-	Return ReadMemory(B_pStructure + O_pGasIncome + (player-1) * S_pStructure, GameIdentifier)
+	Return ReadMemory(B_pStructure + O_pGasIncome + player * S_pStructure, GameIdentifier)
 }
 getPlayerArmySupply(player="")
 { 	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]	
-	Return ReadMemory(B_pStructure + O_pArmySupply + (player-1) * S_pStructure, GameIdentifier) / 4096
+	Return ReadMemory(B_pStructure + O_pArmySupply + player * S_pStructure, GameIdentifier) / 4096
 }
 getPlayerArmySizeMinerals(player="")
 { 	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]	
-	Return ReadMemory(B_pStructure + O_pArmyMineralSize + (player-1) * S_pStructure, GameIdentifier)
+	Return ReadMemory(B_pStructure + O_pArmyMineralSize + player * S_pStructure, GameIdentifier)
 }
 getPlayerArmySizeGas(player="")
 { 	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]	
-	Return ReadMemory(B_pStructure + O_pArmyGasSize + (player-1) * S_pStructure, GameIdentifier)
+	Return ReadMemory(B_pStructure + O_pArmyGasSize + player * S_pStructure, GameIdentifier)
 }
 getPlayerMinerals(player="")
 { 	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]	
-	Return ReadMemory(B_pStructure + O_pMinerals + (player-1) * S_pStructure, GameIdentifier)
+	Return ReadMemory(B_pStructure + O_pMinerals + player * S_pStructure, GameIdentifier)
 }
 getPlayerGas(player="")
 { 	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]	
-	Return ReadMemory(B_pStructure + O_pGas + (player-1) * S_pStructure, GameIdentifier)
+	Return ReadMemory(B_pStructure + O_pGas + player * S_pStructure, GameIdentifier)
 }
 getPlayerCameraPositionX(Player="")
 {	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]	
-	Return ReadMemory(B_pStructure + (Player - 1)*S_pStructure + O_pXcam, GameIdentifier) / 4096
+	Return ReadMemory(B_pStructure + Player*S_pStructure + O_pXcam, GameIdentifier) / 4096
 }
 getPlayerCameraPositionY(Player="")
 {	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]	
-	Return ReadMemory(B_pStructure + (Player - 1)*S_pStructure + O_pYcam, GameIdentifier) / 4096
+	Return ReadMemory(B_pStructure + Player*S_pStructure + O_pYcam, GameIdentifier) / 4096
 }
 getPlayerCameraDistance(Player="")
 {	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]	
-	Return ReadMemory(B_pStructure + (Player - 1)*S_pStructure + O_pCamDistance, GameIdentifier) / 4096
+	Return ReadMemory(B_pStructure + Player*S_pStructure + O_pCamDistance, GameIdentifier) / 4096
 }
 getPlayerCameraAngle(Player="")
 {	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]	
-	Return ReadMemory(B_pStructure + (Player - 1)*S_pStructure + O_pCamAngle, GameIdentifier) / 4096
+	Return ReadMemory(B_pStructure + Player*S_pStructure + O_pCamAngle, GameIdentifier) / 4096
 }
 getPlayerCameraRotation(Player="")
 {	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]	
-	Return ReadMemory(B_pStructure + (Player - 1)*S_pStructure + O_pCamRotation, GameIdentifier) / 4096
+	Return ReadMemory(B_pStructure + Player*S_pStructure + O_pCamRotation, GameIdentifier) / 4096
 }
 
 
@@ -851,7 +851,7 @@ getPlayerCurrentAPM(Player="")
 {	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]	
-	Return ReadMemory(B_pStructure + (Player - 1)*S_pStructure + O_pAPM, GameIdentifier)
+	Return ReadMemory(B_pStructure + Player*S_pStructure + O_pAPM, GameIdentifier)
 }
 
 isUnderConstruction(building) ; starts @ 0 and only for BUILDINGS!
@@ -1568,18 +1568,18 @@ isGatewayConvertingToWarpGate(Gateway)
 	else return 0
 }
 
-
-SetPlayerMinerals(amount=99999)
+SetPlayerMinerals(amount := 99999, player := "")
 { 	global
-	player := getLocalPlayerNumber()
-	Return WriteMemory(B_pStructure + O_pMinerals + (player-1) * S_pStructure, GameIdentifier, amount,"UInt")   	 
+	If (player = "")
+		player := getLocalPlayerNumber()
+	Return WriteMemory(B_pStructure + O_pMinerals + player * S_pStructure, GameIdentifier, amount, "UInt")   	 
 }
-SetPlayerGas(amount=99999)
+SetPlayerGas(amount := 99999, player := "")
 { 	global
-	player := getLocalPlayerNumber()
-	Return WriteMemory(B_pStructure + O_pGas + (player-1) * S_pStructure, GameIdentifier, amount,"UInt")   
+	If (player = "")
+		player := getLocalPlayerNumber()
+	Return WriteMemory(B_pStructure + O_pGas + player * S_pStructure, GameIdentifier, amount, "UInt")   
 }
-
 
 getBuildStatsPF(unit, byref QueueSize := "",  QueuePosition := 0) ; dirty hack until i can be bothered fixing this function
 {	GLOBAL GameIdentifier
@@ -2927,16 +2927,16 @@ deletepBitMaps(byRef a_pBitmap)
 getPlayers(byref aPlayer, byref aLocalPlayer, byref aEnemyAndLocalPlayer := "")
 {
 	aPlayer := [], aLocalPlayer := [], aEnemyAndLocalPlayer := []
-	; this should probably be 15, as I skip the first always neutral player in my player functions
-	; My base player structure starts at player1 not player0
-	Loop, 15	;doing it this way allows for custom games with blank slots ;can get weird things if 16 (but filtering them for nonplayers)
+	; doing it this way allows for custom games with blank slots 
+	; can get weird things if 16 (but filtering them for nonplayers)
+	Loop, 16	
 	{
-		if !getPlayerName(A_Index) ;empty slot custom games?
+		if getPlayerName(A_Index) = "" ;empty slot custom games?
 		|| IsInList(getPlayerType(A_Index), "None", "Neutral", "Hostile", "Referee", "Spectator")
 			Continue
 		aPlayer.insert(A_Index, new c_Player(A_Index) )  ; insert at player index so can call using player slot number as the key (slot number = key) 
-		If (A_Index = getLocalPlayerNumber()) OR (debug AND getPlayerName(A_Index) == debug_name)
-			aLocalPlayer :=  new c_Player(A_Index)
+		If (A_Index = getLocalPlayerNumber())
+			aLocalPlayer := new c_Player(A_Index)
 	}
 	for slotNumber, player in aPlayer
 	{
@@ -3108,9 +3108,8 @@ DestroyOverlays()
 
 setDrawingQuality(G)
 {	
-	Gdip_SetSmoothingMode(G, 4)
-	Gdip_SetCompositingMode(G, 0) ; 0 = blended, 1= overwrite  ; 0 is default anyway
-	return
+	return Gdip_SetSmoothingMode(G, 4)
+	, Gdip_SetCompositingMode(G, 0) ; 0 = blended, 1= overwrite  ; 0 is default anyway	
 }
 
 
@@ -4149,8 +4148,6 @@ getUnitMorphTime(unit, unitType, percent := True)
 						 ,	aUnitID.Lair: ["UpgradeToHive"]
 						 ,  aUnitID.MothershipCore: ["MorphToMothership"]
 						 ,	aUnitID.CommandCenter: ["UpgradeToOrbital", "UpgradeToPlanetaryFortress"]}
-
-						;}
 	}
 	; target flag is usually 7 for the morphing types
 	if (CmdQueue := ReadMemory(B_uStructure + unit * S_uStructure + O_P_uCmdQueuePointer, GameIdentifier)) ; points if currently has a command - 0 otherwise

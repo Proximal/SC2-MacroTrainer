@@ -117,7 +117,7 @@ Else
 {
 	Menu Tray, Icon, Included Files\Used_Icons\Starcraft-2.ico
 
-	global debug := False
+	global debug := false
 	debug_name := "Kalamity"
 	hotkey, ^+!F12, g_GiveLocalPlayerResources
 	hotkey, *>!F12, g_testKeydowns ; Just for testing will remove soon
@@ -268,7 +268,8 @@ process, exist, %GameExe%
 If !errorlevel
 {
 	MT_CurrentInstance.SCWasRunning := False
-	try run % StarcraftExePath()
+	try run % StarcraftExePath(), % StarcraftInstallPath()
+	;try ShellRun(StarcraftExePath(),, StarcraftInstallPath())
 }
 else MT_CurrentInstance.SCWasRunning := True
 Process, wait, %GameExe%	
@@ -299,10 +300,7 @@ if (!versionMatch && clientVersion && A_IsCompiled) ; clientVersion check if tru
 			. "`n`nAn update will be released shortly."
 			, 20 ; timeout 
 	}
-
 }
-
-
 ; it would have been better to assign all the addresses to one super global object
 ; but i tried doing this once before and it caused issues because i forgot to update some address 
 ; names in the functions.... so i cant be bothered taking the risk
@@ -860,7 +858,7 @@ mt_pause_resume:
 	}	
 	Else
 	{
-		settimer, clock, 250
+		settimer, clock, 100
 		aThreads.MiniMap.ahkPause.0
 		aThreads.Overlays.ahkPause.0
 		tSpeak("Resumed")
@@ -872,6 +870,7 @@ return
 ;------------
 clock:
 	time := GetTime()
+	; Cant jus't check getLocalPlayerNumber() != 16 as it loads too early and lots of memory stuff isn't correct 
 	if (!time && isInMatch) || (UpdateTimers) ; time=0 outside game
 	{	
 		isInMatch := False ; with this clock = 0 when not in game (while in game at 0s clock = 44)	
@@ -897,8 +896,12 @@ clock:
 		EnableAutoWorkerTerran := EnableAutoWorkerProtoss := False ; otherwise if they don't have start enabled they may need to press the hotkey twice to activate
 		setLowLevelInputHooks(False) ; Shouldn't be required anymore but I'm just gonna leave it anyway
 	}
-	Else if (time && !isInMatch) && (getLocalPlayerNumber() != 16 || debug) ; Local slot = 16 while in lobby/replay - this will stop replay announcements
+	; > 1,536d or 0600h -> 0.375 ; mischa's reaper bot used this as minimum time. A couple of people reported issues (e.g. auto-worker) - perpahs i wasnt't waiting long enough for game to finish loading
+	; since i round to nearest single decimal place, use 0.4
+	Else if (time > 0.4 && !isInMatch) && (getLocalPlayerNumber() != 16 || debug) ; Local slot = 16 while in lobby/replay - this will stop replay announcements
 	{
+		soundplay *-1
+
 		isInMatch := true
 		AW_MaxWorkersReached := TmpDisableAutoWorker := 0
 		aResourceLocations := []
@@ -974,11 +977,17 @@ clock:
 		if idle_enable	;this is the idle AFK
 			settimer, user_idle, 1000, -5
 
-		LocalPlayerRace := aLocalPlayer["Race"] ; another messy lazy variable but used in a few spots
-		if (EnableAutoWorker%LocalPlayerRace%Start && (aLocalPlayer["Race"] = "Terran" || aLocalPlayer["Race"] = "Protoss") )
+		;LocalPlayerRace := aLocalPlayer["Race"] ; another messy lazy variable but used in a few spots
+		;if (EnableAutoWorker%LocalPlayerRace%Start && (aLocalPlayer["Race"] = "Terran" || aLocalPlayer["Race"] = "Protoss") )
+		if (EnableAutoWorkerTerranStart && aLocalPlayer["Race"] = "Terran")
+		|| (EnableAutoWorkerProtossStart && aLocalPlayer["Race"] = "Protoss")
 		{
+			if aLocalPlayer["Race"] = "Terran" 
+				EnableAutoWorkerTerran := True
+			else EnableAutoWorkerProtoss := True			
 			SetTimer, g_autoWorkerProductionCheck, 200
-			EnableAutoWorker%LocalPlayerRace% := True
+
+			;EnableAutoWorker%LocalPlayerRace% := True
 		}
 		if ( Auto_Read_Races AND race_reading ) && 	!((ResumeWarnings || UserSavedAppliedSettings) && time > 12)
 			SetTimer, find_races_timer, 1000, -20
@@ -6719,17 +6728,22 @@ GUISelectionList(Title = "", textField := "Select Unit Type(s):", list := "Error
 
 ; there is an 'if' section in the bufferinput send that checks if the user pressed the Esc key
 ; if they did, it gosubs here
-g_temporarilyDisableAutoWorkerProductionOriginUserInputBufferSend:	
-If !(WinActive(GameIdentifier) && time && !isMenuOpen() && EnableAutoWorker%LocalPlayerRace%)
-		return
+;g_temporarilyDisableAutoWorkerProductionOriginUserInputBufferSend:	
+;If !(WinActive(GameIdentifier) && time && !isMenuOpen() && EnableAutoWorker%LocalPlayerRace%)
+;		return
 ; So will turn off autoworker for 5 seconds only if user presses esc and only that main is selected
 g_temporarilyDisableAutoWorkerProduction:
-if EnableAutoWorker%LocalPlayerRace% ; dont check TmpDisableAutoWorker so if cancels another builder a few seconds later it will still update it 
-	temporarilyDisableAutoWorkerProduction()
+; dont check TmpDisableAutoWorker so if cancels another builder a few seconds later it will still update it 
+;if (aLocalPlayer["Race"] = "Terran" && EnableAutoWorkerTerran) || (aLocalPlayer["Race"] = "Protoss" && EnableAutoWorkerProtoss)	
+; The hotkey #if already checks race and enableAutoWorker state
+temporarilyDisableAutoWorkerProduction()
 return 
 
 g_UserToggleAutoWorkerState: 		; this launched via the user hotkey combination
-	if (EnableAutoWorker%LocalPlayerRace% := !EnableAutoWorker%LocalPlayerRace%)
+
+	;	if (EnableAutoWorker%LocalPlayerRace% := !EnableAutoWorker%LocalPlayerRace%)
+	if (aLocalPlayer["Race"] = "Terran" && (EnableAutoWorkerTerran := !EnableAutoWorkerTerran))
+	|| (aLocalPlayer["Race"] = "Protoss" && (EnableAutoWorkerProtoss := !EnableAutoWorkerProtoss))
 	{
 		AW_MaxWorkersReached := TmpDisableAutoWorker := 0 		; just incase the timers bug out and this gets stuck in enabled state
 		SetTimer, g_autoWorkerProductionCheck, -1   ; so it starts immediately - cant use gosub as that negates
@@ -6776,9 +6790,13 @@ SetTimer, g_autoWorkerProductionCheck, 200
 return 
 
 g_autoWorkerProductionCheck:
-if (WinActive(GameIdentifier) && time && EnableAutoWorker%LocalPlayerRace% && !TmpDisableAutoWorker && !AW_MaxWorkersReached)
+;if (WinActive(GameIdentifier) && time && EnableAutoWorker%LocalPlayerRace% && !TmpDisableAutoWorker && !AW_MaxWorkersReached)
+if WinActive(GameIdentifier) && time && !TmpDisableAutoWorker && !AW_MaxWorkersReached
+&& ((aLocalPlayer["Race"] = "Terran" && EnableAutoWorkerTerran) || (aLocalPlayer["Race"] = "Protoss" && EnableAutoWorkerProtoss))
 	autoWorkerProductionCheck()
 return
+
+
 
 autoWorkerProductionCheck()
 {	GLOBAl aUnitID, aLocalPlayer, Base_Control_Group_T_Key, AutoWorkerStorage_P_Key, AutoWorkerStorage_T_Key, Base_Control_Group_P_Key, NextSubgroupKey
@@ -7620,7 +7638,8 @@ CreateHotkeys()
 	#If, WinActive(GameIdentifier) && time && !isChatOpen()
 	#If, WinActive(GameIdentifier) && time
 	#If, WinActive(GameIdentifier) && time && !isMenuOpen()
-	#If, WinActive(GameIdentifier) && time && !isMenuOpen() && EnableAutoWorker`%LocalPlayerRace`%
+	#If, ((aLocalPlayer["Race"] = "Terran" && EnableAutoWorkerTerran) || (aLocalPlayer["Race"] = "Protoss" && EnableAutoWorkerProtoss)) && WinActive(GameIdentifier) && time && !isMenuOpen() 
+	;#If, WinActive(GameIdentifier) && time && !isMenuOpen() && EnableAutoWorker`%LocalPlayerRace`%
 	#If
 
 	Hotkey, If, WinActive(GameIdentifier)
@@ -7717,7 +7736,8 @@ CreateHotkeys()
 	;Hotkey, If, WinActive(GameIdentifier) && time
 		
 
-	Hotkey, If, WinActive(GameIdentifier) && time && !isMenuOpen() && EnableAutoWorker`%LocalPlayerRace`% ; cant use !ischatopen() - as esc will close chat before memory reads value so wont see chat was open
+	;Hotkey, If, WinActive(GameIdentifier) && time && !isMenuOpen() && EnableAutoWorker`%LocalPlayerRace`% ; cant use !ischatopen() - as esc will close chat before memory reads value so wont see chat was open
+	Hotkey, If, ((aLocalPlayer["Race"] = "Terran" && EnableAutoWorkerTerran) || (aLocalPlayer["Race"] = "Protoss" && EnableAutoWorkerProtoss)) && WinActive(GameIdentifier) && time && !isMenuOpen() ; cant use !ischatopen() - as esc will close chat before memory reads value so wont see chat was open
 		hotkey, *~Esc, g_temporarilyDisableAutoWorkerProduction, on	
 
 	Hotkey, If
