@@ -11319,4 +11319,3 @@ clickCommandCard(position, byRef x, byRef y)
 	, y := y0 - (row * height + height//2)
 	return
 }
-

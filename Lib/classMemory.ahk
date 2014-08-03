@@ -12,6 +12,10 @@
         -   EnumProcessModulesEx() is now used instead of EnumProcessModules().
             This allows for getBaseAddressOfModule() in a 64 bit AHK process to enumerate
             (and find) the modules in a 32 bit target process.
+    7/08/14 - version 1.2
+        -   getProcessBaseAddress() dllcall now returns Int64. This prevents a negative number (overflow)
+            when reading the base address of a 64 bit target process from a 32 bit AHK process.
+
 
     RHCP's basic memory class:
 
@@ -331,7 +335,8 @@ class memory
     ; bitness (32 or 64 bit) of both the AHK exe and the target process.
 
     ; WindowTitle can be anything ahk_exe ahk_class etc
-    getProcessBaseAddress(WindowTitle, windowMatchMode := 3)   
+    ; using quotes around the MatchMode "3", so if setFormat Hex is in effect, it won't give an error with SetTitleMatchMode
+    getProcessBaseAddress(WindowTitle, windowMatchMode := "3")   
     {
         if windowMatchMode
         {
@@ -344,11 +349,9 @@ class memory
         if !hWnd
             return ; return blank failed to find window
        ; GetWindowLong returns a Long (Int) and GetWindowLongPtr return a Long_Ptr
-        BaseAddress := DllCall(A_PtrSize = 4
+        return DllCall(A_PtrSize = 4     ; If DLL call fails, returned value will = 0
             ? "GetWindowLong"
-            : "GetWindowLongPtr", "Ptr", hWnd, "Uint", -6, "UInt")
-        
-        return BaseAddress ; If DLL call fails, returned value will = 0
+            : "GetWindowLongPtr", "Ptr", hWnd, "Uint", -6, "Int64")  ; Use Int64 to prevent negative overflow when AHK is 32 bit and target process is 64bit       
     }   
 
     ; http://winprogger.com/getmodulefilenameex-enumprocessmodulesex-failures-in-wow64/
