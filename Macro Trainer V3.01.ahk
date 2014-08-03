@@ -117,7 +117,7 @@ Else
 {
 	Menu Tray, Icon, Included Files\Used_Icons\Starcraft-2.ico
 
-	global debug := True
+	global debug := False
 	debug_name := "Kalamity"
 	hotkey, ^+!F12, g_GiveLocalPlayerResources
 	hotkey, *>!F12, g_testKeydowns ; Just for testing will remove soon
@@ -308,14 +308,14 @@ if (!versionMatch && clientVersion && A_IsCompiled) ; clientVersion check if tru
 ; names in the functions.... so i cant be bothered taking the risk
 settimer, clock, 250
 settimer, timer_exit, 4000, -100
-; no using a shell monitor to keep destroy overlays
+; now using a shell monitor to keep destroy overlays
 ;SetTimer, OverlayKeepOnTop, 2000, -2000	;better here, as since WOL 2.0.4 having it in the "clock" section isn't reliable 	
 
-l_Changeling := aUnitID["ChangelingZealot"] "," aUnitID["ChangelingMarineShield"] ","  aUnitID["ChangelingMarine"] 
-				. ","  aUnitID["ChangelingZerglingWings"] "," aUnitID["ChangelingZergling"]
+;l_Changeling := aUnitID["ChangelingZealot"] "," aUnitID["ChangelingMarineShield"] ","  aUnitID["ChangelingMarine"] 
+;				. ","  aUnitID["ChangelingZerglingWings"] "," aUnitID["ChangelingZergling"]
 
 
-if A_OSVersion in WIN_7,WIN_VISTA ; win8 should probably be here too should read up on it
+if A_OSVersion in WIN_7,WIN_VISTA ; win8 should probably be here too - need read up on DWM in windows8
 {
 	if !DwmIsCompositionEnabled() && !MT_DWMwarned && !MT_Restart && A_IsCompiled ; so not restarted via hotkey or icon 
 	{
@@ -324,7 +324,7 @@ if A_OSVersion in WIN_7,WIN_VISTA ; win8 should probably be here too should read
 		MsgBox, 49, DWM is Disabled?
 		,	% "Desktop Widows Management (DWM) is disabled!`n`n" 
 		.	"This will cause significant performance issues while using this program.`n"
-		.  	"Your FPS can be expected to decrease by 70%`n`n" 
+		.  	"Your FPS can be expected to decrease by 50-70%`n`n" 
 		.	"Click  'Help' to launch some URLs explaining how to enable DWM.`n`n"
 		.	"You will not see this warning again!"	
 		IniWrite, % MT_DWMwarned := True, %config_file%, Misc Info, MT_DWMwarned
@@ -577,16 +577,40 @@ g_PlayModifierWarningSound:
 return
 
 ping:
-	critical, 1000
-	input.pReleaseKeys(True)
-	setLowLevelInputHooks(True)
-	if isChatOpen()
-		input.psend("{click MM}!g{click}{Enter}")
-	else 
-		input.psend("!g{click}")
-	Input.revertKeyState()
-	setLowLevelInputHooks(False)
+	if getMiniMapPingIconPos(x, y)
+	{
+		critical, 1000
+		input.pReleaseKeys(True)
+		setLowLevelInputHooks(True)
+		if isChatOpen()
+			input.psend("{click " x ", " y "}{click}{Enter}")
+		else input.psend("{click " x ", " y "}{click}")
+		Input.revertKeyState()
+		setLowLevelInputHooks(False)
+	}
 Return
+; Gives the co-ordinates for the ping icon/toolbar (so don't have to worry about differ user SC hotkeys)
+getMiniMapPingIconPos(byref xPos, byref yPos)
+{
+	static AspectRatio, x, y, supported := True
+
+	if (AspectRatio != newAspectRatio := getScreenAspectRatio())
+	{
+		AspectRatio := newAspectRatio
+		If (AspectRatio = "16:10")
+			x := (319/1680)*A_ScreenWidth, y := (830/1050)*A_ScreenHeight										
+		Else If (AspectRatio = "5:4")
+			x := (292/1280)*A_ScreenWidth, y := (823/1024)*A_ScreenHeight
+		Else If (AspectRatio = "4:3")	
+			x := (291/1280)*A_ScreenWidth, y := (759/960)*A_ScreenHeight
+		Else if (AspectRatio = "16:9")
+			x := (328/1920)*A_ScreenWidth, y := (854/1080)*A_ScreenHeight
+		else supported := false 
+	}
+	if supported
+		return true, xPos := x, yPos := y
+	else return false, xPos := yPos := "" ; so click doesn't do anything
+}
 
 g_DoNothing:
 Return			
@@ -621,51 +645,18 @@ if (getSelectionCount() > 1)
 }
 return
 
-;	This ReleaseModifiers function needs to wait an additional amount of time, as SC2 can be slow to 
-;	update its keystate and/or it buffers input/keys for a while. Perhaps checking logical keystate would be better
-;	but this isnt solid as the game state is still slower to change than this.
-; 	I have added the AdditionalKeys which is mainly used for zerg burrow
-;	and i have provided an additional 15 ms sleep time if burrow is being held down
-; 	can't use critical inside function, as that will delay all timers too much
-
-ReleaseModifiers(Beep = 1, CheckIfUserPerformingAction = 0, AdditionalKeys = "", CheckAllKeys := 0, timeout := "", LastButtonPress := 0) ;timout in ms
-{
-
-	startTime := A_Tickcount
-
-	While getkeystate("Shift", "P") || getkeystate("Control", "P") || getkeystate("Alt", "P")
-	|| getkeystate("LWin", "P") || getkeystate("RWin", "P")		
-	|| getkeystate("Shift") || getkeystate("Control") || getkeystate("Alt")
-	|| getkeystate("LWin") || getkeystate("RWin")
-	|| getkeystate("LButton", "P") || getkeystate("LButton")
-	|| getkeystate("RButton", "P") || getkeystate("RButton")
-	|| readModifierState() 
-	|| (AdditionalKeys && isaKeyPhysicallyOrLogicallyDown(AdditionalKeys))  ; ExtraKeysDown should actually return the actual key
-	|| (CheckAllKeys && checkAllKeyStates())  
-	|| (isPerformingAction := CheckIfUserPerformingAction && isUserPerformingAction()) ; have this function last as it can take the longest if lots of units selected
-	|| (LastButtonPress && A_mtTimeIdle < LastButtonPress)
-	{
-		if (timeout && A_Tickcount - startTime >= timeout)
-			return 1 ; was taking too long
-		if (A_Index = 1 && Beep && !isPerformingAction)	;wont beep if casting or burrow AKA 'extra key' is down
-			SoundPlay, %A_Temp%\ModifierDown.wav	
-		sleep, 5 ;sleep(5)
-	}
-
-	return
-}
-
+; Check != / = "" due to 0 key
 isaKeyPhysicallyOrLogicallyDown(Keys)
 {
   if isobject(Keys)
   {
     for Index, Key in Keys
       if getkeystate(Key, "P") || getkeystate(Key)
-        return key
+        return key ; This won't work for the 0 key!
   }
   else if getkeystate(Keys, "P") || getkeystate(Keys)
   	return Keys ;keys!
-  return 0
+  return 
 }
 
 g_SendBaseCam:
@@ -694,17 +685,21 @@ g_FineMouseMove:
 	FineMouseMove(A_ThisHotkey)
 Return
 
-FineMouseMove(Hotkey)
+FineMouseMove(Hotkey, tooltipPos := False)
 {
-	MouseGetPos, MX, MY
 	if (Hotkey = "Left")
-		mousemove, (MX-1), MY
+		mousemove, -1, 0, 0, R
 	else if (Hotkey = "Right")
-		mousemove, (MX+1), MY
+		mousemove, 1, 0, 0, R
 	else if (Hotkey = "Up")
-		mousemove, MX, MY-1
+		mousemove, 0, -1, 0, R
 	else if (Hotkey = "Down")
-		mousemove, MX, MY+1
+		mousemove, 0, 1, 0, R
+	if tooltipPos
+	{
+		MouseGetPos, x, y
+		tooltip % x ", " y 
+	}
 	return
 }
 
@@ -1293,8 +1288,7 @@ AutoGroup(byref A_AutoGroup)
 			controlGroup := activeGroup
 	}
 
-	if (controlGroup != "") && WinActive(GameIdentifier) && !isGamePaused() ; note <> "" as there is group 0! cant use " controlGroup "
-	;&& !isMenuOpen() && MT_InputIdleTime() >= AGKeyReleaseDelay && !checkAllKeyStates(False, True) && !readModifierState() 
+	if (controlGroup != "") && WinActive(GameIdentifier) && !isGamePaused() ; note != "" as there is group 0!
 	&& !isMenuOpen() && A_mtTimeIdle >= AGKeyReleaseDelay 
 	&& !(getkeystate("Shift", "P") && getkeystate("Control", "P") && getkeystate("Alt", "P")
 	&& getkeystate("LWin", "P") && getkeystate("RWin", "P"))
@@ -1313,7 +1307,6 @@ AutoGroup(byref A_AutoGroup)
 			input.pSend(aAGHotkeys.Add[controlGroup])
 			settimer, AutoGroupIdle, Off
 			settimer, Auto_Group, Off
-			soundplay *-1
 			SetTimer, resumeAutoGroup, -85
 			; Need to sleep for a while, as slow computers+lag can cause grouping command
 			; to be issued twice causing the camera to move. 
@@ -2065,9 +2058,9 @@ ShutdownProcedure:
 		Iniwrite, % round(GetProgramWaveVolume()), %config_file%, Volume, program	
 
 	setLowLevelInputHooks(False) ; Probably already removed (but the functions internal check allows it be called again)
-	Closed := ReadMemory()
-	Closed := ReadRawMemory()
-	Closed := ReadMemory_Str()
+	ReadMemory()
+	ReadRawMemory()
+	ReadMemory_Str()
 	
 	
 	;aThreads.miniMap.ahkLabel.ShutdownProcedure
@@ -4481,7 +4474,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 						. "`nThe mode can be set with via the 'mode' checkbox on right"
 
 		DrawWorkerOverlay_TT := "Displays your current harvester count with a worker icon"
-		DrawIdleWorkersOverlay_TT := "A worker icon with the current idle worker count is displayed when idle count is greater than or equal to the minimum value.`n`nThe size and position can be changed easily so that it grabs your attention."
+		DrawIdleWorkersOverlay_TT := "A worker icon with the current idle worker count is displayed when the idle count is greater than or equal to the minimum value.`n`nThe size and position can be changed easily so that it grabs your attention."
 		TT_IdleWorkerOverlayThreshold_TT := IdleWorkerOverlayThreshold_TT := "The idle worker overlay is only visible when your idle count is greater than or equal to this minimum value."
 
 		DrawUnitOverlay_TT := "Displays an overlay similar to the 'observer panel', listing the current and in-production unit counts.`n`nUse the 'unit panel filter' to selectively remove/display units.`n`nNote: To disable the match overlay uncheck both 'Show Upgrades' and 'Show Unit Count/Production'."
@@ -5365,10 +5358,14 @@ Screenshots and replays may be attached below.
 			attachments .= AttachmentPath ","
 		}
 
-		if FileExist(A_Temp "\MacroTRainerDebugData.txt")
-			FileDelete, %A_Temp%\MacroTRainerDebugData.txt
-		FileAppend, % DebugData(), %A_Temp%\MacroTRainerDebugData.txt
-		attachments .= A_Temp "\MacroTRainerDebugData.txt,"
+		if FileExist(A_Temp "\MacroTrainerDebugData.txt")
+			FileDelete, %A_Temp%\MacroTrainerDebugData.txt
+		FileAppend, % DebugData(), %A_Temp%\MacroTrainerDebugData.txt
+		attachments .= A_Temp "\MacroTRainerDebugData.txt,"	
+		if FileExist(A_Temp "\MacroTrainerSystemDebugData.txt")
+			FileDelete, %A_Temp%\MacroTrainerSystemDebugData.txt
+		FileAppend, % WMISystemInfo_Summary(), %A_Temp%\MacroTrainerSystemDebugData.txt
+		attachments .= A_Temp "\MacroTrainerSystemDebugData.txt,"
 		attachments := Trim(attachments, " `t`,")
 
 		if ((error := bugReportPoster(Report_Email, "Bug Report:`n`n" Report_TXT, attachments, ticketNumber)) >= 1)
@@ -6779,7 +6776,7 @@ SetTimer, g_autoWorkerProductionCheck, 200
 return 
 
 g_autoWorkerProductionCheck:
-if (WinActive(GameIdentifier) && time && EnableAutoWorker%LocalPlayerRace% && !TmpDisableAutoWorker && !AW_MaxWorkersReached  )
+if (WinActive(GameIdentifier) && time && EnableAutoWorker%LocalPlayerRace% && !TmpDisableAutoWorker && !AW_MaxWorkersReached)
 	autoWorkerProductionCheck()
 return
 
@@ -6791,7 +6788,6 @@ autoWorkerProductionCheck()
 	, AutoWorkerAPMProtection, AutoWorkerQueueSupplyBlock, AutoWorkerAlwaysGroup, MT_CurrentGame, aUnitTargetFilter
 	
 	static TickCountRandomSet := 0, randPercent,  UninterruptedWorkersMade, waitForOribtal := 0
-
 
 	if (aLocalPlayer["Race"] = "Terran") 
 	{
@@ -6887,7 +6883,6 @@ autoWorkerProductionCheck()
 				}
 				else 
 				{
-				
 					if (object.type = aUnitID["PlanetaryFortress"])
 						progress :=  getBuildStatsPF(object.unitIndex, QueueSize)
 					else
@@ -7097,8 +7092,8 @@ autoWorkerProductionCheck()
 			if !oSelection.IsGroupable
 			{
 				;msgbox % oSelection.IndicesString
-				setLowLevelInputHooks(False)
 				Input.revertKeyState()
+				setLowLevelInputHooks(False)
 				return		
 			}
 			selctionUnitIndices := oSelection.IndicesString
@@ -7621,7 +7616,8 @@ CreateHotkeys()
  	EventKeyDelay := -1
 
 	#If, WinActive(GameIdentifier)
-	#If, WinActive(GameIdentifier) && (!isMenuOpen() || (isMenuOpen() && isChatOpen())) && time
+	#If, WinActive(GameIdentifier) && time && (!isMenuOpen() || isChatOpen()) 
+	#If, WinActive(GameIdentifier) && time && !isChatOpen()
 	#If, WinActive(GameIdentifier) && time
 	#If, WinActive(GameIdentifier) && time && !isMenuOpen()
 	#If, WinActive(GameIdentifier) && time && !isMenuOpen() && EnableAutoWorker`%LocalPlayerRace`%
@@ -7631,11 +7627,12 @@ CreateHotkeys()
 		hotkey, %warning_toggle_key%, mt_pause_resume, on		
 		hotkey, *~LButton, g_LbuttonDown, on
 
-	Hotkey, If, WinActive(GameIdentifier) && (!isMenuOpen() || (isMenuOpen() && isChatOpen())) && time
+	Hotkey, If, WinActive(GameIdentifier) && time && (!isMenuOpen() || isChatOpen()) 
 		hotkey, %ping_key%, ping, on									;on used to re-enable hotkeys as were 
 	Hotkey, If, WinActive(GameIdentifier) && time	;turned off during save to allow for swaping of keys
 		if LwinDisable
 			hotkey, Lwin, g_DoNothing, on
+	Hotkey, If, WinActive(GameIdentifier) && time && !isChatOpen()	
 		hotkey, %worker_count_local_key%, worker_count, on
 		hotkey, %worker_count_enemy_key%, worker_count, on
 		hotkey, %Playback_Alert_Key%, g_PrevWarning, on					
@@ -7710,14 +7707,15 @@ CreateHotkeys()
 					try hotkey, % object.hotkey, g_QuickSelect, on
 			}
 		}
-
-	Hotkey, If, WinActive(GameIdentifier) && time
+	Hotkey, If, WinActive(GameIdentifier) && time && !isChatOpen() 	
 		if (aLocalPlayer["Race"] = "Zerg") && (auto_inject <> "Disabled")
 			hotkey, %cast_inject_key%, cast_inject, on	
 		if (aLocalPlayer["Race"] = "Zerg")
 			hotkey, %F_InjectOff_Key%, Cast_DisableInject, on	
 		if (aLocalPlayer["Race"] = "Terran" || aLocalPlayer["Race"] = "Protoss")
-			hotkey, %ToggleAutoWorkerState_Key%, g_UserToggleAutoWorkerState, on			
+			hotkey, %ToggleAutoWorkerState_Key%, g_UserToggleAutoWorkerState, on	
+	;Hotkey, If, WinActive(GameIdentifier) && time
+		
 
 	Hotkey, If, WinActive(GameIdentifier) && time && !isMenuOpen() && EnableAutoWorker`%LocalPlayerRace`% ; cant use !ischatopen() - as esc will close chat before memory reads value so wont see chat was open
 		hotkey, *~Esc, g_temporarilyDisableAutoWorkerProduction, on	
@@ -7742,16 +7740,15 @@ disableAllHotkeys()
 	Hotkey, If, WinActive(GameIdentifier)						
 		try hotkey, %warning_toggle_key%, off			; 	deactivate the hotkeys
 														; 	so they can be updated with their new keys
-	Hotkey, If, WinActive(GameIdentifier) && (!isMenuOpen() || (isMenuOpen() && isChatOpen())) && time
+	Hotkey, If, WinActive(GameIdentifier) && time && (!isMenuOpen() || isChatOpen()) 
 		try Hotkey, %ping_key%, off	 
 												; Anything with a try command has an 'if setting is on' section in the
 												; create hotkeys section
 												; still left the overall try just incase i missed something
 												; gives the user a friendlier error
-	Hotkey, If, WinActive(GameIdentifier) && (!isMenuOpen() || (isMenuOpen() && isChatOpen())) && time
-		hotkey, %ping_key%, off
 	Hotkey, If, WinActive(GameIdentifier) && time	
 		try hotkey, Lwin, off
+	Hotkey, If, WinActive(GameIdentifier) && time && !isChatOpen()
 		try hotkey, %worker_count_local_key%, off
 		try hotkey, %worker_count_enemy_key%, off
 		try hotkey, %Playback_Alert_Key%, off
@@ -7792,9 +7789,8 @@ disableAllHotkeys()
 			race := A_LoopField
 			for i, object in aQuickSelect[race]
 				try hotkey, % object.hotkey, off
-		}		
-
-	Hotkey, If, WinActive(GameIdentifier) && time
+		}
+	Hotkey, If, WinActive(GameIdentifier) && time && !isChatOpen()		
 		try hotkey, %cast_inject_key%, off
 		try hotkey, %F_InjectOff_Key%, off
 		try hotkey, %ToggleAutoWorkerState_Key%, off	
@@ -8070,7 +8066,7 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 			Dx1 := A_ScreenWidth-25, Dy1 := 45, Dx2 := 35, Dy2 := A_ScreenHeight-240	
 		Else ;left origin
 			Dx1 := 25, Dy1 := 25, Dx2 := A_ScreenWidth-40, Dy2 := A_ScreenHeight-240
-		loop, % getBaseCameraCount()	
+		loop, % getPlayerBaseCameraCount()	
 		{
 			input.pSend(base_camera)
 			sleep % ceil( (sleepTime/2) * rand(1, Inject_SleepVariance))	;need a sleep somerwhere around here to prevent walkabouts...sc2 not registerings box drag?
@@ -8984,8 +8980,7 @@ debugData()
 	. "QPFreq: " Frequency "`n"
 	. "QpTick: " CurrentTick "`n"
 	. "KeyRepeatRate: " getKeyRepeatRate() "`n"
-	. "KeyDelay: " getKeyDelay() "`n"
-	. "SC PID: " pid "`n`n"
+	. "KeyDelay: " getKeyDelay() "`n`n"
 	. "==========================================="
 	. "`nScreen Info:`n"
 	. "SC2 Res: " SC2HorizontalResolution() ", " SC2VerticalResolution() "`n"
@@ -9000,6 +8995,9 @@ debugData()
 	. "Account Folder: "  RegExReplace(getAccountFolder(), "\d{4}\\", "????\") "`n"
 	. "Game Exe: "	StarcraftExePath() "`n"
 	. "Game Dir: "	StarcraftInstallPath() "`n"
+	. "SC PID: " pid "`n"
+	. "SC Vr.: " getProcessFileVersion(GameExe) "`n"
+	. "SC Base.: " dectohex(getProcessBaseAddress(GameIdentifier)) "`n"
 	. "==========================================="
 	. "`n"
 	. "`n"
@@ -9026,7 +9024,7 @@ debugData()
 	. "GasIncome: " getPlayerGasIncome() "`n"
 	. "MineralIncome: " getPlayerMineralIncome() "`n"
 	. "`n"
-	. "BaseCount: " getBaseCameraCount() "`n"
+	. "BaseCount: " getPlayerBaseCameraCount() "`n"
 	. "LocalSlot: " getLocalPlayerNumber() "`n"
 	. "Colour: " getplayercolour(Player) "`n"
 	. "Team: " getplayerteam(Player) "`n"
@@ -9650,7 +9648,6 @@ getModifierDownSequenceFromKeyboard()
 
 castEasySelectLoadedTransport()
 {	
-
 	critical, 1000
 	setLowLevelInputHooks(True)
 	input.pReleaseKeys()
@@ -11302,5 +11299,4 @@ clickCommandCard(position, byRef x, byRef y)
 	, y := y0 - (row * height + height//2)
 	return
 }
-
 

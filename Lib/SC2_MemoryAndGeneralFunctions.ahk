@@ -556,7 +556,7 @@ getIdleWorkers()
 	return pointer(GameIdentifier, P_IdleWorker, O1_IdleWorker, O2_IdleWorker)
 }
 getPlayerSupply(player="")
-{ global
+{ 	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]
 	Return round(ReadMemory(((B_pStructure + O_pSupply) + (player-1)*S_pStructure), GameIdentifier)  / 4096)		
@@ -762,7 +762,7 @@ getLocalPlayerNumber() ;starts @ 1 (because the real first player in player stru
 {	global
 	Return ReadMemory(B_LocalPlayerSlot, GameIdentifier, 1) ;Local player slot is 1 Byte!!
 }
-getBaseCameraCount(player="")
+getPlayerBaseCameraCount(player="")
 { 	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]	
@@ -2951,7 +2951,6 @@ getPlayers(byref aPlayer, byref aLocalPlayer, byref aEnemyAndLocalPlayer := "")
 	return	
 }
 
-
 IsInList(Var, items*)
 {
 	for key, item in items
@@ -2961,7 +2960,6 @@ IsInList(Var, items*)
 	}
 	return 0
 }
-
 
 class c_Player
 {

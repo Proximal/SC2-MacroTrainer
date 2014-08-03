@@ -1,3 +1,4 @@
+; check result != "" as the '0' key when returned will indicate false rather than true
 checkAllKeyStates(logical := True, physical := True)
 {
 	static aKeys := []
@@ -21,5 +22,5 @@ checkAllKeyStates(logical := True, physical := True)
 				return key
 		}
 	}	
-	return
+	return ""
 }
