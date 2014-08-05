@@ -62,7 +62,7 @@
         getProcessBaseAddress()
         getBaseAddressOfModule()
 
-    Internal methods: (but can still be useful)
+    Internal methods: (not as useful)
         pointer()
         getAddressFromOffsets()  
 
@@ -135,6 +135,7 @@ class memory
 {
     static baseAddress, hProcess
     , insertNullTerminator := True
+    , readStringLastError := False
     , aTypeSize := {    "UChar":    1,  "Char":     1
                     ,   "UShort":   2,  "Short":    2
                     ,   "UInt":     4,  "Int":      4
@@ -151,6 +152,7 @@ class memory
     {
         if !(handle := this.openProcess(program, dwDesiredAccess, windowMatchMode))
             return ""
+        this.readStringLastError := False
         this.BaseAddress := this.getProcessBaseAddress(program, windowMatchMode)
         return this
     }
@@ -174,7 +176,7 @@ class memory
     ;   Null/blank -  OpenProcess failed. If the target process has admin rights, then the script also needs to be ran as admin.
     ;   Positive integer - A handle to the process.
 
-    openProcess(program, dwDesiredAccess := "", windowMatchMode := 3)
+    openProcess(program, dwDesiredAccess := "", windowMatchMode := "3")
     {
         ; if an application closes/restarts the previous handle becomes invalid so reopen it to be safe (closing a now invalid handle is fine i.e. wont cause an issue)
         
@@ -199,39 +201,97 @@ class memory
     ; That is, you don't need to call this function.
     closeProcess(hProcess)
     {
-        ; if as an error when opening handle, handle will be null
+        ; if there was an error when opening handle, handle will be null
         if hProcess
             return DllCall("CloseHandle", "UInt", hProcess)
         return
     }
-    
-    ; reads various integer type values
-    ; When reading doubles, adjusting "SetFormat, float, totalWidth.DecimalPlaces" may be required depending on your requirements.
+    ; Method:   read(address, type := "UInt", aOffsets*)
+    ;           Reads various integer type values
+    ; Parameters:
+    ;       address -   The memory address of the value or if using the offset parameter, 
+    ;                   the base address of the pointer.
+    ;       type    -   The integer type. 
+    ;                   Valid types are UChar, Char, UShort, Short, UInt, Int, UFloat, Float, Int64 and Double. 
+    ;                   Note: Types must not contain spaces i.e. " UInt" or "UInt " will not work. 
+    ;                   When an invalid type is passed the method returns NULL and sets ErrorLevel to -2
+    ;       aOffsets* - A variadic list of offsets. When using offsets the address parameter should equal the base address of the pointer.
+    ;                   The address (bass address) and offsets should point to the memory address which holds to the integer.  
+    ; Return Values:
+    ;       integer -   Indicates success.
+    ;       Null    -   Indicates failure. Check ErrorLevel and A_LastError for more information.
+    ;       Note:       Since the returned integer value may be 0, to check for success/failure compare the result
+    ;                   against null i.e. if (result = "") then an error has occurred.
+    ;                   When reading doubles, adjusting "SetFormat, float, totalWidth.DecimalPlaces"
+    ;                   may be required depending on your requirements.
     read(address, type := "UInt", aOffsets*)
     {
-        VarSetCapacity(buffer, bytes := this.aTypeSize[type])
-        if !DllCall("ReadProcessMemory","UInt",  this.hProcess, "UInt", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, "Ptr", &buffer, "UInt", bytes, "Ptr",0)
-          return !this.hProcess ? "Handle Is closed: " this.hProcess : "Fail"
-        return numget(buffer, 0, Type)
+        ; If invalid type RPM() returns success (as bytes to read resolves to null in dllCall())
+        ; so set errorlevel to invalid parameter for DLLCall() i.e. -2
+        if !this.aTypeSize.hasKey(type)
+            return "", ErrorLevel := -2 
+        if DllCall("ReadProcessMemory","UInt",  this.hProcess, "UInt", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, type "*", result, "UInt", this.aTypeSize[type], "Ptr",0)
+            return result
+        return        
     }
-    ; This is used to dump large chunks of memory. Values can later be retried from the buffer using AHK's numget()/strget()
-    ; this offers a SIGNIFICANT (~30% and up for large areas) performance boost for large memory structures,
-    ; as calling ReadProcessMemory for 4 bytes takes a similar amount of time as it does to read 1,000 bytes
+    ; Method:   ReadRawMemory(address, byRef buffer, bytes := 4, aOffsets*)
+    ;           Reads an area of the processes memory and stores it in the buffer variable
+    ; Parameters:
+    ;       address  -  The memory address of the area to read or if using the offsets parameter
+    ;                   the base address of the pointer which points to the memory region.
+    ;       buffer   -  The unquoted variable name for the buffer. This variable will receive the contents from the address space.
+    ;                   This method calls varsetCapcity() to ensure the variable has an adequate size to perform the operation. 
+    ;                   If the variable already has a larger capacity (from a previous call to varsetcapcity()), then it will not be shrunk. 
+    ;                   Therefore it is the callers responsibility to ensure that any subsequent actions performed on the buffer variable
+    ;                   do not exceed the bytes which have been read - as these remaining bytes could contain anything.
+    ;       bytes   -   The number of bytes to be read.          
+    ;       aOffsets* - A variadic list of offsets. When using offsets the address parameter should equal the base address of the pointer.
+    ;                   The address (bass address) and offsets should point to the memory address which is to be read
+    ; Return Values:
+    ;       Non Zero -   Indicates success.
+    ;       Zero     -   Indicates failure. Check errorLevel and A_LastError for more information
+    ; 
+    ; Notes:            The contents of the buffer may then be retrieved using AHK's NumGet() and StrGet() functions.           
+    ;                   This method offers significant (~30% and up) performance boost when reading large areas of memory. 
+    ;                   As calling ReadProcessMemory for four bytes takes a similar amount of time as it does for 1,000 bytes.                
 
-    ReadRawMemory(address, byref buffer, bytes := 4, aOffsets*)
+    ReadRawMemory(address, byRef buffer, bytes := 4, aOffsets*)
     {
         VarSetCapacity(buffer, bytes)
-        if !DllCall("ReadProcessMemory", "UInt", this.hProcess, "UInt", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, "Ptr", &buffer, "UInt", bytes, "UInt*", bytesRead)
-            return !this.hProcess ? "Handle Is closed: " this.hProcess : "Fail"
-        return bytesRead
+        return DllCall("ReadProcessMemory", "UInt", this.hProcess, "UInt", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, "Ptr", &buffer, "UInt", bytes, "Ptr", 0)
     }
 
-    ; Encoding refers to how the string is stored in the program's memory - probably uft-8 or utf-16
-    ; If sizeBytes is 0, readString() will read the string until it finds a null terminator (or an error occurs)
+    ; Method:   readString(address, sizeBytes := 0, encoding := "utf-8", aOffsets*)
+    ;           Reads string values of various encoding types
+    ; Parameters:
+    ;       address -   The memory address of the value or if using the offset parameter, 
+    ;                   the base address of the pointer.
+    ;       sizeBytes - The size (in bytes) of the string to be read.
+    ;                   If zero is passed, then the function will read each character until a null terminator is found
+    ;                   and then returns the entire string.
+    ;       encoding -  This refers to how the string is stored in the program's memory.
+    ;                   UTF-8 and UTF-16 are common. Refer to the AHK manual for other encoding types.
+    ;       aOffsets* - A variadic list of offsets. When using offsets the address parameter should equal the base address of the pointer.
+    ;                   The address (bass address) and offsets should point to the memory address which holds the string.                             
+    ;                   
+    ;  Return Values:
+    ;       String -    On failure an empty (null) string is always returned. Since it's possible for the actual string 
+    ;                   being read to be null (empty), then a null return value should not be used to determine failure of the method.
+    ;                   Instead the property [derivedObject].ReadStringLastError can be used to check for success/failure.
+    ;                   This property is set to 0 on success and 1 on failure. On failure ErrorLevel and A_LastError should be consulted
+    ;                   for more information.
+    ; Notes:
+    ;       For best performance use the sizeBytes parameter to specify the exact size of the string. 
+    ;       If the exact size is not known and the string is null terminated, then specifying the maximum
+    ;       possible size of the string will yield the same performance.  
+    ;       If neither the actual or maximum size is known and the string is null terminated, then specifying
+    ;       zero for the sizeBytes parameter is fine. Generally speaking for all intents and purposes the performance difference is
+    ;       inconsequential.  
 
-    readString(address, sizeBytes := 0, encoding := "utf-8", aOffsets*)
+    readString(address, sizeBytes := 0, encoding := "UTF-8", aOffsets*)
     {
         bufferSize := VarSetCapacity(buffer, sizeBytes ? sizeBytes : 100, 0)
+        this.ReadStringLastError := False
         if aOffsets.maxIndex()
             address := this.getAddressFromOffsets(address, aOffsets*)
         if !sizeBytes  ; read until null terminator is found or something goes wrong
@@ -240,9 +300,9 @@ class memory
             charType := encodingSize = 1 ? "Char" : "Short"
             Loop
             {
-                success := DllCall("ReadProcessMemory", "UInt", this.hProcess, "UInt", address + (A_index - 1) * encodingSize, "Ptr", &buffer, "Uint", encodingSize, "Ptr", 0) 
-                if (ErrorLevel || !success)
-                    return this.hProcess ? "Fail" : "Handle Is closed: " this.hProcess
+                if (!DllCall("ReadProcessMemory", "UInt", this.hProcess, "UInt", address + (A_index - 1) * encodingSize, "Ptr", &buffer, "Uint", encodingSize, "Ptr", 0) 
+                || ErrorLevel)
+                    return "", this.ReadStringLastError := True ;this.hProcess ? "Fail" : "Handle Is closed: " this.hProcess
                 else if (0 = NumGet(buffer, 0, charType)) ; NULL terminator
                 {
                     if (bufferSize < sizeBytes := A_Index * encodingSize) ; A_Index will equal the size of the string in bytes
@@ -251,15 +311,28 @@ class memory
                 }   
             }
         }
-        if !DllCall("ReadProcessMemory", "UInt", this.hProcess, "UInt", address, "Ptr", &buffer, "Uint", sizeBytes, "Ptr", 0)   
-            return !this.hProcess ? "Handle Is closed: " this.hProcess : "Fail"
-        return StrGet(&buffer,, encoding)               
+        if DllCall("ReadProcessMemory", "UInt", this.hProcess, "UInt", address, "Ptr", &buffer, "Uint", sizeBytes, "Ptr", 0)   
+            return StrGet(&buffer,, encoding)  
+        return "", this.ReadStringLastError := True ; !this.hProcess ? "Handle Is closed: " this.hProcess : "Fail"              
     }
 
-    ; by default a null terminator is included at the end of written strings for writeString()
-    ; This property can be changed i.e.
-    ; memory.insertNullTerminator := False ; This will change the property for all processes
-    ; calc.insertNullTerminator := False ; Changes the property for just this process
+    ; Method:  writeString(address, string, encoding := "utf-8", aOffsets*)
+    ;          Encodes and then writes a string to the process.
+    ; Parameters:
+    ;       address -   The memory address to which data will be written or if using the offset parameter, 
+    ;                   the base address of the pointer.
+    ;       string -    The string to be written.
+    ;       encoding -  This refers to how the string is to be stored in the program's memory.
+    ;                   UTF-8 and UTF-16 are common. Refer to the AHK manual for other encoding types.
+    ;       aOffsets* - A variadic list of offsets. When using offsets the address parameter should equal the base address of the pointer.
+    ;                   The address (bass address) and offsets should point to the memory address which is to be written to.
+    ; Return Values:
+    ;       Non Zero -   Indicates success.
+    ;       Zero     -   Indicates failure. Check errorLevel and A_LastError for more information
+    ; Notes:
+    ;       By default a null terminator is included at the end of written strings. 
+    ;       This behaviour is determined by the property [derivedObject].insertNullTerminator
+    ;       If this property is true, then a null terminator is included.       
 
     writeString(address, string, encoding := "utf-8", aOffsets*)
     {
@@ -267,36 +340,64 @@ class memory
         requiredSize := StrPut(string, encoding) * encodingSize - (this.insertNullTerminator ? 0 : encodingSize)
         VarSetCapacity(buffer, requiredSize)
         StrPut(string, &buffer, this.insertNullTerminator ? StrLen(string) : StrLen(string) + 1, encoding)
-        DllCall("WriteProcessMemory", "UInt", this.hProcess, "UInt", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, "Ptr", &buffer, "Uint", requiredSize, "UInt*", BytesWritten)
-        return BytesWritten
+        return DllCall("WriteProcessMemory", "UInt", this.hProcess, "UInt", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, "Ptr", &buffer, "Uint", requiredSize, "Ptr", 0)
     }
+    
+    ; Method:   write(address, value, type := "Uint", aOffsets*)
+    ;           Writes various integer type values to the process.
+    ; Parameters:
+    ;       address -   The memory address to which data will be written or if using the offset parameter, 
+    ;                   the base address of the pointer.
+    ;       type    -   The integer type. 
+    ;                   Valid types are UChar, Char, UShort, Short, UInt, Int, UFloat, Float, Int64 and Double. 
+    ;                   Note: Types must not contain spaces i.e. " UInt" or "UInt " will not work. 
+    ;                   When an invalid type is passed the method returns NULL and sets ErrorLevel to -2
+    ;       aOffsets* - A variadic list of offsets. When using offsets the address parameter should equal the base address of the pointer.
+    ;                   The address (bass address) and offsets should point to the memory address which is to be written to.
+    ; Return Values:
+    ;       Non Zero -  Indicates success.
+    ;       Zero     -  Indicates failure. Check errorLevel and A_LastError for more information
+    ;       Null    -   An invalid type was passed. Errorlevel is set to -2
 
     write(address, value, type := "Uint", aOffsets*)
     {
-        if !bytes := this.aTypeSize[type]
-            return  -1 ; Non Supported data type e.g. Unsigned64 bit not supported by AHK
-        VarSetCapacity(buffer, bytes)
-        NumPut(value, buffer, 0, type)
-        return DllCall("WriteProcessMemory", "UInt", this.hProcess, "UInt", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, "Ptr", &buffer, "Uint", bytes, "Ptr", 0) 
+        if !this.aTypeSize.hasKey(type)
+            return "", ErrorLevel := -2 
+        return DllCall("WriteProcessMemory", "UInt", this.hProcess, "UInt", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, type "*", value, "Uint", this.aTypeSize[type], "Ptr", 0) 
     }
 
-    ; Writes out a buffer. The bufferSize parameter is optional, if omitted it will be automatically determined.
-    writeBuffer(address, byRef buffer, byRef bufferSize := 0, aOffsets*)
+    ; Method:   writeBuffer(address, byRef buffer, byRef bufferSize := 0, aOffsets*)
+    ;           Writes a buffer to the process.
+    ; Parameters:
+    ;   address -       The memory address to which the contents of the buffer will be written 
+    ;                   or if using the offset parameter, the base address of the pointer.    
+    ;   pBuffer -       A pointer to the buffer which is to be written.
+    ;                   This does not necessarily have to be the beginning of the buffer itself e.g. pBuffer := &buffer + offset
+    ;   sizeBytes -     The number of bytes which are to be written from the buffer.
+    ;   aOffsets* -     A variadic list of offsets. When using offsets the address parameter should equal the base address of the pointer.
+    ;                   The address (bass address) and offsets should point to the memory address which is to be written to.
+    ; Return Values:
+    ;       Non Zero -  Indicates success.
+    ;       Zero     -  Indicates failure. Check errorLevel and A_LastError for more information
+    writeBuffer(address, pBuffer, sizeBytes, aOffsets*)
     {
-        if (bufferSize <= 0 && !bufferSize := VarSetCapacity(buffer))
-            return -1 ; Nothing to be written
-        return DllCall("WriteProcessMemory", "UInt", this.hProcess, "UInt", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, "Ptr", &buffer, "Uint", bufferSize, "Ptr", 0) 
+        return DllCall("WriteProcessMemory", "UInt", this.hProcess, "UInt", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, "Ptr", pBuffer, "Uint", sizeBytes, "Ptr", 0) 
     }
-
-    ; This can be used to read various numeric pointer types (the the other various read/write functions can do this too!)
-    ; This function is now mainly used by the other functions to find the final pointer address
-
-    ; final type refers to the how the value is stored in the final pointer address
-    ; Can pass an array of offsets by using *
-    ; eg, 
-    ; a := [0x10, 0x30, 0xFF]
-    ; pointer(game, base, a*)
-    ; or pointer(game, base, 0x10, 0x30, 0xFF)
+    ; Method:           pointer(base, finalType := "UInt", offsets*)
+    ;                   This is an internal method. Since the other various methods all offer this functionality, they should be used instead.
+    ;                   This will read integer values of both pointers and non-pointers (i.e. a single memory address)
+    ; Parameters:
+    ;   base -          The base address of the pointer or the memory address for a non-pointer.
+    ;   finalType -     The type of integer stored at the final address.
+    ;                   Valid types are UChar, Char, UShort, Short, UInt, Int, UFloat, Float, Int64 and Double. 
+    ;                   Note: Types must not contain spaces i.e. " UInt" or "UInt " will not work. 
+    ;                   When an invalid type is passed the method returns NULL and sets ErrorLevel to -2
+    ;   aOffsets* -     A variadic list of offsets used to calculate the pointers final address.
+    ; Return Values: (The same as the read() method)
+    ;       integer -   Indicates success.
+    ;       Null    -   Indicates failure. Check ErrorLevel and A_LastError for more information.
+    ;       Note:       Since the returned integer value may be 0, to check for success/failure compare the result
+    ;                   against null i.e. if (result = "") then an error has occurred.
 
     pointer(base, finalType := "UInt", offsets*)
     { 
@@ -305,17 +406,21 @@ class memory
         {
             if (index = offsets.maxIndex() && A_index = 1)
                 pointer := offset + this.Read(base)
-            Else 
-            {
-                IF (A_Index = 1) 
-                    pointer := this.Read(offset + this.Read(base))
-                Else If (index = offsets.MaxIndex())
-                    pointer += offset
-                Else pointer := this.Read(pointer + offset)
-            }
+            Else IF (A_Index = 1) 
+                pointer := this.Read(offset + this.Read(base))
+            Else If (index = offsets.MaxIndex())
+                pointer += offset
+            Else pointer := this.Read(pointer + offset)
         }   
         Return this.Read(offsets.maxIndex() ? pointer : base, finalType)
     }
+    ; Method:           getAddressFromOffsets(address, aOffsets*)
+    ;                   This is an internal method used by the various methods to determine the final pointer address.
+    ; Parameters:
+    ;   address -       The base address of the pointer.
+    ;   aOffsets* -     A variadic list of offsets used to calculate the pointers final address.
+    ;                   At least one offset must be present.
+    ; Return Values: (The same as the pointer() method)
 
     getAddressFromOffsets(address, aOffsets*)
     {
@@ -357,28 +462,29 @@ class memory
     ; http://winprogger.com/getmodulefilenameex-enumprocessmodulesex-failures-in-wow64/
     ; http://stackoverflow.com/questions/3801517/how-to-enum-modules-in-a-64bit-process-from-a-32bit-wow-process
 
+    ; Method:           getBaseAddressOfModule(module := "", byRef sizeOfImage := "", byRef entryPoint := "")
     ; Parameters:
-    ;   Module - The file name of the module/dll to find e.g. "GDI32.dll", "Battle.net.dll" etc
-    ;            If no module is specified, the address of the base module - main() (program) will be returned e.g. C:\Games\StarCraft II\Versions\Base28667\SC2.exe
-
+    ;   module -        The file name of the module/dll to find e.g. "GDI32.dll", "Battle.net.dll" etc
+    ;                   If no module (null) is specified, the address of the base module - main()/program will be returned 
+    ;                   e.g. C:\Games\StarCraft II\Versions\Base28667\SC2.exe
+    ;   sizeOfImage -   The size of the linear space that the module occupies, in bytes.
+    ;   entryPoint -    The entry point of the module.
     ; Return Values: 
-    ;   Positive integer - Module base address
+    ;   Positive integer - The module's base/load address (success).
     ;   -1 - Module not found
     ;   -2 - The process handle has been closed.
     ;   -3 - EnumProcessModulesEx failed
     ;   -4 - The AHK script is 32 bit and you are trying to access the modules of a 64 bit target process. Or the target process has been closed.
     ;   -5 - GetModuleInformation failed.
+    ; Notes:    A 64 bit AHK can enumerate the modules of a target 64 or 32 bit process.
+    ;           A 32 bit AHK can only enumerate the modules of a 32 bit process
+    ;           This method requires PROCESS_QUERY_INFORMATION + PROCESS_VM_READ access rights. These are included by default with this class.
 
-    ; Note: A 64 bit AHK can enumerate the modules of a target 64 or 32 bit process.
-    ;       A 32 bit AHK can only enumerate the modules of a 32 bit process
-
-    ; This function requires PROCESS_QUERY_INFORMATION + PROCESS_VM_READ (which is included by default with this class)
-
-    getBaseAddressOfModule(module := "")
+    getBaseAddressOfModule(module := "", byRef sizeOfImage := "", byRef entryPoint := "")
     {
         if !this.hProcess
             return -2
-        if (A_PtrSize = 4) ; AHK 32bit
+        if (A_PtrSize = 4)
         {
             DllCall("IsWow64Process", "Ptr", this.hProcess, "Int*", result)
             if !result 
@@ -396,7 +502,7 @@ class memory
             if (module = "" && mainExeFullPath = moduleFullPath) || (module != "" && module = filename)
             {
                 if this.GetModuleInformation(hModule, aModuleInfo)
-                    return aModuleInfo.lpBaseOfDll
+                    return aModuleInfo.lpBaseOfDll, sizeOfImage := aModuleInfo.SizeOfImage, entryPoint := aModuleInfo.EntryPoint
                 else return -5 ; Failed to get module info
             }
         }
@@ -453,7 +559,29 @@ class memory
                 , aModuleInfo := {  lpBaseOfDll: numget(MODULEINFO, 0, "Ptr")
                                 ,   SizeOfImage: numget(MODULEINFO, A_PtrSize, "UInt")
                                 ,   EntryPoint: numget(MODULEINFO, A_PtrSize * 2, "Ptr") }
-    }    
+    }  
+
+    ; This is just testing
+    patternScan(startAddress, sizeOfRegionBytes, aAOBPattern*)
+    {
+        if aPattern.MaxIndex() > sizeOfRegionBytes
+            return -1
+        if !this.ReadRawMemory(startAddress, buffer, sizeOfRegionBytes)
+            return -2
+        while((i := A_Index - 1) <= sizeOfRegionBytes - aAOBPattern.MaxIndex()) 
+        {
+            for j, value in aAOBPattern
+            {
+                if (value != "?" && value != Numget(buffer, i + j - 1, "UChar"))
+                    break
+                else if aAOBPattern.MaxIndex() = j 
+                    return startAddress + i
+            }
+        }
+        return 0
+    }
+
+
 }
 
     /*
