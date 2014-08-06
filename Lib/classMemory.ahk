@@ -12,7 +12,7 @@
         -   EnumProcessModulesEx() is now used instead of EnumProcessModules().
             This allows for getBaseAddressOfModule() in a 64 bit AHK process to enumerate
             (and find) the modules in a 32 bit target process.
-    7/08/14 - version 1.2
+    1/08/14 - version 1.2
         -   getProcessBaseAddress() dllcall now returns Int64. This prevents a negative number (overflow)
             when reading the base address of a 64 bit target process from a 32 bit AHK process.
 
@@ -560,6 +560,8 @@ class memory
                                 ,   SizeOfImage: numget(MODULEINFO, A_PtrSize, "UInt")
                                 ,   EntryPoint: numget(MODULEINFO, A_PtrSize * 2, "Ptr") }
     }  
+    
+    ; This will scan the memory region of a loaded module
     ;   module -        The file name of the module/dll to find e.g. "GDI32.dll", "Battle.net.dll" etc
     ;                   If no module (null) is specified, the address of the base module - main()/program will be returned 
     ;                   e.g. C:\Games\StarCraft II\Versions\Base28667\SC2.exe
@@ -569,7 +571,7 @@ class memory
            return this.patternScan(aModuleInfo.lpBaseOfDll, aModuleInfo.SizeOfImage, aAOBPattern*) 
         return "", ErrorLevel := result ; failed
     }
-    ; This is just testing
+    ; Scans a specified memory region for a pattern
     patternScan(startAddress, sizeOfRegionBytes, aAOBPattern*)
     {
         if aPattern.MaxIndex() > sizeOfRegionBytes
@@ -588,18 +590,20 @@ class memory
         }
         return 0
     }
-
+    ; scans the entire memory space of the process
     processPatternScan(aAOBPattern*)
     {
         address := 0
         MEM_COMMIT := 0x1000       
         MEM_MAPPED := 0x40000
         MEM_PRIVATE := 0x20000
+        PAGE_NOACCESS := 0x01
         PAGE_GUARD := 0x100
         while this.VirtualQueryEx(address, aInfo)
         {
             if (aInfo.State = MEM_COMMIT) 
-            && !(aInfo.Protect & PAGE_GUARD) ; PAGE_GUARD - so can't read this area
+            && !(aInfo.Protect & PAGE_NOACCESS) ; can't read this area
+            && !(aInfo.Protect & PAGE_GUARD) ; can't read this area
             && (aInfo.Type = MEM_MAPPED || aInfo.Type = MEM_PRIVATE)
             {
                 if !result := this.patternScan(address, aInfo.RegionSize, aAOBPattern*)
