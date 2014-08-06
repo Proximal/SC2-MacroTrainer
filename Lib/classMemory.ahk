@@ -467,8 +467,8 @@ class memory
     ;   module -        The file name of the module/dll to find e.g. "GDI32.dll", "Battle.net.dll" etc
     ;                   If no module (null) is specified, the address of the base module - main()/program will be returned 
     ;                   e.g. C:\Games\StarCraft II\Versions\Base28667\SC2.exe
-    ;   sizeOfImage -   The size of the linear space that the module occupies, in bytes.
-    ;   entryPoint -    The entry point of the module.
+    ;   aModuleInfo -   A module Info object is returned in this variable. 
+    ;                   This object contains the keys: lpBaseOfDll, SizeOfImage, and EntryPoint 
     ; Return Values: 
     ;   Positive integer - The module's base/load address (success).
     ;   -1 - Module not found
@@ -480,7 +480,7 @@ class memory
     ;           A 32 bit AHK can only enumerate the modules of a 32 bit process
     ;           This method requires PROCESS_QUERY_INFORMATION + PROCESS_VM_READ access rights. These are included by default with this class.
 
-    getBaseAddressOfModule(module := "", byRef sizeOfImage := "", byRef entryPoint := "")
+    getBaseAddressOfModule(module := "", byRef aModuleInfo := "")
     {
         if !this.hProcess
             return -2
@@ -502,7 +502,7 @@ class memory
             if (module = "" && mainExeFullPath = moduleFullPath) || (module != "" && module = filename)
             {
                 if this.GetModuleInformation(hModule, aModuleInfo)
-                    return aModuleInfo.lpBaseOfDll, sizeOfImage := aModuleInfo.SizeOfImage, entryPoint := aModuleInfo.EntryPoint
+                    return aModuleInfo.lpBaseOfDll
                 else return -5 ; Failed to get module info
             }
         }
@@ -560,7 +560,15 @@ class memory
                                 ,   SizeOfImage: numget(MODULEINFO, A_PtrSize, "UInt")
                                 ,   EntryPoint: numget(MODULEINFO, A_PtrSize * 2, "Ptr") }
     }  
-
+    ;   module -        The file name of the module/dll to find e.g. "GDI32.dll", "Battle.net.dll" etc
+    ;                   If no module (null) is specified, the address of the base module - main()/program will be returned 
+    ;                   e.g. C:\Games\StarCraft II\Versions\Base28667\SC2.exe
+    modulePatternScan(module := "", aAOBPattern*)
+    {
+        if result := this.getBaseAddressOfModule(module, aModuleInfo)
+           return this.patternScan(aModuleInfo.lpBaseOfDll, aModuleInfo.SizeOfImage, aAOBPattern*) 
+        return "", ErrorLevel := result ; failed
+    }
     ; This is just testing
     patternScan(startAddress, sizeOfRegionBytes, aAOBPattern*)
     {
@@ -579,19 +587,6 @@ class memory
             }
         }
         return 0
-    }
-
-    ; The handle must have been opened with the PROCESS_QUERY_INFORMATION access right
-    VirtualQueryEx(address, byRef aInfo)
-    {
-        if !isobject(aInfo)
-            aInfo := new this._MEMORY_BASIC_INFORMATION()
-        return (aInfo.SizeOf() = DLLCall("VirtualQueryEx" 
-                                            , "Ptr", this.hProcess
-                                            , "Ptr", address
-                                            , "Ptr", aInfo.Ptr()
-                                            , "UInt", aInfo.SizeOf() 
-                                            , "UInt") )
     }
 
     processPatternScan(aAOBPattern*)
@@ -617,6 +612,19 @@ class memory
             else address += aInfo.RegionSize
         }
         return 0 ; "VirtualQueryEx() failed (or pattern not found in process space) at address: " address "`n" A_LastError " | " ErrorLevel
+    }
+
+    ; The handle must have been opened with the PROCESS_QUERY_INFORMATION access right
+    VirtualQueryEx(address, byRef aInfo)
+    {
+        if !isobject(aInfo)
+            aInfo := new this._MEMORY_BASIC_INFORMATION()
+        return (aInfo.SizeOf() = DLLCall("VirtualQueryEx" 
+                                            , "Ptr", this.hProcess
+                                            , "Ptr", address
+                                            , "Ptr", aInfo.Ptr()
+                                            , "UInt", aInfo.SizeOf() 
+                                            , "UInt") )
     }
 
     class _MEMORY_BASIC_INFORMATION
@@ -667,6 +675,8 @@ class memory
     }
 
 }
+
+
 /*
 32bit
 Size: 28
