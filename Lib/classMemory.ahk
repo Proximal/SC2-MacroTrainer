@@ -567,11 +567,24 @@ class memory
     ;                   e.g. C:\Games\StarCraft II\Versions\Base28667\SC2.exe
     modulePatternScan(module := "", aAOBPattern*)
     {
+        MEM_COMMIT := 0x1000,   MEM_MAPPED := 0x40000
+        , MEM_PRIVATE := 0x20000, PAGE_NOACCESS := 0x01, PAGE_GUARD := 0x100
+
         if result := this.getBaseAddressOfModule(module, aModuleInfo)
-           return this.patternScan(aModuleInfo.lpBaseOfDll, aModuleInfo.SizeOfImage, aAOBPattern*) 
+        {
+            if !this.VirtualQueryEx(aModuleInfo.lpBaseOfDll, aRegion)
+                return -9
+            if (aRegion.State = MEM_COMMIT) 
+            && !(aRegion.Protect & PAGE_NOACCESS) ; can't read this area
+            && !(aRegion.Protect & PAGE_GUARD) ; can't read this area
+            ;&& (aRegion.Type = MEM_MAPPED || aRegion.Type = MEM_PRIVATE) ;Might as well read Image sections as well
+                return this.patternScan(aModuleInfo.lpBaseOfDll, aModuleInfo.SizeOfImage, aAOBPattern*)
+            return -10 
+        }
         return "", ErrorLevel := result ; failed
     }
     ; Scans a specified memory region for a pattern
+    ; To be replaced with a machine code function
     patternScan(startAddress, sizeOfRegionBytes, aAOBPattern*)
     {
         if aPattern.MaxIndex() > sizeOfRegionBytes
@@ -604,7 +617,7 @@ class memory
             if (aInfo.State = MEM_COMMIT) 
             && !(aInfo.Protect & PAGE_NOACCESS) ; can't read this area
             && !(aInfo.Protect & PAGE_GUARD) ; can't read this area
-            && (aInfo.Type = MEM_MAPPED || aInfo.Type = MEM_PRIVATE)
+            ;&& (aInfo.Type = MEM_MAPPED || aInfo.Type = MEM_PRIVATE) ;Might as well read Image sections as well
             {
                 if !result := this.patternScan(address, aInfo.RegionSize, aAOBPattern*)
                     address += aInfo.RegionSize
