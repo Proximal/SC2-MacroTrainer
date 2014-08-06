@@ -581,8 +581,118 @@ class memory
         return 0
     }
 
+    ; The handle must have been opened with the PROCESS_QUERY_INFORMATION access right
+    VirtualQueryEx(address, byRef aInfo)
+    {
+        if !isobject(aInfo)
+            aInfo := new this._MEMORY_BASIC_INFORMATION()
+        return (aInfo.SizeOf() = DLLCall("VirtualQueryEx" 
+                                            , "Ptr", this.hProcess
+                                            , "Ptr", address
+                                            , "Ptr", aInfo.Ptr()
+                                            , "UInt", aInfo.SizeOf() 
+                                            , "UInt") )
+    }
+
+    processPatternScan(aAOBPattern*)
+    {
+        address := 0
+        MEM_COMMIT := 0x1000       
+        MEM_MAPPED := 0x40000
+        MEM_PRIVATE := 0x20000
+        PAGE_GUARD := 0x100
+        while this.VirtualQueryEx(address, aInfo)
+        {
+            if (aInfo.State = MEM_COMMIT) 
+            && !(aInfo.Protect & PAGE_GUARD) ; PAGE_GUARD - so can't read this area
+            && (aInfo.Type = MEM_MAPPED || aInfo.Type = MEM_PRIVATE)
+            {
+                if !result := this.patternScan(address, aInfo.RegionSize, aAOBPattern*)
+                    address += aInfo.RegionSize
+                else if result > 0
+                    return result ; address of the pattern
+                else ; negative error (-1 or -2)
+                    return result ;"Pattern.Scan() failed at address: " address "`n" A_LastError " | " ErrorLevel
+            }
+            else address += aInfo.RegionSize
+        }
+        return 0 ; "VirtualQueryEx() failed (or pattern not found in process space) at address: " address "`n" A_LastError " | " ErrorLevel
+    }
+
+    class _MEMORY_BASIC_INFORMATION
+    {
+        __new()
+        {   
+            ;0x40 is the flag to initialize memory contents to zero.
+            if !this.pStructure := DllCall("GlobalAlloc", "UInt", 0x40, "UInt", this.size := A_PtrSize = 4 ? 28 : 48)
+                return ""
+            return this
+        }
+        __Delete()
+        {
+            DllCall("GlobalFree", "Ptr", this.pStructure)
+        }
+        __get(key)
+        {
+            static a32bit := {  "BaseAddress": {"Offset": 0, "Type": "UInt"}
+                             ,   "AllocationBase": {"Offset": 4, "Type": "UInt"}
+                             ,   "AllocationProtect": {"Offset": 8, "Type": "UInt"}
+                             ,   "RegionSize": {"Offset": 12, "Type": "UInt"}
+                             ,   "State": {"Offset": 16, "Type": "UInt"}
+                             ,   "Protect": {"Offset": 20, "Type": "UInt"}
+                             ,   "Type": {"Offset": 24, "Type": "UInt"} }
+                ; For 64bit the int64 should really be unsigned. But AHK doesn't support these
+                ; so this won't work correctly for higher memory address areas
+                , a64bit := {   "BaseAddress": {"Offset": 0, "Type": "Int64"}
+                            ,    "AllocationBase": {"Offset": 8, "Type": "Int64"}
+                            ,    "AllocationProtect": {"Offset": 16, "Type": "UInt"}
+                            ,    "RegionSize": {"Offset": 24, "Type": "Int64"}
+                            ,    "State": {"Offset": 32, "Type": "UInt"}
+                            ,    "Protect": {"Offset": 36, "Type": "UInt"}
+                            ,    "Type": {"Offset": 40, "Type": "UInt"} }
+
+            if (A_PtrSize = 4 && a32bit.HasKey(key))
+                return numget(this.pStructure+0, a32bit[key].Offset, a32bit[key].Type)
+            else if (A_PtrSize = 8 && a64bit.HasKey(key))
+                return numget(this.pStructure+0, a64bit[key].Offset, a64bit[key].Type)            
+        }
+        Ptr()
+        {
+            return this.pStructure
+        }
+        sizeOf()
+        {
+            return this.size
+        }
+    }
 
 }
+/*
+32bit
+Size: 28
+
+BaseAddress         0   |4
+AllocationBase      4   |4
+AllocationProtect   8   |4
+RegionSize          12  |4
+State               16  |4
+Protect             20  |4
+Type                24  |4
+
+64bit
+Size: 48
+
+BaseAddress         0   |8
+AllocationBase      8   |8
+AllocationProtect   16  |4
+__alignment1        20  |4
+RegionSize          24  |8
+State               32  |4
+Protect             36  |4
+Type                40  |4
+__alignment2        44  |4
+
+
 
     /*
         _MODULEINFO := "
