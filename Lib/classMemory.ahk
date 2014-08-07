@@ -572,26 +572,28 @@ class memory
 
         if result := this.getBaseAddressOfModule(module, aModuleInfo)
         {
+            if !this.getPatternFromAOB(patternMask, AOBBuffer, aAOBPattern*)
+                return -8 ;no pattern
             if !this.VirtualQueryEx(aModuleInfo.lpBaseOfDll, aRegion)
                 return -9
             if (aRegion.State = MEM_COMMIT) 
             && !(aRegion.Protect & PAGE_NOACCESS) ; can't read this area
             && !(aRegion.Protect & PAGE_GUARD) ; can't read this area
             ;&& (aRegion.Type = MEM_MAPPED || aRegion.Type = MEM_PRIVATE) ;Might as well read Image sections as well
-                return this.patternScan(aModuleInfo.lpBaseOfDll, aModuleInfo.SizeOfImage, aAOBPattern*)
+                return this.mPatternScan(aModuleInfo.lpBaseOfDll, aModuleInfo.SizeOfImage, patternMask, AOBBuffer)
             return -10 
         }
         return "", ErrorLevel := result ; failed
     }
     ; Scans a specified memory region for a pattern
-    ; To be replaced with a machine code function
-    patternScan(startAddress, sizeOfRegionBytes, aAOBPattern*)
+    ; Has be replaced by the machine code function
+    AHKPatternScan(startAddress, sizeOfRegionBytes, aAOBPattern*)
     {
         if aPattern.MaxIndex() > sizeOfRegionBytes
             return -1
         if !this.ReadRawMemory(startAddress, buffer, sizeOfRegionBytes)
             return -2
-        while((i := A_Index - 1) <= sizeOfRegionBytes - aAOBPattern.MaxIndex()) 
+        while (i := A_Index - 1) <= sizeOfRegionBytes - aAOBPattern.MaxIndex() 
         {
             for j, value in aAOBPattern
             {
@@ -603,6 +605,49 @@ class memory
         }
         return 0
     }
+/*
+    // The c++ code for the machine code buffer search function
+    int MyFunction(unsigned char* haystack, unsigned int haystackSize, unsigned char* needle, unsigned int needleSize, char patternMask[])
+    {
+        for (unsigned int i = 0; i <= haystackSize - needleSize; i++)
+        {
+            for (unsigned int j = 0; patternMask[j] == '?' || needle[j] == haystack[i + j]; j++)
+            {
+                if (j+1 == needleSize)
+                    return i;
+            }
+        }
+        return -1;
+    }
+*/
+
+    mPatternScan(startAddress, sizeOfRegionBytes, patternMask, byRef needleBuffer)
+    {
+        static p
+        if !p
+        {
+            if A_PtrSize = 4
+                p := this.MCode("1,x86:8B4424082B442410538B5C2418555689442414BD010000008B4424182BD85733FF895C24242BE833F68DA42400000000803C033F74128B5C24148D143E8A083A0C1A8B5C2424750D8D0C283B4C242074174640EBDB8B44241C473B7C241876C75F5E5D83C8FF5BC38BC75F5E5D5BC3")
+            else 
+                p := this.MCode("1,x64:48895C2408488974241048897C24184C8B5C24288BF24533D2412BF1488BF99033C042803C183F740E428D0C100FB60C3942380C00751AFFC0413BC175E4418BC2488B5C2408488B742410488B7C2418C341FFC2443BD676C7488B5C2408488B742410488B7C241883C8FFC3")
+        }
+        if (needleSize := StrLen(patternMask)) > sizeOfRegionBytes
+            return -1
+        if !this.ReadRawMemory(startAddress, buffer, sizeOfRegionBytes)
+            return -2
+        if (0 <= r := DllCall(p, "Ptr", &buffer, "UInt", sizeOfRegionBytes, "Ptr", &needleBuffer, "UInt", needleSize, "AStr", patternMask, "cdecl int"))
+            return startAddress + r
+        else return 0
+    }
+
+    getPatternFromAOB(byRef patternMask, byRef needleBuffer, aAOBPattern*)
+    {
+        patternMask := "", VarSetCapacity(needleBuffer, aAOBPattern.MaxIndex())
+        for i, v in aAOBPattern
+            patternMask .= (v = "?" ? "?" : "x"), NumPut(round(v), needleBuffer, A_Index - 1, "UChar")
+        return aAOBPattern.MaxIndex()
+    }
+
     ; scans the entire memory space of the process
     processPatternScan(aAOBPattern*)
     {
@@ -612,6 +657,7 @@ class memory
         MEM_PRIVATE := 0x20000
         PAGE_NOACCESS := 0x01
         PAGE_GUARD := 0x100
+        this.getPatternFromAOB(patternMask, AOBBuffer, aAOBPattern*)
         while this.VirtualQueryEx(address, aInfo)
         {
             if (aInfo.State = MEM_COMMIT) 
@@ -619,7 +665,8 @@ class memory
             && !(aInfo.Protect & PAGE_GUARD) ; can't read this area
             ;&& (aInfo.Type = MEM_MAPPED || aInfo.Type = MEM_PRIVATE) ;Might as well read Image sections as well
             {
-                if !result := this.patternScan(address, aInfo.RegionSize, aAOBPattern*)
+                ;if !result := this.patternScan(address, aInfo.RegionSize, aAOBPattern*)
+                if !result := this.mPatternScan(address, aInfo.RegionSize, patternMask, AOBBuffer)
                     address += aInfo.RegionSize
                 else if result > 0
                     return result ; address of the pattern
@@ -634,7 +681,7 @@ class memory
     ; The handle must have been opened with the PROCESS_QUERY_INFORMATION access right
     VirtualQueryEx(address, byRef aInfo)
     {
-        if !isobject(aInfo)
+        if (aInfo.__Class != "memory._MEMORY_BASIC_INFORMATION")
             aInfo := new this._MEMORY_BASIC_INFORMATION()
         return (aInfo.SizeOf() = DLLCall("VirtualQueryEx" 
                                             , "Ptr", this.hProcess
@@ -690,8 +737,33 @@ class memory
             return this.size
         }
     }
+    MCode(mcode)
+    {
+        static e := {1:4, 2:1}, c := (A_PtrSize=8) ? "x64" : "x86"
+        if (!regexmatch(mcode, "^([0-9]+),(" c ":|.*?," c ":)([^,]+)", m))
+            return
+        if (!DllCall("crypt32\CryptStringToBinary", "str", m3, "uint", 0, "uint", e[m1], "ptr", 0, "uint*", s, "ptr", 0, "ptr", 0))
+            return
+        p := DllCall("GlobalAlloc", "uint", 0, "ptr", s, "ptr")
+        if (c="x64")
+            DllCall("VirtualProtect", "ptr", p, "ptr", s, "uint", 0x40, "uint*", op)
+        if (DllCall("crypt32\CryptStringToBinary", "str", m3, "uint", 0, "uint", e[m1], "ptr", p, "uint*", s, "ptr", 0, "ptr", 0))
+            return p
+        DllCall("GlobalFree", "ptr", p)
+        return
+    }
+
 
 }
+
+
+
+
+
+
+
+
+
 
 
 /*
