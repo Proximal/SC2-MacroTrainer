@@ -332,7 +332,7 @@ class memory
     ; Notes:
     ;       By default a null terminator is included at the end of written strings. 
     ;       This behaviour is determined by the property [derivedObject].insertNullTerminator
-    ;       If this property is true, then a null terminator is included.       
+    ;       If this property is true, then a null terminator will be included.       
 
     writeString(address, string, encoding := "utf-8", aOffsets*)
     {
@@ -561,32 +561,58 @@ class memory
                                 ,   EntryPoint: numget(MODULEINFO, A_PtrSize * 2, "Ptr") }
     }  
     
-    ; This will scan the memory region of a loaded module
-    ;   module -        The file name of the module/dll to find e.g. "GDI32.dll", "Battle.net.dll" etc
-    ;                   If no module (null) is specified, the address of the base module - main()/program will be returned 
+    ; Method:           modulePatternScan(module := "", aAOBPattern*)
+    ;                   Scans the specified module for a specified array of bytes    
+    ; Parameters:
+    ;   module -        The file name of the module/dll to search e.g. "GDI32.dll", "Battle.net.dll" etc
+    ;                   If no module (null) is specified, the executable file of the process will be used. 
     ;                   e.g. C:\Games\StarCraft II\Versions\Base28667\SC2.exe
+    ;   aAOBPattern* -  A variadic list of byte values i.e. the array of bytes to find.
+    ;                   Wild card bytes should be indicated by using a single '?'.
+    ; Return Values:
+    ;   Null            Failed to find or retrieve the specified module. ErrorLevel is set to the returned error from getBaseAddressOfModule()
+    ;                   refer to that method for more information.
+    ;   0               The pattern was not found inside the module
+    ;   -9              VirtualQueryEx() failed
+    ;   -10             The aAOBPattern* is invalid. No bytes were passed                   
+
     modulePatternScan(module := "", aAOBPattern*)
     {
-        MEM_COMMIT := 0x1000,   MEM_MAPPED := 0x40000
-        , MEM_PRIVATE := 0x20000, PAGE_NOACCESS := 0x01, PAGE_GUARD := 0x100
+        MEM_COMMIT := 0x1000, MEM_MAPPED := 0x40000, MEM_PRIVATE := 0x20000
+        , PAGE_NOACCESS := 0x01, PAGE_GUARD := 0x100
 
-        if result := this.getBaseAddressOfModule(module, aModuleInfo)
+        if (0 < result := this.getBaseAddressOfModule(module, aModuleInfo))
         {
-            if !this.getPatternFromAOB(patternMask, AOBBuffer, aAOBPattern*)
-                return -8 ;no pattern
-            if !this.VirtualQueryEx(aModuleInfo.lpBaseOfDll, aRegion)
-                return -9
-            if (aRegion.State = MEM_COMMIT) 
-            && !(aRegion.Protect & PAGE_NOACCESS) ; can't read this area
-            && !(aRegion.Protect & PAGE_GUARD) ; can't read this area
-            ;&& (aRegion.Type = MEM_MAPPED || aRegion.Type = MEM_PRIVATE) ;Might as well read Image sections as well
-                return this.mPatternScan(aModuleInfo.lpBaseOfDll, aModuleInfo.SizeOfImage, patternMask, AOBBuffer)
-            return -10 
+            if !patternSize := this.getNeedleFromAOBPattern(patternMask, AOBBuffer, aAOBPattern*)
+                return -10 ;no pattern
+            address := aModuleInfo.lpBaseOfDll
+            endAddress := address + aModuleInfo.SizeOfImage
+            ; Do i need to loop the VirtualQueryEx()
+            ; or could i just PatternScan(aModuleInfo.lpBaseOfDll, aModuleInfo.SizeOfImage, ....)
+            loop 
+            {
+                if !this.VirtualQueryEx(address, aRegion)
+                    return -9
+                ;msgbox % aRegion.RegionSize "`n" aModuleInfo.SizeOfImage
+                if (aRegion.State = MEM_COMMIT) 
+                && !(aRegion.Protect & PAGE_NOACCESS) ; can't read this area
+                && !(aRegion.Protect & PAGE_GUARD) ; can't read this area
+                ;&& (aRegion.Type = MEM_MAPPED || aRegion.Type = MEM_PRIVATE) ;Might as well read Image sections as well
+                && aRegion.RegionSize >= patternSize
+                {
+                    if result := this.PatternScan(address, aRegion.RegionSize, patternMask, AOBBuffer)
+                        return result
+                }
+                if (address += aRegion.RegionSize) >= endAddress
+                    return 0
+
+            }
         }
         return "", ErrorLevel := result ; failed
     }
     ; Scans a specified memory region for a pattern
-    ; Has be replaced by the machine code function
+    ; Has be replaced with a machine code function
+    /*
     AHKPatternScan(startAddress, sizeOfRegionBytes, aAOBPattern*)
     {
         if aPattern.MaxIndex() > sizeOfRegionBytes
@@ -605,9 +631,8 @@ class memory
         }
         return 0
     }
-/*
-    // The c++ code for the machine code buffer search function
-    int MyFunction(unsigned char* haystack, unsigned int haystackSize, unsigned char* needle, unsigned int needleSize, char patternMask[])
+    // The c++ function used to generate the machine code
+    int scan(unsigned char* haystack, unsigned int haystackSize, unsigned char* needle, unsigned int needleSize, char* patternMask)
     {
         for (unsigned int i = 0; i <= haystackSize - needleSize; i++)
         {
@@ -620,8 +645,22 @@ class memory
         return -1;
     }
 */
+    ; Method:               PatternScan(startAddress, sizeOfRegionBytes, patternMask, byRef needleBuffer)
+    ;                       Scans a specified memory region for a binary needle pattern using a machine code function
+    ; Parameters:
+    ;   startAddress -      The memory address from which to begin the search.
+    ;   sizeOfRegionBytes - The numbers of bytes to scan in the memory region.
+    ;   patternMask -       A string Which indicates which bytes must match and which bytes are wild. Each wildcard byte must be denoted by a single '?'. 
+    ;                       Non wildcards can use any other single character e.g 'x'. There should be no spaces.
+    ;                       With the patternMask 'xx??x', the frist, second, and fith bytes must match. The third and fourth bytes are wild.
+    ;    needleBuffer -     The variable which contains the binary needle. This needle should consist of UChar bytes.
+    ; Return Values:
+    ;   Positive integer    The address of the pattern.
+    ;   0                   Pattern not found.
+    ;   -1                  Needle size is larger than the size of the region to scan.
+    ;   -2                  Failed to read the region.
 
-    mPatternScan(startAddress, sizeOfRegionBytes, patternMask, byRef needleBuffer)
+    patternScan(startAddress, sizeOfRegionBytes, patternMask, byRef needleBuffer)
     {
         static p
         if !p
@@ -635,20 +674,58 @@ class memory
             return -1
         if !this.ReadRawMemory(startAddress, buffer, sizeOfRegionBytes)
             return -2
-        if (0 <= r := DllCall(p, "Ptr", &buffer, "UInt", sizeOfRegionBytes, "Ptr", &needleBuffer, "UInt", needleSize, "AStr", patternMask, "cdecl int"))
-            return startAddress + r
+        if (0 <= offset := DllCall(p, "Ptr", &buffer, "UInt", sizeOfRegionBytes, "Ptr", &needleBuffer, "UInt", needleSize, "AStr", patternMask, "cdecl int"))
+            return startAddress + offset
         else return 0
     }
 
-    getPatternFromAOB(byRef patternMask, byRef needleBuffer, aAOBPattern*)
+    ; Method:           getNeedleFromAOBPattern(byRef patternMask, byRef needleBuffer, aAOBPattern*)
+    ;                   Converts an array of bytes pattern (aAOBPattern*) into a binary needle and pattern mask string
+    ;                   which are compatible with PatternScan().
+    ; Parameters:
+    ;   patternMask -   (output) A string which indicates which bytes are wild/no-wild.
+    ;   needleBuffer -  (output) The array of bytes passed via aAOBPattern* is converted to a binary needle and stored inside this variable.
+    ;   aAOBPattern* -  (input) A variadic list of byte values i.e. the array of bytes from which to create the patternMask and needleBuffer.
+    ;                   Wild card bytes should be indicated by using a single '?'.
+    ; Return Values:
+    ;  The number of bytes in the binary needle and hence the number of characters in the patternMask string. 
+
+    getNeedleFromAOBPattern(byRef patternMask, byRef needleBuffer, aAOBPattern*)
     {
         patternMask := "", VarSetCapacity(needleBuffer, aAOBPattern.MaxIndex())
         for i, v in aAOBPattern
             patternMask .= (v = "?" ? "?" : "x"), NumPut(round(v), needleBuffer, A_Index - 1, "UChar")
-        return aAOBPattern.MaxIndex()
+        return round(aAOBPattern.MaxIndex())
+    }
+    ; Method:               adressPatternScan(startAddress, sizeOfRegionBytes, aAOBPattern*)
+    ;                       Scans a specified memory region for an array of bytes pattern.
+    ; Parameters:
+    ;   startAddress -      The memory address from which to begin the search.
+    ;   sizeOfRegionBytes - The numbers of bytes to scan in the memory region.
+    ;   aAOBPattern* -      A variadic list of byte values i.e. the array of bytes to find.
+    ;                       Wild card bytes should be indicated by using a single '?'.      
+    ; Return Values:
+    ;   Positive integer    Success. The memory address of the found pattern.
+    ;   -20                 An no aAOBPattern was passed
+
+    adressPatternScan(startAddress, sizeOfRegionBytes, aAOBPattern*)
+    {
+        if !this.getNeedleFromAOBPattern(patternMask, AOBBuffer, aAOBPattern*)
+            return -20
+        return this.PatternScan(startAddress, sizeOfRegionBytes, patternMask, AOBBuffer)   
     }
 
-    ; scans the entire memory space of the process
+    ; Method:       processPatternScan(aAOBPattern*)
+    ;               Scan the memory space of the current process for an array of bytes pattern.  
+    ; Parameters:
+    ;   aAOBPattern* -      A variadic list of byte values i.e. the array of bytes to find.
+    ;                       Wild card bytes should be indicated by using a single '?'.
+    ; Return Values:
+    ;   Positive integer -  Success. The memory address of the found pattern.
+    ;   0                   The pattern doesn't exist or VirtualQueryEx() failed.
+    ;   -2                  Failed to read a memory region.
+    ;   -10                 The aAOBPattern* is invalid. (No bytes were passed)
+
     processPatternScan(aAOBPattern*)
     {
         address := 0
@@ -657,24 +734,26 @@ class memory
         MEM_PRIVATE := 0x20000
         PAGE_NOACCESS := 0x01
         PAGE_GUARD := 0x100
-        this.getPatternFromAOB(patternMask, AOBBuffer, aAOBPattern*)
+        if !patternSize := this.getNeedleFromAOBPattern(patternMask, AOBBuffer, aAOBPattern*)
+            return -10
         while this.VirtualQueryEx(address, aInfo)
         {
             if (aInfo.State = MEM_COMMIT) 
             && !(aInfo.Protect & PAGE_NOACCESS) ; can't read this area
             && !(aInfo.Protect & PAGE_GUARD) ; can't read this area
             ;&& (aInfo.Type = MEM_MAPPED || aInfo.Type = MEM_PRIVATE) ;Might as well read Image sections as well
+            && aInfo.RegionSize >= patternSize
             {
-                ;if !result := this.patternScan(address, aInfo.RegionSize, aAOBPattern*)
-                if !result := this.mPatternScan(address, aInfo.RegionSize, patternMask, AOBBuffer)
+                if !result := this.PatternScan(address, aInfo.RegionSize, patternMask, AOBBuffer)
                     address += aInfo.RegionSize
                 else if result > 0
                     return result ; address of the pattern
-                else ; negative error (-1 or -2)
+                else ; -2 error
                     return result ;"Pattern.Scan() failed at address: " address "`n" A_LastError " | " ErrorLevel
             }
             else address += aInfo.RegionSize
         }
+        ; Is there a ways to find the process maximum address? So can differentiate a not found from an error
         return 0 ; "VirtualQueryEx() failed (or pattern not found in process space) at address: " address "`n" A_LastError " | " ErrorLevel
     }
 
@@ -695,8 +774,7 @@ class memory
     {
         __new()
         {   
-            ;0x40 is the flag to initialize memory contents to zero.
-            if !this.pStructure := DllCall("GlobalAlloc", "UInt", 0x40, "UInt", this.size := A_PtrSize = 4 ? 28 : 48)
+            if !this.pStructure := DllCall("GlobalAlloc", "UInt", 0, "UInt", this.size := A_PtrSize = 4 ? 28 : 48, "Ptr")
                 return ""
             return this
         }
@@ -752,8 +830,6 @@ class memory
         DllCall("GlobalFree", "ptr", p)
         return
     }
-
-
 }
 
 
