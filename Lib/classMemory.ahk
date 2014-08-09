@@ -164,11 +164,11 @@ class memory
 
     version()
     {
-        return 1.1
+        return 1.2
     }
 
     ; program can be an ahk_exe, ahk_class, ahk_pid, or simply the window title. e.g. "ahk_exe SC2.exe" or "Starcraft II"
-    ; but its safer not to use the window title, as some things can have the same window title - e.g. a folder called "Starcraft II"
+    ; but its safer not to use the window title, as some things can have the same window title - e.g. an open folder called "Starcraft II"
     ; would have the same window title as the game itself.
 
     ; Return Values: 
@@ -176,7 +176,7 @@ class memory
     ;   Null/blank -  OpenProcess failed. If the target process has admin rights, then the script also needs to be ran as admin.
     ;   Positive integer - A handle to the process.
 
-    openProcess(program, dwDesiredAccess := "", windowMatchMode := "3")
+    openProcess(program, dwDesiredAccess := "", windowMatchMode := 3)
     {
         ; if an application closes/restarts the previous handle becomes invalid so reopen it to be safe (closing a now invalid handle is fine i.e. wont cause an issue)
         
@@ -186,7 +186,10 @@ class memory
             dwDesiredAccess := (PROCESS_QUERY_INFORMATION := 0x0400) | (PROCESS_VM_OPERATION := 0x8) | (PROCESS_VM_READ := 0x10) | (PROCESS_VM_WRITE := 0x20)
         if windowMatchMode
         {
+            ; This is a string and will not contain the 0x prefix
             mode :=  A_TitleMatchMode
+            ; remove hex prefix as SetTitleMatchMode will throw a run time error. This will occur if integer mode is set to hex.
+            StringReplace, windowMatchMode, windowMatchMode, 0x 
             SetTitleMatchMode, %windowMatchMode%
         }
         WinGet, pid, pid, % this.currentProgram := program
@@ -439,12 +442,14 @@ class memory
     ; bitness (32 or 64 bit) of both the AHK exe and the target process.
 
     ; WindowTitle can be anything ahk_exe ahk_class etc
-    ; using quotes around the MatchMode "3", so if setFormat Hex is in effect, it won't give an error with SetTitleMatchMode
-    getProcessBaseAddress(WindowTitle, windowMatchMode := "3")   
+    getProcessBaseAddress(WindowTitle, windowMatchMode := 3)   
     {
         if windowMatchMode
         {
+            ; This is a string and will not contain the 0x prefix
             mode := A_TitleMatchMode
+            ; remove hex prefix as SetTitleMatchMode will throw a run time error. This will occur if integer mode is set to hex.
+            StringReplace, windowMatchMode, windowMatchMode, 0x
             SetTitleMatchMode, %windowMatchMode%    ;mode 3 is an exact match
         }
         WinGet, hWnd, ID, %WindowTitle%
