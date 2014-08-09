@@ -595,7 +595,7 @@ class memory
             if !patternSize := this.getNeedleFromAOBPattern(patternMask, AOBBuffer, aAOBPattern*)
                 return -10 ;no pattern
             ; Try to read the entire module in one RPM()
-            ; If fails with access (-1) iterate the modules memory pages and search ones which are readable          
+            ; If fails with access (-1) iterate the modules memory pages and search the ones which are readable          
             if (result := this.PatternScan(aModuleInfo.lpBaseOfDll, aModuleInfo.SizeOfImage, patternMask, AOBBuffer)) > 0
                 return result  ; Found
             else if (result = 0) ; 0 = not found
@@ -642,34 +642,7 @@ class memory
             return -10
         return this.PatternScan(startAddress, sizeOfRegionBytes, patternMask, AOBBuffer)   
     }
-    ; Method:           rawPatternScan(byRef buffer, sizeOfBufferBytes := "", aAOBPattern*)   
-    ;                   Scans a binary buffer for an array of bytes pattern. 
-    ;                   This is useful if you have already dumped a region of memory via readRawMemory()
-    ; Parameters:
-    ;   buffer              The binary buffer to be searched.
-    ;   sizeOfBufferBytes   The size of the binary buffer. If null or 0 the size is automatically retrieved.
-    ;   startOffset         The offset from the start off the buffer from which to begin the search. This must be >= 0.
-    ;   aAOBPattern*        A variadic list of byte values i.e. the array of bytes to find.
-    ;                       Wild card bytes should be indicated by using a single '?'. 
-    ; Return Values:
-    ;   >= 0                The offset of the pattern relative to the start of the haystack.
-    ;   -1                  Not found.
-    ;   -2                  Parameter incorrect.
-    rawPatternScan(byRef buffer, sizeOfBufferBytes := "", startOffset := 0, aAOBPattern*)
-    {
-        if !this.getNeedleFromAOBPattern(patternMask, AOBBuffer, aAOBPattern*)
-            return -10
-        if sizeOfBufferBytes is not integer
-            sizeOfBufferBytes := VarSetCapacity(buffer)
-        else if sizeOfBufferBytes < 0
-            sizeOfBufferBytes := VarSetCapacity(buffer)
-        if startOffset is not Integer
-            startOffset := 0
-        else if startOffset < 0
-            startOffset := 0
-        return this.bufferScanForMaskedPattern(&buffer, sizeOfBufferBytes, patternMask, &AOBBuffer, startOffset)           
-    }
-
+   
     ; Method:       processPatternScan(aAOBPattern*)
     ;               Scan the memory space of the current process for an array of bytes pattern.  
     ; Parameters:
@@ -720,6 +693,35 @@ class memory
         return address ? 0 : -1 ; "VirtualQueryEx() failed (or pattern not found in process space) at address: " address "`n" A_LastError " | " ErrorLevel
     }
 
+    ; Method:           rawPatternScan(byRef buffer, sizeOfBufferBytes := "", aAOBPattern*)   
+    ;                   Scans a binary buffer for an array of bytes pattern. 
+    ;                   This is useful if you have already dumped a region of memory via readRawMemory()
+    ; Parameters:
+    ;   buffer              The binary buffer to be searched.
+    ;   sizeOfBufferBytes   The size of the binary buffer. If null or 0 the size is automatically retrieved.
+    ;   startOffset         The offset from the start off the buffer from which to begin the search. This must be >= 0.
+    ;   aAOBPattern*        A variadic list of byte values i.e. the array of bytes to find.
+    ;                       Wild card bytes should be indicated by using a single '?'. 
+    ; Return Values:
+    ;   >= 0                The offset of the pattern relative to the start of the haystack.
+    ;   -1                  Not found.
+    ;   -2                  Parameter incorrect.
+
+    rawPatternScan(byRef buffer, sizeOfBufferBytes := "", startOffset := 0, aAOBPattern*)
+    {
+        if !this.getNeedleFromAOBPattern(patternMask, AOBBuffer, aAOBPattern*)
+            return -10
+        if sizeOfBufferBytes is not integer
+            sizeOfBufferBytes := VarSetCapacity(buffer)
+        else if sizeOfBufferBytes < 0
+            sizeOfBufferBytes := VarSetCapacity(buffer)
+        if startOffset is not Integer
+            startOffset := 0
+        else if startOffset < 0
+            startOffset := 0
+        return this.bufferScanForMaskedPattern(&buffer, sizeOfBufferBytes, patternMask, &AOBBuffer, startOffset)           
+    }
+
     ; Method:           getNeedleFromAOBPattern(byRef patternMask, byRef needleBuffer, aAOBPattern*)
     ;                   Converts an array of bytes pattern (aAOBPattern*) into a binary needle and pattern mask string
     ;                   which are compatible with patternScan() and bufferScanForMaskedPattern().
@@ -746,12 +748,12 @@ class memory
     {
         if (aInfo.__Class != "memory._MEMORY_BASIC_INFORMATION")
             aInfo := new this._MEMORY_BASIC_INFORMATION()
-        return (aInfo.SizeOf() = DLLCall("VirtualQueryEx" 
-                                            , "Ptr", this.hProcess
-                                            , "Ptr", address
-                                            , "Ptr", aInfo.Ptr()
-                                            , "UInt", aInfo.SizeOf() 
-                                            , "UInt") )
+        return aInfo.SizeOfStructure = DLLCall("VirtualQueryEx" 
+                                                , "Ptr", this.hProcess
+                                                , "Ptr", address
+                                                , "Ptr", aInfo.pStructure
+                                                , "UInt", aInfo.SizeOfStructure
+                                                , "UInt") 
     }
 
     ; Scans a specified memory region for a pattern
@@ -814,7 +816,7 @@ class memory
         else return 0
     }
     ; Method:               bufferScanForMaskedPattern(byRef hayStack, sizeOfHayStackBytes, byRef patternMask, byRef needle)
-    ;                       Scans a binary haystack for a masked binary needle using a machine code function.
+    ;                       Scans a binary haystack for binary needle against a pattern mask string using a machine code function.
     ; Parameters:
     ;   hayStackAddress -   The address of the binary haystack which is to be searched.
     ;   sizeOfHayStackBytes The total size of the haystack in bytes.
@@ -822,14 +824,15 @@ class memory
     ;                       Non wildcards can use any other single character e.g 'x'. There should be no spaces.
     ;                       With the patternMask 'xx??x', the frist, second, and fith bytes must match. The third and fourth bytes are wild.
     ;   needleAddress -     The address of the binary needle to find. This needle should consist of UChar bytes.
-    ;   startOffset -       The offset from the start off the haystack from which to begin the search. This must be >= 0 !!
+    ;   startOffset -       The offset from the start off the haystack from which to begin the search. This must be >= 0.
     ; Return Values:    
-    ;   >= 0                Found. The pattern begins at this offset - relative to the start if the haystack.
+    ;   >= 0                Found. The pattern begins at this offset - relative to the start of the haystack.
     ;   -1                  Not found.
     ;   -2                  Invalid sizeOfHayStackBytes parameter - Must be > 0.
 
     ; Notes:
     ;       This is a basic function with few safeguards. Incorrect parameters may crash the script.
+    
     bufferScanForMaskedPattern(hayStackAddress, sizeOfHayStackBytes, byRef patternMask, needleAddress, startOffset := 0)
     {
         static p
@@ -866,7 +869,7 @@ class memory
     {
         __new()
         {   
-            if !this.pStructure := DllCall("GlobalAlloc", "UInt", 0, "UInt", this.size := A_PtrSize = 4 ? 28 : 48, "Ptr")
+            if !this.pStructure := DllCall("GlobalAlloc", "UInt", 0, "UInt", this.SizeOfStructure := A_PtrSize = 4 ? 28 : 48, "Ptr")
                 return ""
             return this
         }
@@ -904,7 +907,7 @@ class memory
         }
         sizeOf()
         {
-            return this.size
+            return this.SizeOfStructure
         }
     }
 
@@ -944,7 +947,34 @@ State               32  |4
 Protect             36  |4
 Type                40  |4
 __alignment2        44  |4
+    VirtualQueryEx(address, byRef aInfo)
+    {
+        static a32bit := {  "BaseAddress": {"Offset": 0, "Type": "UInt"}
+                         ,   "AllocationBase": {"Offset": 4, "Type": "UInt"}
+                         ,   "AllocationProtect": {"Offset": 8, "Type": "UInt"}
+                         ,   "RegionSize": {"Offset": 12, "Type": "UInt"}
+                         ,   "State": {"Offset": 16, "Type": "UInt"}
+                         ,   "Protect": {"Offset": 20, "Type": "UInt"}
+                         ,   "Type": {"Offset": 24, "Type": "UInt"} }
+            ; For 64bit the int64 should really be unsigned. But AHK doesn't support these
+            ; so this won't work correctly for higher memory address areas
+            , a64bit := {   "BaseAddress": {"Offset": 0, "Type": "Int64"}
+                        ,    "AllocationBase": {"Offset": 8, "Type": "Int64"}
+                        ,    "AllocationProtect": {"Offset": 16, "Type": "UInt"}
+                        ,    "RegionSize": {"Offset": 24, "Type": "Int64"}
+                        ,    "State": {"Offset": 32, "Type": "UInt"}
+                        ,    "Protect": {"Offset": 36, "Type": "UInt"}
+                        ,    "Type": {"Offset": 40, "Type": "UInt"} }
 
+        VarSetCapacity(memInfo, memInfoSize :=  A_PtrSize = 4 ? 28 : 48)
+        if (memInfoSize = DLLCall("VirtualQueryEx", "Ptr", this.hProcess, "Ptr", address, "Ptr", &memInfo, "UInt", memInfoSize, "UInt"))
+        {
+            for field, info in A_PtrSize = 4 ? a32bit : a64bit, aInfo := []
+                aInfo[field] := NumGet(memInfo, info.Offset, info.Type)
+            return True
+        }
+        return False
+    }
 
 
     /*
@@ -960,148 +990,6 @@ __alignment2        44  |4
 
 
 /*
-
-    ReadRawMemoryTest(address, byref buffer, bytes := 4, byref bytesReadR := 0, aOffsets*)
-    {
-        VarSetCapacity(buffer, bytes)
-        if !DllCall("ReadProcessMemory", "UInt", this.hProcess, "UInt", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, "Ptr", &buffer, "UInt", bytes, "Ptr*", bytesRead)
-        {
-            if !bytesRead
-            {
-                bytesReadR := bytesRead
-                return "Error " DllCall("GetLastError") "`nBytes Read: " bytesRead
-            }
-        }
-        return bytesRead
-    }
-
-    ; Return values
-    ; -1    An odd number of characters were passed via pattern
-    ;       Ensure you use two digits to represent each byte i.e. 05, 0F and ??, and not 5, F or ?
-    ; int   represents the number of non-wildcard bytes in the search pattern/needle
-
-    setPattern(pattern, byRef aOffsets, byRef binaryNeedle)
-    {
-        StringReplace, pattern, pattern, %A_Space%,, All
-        StringReplace, pattern, pattern, %A_Tab%,, All
-        pattern := RTrim(pattern, "?")              ; can pass patterns beginning with ?? ?? - but it is a little pointless
-        loopCount := bufferSize := StrLen(pattern) / 2
-        if Mod(StrLen(pattern), 2)
-            return -1 
-        VarSetCapacity(binaryNeedle, bufferSize)
-        aOffsets := [], startGap := 0 ;, prevChar := "??"
-        loop, % loopCount
-        {
-            hexChar := SubStr(pattern, 1 + 2 * (A_Index - 1), 2)
-            if (hexChar != "??") && (prevChar = "??" || A_Index = 1)
-                binNeedleStartOffset := A_index - 1
-            else if (hexChar = "??" && prevChar != "??" && A_Index != 1) 
-            {
-
-                aOffsets.Insert({ "binNeedleStartOffset": binNeedleStartOffset
-                                , "binNeedleSize": A_Index - 1 - binNeedleStartOffset
-                                , "binNeedleGap": !aOffsets.MaxIndex() ? 0 : binNeedleStartOffset - startGap + 1}) ; equals number of wildcard bytes between two sub needles
-                startGap := A_index
-            }
-
-            if (A_Index = loopCount) ; last char cant be ??
-                aOffsets.Insert({ "binNeedleStartOffset": binNeedleStartOffset
-                                , "binNeedleSize": A_Index - binNeedleStartOffset
-                                , "binNeedleGap": !aOffsets.MaxIndex() ? 0 : binNeedleStartOffset - startGap + 1})
-
-            prevChar := hexChar
-            if (hexChar != "??")
-            {
-                numput("0x" . hexChar, binaryNeedle, A_index - 1, "UChar")
-                realNeedleSize++
-            }
-        }
-        return realNeedleSize
-    }
-
-
-
-    ; This function will only WORK with AHK 32 bit builds!
-    ; I'll improve this another time
-    ; need to setup module / memory area scanning, so it only reads addresses which have read access
-    patternScan(pattern, startAddress, maxOffsetMB := 0, byRef returnAddressAndOffset := 0, dumpSizeMB := 50)
-    {
-        realNeedleSize := this.setPattern(pattern, aOffsets, binaryNeedle)
-        if (realNeedleSize = -1 || realNeedleSize = 0)
-            return -2 ;invlaid pattern was passed 
-        haystackSizeBytes := dumpSizeMB * 1048576   ;1048576 bytes in a MB
-        haystackSizeBytes := 30   ;1048576 bytes in a MB
-        maxAddress := startAddress + (maxOffsetMB * 1048576)
-        bytesRead := 0
-
-        loop 
-        {   
-            aaaaindex := A_Index
-            currentStartAddress := startAddress + bytesRead ; change this so it starts 1 full needle back from edge
-            if (maxOffsetMB && currentStartAddress >= maxAddress)       
-                msgbox past final address
-            ;   return -1 ; notfound 
-            
-            if (haystackSizeBytes != bytesRead :=  this.ReadRawMemoryTest(currentStartAddress, Haystack, haystackSizeBytes))
-            {
-                if !bytesRead
-                {
-                    return " read failed - Probably reading part an area which cannot be read"
-                }
-            }
-            ;   msgbox % "here currentStartAddress "  chex(currentStartAddress) "`nbytesRead " bytesRead
-            ;   return -3 ; failed to dump part of the process memory
-            currentStartOffstet := 0
-            haystackOffset := 0
-            aOffset := aOffsets[arrayIndex := 1]
-
-            loop
-            {
-
-                if (-1 != foundOffset := this.scanInBuf(&Haystack, &binaryNeedle + aOffset.binNeedleStartOffset, haystackSizeBytes, aOffset.binNeedleSize, haystackOffset))
-                {
-
-                    if (arrayIndex = 1 || foundOffset = haystackOffset)
-                    {       
-                            
-                        if (arrayIndex = 1)
-                        {
-                            currentStartOffstet := aOffset.binNeedleSize + foundOffset ; save the offset of the match for the first part of the needle - if remainder of needle doesn't match,  resume search from here
-                            tmpfoundAddress := foundOffset
-                            ;msgbox % "tmpfoundAddress " tmpfoundAddress := foundOffset
-                        }
-                        if (arrayIndex = aOffsets.MaxIndex())
-                        {
-                            foundAddress := tmpfoundAddress - aOffsets[1].binNeedleStartOffset ; deduct the first needles starting offset - in case user passed a pattern beginning with ?? eg "?? ?? 00 55"
-                            break, 2
-                        }   
-                        ;msgbox % haystackOffset " haystackOffset" "`ncurrentStartOffstet " currentStartOffstet
-                        prevNeedleSize := aOffset.binNeedleSize
-                        aOffset := aOffsets[++arrayIndex]
-                        ;silly := aOffset.binNeedleGap
-                        ;msgbox foundOffset %foundOffset% `nprevNeedleSize %prevNeedleSize%`naOffset.binNeedleGap %silly%
-                        haystackOffset := foundOffset + prevNeedleSize + aOffset.binNeedleGap   ; move the start of the haystack ready for the next needle - accounting for previous needle size and any gap/wildcard-bytes between the two needles
-                        ;msgbox % haystackOffset " haystackOffset"
-                        continue
-                    }
-                }
-                
-                if (arrayIndex = 1) ; couldn't find the first part of the needle so dump the next chunk of memory
-                {
-                    break
-                }
-                else        ; the subsequent parts of the needle couldn't be found. So resume search from the address immediately next to where the first part of the needle was found
-                {   
-                    aOffset := aOffsets[arrayIndex := 1]
-                    haystackOffset := currentStartOffstet
-                }
-
-            }
-        }
-        if foundAddress
-         return 1, returnAddressAndOffset += startAddress + foundAddress
-        else return 0
-    }
 
     ;Doesn't WORK with AHK 64 BIT, only works with AHK 32 bit
     ;taken from:
