@@ -433,7 +433,7 @@ class memory
     ; Here are examples of such types: HANDLE, HWND, HMENU, HPALETTE, HBITMAP, etc. 
     ; http://www.viva64.com/en/k/0005/
 
-    ; The base adress for some programs is dynamic. This can retrieve the current base address of the main module (e.g. calc.exe), 
+    ; The base address for some programs is dynamic. This can retrieve the current base address of the main module (e.g. calc.exe), 
     ; which can then be added to your various offsets.  
     ; This function will return the correct address regardless of the 
     ; bitness (32 or 64 bit) of both the AHK exe and the target process.
@@ -623,7 +623,7 @@ class memory
         return "", ErrorLevel := result ; failed
     }
 
-    ; Method:               adressPatternScan(startAddress, sizeOfRegionBytes, aAOBPattern*)
+    ; Method:               addressPatternScan(startAddress, sizeOfRegionBytes, aAOBPattern*)
     ;                       Scans a specified memory region for an array of bytes pattern.
     ; Parameters:
     ;   startAddress -      The memory address from which to begin the search.
@@ -636,7 +636,7 @@ class memory
     ;   -1                  Failed to read the memory region.
     ;   -10                 An aAOBPattern pattern. No bytes were passed.
 
-    adressPatternScan(startAddress, sizeOfRegionBytes, aAOBPattern*)
+    addressPatternScan(startAddress, sizeOfRegionBytes, aAOBPattern*)
     {
         if !this.getNeedleFromAOBPattern(patternMask, AOBBuffer, aAOBPattern*)
             return -10
@@ -713,7 +713,7 @@ class memory
             return -10
         if sizeOfBufferBytes is not integer
             sizeOfBufferBytes := VarSetCapacity(buffer)
-        else if sizeOfBufferBytes < 0
+        else if sizeOfBufferBytes <= 0
             sizeOfBufferBytes := VarSetCapacity(buffer)
         if startOffset is not Integer
             startOffset := 0
@@ -725,7 +725,7 @@ class memory
     ; Method:           getNeedleFromAOBPattern(byRef patternMask, byRef needleBuffer, aAOBPattern*)
     ;                   Converts an array of bytes pattern (aAOBPattern*) into a binary needle and pattern mask string
     ;                   which are compatible with patternScan() and bufferScanForMaskedPattern().
-    ;                   The modulePatternScan(), adressPatternScan(), rawPatternScan(), and processPatternScan() methods
+    ;                   The modulePatternScan(), addressPatternScan(), rawPatternScan(), and processPatternScan() methods
     ;                   allow you to directly search for an array of bytes pattern in a single method call.
     ; Parameters:
     ;   patternMask -   (output) A string which indicates which bytes are wild/no-wild.
@@ -778,11 +778,11 @@ class memory
         return 0
     }
     // The c++ function used to generate the machine code
-    scan(unsigned char* haystack, unsigned int haystackSize, unsigned char* needle, unsigned int needleSize, char* patternMask, unsigned int startOffset)
+    int scan(unsigned char* haystack, unsigned int haystackSize, unsigned char* needle, unsigned int needleSize, char* patternMask, unsigned int startOffset)
     {
         for (unsigned int i = startOffset; i <= haystackSize - needleSize; i++)
         {
-            for (unsigned int j = 0; patternMask[j] == '?' || needle[j] == haystack[i + j]; j++)
+            for (unsigned int j = 0; needle[j] == haystack[i + j] || patternMask[j] == '?'; j++)
             {
                 if (j + 1 == needleSize)
                     return i;
@@ -832,16 +832,16 @@ class memory
 
     ; Notes:
     ;       This is a basic function with few safeguards. Incorrect parameters may crash the script.
-    
+
     bufferScanForMaskedPattern(hayStackAddress, sizeOfHayStackBytes, byRef patternMask, needleAddress, startOffset := 0)
     {
         static p
         if !p
         {
             if A_PtrSize = 4    
-                p := this.MCode("1,x86:8B4424082B442410535556578B7C2428894424183BF8774A8B5C2424BD010000008B44241C2BD8895C24242BE88D490033F6803C033F74128B5C24148D143E8A083A0C1A8B5C2424750D8D0C283B4C242074174640EBDB8B44241C473B7C241876CE5F5E5D83C8FF5BC38BC75F5E5D5BC3")
+                p := this.MCode("1,x86:8B44240853558B6C24182BC5568B74242489442414573BF0773E8B7C241CBB010000008B4424242BF82BD8EB038D49008B54241403D68A0C073A0A740580383F750B8D0C033BCD74174240EBE98B442424463B74241876D85F5E5D83C8FF5BC35F8BC65E5D5BC3")
             else 
-                p := this.MCode("1,x64:48895C2408488974241048897C2418448B5424308BF2488BF9412BF1443BD6773E4C8B5C242833C042803C183F740E428D0C100FB60C3942380C00751AFFC0413BC175E4418BC2488B5C2408488B742410488B7C2418C341FFC2443BD676C7488B5C2408488B742410488B7C241883C8FFC3")
+                p := this.MCode("1,x64:48895C2408488974241048897C2418448B5424308BF2498BD8412BF1488BF9443BD6774A4C8B5C24280F1F800000000033C90F1F400066660F1F840000000000448BC18D4101418D4AFF03C80FB60C3941380C18740743803C183F7509413BC1741F8BC8EBDA41FFC2443BD676C283C8FF488B5C2408488B742410488B7C2418C3488B5C2408488B742410488B7C2418418BC2C3")
         }
         if (needleSize := StrLen(patternMask)) + startOffset > sizeOfHayStackBytes
             return -1 ; needle can't exist inside this region. And basic check to prevent wrap around error of the UInts in the machine function       
@@ -849,6 +849,14 @@ class memory
             return DllCall(p, "Ptr", hayStackAddress, "UInt", sizeOfHayStackBytes, "Ptr", needleAddress, "UInt", needleSize, "AStr", patternMask, "UInt", startOffset, "cdecl int")
         return -2
     }
+
+    ; Notes: 
+    ; Other alternatives for non-wildcard buffer comparison.
+    ; Use memchr to find the first byte, then memcmp to compare the remainder of the buffer against the needle and loop if it doesn't match
+    ; The function FindMagic() by Lexikos uses this method.
+    ; Use scanInBuf() machine code function - but this only supports 32 bit ahk. I could check if needle contains wild card and AHK is 32bit,
+    ; then call this function. But need to do a speed comparison to see the benefits, but this should be faster. Although the benefits for 
+    ; the size of the memory regions be dumped would most likely be inconsequential as it's already extremely fast.
 
     MCode(mcode)
     {
