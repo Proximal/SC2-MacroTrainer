@@ -989,7 +989,8 @@ clock:
 
 			;EnableAutoWorker%LocalPlayerRace% := True
 		}
-		if ( Auto_Read_Races AND race_reading ) && 	!((ResumeWarnings || UserSavedAppliedSettings) && time > 12)
+		;if ( Auto_Read_Races AND race_reading ) && !((ResumeWarnings || UserSavedAppliedSettings) && time > 12)
+		if (Auto_Read_Races && !ResumeWarnings && !UserSavedAppliedSettings && time <= 12)
 			SetTimer, find_races_timer, 1000, -20
 
 		If A_UnitGroupSettings["AutoGroup", aLocalPlayer["Race"], "Enabled"]
@@ -2701,9 +2702,13 @@ ini_settings_write:
 	IniWrite, %EasyUnloadStorageKey%, %config_file%, %section%, EasyUnloadStorageKey
 
 	;[Misc Hotkey]
+	IniWrite, %EnableWorkerCountSpeechHotkey%, %config_file%, Misc Hotkey, EnableWorkerCountSpeechHotkey
 	IniWrite, %worker_count_local_key%, %config_file%, Misc Hotkey, worker_count_key
+	IniWrite, %EnableEnemyWorkerCountSpeechHotkey%, %config_file%, Misc Hotkey, EnableEnemyWorkerCountSpeechHotkey	
 	IniWrite, %worker_count_enemy_key%, %config_file%, Misc Hotkey, enemy_worker_count
+	IniWrite, %EnableToggleMacroTrainerHotkey%, %config_file%, Misc Hotkey, EnableToggleMacroTrainerHotkey
 	IniWrite, %warning_toggle_key%, %config_file%, Misc Hotkey, pause_resume_warnings_key
+	IniWrite, %EnablePingMiniMapHotkey%, %config_file%, Misc Hotkey, EnablePingMiniMapHotkey
 	IniWrite, %ping_key%, %config_file%, Misc Hotkey, ping_map
 
 	;[Misc Settings]
@@ -2750,6 +2755,7 @@ ini_settings_write:
 
 	;[Alert Location]
 	IniWrite, %Playback_Alert_Key%, %config_file%, Alert Location, Playback_Alert_Key
+	IniWrite, %EnableLastAlertPlayBackHotkey%, %config_file%, Alert Location, EnableLastAlertPlayBackHotkey
 
 	;[Overlays]
 	section := "Overlays"
@@ -2764,6 +2770,16 @@ ini_settings_write:
 		if (Togglevar != "") ; as some won't have a toggle key
 			Iniwrite, %Togglevar%, %config_file%, %section%, %Togglename% 	
 	}
+	Iniwrite, %EnableHideMiniMapHotkey%, %config_file%, %section%, EnableHideMiniMapHotkey	
+	Iniwrite, %EnableToggleMiniMapHotkey%, %config_file%, %section%, EnableToggleMiniMapHotkey	
+	Iniwrite, %EnableToggleIncomeOverlayHotkey%, %config_file%, %section%, EnableToggleIncomeOverlayHotkey	
+	Iniwrite, %EnableToggleResourcesOverlayHotkey%, %config_file%, %section%, EnableToggleResourcesOverlayHotkey	
+	Iniwrite, %EnableToggleArmySizeOverlayHotkey%, %config_file%, %section%, EnableToggleArmySizeOverlayHotkey	
+	Iniwrite, %EnableToggleWorkerOverlayHotkey%, %config_file%, %section%, EnableToggleWorkerOverlayHotkey	
+	Iniwrite, %EnableToggleUnitPanelOverlayHotkey%, %config_file%, %section%, EnableToggleUnitPanelOverlayHotkey	
+	Iniwrite, %EnableCycleIdentifierHotkey%, %config_file%, %section%, EnableCycleIdentifierHotkey	
+	Iniwrite, %EnableAdjustOverlaysHotkey%, %config_file%, %section%, EnableAdjustOverlaysHotkey	
+
 	Iniwrite, %ToggleMinimapOverlayKey%, %config_file%, %section%, ToggleMinimapOverlayKey	
 	Iniwrite, %AdjustOverlayKey%, %config_file%, %section%, AdjustOverlayKey	
 	Iniwrite, %ToggleIdentifierKey%, %config_file%, %section%, ToggleIdentifierKey	
@@ -3037,11 +3053,11 @@ try
 				Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#Inject_spawn_larva,  Edit
 
 			Gui, Add, Text, xs+10 y+15, Control Group Storage:
-			Gui, Add, DropDownList,  % "xp+160 yp-2 w45 center vInject_control_group Choose" (Inject_control_group = 0 ? 10 : Inject_control_group), 1|2|3|4|5|6||7|8|9|0
+			Gui, Add, DropDownList,  % "xp+160 yp-2 w45 center vInject_control_group gGUIControlGroupCheckInjects Choose" (Inject_control_group = 0 ? 10 : Inject_control_group), 1|2|3|4|5|6||7|8|9|0
 
 			Gui, Add, Text, xs+10 y+15, Queen Control Group:
 			; i have a dropdown menu now so user has to put a number, cant use another key as I use this to check the control groups
-				Gui, Add, DropDownList,  % "xp+160 w45 center vMI_Queen_Group Choose" (MI_Queen_Group = 0 ? 10 : MI_Queen_Group), 1|2|3|4|5|6|7||8|9|0
+				Gui, Add, DropDownList,  % "xp+160 w45 center vMI_Queen_Group gGUIControlGroupCheckInjects Choose" (MI_Queen_Group = 0 ? 10 : MI_Queen_Group), 1|2|3|4|5|6|7||8|9|0
 			;	Gui, Add, Edit, Readonly y+10 xs+60 w90 center vMI_Queen_Group, %MI_Queen_Group%
 			;		Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#MI_Queen_Group,  Edit			
 
@@ -3075,7 +3091,7 @@ try
 
 	Gui, Tab,  Auto
 		Gui, Add, GroupBox, y+15 w225 h215 section, Fully Automated Injects
-			Gui, Add, Checkbox,xp+10 yp+30 vF_Inject_Enable checked%F_Inject_Enable%, Enable
+			Gui, Add, Checkbox,xp+10 yp+30 vF_Inject_Enable checked%F_Inject_Enable%, Enable on match start
 		
 			Gui, Add, Text,y+15 xs+10 w140, Max injects per round: 
 				Gui, Add, Edit, Number Right x+5 yp-2 w60 vTT_FInjectHatchMaxHatches
@@ -3385,31 +3401,35 @@ try
 	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vMisc_TAB, Misc Abilities
 		Gui, Add, GroupBox, w240 h150 section, Misc Hotkeys
 
-			Gui, Add, Text, xp+10 yp+30 w80, Worker Count:
-				Gui, Add, Edit, Readonly yp-2 x+5 w100  center Vworker_count_local_key , %worker_count_local_key%
-					Gui, Add, Button, yp-2 x+5 gEdit_hotkey v#worker_count_local_key,  Edit
+			;Gui, Add, Text, xp+10 yp+30 w80, Worker Count:
+			Gui, Add, Checkbox, xs+10 yp+25 w95 vEnableWorkerCountSpeechHotkey checked%EnableWorkerCountSpeechHotkey%, Worker Count:
+				Gui, Add, Edit, Readonly yp-2 xp+100 w80 R1 center Vworker_count_local_key , %worker_count_local_key%
+					Gui, Add, Button, yp-2 x+5 gEdit_hotkey v#worker_count_local_key, Edit
 
-			Gui, Add, Text, X%XTabX% yp+35 w80, Enemy Workers:
-				Gui, Add, Edit, Readonly yp-2 x+5 w100  center Vworker_count_enemy_key , %worker_count_enemy_key%
-					Gui, Add, Button, yp-2 x+5 gEdit_hotkey v#worker_count_enemy_key,  Edit		
+			; I don't know whats up with AHK, but had to change edit box to yp+2. Something to do with check box and check box text positioning
+			;Gui, Add, Text, X%XTabX% yp+35 w80, Enemy Workers:
+			Gui, Add, Checkbox, xs+10 yp+35 w95 vEnableEnemyWorkerCountSpeechHotkey checked%EnableEnemyWorkerCountSpeechHotkey%, Enemy Workers:
+				Gui, Add, Edit, Readonly yp+2 xp+100 w80 R1 center Vworker_count_enemy_key, %worker_count_enemy_key%
+					Gui, Add, Button, yp-2 x+5 gEdit_hotkey v#worker_count_enemy_key, Edit		
 
-			Gui, Add, Text, X%XTabX% yp+35 w80, Trainer On/Off:
-				Gui, Add, Edit, Readonly yp-2 x+5 w100  center Vwarning_toggle_key , %warning_toggle_key%
-					Gui, Add, Button, yp-2 x+5 gEdit_hotkey v#warning_toggle_key,  Edit
+			;Gui, Add, Text, X%XTabX% yp+35 w80, Trainer On/Off:
+			Gui, Add, Checkbox, xs+10 yp+35 w95 vEnableToggleMacroTrainerHotkey checked%EnableToggleMacroTrainerHotkey%, Trainer On/Off:
+				Gui, Add, Edit, Readonly yp-2 xp+100 w80  R1 center Vwarning_toggle_key , %warning_toggle_key%
+					Gui, Add, Button, yp-2 x+5 gEdit_hotkey v#warning_toggle_key, Edit
 
-			Gui, Add, Text, X%XTabX% yp+35 w80, Ping Map:
-				Gui, Add, Edit, Readonly yp-2 x+5 w100  center Vping_key , %ping_key%
-					Gui, Add, Button, yp-2 x+5 gEdit_hotkey v#ping_key,  Edit
+			;Gui, Add, Text, X%XTabX% yp+35 w80, Ping Map:
+			Gui, Add, Checkbox, xs+10 yp+35 w95 vEnablePingMiniMapHotkey checked%EnablePingMiniMapHotkey%, Ping Map:
+				Gui, Add, Edit, Readonly yp-2 xp+100 w80 R1 center Vping_key, %ping_key%
+					Gui, Add, Button, yp-2 x+5 gEdit_hotkey v#ping_key, Edit
 
-		Gui, Add, GroupBox, x+20 ys w160 h150, Detect Spawning Races
-
-			Gui, Add, Checkbox,xp+10 yp+30 Vrace_reading checked%race_reading%, Enable
-			Gui, Add, Checkbox, y+10 vAuto_Read_Races checked%Auto_Read_Races%, Run on match start
+		Gui, Add, GroupBox, x+20 ys w160 h150, Announce Spawning Races
+			Gui, Add, Checkbox, xp+10 yp+30 vAuto_Read_Races checked%Auto_Read_Races%, Run on match start
+			Gui, Add, Checkbox, yp+30 Vrace_reading checked%race_reading%, Enable Hotkey
 			;Gui, Add, Checkbox, y+10 Vrace_speech checked%race_speech%, Speak Races
 			;Gui, Add, Checkbox, y+10 Vrace_clipboard checked%race_clipboard%, Copy to Clipboard
 
-			Gui, Add, Text, yp+40 w20, Hotkey:
-				Gui, Add, Edit, Readonly yp-2 x+5 w65  center Vread_races_key , %read_races_key%
+			;Gui, Add, Text, yp+20 w20, Hotkey:
+				Gui, Add, Edit, Readonly yp+25 w100 center Vread_races_key , %read_races_key%
 					Gui, Add, Button, yp-2 x+5 gEdit_hotkey v#read_races_key,  Edit
 
 		Gui, Add, GroupBox, xs ys+160 w410 h110, Auto Game Pause - Idle/AFK@Start
@@ -3432,21 +3452,21 @@ try
 			Gui, Add, Text, x%xtabx% y+10, Chat Message:
 				Gui, Add, Edit, yp-2 x+10 w310 Vchat_text center, %chat_text%	
 
-		Gui, Add, GroupBox, xs y+20 w410 h110, Misc		
-			Gui, Add, Checkbox, x%xtabx% yp+25 VMaxWindowOnStart Checked%MaxWindowOnStart%, Maximise Starcraft on match start		
-			Gui, Add, Checkbox, x%xtabx% yp+30 gHumanMouseWarning VHumanMouse Checked%HumanMouse%, Use human like mouse movements
-			Gui, Add, Text,yp+20 xp+40, Time range for each mouse movement (ms):
-			Gui, Add, Text,yp-10 x450, Lower limit:
+		Gui, Add, GroupBox, xs y+20 w410 h140 section, Misc		
+			Gui, Add, Checkbox, xs+10 yp+25 VMaxWindowOnStart Checked%MaxWindowOnStart%, Maximise Starcraft on match start		
+			Gui, Add, Checkbox, xs+10 yp+30 gHumanMouseWarning VHumanMouse Checked%HumanMouse%, Use human like mouse movements
+			Gui, Add, Text, yp+30 xs+10, Time range for each mouse movement (ms):
+			Gui, Add, Text, yp xs+240, Lower limit:
 			Gui, Add, Edit, Number Right x+25 yp-2 w45 
 				Gui, Add, UpDown,  Range1-300 vHumanMouseTimeLo, %HumanMouseTimeLo%, ;these belong to the above edit		Gui, Add, Text,yp xp+10, Lower limit:
-			Gui, Add, Text,yp+25 x450, Upper limit:
+			Gui, Add, Text,yp+30 xs+240, Upper limit:
 			Gui, Add, Edit, Number Right x+25 yp-2 w45 
 				Gui, Add, UpDown,  Range1-300 vHumanMouseTimeHi, %HumanMouseTimeHi%, ;these belong to the above edit
 
 
 
 	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vSettings_TAB, Settings				
-		Gui, Add, GroupBox, xs ys+5 w161 h110 section, Empty
+		Gui, Add, GroupBox, w161 h110 section, Empty
 /*
 			Gui, Add, Text, xs+10 yp+35 w60, Send Delay:
 			Gui, Add, Edit, Number Right x+30 yp-2 w45 vTT_pSendDelay
@@ -3527,9 +3547,10 @@ try
 			Gui, Add, Checkbox, x+15 yp vBAS_on_4v4 checked%BAS_on_4v4%, 4v4
 			Gui, Add, Checkbox, xs+15 y+15 vBAS_on_FFA checked%BAS_on_FFA%, FFA 
 		
-		Gui, Add, GroupBox, Xs+140 ys w200 h55, Playback Last Alert			
-			Gui, Add, Text, xp+10 yp+25 w40,Hotkey:
-				Gui, Add, Edit, Readonly yp-2 x+5 w100 R1 center vPlayback_Alert_Key , %Playback_Alert_Key%
+		Gui, Add, GroupBox, Xs+140 ys w200 h55, Playback Last Alert
+			Gui, Add, Checkbox, xp+10 yp+25 vEnableLastAlertPlayBackHotkey checked%EnableLastAlertPlayBackHotkey%, Enable 			
+			;Gui, Add, Text, xp+10 yp+25 w40,Hotkey:
+				Gui, Add, Edit, Readonly yp-2 x+5 w80 R1 center vPlayback_Alert_Key , %Playback_Alert_Key%
 					Gui, Add, Button, yp-2 x+5 gEdit_hotkey v#Playback_Alert_Key,  Edit	
 		Gui, Font, s10
 		Gui, Add, Button, center Xs+140 ys+60 w200 h50 gAlert_List_Editor vAlert_List_Editor, Launch Alert List Editor
@@ -3576,12 +3597,12 @@ try
 	Gui, Tab, Settings	
 		Gui, Add, GroupBox, w190 h160 x+15 y+25 section, SC2 Keys && Control Groups			
 			Gui, Add, Text, xp+10 yp+25 , Storage Ctrl Group:
-			Gui, Add, DropDownList,  % "xs+125 yp w45 center vCG_control_group Choose" (CG_control_group = 0 ? 10 : (CG_control_group = "Off" ? 11 : CG_control_group)), 1|2|3|4|5|6|7||8|9|0|Off
+			Gui, Add, DropDownList,  % "xs+125 yp w45 center gGUIControGroupCheckChrono vCG_control_group Choose" (CG_control_group = 0 ? 10 : (CG_control_group = "Off" ? 11 : CG_control_group)), 1|2|3|4|5|6|7||8|9|0|Off
 				
 			;	Gui, Add, Edit, Readonly xp+25 y+10  w100  center vCG_control_group , %CG_control_group%
 			;		Gui, Add, Button, yp-2 x+5 gEdit_SendHotkey v#CG_control_group,  Edit				
 			Gui, Add, Text, xs+10 yp+35, Nexus Ctrl Group:
-			Gui, Add, DropDownList, xs+125 yp w45 center vCG_nexus_Ctrlgroup_key Choose%CG_nexus_Ctrlgroup_key%, 1|2|3|4||5|6|7|8|9|0
+			Gui, Add, DropDownList, xs+125 yp w45 center gGUIControGroupCheckChrono vCG_nexus_Ctrlgroup_key Choose%CG_nexus_Ctrlgroup_key%, 1|2|3|4||5|6|7|8|9|0
 			;	Gui, Add, Edit, Readonly xp+25 y+10  w100  center vCG_nexus_Ctrlgroup_key , %CG_nexus_Ctrlgroup_key%
 			;		Gui, Add, Button, yp-2 x+5 gEdit_SendHotkey v#CG_nexus_Ctrlgroup_key,  Edit		
 			Gui, Add, Text, xs+10 yp+35 ,Chrono Boost Key:
@@ -3834,21 +3855,21 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 
 		thisXTabX := XTabX + 12
 		Gui, Add, GroupBox, xs Y+45 w370 h150 section, Terran 
-			Gui, Add, Checkbox, xp+10 yp+25 vEnableAutoWorkerTerranStart Checked%EnableAutoWorkerTerranStart%, Enable
+			Gui, Add, Checkbox, xp+10 yp+25 vEnableAutoWorkerTerranStart Checked%EnableAutoWorkerTerranStart%, Enable on match start
 
 			Gui, Add, Text, X%thisXTabX% y+15 w100, Base Ctrl Group:
 				if (Base_Control_Group_T_Key = 0)
 					droplist_var := 10
 				else 
 					droplist_var := Base_Control_Group_T_Key  	; i have a dropdown menu now so user has to put a number, cant use another key as I use this to check the control groups
-				Gui, Add, DropDownList,  xs+130 yp w45 center vBase_Control_Group_T_Key Choose%droplist_var%, 1|2|3|4|5|6|7|8|9|0
+				Gui, Add, DropDownList,  xs+130 yp w45 center gGUIControlGroupCheckAutoWorkerTerran vBase_Control_Group_T_Key Choose%droplist_var%, 1|2|3|4|5|6|7|8|9|0
 
 			Gui, Add, Text, X%thisXTabX% yp+35 w100, Storage Ctrl Group:
 				if (AutoWorkerStorage_T_Key = 0)
 					droplist_var := 10
 				else 
 					droplist_var := AutoWorkerStorage_T_Key  	; i have a dropdown menu now so user has to put a number, cant use another key as I use this to check the control groups
-				Gui, Add, DropDownList,  xs+130 yp w45 center vAutoWorkerStorage_T_Key Choose%droplist_var%, 1|2|3|4|5|6|7|8|9|0
+				Gui, Add, DropDownList,  xs+130 yp w45 center gGUIControlGroupCheckAutoWorkerTerran vAutoWorkerStorage_T_Key Choose%droplist_var%, 1|2|3|4|5|6|7|8|9|0
 
 
 			Gui, Add, Text, X%thisXTabX% yp+35 w100, Make SCV Key:
@@ -3865,21 +3886,21 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 
 
 		Gui, Add, GroupBox, xs ys+165 w370 h150 section, Protoss 
-			Gui, Add, Checkbox, xp+10 yp+25 vEnableAutoWorkerProtossStart Checked%EnableAutoWorkerProtossStart%, Enable
+			Gui, Add, Checkbox, xp+10 yp+25 vEnableAutoWorkerProtossStart Checked%EnableAutoWorkerProtossStart%, Enable on match start
 
 			Gui, Add, Text, X%thisXTabX% y+15 w100, Base Ctrl Group:
 				if (Base_Control_Group_P_Key = 0)
 					droplist_var := 10
 				else 
 					droplist_var := Base_Control_Group_P_Key  	; i have a dropdown menu now so user has to put a number, cant use another key as I use this to check the control groups
-				Gui, Add, DropDownList, xs+130 yp w45 center vBase_Control_Group_P_Key Choose%droplist_var%, 1|2|3|4|5|6|7|8|9|0
+				Gui, Add, DropDownList, xs+130 yp w45 center gGUIControlGroupCheckAutoWorkerProtoss vBase_Control_Group_P_Key Choose%droplist_var%, 1|2|3|4|5|6|7|8|9|0
 
 			Gui, Add, Text, X%thisXTabX% yp+35 w100, Storage Ctrl Group:
 				if (AutoWorkerStorage_P_Key = 0)
 					droplist_var := 10
 				else 
 					droplist_var := AutoWorkerStorage_P_Key  	; i have a dropdown menu now so user has to put a number, cant use another key as I use this to check the control groups
-				Gui, Add, DropDownList,  xs+130 yp w45 center vAutoWorkerStorage_P_Key Choose%droplist_var%, 1|2|3|4|5|6|7|8|9|0	
+				Gui, Add, DropDownList,  xs+130 yp w45 center gGUIControlGroupCheckAutoWorkerProtoss vAutoWorkerStorage_P_Key Choose%droplist_var%, 1|2|3|4|5|6|7|8|9|0	
 
 			Gui, Add, Text, X%thisXTabX% yp+35 w100, Make Probe Key:
 			Gui, Add, Edit, Readonly yp-2 x+2 w65 R1 center vAutoWorkerMakeWorker_P_Key, %AutoWorkerMakeWorker_P_Key%
@@ -4329,49 +4350,58 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 
 	Gui, Tab, Hotkeys 
 		
-		Gui, add, GroupBox, y+25 w280 h305, Overlay Hotkeys
+		Gui, add, GroupBox, y+25 w285 h320, Overlay Hotkeys
 
-			Gui, Add, Text, section xp+15 yp+25, Temp. Hide MiniMap:
-			Gui, Add, Edit, Readonly yp-2 xp+120 center w85 R1 vTempHideMiniMapKey gedit_hotkey, %TempHideMiniMapKey%
-			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#TempHideMiniMapKey,  Edit 	
+			;Gui, Add, Text, section xp+15 yp+25, Temp. Hide MiniMap:
+			Gui, Add, Checkbox, section xp+15 yp+25 vEnableHideMiniMapHotkey checked%EnableHideMiniMapHotkey%, Temp. Hide MiniMap:
+			Gui, Add, Edit, Readonly yp-2 xp+130 center w85 R1 vTempHideMiniMapKey gedit_hotkey, %TempHideMiniMapKey%
+			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#TempHideMiniMapKey, Edit 	
 
-			Gui, Add, Text, xs yp+35, Toggle Minimap:
-			Gui, Add, Edit, Readonly yp-2 xp+120 center w85 R1 vToggleMinimapOverlayKey gedit_hotkey, %ToggleMinimapOverlayKey%
-			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#ToggleMinimapOverlayKey,  Edit 	
+			;Gui, Add, Text, xs yp+35, Toggle Minimap:
+			Gui, Add, Checkbox, section xs yp+35 vEnableToggleMiniMapHotkey checked%EnableToggleMiniMapHotkey%, Toggle Minimap:
+			Gui, Add, Edit, Readonly yp-2 xp+130 center w85 R1 vToggleMinimapOverlayKey gedit_hotkey, %ToggleMinimapOverlayKey%
+			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#ToggleMinimapOverlayKey, Edit 	
 
-			Gui, Add, Text, xs yp+35, Toggle Income:
-			Gui, Add, Edit, Readonly yp-2 xp+120 center w85 R1 vToggleIncomeOverlayKey gedit_hotkey, %ToggleIncomeOverlayKey%
-			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#ToggleIncomeOverlayKey,  Edit 		
+			;Gui, Add, Text, xs yp+35, Toggle Income:
+			Gui, Add, Checkbox, section xs yp+35 vEnableToggleIncomeOverlayHotkey checked%EnableToggleIncomeOverlayHotkey%, Toggle Income:
+			Gui, Add, Edit, Readonly yp-2 xp+130 center w85 R1 vToggleIncomeOverlayKey gedit_hotkey, %ToggleIncomeOverlayKey%
+			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#ToggleIncomeOverlayKey, Edit 		
 
-			Gui, Add, Text, xs yp+35, Toggle Resources:
-			Gui, Add, Edit, Readonly yp-2 xp+120 center w85 R1 vToggleResourcesOverlayKey gedit_hotkey, %ToggleResourcesOverlayKey%
-			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#ToggleResourcesOverlayKey,  Edit 		
+			;Gui, Add, Text, xs yp+35, Toggle Resources:
+			Gui, Add, Checkbox, section xs yp+35 vEnableToggleResourcesOverlayHotkey checked%EnableToggleResourcesOverlayHotkey%, Toggle Resources:
+			Gui, Add, Edit, Readonly yp-2 xp+130 center w85 R1 vToggleResourcesOverlayKey gedit_hotkey, %ToggleResourcesOverlayKey%
+			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#ToggleResourcesOverlayKey, Edit 		
 
-			Gui, Add, Text, xs yp+35, Toggle Army Size:
-			Gui, Add, Edit, Readonly yp-2 xp+120 center w85 R1 vToggleArmySizeOverlayKey gedit_hotkey, %ToggleArmySizeOverlayKey%
-			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#ToggleArmySizeOverlayKey,  Edit 		
+			;Gui, Add, Text, xs yp+35, Toggle Army Size:
+			Gui, Add, Checkbox, section xs yp+35 vEnableToggleArmySizeOverlayHotkey checked%EnableToggleArmySizeOverlayHotkey%, Toggle Army Size:
+			Gui, Add, Edit, Readonly yp-2 xp+130 center w85 R1 vToggleArmySizeOverlayKey gedit_hotkey, %ToggleArmySizeOverlayKey%
+			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#ToggleArmySizeOverlayKey, Edit 		
 
-			Gui, Add, Text, xs yp+35, Toggle Workers:
-			Gui, Add, Edit, Readonly yp-2 xp+120 center w85 R1 vToggleWorkerOverlayKey gedit_hotkey, %ToggleWorkerOverlayKey%
-			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#ToggleWorkerOverlayKey,  Edit 		
+			;Gui, Add, Text, xs yp+35, Toggle Workers:
+			Gui, Add, Checkbox, section xs yp+35 vEnableToggleWorkerOverlayHotkey checked%EnableToggleWorkerOverlayHotkey%, Toggle Resources:
+			Gui, Add, Edit, Readonly yp-2 xp+130 center w85 R1 vToggleWorkerOverlayKey gedit_hotkey, %ToggleWorkerOverlayKey%
+			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#ToggleWorkerOverlayKey, Edit 		
 
-			Gui, Add, Text, xs yp+35, Toggle Unit Panel:
-			Gui, Add, Edit, Readonly yp-2 xp+120 center w85 R1 vToggleUnitOverlayKey gedit_hotkey, %ToggleUnitOverlayKey%
-			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#ToggleUnitOverlayKey,  Edit 		
+			;Gui, Add, Text, xs yp+35, Toggle Unit Panel:
+			Gui, Add, Checkbox, section xs yp+35 vEnableToggleUnitPanelOverlayHotkey checked%EnableToggleUnitPanelOverlayHotkey%, Toggle Unit Panel:
+			Gui, Add, Edit, Readonly yp-2 xp+130 center w85 R1 vToggleUnitOverlayKey gedit_hotkey, %ToggleUnitOverlayKey%
+			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#ToggleUnitOverlayKey, Edit 		
 
 			;Gui, Add, Text, xs yp+35, Cycle Overlays:
 			;Gui, Add, Edit, Readonly yp-2 xp+120 center w85 R1 vCycleOverlayKey gedit_hotkey, %CycleOverlayKey%
 			;Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#CycleOverlayKey,  Edit 		
 
-			Gui, Add, Text, xs yp+35, Cycle Identifier:
-			Gui, Add, Edit, Readonly yp-2 xp+120 center w85 R1 vToggleIdentifierKey gedit_hotkey, %ToggleIdentifierKey%
-			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#ToggleIdentifierKey,  Edit 		
+			;Gui, Add, Text, xs yp+35, Cycle Identifier:
+			Gui, Add, Checkbox, section xs yp+35 vEnableCycleIdentifierHotkey checked%EnableCycleIdentifierHotkey%, Cycle Identifier:
+			Gui, Add, Edit, Readonly yp-2 xp+130 center w85 R1 vToggleIdentifierKey gedit_hotkey, %ToggleIdentifierKey%
+			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#ToggleIdentifierKey, Edit 		
 			gui, font, Underline
-			Gui, Add, Text, xs yp+35, *Adjust Overlays:
+			;Gui, Add, Text, xs yp+35, *Adjust Overlays:
+			Gui, Add, Checkbox, section xs yp+30 vEnableAdjustOverlaysHotkey checked%EnableAdjustOverlaysHotkey%, *Adjust Overlays:
 			gui, font, Norm 
-			Gui, Add, Edit, Readonly yp-2 xp+120 center w85 R1 vAdjustOverlayKey gedit_hotkey, %AdjustOverlayKey%
+			Gui, Add, Edit, Readonly yp-2 xp+130 center w85 R1 vAdjustOverlayKey gedit_hotkey, %AdjustOverlayKey%
 			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#AdjustOverlayKey,  Edit 
-			Gui, Add, Text, xs y+30, * See 'Info' Tab for Instructions		
+			Gui, Add, Text, xs yp+30, * See 'Info' Tab for Instructions		
 
 	Gui, Tab, Info
 	;	Gui, Add, Text, section x+10 y+15,	
@@ -4429,6 +4459,11 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 
 		BI_camera_pos_x_TT := #BI_camera_pos_x_TT :=  "The hotkey used to invoke the above saved camera location."
 													. "`n`nThis is used by both backspace inject methods."
+
+		EnableLastAlertPlayBackHotkey_TT := EnableHideMiniMapHotkey_TT := EnableToggleMiniMapHotkey_TT := EnableToggleIncomeOverlayHotkey_TT := EnableToggleResourcesOverlayHotkey_TT
+		:= EnableToggleArmySizeOverlayHotkey_TT := EnableToggleWorkerOverlayHotkey_TT := EnableToggleUnitPanelOverlayHotkey_TT := EnableCycleIdentifierHotkey_TT 
+		:= EnableAdjustOverlaysHotkey_TT := EnableWorkerCountSpeechHotkey_TT := EnableEnemyWorkerCountSpeechHotkey_TT := EnableToggleMacroTrainerHotkey_TT := EnablePingMiniMapHotkey_TT
+		:= "Enables/Disables the associated hotkey."											
 
 
 		manual_inject_time_TT := "The time between alerts."
@@ -4567,7 +4602,8 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		worker_count_enemy_key_TT := "This will read aloud your enemy's worker count. (only in 1v1)"
 		warning_toggle_key_TT := "Pauses and resumes the program."
 		ping_key_TT := "This hotkey will ping the map at the current mouse cursor location."
-		race_reading_TT := "Reads aloud the enemys' spawning races."
+		race_reading_TT := read_races_key_TT := "When this hotkey is pressed the enemys' spawning races are read aloud "
+		Auto_Read_Races_TT := "At the start of the match enemys' spawning races are automatically read aloud."
 		idle_enable_TT := "If the user has been idle for longer than a set period of time (real seconds) then the game will be paused."
 		TTidle_time_TT := idle_time_TT := "How long the user must be idle for (in real seconds) before the game is paused.`nNote: This value can be higher than the ""Don't Pause After"" parameter!"
 		TTUserIdle_LoLimit_TT  := UserIdle_LoLimit_TT := "The game will not be paused before this time. (In game/SC2 seconds)"
@@ -4869,6 +4905,26 @@ for i, controlID in ["BackspaceGroupBoxID", "BackspaceDragTextID", "Drag_origin"
 }
 return 
 
+
+GUIControlGroupCheckInjects:
+GuiControlGet, g1,, Inject_control_group
+GuiControlGet, g2,, MI_Queen_Group
+if (g1 = g2)
+	msgbox, 48, Config Warning!, The storage and queen control groups must NOT be the same.`nRefer to their respective tooltips for more information.
+return
+GUIControGroupCheckChrono:
+GuiControlGet, g1,, CG_control_group
+GuiControlGet, g2,, CG_nexus_Ctrlgroup_key
+if (g1 = g2)
+	msgbox, 48, Config Warning!, The storage and nexus control groups must NOT be the same.`nRefer to their respective tooltips for more information.
+return
+GUIControlGroupCheckAutoWorkerTerran:
+GUIControlGroupCheckAutoWorkerProtoss:
+GuiControlGet, g1,, % A_ThisLabel = "GUIControlGroupCheckAutoWorkerTerran" ? "Base_Control_Group_T_Key" : "Base_Control_Group_P_Key"
+GuiControlGet, g2,, % A_ThisLabel = "GUIControlGroupCheckAutoWorkerTerran" ? "AutoWorkerStorage_T_Key" : "AutoWorkerStorage_P_Key"
+if (g1 = g2)
+	msgbox, 48, Config Warning!, The base and storage control groups must NOT be the same.`nRefer to their respective tooltips for more information.
+return
 
 
 ; Still need to save the currently displayed item (incase user hasnt clicked a button
@@ -7643,27 +7699,41 @@ CreateHotkeys()
 	#If
 
 	Hotkey, If, WinActive(GameIdentifier)
-		hotkey, %warning_toggle_key%, mt_pause_resume, on		
+		if EnableToggleMacroTrainerHotkey
+			hotkey, %warning_toggle_key%, mt_pause_resume, on		
 		hotkey, *~LButton, g_LbuttonDown, on
 
 	Hotkey, If, WinActive(GameIdentifier) && time && (!isMenuOpen() || isChatOpen()) 
-		hotkey, %ping_key%, ping, on									;on used to re-enable hotkeys as were 
+		if EnablePingMiniMapHotkey
+			hotkey, %ping_key%, ping, on									;on used to re-enable hotkeys as were 
 	Hotkey, If, WinActive(GameIdentifier) && time	;turned off during save to allow for swaping of keys
 		if LwinDisable
 			hotkey, Lwin, g_DoNothing, on
 	Hotkey, If, WinActive(GameIdentifier) && time && !isChatOpen()	
-		hotkey, %worker_count_local_key%, worker_count, on
-		hotkey, %worker_count_enemy_key%, worker_count, on
-		hotkey, %Playback_Alert_Key%, g_PrevWarning, on					
-		hotkey, %TempHideMiniMapKey%, g_HideMiniMap, on
-		hotkey, %AdjustOverlayKey%, Adjust_overlay, on
-		hotkey, %ToggleIdentifierKey%, Toggle_Identifier, on
-		hotkey, %ToggleMinimapOverlayKey%, Overlay_Toggle, on
-		hotkey, %ToggleIncomeOverlayKey%, Overlay_Toggle, on
-		hotkey, %ToggleResourcesOverlayKey%, Overlay_Toggle, on
-		hotkey, %ToggleArmySizeOverlayKey%, Overlay_Toggle, on
-		hotkey, %ToggleWorkerOverlayKey%, Overlay_Toggle, on
-		hotkey, %ToggleUnitOverlayKey%, Overlay_Toggle, on
+		if EnableWorkerCountSpeechHotkey
+			hotkey, %worker_count_local_key%, worker_count, on
+		if EnableEnemyWorkerCountSpeechHotkey
+			hotkey, %worker_count_enemy_key%, worker_count, on
+		if EnableLastAlertPlayBackHotkey
+			hotkey, %Playback_Alert_Key%, g_PrevWarning, on
+		if EnableHideMiniMapHotkey					
+			hotkey, %TempHideMiniMapKey%, g_HideMiniMap, on
+		if EnableAdjustOverlaysHotkey	
+			hotkey, %AdjustOverlayKey%, Adjust_overlay, on
+		if EnableCycleIdentifierHotkey
+			hotkey, %ToggleIdentifierKey%, Toggle_Identifier, on
+		if EnableToggleMiniMapHotkey
+			hotkey, %ToggleMinimapOverlayKey%, Overlay_Toggle, on
+		if EnableToggleIncomeOverlayHotkey
+			hotkey, %ToggleIncomeOverlayKey%, Overlay_Toggle, on
+		if EnableToggleResourcesOverlayHotkey
+			hotkey, %ToggleResourcesOverlayKey%, Overlay_Toggle, on
+		if EnableToggleArmySizeOverlayHotkey
+			hotkey, %ToggleArmySizeOverlayKey%, Overlay_Toggle, on
+		if EnableToggleWorkerOverlayHotkey
+			hotkey, %ToggleWorkerOverlayKey%, Overlay_Toggle, on
+		if EnableToggleUnitPanelOverlayHotkey
+			hotkey, %ToggleUnitOverlayKey%, Overlay_Toggle, on
 		; hotkey, %CycleOverlayKey%, Overlay_Toggle, on
 
 		if race_reading 
@@ -11319,3 +11389,4 @@ clickCommandCard(position, byRef x, byRef y)
 	, y := y0 - (row * height + height//2)
 	return
 }
+

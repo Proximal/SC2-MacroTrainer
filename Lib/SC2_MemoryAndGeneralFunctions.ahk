@@ -3670,9 +3670,13 @@ readConfigFile()
 
 
 	;[Misc Hotkey]
+	IniRead, EnableWorkerCountSpeechHotkey, %config_file%, Misc Hotkey, EnableWorkerCountSpeechHotkey, 1
 	IniRead, worker_count_local_key, %config_file%, Misc Hotkey, worker_count_key, F8
+	IniRead, EnableEnemyWorkerCountSpeechHotkey, %config_file%, Misc Hotkey, EnableEnemyWorkerCountSpeechHotkey, 1
 	IniRead, worker_count_enemy_key, %config_file%, Misc Hotkey, enemy_worker_count, Lwin & F8
+	IniRead, EnableToggleMacroTrainerHotkey, %config_file%, Misc Hotkey, EnableToggleMacroTrainerHotkey, 1
 	IniRead, warning_toggle_key, %config_file%, Misc Hotkey, pause_resume_warnings_key, Lwin & Pause
+	IniRead, EnablePingMiniMapHotkey, %config_file%, Misc Hotkey, EnablePingMiniMapHotkey, 1
 	IniRead, ping_key, %config_file%, Misc Hotkey, ping_map, Lwin & MButton
 
 	;[Misc Settings]
@@ -3792,6 +3796,7 @@ readConfigFile()
 
 	;[Alert Location]
 	IniRead, Playback_Alert_Key, %config_file%, Alert Location, Playback_Alert_Key, <#F7
+	IniRead, EnableLastAlertPlayBackHotkey, %config_file%, Alert Location, EnableLastAlertPlayBackHotkey, 1
 
 	alert_array := [],	alert_array := createAlertArray()
 	
@@ -3820,6 +3825,15 @@ readConfigFile()
 			%A_LoopField%Y := A_ScreenHeight/2
 	}
 
+	IniRead, EnableHideMiniMapHotkey, %config_file%, %section%, EnableHideMiniMapHotkey, 1
+	IniRead, EnableToggleMiniMapHotkey, %config_file%, %section%, EnableToggleMiniMapHotkey, 1
+	IniRead, EnableToggleIncomeOverlayHotkey, %config_file%, %section%, EnableToggleIncomeOverlayHotkey, 1
+	IniRead, EnableToggleResourcesOverlayHotkey, %config_file%, %section%, EnableToggleResourcesOverlayHotkey, 1
+	IniRead, EnableToggleArmySizeOverlayHotkey, %config_file%, %section%, EnableToggleArmySizeOverlayHotkey, 1
+	IniRead, EnableToggleWorkerOverlayHotkey, %config_file%, %section%, EnableToggleWorkerOverlayHotkey, 1
+	IniRead, EnableToggleUnitPanelOverlayHotkey, %config_file%, %section%, EnableToggleUnitPanelOverlayHotkey, 1
+	IniRead, EnableCycleIdentifierHotkey, %config_file%, %section%, EnableCycleIdentifierHotkey, 1
+	IniRead, EnableAdjustOverlaysHotkey, %config_file%, %section%, EnableAdjustOverlaysHotkey, 1
 
 ;	IniRead, DrawWorkerOverlay, %config_file%, %section%, DrawWorkerOverlay, 1
 ;	IniRead, DrawIdleWorkersOverlay, %config_file%, %section%, DrawIdleWorkersOverlay, 1
@@ -4371,9 +4385,7 @@ isPhotonOverChargeActive(unit)
 	; attackProtossBuilding structure + 0x54 - 1 Active 0 not.
 	; Correctly returns 0 For nexus under construction as well (as they will have the same ability structure/addresses).
 	; Check if = 1, in case something went wrong - but it shouldn't if calling for a nexus. 
-	return (1 = ReadMemory(ReadMemory(findAbilityTypePointer(getUnitAbilityPointer(unit), aUnitID["Nexus"], "attackProtossBuilding"), GameIdentifier) + 0x54, GameIdentifier)
-			? True 
-			: False)
+	return (1 = ReadMemory(ReadMemory(findAbilityTypePointer(getUnitAbilityPointer(unit), aUnitID["Nexus"], "attackProtossBuilding"), GameIdentifier) + 0x54, GameIdentifier))
 }
 
 getunitAddress(unit)
@@ -4487,4 +4499,17 @@ modifyOverlay(overlay, byRef Redraw, byRef overlayCreated, byRef Drag, byRef Dra
 		Iniwrite, %y%, %config_file%, Overlays, %overlay%Y
 	}
 	return 1
+}
+
+addressPatternScan()
+{ 	
+	;#include <classMemory>
+	global B_Timer
+	;if !isObject(mem)
+	mem := new memory(GameIdentifier)
+	if pUnitTimer := mem.modulePatternScan("", 0xC1, 0xEA, 0x0A, 0xB9, 0x00, 0x01, 0x00, 0x00, 0x01, 0x0D
+								, "?", "?", "?", "?", 0xF6, 0xD2, 0xA3, "?", "?", "?", "?", 0xF6, 0xC2
+								, 0x01, 0x74, 0x06, 0x01, 0x0D, "?", "?", "?", "?", 0x83, 0x3D, "?", "?"
+								, "?", "?", 0x00, 0x56, 0xBE, 0xFF, 0xFF, 0xFF, 0x7F)
+		B_Timer := ReadMemory(off1 + 28, GameIdentifier)
 }
