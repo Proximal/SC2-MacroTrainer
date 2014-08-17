@@ -1,5 +1,5 @@
 dSleep(ms)
 {
-	DllCall("Sleep", Uint, ms)
+	DllCall("Sleep", "Uint", ms)
 	return
 }

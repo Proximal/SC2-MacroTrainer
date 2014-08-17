@@ -2507,6 +2507,9 @@ setupMiniMapUnitLists(byRef aMiniMapUnits)
 ;--------------------
 SetMiniMap(byref minimap)
 {	
+	global SC2AdvancedEnlargedMinimap
+
+	enlarged := (SC2AdvancedEnlargedMinimap = 1) 
 	; minimap is a super global (though here it is a local)
 	minimap := []
 
@@ -2518,33 +2521,32 @@ SetMiniMap(byref minimap)
 	AspectRatio := getScreenAspectRatio()	
 	If (AspectRatio = "16:10")
 	{
-		ScreenLeft := (27/1680) * A_ScreenWidth		
-		ScreenBottom := (1036/1050) * A_ScreenHeight	
-		ScreenRight := (281/1680) * A_ScreenWidth	
-		ScreenTop := (786/1050) * A_ScreenHeight
-
+		ScreenLeft := ((enlarged ? 8 : 27)/1680) * A_ScreenWidth
+		ScreenRight := ((enlarged ? 314 : 281)/1680) * A_ScreenWidth
+		ScreenTop := ((enlarged ? 736 : 786)/1050) * A_ScreenHeight
+		ScreenBottom := ((enlarged ? 1042 : 1036)/1050) * A_ScreenHeight
 	}	
 	Else If (AspectRatio = "5:4")
 	{	
-		ScreenLeft := (25/1280) * A_ScreenWidth
-		ScreenBottom := (1011/1024) * A_ScreenHeight
-		ScreenRight := (257/1280) * A_ScreenWidth 
-		Screentop := (783/1024) * A_ScreenHeight
+		ScreenLeft := ((enlarged ? 7 : 25)/1280) * A_ScreenWidth
+		ScreenRight := ((enlarged ? 287 : 257)/1280) * A_ScreenWidth
+		Screentop := ((enlarged ? 737 : 783)/1024) * A_ScreenHeight
+		ScreenBottom := ((enlarged ? 1016 : 1011)/1024) * A_ScreenHeight
 	}	
 	Else If (AspectRatio = "4:3")
 	{	
-		ScreenLeft := (25/1280) * A_ScreenWidth
-		ScreenBottom := (947/960) * A_ScreenHeight
-		ScreenRight := (257/1280) * A_ScreenWidth 
-		ScreenTop := (718/960) * A_ScreenHeight
 
+		ScreenLeft := ((enlarged ? 7 : 25)/1280) * A_ScreenWidth
+		ScreenRight := ((enlarged ? 287 : 257)/1280) * A_ScreenWidth
+		ScreenTop := ((enlarged ? 673 : 718)/960) * A_ScreenHeight
+		ScreenBottom := ((enlarged ? 953 : 947)/960) * A_ScreenHeight
 	}
 	Else ;16:9 Else if (AspectRatio = "16:9")
 	{
-		ScreenLeft 		:= (29/1920) * A_ScreenWidth
-		ScreenBottom 	:= (1066/1080) * A_ScreenHeight
-		ScreenRight 	:= (289/1920) * A_ScreenWidth 
-		ScreenTop 		:= (807/1080) * A_ScreenHeight
+		ScreenLeft 	:= ((enlarged ? 8 : 29)/1920) * A_ScreenWidth
+		ScreenRight := ((enlarged ? 323 : 289)/1920) * A_ScreenWidth
+		ScreenTop 	:= ((enlarged ? 757 : 807)/1080) * A_ScreenHeight
+		ScreenBottom := ((enlarged ? 1072 : 1066)/1080) * A_ScreenHeight
 	}	
 	minimap.ScreenWidth := ScreenRight - ScreenLeft
 	minimap.ScreenHeight := ScreenBottom - ScreenTop
@@ -3706,6 +3708,7 @@ readConfigFile()
 	IniRead, BlockingNumpad, %config_file%, %section%, BlockingNumpad, 1
 	IniRead, BlockingMouseKeys, %config_file%, %section%, BlockingMouseKeys, 1
 	IniRead, BlockingMultimedia, %config_file%, %section%, BlockingMultimedia, 1
+	IniRead, SC2AdvancedEnlargedMinimap, %config_file%, %section%, SC2AdvancedEnlargedMinimap, 0
 	IniRead, LwinDisable, %config_file%, %section%, LwinDisable, 1
 	IniRead, Key_EmergencyRestart, %config_file%, %section%, Key_EmergencyRestart, <#Space
 
@@ -4499,6 +4502,29 @@ modifyOverlay(overlay, byRef Redraw, byRef overlayCreated, byRef Drag, byRef Dra
 		Iniwrite, %y%, %config_file%, Overlays, %overlay%Y
 	}
 	return 1
+}
+
+; returns the Game path
+; e.g.	C:\Games\StarCraft II\StarCraft II.exe
+StarcraftExePath()
+{
+	if A_Is64bitOS
+		RegRead, GamePath, HKEY_LOCAL_MACHINE, SOFTWARE\Wow6432Node\Blizzard Entertainment\StarCraft II Retail, GamePath
+	else 
+		RegRead, GamePath, HKEY_LOCAL_MACHINE, SOFTWARE\Blizzard Entertainment\StarCraft II Retail, GamePath
+	return GamePath
+}
+
+; returns the Install path
+; e.g.	C:\Games\StarCraft II\
+; if doesnt exist returns blank
+StarcraftInstallPath()
+{
+	if A_Is64bitOS
+		RegRead, SC2InstallPath, HKEY_LOCAL_MACHINE, SOFTWARE\Wow6432Node\Blizzard Entertainment\StarCraft II Retail, InstallPath
+	else 
+		RegRead, SC2InstallPath, HKEY_LOCAL_MACHINE, SOFTWARE\Blizzard Entertainment\StarCraft II Retail, InstallPath
+	return SC2InstallPath
 }
 
 addressPatternScan()

@@ -1,4 +1,4 @@
-/*
+﻿/*
     18/05/14
         -   Fixed issue with get getBaseAddressOfModule() returning the incorrect module 
             when specified module name formed part of another modules name
@@ -15,6 +15,8 @@
     1/08/14 - version 1.2
         -   getProcessBaseAddress() dllcall now returns Int64. This prevents a negative number (overflow)
             when reading the base address of a 64 bit target process from a 32 bit AHK process.
+    17/08/14
+        - Change class name to _ClassMemory
 
 
     RHCP's basic memory class:
@@ -76,15 +78,15 @@
         The contents of this file can be copied directly into your script. Alternately you can copy the classMemory.ahk file into your library folder,
         in which case you will need to use the #include directive in your script i.e. #Include <classMemory>
         You can use this code to check if you have installed the class correctly.
-        if (memory.__Class != "Memory")
-            msgbox class memory not correctly installed. Or the (global class) variable "Memory" has been overwritten
+        if (_ClassMemory.__Class != "_ClassMemory")
+            msgbox class memory not correctly installed. Or the (global class) variable "_ClassMemory" has been overwritten
         else msgbox class memory correctly installed
         
 
         Open a process with sufficient access to read and write memory addresses (this is required before you can use the other functions)
         You only need to do this once. But if the process closes, then you will need to reopen.
         Also, if the target process is running as admin, then the script will also require admin rights!
-            calc := new memory("ahk_exe calc.exe") ; Note: This can be an ahk_exe, ahk_class, ahk_pid, or simply the window title. 
+            calc := new _ClassMemory("ahk_exe calc.exe") ; Note: This can be an ahk_exe, ahk_class, ahk_pid, or simply the window title. 
             
         Get the processes base address
             msgbox % calc.BaseAddress
@@ -120,7 +122,7 @@
 
         By default a null terminator is included at the end of written strings for writeString()
         The nullterminator property can be used to change this.
-            memory.insertNullTerminator := False ; This will change the property for all processes
+            _ClassMemory.insertNullTerminator := False ; This will change the property for all processes
             calc.insertNullTerminator := False ; Changes the property for just this process     
 
 
@@ -131,7 +133,7 @@
 
 */
 
-class memory
+class _ClassMemory
 {
     static baseAddress, hProcess
     , insertNullTerminator := True
@@ -513,6 +515,28 @@ class memory
         return -1 ; not found
     }
 
+    getModules(byRef aModules)
+    {
+        if !this.hProcess
+            return -2
+        if (A_PtrSize = 4)
+        {
+            DllCall("IsWow64Process", "Ptr", this.hProcess, "Int*", result)
+            if !result 
+                return -4 ; AHK is 32bit and target process is 64 bit, this function wont work
+        }      
+        aModules := []
+        if !moduleCount := this.EnumProcessModulesEx(lphModule)
+            return -3  
+        loop % moduleCount
+        {
+            this.GetModuleInformation(hModule := numget(lphModule, (A_index - 1) * A_PtrSize), aModuleInfo)
+            aModuleInfo.Name := this.GetModuleFileNameEx(hModule)
+            aModules.insert(aModuleInfo)
+        }
+        return round(aModules.MaxIndex())        
+    }
+
     getEndAddressOfLastModule(byRef aModuleInfo := "")
     {
         if !moduleCount := this.EnumProcessModulesEx(lphModule)
@@ -651,6 +675,7 @@ class memory
     ; Method:       processPatternScan(aAOBPattern*)
     ;               Scan the memory space of the current process for an array of bytes pattern.  
     ; Parameters:
+    ;   startAddress -      The memory address from which to begin the search.
     ;   aAOBPattern* -      A variadic list of byte values i.e. the array of bytes to find.
     ;                       Wild card bytes should be indicated by using a single '?'.
     ; Return Values:
@@ -660,9 +685,9 @@ class memory
     ;   -2                  Failed to read a memory region.
     ;   -10                 The aAOBPattern* is invalid. (No bytes were passed)
 
-    processPatternScan(aAOBPattern*)
+    processPatternScan(startAddress := 0, aAOBPattern*)
     {
-        address := 0
+        address := startAddress
         MEM_COMMIT := 0x1000       
         MEM_MAPPED := 0x40000
         MEM_PRIVATE := 0x20000

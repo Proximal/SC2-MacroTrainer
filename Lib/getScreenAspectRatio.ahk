@@ -9,6 +9,6 @@ getScreenAspectRatio()
 		AspectRatio := "5:4"
 	else if (AspectRatio = Round(1600/1200, 2)) ; 1.33
 		AspectRatio := "4:3"
-	else AspectRatio := "Unknown"
+	else AspectRatio := ""
 	return AspectRatio
 }

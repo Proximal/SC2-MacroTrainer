@@ -639,7 +639,7 @@ g_DeselectUnit:
 if (getSelectionCount() > 1)
 {
 	ClickUnitPortrait(0, X, Y, Xpage, Ypage) ; -1 as selection index begins at 0 i.e 1st unit at pos 0 top left
-	MTclick(X, Y, "Left", "+")
+	input.pSend("+{Click " x " " y "}")
 }
 return
 
@@ -893,20 +893,18 @@ clock:
 				aThreads.Overlays.ahkFunction("gameChange")
 		}	
 		inject_timer := TimeReadRacesSet := UpdateTimers := PrevWarning := WinNotActiveAtStart := ResumeWarnings := 0 ;ie so know inject timer is off
-		EnableAutoWorkerTerran := EnableAutoWorkerProtoss := False ; otherwise if they don't have start enabled they may need to press the hotkey twice to activate
+		isPlaying := EnableAutoWorkerTerran := EnableAutoWorkerProtoss := False ; otherwise if they don't have start enabled they may need to press the hotkey twice to activate
 		setLowLevelInputHooks(False) ; Shouldn't be required anymore but I'm just gonna leave it anyway
 	}
-	; > 1,536d or 0600h -> 0.375 ; mischa's reaper bot used this as minimum time. A couple of people reported issues (e.g. auto-worker) - perpahs i wasnt't waiting long enough for game to finish loading
+	; > 1,536d or 0600h -> 0.375 ; mischa's reaper bot used this as minimum time. A couple of people reported issues (e.g. auto-worker) - perhaps i wasnt't waiting long enough for game to finish loading
 	; since i round to nearest single decimal place, use 0.4
 	Else if (time > 0.4 && !isInMatch) && (getLocalPlayerNumber() != 16 || debug) ; Local slot = 16 while in lobby/replay - this will stop replay announcements
 	{
-		soundplay *-1
-
 		isInMatch := true
 		AW_MaxWorkersReached := TmpDisableAutoWorker := 0
 		aResourceLocations := []
 		global aStringTable := []
-		global aXelnagas := [] ; global cant cant come after command expressions
+		global aXelnagas := [] ; global cant come after command expressions
 		global MT_CurrentGame := []	; This is a variable which from now on will store
 								; Info about the current game for other functions 
 								; An easy way to have the info cleared each match
@@ -919,6 +917,7 @@ clock:
 		GameType := GetGameType(aPlayer)
 		If IsInList(aLocalPlayer.Type, "Referee", "Spectator")
 			return
+		isPlaying := True
 		; No longer required but leaving it for now
 		setLowLevelInputHooks(False) ; try to remove them first, as can get here from just saving/applying settings in options GUI
 
@@ -957,7 +956,7 @@ clock:
 		CreateHotkeys()	
 		if !A_IsCompiled
 		{
-			Hotkey, If, WinActive(GameIdentifier) && time
+			Hotkey, If, WinActive(GameIdentifier) && isPlaying
 			hotkey, >!g, g_GLHF
 			Hotkey, If
 		}				
@@ -973,7 +972,7 @@ clock:
 		if gas_on
 			settimer, gas, 1000, -5
 		if idleon		;this is the idle worker
-			settimer, scvidle, 500, -5	; the idle scv pointer changes every game
+			settimer, scvidle, 500, -5	; the idle scv final pointer address changes every game
 		if idle_enable	;this is the idle AFK
 			settimer, user_idle, 1000, -5
 
@@ -1012,7 +1011,7 @@ setupSelectArmyUnits(l_input, aUnitID)
 	l_input := Trim(l_input, " `t , |")
 	loop, parse, l_input, `,
 		l_army .= aUnitID[A_LoopField] ","
-	return 	l_army := Trim(l_army, " `t , |")
+	return l_army := Trim(l_army, " `t , |")
 }
 
 ;-------------------------
@@ -1115,7 +1114,7 @@ Cast_ChronoStructure(aStructuresToChrono)
 		input.pSend(chrono_key)
 		If HumanMouse
 			MouseMoveHumanSC2("x" click_x "y" click_y "t" rand(HumanMouseTimeLo, HumanMouseTimeHi))
-		MTclick(click_x, click_y)
+		Input.pClick(click_x, click_y)
 	}
 	If HumanMouse
 		MouseMoveHumanSC2("x" start_x "y" start_y "t" rand(HumanMouseTimeLo, HumanMouseTimeHi))
@@ -1234,7 +1233,7 @@ Cast_ChronoStructureOld(StructureToChrono)
 		input.pSend(chrono_key)
 		If HumanMouse
 			MouseMoveHumanSC2("x" click_x "y" click_y "t" rand(HumanMouseTimeLo, HumanMouseTimeHi))
-		MTclick(click_x, click_y)
+		Input.pClick(click_x, click_y)
 	}
 	If HumanMouse
 		MouseMoveHumanSC2("x" start_x "y" start_y "t" rand(HumanMouseTimeLo, HumanMouseTimeHi))
@@ -2750,6 +2749,7 @@ ini_settings_write:
 	IniWrite, %BlockingNumpad%, %config_file%, %section%, BlockingNumpad
 	IniWrite, %BlockingMouseKeys%, %config_file%, %section%, BlockingMouseKeys
 	IniWrite, %BlockingMultimedia%, %config_file%, %section%, BlockingMultimedia
+	IniWrite, %SC2AdvancedEnlargedMinimap%, %config_file%, %section%, SC2AdvancedEnlargedMinimap
 	IniWrite, %LwinDisable%, %config_file%, %section%, LwinDisable
 	IniWrite, %Key_EmergencyRestart%, %config_file%, %section%, Key_EmergencyRestart
 
@@ -3466,7 +3466,8 @@ try
 
 
 	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vSettings_TAB, Settings				
-		Gui, Add, GroupBox, w161 h110 section, Empty
+		Gui, Add, GroupBox, w161 h110 section, Misc
+			Gui, Add, Checkbox, xp+10 yp+25 vSC2AdvancedEnlargedMinimap gSC2AdvancedEnlargedMinimapWarning checked%SC2AdvancedEnlargedMinimap%, SC2Advanced Minimap
 /*
 			Gui, Add, Text, xs+10 yp+35 w60, Send Delay:
 			Gui, Add, Edit, Number Right x+30 yp-2 w45 vTT_pSendDelay
@@ -4836,6 +4837,10 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 
 		F_Inject_ModifierBeep_TT := "If the modifier keys (Shift, Ctrl, or Alt) or Windows Keys are held down when an Inject is attempted, a beep will heard.`nRegardless of this setting, the inject round will not begin until after these keys have been released."
 		BlockingStandard_TT := BlockingFunctional_TT := BlockingNumpad_TT := BlockingMouseKeys_TT := BlockingMultimedia_TT := BlockingMultimedia_TT := BlockingModifier_TT := "During certain automations these keys will be buffered or blocked to prevent interruption to the automation and your game play."
+		SC2AdvancedEnlargedMinimap_TT := "This option alters the size and position of the minimap."
+									. "`n`nThese minimap coordinates are used for both drawing and automations."
+									. "`nTherefore only enable this setting if you have used the 'SC2-Advanced' hack to enlarge the minimap!"
+		
 		LwinDisable_TT := "Disables the Left Windows Key while in a SC2 match.`n`nMacro Trainer Left windows hotkeys (and non-overridden windows keybinds) will still function."
 		Key_EmergencyRestart_TT := #Key_EmergencyRestart_TT := "If pressed three times, this hotkey will restart the program.`n"
 					. "This is useful in the rare event that the program malfunctions or you lose keyboard/mouse input"
@@ -4926,6 +4931,12 @@ if (g1 = g2)
 	msgbox, 48, Config Warning!, The base and storage control groups must NOT be the same.`nRefer to their respective tooltips for more information.
 return
 
+
+SC2AdvancedEnlargedMinimapWarning:
+GuiControlGet, g1,, SC2AdvancedEnlargedMinimap
+if g1
+	msgbox, 48, Config Warning!, Only enable this setting if you have used the 'SC2-Advanced' hack to enlarge the minimap!
+return
 
 ; Still need to save the currently displayed item (incase user hasnt clicked a button
 ; which goes here to save)
@@ -7690,11 +7701,11 @@ CreateHotkeys()
  	EventKeyDelay := -1
 
 	#If, WinActive(GameIdentifier)
-	#If, WinActive(GameIdentifier) && time && (!isMenuOpen() || isChatOpen()) 
-	#If, WinActive(GameIdentifier) && time && !isChatOpen()
-	#If, WinActive(GameIdentifier) && time
-	#If, WinActive(GameIdentifier) && time && !isMenuOpen()
-	#If, ((aLocalPlayer["Race"] = "Terran" && EnableAutoWorkerTerran) || (aLocalPlayer["Race"] = "Protoss" && EnableAutoWorkerProtoss)) && WinActive(GameIdentifier) && time && !isMenuOpen() 
+	#If, WinActive(GameIdentifier) && isPlaying	
+	#If, WinActive(GameIdentifier) && isPlaying && !isChatOpen()
+	#If, WinActive(GameIdentifier) && isPlaying && !isMenuOpen()
+	#If, WinActive(GameIdentifier) && isPlaying && (!isMenuOpen() || isChatOpen()) 
+	#If, ((aLocalPlayer["Race"] = "Terran" && EnableAutoWorkerTerran) || (aLocalPlayer["Race"] = "Protoss" && EnableAutoWorkerProtoss)) && WinActive(GameIdentifier) && isPlaying && !isMenuOpen() 
 	;#If, WinActive(GameIdentifier) && time && !isMenuOpen() && EnableAutoWorker`%LocalPlayerRace`%
 	#If
 
@@ -7703,13 +7714,13 @@ CreateHotkeys()
 			hotkey, %warning_toggle_key%, mt_pause_resume, on		
 		hotkey, *~LButton, g_LbuttonDown, on
 
-	Hotkey, If, WinActive(GameIdentifier) && time && (!isMenuOpen() || isChatOpen()) 
+	Hotkey, If, WinActive(GameIdentifier) && isPlaying && (!isMenuOpen() || isChatOpen()) 
 		if EnablePingMiniMapHotkey
 			hotkey, %ping_key%, ping, on									;on used to re-enable hotkeys as were 
-	Hotkey, If, WinActive(GameIdentifier) && time	;turned off during save to allow for swaping of keys
+	Hotkey, If, WinActive(GameIdentifier) && isPlaying	;turned off during save to allow for swaping of keys
 		if LwinDisable
 			hotkey, Lwin, g_DoNothing, on
-	Hotkey, If, WinActive(GameIdentifier) && time && !isChatOpen()	
+	Hotkey, If, WinActive(GameIdentifier) && isPlaying && !isChatOpen()	
 		if EnableWorkerCountSpeechHotkey
 			hotkey, %worker_count_local_key%, worker_count, on
 		if EnableEnemyWorkerCountSpeechHotkey
@@ -7748,7 +7759,7 @@ CreateHotkeys()
 	; could also do if, % "EasyUnload%LocalPlayerRac%"
 	;Hotkey, If, WinActive(GameIdentifier) && !isMenuOpen() && EasyUnload`%LocalPlayerRace`%Enable && time
 
-	Hotkey, If, WinActive(GameIdentifier) && time && !isMenuOpen()
+	Hotkey, If, WinActive(GameIdentifier) && isPlaying && !isMenuOpen()
 		if (InjectTimerAdvancedEnable && aLocalPlayer["Race"] = "Zerg")
 		{	
 			hotkey,  ~^%InjectTimerAdvancedLarvaKey%, g_InjectTimerAdvanced, on
@@ -7796,7 +7807,7 @@ CreateHotkeys()
 					try hotkey, % object.hotkey, g_QuickSelect, on
 			}
 		}
-	Hotkey, If, WinActive(GameIdentifier) && time && !isChatOpen() 	
+	Hotkey, If, WinActive(GameIdentifier) && isPlaying && !isChatOpen() 	
 		if (aLocalPlayer["Race"] = "Zerg") && (auto_inject <> "Disabled")
 			hotkey, %cast_inject_key%, cast_inject, on	
 		if (aLocalPlayer["Race"] = "Zerg")
@@ -7807,7 +7818,7 @@ CreateHotkeys()
 		
 
 	;Hotkey, If, WinActive(GameIdentifier) && time && !isMenuOpen() && EnableAutoWorker`%LocalPlayerRace`% ; cant use !ischatopen() - as esc will close chat before memory reads value so wont see chat was open
-	Hotkey, If, ((aLocalPlayer["Race"] = "Terran" && EnableAutoWorkerTerran) || (aLocalPlayer["Race"] = "Protoss" && EnableAutoWorkerProtoss)) && WinActive(GameIdentifier) && time && !isMenuOpen() ; cant use !ischatopen() - as esc will close chat before memory reads value so wont see chat was open
+	Hotkey, If, ((aLocalPlayer["Race"] = "Terran" && EnableAutoWorkerTerran) || (aLocalPlayer["Race"] = "Protoss" && EnableAutoWorkerProtoss)) && WinActive(GameIdentifier) && isPlaying && !isMenuOpen() ; cant use !ischatopen() - as esc will close chat before memory reads value so wont see chat was open
 		hotkey, *~Esc, g_temporarilyDisableAutoWorkerProduction, on	
 
 	Hotkey, If
@@ -7830,15 +7841,15 @@ disableAllHotkeys()
 	Hotkey, If, WinActive(GameIdentifier)						
 		try hotkey, %warning_toggle_key%, off			; 	deactivate the hotkeys
 														; 	so they can be updated with their new keys
-	Hotkey, If, WinActive(GameIdentifier) && time && (!isMenuOpen() || isChatOpen()) 
+	Hotkey, If, WinActive(GameIdentifier) && isPlaying && (!isMenuOpen() || isChatOpen()) 
 		try Hotkey, %ping_key%, off	 
 												; Anything with a try command has an 'if setting is on' section in the
 												; create hotkeys section
 												; still left the overall try just incase i missed something
 												; gives the user a friendlier error
-	Hotkey, If, WinActive(GameIdentifier) && time	
+	Hotkey, If, WinActive(GameIdentifier) && isPlaying	
 		try hotkey, Lwin, off
-	Hotkey, If, WinActive(GameIdentifier) && time && !isChatOpen()
+	Hotkey, If, WinActive(GameIdentifier) && isPlaying && !isChatOpen()
 		try hotkey, %worker_count_local_key%, off
 		try hotkey, %worker_count_enemy_key%, off
 		try hotkey, %Playback_Alert_Key%, off
@@ -7856,8 +7867,7 @@ disableAllHotkeys()
 		try	hotkey, %inject_start_key%, off
 		try	hotkey, %inject_reset_key%, off	
 
-	
-	Hotkey, If, WinActive(GameIdentifier) && time && !isMenuOpen()	
+	Hotkey, If, WinActive(GameIdentifier) && isPlaying && !isMenuOpen()	
 		try hotkey,  ~^%InjectTimerAdvancedLarvaKey%, off
 		try hotkey,  ~+%InjectTimerAdvancedLarvaKey%, off
 		try hotkey, ~^+%InjectTimerAdvancedLarvaKey%, off
@@ -7880,12 +7890,14 @@ disableAllHotkeys()
 			for i, object in aQuickSelect[race]
 				try hotkey, % object.hotkey, off
 		}
-	Hotkey, If, WinActive(GameIdentifier) && time && !isChatOpen()		
+	Hotkey, If, WinActive(GameIdentifier) && isPlaying && !isChatOpen()		
 		try hotkey, %cast_inject_key%, off
 		try hotkey, %F_InjectOff_Key%, off
 		try hotkey, %ToggleAutoWorkerState_Key%, off	
 		
 	Hotkey, If
+	; Recreate this key in case user has another fcuntion bound to it and it was turned off above.
+	hotkey, %key_EmergencyRestart%, g_EmergencyRestart, B P2147483647
 	return 
 }
 
@@ -8000,7 +8012,7 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 						click_x := CurrentHatch.MiniMapX, click_y := CurrentHatch.MiniMapY
 						If HumanMouse
 							MouseMoveHumanSC2("x" click_x "y" click_y "t" rand(HumanMouseTimeLo, HumanMouseTimeHi))
-						MTclick(click_x, click_y)
+						Input.pClick(click_x, click_y)
 						if sleepTime
 							sleep % ceil(sleepTime * rand(1, Inject_SleepVariance)) ; eg rand(1, 1.XXXX) as the second parameter will always have a decimal point, dont have to worry about it returning just full integers eg 1 or 2 or 3
 						Queen.Energy -= 25	
@@ -8106,7 +8118,7 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 				if sleepTime
 					sleep % ceil( (sleepTime/2) * rand(1, Inject_SleepVariance)) 
 		;		send {click Left %click_x%, %click_y%}
-				MTclick(click_x, click_y)
+				Input.pClick(click_x, click_y)
 				if sleepTime
 					sleep % ceil( (sleepTime/2) * rand(1, Inject_SleepVariance))
 				if isHatchInjected(CurrentHatch.Unit)
@@ -8123,7 +8135,7 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 					
 					;	click_x := A_ScreenWidth/2 , click_y := A_ScreenHeight/2
 					;	send {click Left %click_x%, %click_y%}
-						MTclick(click_x, click_y)
+						Input.pClick(click_x, click_y)
 						Queen.Energy -= 25	
 						Break
 					}
@@ -8175,7 +8187,6 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 			}
 			Else 
 				input.pSend("{click D " Dx1 " " Dy1 "}{Click U " Dx2 " " Dy2 "}")
-			;	MTdragClick(Dx1, Dy1, Dx2, Dy2)
 			sleep % ceil( (sleepTime/2) * rand(1, Inject_SleepVariance))
 			if (QueenIndex := filterSlectionTypeByEnergy(25, aUnitID["Queen"]))
 			{																	
@@ -8187,7 +8198,7 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 					MouseMoveHumanSC2("x" click_x  "y" click_y "t" rand(HumanMouseTimeLo, HumanMouseTimeHi))
 					input.pSend("{click Left " click_x ", " click_y "}")
 				}
-				Else MTClick(click_x, click_y)
+				Else Input.pClick(click_x, click_y)
 			}
 		}	
 		if Inject_RestoreScreenLocation
@@ -8707,7 +8718,7 @@ DeselectUnitsFromPanel(aRemoveUnits, aSelection := "")
 					if ClickUnitPortrait(unitPanelLocation - 1, X, Y, Xpage, Ypage)
 					{ 
 						dsleep(5)
-						MTclick(Xpage, Ypage)
+						Input.pClick(Xpage, Ypage)
 					}
 						; if changed pages, a sleep here is required under some conditions
 					input.pSend("+{click " x " " y "}")
@@ -8721,7 +8732,7 @@ DeselectUnitsFromPanel(aRemoveUnits, aSelection := "")
 	if getUnitSelectionPage()	;ie slection page is not 0 (hence its not on 1 (1-1))
 	{
 		ClickUnitPortrait(0, X, Y, Xpage, Ypage, 1) ; this selects page 1 when done
-		MTclick(Xpage, Ypage)
+		Input.pClick(Xpage, Ypage)
 	}	
 	return
 }
@@ -8755,7 +8766,7 @@ clickUnitPortraits(aUnitPortraitLocations, Modifers := "+")
 			if ClickUnitPortrait(portrait, X, Y, Xpage, Ypage) 
 			{	
 				currentPage := getUnitSelectionPage()
-				MTclick(Xpage, Ypage)
+				Input.pClick(Xpage, Ypage)
 				; 1/6/14 - this is just the while loop
 				; generally takes 0-10 ms. But get the odd extreme ~16 ms (and even 36ms! in a late online game 3v3)
 				; perhaps even more (this is probably contributing to deselect issue in battles)
@@ -8781,7 +8792,7 @@ clickUnitPortraits(aUnitPortraitLocations, Modifers := "+")
 clickSelectionPage(page := 1, waitForChange := False)
 {
 	ClickUnitPortrait(0, X, Y, Xpage, Ypage, page)
-	MTclick(Xpage, Ypage)
+	Input.pClick(Xpage, Ypage)
 	while (waitForChange && getUnitSelectionPage() != page - 1 && A_Index < 35)
 		dsleep(1)
 	return
@@ -8834,7 +8845,7 @@ clickUnitPortraitsWithModifiers(aUnitPortraitLocationsAndModifiers)
 			if ClickUnitPortrait(portrait, X, Y, Xpage, Ypage) 
 			{	
 				currentPage := getUnitSelectionPage()
-				MTclick(Xpage, Ypage)
+				Input.pClick(Xpage, Ypage)
 				while (getUnitSelectionPage() = currentPage && A_Index < 45)
 					dsleep(1)
 				dsleep(7) ; small static delay
@@ -8865,7 +8876,7 @@ ClickSelectUnitsPortriat(unitIndexList, Modifers := "")	;can put ^ to do a contr
 			if ClickUnitPortrait(unit.unitPortrait, X, Y, Xpage, Ypage) ; -1 as selection index begins at 0 i.e 1st unit at pos 0 top left
 			{
 				currentPage := getUnitSelectionPage()
-				MTclick(Xpage, Ypage)	 ;clicks on the page number
+				Input.pClick(Xpage, Ypage)	 ;clicks on the page number
 				while (getUnitSelectionPage() = currentPage && A_Index < 45)
 					dsleep(1)
 				dsleep(7) ; small static delay			
@@ -10016,12 +10027,10 @@ getUnitAbilitiesString(unit)
 	{
 		if (p := ReadMemory( address := p1  +  B_AbilityStringPointer + (A_Index - 1)*4, GameIdentifier))
 			s .= "`n"  A_Index - 1 " | Pointer Address " chex(pAddress := pAbilities + O_IndexParentTypes + (A_Index - 1)*4) " | Pointer Value "  chex(ReadMemory(pAddress, GameIdentifier)) " | "  ReadMemory_Str(ReadMemory(p +4, GameIdentifier), GameIdentifier)
-	}
-	until p = 0
+	} until p = 0
 	msgbox % clipboard := s
 	return s
 }
-
 
 /*
 
@@ -10083,7 +10092,7 @@ pMouseMove(x, y)
 loop 5
 {
 	ClickUnitPortrait(0, 0, 0, xpage, ypage, 6 - (A_Index-1))
-	MTclick(Xpage, Ypage)
+	Input.pClick(Xpage, Ypage)
 	loop 24
 	{
 		ClickUnitPortrait(24-A_Index, x, y)
@@ -10103,7 +10112,7 @@ input.pClickDelay(-1)
 loop 6
 {
 	ClickUnitPortrait(0, 0, 0, xpage, ypage, 6 - (A_Index-1))
-	MTclick(Xpage, Ypage)
+	Input.pClick(Xpage, Ypage)
 	loop 24
 	{
 		ClickUnitPortrait(24-A_Index, x, y)
@@ -11389,4 +11398,9 @@ clickCommandCard(position, byRef x, byRef y)
 	, y := y0 - (row * height + height//2)
 	return
 }
+
+
+
+
+
 
