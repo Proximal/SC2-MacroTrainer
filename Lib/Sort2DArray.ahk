@@ -13,7 +13,7 @@
 
 ; Keys/Values should not contain the chars + or |
 
-sort2DArray(byRef a, key, Ascending := True)
+sort2DArray(byRef a, key, Ascending := True, numeric := True)
 {
 
     ; set capcity to 20MB to greatly increase concatenation speed for v. v. V. large arrays
@@ -28,22 +28,11 @@ sort2DArray(byRef a, key, Ascending := True)
         out .= obj[key] "+" index "|" ; "+" allows for sort to work with just the value (and negatives values)
     ; out will look like:   value+index|value+index|
 
-    ; if index values are strings, then this check would fail - could use another function param to set alpha/numeric sort
-    ; but It's not an issue for me
-    v := a[a.minIndex(), key]
-    if v is number 
-        type := " N "
     StringTrimRight, out, out, 1 ; remove trailing | 
-    Sort, out, % "D| " type  (!Ascending ? " R" : " ")
+    Sort, out, % "D|" (numeric ? " N " : " ")  (Ascending ? "" : "R")
     aStorage := []
     loop, parse, out, |
-    {
-        ; split1 = value, split2 = index
-        ; StringSplit, split, A_LoopField, -
-        ; aStorage.insert(a[split2])
         aStorage.insert(a[SubStr(A_LoopField, InStr(A_LoopField, "+") + 1)])
-        
-    }
     a := aStorage
     return
 }

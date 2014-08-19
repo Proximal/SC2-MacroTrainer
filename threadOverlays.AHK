@@ -1801,6 +1801,7 @@ getLocalUpgrades(byRef aUpgrades, percentMode)
 	}
 
 	aUpgrades := [] ; Key is unitName so a for loop will iterate alphabetically 
+	aMorphing := []
 	deadOrUnderConstruction := aUnitTargetFilter.Dead | aUnitTargetFilter.UnderConstruction ; comparing against single variable is faster than two object values.
 	loop, % DumpUnitMemory(MemDump)
 	{
@@ -1815,13 +1816,11 @@ getLocalUpgrades(byRef aUpgrades, percentMode)
 	    	{
 	    		progress := getUnitMorphTime(unit, type, percentMode)
 	    		name := aUnitName[MorphingType]	 
-	    		; The "zzzz" is a simply dirty hack so these morphing upgrades are drawn last   
-	    		; This means you can't use the 	aUpgrades index/key to look stuff up when drawing	
-	    		aUpgrades["zzzz" name] := {Name: name, Progress: percentMode 
-	    															? (aUpgrades["zzzz" name].progress > progress ? aUpgrades["zzzz" name].progress : progress)
-	    															:  (aUpgrades["zzzz" name].progress && aUpgrades["zzzz" name].progress < progress ? aUpgrades["zzzz" name].progress : progress) ; time remaining
-	    								, count: round(aUpgrades["zzzz" name].Count) + 1}
-	    		hasItems := True
+	    		aMorphing[name] := {Name: name, Progress: percentMode 
+	    															? (aMorphing[name].progress > progress ? aMorphing[name].progress : progress)
+	    															:  (aMorphing[name].progress && aMorphing[name].progress < progress ? aMorphing[name].progress : progress) ; time remaining
+	    								, count: round(aMorphing[name].Count) + 1}
+	    		aMorphingHasItems := True
 	    		continue ; as Morphings so won't have any production items
 	    	}
 	    	else if (Type = aUnitID["CommandCenter"])
@@ -1837,7 +1836,7 @@ getLocalUpgrades(byRef aUpgrades, percentMode)
 				; upgrade/research item.  
 				if a_pBitmap.haskey(aProduction.Item) 
 				{
-					hasItems := True
+					aUpgradesHasItems := True
 					name := aProduction.Item
 					progress := aProduction.progress
 					; Need to have the progress check as can 'research' multiple nukes simultaneously 
@@ -1850,7 +1849,21 @@ getLocalUpgrades(byRef aUpgrades, percentMode)
 			}
 		}
 	}
-	return (hasItems)
+	; These sorts will result in aUpgrades key values being numeric (rather than the name of the item)
+
+	; Unfortunately when sorting by % an upgrade which takes less total time and is actually nearer completion
+	; will appear to the right off an upgrade which takes longer. However this will of course correct itself 
+	; when the faster percentage overtakes the other one.
+	if aUpgradesHasItems
+		sort2DArray(aUpgrades, "progress", percentMode ? False : True, True)
+	if aMorphingHasItems
+	{
+		; lets insert so that morphing structures always come after actual upgrades
+		sort2DArray(aMorphing, "progress", percentMode ? False : True, True)
+		for i, obj in aMorphing
+			aUpgrades.Insert(obj)
+	}
+	return (aUpgradesHasItems || aMorphingHasItems)
 }
 
 DrawLocalUpgradesOverlay(ByRef Redraw, UserScale = 1, Drag = 0)

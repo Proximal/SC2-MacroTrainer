@@ -1954,7 +1954,7 @@ getCharacerInfo(byref returnName := "", byref returnID := "")
 ; BUT still need to worry about the fact that the wrong units will be READ as alive
 ; so if you know what unit should be in this control group, then just check unit type matches, is local unit and is alive
 ; and this should work for most scenarios (or at least the chances of it causing a problem are quite low)
-
+; For complete safety, should read the units timer and compare against it's last value.
 
 ; note ctrl group base address really starts with ctrl group 0 - but the negative offset from ctrl group 1 works fine
 numGetControlGroupObject(Byref oControlGroup, Group)
@@ -2648,29 +2648,22 @@ deletePens(byRef a_pPens)
 drawUnitRectangle(G, x, y, width, height, colour := "black")
 { 	
 	global minimap
+	;as pen is only 1 pixel, it doesn't encroach into the fill paint (only occurs when >=2)
 	width *= minimap.scale
-	height *= minimap.scale
-
-	x := x - width / 2
-	y := y - height /2
-					;as pen is only 1 pixel, it doesn't encroach into the fill paint (only occurs when >=2)
-;	if !pPen
-;		pPen := Gdip_CreatePen(0xFF000000, 1)	
-
-	Gdip_DrawRectangle(G, a_pPens[colour], x, y, width, height)
+	, height *= minimap.scale
+	, x := x - width / 2
+	, y := y - height /2
+	, Gdip_DrawRectangle(G, a_pPens[colour], x, y, width, height)
 }
 
 FillUnitRectangle(G, x, y, width, height, colour)
 { 	global minimap
 
 	width *= minimap.scale
-	height *= minimap.scale
-	x := x - width / 2
-	y := y - height /2
-
-;	if !a_pBrush[colour]	;faster than creating same colour again 
-;		a_pBrush[colour] := Gdip_BrushCreateSolid(colour)
-	Gdip_FillRectangle(G, a_pBrushes[colour], x, y, width, height)
+	, height *= minimap.scale
+	, x := x - width / 2
+	, y := y - height /2
+	, Gdip_FillRectangle(G, a_pBrushes[colour], x, y, width, height)
 }
 
 
@@ -2746,9 +2739,7 @@ GetEBases()
 
 DumpUnitMemory(BYREF MemDump)
 {   
-  LOCAL UnitCount := getHighestUnitIndex()
-  ReadRawMemory(B_uStructure, GameIdentifier, MemDump, UnitCount * S_uStructure)
-  return UnitCount
+  return UnitCount := getHighestUnitIndex(), ReadRawMemory(B_uStructure, GameIdentifier, MemDump, UnitCount * S_uStructure)
 }
 class cUnitModelInfo
 {
@@ -2759,7 +2750,6 @@ class cUnitModelInfo
       this.MiniMapRadius := numget(uModelData, O_mMiniMapSize, "int")/4096
       this.RealSubGroupPriority := numget(uModelData, O_mSubgroupPriority, "Short")
    }
-
 }
 
 numgetUnitModelType(pUnitModel)
@@ -3319,9 +3309,8 @@ tSpeak(Message, SAPIVol := "", SAPIRate := "")
 doUnitDetection(unit, type, owner, mode = "")
 {	
 	global config_file, alert_array, time, MiniMapWarning, PrevWarning, GameIdentifier, aUnitID, GameType
-
 	static Alert_TimedOut := [], Alerted_Buildings := [], Alerted_Buildings_Base := []
-	static l_WarningArrays := "Alert_TimedOut,Alerted_Buildings,Alerted_Buildings_Base"
+
 	time := getTime()
 	if (Mode = "Reset")
 	{
@@ -3332,23 +3321,9 @@ doUnitDetection(unit, type, owner, mode = "")
 	}
 	else If (Mode = "Save")
 	{
-		loop, parse, l_WarningArrays, `,
-		{
-			For index, Object in %A_loopfield%
-			{
-				if (A_index <> 1)
-					l_AlertShutdown .= ","
-				if (A_loopfield = "Alert_TimedOut")
-					For PlayerNumber, object2 in Object	;index = player name
-						For Alert, warned_base in Object2
-							l_AlertShutdown .= PlayerNumber " " Alert " " warned_base
-				else
-					For PlayerNumber, warned_base in Object	;index = player number
-						l_AlertShutdown .= PlayerNumber " " warned_base	;use the space as the separator - not allowed in sc2 battletags	
-			}
-			Iniwrite, %l_AlertShutdown%, %config_file%, Resume Warnings, %A_loopfield%		
-			l_AlertShutdown := ""
-		}
+		Iniwrite, % SerDes(Alert_TimedOut), %config_file%, Resume Warnings, Alert_TimedOut		
+		Iniwrite, % SerDes(Alerted_Buildings), %config_file%, Resume Warnings, Alerted_Buildings		
+		Iniwrite, % SerDes(Alerted_Buildings_Base), %config_file%, Resume Warnings, Alerted_Buildings_Base		
 		Iniwrite, 1, %config_file%, Resume Warnings, Resume
 		return
 	}
@@ -3356,21 +3331,15 @@ doUnitDetection(unit, type, owner, mode = "")
 	{
 		Alert_TimedOut := [], Alerted_Buildings := [], Alerted_Buildings_Base := []
 		Iniwrite, 0, %config_file%, Resume Warnings, Resume
-		loop, parse, l_WarningArrays, `,
-		{
-			ArrayName := A_loopfield
-			%ArrayName% := []
-			Iniread, string, %config_file%, Resume Warnings, %ArrayName%, %A_space%
-			if (string != A_Space)
-				loop, parse, string, `,
-				{
-					StringSplit, VarOut, A_loopfield, %A_Space%
-					if (ArrayName = "Alert_TimedOut")
-						%ArrayName%[A_index, VarOut1, VarOut2] := VarOut3
-					else
-						%ArrayName%[A_index, VarOut1] := VarOut2	
-				}
-		}
+		Iniread, string, %config_file%, Resume Warnings, Alert_TimedOut, %A_space%
+		if (string != A_space)
+			Alert_TimedOut := SerDes(string)
+		Iniread, string, %config_file%, Resume Warnings, Alerted_Buildings, %A_space%
+		if (string != A_space)
+			Alerted_Buildings := SerDes(string)
+		Iniread, string, %config_file%, Resume Warnings, Alerted_Buildings_Base, %A_space%
+		if (string != A_space)
+			Alerted_Buildings_Base := SerDes(string)
 		IniDelete, %config_file%, Resume Warnings
 		return
 	}

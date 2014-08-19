@@ -164,7 +164,7 @@ MT_CurrentInstance := [] ; Used to store random info about the current run
 program := []
 program.info := {"IsUpdating": 0} ; program.Info.IsUpdating := 0 ;has to stay here as first instance of creating infor object
 
-ProgramVersion := 3.01
+ProgramVersion := 3.02
 
 l_GameType := "1v1,2v2,3v3,4v4,FFA"
 l_Races := "Terran,Protoss,Zerg"
@@ -1058,8 +1058,7 @@ Cast_ChronoStructure(aStructuresToChrono)
 
 	IF !nexus_chrono_count
 		return
-	Unitcount := DumpUnitMemory(MemDump)
-	while (A_Index <= Unitcount)
+	loop, % DumpUnitMemory(MemDump)
 	{
 		unit := A_Index - 1
 		if isTargetDead(TargetFilter := numgetUnitTargetFilter(MemDump, unit)) || !isOwnerLocal(numgetUnitOwner(MemDump, Unit))
@@ -3066,7 +3065,7 @@ try
 						Gui, Add, UpDown,  Range1-100000 vMI_QueenDistance, %MI_QueenDistance%	
 
 			Gui, Add, Checkbox, xs+10 y+15 vCanQueenMultiInject checked%CanQueenMultiInject%, Queen Can Inject Multiple Hatcheries 
-			Gui, Add, Text, xs+10 y+25 w205, These settings apply to BOTH the One-Button (manual) and fully automated injects.
+			Gui, Add, Text, xs+10 y+25 w205, These settings apply to BOTH the one-button (manual) and fully automated injects.
 		;Gui, Add, GroupBox, xs ys+210 w365 h165, Notes:
 			
 
@@ -3610,14 +3609,23 @@ try
 				Gui, Add, Edit, Readonly xp+25 y+10  w100 R1 center vchrono_key , %chrono_key%
 					Gui, Add, Button, yp-2 x+5 gEdit_SendHotkey v#chrono_key,  Edit	
 
-		Gui, Add, GroupBox, ys x+40  w190 h160 section, Misc. Settings				
-			tmpx := MenuTabX + 25
-			Gui, Add, Text, xp+10 yp+35, Sleep time (ms):
+		Gui, Add, GroupBox, xs ys+180 w190 w400 h220, About
+			Gui, Add, Text, xp+10 yp+25 w380, % "This is a semi-automatic function. It allows you to create a group of structures which will be chronoed "
+											. "when the assigned hotkey is pressed.`n`n"
+											. "Structures are chronoed according to their listed order in the group (higher structures are come first).`n`n"
+											. "For structures of the same type, structures with larger production queues will chronoed first."
+											. "When structures have an equal queue size, they will be chronoed in order of progress (lowest first). "
+											. "Structures which are idle (or not on cooldown), already chronoed, or have no additional queued units and a progress of 95% or greater will not be chronoed."
+											. "`n`nNote: Gateways which are being converted to warpgates will be chronoed before gateways which have a unit in production."
+
+		Gui, Add, GroupBox, ys xs+210  w190 h160 section, Misc. Settings				
+			Gui, Add, Text, xp+10 yp+25, Sleep time (ms):
 			Gui, Add, Edit, Number Right xp+120 yp-2 w45 vTT_ChronoBoostSleep 
 				Gui, Add, UpDown,  Range0-1000 vChronoBoostSleep, %ChronoBoostSleep%						
 			Gui, Add, Text, xs+10 yp+35, Chrono Remainder:`n    (1 = 25 mana)
 			Gui, Add, Edit, Number Right xp+120 yp-2 w45 vTT_CG_chrono_remainder 
 				Gui, Add, UpDown,  Range0-1000 vCG_chrono_remainder, %CG_chrono_remainder%		
+
 
 
 	Gui, Tab, Items
@@ -3992,7 +4000,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 			Gui, Add, Text, xp yp+25, Hotkey:
 			Gui, Add, Edit, Readonly yp-2 xs+64 center w65 R1 vcastRemoveDamagedUnits_key gedit_hotkey, %castRemoveDamagedUnits_key%
 			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#castRemoveDamagedUnits_key,  Edit	
-			Gui, Add, Text, xs+15 yp+35, Storeage Group:
+			Gui, Add, Text, xs+15 yp+35, Storage Group:
 			Gui, Add, DropDownList,  % "xs+125 yp w45 Center vRemoveDamagedUnitsCtrlGroup Choose" (RemoveDamagedUnitsCtrlGroup = 0 ? 10 : RemoveDamagedUnitsCtrlGroup), 1|2|3|4|5|6|7|8|9||0
 
 			Gui, Add, Text, xs+15 yp+35, Shield Level `%:
@@ -4748,7 +4756,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 								. "`n`nBlue - Patrol"
 								. "`nGreen - Move"
 								. "`nOrange - Transport unload"
-								. "`nYellow - Nuclear strike"
+								. "`nYellow - Nuclear strike (a nuke symbol is also displayed)"
 								. "`nRed - Attack move"
 
 		drawLocalPlayerIncome_TT := "Displays your own values at the bottom of the income overlay."	
@@ -4757,9 +4765,9 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 
 		localUpgradesItemsPerRow_TT := "Defines the number of items displayed per row in the 'Local Upgrades' overlay."
 									. "`n`nValues:"
-									. "`n0: All items are drawn along a single row"
+									. "`n0: All items are drawn along a single row."
+									. "`n1: All items are drawn in a single column."
 									. "`n1-16: Each row will be limited to displaying this number of items."
-									. "`n`nNote: A setting of 1 effectively puts the overlay into vertical or column mode."
 
 		DrawMacroTownHallOverlay_TT := "Displays basic macro attributes for your current race."
 									. "`n`nTerran: Available scans/mules."
@@ -4774,7 +4782,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 
 		APMOverlayMode_TT := "Set the drawing mode for the APM overlay."
 							. "`n`n Unchecked = Enemies"
-							. "`n Checked = Only Self APM"
+							. "`n Checked = Self"
 							. "`n Greyed = Enemies + self (self is at bottom)"
 		DrawPlayerCameras_TT := "Draws the enemy's camera on the minimap, i.e. it indicates the map area the player is currently looking at."
 							. "`n`nNote: AI/computer players will not be drawn, as they never move the camera."
@@ -4935,7 +4943,9 @@ return
 SC2AdvancedEnlargedMinimapWarning:
 GuiControlGet, g1,, SC2AdvancedEnlargedMinimap
 if g1
-	msgbox, 48, Config Warning!, Only enable this setting if you have used the 'SC2-Advanced' hack to enlarge the minimap!
+	msgbox, 48, Config Warning!, % "Only enable this setting if you have used the 'SC2-Advanced' hack ('Minimal-Interface' option) to enlarge the minimap!"
+								. "`n`nDue to the altered UI none of the automations are guaranteed to work correctly even if they 'appear' to work. "
+								. "The only exception to this is the auto-grouping function."
 return
 
 ; Still need to save the currently displayed item (incase user hasnt clicked a button
@@ -6636,8 +6646,7 @@ local u_x, u_y, tx, ty
 }
 getBuildingList(F_building_var*)	
 { 
-	Unitcount := DumpUnitMemory(MemDump)
-	while (A_Index <= Unitcount)
+	loop, % DumpUnitMemory(MemDump)
 	{
 		unit := A_Index - 1
 	    if isTargetDead(TargetFilter := numgetUnitTargetFilter(MemDump, unit)) || !isOwnerLocal(owner := numgetUnitOwner(MemDump, Unit))
@@ -7043,8 +7052,8 @@ autoWorkerProductionCheck()
 		{	
 		;	; user already has at least one upgraded CC so lets not bother
 			if (base.type = aUnitID["OrbitalCommand"] 
-				|| base.type = aUnitID["OrbitalCommandFlying"] 
-				|| base.type = aUnitID["PlanetaryFortress"])
+			|| base.type = aUnitID["OrbitalCommandFlying"] 
+			|| base.type = aUnitID["PlanetaryFortress"])
 				MT_CurrentGame.HasSleptForObital := True
 
 			; this will prevent a pause if the user has no CCs
@@ -7064,13 +7073,12 @@ autoWorkerProductionCheck()
 
 		if !MT_CurrentGame.HasSleptForObital
 		{
-			Unitcount := DumpUnitMemory(MemDump)
-			while (A_Index <= Unitcount)
+			loop, % DumpUnitMemory(MemDump)
 			{
 				TargetFilter := numgetUnitTargetFilter(MemDump, unit := A_Index - 1)
 				if (TargetFilter & aUnitTargetFilter.Dead 
-					|| numgetUnitOwner(MemDump, Unit) != aLocalPlayer["Slot"]
-					|| numgetUnitModelType(numgetUnitModelPointer(MemDump, Unit)) != aUnitID["Barracks"])
+				|| numgetUnitOwner(MemDump, Unit) != aLocalPlayer["Slot"]
+				|| numgetUnitModelType(numgetUnitModelPointer(MemDump, Unit)) != aUnitID["Barracks"])
 			    	Continue
 
 			    if !(TargetFilter & aUnitTargetFilter.UnderConstruction)
@@ -8270,8 +8278,7 @@ restoreSelection(controlGroup, selectionPage, highlightedTab)
  zergGetHatcheriesToInject(byref Object)
  { 	global aUnitID
  	Object := []
- 	Unitcount := DumpUnitMemory(MemDump)
- 	while (A_Index <= Unitcount)
+ 	loop, % DumpUnitMemory(MemDump)
  	{
  		unit := A_Index - 1
  		if isTargetDead(TargetFilter := numgetUnitTargetFilter(MemDump, unit)) || !isOwnerLocal(numgetUnitOwner(MemDump, Unit)) || isTargetUnderConstruction(TargetFilter) 
@@ -9399,99 +9406,12 @@ SplitUnits(SplitctrlgroupStorage_key)
 	return
 }
 
-SplitUnitsWorking(SplitctrlgroupStorage_key)
-{
-	input.pSend("^" SplitctrlgroupStorage_key)
-	mousegetpos, Xorigin, Yorigin
-	aSelectedUnits := []
-	xSum := ySum := 0
-	while (A_Index <= getSelectionCount())	
-	{
-		unit := getSelectedUnitIndex(A_Index -1)
-		getUnitMiniMapMousePos(unit, mX, mY)
-		aSelectedUnits.insert({"Unit": unit, "mouseX": mX, "mouseY": mY})
-	}
-	bubbleSort2DArray(aSelectedUnits, "Unit", 0) ;clicks highest units first, so dont have to calculate new click positions due to the units moving down one spot in the panel grid	
-	bubbleSort2DArray(aSelectedUnits, "Priority", 1)	; sort in ascending order so select units lower down 1st	
-
-	for index, unit in aSelectedUnits
-		xSum += unit.mouseX, ySum += unit.mouseY
-	xAvg := xSum/aSelectedUnits.MaxIndex(), yAvg := ySum/aSelectedUnits.MaxIndex()
-
-	while (getSelectionCount() - A_Index > 0 && A_Index < 200)
-	{
-		unit := aSelectedUnits[1]
-	;	xR := rand(-2,2), yR := rand(-2,2)
-		FindAngle(Direction, Angle, xAvg,yAvg,unit.mouseX,unit.mouseY)
-		FindXYatAngle(X, Y, Angle, Direction, 4, unit.mouseX, unit.mouseY)
-		x += rand(-2,2), y += rand(-2,2)
-		input.pSend("{click right " X " " Y "}")
-		tmpObject := []
-		tmpObject.insert(aSelectedUnits[1].unit)
-		DeselectUnitsFromPanel(tmpObject)
-		aSelectedUnits.remove(1)
-;		if (aSelectedUnits.MaxIndex() <= 3)
-;			break
-	}
-	input.pSend(SplitctrlgroupStorage_key)
-	send {click  %Xorigin%, %Yorigin%, 0}
-		return
-}
-
-
-FindAngle(byref Direction, byref Angle, x1,y1,x2,y2)
-{
-	v1 := [], v2 := [], vR := []
-	v1.x := x1, v1.y := y1	;avg
-	v2.x := x2, v2.y := y2
-
-	vR.x := v2.x - v1.x, vR.y := v2.y - v1.y
-
-
-	Vr.l := sqrt(vR.x**2 + vR.y**2)
-	pi := 4 * ATan(1)
-	a := abs(vR.x)	;side adjacent angle
-	b := abs(vR.y)	;side opposite angle
-	c := Vr.l
-	if (abs(vR.x) >= abs(vR.y))
-		Angle := Asin(b/c) * 180/pi 
-	else
-		Angle := Asin(b/c) * 180/pi 
-	if 	(vR.x > 0)
-		Direction := "R"
-	else Direction := "L"
-	if (vR.y > 0)
-		Direction .= "U"
-	else Direction .= "D"
-	;dir RU, RD, LU, LD
-return
-}
-
-FindXYatAngle(byref ResultX, byref ResultY,	Angle, Direction, distance, X, Y)
-{
-	pi := 4 * ATan(1)
-	AngleRad :=  pi/180 * Angle
-	c := distance
-	a := C*cos(AngleRad) 
-	b := c*sin(AngleRad) 
-	if Direction contains R
-		ResultX :=  X + b
-	if Direction contains L
-		ResultX :=  X - b
-	if Direction contains U
-		ResultY := Y + a
-	if Direction contains D
-		ResultY := Y - a
-	return
-}
-
 ; This is used by the auto worker macro to check if a real one, or a extra/macro one
 getMapInfoMineralsAndGeysers() 
 { 	GLOBAL aUnitID
 	resources := [], resources.minerals := [], resources.geysers := []
-
-	Unitcount := DumpUnitMemory(MemDump)
-	while (A_Index <= Unitcount)
+	
+	loop, % DumpUnitMemory(MemDump)
 	{
 		unit := A_Index - 1
 		TargetFilter := numgetUnitTargetFilter(MemDump, unit)
@@ -9502,8 +9422,8 @@ getMapInfoMineralsAndGeysers()
     	IF ( type = aUnitID["MineralField"] || type = aUnitID["RichMineralField"] )
     		resources.minerals[unit] := numGetUnitPositionXYZFromMemDump(MemDump, unit)
     	Else If ( type = aUnitID["VespeneGeyser"] || type = aUnitID["ProtossVespeneGeyser"]  
-    		|| type = aUnitID["SpacePlatformGeyser"] || type = aUnitID["RichVespeneGeyser"] 
-    		|| type = aUnitID["VespeneGeyserPretty"])
+    	|| type = aUnitID["SpacePlatformGeyser"] || type = aUnitID["RichVespeneGeyser"] 
+    	|| type = aUnitID["VespeneGeyserPretty"])
 			resources.geysers[unit] := numGetUnitPositionXYZFromMemDump(MemDump, unit)
 	}
 	return resources
@@ -11398,9 +11318,6 @@ clickCommandCard(position, byRef x, byRef y)
 	, y := y0 - (row * height + height//2)
 	return
 }
-
-
-
 
 
 
