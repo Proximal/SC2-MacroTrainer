@@ -311,14 +311,13 @@ loadMemoryAddresses(base, version := "")
 			 O_mRight := B_MapStruct + 0xE4	    ; MapRight 157.999756 (akilon wastes) after dividing 4096   (647167 before)                  
 			 O_mTop := B_MapStruct + 0xE8	   	; MapTop: 622591 (akilon wastes) before dividing 4096  
 
-		 aUnitMoveStates := { Idle: -1  ; ** Note this isn't actually a read in game type/value its just what my funtion will return if it is idle
+		 aUnitMoveStates := { Idle: -1  ; ** Note this isn't actually a read in game type/value its just what my function will return if it is idle
 							, Amove: 0 		
 							, Patrol: 1
 							, HoldPosition: 2
 							, Move: 256
 							, Follow: 512
 							, FollowNoAttack: 515} ; This is used by unit spell casters such as infestors and High temps which dont have a real attack 
-							; note I have Converted these hex numbers from their true decimal conversion 
 			
 		B_UnitCursor :=	base + 0x03114D30 
 			O1_UnitCursor := 0x2C0	 					
@@ -402,7 +401,7 @@ loadMemoryAddresses(base, version := "")
 		 B_FramesPerSecond := base + 0x04FBD484
 		 B_Gamespeed  := base + 0x4EFE5E8
 
-		; example: D:\My Computer\My Documents\StarCraft II\Accounts\56021244\6-S2-1-34722\Replays\
+		; example: D:\My Computer\My Documents\StarCraft II\Accounts\56025555\6-S2-1-34555\Replays\
 		; this works for En, Fr, and Kr languages 
 		 B_ReplayFolder :=  base + 0x4F7B228 ;0x04F701F8
 
@@ -4167,7 +4166,6 @@ getUnitMorphTime(unit, unitType, percent := True)
 		; interstingly after -2 & pNextCmd (the last one) it should = the first address
 	}
 	else return 0
-
 }
 
 getBanelingMorphTime(pAbilities)

@@ -11276,7 +11276,7 @@ Command card has 3 rows with 5 buttons each
 bottom left button is 0 
 next button on right is 1
 top right button is 14
-
+This function returns the x, y co-ordinates for the specific command card button.
 
 */
 
@@ -11290,26 +11290,22 @@ clickCommandCard(position, byRef x, byRef y)
 		If (AspectRatio = "16:10")
 		{
 			X0 := (1314/1680)*A_ScreenWidth, y0 := (1025/1050)*A_ScreenHeight		
-			width := (65/1680)*A_ScreenWidth										
-			height := (66/1050)*A_ScreenHeight										
+			width := (65/1680)*A_ScreenWidth, height := (66/1050)*A_ScreenHeight										
 		}	
 		Else If (AspectRatio = "5:4")
 		{	
 			X0 := (944/1280)*A_ScreenWidth, y0 := (1000/1024)*A_ScreenHeight
-			width := (61/1280)*A_ScreenWidth
-			height := (60/1024)*A_ScreenHeight	
+			width := (61/1280)*A_ScreenWidth, height := (60/1024)*A_ScreenHeight	
 		}	
 		Else If (AspectRatio = "4:3")
 		{	
 			X0 := (944/1280)*A_ScreenWidth, y0 := (937/960)*A_ScreenHeight
-			width := (61/1280)*A_ScreenWidth
-			height := (61/960)*A_ScreenHeight	
+			width := (61/1280)*A_ScreenWidth, height := (61/960)*A_ScreenHeight	
 		}
 		Else if (AspectRatio = "16:9")
 		{
 			X0 := (1542/1920)*A_ScreenWidth, y0 := (1054/1080)*A_ScreenHeight
-			width := (68/1920)*A_ScreenWidth	
-			height := (69/1080)*A_ScreenHeight	
+			width := (68/1920)*A_ScreenWidth, height := (69/1080)*A_ScreenHeight	
 		}
 	}
 	row := floor(position/5)
