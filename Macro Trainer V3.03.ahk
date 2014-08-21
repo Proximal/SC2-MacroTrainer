@@ -1993,7 +1993,7 @@ ShellMessage(wParam, lParam)
 			ReDrawOverlays  := True
 			aThreads.Overlays.AhkFunction("DestroyOverlays")
 		}
-		else if (SC2hWnd = lParam && getTime())
+		else if (SC2hWnd = lParam && getTime() && isInMatch)
 		{
 			;mt_Paused otherwise will redisplay the hidden and frozen overlays
 			if (ReDrawOverlays && !mt_Paused && !IsInList(aLocalPlayer.Type, "Referee", "Spectator")) ; This will redraw immediately - but this isn't needed at all
