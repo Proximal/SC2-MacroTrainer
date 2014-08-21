@@ -3304,47 +3304,17 @@ tSpeak(Message, SAPIVol := "", SAPIRate := "")
 ; I should really update this so that it doesn't have to loop each alert
 ; I.e have the alerts unitID listed as the key which contains one or more alters
 ; so then a single if haskey() could be performed
-
+		
 doUnitDetection(unit, type, owner, mode = "")
 {	
 	global config_file, alert_array, time, MiniMapWarning, PrevWarning, GameIdentifier, aUnitID, GameType
 	static Alert_TimedOut := [], Alerted_Buildings := [], Alerted_Buildings_Base := []
 
 	time := getTime()
-	if (Mode = "Reset")
+	if !mode
 	{
-		Alert_TimedOut := [],, Alerted_Buildings := [], Alerted_Buildings_Base := []
-		Iniwrite, 0, %config_file%, Resume Warnings, Resume ; bit pointless as its getting deleted
-		IniDelete, %config_file%, Resume Warnings
-		return
-	}
-	else If (Mode = "Save")
-	{
-		Iniwrite, % SerDes(Alert_TimedOut), %config_file%, Resume Warnings, Alert_TimedOut		
-		Iniwrite, % SerDes(Alerted_Buildings), %config_file%, Resume Warnings, Alerted_Buildings		
-		Iniwrite, % SerDes(Alerted_Buildings_Base), %config_file%, Resume Warnings, Alerted_Buildings_Base		
-		Iniwrite, 1, %config_file%, Resume Warnings, Resume
-		return
-	}
-	Else if (Mode = "Resume")
-	{
-		Alert_TimedOut := [], Alerted_Buildings := [], Alerted_Buildings_Base := []
-		Iniwrite, 0, %config_file%, Resume Warnings, Resume
-		Iniread, string, %config_file%, Resume Warnings, Alert_TimedOut, %A_space%
-		if (string != A_space)
-			Alert_TimedOut := SerDes(string)
-		Iniread, string, %config_file%, Resume Warnings, Alerted_Buildings, %A_space%
-		if (string != A_space)
-			Alerted_Buildings := SerDes(string)
-		Iniread, string, %config_file%, Resume Warnings, Alerted_Buildings_Base, %A_space%
-		if (string != A_space)
-			Alerted_Buildings_Base := SerDes(string)
-		IniDelete, %config_file%, Resume Warnings
-		return
-	}
-	
 		;i should really compare the unit type, as theres a chance that the warned unit has died and was replaced with another unit which should be warned
-	loop_AlertList:
+		loop_AlertList:
 		loop, % alert_array[GameType, "list", "size"]
 		{ 			; the below if statement for time		
 			Alert_Index := A_Index	;the alert index number which corresponds to the ini file/config
@@ -3355,23 +3325,23 @@ doUnitDetection(unit, type, owner, mode = "")
 					For index, object in Alert_TimedOut	; ;checks if the exact unit is in the time list already (eg if time > dont_warn_before, the original if statement wont be true so BAS_Warning will remain "give warning")			
 						if ( unit = object[owner, Alert_Index] ) ;checks if type is in the list already
 							continue, loop_AlertList ; dont break, as could be other alerts for same unit but with different times later/lower in list									
-					Alert_TimedOut[Alert_TimedOut.maxindex() ? Alert_TimedOut.maxindex()+1 : 1, owner, Alert_Index] := unit
+					Alert_TimedOut[round(Alert_TimedOut.maxindex()) + 1, owner, Alert_Index] := unit
 					continue, loop_AlertList
 				}
 				Else
 				{	;during warn time lets check if the unit has already been warned			
 					For index, object in Alert_TimedOut	; ;checks if the exact unit is in the time list already (eg if time > dont_warn_before, the original if statement wont be true so BAS_Warning will remain "give warning")			
 						if ( unit = object[owner, Alert_Index] ) ;checks if type is in the list already									
-								break loop_AlertList
+							return
 
 					If  !alert_array[GameType, A_Index, "Repeat"] ;else check if this unit type has already been warned												
 						For index, warned_type in Alerted_Buildings ;	if ( type = Alerted_Buildings[index, owner] ) ;checks if type is in the list already						
 							if ( Alert_Index = warned_type[owner] ) ;checks if alert index i.e. alert 1,2,3 is in the list already						
-								break loop_AlertList			
+								return			
 
 					For index, warned_unit in Alerted_Buildings_Base  ; this list contains all the exact units which have already been warned				
 						if ( unit = warned_unit[owner] ) ;checks if type is in the list already				
-							break loop_AlertList ; this warning is for the exact unitbase Address																				
+							return ; this warning is for the exact unitbase Address																				
 				}	
 				PrevWarning := []							
 				MiniMapWarning.insert({ "Unit": PrevWarning.unitIndex := unit 
@@ -3385,15 +3355,58 @@ doUnitDetection(unit, type, owner, mode = "")
 				tSpeak(alert_array[GameType, A_Index, "Name"])
 				if (!alert_array[GameType, A_Index, "Repeat"])	; =0 these below setup a list like above, but contins the type - to prevent rewarning
 					Alerted_Buildings.insert({(owner): Alert_Index})
-					;Alerted_Buildings[Alerted_Buildings.maxindex() ? Alerted_Buildings.maxindex()+1 : 1, owner] :=  Alert_Index					
-				Alerted_Buildings_Base.insert({(owner): unit})
-				;Alerted_Buildings_Base[Alerted_Buildings_Base.maxindex() ? Alerted_Buildings_Base.maxindex()+1 : 1, owner] := unit	; prevents the same exact unit beings warned on next run thru
-				break loop_AlertList	
+				Alerted_Buildings_Base.insert({(owner): unit}) ; prevents the same exact unit beings warned on next run thru
+				return	
 			} ;End of if unit is on list and player not on our team 
 		} ; loop, % alert_array[GameType, "list", "size"]
+	}
+	else if (Mode = "Reset")
+	{
+		Alert_TimedOut := [], Alerted_Buildings := [], Alerted_Buildings_Base := []
+		Iniwrite, 0, %config_file%, Resume Warnings, Resume ; bit pointless as its getting deleted
+		IniDelete, %config_file%, Resume Warnings
+	}
+	else If (Mode = "Save")
+	{
+		Iniwrite, % SerDes(Alert_TimedOut), %config_file%, Resume Warnings, Alert_TimedOut		
+		Iniwrite, % SerDes(Alerted_Buildings), %config_file%, Resume Warnings, Alerted_Buildings		
+		Iniwrite, % SerDes(Alerted_Buildings_Base), %config_file%, Resume Warnings, Alerted_Buildings_Base		
+		Iniwrite, 1, %config_file%, Resume Warnings, Resume
+	}
+	Else if (Mode = "Resume")
+	{
+		Alert_TimedOut := [], Alerted_Buildings := [], Alerted_Buildings_Base := []
+		Iniwrite, 0, %config_file%, Resume Warnings, Resume
+		Iniread, string, %config_file%, Resume Warnings, Alert_TimedOut, %A_space%
+		if (string != A_space)
+		{
+			Alert_TimedOut := SerDes(string)
+			; 21/08/14 I noticed today this got stuck repeating units at start of match (hatch/cc)
+			; Cant seem to make it do it again though. Got it to do it once or twice but not sure what the cause was
+			; Added safety check in case SerDes() doesn't return an object
+			; But I don't believe this is the cause.
+			; I also had the main GUI load on startup and alt-tabed in/out at start of match
+			if !IsObject(Alert_TimedOut)
+				Alert_TimedOut := []
+		}
+		Iniread, string, %config_file%, Resume Warnings, Alerted_Buildings, %A_space%
+		if (string != A_space)
+		{
+			Alerted_Buildings := SerDes(string)
+			if !IsObject(Alerted_Buildings)
+				Alerted_Buildings := []
+		}
+		Iniread, string, %config_file%, Resume Warnings, Alerted_Buildings_Base, %A_space%
+		if (string != A_space)
+		{
+			Alerted_Buildings_Base := SerDes(string)
+			if !IsObject(Alerted_Buildings_Base)
+				Alerted_Buildings_Base := []
+		}
+		IniDelete, %config_file%, Resume Warnings
+	}
 	return
 }
-
 
 announcePreviousUnitWarning()
 {
@@ -3419,8 +3432,6 @@ announcePreviousUnitWarning()
 	Else tSpeak("There have been no alerts")
 	return 
 }
-
-
 
 
 readConfigFile()
@@ -4493,6 +4504,146 @@ StarcraftInstallPath()
 		RegRead, SC2InstallPath, HKEY_LOCAL_MACHINE, SOFTWARE\Blizzard Entertainment\StarCraft II Retail, InstallPath
 	return SC2InstallPath
 }
+
+
+; portrait numbers begin at 0 i.e. first page contains portraits 0-23
+; clickTabPage is the real tab number ! its not off by 1! i.e. tab 1 = 1
+
+; You can have a max of 6 pages 1-6. 
+; This function will stuff up if unit portraits higher than 144 units are called. 
+; So always check the units portrait location before calling
+ClickUnitPortrait(SelectionIndex=0, byref X=0, byref Y=0, byref Xpage=0, byref Ypage=0, ClickPageTab = 0) ;SelectionIndex begins at 0 topleft unit
+{
+	static AspectRatio, Xu0, Yu0, Size, Xpage1, Ypage1, Ypage6, YpageDistance
+	if (AspectRatio != newAspectRatio := getScreenAspectRatio())
+	{
+		AspectRatio := newAspectRatio
+		If (AspectRatio = "16:10")
+		{
+			Xu0 := (578/1680)*A_ScreenWidth, Yu0 := (888/1050)*A_ScreenHeight	;X,Yu0 = the middle of unit portrait 0 ( the top left unit)
+			Size := (56/1680)*A_ScreenWidth										;the unit portrait is square 56x56
+			Xpage1 := (528/1680)*A_ScreenWidth, Ypage1 := (877/1050)*A_ScreenHeight, Ypage6 := (1016/1050)*A_ScreenHeight	;Xpage1 & Ypage6 are locations of the Portrait Page numbers 1-5 
+		}	
+		Else If (AspectRatio = "5:4")
+		{	
+			Xu0 := (400/1280)*A_ScreenWidth, Yu0 := (876/1024)*A_ScreenHeight
+			Size := (51.57/1280)*A_ScreenWidth
+			Xpage1 := (352/1280)*A_ScreenWidth, Ypage1 := (864/1024)*A_ScreenHeight, Ypage6 := (992/1024)*A_ScreenHeight
+		}	
+		Else If (AspectRatio = "4:3")
+		{	
+			Xu0 := (400/1280)*A_ScreenWidth, Yu0 := (812/960)*A_ScreenHeight
+			Size := (51.14/1280)*A_ScreenWidth
+			Xpage1 := (350/1280)*A_ScreenWidth, Ypage1 := (800/960)*A_ScreenHeight, Ypage6 := (928/960)*A_ScreenHeight
+		}
+		Else if (AspectRatio = "16:9")
+		{
+			Xu0 := (692/1920)*A_ScreenWidth, Yu0 := (916/1080)*A_ScreenHeight
+			Size := (57/1920)*A_ScreenWidth	;its square
+			Xpage1 := (638/1920)*A_ScreenWidth, Ypage1 := (901/1080)*A_ScreenHeight, Ypage6 := (1044/1080)*A_ScreenHeight
+
+		}
+		YpageDistance := (Ypage6 - Ypage1)/5		;because there are 6 pages - 6-1
+	}
+
+	if ClickPageTab	;use this to return the selection back to a specified page
+	{
+		PageIndex := ClickPageTab - 1
+		Xpage := Xpage1, Ypage := Ypage1 + (PageIndex * YpageDistance)
+		return 1
+	}
+
+	; You can have a max of 6 pages 1-6. 
+	; This function will stuff up if unit portraits higher than 144 units are called. 
+	; So always check the units portrait location before calling
+	PageIndex := floor(SelectionIndex / 24)
+	, SelectionIndex -= 24 * PageIndex
+	, Offset_y := floor(SelectionIndex / 8) 
+	, Offset_x := SelectionIndex -= 8 * Offset_y		
+	, x := Xu0 + (Offset_x *Size), Y := Yu0 + (Offset_y *Size)
+
+	; A delay may be required for selection page to update
+	; could use an overide value - but not sure if the click would register
+	if (PageIndex != getUnitSelectionPage())
+	{
+		Xpage := Xpage1, Ypage := Ypage1 + (PageIndex * YpageDistance)
+		return 1 ; indicating that you must left click the index page first
+	}
+	return 0	
+}
+
+/*
+Command card has 3 rows with 5 buttons each
+bottom left button is 0 
+next button on right is 1
+top right button is 14
+This function returns the x, y co-ordinates for the specific command card button.
+*/
+
+clickCommandCard(position, byRef x, byRef y)
+{
+	static AspectRatio, X0, y0, Size, width, height
+
+	if (AspectRatio != newAspectRatio := getScreenAspectRatio())
+	{
+		AspectRatio := newAspectRatio
+		If (AspectRatio = "16:10")
+		{
+			X0 := (1314/1680)*A_ScreenWidth, y0 := (1025/1050)*A_ScreenHeight		
+			width := (65/1680)*A_ScreenWidth, height := (66/1050)*A_ScreenHeight										
+		}	
+		Else If (AspectRatio = "5:4")
+		{	
+			X0 := (944/1280)*A_ScreenWidth, y0 := (1000/1024)*A_ScreenHeight
+			width := (61/1280)*A_ScreenWidth, height := (60/1024)*A_ScreenHeight	
+		}	
+		Else If (AspectRatio = "4:3")
+		{	
+			X0 := (944/1280)*A_ScreenWidth, y0 := (937/960)*A_ScreenHeight
+			width := (61/1280)*A_ScreenWidth, height := (61/960)*A_ScreenHeight	
+		}
+		Else if (AspectRatio = "16:9")
+		{
+			X0 := (1542/1920)*A_ScreenWidth, y0 := (1054/1080)*A_ScreenHeight
+			width := (68/1920)*A_ScreenWidth, height := (69/1080)*A_ScreenHeight	
+		}
+	}
+	row := floor(position/5)
+	, column := floor(position - 5 * row)
+	, x := X0 + (column * width) + (width//2)
+	, y := y0 - (row * height + height//2)
+	return
+}
+
+; Gives the co-ordinates for the ping icon/toolbar (so don't have to worry about differ user SC hotkeys)
+getMiniMapPingIconPos(byref xPos, byref yPos)
+{
+	static AspectRatio, x, y, supported := True
+
+	if (AspectRatio != newAspectRatio := getScreenAspectRatio())
+	{
+		AspectRatio := newAspectRatio
+		If (AspectRatio = "16:10")
+			x := (319/1680)*A_ScreenWidth, y := (830/1050)*A_ScreenHeight										
+		Else If (AspectRatio = "5:4")
+			x := (292/1280)*A_ScreenWidth, y := (823/1024)*A_ScreenHeight
+		Else If (AspectRatio = "4:3")	
+			x := (291/1280)*A_ScreenWidth, y := (759/960)*A_ScreenHeight
+		Else if (AspectRatio = "16:9")
+			x := (328/1920)*A_ScreenWidth, y := (854/1080)*A_ScreenHeight
+		else supported := false 
+	}
+	if supported
+		return true, xPos := x, yPos := y
+	else return false, xPos := yPos := "" ; so click doesn't do anything
+}
+
+
+
+
+
+
+
 
 addressPatternScan()
 { 	

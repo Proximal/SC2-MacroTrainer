@@ -2028,6 +2028,38 @@ Gdip_DeleteMatrix(Matrix)
 ;#####################################################################################
 ; Text functions
 ;#####################################################################################
+; The 1st parameter is the graphics we wish to use (our canvas)
+
+; The 2nd parameter is the text we wish to write. It can include new lines `n
+
+; The 3rd parameter, the options are where all the action takes place...
+; You can write literal x and y coordinates such as x20 y50 which would place the text at that position in pixels
+; or you can include the last 2 parameters (Width and Height of the Graphics we will use) and then you can use x10p
+; which will place the text at 10% of the width and y30p which is 30% of the height
+; The same percentage marker may be used for width and height also, so w80p makes the bounding box of the rectangle the text
+; will be written to 80% of the width of the graphics. If either is missed (as I have missed height) then the height of the bounding
+; box will be made to be the height of the graphics, so 100%
+
+; Any of the following words may be used also: Regular,Bold,Italic,BoldItalic,Underline,Strikeout to perform their associated action
+
+; To justify the text any of the following may be used: Near,Left,Centre,Center,Far,Right with different spelling of words for convenience
+
+; The rendering hint (the quality of the antialiasing of the text) can be specified with r, whose values may be:
+; SystemDefault = 0
+; SingleBitPerPixelGridFit = 1
+; SingleBitPerPixel = 2
+; AntiAliasGridFit = 3
+; AntiAlias = 4
+
+; The size can simply be specified with s
+
+; The colour and opacity can be specified for the text also by specifying the ARGB as demonstrated with other functions such as the brush
+; So cffff0000 would make a fully opaque red brush, so it is: cARGB (the literal letter c, follwed by the ARGB)
+
+; The 4th parameter is the name of the font you wish to use
+
+; As mentioned previously, you don not need to specify the last 2 parameters, the width and height, unless
+; you are planning on using the p option with the x,y,w,h to use the percentage
 
 Gdip_TextToGraphics(pGraphics, Text, Options, Font="Arial", Width="", Height="", Measure=0)
 {
@@ -2088,7 +2120,6 @@ Gdip_TextToGraphics(pGraphics, Text, Options, Font="Arial", Width="", Height="",
 	if vPos
 	{
 		StringSplit, ReturnRC, ReturnRC, |
-		
 		if (vPos = "vCentre") || (vPos = "vCenter")
 			ypos += (Height-ReturnRC4)//2
 		else if (vPos = "Top") || (vPos = "Up")

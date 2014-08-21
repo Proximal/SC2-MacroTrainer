@@ -1962,3 +1962,98 @@ DrawLocalUpgradesOverlay(ByRef Redraw, UserScale = 1, Drag = 0)
 	upgradesExistPrevious := upgradesExist
 	Return
 }
+
+; Draws the clickable positions for:
+;	The unit portraits in the selection panel.
+;	The selection pages in the selection panel
+;	The command buttons on the command card
+; 	The ping button.
+; 	The playable size of the minimap i.e. the size of the displayed map
+; Used to check if positions are correct for various aspect ratios / resolutions
+drawUIPositions(destroy := False, overlayExist := False)
+{
+	static overlayCreated, hwnd1, mainWindowTitle
+	
+	if overlayExist 
+		return WinExist("ahk_id " hwnd1)
+	else if destroy
+	{
+		overlayCreated := False
+		Try Gui, UIPositions: Destroy
+		settimer, destroySCUIPosOverlay, off
+		return
+	}
+	else If (!overlayCreated)
+	{
+		; Create a layered window ;E0x20 click thru (+E0x80000 : must be used for UpdateLayeredWindow to work!) that is always on top (+AlwaysOnTop), has no taskbar entry or caption
+		Gui, UIPositions: -Caption Hwndhwnd1 +E0x20 +E0x80000 +LastFound  +ToolWindow +AlwaysOnTop
+		Gui, UIPositions: Show, % "NA X0 Y0 W" A_ScreenWidth " h" A_ScreenHeight, % getRandomString_Az09(10, 20)
+		overlayCreated := True
+		; The overlay is automatically destroyed when the macro Trainer options GUI closes
+		if !mainWindowTitle
+		{
+			IniRead, version, %config_file%, Version, version, 1 
+			mainWindowTitle := "V" version  " Settings" 
+		}
+	}
+
+	hbm := CreateDIBSection(A_ScreenWidth, A_ScreenHeight)
+	, hdc := CreateCompatibleDC()
+	, obm := SelectObject(hdc, hbm)
+	, G := Gdip_GraphicsFromHDC(hdc)	
+	, Gdip_SetSmoothingMode(G, 4)
+	, Gdip_SetInterpolationMode(G, 2)	
+
+	loop, 24
+	{
+		ClickUnitPortrait(A_Index - 1, x, y)
+		aSize := StrSplit(gdip_TextToGraphics(G, A_Index - 1, "x"(x) "y"(y)  " Bold Italic cFFFF0000 s14 ", "Arial",,, True), "|")
+		gdip_TextToGraphics(G, A_Index - 1, "x"(x - aSize[3]//2) "y"(y - aSize[4]//2)  " Bold Italic cFFFF0000 s14 ", "Arial")
+
+	}
+	loop, 6 
+	{
+		ClickUnitPortrait(A_Index - 1, x, y, xPage, yPage, A_index)
+		aSize := StrSplit(gdip_TextToGraphics(G, A_Index, "x"(xPage) "y"(yPage)  " Bold Italic cFFFF0000 s14 ", "Arial",,, True), "|")
+		gdip_TextToGraphics(G, A_Index, "x"(xPage - aSize[3]//2) "y"(yPage - aSize[4]//2)  " Bold Italic cFFFF0000 s14 ", "Arial")
+	}
+	loop, 15
+	{
+		clickCommandCard(A_Index - 1, x, y)
+		aSize := StrSplit(gdip_TextToGraphics(G, A_Index - 1, "x"(x) "y"(y)  " Bold Italic cFFFF0000 s14 ", "Arial",,, True), "|")
+		gdip_TextToGraphics(G, A_Index - 1, "x"(x - aSize[3]//2) "y"(y - aSize[4]//2)  " Bold Italic cFFFF0000 s14 ", "Arial")
+	}
+	getMiniMapPingIconPos(x, y)
+	aSize := StrSplit(gdip_TextToGraphics(G, "P", "x"(x) "y"(y)  " Bold Italic cFFFF0000 s14 ", "Arial",,, True), "|")
+	gdip_TextToGraphics(G, "p", "x"(x - aSize[3]//2) "y"(y - aSize[4]//2)  " Bold Italic cFFFF0000 s14 ", "Arial")
+	; If game not running (or memory addresses not loaded yet) get time will return 0.0
+	if gettime()
+	{
+		SetMiniMap(aMinimap)
+		pPen := Gdip_CreatePen(0xcFFFF0000, 1)
+		Gdip_DrawLines(G, pPen, aMinimap.ScreenLeft "," aMinimap.ScreenTop "|" 
+							.   aMinimap.ScreenRight "," aMinimap.ScreenTop "|" 
+							.   aMinimap.ScreenRight "," aMinimap.ScreenBottom "|" 
+							.   aMinimap.ScreenLeft "," aMinimap.ScreenBottom "|" 
+							.   aMinimap.ScreenLeft "," aMinimap.ScreenTop) 
+		Gdip_DeletePen(pPen)
+	}
+
+	
+	Gdip_DeleteGraphics(G) 
+	, UpdateLayeredWindow(hwnd1, hdc)
+	, SelectObject(hdc, obm) 
+	, DeleteObject(hbm)
+	, DeleteDC(hdc)
+	settimer, destroySCUIPosOverlay, 250
+	return
+
+	destroySCUIPosOverlay:
+	if !WinExist(mainWindowTitle) || !WinExist("ahk_id " hwnd1)
+	{
+		settimer,, off
+		drawUIPositions(True)
+	}
+	return
+}
+

@@ -164,7 +164,7 @@ MT_CurrentInstance := [] ; Used to store random info about the current run
 program := []
 program.info := {"IsUpdating": 0} ; program.Info.IsUpdating := 0 ;has to stay here as first instance of creating infor object
 
-ProgramVersion := 3.02
+ProgramVersion := 3.03
 
 l_GameType := "1v1,2v2,3v3,4v4,FFA"
 l_Races := "Terran,Protoss,Zerg"
@@ -533,6 +533,27 @@ loop
 ToolTip 
 return
 
+DrawSCUIOverlay:
+
+if !aThreads.Overlays.ahkReady()
+{
+	launchOverlayThread()
+	; if launched from replay or out of game and before thread has been loaded once
+	; need to give time for it to load memory addresses to draw the minimap pos
+	sleep 500
+}
+if aThreads.Overlays.ahkFunction("drawUIPositions", 0, 1)
+{
+	aThreads.Overlays.ahkPostFunction("drawUIPositions", 1)
+	GuiControl,, %A_GuiControl%, SC UI Pos
+}
+else 
+{
+	aThreads.Overlays.ahkPostFunction("drawUIPositions")
+	GuiControl,, %A_GuiControl%, Off
+}
+return
+
 g_GetDebugData:
 	clipboard := debugData := DebugData()
 	IfWinExist, DebugData Vr: %ProgramVersion%
@@ -587,28 +608,6 @@ ping:
 		setLowLevelInputHooks(False)
 	}
 Return
-; Gives the co-ordinates for the ping icon/toolbar (so don't have to worry about differ user SC hotkeys)
-getMiniMapPingIconPos(byref xPos, byref yPos)
-{
-	static AspectRatio, x, y, supported := True
-
-	if (AspectRatio != newAspectRatio := getScreenAspectRatio())
-	{
-		AspectRatio := newAspectRatio
-		If (AspectRatio = "16:10")
-			x := (319/1680)*A_ScreenWidth, y := (830/1050)*A_ScreenHeight										
-		Else If (AspectRatio = "5:4")
-			x := (292/1280)*A_ScreenWidth, y := (823/1024)*A_ScreenHeight
-		Else If (AspectRatio = "4:3")	
-			x := (291/1280)*A_ScreenWidth, y := (759/960)*A_ScreenHeight
-		Else if (AspectRatio = "16:9")
-			x := (328/1920)*A_ScreenWidth, y := (854/1080)*A_ScreenHeight
-		else supported := false 
-	}
-	if supported
-		return true, xPos := x, yPos := y
-	else return false, xPos := yPos := "" ; so click doesn't do anything
-}
 
 g_DoNothing:
 Return			
@@ -791,7 +790,6 @@ aThreads.Overlays.AhkFunction("increaseOverlayTimer") ; Increase Freq (it will a
 SoundPlay, %A_Temp%\On.wav
 sleep 500
 KeyWait, % gethotkeySuffix(AdjustOverlayKey), T40
-	
 SoundPlay, %A_Temp%\Off.wav
 WinActivate, %GameIdentifier%
 WinWaitActive, %GameIdentifier%,, 2 ; wait max 2 seconds
@@ -2899,13 +2897,14 @@ ini_settings_write:
 	{
 	;	initialiseBrushColours(aHexColours, a_pBrushes)
 		if aThreads.MiniMap.ahkReady()
+		{
 			aThreads.MiniMap.ahkFunction("updateUserSettings")
-
+			if (time && alert_array[GameType, "Enabled"])
+				 aThreads.MiniMap.ahkFunction("doUnitDetection", 0, 0, 0, "Save")
+		}
 		if aThreads.Overlays.ahkReady()
 			aThreads.Overlays.ahkFunction("updateUserSettings")
 
-		if (time && alert_array[GameType, "Enabled"])
-			 aThreads.MiniMap.ahkFunction("doUnitDetection", 0, 0, 0, "Save")
 		Tmp_GuiControl := ""
 		CreateHotkeys()	; to reactivate the hotkeys that were disabled by disableAllHotkeys()
 		UserSavedAppliedSettings := 1
@@ -3509,9 +3508,13 @@ try
 
 		Gui, Add, GroupBox, Xs+171 ys+116 w245 h170, Debugging
 			Gui, Add, Button, % "xp+10 yp+25 GdebugListVars w75 h25 disabled" round(A_IsCompiled),  List Variables
-			Gui, Add, Button, xp yp+30  Gg_GetDebugData w75 h25,  Debug Data
+			Gui, Add, Button, xp+90 yp gDrawSCUIOverlay  w75 h25, SC UI Pos
+			Gui, Add, Button, xp-90 yp+30  Gg_GetDebugData w75 h25,  Debug Data
 			Gui, Add, Button, xp yp+30  Gg_DebugKey w75 h25,  Key States
 			Gui, Add, Button, xp yp+30  GdegbugGUIStats vdegbugGUIVar w75 h25, Control Pos
+
+			
+
 
 		Gui, Add, GroupBox, Xs+171 ys+290 w245 h60, Emergency Restart Key
 			Gui, Add, Text, xp+10 yp+25 w40,Hotkey:
@@ -8743,9 +8746,9 @@ DeselectUnitsFromPanel(aRemoveUnits, aSelection := "")
 	}	
 	return
 }
-	; no sleep was required for a 144 terran army
-	; when deselecting all but 1!
-	; seems it doesnt need a sleep once
+; no sleep was required for a 144 terran army
+; when deselecting all but 1!
+; seems it doesnt need a sleep once
 
 ; 13/10 Tested this again in map editor with 293 terran army of all unit types
 ; deselecting 1 of each unit type
@@ -8896,72 +8899,6 @@ ClickSelectUnitsPortriat(unitIndexList, Modifers := "")	;can put ^ to do a contr
 		input.pSend(getModifierUpSequenceFromString(Modifers))
 	return
 }
-; portrait numbers begin at 0 i.e. first page contains portraits 0-23
-; clickTabPage is the real tab number ! its not off by 1! i.e. tab 1 = 1
-
-; You can have a max of 6 pages 1-6. 
-; This function will stuff up if unit portraits higher than 144 units are called. 
-; So always check the units portrait location before calling
-ClickUnitPortrait(SelectionIndex=0, byref X=0, byref Y=0, byref Xpage=0, byref Ypage=0, ClickPageTab = 0) ;SelectionIndex begins at 0 topleft unit
-{
-	static AspectRatio, Xu0, Yu0, Size, Xpage1, Ypage1, Ypage6, YpageDistance
-	if (AspectRatio != newAspectRatio := getScreenAspectRatio())
-	{
-		AspectRatio := newAspectRatio
-		If (AspectRatio = "16:10")
-		{
-			Xu0 := (578/1680)*A_ScreenWidth, Yu0 := (888/1050)*A_ScreenHeight	;X,Yu0 = the middle of unit portrait 0 ( the top left unit)
-			Size := (56/1680)*A_ScreenWidth										;the unit portrait is square 56x56
-			Xpage1 := (528/1680)*A_ScreenWidth, Ypage1 := (877/1050)*A_ScreenHeight, Ypage6 := (1016/1050)*A_ScreenHeight	;Xpage1 & Ypage6 are locations of the Portrait Page numbers 1-5 
-		}	
-		Else If (AspectRatio = "5:4")
-		{	
-			Xu0 := (400/1280)*A_ScreenWidth, Yu0 := (876/1024)*A_ScreenHeight
-			Size := (51.57/1280)*A_ScreenWidth
-			Xpage1 := (352/1280)*A_ScreenWidth, Ypage1 := (864/1024)*A_ScreenHeight, Ypage6 := (992/1024)*A_ScreenHeight
-		}	
-		Else If (AspectRatio = "4:3")
-		{	
-			Xu0 := (400/1280)*A_ScreenWidth, Yu0 := (812/960)*A_ScreenHeight
-			Size := (51.14/1280)*A_ScreenWidth
-			Xpage1 := (350/1280)*A_ScreenWidth, Ypage1 := (800/960)*A_ScreenHeight, Ypage6 := (928/960)*A_ScreenHeight
-		}
-		Else if (AspectRatio = "16:9")
-		{
-			Xu0 := (692/1920)*A_ScreenWidth, Yu0 := (916/1080)*A_ScreenHeight
-			Size := (57/1920)*A_ScreenWidth	;its square
-			Xpage1 := (638/1920)*A_ScreenWidth, Ypage1 := (901/1080)*A_ScreenHeight, Ypage6 := (1044/1080)*A_ScreenHeight
-
-		}
-		YpageDistance := (Ypage6 - Ypage1)/5		;because there are 6 pages - 6-1
-	}
-
-	if ClickPageTab	;use this to return the selection back to a specified page
-	{
-		PageIndex := ClickPageTab - 1
-		Xpage := Xpage1, Ypage := Ypage1 + (PageIndex * YpageDistance)
-		return 1
-	}
-
-	; You can have a max of 6 pages 1-6. 
-	; This function will stuff up if unit portraits higher than 144 units are called. 
-	; So always check the units portrait location before calling
-	PageIndex := floor(SelectionIndex / 24)
-	, SelectionIndex -= 24 * PageIndex
-	, Offset_y := floor(SelectionIndex / 8) 
-	, Offset_x := SelectionIndex -= 8 * Offset_y		
-	, x := Xu0 + (Offset_x *Size), Y := Yu0 + (Offset_y *Size)
-
-	; A delay may be required for selection page to update
-	; could use an overide value - but not sure if the click would register
-	if (PageIndex != getUnitSelectionPage())
-	{
-		Xpage := Xpage1, Ypage := Ypage1 + (PageIndex * YpageDistance)
-		return 1 ; indicating that you must left click the index page first
-	}
-	return 0	
-}
-
 
 clickUnitPortraitsWithModifiersDemo(aUnitPortraitLocationsAndModifiers)
 {
@@ -11269,51 +11206,6 @@ return
 ;TerranVehicleAndShipPlatingLevel2
 
 */
-
-/*
-
-Command card has 3 rows with 5 buttons each
-bottom left button is 0 
-next button on right is 1
-top right button is 14
-This function returns the x, y co-ordinates for the specific command card button.
-
-*/
-
-clickCommandCard(position, byRef x, byRef y)
-{
-	static AspectRatio, X0, y0, Size, width, height
-
-	if (AspectRatio != newAspectRatio := getScreenAspectRatio())
-	{
-		AspectRatio := newAspectRatio
-		If (AspectRatio = "16:10")
-		{
-			X0 := (1314/1680)*A_ScreenWidth, y0 := (1025/1050)*A_ScreenHeight		
-			width := (65/1680)*A_ScreenWidth, height := (66/1050)*A_ScreenHeight										
-		}	
-		Else If (AspectRatio = "5:4")
-		{	
-			X0 := (944/1280)*A_ScreenWidth, y0 := (1000/1024)*A_ScreenHeight
-			width := (61/1280)*A_ScreenWidth, height := (60/1024)*A_ScreenHeight	
-		}	
-		Else If (AspectRatio = "4:3")
-		{	
-			X0 := (944/1280)*A_ScreenWidth, y0 := (937/960)*A_ScreenHeight
-			width := (61/1280)*A_ScreenWidth, height := (61/960)*A_ScreenHeight	
-		}
-		Else if (AspectRatio = "16:9")
-		{
-			X0 := (1542/1920)*A_ScreenWidth, y0 := (1054/1080)*A_ScreenHeight
-			width := (68/1920)*A_ScreenWidth, height := (69/1080)*A_ScreenHeight	
-		}
-	}
-	row := floor(position/5)
-	, column := floor(position - 5 * row)
-	, x := X0 + (column * width) + (width//2)
-	, y := y0 - (row * height + height//2)
-	return
-}
 
 
 
