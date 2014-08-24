@@ -695,7 +695,7 @@ FineMouseMove(Hotkey, tooltipPos := False)
 	if tooltipPos
 	{
 		MouseGetPos, x, y
-		tooltip % x ", " y 
+		tooltip % x ", " y, x+25, y+25
 	}
 	return
 }
@@ -1102,12 +1102,12 @@ Cast_ChronoStructure(aStructuresToChrono)
 	input.pSend((CG_control_group != "Off" ? aAGHotkeys.set[CG_control_group] : "") aAGHotkeys.Invoke[CG_nexus_Ctrlgroup_key])
 	timerID := stopwatch()
 	sleep, 30 	; Can use real sleep here as not a silent automation
-	for  index, oject in oStructureToChrono
+	for  index, object in oStructureToChrono
 	{
 		If (A_index > max_chronod)
 			Break
 		sleep, %ChronoBoostSleep%
-		getUnitMiniMapMousePos(oject.unit, click_x, click_y)
+		getUnitMiniMapMousePos(object.unit, click_x, click_y)
 		input.pSend(chrono_key)
 		If HumanMouse
 			MouseMoveHumanSC2("x" click_x "y" click_y "t" rand(HumanMouseTimeLo, HumanMouseTimeHi))
@@ -1220,13 +1220,13 @@ Cast_ChronoStructureOld(StructureToChrono)
 	input.pSend((CG_control_group != "Off" ? aAGHotkeys.set[CG_control_group] : "") aAGHotkeys.Invoke[CG_nexus_Ctrlgroup_key])
 	timerID := stopwatch()
 	sleep, 30 	; Can use real sleep here as not a silent automation
-	for  index, oject in oStructureToChrono
+	for  index, object in oStructureToChrono
 	{
 		If (A_index > max_chronod)
 			Break	
 		
 		sleep, %ChronoBoostSleep%
-		getUnitMiniMapMousePos(oject.unit, click_x, click_y)
+		getUnitMiniMapMousePos(object.unit, click_x, click_y)
 		input.pSend(chrono_key)
 		If HumanMouse
 			MouseMoveHumanSC2("x" click_x "y" click_y "t" rand(HumanMouseTimeLo, HumanMouseTimeHi))
@@ -8432,7 +8432,7 @@ g_QuickSelect:
 item := ""
 for index, object in aQuickSelect[aLocalPlayer.Race]
 {
-	if ("" object.hotkey = A_ThisHotkey && object.enabled) ; concatenating literal string forces comparison as strings, else 1 = +1 
+	if ("" object.hotkey = A_ThisHotkey && object.enabled) ; concatenating literal string forces comparison as strings, else 1 = +1 (shift + 1)
 	{
 		item := index
 		break
@@ -8443,7 +8443,7 @@ if (item != "") ; item should never be blank but im just leaving it like this ju
 return 
 
 ;  the ctrl+shift click remove entire group is disabled until i fix the sort with units in same tab eg tanks/stanks + hellions/hellbats
-; could use a lisft of exceptions for the this click, but can't be bothered atm
+; could use a list of exceptions for the this click, but can't be bothered atm
 quickSelect(aDeselect)
 {
 	global Sc2SelectArmy_Key, aAGHotkeys, Escape
@@ -8664,7 +8664,7 @@ findPortraitsToRemoveFromArmy(byref aSelected := "", DeselectXelnaga = 1, Desele
 
 	; as a box drag was used, so need to remove workers also 
 	if removeAllied
-		lTypes .= (lTypes ? "," : "") aUnitID.SCV "," aUnitID.Probe "," aUnitID.Drone
+		lTypes .= (lTypes ? "," : "") aUnitID.SCV "," aUnitID.MULE "," aUnitID.Probe "," aUnitID.Drone "," aUnitID.Overlord
 
 	for i, unit in aSelected.units
 	{	
@@ -11209,3 +11209,44 @@ return
 
 
 
+f1::
+SetMiniMap(minimap)
+objtree(minimap)
+return 
+
+f2::
+u := getSelectedUnitIndex()
+msgbox % u
+return
+x := getUnitPositionX(u)
+y := getUnitPositiony(u)
+convertCoOrdindatesToMiniMapPosTest(x, y)
+r := getMiniMapRadius(u)
+w := floor(2 * r * minimap.scale)
+h := floor(2 * r * minimap.scale)
+x := floor(x - w / 2)
+y := floor(y - h /2)
+
+
+clipboard := x ", " y ", " w " * 2 , " h " * 2 "
+return 
+
+sleep 4000
+y := minimap.BorderBottom
+SendInput, {click %x% %y%}
+MouseGetPos, x, y
+tooltip, % "`n`n" x ", " y
+return
+#IfWinActive, ahk_exe SC2.exe
+up::
+down::
+left::
+right::
+finemousemove(A_ThisHotkey, True)
+return
+
++f1::
+u := getSelectedUnitIndex()
+getUnitMiniMapMousePos(u, x, y)
+SendInput, {click %x% %y%}
+return

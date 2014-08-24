@@ -1967,8 +1967,9 @@ DrawLocalUpgradesOverlay(ByRef Redraw, UserScale = 1, Drag = 0)
 ;	The unit portraits in the selection panel.
 ;	The selection pages in the selection panel
 ;	The command buttons on the command card
-; 	The ping button.
+; 	The ping button
 ; 	The playable size of the minimap i.e. the size of the displayed map
+;	The minimap UI borders
 ; Used to check if positions are correct for various aspect ratios / resolutions
 drawUIPositions(destroy := False, overlayExist := False)
 {
@@ -2009,7 +2010,6 @@ drawUIPositions(destroy := False, overlayExist := False)
 		ClickUnitPortrait(A_Index - 1, x, y)
 		aSize := StrSplit(gdip_TextToGraphics(G, A_Index - 1, "x"(x) "y"(y)  " Bold Italic cFFFF0000 s14 ", "Arial",,, True), "|")
 		gdip_TextToGraphics(G, A_Index - 1, "x"(x - aSize[3]//2) "y"(y - aSize[4]//2)  " Bold Italic cFFFF0000 s14 ", "Arial")
-
 	}
 	loop, 6 
 	{
@@ -2027,9 +2027,10 @@ drawUIPositions(destroy := False, overlayExist := False)
 	aSize := StrSplit(gdip_TextToGraphics(G, "P", "x"(x) "y"(y)  " Bold Italic cFFFF0000 s14 ", "Arial",,, True), "|")
 	gdip_TextToGraphics(G, "p", "x"(x - aSize[3]//2) "y"(y - aSize[4]//2)  " Bold Italic cFFFF0000 s14 ", "Arial")
 	; If game not running (or memory addresses not loaded yet) get time will return 0.0
+	; so don't try to draw the map edges
+	SetMiniMap(aMinimap)
 	if gettime()
 	{
-		SetMiniMap(aMinimap)
 		pPen := Gdip_CreatePen(0xcFFFF0000, 1)
 		Gdip_DrawLines(G, pPen, aMinimap.ScreenLeft "," aMinimap.ScreenTop "|" 
 							.   aMinimap.ScreenRight "," aMinimap.ScreenTop "|" 
@@ -2038,7 +2039,14 @@ drawUIPositions(destroy := False, overlayExist := False)
 							.   aMinimap.ScreenLeft "," aMinimap.ScreenTop) 
 		Gdip_DeletePen(pPen)
 	}
-
+	; Draw the minimap UI border
+	pPen := Gdip_CreatePen(0xcFF00FFFF, 1)
+	Gdip_DrawLines(G, pPen, aMinimap.BorderLeft "," aMinimap.BorderTop "|" 
+						.   aMinimap.BorderRight "," aMinimap.BorderTop "|" 
+						.   aMinimap.BorderRight "," aMinimap.BorderBottom "|" 
+						.   aMinimap.BorderLeft "," aMinimap.BorderBottom "|" 
+						.   aMinimap.BorderLeft "," aMinimap.BorderTop) 
+	Gdip_DeletePen(pPen)
 	
 	Gdip_DeleteGraphics(G) 
 	, UpdateLayeredWindow(hwnd1, hdc)

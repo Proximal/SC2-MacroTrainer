@@ -151,7 +151,7 @@ gameChange(UserSavedAppliedSettings := False)
 ; they don't also have one of the settings enabled which activates this timer
 
 MiniMap_Timer:
-	if WinActive(GameIdentifier) 
+	if WinActive(GameIdentifier)
 		DrawMiniMap()
 	else if !ReDrawMiniMap
 		DestroyOverlays()
@@ -210,19 +210,25 @@ DrawMiniMap()
 
 	if DrawMiniMap
 	{
-		Gdip_SetSmoothingMode(G, 4)
+		;pBrushWhite := Gdip_BrushCreateSolid(0xffffffff)
+		;Gdip_FillRectangle(G, pBrushWhite, minimap.BorderLeft, minimap.BorderTop , minimap.BorderWidth , minimap.BorderHeight)
+		;Gdip_DeleteBrush(pBrushWhite)
+
+		;Gdip_SetSmoothingMode(G, 4)
+		Gdip_SetSmoothingMode(G, 1)
+		;Gdip_SetCompositingMode(G, 1)
  		getEnemyUnitsMiniMap(aUnitsToDraw)
  		if DrawUnitDestinations
  			drawUnitDestinations(G, aUnitsToDraw)
 		for index, unit in aUnitsToDraw.Normal
-			drawUnitRectangle(G, unit.X, unit.Y, unit.Radius + minimap.AddToRadius, unit.Radius + minimap.AddToRadius)	;draw rectangles first
+			drawUnitRectangle(G, unit.X, unit.Y, unit.Radius , unit.Radius)	;draw rectangles first
 		for index, unit in aUnitsToDraw.Custom
-			drawUnitRectangle(G, unit.X, unit.Y, unit.Radius + minimap.AddToRadius, unit.Radius + minimap.AddToRadius)					
+			drawUnitRectangle(G, unit.X, unit.Y, unit.Radius, unit.Radius)
 		for index, unit in aUnitsToDraw.Normal
-			FillUnitRectangle(G, unit.X, unit.Y,  unit.Radius, unit.Radius, unit.Colour)	
+			FillUnitRectangle(G, unit.X, unit.Y, unit.Radius, unit.Radius, unit.Colour)	
 		; Fill the custom highlighted units last, so that their colours won't be drawn over.			
 		for index, unit in aUnitsToDraw.Custom
-			FillUnitRectangle(G, unit.X, unit.Y,  unit.Radius, unit.Radius, unit.Colour)
+			FillUnitRectangle(G, unit.X, unit.Y, unit.Radius, unit.Radius, unit.Colour)
 	}
 	Gdip_SetInterpolationMode(G, 2)	
 	If (DrawSpawningRaces) && (getTime() - round(TimeReadRacesSet) <= 14) ;round used to change undefined var to 0 for resume so dont display races
@@ -237,7 +243,7 @@ DrawMiniMap()
 				Width := Gdip_GetImageWidth(pBitmap), Height := Gdip_GetImageHeight(pBitmap)	
 				Gdip_DrawImage(G, pBitmap, (BaseX - Width/5), (BaseY - Height/5), Width//2.5, Height//2.5, 0, 0, Width, Height)
 			}
-			Else if (type = aUnitID["CommandCenter"] || type =  aUnitID["PlanetaryFortress"] || type =  aUnitID["OrbitalCommand"])
+			Else if (type = aUnitID["CommandCenter"] || type = aUnitID["PlanetaryFortress"] || type =  aUnitID["OrbitalCommand"])
 			{
 				pBitmap := a_pBitmap["Terran","RacePretty"]
 				Width := Gdip_GetImageWidth(pBitmap), Height := Gdip_GetImageHeight(pBitmap)
@@ -249,7 +255,6 @@ DrawMiniMap()
 				Gdip_DrawImage(G, pBitmap, (BaseX - Width/6), (BaseY - Height/6), Width//3, Height//3, 0, 0, Width, Height)
 			}
 		}
-
 	}
 	if DrawAlerts
 	{
@@ -306,7 +311,6 @@ getEnemyUnitsMiniMap(byref aUnitsToDraw)
   Unitcount := DumpUnitMemory(MemDump)
   while (A_Index <= Unitcount)
   {
-     
      Filter := numget(MemDump, (UnitAddress := (A_Index - 1) * S_uStructure) + O_uTargetFilter, "Int64")
      ; Hidden e.g. marines in medivac/bunker etc. 
      ; Otherwise these unit colours get drawn over the top - medivac highlight colour is hidden.
@@ -331,9 +335,11 @@ getEnemyUnitsMiniMap(byref aUnitsToDraw)
            , y :=  numget(MemDump, UnitAddress + O_uY, "int")/4096
            , customFlag := True
         ;  Radius += (minimap.AddToRadius/2)
-          
-     
-           convertCoOrdindatesToMiniMapPos(x, y)
+     	;Radius += minimap.AddToRadius
+
+           ;, convertCoOrdindatesToMiniMapPos(x, y)
+           , convertCoOrdindatesToMiniMapPosTest(x, y)
+
            if (HighlightInvisible && Filter & aUnitTargetFilter.Hallucination) ; have here so even if non-halluc unit type has custom colour highlight, it will be drawn using halluc colour
            	  Colour := "UnitHighlightHallucinationsColour"
           else if aMiniMapUnits.Highlight.HasKey(type)
