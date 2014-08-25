@@ -214,21 +214,20 @@ DrawMiniMap()
 		;Gdip_FillRectangle(G, pBrushWhite, minimap.BorderLeft, minimap.BorderTop , minimap.BorderWidth , minimap.BorderHeight)
 		;Gdip_DeleteBrush(pBrushWhite)
 
-		;Gdip_SetSmoothingMode(G, 4)
-		Gdip_SetSmoothingMode(G, 1)
-		;Gdip_SetCompositingMode(G, 1)
- 		getEnemyUnitsMiniMap(aUnitsToDraw)
+		; Don't anti alias. As that will blur where the rectangle meets the fill colour
+		Gdip_SetSmoothingMode(G, 3)
+ 		, getEnemyUnitsMiniMap(aUnitsToDraw)
  		if DrawUnitDestinations
  			drawUnitDestinations(G, aUnitsToDraw)
 		for index, unit in aUnitsToDraw.Normal
-			drawUnitRectangle(G, unit.X, unit.Y, unit.Radius , unit.Radius)	;draw rectangles first
+			drawUnitRectangle(G, unit.X, unit.Y, unit.Radius)	;draw rectangles first
 		for index, unit in aUnitsToDraw.Custom
-			drawUnitRectangle(G, unit.X, unit.Y, unit.Radius, unit.Radius)
+			drawUnitRectangle(G, unit.X, unit.Y, unit.Radius)
 		for index, unit in aUnitsToDraw.Normal
-			FillUnitRectangle(G, unit.X, unit.Y, unit.Radius, unit.Radius, unit.Colour)	
+			FillUnitRectangle(G, unit.X, unit.Y, unit.Radius, unit.Colour)	
 		; Fill the custom highlighted units last, so that their colours won't be drawn over.			
 		for index, unit in aUnitsToDraw.Custom
-			FillUnitRectangle(G, unit.X, unit.Y, unit.Radius, unit.Radius, unit.Colour)
+			FillUnitRectangle(G, unit.X, unit.Y, unit.Radius, unit.Colour)
 	}
 	Gdip_SetInterpolationMode(G, 2)	
 	If (DrawSpawningRaces) && (getTime() - round(TimeReadRacesSet) <= 14) ;round used to change undefined var to 0 for resume so dont display races
@@ -237,7 +236,7 @@ DrawMiniMap()
 		loop, parse, EnemyBaseList, |
 		{		
 			type := getUnitType(A_LoopField)
-			getUnitMiniMapMousePos(A_LoopField, BaseX, BaseY)
+			getUnitMinimapPosRounded(A_LoopField, BaseX, BaseY)
 			if ( type = aUnitID["Nexus"]) 		
 			{	pBitmap := a_pBitmap["Protoss","RacePretty"]
 				Width := Gdip_GetImageWidth(pBitmap), Height := Gdip_GetImageHeight(pBitmap)	
@@ -283,7 +282,7 @@ DrawMiniMap()
 			}
 			Else 
 				pBitmap := a_pBitmap["RedX16"]
-			getUnitMiniMapMousePos(MiniMapWarning[A_index,"Unit"], X, Y)
+			getUnitMinimapPosRounded(MiniMapWarning[A_index,"Unit"], X, Y)
 
 			Width := Gdip_GetImageWidth(pBitmap), Height := Gdip_GetImageHeight(pBitmap)	
 		;	Gdip_DrawImage(G, pBitmap, (X - Width/2), (Y - Height/2), Width, Height, 0, 0, Width, Height)	
@@ -291,7 +290,7 @@ DrawMiniMap()
 		} 
 	}
 	if DrawPlayerCameras
-		drawPlayerCameras(G)
+		Gdip_SetSmoothingMode(G, 4), drawPlayerCameras(G) ; Can't really see a diference between HighQuality and AntiAlias
 	Gdip_DeleteRegion(Region)
 	, Gdip_DeleteGraphics(G)
 	, UpdateLayeredWindow(hwnd1, hdc, 0, 0, A_ScreenWidth/4, A_ScreenHeight, overlayMinimapTransparency) ;only draw on left side of the screen
@@ -331,14 +330,14 @@ getEnemyUnitsMiniMap(byref aUnitsToDraw)
           if (Radius < minimap.UnitMinimumRadius) ; probes and such
            	Radius := minimap.UnitMinimumRadius
           
-	       x :=  numget(MemDump, UnitAddress + O_uX, "int")/4096
+	       x := numget(MemDump, UnitAddress + O_uX, "int")/4096
            , y :=  numget(MemDump, UnitAddress + O_uY, "int")/4096
            , customFlag := True
         ;  Radius += (minimap.AddToRadius/2)
      	;Radius += minimap.AddToRadius
 
-           ;, convertCoOrdindatesToMiniMapPos(x, y)
-           , convertCoOrdindatesToMiniMapPosTest(x, y)
+	      , mapToMinimapPos(x, y) ; don't round them. As fraction might be important when subtracting scaled width in draw/fill rectangle
+	      ;, mapToMinimapPosOld(x, y) ; don't round them. As fraction might be important when subtracting scaled width in draw/fill rectangle
 
            if (HighlightInvisible && Filter & aUnitTargetFilter.Hallucination) ; have here so even if non-halluc unit type has custom colour highlight, it will be drawn using halluc colour
            	  Colour := "UnitHighlightHallucinationsColour"
@@ -359,9 +358,9 @@ getEnemyUnitsMiniMap(byref aUnitsToDraw)
 	       	if DrawUnitDestinations
 	       		getUnitQueuedCommands(A_Index - 1, QueuedCommands)
           	if customFlag
-           		aUnitsToDraw.Custom.insert({"X": x, "Y": y, "Colour": Colour, "Radius": Radius*2, unit: A_index -1, "queuedCommands": QueuedCommands})  
+           		aUnitsToDraw.Custom.insert({"X": x, "Y": y, "Colour": Colour, "Radius": Radius, unit: A_index -1, "queuedCommands": QueuedCommands})  
            	else
-           		aUnitsToDraw.Normal.insert({"X": x, "Y": y, "Colour": Colour, "Radius": Radius*2, unit: A_index -1, "queuedCommands": QueuedCommands})  
+           		aUnitsToDraw.Normal.insert({"X": x, "Y": y, "Colour": Colour, "Radius": Radius, unit: A_index -1, "queuedCommands": QueuedCommands})  
      }
   }
   Return
@@ -398,7 +397,7 @@ drawUnitDestinations(pGraphics, byRef aUnitsToDraw)
 				; as destinations are drawn first, the picture gets drawn over by unit boxes
 				else if (command.ability = "TacNukeStrike")
 				{	
-					convertCoOrdindatesToMiniMapPos(x := command.targetX, y := command.targetY)
+					mapToMinimapPosRounded(x := command.targetX, y := command.targetY)
 					Width := Gdip_GetImageWidth(pBitmap := a_pBitmap["pingNuke"]), Height := Gdip_GetImageHeight(pBitmap)	
 					Gdip_DrawImage(pGraphics, pBitmap, (X - Width/2), (Y - Height/2), Width, Height, 0, 0, Width, Height)
 					colour := "Yellow"
@@ -414,7 +413,7 @@ drawUnitDestinations(pGraphics, byRef aUnitsToDraw)
 					x := unit.x, y := unit.y 	
 				Else 
 					x := targetX, y := targetY
-				convertCoOrdindatesToMiniMapPos(targetX := command.targetX, targetY := command.targetY)	
+				mapToMinimapPosRounded(targetX := command.targetX, targetY := command.targetY)	
 				Gdip_DrawLine(pGraphics, a_pPens[colour], x, y, targetX, targetY)
 			}
 		}
@@ -488,7 +487,7 @@ drawPlayerCameras(pGraphics)
 			angle := getPlayerCameraAngle(slotNumber)
 			xCenter := getPlayerCameraPositionX(slotNumber)
 			yCenter := getPlayerCameraPositionY(slotNumber)
-			convertCoOrdindatesToMiniMapPos(xCenter, yCenter)
+			mapToMinimapPosRounded(xCenter, yCenter)
 
 			x1 := xCenter - (18/1920*A_ScreenWidth/minimap.MapPlayableWidth * minimap.Width) * (angle/maxAngle)**2
 			y1 := yCenter - (11/1080*A_ScreenHeight/minimap.MapPlayableHeight * minimap.Height) * angle/maxAngle

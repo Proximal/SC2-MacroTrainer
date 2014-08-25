@@ -1107,7 +1107,7 @@ Cast_ChronoStructure(aStructuresToChrono)
 		If (A_index > max_chronod)
 			Break
 		sleep, %ChronoBoostSleep%
-		getUnitMiniMapMousePos(object.unit, click_x, click_y)
+		getUnitMinimapPosRounded(object.unit, click_x, click_y)
 		input.pSend(chrono_key)
 		If HumanMouse
 			MouseMoveHumanSC2("x" click_x "y" click_y "t" rand(HumanMouseTimeLo, HumanMouseTimeHi))
@@ -1226,7 +1226,7 @@ Cast_ChronoStructureOld(StructureToChrono)
 			Break	
 		
 		sleep, %ChronoBoostSleep%
-		getUnitMiniMapMousePos(object.unit, click_x, click_y)
+		getUnitMinimapPosRounded(object.unit, click_x, click_y)
 		input.pSend(chrono_key)
 		If HumanMouse
 			MouseMoveHumanSC2("x" click_x "y" click_y "t" rand(HumanMouseTimeLo, HumanMouseTimeHi))
@@ -7515,7 +7515,7 @@ sRepeat(string, multiplier)
 
 ClickMinimapPlayerView()
 {
-	mapToMiniMapPos(getPlayerCameraPositionX(), getPlayerCameraPositionY(), x, y)
+	mapToMinimapPosRounded(x := getPlayerCameraPositionX(), y := getPlayerCameraPositionY())
 	input.pClick(x, y)
 	return
 }
@@ -8294,7 +8294,7 @@ restoreSelection(controlGroup, selectionPage, highlightedTab)
 			MiniMapX := x := numGetUnitPositionXFromMemDump(MemDump, Unit)
 			MiniMapY := y := numGetUnitPositionYFromMemDump(MemDump, Unit)
 			z :=  numGetUnitPositionZFromMemDump(MemDump, Unit)
-			convertCoOrdindatesToMiniMapPos(MiniMapX, MiniMapY)
+			mapToMinimapPosRounded(MiniMapX, MiniMapY)
 			isInjected := numGetIsHatchInjectedFromMemDump(MemDump, Unit)
 			Object.insert( {  "Unit": unit 
 							, "x": x
@@ -9246,7 +9246,7 @@ SplitUnits(SplitctrlgroupStorage_key)
 	while (A_Index <= selectionCount)	
 	{
 		unit := getSelectedUnitIndex(A_Index -1)
-		getUnitMiniMapMousePos(unit, mX, mY)
+		getUnitMinimapPosRounded(unit, mX, mY)
 		aSelectedUnits.insert({"Unit": unit, "mouseX": mX, "mouseY": mY, absDistance: ""})
 		getMiniMapRadius(Unit)
 		if (getUnitType(unit) = aUnitID[Worker])
@@ -9279,7 +9279,7 @@ SplitUnits(SplitctrlgroupStorage_key)
 
 	if !notOnsameMoveCommand
 	{
-		convertCoOrdindatesToMiniMapPos(xAvg := xTargetPrev, yAvg := yTargetPrev)
+		mapToMinimapPosRounded(xAvg := xTargetPrev, yAvg := yTargetPrev)
 		moveState := aCommands[commandCount].state
 		if (moveState = aUnitMoveStates.Amove || moveState = aUnitMoveStates.FollowNoAttack)
 			attack := True
@@ -10508,7 +10508,7 @@ sleep 2000
 for index, mineralPatch in minerals
 {
 	click_x := mineralPatch.x,  click_y := mineralPatch.y
-	convertCoOrdindatesToMiniMapPos(click_x, click_y)
+	mapToMinimapPosRounded(click_x, click_y)
 	send {click Left %click_x%, %click_y%}
 	soundplay *-1
 	sleep 1000
@@ -11212,15 +11212,21 @@ return
 f1::
 SetMiniMap(minimap)
 objtree(minimap)
+msgbox % minimap.MapPlayableHeight / minimap.MapPlayableWidth
+. "`n" (minimap.MapPlayableWidth / minimap.MapPlayableHeight)
 return 
 
 f2::
+msgbox % (getCameraBoundsRight() - getCameraBoundsLeft()) / (getCameraBoundsTop() - getCameraBoundsBottom())
+
+return 
+
 u := getSelectedUnitIndex()
 msgbox % u
 return
 x := getUnitPositionX(u)
 y := getUnitPositiony(u)
-convertCoOrdindatesToMiniMapPosTest(x, y)
+mapToMinimapPos(x, y)
 r := getMiniMapRadius(u)
 w := floor(2 * r * minimap.scale)
 h := floor(2 * r * minimap.scale)
@@ -11247,6 +11253,10 @@ return
 
 +f1::
 u := getSelectedUnitIndex()
-getUnitMiniMapMousePos(u, x, y)
+getUnitMinimapPosRounded(u, x, y)
 SendInput, {click %x% %y%}
 return
+
+!f1::
+aThreads.Overlays.ahkPostFunction("drawUIPositions", tog := !tog)
+return 

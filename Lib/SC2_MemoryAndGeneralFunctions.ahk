@@ -96,6 +96,10 @@ Global B_LocalCharacterNameID
 , O_mBottom
 , O_mRight
 , O_mTop
+, B_camLeft
+, B_camBottom
+, B_camRight
+, B_camTop
 , aUnitMoveStates
 , B_UnitCursor
 , O1_UnitCursor
@@ -311,6 +315,11 @@ loadMemoryAddresses(base, version := "")
 			 O_mRight := B_MapStruct + 0xE4	    ; MapRight 157.999756 (akilon wastes) after dividing 4096   (647167 before)                  
 			 O_mTop := B_MapStruct + 0xE8	   	; MapTop: 622591 (akilon wastes) before dividing 4096  
 
+		B_camLeft := base + 0x31165D8
+		B_camBottom := B_camLeft + 0x4
+		B_camRight := B_camBottom + 0x4
+		B_camTop := B_camRight + 0x4
+
 		 aUnitMoveStates := { Idle: -1  ; ** Note this isn't actually a read in game type/value its just what my function will return if it is idle
 							, Amove: 0 		
 							, Patrol: 1
@@ -473,6 +482,23 @@ getMapRight()
 getMapTop()
 {	global
 	return ReadMemory(O_mTop, GameIdentifier) / 4096
+}
+
+getCameraBoundsLeft()
+{
+	return ReadMemory(B_camLeft, GameIdentifier) / 4096
+}
+getCameraBoundsBottom()
+{
+	return ReadMemory(B_camBottom, GameIdentifier) / 4096
+}
+getCameraBoundsRight()
+{
+	return ReadMemory(B_camRight, GameIdentifier) / 4096
+}
+getCameraBoundsTop()
+{
+	return ReadMemory(B_camTop, GameIdentifier) / 4096
 }
 
 IsInControlGroup(group, unitIndex)
@@ -2553,6 +2579,12 @@ SetMiniMap(byref minimap)
 	minimap.MapPlayableWidth := minimap.MapRight - minimap.MapLeft
 	minimap.MapPlayableHeight := minimap.MapTop - minimap.MapBottom
 
+	minimap.MapPlayableHeight := getCameraboundsTop()+4 - getCameraBoundsBottom()+4
+	minimap.MapPlayableWidth := getCameraboundsRight()+7 - getCameraboundsLeft()+7
+
+	minimap.UnitOffsetXScale := minimap.MapPlayableWidth / minimap.MapPlayableHeight
+	minimap.UnitOffsetYScale := minimap.MapPlayableHeight / minimap.MapPlayableWidth
+
 	; 23/08/14 Doing floor divide for x/y offsets for map edges - more accurate this way
 	if (minimap.MapPlayableWidth >= minimap.MapPlayableHeight)
 	{
@@ -2578,6 +2610,7 @@ SetMiniMap(byref minimap)
 		minimap.Height := minimap.BorderHeight 
 		minimap.Width := minimap.ScreenRight - minimap.ScreenLeft	
 	}
+
 	minimap.UnitMinimumRadius := 1 / minimap.scale
 	minimap.UnitMaximumRadius := 10
 	minimap.AddToRadius := 1 / minimap.scale			
@@ -2648,42 +2681,47 @@ deletePens(byRef a_pPens)
 ; When calling Gdip_DrawRectangle or FillUnitRectangle do not pass decimal values as params.
 ; e.g. .5 x,y causes one pixel to be missed in border edge where they meet
 ; and width/height >= x.6 (decminal .6 not .5!) causes that side to be one pixel bigger
+; Using //1 as it is 3X faster than floor()
 ; The x, y pos are are the centre of the rectangle, so need to halve and subtract to get top left corner
 ; The x and y position need to be -1 and the w and h need to be + 1
 ; so as to allow the rectangle to be filled correctly without overlap
 ; Note width is used to calculate x,y pos - so cant +1 w/h until after they are calculated!
-; Not sure if I should use floor or round
+; Not sure if I should use floor or round. 
 
-drawUnitRectangle(G, x, y, width, height, colour := "black")
+
+drawUnitRectangle(G, x, y, radius, colour := "black")
 { 	
 	global minimap
-	width *= minimap.scale
-	, height *= minimap.scale
-	, Gdip_DrawRectangle(G, a_pPens[colour], floor(x - 1 - (width / 2)), floor(y - 1 - (height /2)), floor(width + 1), floor(height + 1))
+	; This +2 is a hack to make the square bigger so as to hide the inaccuracy
+	; It visually looks quite good
+	width := radius * 2 * minimap.scale + minimap.addtoradius ; + 2
+	, height := radius * 2 * minimap.scale + minimap.addtoradius ; + 2
+	, Gdip_DrawRectangle(G, a_pPens[colour], (x - 1 - width / 2)//1, (y - 1 - height /2)//1, (width + 1)//1, (height + 1)//1)
 }
 
-FillUnitRectangle(G, x, y, width, height, colour)
+FillUnitRectangle(G, x, y, radius, colour)
 { 	global minimap
-	width *= minimap.scale
-	, height *= minimap.scale
-	, Gdip_FillRectangle(G, a_pBrushes[colour], floor(x - width / 2), floor(y - height /2), floor(width), floor(height))
+	width := radius * 2 * minimap.scale + minimap.addtoradius ; + 2 
+	, height := radius * 2 * minimap.scale + minimap.addtoradius ; + 2
+	, Gdip_FillRectangle(G, a_pBrushes[colour], (x - width / 2)//1, (y - height /2)//1, width//1, height//1)
 }
 
 isUnitLocallyOwned(Unit) ; 1 its local player owned
 {	global aLocalPlayer
-	Return aLocalPlayer["Slot"] = getUnitOwner(Unit) ? 1 : 0
+	Return (aLocalPlayer["Slot"] = getUnitOwner(Unit))
 }
 isOwnerLocal(Owner) ; 1 its local player owned
 {	global aLocalPlayer
-	Return aLocalPlayer["Slot"] = Owner ? 1 : 0
+	Return (aLocalPlayer["Slot"] = Owner)
 }
 
 GetEnemyRaces()
 {	global aPlayer, aLocalPlayer
 	For slot_number in aPlayer
-	{	If ( aLocalPlayer["Team"] <>  team := aPlayer[slot_number, "Team"] )
+	{	
+		If ( aLocalPlayer["Team"] <>  team := aPlayer[slot_number, "Team"] )
 		{
-			If ( EnemyRaces <> "")
+			If (EnemyRaces <> "")
 				EnemyRaces .= ", "
 			EnemyRaces .= aPlayer[slot_number, "Race"]
 		}
@@ -3126,36 +3164,18 @@ Draw(G,x,y,l=11,h=11,colour=0x880000ff, Mode=0) ;use mode 3 to draw rectangle th
 	}
 }
 
-getUnitMiniMapMousePos(Unit, ByRef  Xvar="", ByRef  Yvar="") ; Note raounded as mouse clicks dont round decimals e.g. 10.9 = 10
+getUnitMinimapPosRounded(Unit, ByRef  x, ByRef y) ; Note raounded as mouse clicks dont round decimals e.g. 10.9 = 10
 {
-	global minimap
-	uX := getUnitPositionX(Unit), uY := getUnitPositionY(Unit)
-	uX -= minimap.MapLeft, uY -= minimap.MapBottom ; correct units position as mapleft/start of map can be >0
-	Xvar := round(minimap.ScreenLeft + (uX/minimap.MapPlayableWidth * minimap.Width))
-	Yvar := round(minimap.Screenbottom - ( uY/minimap.MapPlayableHeight * minimap.Height))		;think about rounding mouse clicks igornore decimals
-	return	
+	mapToMinimapPos(x := getUnitPositionX(Unit), y := getUnitPositionY(Unit))
+	, x := round(x), y := round(y)
 }
 
-mapToMiniMapPos(x, y, ByRef  Xvar="", ByRef  Yvar="") ; Note raounded as mouse clicks dont round decimals e.g. 10.9 = 10
+getUnitMiniMapPos(Unit, ByRef  x, ByRef y)
 {
-	global minimap
-	x -= minimap.MapLeft, y -= minimap.MapBottom ; correct units position as mapleft/start of map can be >0
-	Xvar := round(minimap.ScreenLeft + (x/minimap.MapPlayableWidth * minimap.Width))
-	Yvar := round(minimap.Screenbottom - ( y/minimap.MapPlayableHeight * minimap.Height))		;think about rounding mouse clicks igornore decimals
-	return	
+	mapToMinimapPos(x := getUnitPositionX(Unit), y := getUnitPositionY(Unit))
 }
 
-getMiniMapPos(Unit, ByRef  Xvar="", ByRef  Yvar="") ; unit aray index Number
-{
-	global minimap
-	uX := getUnitPositionX(Unit), uY := getUnitPositionY(Unit)
-	uX -= minimap.MapLeft, uY -= minimap.MapBottom ; correct units position as mapleft/start of map can be >0
-	Xvar := minimap.ScreenLeft + (uX/minimap.MapPlayableWidth * minimap.Width)
-	Yvar := minimap.Screenbottom - ( uY/minimap.MapPlayableHeight * minimap.Height)		;think about rounding mouse clicks igornore decimals
-	return	
-}
-
-convertCoOrdindatesToMiniMapPos(ByRef  X, ByRef  Y) 
+mapToMinimapPosOld(ByRef  X, ByRef  Y) 
 {
 	global minimap
 	X -= minimap.MapLeft, Y -= minimap.MapBottom ; correct units position as mapleft/start of map can be >0
@@ -3163,7 +3183,50 @@ convertCoOrdindatesToMiniMapPos(ByRef  X, ByRef  Y)
 	, Y := round(minimap.Screenbottom - (Y/minimap.MapPlayableHeight * minimap.Height))		;think about rounding mouse clicks igornore decimals
 	return	
 }
+; Use this one for mouse clicks. I think rounding is a good idea
+mapToMinimapPosRounded(ByRef x, ByRef y) 
+{
+	mapToMinimapPos(x, y), x := round(x), y := round(y)
+}
 
+; For drawing. So isn't rounded. The fractions are important in calculating final rectangle/fill x, y and w, h when drawing.
+mapToMinimapPos(ByRef x, ByRef y) 
+{
+	global minimap
+	x := minimap.ScreenLeft + ((x-minimap.MapLeft)/minimap.MapPlayableWidth * minimap.Width) + ceil((0.5 - (x//1)/minimap.MapPlayableWidth) * minimap.Scale * minimap.UnitOffsetXScale) 
+	, y := minimap.Screenbottom - ((y-minimap.MapBottom)/minimap.MapPlayableHeight * minimap.Height) + ceil(((y//1)/minimap.MapPlayableHeight - 0.5) * minimap.Scale * minimap.UnitOffsetYScale) 
+}
+
+;/* Current function simplified
+; I believe the other key to this is the camera and map bounds
+; and their relationship with each other
+
+mapToMinimapPosSimplified(ByRef x, ByRef y) 
+{
+	global minimap
+
+	xStart := x//1, yStart := y//1 ; floor seems to work better
+	; correct units position as mapleft/start of map doesn't have to be 0
+	x -= minimap.MapLeft, Y -= minimap.MapBottom 
+	; Find the units relative position in the playable map and convert this to position in SC minimap UI (* minimap.Width) 
+	; (minimap.Width is the screen width of SC UI minimap)
+	; Then add on the origin of the x/y SC minimap UI (ScreenLeft)
+	x := minimap.ScreenLeft + (x/minimap.MapPlayableWidth * minimap.Width)
+	y := minimap.Screenbottom - (y/minimap.MapPlayableHeight * minimap.Height)	
+	; Try to push x and y back towards the centre
+	; as when drawing away from centre, it tends to be out in that direction
+	; And the further away from centre, the larger the error.
+	; I feel a big part of a pixel perfect position lies here. 
+	; This probably needs to be a bit more complex
+	xoffset := 0.5 - xStart/minimap.MapPlayableWidth
+	yoffset := yStart/minimap.MapPlayableHeight - 0.5 ; Reversed as my y origin is from the bottom of the map
+	x += ceil(xoffset * minimap.Scale * minimap.UnitOffsetXScale) 
+  	y += ceil(yoffset * minimap.Scale * minimap.UnitOffsetYScale) 
+	return	
+}
+
+;*/
+;
 ; yoffset := Abs(yStart/minimap.MapPlayableHeight - 0.5)
 ; if (xStart/minimap.MapPlayableWidth > 0.5) 
 ; 	X -= xoffset * 2 * minimap.Scale
@@ -3174,25 +3237,22 @@ convertCoOrdindatesToMiniMapPos(ByRef  X, ByRef  Y)
 ;	y += yoffset  * 2 * minimap.Scale
 ; else if (yStart/minimap.MapPlayableHeight < 0.5) 
 ; 	y -= yoffset  * 2 * minimap.Scale
+/*
 
-convertCoOrdindatesToMiniMapPosTest(ByRef  X, ByRef  Y) 
-{
-	global minimap
-
-	xStart := floor(x), yStart := floor(y) 
-	; correct units position as mapleft/start of map can be >0
-	X -= minimap.MapLeft, Y -= minimap.MapBottom 
-
-	xoffset := 0.5 - xStart/minimap.MapPlayableWidth
-	yoffset := yStart/minimap.MapPlayableHeight - 0.5 ; Reversed as y origin is from the bottom of the map
-
-	X := minimap.ScreenLeft + (X/minimap.MapPlayableWidth * minimap.Width)
-	Y := minimap.Screenbottom - (Y/minimap.MapPlayableHeight * minimap.Height)		;think about rounding mouse clicks igornore decimals
-
-	X += xoffset * 2 * minimap.Scale
-	y += yoffset  * 2 * minimap.Scale
-	return	
-}
+	if minimap.MapPlayableHeight > minimap.MapPlayableWidth
+	{
+		xfactor := 2
+		yfactor := minimap.MapPlayableHeight / minimap.MapPlayableWidth
+	}
+	else if minimap.MapPlayableWidth > minimap.MapPlayableHeight
+	{
+		xfactor := minimap.MapPlayableWidth / minimap.MapPlayableHeight 
+		yfactor := 2 
+	}
+	else yfactor := xfactor := 2 ; This should't be required but it does make a square map look better
+	x += ceil(xoffset * 2 * minimap.Scale * xfactor) ; 2 may be the factor 
+	, y += ceil(yoffset * 2 * minimap.Scale * yfactor) ;* minimap.Scale ) ; 4
+*/
 
 
 isUserPerformingAction()
