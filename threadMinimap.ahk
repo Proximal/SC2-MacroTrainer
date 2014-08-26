@@ -151,7 +151,7 @@ gameChange(UserSavedAppliedSettings := False)
 ; they don't also have one of the settings enabled which activates this timer
 
 MiniMap_Timer:
-	if WinActive(GameIdentifier)
+	if WinActive(GameIdentifier) || 1
 		DrawMiniMap()
 	else if !ReDrawMiniMap
 		DestroyOverlays()
@@ -230,13 +230,13 @@ DrawMiniMap()
 			FillUnitRectangle(G, unit.X, unit.Y, unit.Radius, unit.Colour)
 	}
 	Gdip_SetInterpolationMode(G, 2)	
-	If (DrawSpawningRaces) && (getTime() - round(TimeReadRacesSet) <= 14) ;round used to change undefined var to 0 for resume so dont display races
+	If (DrawSpawningRaces && getTime() - round(TimeReadRacesSet) <= 14) ;round used to change undefined var to 0 for resume so dont display races
 	{	
 		;TimeReadRacesSet gets set to 0 at start of match
 		loop, parse, EnemyBaseList, |
 		{		
 			type := getUnitType(A_LoopField)
-			getUnitMinimapPosRounded(A_LoopField, BaseX, BaseY)
+			getUnitMinimapPos(A_LoopField, BaseX, BaseY)
 			if ( type = aUnitID["Nexus"]) 		
 			{	pBitmap := a_pBitmap["Protoss","RacePretty"]
 				Width := Gdip_GetImageWidth(pBitmap), Height := Gdip_GetImageHeight(pBitmap)	
@@ -282,7 +282,7 @@ DrawMiniMap()
 			}
 			Else 
 				pBitmap := a_pBitmap["RedX16"]
-			getUnitMinimapPosRounded(MiniMapWarning[A_index,"Unit"], X, Y)
+			getUnitMinimapPos(MiniMapWarning[A_index,"Unit"], X, Y)
 
 			Width := Gdip_GetImageWidth(pBitmap), Height := Gdip_GetImageHeight(pBitmap)	
 		;	Gdip_DrawImage(G, pBitmap, (X - Width/2), (Y - Height/2), Width, Height, 0, 0, Width, Height)	
@@ -333,11 +333,9 @@ getEnemyUnitsMiniMap(byref aUnitsToDraw)
 	       x := numget(MemDump, UnitAddress + O_uX, "int")/4096
            , y :=  numget(MemDump, UnitAddress + O_uY, "int")/4096
            , customFlag := True
-        ;  Radius += (minimap.AddToRadius/2)
-     	;Radius += minimap.AddToRadius
 
 	      , mapToMinimapPos(x, y) ; don't round them. As fraction might be important when subtracting scaled width in draw/fill rectangle
-	      ;, mapToMinimapPosOld(x, y) ; don't round them. As fraction might be important when subtracting scaled width in draw/fill rectangle
+	      
 
            if (HighlightInvisible && Filter & aUnitTargetFilter.Hallucination) ; have here so even if non-halluc unit type has custom colour highlight, it will be drawn using halluc colour
            	  Colour := "UnitHighlightHallucinationsColour"
@@ -397,7 +395,7 @@ drawUnitDestinations(pGraphics, byRef aUnitsToDraw)
 				; as destinations are drawn first, the picture gets drawn over by unit boxes
 				else if (command.ability = "TacNukeStrike")
 				{	
-					mapToMinimapPosRounded(x := command.targetX, y := command.targetY)
+					mapToMinimapPos(x := command.targetX, y := command.targetY)
 					Width := Gdip_GetImageWidth(pBitmap := a_pBitmap["pingNuke"]), Height := Gdip_GetImageHeight(pBitmap)	
 					Gdip_DrawImage(pGraphics, pBitmap, (X - Width/2), (Y - Height/2), Width, Height, 0, 0, Width, Height)
 					colour := "Yellow"
@@ -413,7 +411,7 @@ drawUnitDestinations(pGraphics, byRef aUnitsToDraw)
 					x := unit.x, y := unit.y 	
 				Else 
 					x := targetX, y := targetY
-				mapToMinimapPosRounded(targetX := command.targetX, targetY := command.targetY)	
+				mapToMinimapPos(targetX := command.targetX, targetY := command.targetY)	
 				Gdip_DrawLine(pGraphics, a_pPens[colour], x, y, targetX, targetY)
 			}
 		}
@@ -487,7 +485,7 @@ drawPlayerCameras(pGraphics)
 			angle := getPlayerCameraAngle(slotNumber)
 			xCenter := getPlayerCameraPositionX(slotNumber)
 			yCenter := getPlayerCameraPositionY(slotNumber)
-			mapToMinimapPosRounded(xCenter, yCenter)
+			mapToMinimapPos(xCenter, yCenter)
 
 			x1 := xCenter - (18/1920*A_ScreenWidth/minimap.MapPlayableWidth * minimap.Width) * (angle/maxAngle)**2
 			y1 := yCenter - (11/1080*A_ScreenHeight/minimap.MapPlayableHeight * minimap.Height) * angle/maxAngle

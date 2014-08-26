@@ -1107,7 +1107,7 @@ Cast_ChronoStructure(aStructuresToChrono)
 		If (A_index > max_chronod)
 			Break
 		sleep, %ChronoBoostSleep%
-		getUnitMinimapPosRounded(object.unit, click_x, click_y)
+		getUnitMinimapPos(object.unit, click_x, click_y)
 		input.pSend(chrono_key)
 		If HumanMouse
 			MouseMoveHumanSC2("x" click_x "y" click_y "t" rand(HumanMouseTimeLo, HumanMouseTimeHi))
@@ -1226,7 +1226,7 @@ Cast_ChronoStructureOld(StructureToChrono)
 			Break	
 		
 		sleep, %ChronoBoostSleep%
-		getUnitMinimapPosRounded(object.unit, click_x, click_y)
+		getUnitMinimapPos(object.unit, click_x, click_y)
 		input.pSend(chrono_key)
 		If HumanMouse
 			MouseMoveHumanSC2("x" click_x "y" click_y "t" rand(HumanMouseTimeLo, HumanMouseTimeHi))
@@ -1605,21 +1605,31 @@ cast_ForceInject:
 
 	If getGroupedQueensWhichCanInject(aControlGroup, 1) ; 1 so it checks their movestate
 	{
-		; Need this otherwise if all hatcheries get killed injects top until user toggles auto inject on/off
-		IF !oHatcheries.MaxIndex() 
-		{
-			Thread, Priority, -2147483648
-			sleep, 10000
-			Thread, Priority, 0	
-			if !F_Inject_Enable
-				return
+		; Need this otherwise if all hatcheries get killed injects stop until user toggles auto inject on/off
+		; Check every ten seconds so it's a bit quicker than the 35 second check
+		; since zergGetHatcheriesToInject() is called on match start (when autoinjects are enabled) and when toggling the function 
+		; don't need to worry about MT_CurrentGame.LastHatchCheckTick being null
+		IF !oHatcheries.MaxIndex() && A_TickCount - MT_CurrentGame.LastHatchCheckTick >= 10000
 			zergGetHatcheriesToInject(oHatcheries)
-		}
+		; Use 35 seconds as it will be > the 29 real seconds per inject  - so the unit list isn't iterated twice when injects occur or every time this routine runs.
+		; So no hatch should remain uninjected for more than 2 inject rounds (~1.3)
+		else if (A_TickCount - MT_CurrentGame.LastHatchCheckTick >= 35000) 
+			zergGetHatcheriesToInject(oHatcheries)
+		; Note oHatcheries is updated each time castInjectLarva() is called.
+		; This should be adequate to ensure that new hatches are added, and (with the above !MaxIndex() check) there are always hatches in this list for the below check
+		; to determine when to call castInjectLarva() again. Of course some situations may slightly delay the injects but this small trade off is better than constantly iterating the unit array
+		; e.g. There is 1 hatch and a new one just finished, but the user injects the old one manually. The new one will not be injected until 
+		; The next time castInjectLarva() is called to inject the first hatch (which is in oHatcheries)
+		; However i suppose late game with auto-injects and max 200/200 army and not trading then it's possible the list won't be updated for some time (or in the above scenario if the user keeps injecting that first hatch manually)
+		; and if make a new hatch with a queen, then this hatch won't get injected. 
+		; I've added the MT_CurrentGame.LastHatchCheckTick last check count to account for these situations
 		For Index, CurrentHatch in oHatcheries
 		{
 			For Index, Queen in aControlGroup.Queens
 			{
-				if (isQueenNearHatch(Queen, CurrentHatch, MI_QueenDistance) && Queen.Energy >= 25  && !isHatchInjected(CurrentHatch.Unit)) 
+				; call isHatchInjected and getTownHallLarvaCount. As the hatch object will contain old information
+				if isQueenNearHatch(Queen, CurrentHatch, MI_QueenDistance) && Queen.Energy >= 25 && !isHatchInjected(CurrentHatch.Unit)
+				&& (!InjectConserveQueenEnergy || round(getTownHallLarvaCount(CurrentHatch.Unit)) < 19) 
 				{
 					Thread, Priority, -2147483648
 					sleep % rand(0, 2000)
@@ -2535,6 +2545,7 @@ ini_settings_write:
 	; 30 (%) from the gui back into 1.3
 	Inject_SleepVariance := 1 + (Inject_SleepVariance/100)
 	IniWrite, %CanQueenMultiInject%, %config_file%, Advanced Auto Inject Settings, CanQueenMultiInject
+	IniWrite, %InjectConserveQueenEnergy%, %config_file%, Advanced Auto Inject Settings, InjectConserveQueenEnergy
 	IniWrite, %Inject_RestoreSelection%, %config_file%, Advanced Auto Inject Settings, Inject_RestoreSelection
 	IniWrite, %Inject_RestoreScreenLocation%, %config_file%, Advanced Auto Inject Settings, Inject_RestoreScreenLocation
 	IniWrite, %drag_origin%, %config_file%, Advanced Auto Inject Settings, drag_origin
@@ -3045,8 +3056,8 @@ try
 
 	Gui, Tab,  Settings
 
-		Gui, Add, GroupBox, Y+15 w225 h250 section, Common Settings
-			Gui, Add, Text, xs+10 yp+25, Spawn Larva Key:
+		Gui, Add, GroupBox, Y+15 w225 h270 section, Common Settings
+			Gui, Add, Text, xs+10 yp+25, Spawn Larvae Key:
 			Gui, Add, Edit, Readonly yp-2 xs+110 w65 R1 center vInject_spawn_larva, %Inject_spawn_larva%
 				Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#Inject_spawn_larva,  Edit
 
@@ -3064,7 +3075,10 @@ try
 						Gui, Add, UpDown,  Range1-100000 vMI_QueenDistance, %MI_QueenDistance%	
 
 			Gui, Add, Checkbox, xs+10 y+15 vCanQueenMultiInject checked%CanQueenMultiInject%, Queen Can Inject Multiple Hatcheries 
-			Gui, Add, Text, xs+10 y+25 w205, These settings apply to BOTH the one-button (manual) and fully automated injects.
+			Gui, Add, Checkbox, xs+10 y+10 vInjectConserveQueenEnergy checked%InjectConserveQueenEnergy%, Conserve Queen Energy
+			
+
+			Gui, Add, Text, xs+10 y+20 w205, These settings apply to BOTH the one-button (manual) and fully automated injects.
 		;Gui, Add, GroupBox, xs ys+210 w365 h165, Notes:
 			
 
@@ -3112,7 +3126,7 @@ try
 		(LTrim 
 		Auto injects will begin after you control group your queen to the correct (inject) queen control group.
 
-		Auto injects are performed using the 'MiniMap' method. In addition to the normal rules, individual queens will not auto-inject while they are performing or queued to perform attacks, transfuses, build tumours, patrol, or spawn larva.
+		Auto injects are performed using the 'MiniMap' method. In addition to the normal rules, individual queens will not auto-inject while they are performing or queued to perform attacks, transfuses, build tumours, patrol, or spawn larvae.
 
 		Please ensure you have correctly set the 'Common Settings' under the 'Settings' tab.
 		)
@@ -3134,8 +3148,8 @@ try
 		Gui, Add, GroupBox,  w417 h105  xs ys+90 section, Advanced Inject Timer
 			Gui, Add, Checkbox, xp+10 yp+20 vInjectTimerAdvancedEnable checked%InjectTimerAdvancedEnable%, Enable
 				
-			Gui, Add, Text, xs+10 yp+25 w90, Spawn Larva Key:	
-				Gui, Add, Edit, Readonly yp-2 x+20 w90 center R1 vInjectTimerAdvancedLarvaKey, %InjectTimerAdvancedLarvaKey%
+			Gui, Add, Text, xs+10 yp+25 w95, Spawn Larvae Key:	
+				Gui, Add, Edit, Readonly yp-2 x+15 w90 center R1 vInjectTimerAdvancedLarvaKey, %InjectTimerAdvancedLarvaKey%
 				Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#InjectTimerAdvancedLarvaKey,  Edit
 					Gui, Add, Text, x+28 yp+4, Alert After (s): 
 					Gui, Add, Edit, Number Right x+25 yp-2 w45 
@@ -4133,7 +4147,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 			Gui, Add, Text, X%XTabX% yp+30  w80, Make Probe:
 			Gui, Add, Edit, Readonly yp-2 x+10 w80  center vMake_Worker_P_Key , %Make_Worker_P_Key%
 					Gui, Add, Button, yp-2 x+10 w30 h23 gEdit_SendHotkey v#Make_Worker_P_Key,  Edit						
-			Gui, Add, Text, X%XTabX% yp+30  w80, Select Larva:
+			Gui, Add, Text, X%XTabX% yp+30  w80, Select Larvae:
 			Gui, Add, Edit, Readonly yp-2 x+10 w80  center vMake_Worker_Z1_Key , %Make_Worker_Z1_Key%
 					Gui, Add, Button, yp-2 x+10 w30 h23 gEdit_SendHotkey v#Make_Worker_Z1_Key,  Edit							
 			Gui, Add, Text, X%XTabX% yp+30  w80, Make Drone:
@@ -4453,6 +4467,9 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		#cast_inject_key_TT := cast_inject_key_TT := "When pressed the program will inject all of your hatcheries.`n`nThis Hotkey is ONLY active while playing as zerg!"
 		Auto_inject_sleep_TT := "Lower this to make the inject round faster, BUT this will make it more obvious that it is being automated!"
 		CanQueenMultiInject_TT := "During minimap injects (and auto-Injects) a SINGLE queen may attempt to inject multiple hatcheries providing:`nShe is the only nearby queen and she has enough energy.`n`nThis may increase the chance of having queens go walkabouts - but I have never observed this. "
+		InjectConserveQueenEnergy_TT := "Hatches which already have 19 larvae will not be injected, thereby saving queen energy.`n"
+									. "This setting is ignored by the 'Backspace' method.`n`n"
+									 . "Note: In SC a hatch can have a maximum of 19 larvae, that is, further injects will not yield additional larvae."
 		Inject_RestoreSelection_TT := "This will store your currently selected units in a control group, which is recalled at the end inject round."
 		Inject_RestoreScreenLocation_TT := "This will save your screen/camera location and restore it at the end of the inject round.`n`n"
 								. "This option only affects the 'backspace' methods."
@@ -4578,7 +4595,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 					. "WHICH are within 8 map units of a gas geyser.`n`n"
 					. "Note: A properly situated base is usually 7-7.5 map units from a geyser."
 
-		Inject_spawn_larva_TT := #Inject_spawn_larva_TT := "This needs to correspond to your SC2 'spawn larva' button.`n`nThis key is sent during an inject to invoke Zerg's 'spawn larva' ability."
+		Inject_spawn_larva_TT := #Inject_spawn_larva_TT := "This needs to correspond to your SC2 'spawn larvae' button.`n`nThis key is sent during an inject to invoke Zerg's 'spawn larvae' ability."
 
 		MI_Queen_Group_TT := #MI_Queen_Group_TT := "The queens in this control are used to inject hatcheries."
 								. "`n`nHence you must add your injecting queens to this control group!"
@@ -4651,7 +4668,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 				. "This should be set as low as reliably possible so that the inject rounds are shorter and there is less chance of it affecting your gameplay.`n`n"
 				. "This will vary for users, but 0 ms works reliably for me.`n"
 				. "If 0 ms is not reliable, try increasing this value in increments of 1 ms."
-		TT_FInjectHatchFrequency_TT := FInjectHatchFrequency_TT := "How often the larva state of the hatcheries are checked. (In ms/real-time)`nAny uninjected hatches will then be injected.`n`nIncreasing this value will delay injects, that is, a hatch will remain uninjected for longer."
+		TT_FInjectHatchFrequency_TT := FInjectHatchFrequency_TT := "How often the larvae state of the hatcheries are checked. (In ms/real-time)`nAny uninjected hatches will then be injected.`n`nIncreasing this value will delay injects, that is, a hatch will remain uninjected for longer."
 		TT_FInjectHatchMaxHatches_TT := FInjectHatchMaxHatches_TT := "The maximum number of hatches to be injected during an inject round"
 
 		TT_AM_KeyDelay_TT := AM_KeyDelay_TT := TT_I_KeyDelay_TT := I_KeyDelay_TT := TT_CG_KeyDelay_TT := CG_KeyDelay_TT := "This sets the delay between key/mouse events`nLower numbers are faster, but they may cause problems.`n0-10`n`nWith regards to speed, changing the 'sleep' time will generally have a larger impact."
@@ -4775,7 +4792,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		DrawMacroTownHallOverlay_TT := "Displays basic macro attributes for your current race."
 									. "`n`nTerran: Available scans/mules."
 									. "`nProtoss: Available chrono boosts."
-									. "`nZerg: Available larva."
+									. "`nZerg: Available larvae."
 									. "`n`nNote: Non-control-grouped town halls will not be included."										
 		DrawLocalUpgradesOverlay_TT := "Displays your current upgrade items and their chrono state (if Protoss)."
 									. "`nThis includes morphing hatches, lairs, spires, and command centres."
@@ -7515,7 +7532,7 @@ sRepeat(string, multiplier)
 
 ClickMinimapPlayerView()
 {
-	mapToMinimapPosRounded(x := getPlayerCameraPositionX(), y := getPlayerCameraPositionY())
+	mapToMinimapPos(x := getPlayerCameraPositionX(), y := getPlayerCameraPositionY())
 	input.pClick(x, y)
 	return
 }
@@ -7950,7 +7967,7 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 
 		; there could be an issue here with the selection buffer not being updated (should sleep for 10ms)
 
-		oHatcheries := [] ; Global used to check if successfuly without having to iterate again
+		oHatcheries := [] ; Global used to check if successful without having to iterate again. And it will update the list of hatches when using fully automated injects (which is checked to determine when to call this function)
 		local BaseCount := zergGetHatcheriesToInject(oHatcheries)
 		Local oSelection := []
 		Local SkipUsedQueen := []
@@ -8010,7 +8027,7 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 			For Index, CurrentHatch in oHatcheries
 			{
 				Local := FoundQueen := 0
-				if isHatchInjected(CurrentHatch.Unit)
+				if CurrentHatch.isInjected || (InjectConserveQueenEnergy && CurrentHatch.LarvaCount >= 19) 
 					continue
 				For Index, Queen in oSelection.Queens
 				{
@@ -8132,7 +8149,7 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 				Input.pClick(click_x, click_y)
 				if sleepTime
 					sleep % ceil( (sleepTime/2) * rand(1, Inject_SleepVariance))
-				if isHatchInjected(CurrentHatch.Unit)
+				if CurrentHatch.isInjected || (InjectConserveQueenEnergy && CurrentHatch.LarvaCount >= 19) 
 					continue
 				For Index, Queen in oSelection.Queens
 				{
@@ -8166,9 +8183,9 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 	else ; if (Method="Backspace")
 	{
 
-		; 	Note: When a queen has inadequate energy for an inject, after pressing the inject larva key nothing will actually happen 
+		; 	Note: When a queen has inadequate energy for an inject, after pressing the inject larvae key nothing will actually happen 
 		;	so the subsequent left click on the hatch will actually select the hatch (as the spell wasn't cast)
-		;	this was what part of the reason queens were somtimes being cancelled
+		;	this was what part of the reason queens were sometimes being cancelled
 		if Inject_RestoreSelection
 			input.pSend(aAGHotkeys.set[Inject_control_group]), stopWatchCtrlID := stopwatch()
 
@@ -8278,9 +8295,10 @@ restoreSelection(controlGroup, selectionPage, highlightedTab)
 	return	
 }
 
+; Always return all hatches/lairs/hives. As this is used to monitor all of them until in the fully auto-injects, the function is called again.
  zergGetHatcheriesToInject(byref Object)
- { 	global aUnitID
- 	Object := []
+ { 	global aUnitID, InjectConserveQueenEnergy
+ 	Object := [], MT_CurrentGame.LastHatchCheckTick := A_TickCount
  	loop, % DumpUnitMemory(MemDump)
  	{
  		unit := A_Index - 1
@@ -8289,23 +8307,22 @@ restoreSelection(controlGroup, selectionPage, highlightedTab)
 	    pUnitModel := numgetUnitModelPointer(MemDump, Unit)
 	    Type := numgetUnitModelType(pUnitModel)
 	
-		IF (type = aUnitID["Hatchery"] || type = aUnitID["Lair"] || type = aUnitID["Hive"] )
+		IF (type = aUnitID["Hatchery"] || type = aUnitID["Lair"] || type = aUnitID["Hive"])
 		{
 			MiniMapX := x := numGetUnitPositionXFromMemDump(MemDump, Unit)
 			MiniMapY := y := numGetUnitPositionYFromMemDump(MemDump, Unit)
 			z :=  numGetUnitPositionZFromMemDump(MemDump, Unit)
-			mapToMinimapPosRounded(MiniMapX, MiniMapY)
+			mapToMinimapPos(MiniMapX, MiniMapY)
 			isInjected := numGetIsHatchInjectedFromMemDump(MemDump, Unit)
 			Object.insert( {  "Unit": unit 
 							, "x": x
 							, "y": y
 							, "z": z
 							, "MiniMapX": MiniMapX
-							, "MiniMapY": MiniMapY 
-							, "isInjected": isInjected } )
-
-		}	
-		
+							, "MiniMapY": MiniMapY
+							, "isInjected": isInjected
+							, "LarvaCount": round(getTownHallLarvaCount(unit)) } ) ; Rounding isn't necessary as I believe this function should always work
+		}		
  	}
  	return Object.maxindex()
  }
@@ -9246,7 +9263,7 @@ SplitUnits(SplitctrlgroupStorage_key)
 	while (A_Index <= selectionCount)	
 	{
 		unit := getSelectedUnitIndex(A_Index -1)
-		getUnitMinimapPosRounded(unit, mX, mY)
+		getUnitMinimapPos(unit, mX, mY)
 		aSelectedUnits.insert({"Unit": unit, "mouseX": mX, "mouseY": mY, absDistance: ""})
 		getMiniMapRadius(Unit)
 		if (getUnitType(unit) = aUnitID[Worker])
@@ -9279,7 +9296,7 @@ SplitUnits(SplitctrlgroupStorage_key)
 
 	if !notOnsameMoveCommand
 	{
-		mapToMinimapPosRounded(xAvg := xTargetPrev, yAvg := yTargetPrev)
+		mapToMinimapPos(xAvg := xTargetPrev, yAvg := yTargetPrev)
 		moveState := aCommands[commandCount].state
 		if (moveState = aUnitMoveStates.Amove || moveState = aUnitMoveStates.FollowNoAttack)
 			attack := True
@@ -10508,7 +10525,7 @@ sleep 2000
 for index, mineralPatch in minerals
 {
 	click_x := mineralPatch.x,  click_y := mineralPatch.y
-	mapToMinimapPosRounded(click_x, click_y)
+	mapToMinimapPos(click_x, click_y)
 	send {click Left %click_x%, %click_y%}
 	soundplay *-1
 	sleep 1000
@@ -11211,9 +11228,16 @@ return
 
 f1::
 SetMiniMap(minimap)
+	minimap.CamMapPlayableHeight := getCameraboundsTop()+4 - getCameraBoundsBottom()+4
+	minimap.CamMapPlayableWidth := getCameraboundsRight()+7 - getCameraboundsLeft()+7
+
+	minimap.UnitOffsetXScale := minimap.CamMapPlayableWidth / minimap.CamMapPlayableHeight
+	minimap.UnitOffsetYScale := minimap.CamMapPlayableHeight / minimap.CamMapPlayableWidth
 objtree(minimap)
-msgbox % minimap.MapPlayableHeight / minimap.MapPlayableWidth
-. "`n" (minimap.MapPlayableWidth / minimap.MapPlayableHeight)
+u := getSelectedUnitIndex()
+msgbox %  getUnitPositionX(u)
+. "`n" 		getUnitPositionY(u)
+
 return 
 
 f2::
@@ -11253,7 +11277,7 @@ return
 
 +f1::
 u := getSelectedUnitIndex()
-getUnitMinimapPosRounded(u, x, y)
+getUnitMinimapPos(u, x, y)
 SendInput, {click %x% %y%}
 return
 

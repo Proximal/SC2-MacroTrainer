@@ -1329,47 +1329,8 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 		, unitPanelDrawStructureProgress, unitPanelDrawUnitProgress, unitPanelDrawUpgradeProgress, unitPanelAlignNewUnits 
 	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0
 
-	
-/*
-	If (Redraw = -1)
-	{
-		Try Gui, UnitOverlay: Destroy
-		overlayCreated := False
-		Redraw := 0
-		Return
-	}	
-	Else if (ReDraw AND WinActive(GameIdentifier))
-	{
-		Try Gui, UnitOverlay: Destroy
-		overlayCreated := False
-		Redraw := 0
-	}
-	If (!overlayCreated)
-	{
-		Gui, UnitOverlay: -Caption Hwndhwnd1 +E0x20 +E0x80000 +LastFound  +ToolWindow +AlwaysOnTop
-		Gui, UnitOverlay: Show, NA X%UnitOverlayX% Y%UnitOverlayY% W400 H400, % aOverlayTitles["UnitOverlay"]
-		OnMessage(0x201, "OverlayMove_LButtonDown")
-		OnMessage(0x20A, "OverlayResize_WM_MOUSEWHEEL")
-		overlayCreated := True
-	}	
-	If (Drag AND !DragPrevious)
-	{	DragPrevious := 1
-		Gui, UnitOverlay: -E0x20
-	}
-	Else if (!Drag AND DragPrevious)
-	{	DragPrevious := 0
-		Gui, UnitOverlay: +E0x20 +LastFound
-		WinGetPos,UnitOverlayX,UnitOverlayY		
-		IniWrite, %UnitOverlayX%, %config_file%, Overlays, UnitOverlayX
-		Iniwrite, %UnitOverlayY%, %config_file%, Overlays, UnitOverlayY		
-	}
-
-*/
 	if !modifyOverlay("UnitOverlay", Redraw, overlayCreated, Drag, DragPrevious, UnitOverlayX, UnitOverlayY, 400, 400, hwnd1)
 		return
-
-
-
 	hbm := CreateDIBSection(A_ScreenWidth, A_ScreenHeight)
 	, hdc := CreateCompatibleDC()
 	, obm := SelectObject(hdc, hbm)
@@ -1378,7 +1339,6 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
  ;	DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0) ; takes 2ms for a 1920x1080. Not required if deleting graphics
 
 	;Gdip_GraphicsClear(G)
-	;setDrawingQuality(G)
 
 	; This seems to make the edge (mainly left and top) of the progress bars fuzzy (AntiAlias)
 	; but it does gives the shaded count boxes a slightly neater (rounded) corner
