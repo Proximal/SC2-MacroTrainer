@@ -466,7 +466,8 @@ loadMemoryAddresses(base, version := "")
 	}
 	return versionMatch
 }	
-
+; The actual mapleft() functions will not return the true values from the map editor
+; eg left is 2 when it should be 0
 getMapLeft()
 {	global
 	return ReadMemory(O_mLeft, GameIdentifier) / 4096
@@ -895,6 +896,11 @@ getUnitEnergy(unit)
 	Return Floor(ReadMemory(B_uStructure + (unit * S_uStructure) + O_uEnergy, GameIdentifier) / 4096)
 }
 
+getUnitEnergyRaw(unit)
+{	global
+	Return ReadMemory(B_uStructure + (unit * S_uStructure) + O_uEnergy, GameIdentifier) / 4096
+}
+
 numgetUnitEnergy(ByRef unitDump, unit)
 {	global
 	Return Floor(numget(unitDump, unit * S_uStructure + O_uEnergy, "Uint") / 4096)
@@ -1246,11 +1252,11 @@ getFPS()
 
 getGameSpeed()
 {
-	static aGameSpeed := { 	0: Slower
-						,	1: Slow
-						,	2: Normal
-						,	3: Fast
-						,	4: Faster }
+	static aGameSpeed := { 	0: "Slower"
+						,	1: "Slow"
+						,	2: "Normal"
+						,	3: "Fast"
+						,	4: "Faster" }
 	return aGameSpeed[ReadMemory(B_Gamespeed, GameIdentifier)]
 }
 
@@ -2530,7 +2536,6 @@ setupMiniMapUnitLists(byRef aMiniMapUnits)
 ;--------------------
 ;	Mini Map Setup
 ;--------------------
-
 ; The actual mapleft() functions will not return the true values from the map editor
 ; eg left is 2 when it should be 0
 
@@ -2593,7 +2598,7 @@ SetMiniMap(byref minimap)
 	minimap.MapPlayableWidth := minimap.MapRight - minimap.MapLeft
 	minimap.MapPlayableHeight := minimap.MapTop - minimap.MapBottom
 
-	; 23/08/14 Doing floor divide for x/y offsets for map edges - more accurate this way
+	; 23/08/14 not sure if i should round the x/y offset
 	if (minimap.MapPlayableWidth >= minimap.MapPlayableHeight)
 	{
 		minimap.scale := minimap.BorderWidth / minimap.MapPlayableWidth
@@ -2601,7 +2606,7 @@ SetMiniMap(byref minimap)
 		minimap.ScreenRight := minimap.BorderRight	
 		if minimap.MapPlayableWidth = minimap.MapPlayableHeight
 			Y_offset := 0
-		else Y_offset := (minimap.BorderHeight - minimap.scale * minimap.MapPlayableHeight) // 2
+		else Y_offset := round((minimap.BorderHeight - minimap.scale * minimap.MapPlayableHeight) / 2)
 		minimap.ScreenTop := minimap.BorderTop + Y_offset
 		minimap.ScreenBottom := minimap.BorderBottom - Y_offset
 		minimap.Height := minimap.ScreenBottom - minimap.ScreenTop
@@ -2610,7 +2615,7 @@ SetMiniMap(byref minimap)
 	else
 	{
 		minimap.scale := minimap.BorderHeight / minimap.MapPlayableHeight
-		X_Offset := (minimap.BorderWidth - minimap.scale * minimap.MapPlayableWidth) // 2
+		X_Offset := round((minimap.BorderWidth - minimap.scale * minimap.MapPlayableWidth) / 2)
 		minimap.ScreenLeft := minimap.BorderLeft + X_Offset
 		minimap.ScreenRight := minimap.BorderRight - X_Offset	
 		minimap.ScreenTop := minimap.BorderTop
@@ -4480,6 +4485,16 @@ formatSeconds(seconds)
     time += %seconds%, seconds
     FormatTime, mss, %time%, m:ss
     return lTrim(seconds//3600 ":" mss, "0:") ; adds hour param first so supports more than 24 hours of seconds
+}
+
+gameToRealSeconds(seconds)
+{
+	static aFactor := { Slower: 1.66
+					,	Slow: 1.25
+					,	Normal: 1.00
+					,	Fast: .8275
+					,	Faster: .725 }
+	return  seconds * aFactor[getGameSpeed()]
 }
 
 modifyOverlay(overlay, byRef Redraw, byRef overlayCreated, byRef Drag, byRef DragPrevious, byRef x, byRef y, w, h, byRef hwnd1)

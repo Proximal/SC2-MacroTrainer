@@ -117,7 +117,7 @@ Else
 {
 	Menu Tray, Icon, Included Files\Used_Icons\Starcraft-2.ico
 
-	global debug := false
+	global debugGame := False
 	debug_name := "Kalamity"
 	hotkey, ^+!F12, g_GiveLocalPlayerResources
 	hotkey, *>!F12, g_testKeydowns ; Just for testing will remove soon
@@ -896,7 +896,7 @@ clock:
 	}
 	; > 1,536d or 0600h -> 0.375 ; mischa's reaper bot used this as minimum time. A couple of people reported issues (e.g. auto-worker) - perhaps i wasnt't waiting long enough for game to finish loading
 	; since i round to nearest single decimal place, use 0.4
-	Else if (time > 0.4 && !isInMatch) && (getLocalPlayerNumber() != 16 || debug) ; Local slot = 16 while in lobby/replay - this will stop replay announcements
+	Else if (time > 0.4 && !isInMatch) && (getLocalPlayerNumber() != 16 || debugGame) ; Local slot = 16 while in lobby/replay - this will stop replay announcements
 	{
 		isInMatch := true
 		AW_MaxWorkersReached := TmpDisableAutoWorker := 0
@@ -915,6 +915,7 @@ clock:
 		GameType := GetGameType(aPlayer)
 		If IsInList(aLocalPlayer.Type, "Referee", "Spectator")
 			return
+
 		isPlaying := True
 		; No longer required but leaving it for now
 		setLowLevelInputHooks(False) ; try to remove them first, as can get here from just saving/applying settings in options GUI
@@ -4790,10 +4791,10 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 									. "`n1-16: Each row will be limited to displaying this number of items."
 
 		DrawMacroTownHallOverlay_TT := "Displays basic macro attributes for your current race."
-									. "`n`nTerran: Available scans/mules."
-									. "`nProtoss: Available chrono boosts."
+									. "`n`nTerran: Available scans/mules. If none are available, (real) time until next scan."
+									. "`nProtoss: Available chrono boosts. If none are available, (real) time until next chrono."
 									. "`nZerg: Available larvae."
-									. "`n`nNote: Non-control-grouped town halls will not be included."										
+									. "`n`nNote: Non-control-grouped town halls and flying orbitals will not be included."										
 		DrawLocalUpgradesOverlay_TT := "Displays your current upgrade items and their chrono state (if Protoss)."
 									. "`nThis includes morphing hatches, lairs, spires, and command centres."
 									. "`n`nUnchecked = Off"
@@ -11224,63 +11225,3 @@ return
 
 */
 
-
-
-f1::
-SetMiniMap(minimap)
-	minimap.CamMapPlayableHeight := getCameraboundsTop()+4 - getCameraBoundsBottom()+4
-	minimap.CamMapPlayableWidth := getCameraboundsRight()+7 - getCameraboundsLeft()+7
-
-	minimap.UnitOffsetXScale := minimap.CamMapPlayableWidth / minimap.CamMapPlayableHeight
-	minimap.UnitOffsetYScale := minimap.CamMapPlayableHeight / minimap.CamMapPlayableWidth
-objtree(minimap)
-u := getSelectedUnitIndex()
-msgbox %  getUnitPositionX(u)
-. "`n" 		getUnitPositionY(u)
-
-return 
-
-f2::
-msgbox % (getCameraBoundsRight() - getCameraBoundsLeft()) / (getCameraBoundsTop() - getCameraBoundsBottom())
-
-return 
-
-u := getSelectedUnitIndex()
-msgbox % u
-return
-x := getUnitPositionX(u)
-y := getUnitPositiony(u)
-mapToMinimapPos(x, y)
-r := getMiniMapRadius(u)
-w := floor(2 * r * minimap.scale)
-h := floor(2 * r * minimap.scale)
-x := floor(x - w / 2)
-y := floor(y - h /2)
-
-
-clipboard := x ", " y ", " w " * 2 , " h " * 2 "
-return 
-
-sleep 4000
-y := minimap.BorderBottom
-SendInput, {click %x% %y%}
-MouseGetPos, x, y
-tooltip, % "`n`n" x ", " y
-return
-#IfWinActive, ahk_exe SC2.exe
-up::
-down::
-left::
-right::
-finemousemove(A_ThisHotkey, True)
-return
-
-+f1::
-u := getSelectedUnitIndex()
-getUnitMinimapPos(u, x, y)
-SendInput, {click %x% %y%}
-return
-
-!f1::
-aThreads.Overlays.ahkPostFunction("drawUIPositions", tog := !tog)
-return 

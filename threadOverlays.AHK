@@ -1690,7 +1690,8 @@ DrawMacroTownHallOverlay(ByRef Redraw, UserScale=1, Drag=0)
 		return
 
 	if !isObject(aTownHalls)
-		aTownHalls := {	aUnitID.OrbitalCommand: True ; No flying as they can't scan/mule
+		aTownHalls := {	aUnitID.CommandCenter: True ; For morphing check. It will report 0 for energy
+					,   aUnitID.OrbitalCommand: True ; No flying as they can't scan/mule
 					, 	aUnitID.Nexus: True
 					, 	aUnitID.Hatchery : True, aUnitID.Lair : True, aUnitID.Hive : True}
 
@@ -1701,19 +1702,51 @@ DrawMacroTownHallOverlay(ByRef Redraw, UserScale=1, Drag=0)
 		pBitmap := a_pBitmap[aUnitID.Nexus], energyRequired := 25, textColour := " cFFCD00FF "
 	else pBitmap := a_pBitmap[aUnitID.Larva], textColour := " cFFFFFFFF "
 
-	macroCount := 0, aCheckedUnits := []
-
+	macroCount := 0, aCheckedUnits := [], closestOrbitalMorphTime := 99999
 	loop 10
 	{
 		loop, % numgetControlGroupMemory(MemDump, A_Index - 1)
 		{
 			if !aCheckedUnits.HasKey((unit := NumGet(MemDump, (A_Index - 1) * 4, "UInt") >> 18))
-			&& aTownHalls.HasKey(getUnitType(unit))
+			&& aTownHalls.HasKey(type := getUnitType(unit))
 			&& isUnitLocallyOwned(unit) && !(getUnitTargetFilter(unit) & (aUnitTargetFilter.Dead | aUnitTargetFilter.UnderConstruction))
-				macroCount += aLocalPlayer.Race = "Terran" || aLocalPlayer.Race = "Protoss" ? Floor(getUnitEnergy(unit)/energyRequired) : getTownHallLarvaCount(unit)
+			{
+				if (aLocalPlayer.Race = "Terran" || aLocalPlayer.Race = "Protoss")
+				{
+					if !macroCount += Floor((energy := getUnitEnergyRaw(unit))/energyRequired) ; Use the raw/non-floored function. As the fractions are important when calculating time remaining to next scan
+					{
+						if (energy < energyRequired && energy > closestEnergy) 
+							closestEnergy := energy
+						if aUnitID.OrbitalCommand = type 
+							hasOrbital := True
+						else if aUnitID.CommandCenter = type && aUnitID.OrbitalCommand = isCommandCenterMorphing(unit)
+						{
+							hasMorphingOrbital := True
+							if (timeRemaining := getUnitMorphTime(unit, type, False)) < closestOrbitalMorphTime
+								closestOrbitalMorphTime := timeRemaining
+						}
+					}
+				}
+				else macroCount += getTownHallLarvaCount(unit)
+			}
+			;	macroCount += aLocalPlayer.Race = "Terran" || aLocalPlayer.Race = "Protoss" ? Floor(getUnitEnergy(unit)/energyRequired) : getTownHallLarvaCount(unit)
 			aCheckedUnits[unit] := True ; Prevents adding to macroCount when townHall exists in multiple ctrl Groups. Also speeds up a little bit for all other units.
 		}
 	}
+	if !macroCount && ( (aLocalPlayer.Race = "Terran" && (hasOrbital || hasMorphingOrbital)) || aLocalPlayer.Race = "Protoss")
+	{
+		if (aLocalPlayer.Race = "Protoss" || hasOrbital)
+			time := (energyRequired - closestEnergy) / 0.5625 ; energy rate per second for nexus/orbital
+		if aLocalPlayer.Race = "Terran"
+		{
+			if !hasOrbital ; Then must have hasMorphingOrbital due to if check above
+				time := closestOrbitalMorphTime
+			else if (time > closestOrbitalMorphTime) ; has orbitals and a morphing orbital
+				time := closestOrbitalMorphTime
+		}
+		macroCount := formatSeconds(gameToRealSeconds(time)), textColour := " cFFFF0000 "
+	}
+		
 	hbm := CreateDIBSection(400, 400)
 	, hdc := CreateCompatibleDC()
 	, obm := SelectObject(hdc, hbm)

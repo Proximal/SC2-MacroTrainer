@@ -151,7 +151,7 @@ gameChange(UserSavedAppliedSettings := False)
 ; they don't also have one of the settings enabled which activates this timer
 
 MiniMap_Timer:
-	if WinActive(GameIdentifier) || 1
+	if WinActive(GameIdentifier)
 		DrawMiniMap()
 	else if !ReDrawMiniMap
 		DestroyOverlays()
@@ -214,11 +214,13 @@ DrawMiniMap()
 		;Gdip_FillRectangle(G, pBrushWhite, minimap.BorderLeft, minimap.BorderTop , minimap.BorderWidth , minimap.BorderHeight)
 		;Gdip_DeleteBrush(pBrushWhite)
 
-		; Don't anti alias. As that will blur where the rectangle meets the fill colour
-		Gdip_SetSmoothingMode(G, 3)
- 		, getEnemyUnitsMiniMap(aUnitsToDraw)
+		
+		
+ 		getEnemyUnitsMiniMap(aUnitsToDraw)
  		if DrawUnitDestinations
- 			drawUnitDestinations(G, aUnitsToDraw)
+ 			Gdip_SetSmoothingMode(G, 4), drawUnitDestinations(G, aUnitsToDraw)
+ 		; Don't anti alias. As that will blur where the rectangle meets the fill colour	
+ 		Gdip_SetSmoothingMode(G, 3)
 		for index, unit in aUnitsToDraw.Normal
 			drawUnitRectangle(G, unit.X, unit.Y, unit.Radius)	;draw rectangles first
 		for index, unit in aUnitsToDraw.Custom
@@ -333,13 +335,11 @@ getEnemyUnitsMiniMap(byref aUnitsToDraw)
 	       x := numget(MemDump, UnitAddress + O_uX, "int")/4096
            , y :=  numget(MemDump, UnitAddress + O_uY, "int")/4096
            , customFlag := True
-
 	      , mapToMinimapPos(x, y) ; don't round them. As fraction might be important when subtracting scaled width in draw/fill rectangle
-	      
 
            if (HighlightInvisible && Filter & aUnitTargetFilter.Hallucination) ; have here so even if non-halluc unit type has custom colour highlight, it will be drawn using halluc colour
            	  Colour := "UnitHighlightHallucinationsColour"
-          else if aMiniMapUnits.Highlight.HasKey(type)
+           else if aMiniMapUnits.Highlight.HasKey(type)
           	Colour := aMiniMapUnits.Highlight[type]
            Else if (HighlightInvisible && Filter & aUnitTargetFilter.Cloaked) ; this will include burrowed units (so dont need to check their flags)
            	  Colour := "UnitHighlightInvisibleColour" 				; Have this at bot so if an invis unit has a custom highlight it will be drawn with that colour
@@ -351,7 +351,7 @@ getEnemyUnitsMiniMap(byref aUnitsToDraw)
            {
 	           unitName := aUnitName[type]
 	           if unitName in CommandCenter,CommandCenterFlying,OrbitalCommand,PlanetaryFortress,Nexus,Hatchery,Lair,Hive
-	          		Colour := aPlayer[Owner, "Colour"]
+	          		Colour := aPlayer[Owner, "Colour"], customFlag := True
 	       }
 	       	if DrawUnitDestinations
 	       		getUnitQueuedCommands(A_Index - 1, QueuedCommands)
@@ -487,8 +487,8 @@ drawPlayerCameras(pGraphics)
 			yCenter := getPlayerCameraPositionY(slotNumber)
 			mapToMinimapPos(xCenter, yCenter)
 
-			x1 := xCenter - (18/1920*A_ScreenWidth/minimap.MapPlayableWidth * minimap.Width) * (angle/maxAngle)**2
-			y1 := yCenter - (11/1080*A_ScreenHeight/minimap.MapPlayableHeight * minimap.Height) * angle/maxAngle
+			x1 := xCenter - (19/1920*A_ScreenWidth/minimap.MapPlayableWidth * minimap.Width) * (angle/maxAngle)**2
+			y1 := yCenter - (13/1080*A_ScreenHeight/minimap.MapPlayableHeight * minimap.Height) * angle/maxAngle
 			
 			x2 := x1 + (36/1920*A_ScreenWidth/minimap.MapPlayableWidth * minimap.Width) * (angle/maxAngle)**2
 			y2 := y1 
@@ -499,8 +499,7 @@ drawPlayerCameras(pGraphics)
 			x4 := x1 + ((x2 - x1)/2) - xOffset
 			y4 := y3 
 
-			Gdip_DrawLines(pGraphics, a_pPens[aPlayer[slotNumber, "colour"]],  x1 "," y1 "|" x2 "," y2 
-							. "|" x3 "," y3 "|" x4 "," y4 "|" x1 "," y1 )
+			Gdip_DrawLines(pGraphics, a_pPens[aPlayer[slotNumber, "colour"]],  x1 "," y1 "|" x2 "," y2 "|" x3 "," y3 "|" x4 "," y4 "|" x1 "," y1 )
 		}
 	}
 	return 
