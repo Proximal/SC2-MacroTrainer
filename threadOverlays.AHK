@@ -56,7 +56,7 @@ Return
 ; But I don't really want to test this atm, so its being left as is.
 
 gClock:
-if (!time := getTime())
+if !time := getTime()
 	gameChange()
 return 
 
@@ -1735,6 +1735,7 @@ DrawMacroTownHallOverlay(ByRef Redraw, UserScale=1, Drag=0)
 	}
 	if !macroCount && ( (aLocalPlayer.Race = "Terran" && (hasOrbital || hasMorphingOrbital)) || aLocalPlayer.Race = "Protoss")
 	{
+		strikeOutImage := True
 		if (aLocalPlayer.Race = "Protoss" || hasOrbital)
 			time := (energyRequired - closestEnergy) / 0.5625 ; energy rate per second for nexus/orbital
 		if aLocalPlayer.Race = "Terran"
@@ -1744,7 +1745,7 @@ DrawMacroTownHallOverlay(ByRef Redraw, UserScale=1, Drag=0)
 			else if (time > closestOrbitalMorphTime) ; has orbitals and a morphing orbital
 				time := closestOrbitalMorphTime
 		}
-		macroCount := formatSeconds(gameToRealSeconds(time)), textColour := " cFFFF0000 "
+		macroCount := formatSeconds(gameToRealSeconds(time)), textColour := " cFFFF0000 " ; Red to indicate time remaining
 	}
 		
 	hbm := CreateDIBSection(400, 400)
@@ -1762,6 +1763,25 @@ DrawMacroTownHallOverlay(ByRef Redraw, UserScale=1, Drag=0)
 		Gdip_DrawImage(G, pBitmap, 0, stringData2 - (stringData4/2), Width, Height, 0, 0, SourceWidth, SourceHeight)
 	else 
 		Gdip_DrawImage(G, pBitmap, 0, stringData2 - (stringData4/4), Width, Height, 0, 0, SourceWidth, SourceHeight)
+	if strikeOutImage
+	{	; Don't have to create/delete pen it each time. It get's deleted on exit.
+	;	Full size
+	;	x1 := 0, y1 := stringData2 - (stringData4/2)
+	;	, x2 := x1 + Width, y2 := stringData2 - (stringData4/2) + Height
+	;	, Gdip_DrawLine(G, a_pPens.HasKey("Red2") ? a_pPens.Red2 : a_pPens.Red2 := Gdip_CreatePen(0xFFB4141E, 2), x1, y1, x2, y2)
+	;	, Gdip_DrawLine(G, a_pPens.Red2, x1, y2, x2, y1)
+	;	, Gdip_DeletePen(pPenRed)	
+	; 	Two Thirds size
+	;	x1 := Width//3, y1 := stringData2 - (stringData4/2) + Height//3
+	;	, x2 := Width//1.5, y2 := stringData2 - (stringData4/2) + Height//1.5		
+	; Four fifths
+		x1 := Width//4, y1 := stringData2 - (stringData4/2) + Height//4
+		, x2 := Width//1.25, y2 := stringData2 - (stringData4/2) + Height//1.25
+		Gdip_SetSmoothingMode(G, 4)
+		, Gdip_DrawLine(G, a_pPens.HasKey("Red2") ? a_pPens.Red2 : a_pPens.Red2 := Gdip_CreatePen(0xFFB4141E, 2), x1, y1, x2, y2)
+		, Gdip_DrawLine(G, a_pPens.Red2, x1, y2, x2, y1)
+		, Gdip_DeletePen(pPenRed)
+	}
 	Gdip_DeleteGraphics(G)	
 
 	; Don't have to worry about size checks here, as not passing these params to updateLayeredWindow()

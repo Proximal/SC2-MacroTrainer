@@ -1392,14 +1392,20 @@ isWorkerInProductionOld(unit) ; units can only be t or P, no Z
 }
 
  ; returns state which is really the queue size
-isWorkerInProduction(unit) ; units can only be t or P, no Z
-{										;state = 1 in prod, 0 not, -1 if doing something else eg flying
+ ; units can only be t or P town halls, no Z
+; -2 cc/orbital flying
+; -1 CC moring
+; 0 No worker
+; +Int workers
+isWorkerInProduction(unit, type := "") 
+{										
 	GLOBAL aUnitID
-	type := getUnitType(unit)
+	if (type = "")
+		type := getUnitType(unit)
 	if (type = aUnitID["CommandCenterFlying"] || type = aUnitID["OrbitalCommandFlying"])
-		state := 0
+		state := -2
 	Else if (type = aUnitID["CommandCenter"] && isCommandCenterMorphing(unit))
-		state := 1
+		state := -1
 	else if (type = aUnitID["PlanetaryFortress"]) 
 		getBuildStatsPF(unit, state) ;state = queue size 1 means 1 worker is in production
 	else 
@@ -3584,11 +3590,21 @@ readConfigFile()
 	;IniRead, race_speech, %config_file%, Read Opponents Spawn-Races, speech, 1
 	;IniRead, race_clipboard, %config_file%, Read Opponents Spawn-Races, copy_to_clipboard, 0
 
-	;[Worker Production Helper]	
-	IniRead, workeron, %config_file%, Worker Production Helper, warning_enable, 1
-	IniRead, workerProductionTPIdle, %config_file%, Worker Production Helper, workerProductionTPIdle, 10
-	IniRead, workerproduction_time, %config_file%, Worker Production Helper, production_time_lapse, 24
-		workerproduction_time_if := workerproduction_time	;this allows to swap the 2nd warning time
+	;[Worker Production Helper]
+	for i, race in ["Terran", "Protoss", "Zerg"]
+	{
+		for key, value in {	"WarningsWorker|Enable": 1
+						, 	"WarningsWorker|TimeWithoutProduction": 10
+						,	"WarningsWorker|MinWorkerCount": 6
+						, 	"WarningsWorker|MaxWorkerCount": 60
+						, 	"WarningsWorker|FollowUpCount": 0
+						, 	"WarningsWorker|FollowUpDelay": 25
+						, 	"WarningsWorker|SpokenWarning": "Build Worker"}
+		{
+			StringReplace, key, key, |, %race%
+			IniRead, %key%, %config_file%, Worker Production Helper, %key%, %value%
+		}
+	}
 
 	;[Minerals]
 	IniRead, mineralon, %config_file%, Minerals, warning_enable, 1
@@ -3618,7 +3634,6 @@ readConfigFile()
 	IniRead, sec_supply, %config_file%, Additional Warning Count, supply, 1
 	IniRead, sec_mineral, %config_file%, Additional Warning Count, minerals, 1
 	IniRead, sec_gas, %config_file%, Additional Warning Count, gas, 0
-	IniRead, sec_workerprod, %config_file%, Additional Warning Count, worker_production, 1
 	IniRead, sec_idle, %config_file%, Additional Warning Count, idle_workers, 0
 	
 	;[Auto Control Group]
@@ -3682,16 +3697,12 @@ readConfigFile()
 	IniRead, w_supply, %config_file%, Warnings, supply, "Supply"
 	IniRead, w_mineral, %config_file%, Warnings, minerals, "Money"
 	IniRead, w_gas, %config_file%, Warnings, gas, "Gas"
-	IniRead, w_workerprod_T, %config_file%, Warnings, worker_production_T, "Build SCV"
-	IniRead, w_workerprod_P, %config_file%, Warnings, worker_production_P, "Build Probe"
-	IniRead, w_workerprod_Z, %config_file%, Warnings, worker_production_Z, "Build Drone"
 	IniRead, w_idle, %config_file%, Warnings, idle_workers, "Idle"
 
 	;[Additional Warning Delay]
 	IniRead, additional_delay_supply, %config_file%, Additional Warning Delay, supply, 10
 	IniRead, additional_delay_minerals, %config_file%, Additional Warning Delay, minerals, 10
 	IniRead, additional_delay_gas, %config_file%, Additional Warning Delay, gas, 10
-	IniRead, additional_delay_worker_production, %config_file%, Additional Warning Delay, worker_production, 25 ;sc2time
 	IniRead, additional_idle_workers, %config_file%, Additional Warning Delay, idle_workers, 10
 
 
@@ -4400,6 +4411,7 @@ getTownHallLarvaCount(unit)
 		return 0
 	if !p := ReadMemory(buffArray + 0x8, GameIdentifier)
 		return 0
+	; This structure also contains the addresses of the larva
 	; At +0x68 is a pointer to an array which stores the unit indexes for the spawned larva (indexes must be >> 18)
 	return ReadMemory(p + 0x5C, GameIdentifier)
 }
@@ -4417,6 +4429,10 @@ isPhotonOverChargeActive(unit)
 getunitAddress(unit)
 {
 	return B_uStructure + unit * S_uStructure
+}
+unitIndexFromAddress(address)
+{
+	return (address - B_uStructure) / S_uStructure
 }
 
 getUnitTargetFilterString(unit)
@@ -4487,14 +4503,14 @@ formatSeconds(seconds)
     return lTrim(seconds//3600 ":" mss, "0:") ; adds hour param first so supports more than 24 hours of seconds
 }
 
-gameToRealSeconds(seconds)
+gameToRealSeconds(gameSeconds)
 {
 	static aFactor := { Slower: 1.66
 					,	Slow: 1.25
 					,	Normal: 1.00
 					,	Fast: .8275
 					,	Faster: .725 }
-	return  seconds * aFactor[getGameSpeed()]
+	return  gameSeconds * aFactor[getGameSpeed()]
 }
 
 modifyOverlay(overlay, byRef Redraw, byRef overlayCreated, byRef Drag, byRef DragPrevious, byRef x, byRef y, w, h, byRef hwnd1)

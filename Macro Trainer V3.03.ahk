@@ -60,6 +60,11 @@ SetWorkingDir %A_ScriptDir%  ; Ensures a consistent starting directory.
 #Persistent
 #NoEnv  ; Recommended for performance and compatibility with future AutoHotkey releases.
 #MaxThreads 20 ; don't know if this will affect anything
+If 0 ; ignored by script but installed by compiler
+{
+  	FileInstall, Included Files\ahkH\AutoHotkeyMini.dll, this param is ignored
+   	FileInstall, Included Files\ahkH\AutoHotkey.dll, this param is ignored
+}
 SetStoreCapslockMode, off ; needed in case a user binds something to the capslock key in sc2 - other AHK always sends capslock to adjust for case.
 ListLines(False) 
 SetControlDelay -1 	; make this global so buttons dont get held down during controlclick
@@ -118,7 +123,6 @@ Else
 	Menu Tray, Icon, Included Files\Used_Icons\Starcraft-2.ico
 
 	global debugGame := False
-	debug_name := "Kalamity"
 	hotkey, ^+!F12, g_GiveLocalPlayerResources
 	hotkey, *>!F12, g_testKeydowns ; Just for testing will remove soon
 }
@@ -129,13 +133,6 @@ RegRead, wHookTimout, HKEY_CURRENT_USER, Control Panel\Desktop, LowLevelHooksTim
 if (ErrorLevel || wHookTimout < 600)
 	RegWrite, REG_DWORD, HKEY_CURRENT_USER, Control Panel\Desktop, LowLevelHooksTimeout, 600
 ; This will up the timeout from  300 (default). Though probably isn't required
-
-
-If 0 ; ignored by script but installed by compiler
-{
-  	FileInstall, Included Files\ahkH\AutoHotkeyMini.dll, this param is ignored
-   	FileInstall, Included Files\ahkH\AutoHotkey.dll, this param is ignored
-}
 
 Global aThreads := CriticalObject() ; Thread safe object
 aThreads.Speech := AhkDllThread("Included Files\ahkH\AutoHotkeyMini.dll")
@@ -656,28 +653,6 @@ isaKeyPhysicallyOrLogicallyDown(Keys)
   return 
 }
 
-g_SendBaseCam:
-	send, {Backspace}
-return
-g_CreateBaseCam1:
-	send, +{F2}
-Return
-g_CreateBaseCam2:
-	send, +{F3}
-Return
-g_CreateBaseCam3:
-	send, +{F4}
-Return
-g_BaseCam1:
-	send, {F2}
-Return
-g_BaseCam2:
-	send, {F3}
-Return
-g_BaseCam3:
-	send, {F4}
-Return	
-
 g_FineMouseMove:
 	FineMouseMove(A_ThisHotkey)
 Return
@@ -947,7 +922,7 @@ clock:
 		}
 		setupMiniMapUnitLists(aMiniMapUnits)
 		l_ActiveDeselectArmy := setupSelectArmyUnits(l_DeselectArmy, aUnitID)
-		ShortRace := substr(LongRace := aLocalPlayer["Race"], 1, 4) ;because i changed the local race var from prot to protoss i.e. short to long - MIGHT NO be needed  now
+		;ShortRace := substr(LongRace := aLocalPlayer["Race"], 1, 4) ;because i changed the local race var from prot to protoss i.e. short to long - MIGHT NO be needed  now
 		setupAutoGroup(aLocalPlayer["Race"], A_AutoGroup, aUnitID, A_UnitGroupSettings)
 		findXelnagas(aXelnagas)	
 
@@ -1107,125 +1082,6 @@ Cast_ChronoStructure(aStructuresToChrono)
 	{
 		If (A_index > max_chronod)
 			Break
-		sleep, %ChronoBoostSleep%
-		getUnitMinimapPos(object.unit, click_x, click_y)
-		input.pSend(chrono_key)
-		If HumanMouse
-			MouseMoveHumanSC2("x" click_x "y" click_y "t" rand(HumanMouseTimeLo, HumanMouseTimeHi))
-		Input.pClick(click_x, click_y)
-	}
-	If HumanMouse
-		MouseMoveHumanSC2("x" start_x "y" start_y "t" rand(HumanMouseTimeLo, HumanMouseTimeHi))
-	elapsedTimeGrouping := stopwatch(timerID)	
-	if (elapsedTimeGrouping < 20)
-		sleep, % ceil(20 - elapsedTimeGrouping)	
-	if (CG_control_group != "Off")
-		restoreSelection(CG_control_group, selectionPage, HighlightedGroup)
-	Return 
-}
-
-
-
-Cast_ChronoStructureOld(StructureToChrono)
-{	GLOBAL aUnitID, CG_control_group, chrono_key, CG_nexus_Ctrlgroup_key, CG_chrono_remainder, ChronoBoostSleep
-	, HumanMouse, HumanMouseTimeLo, HumanMouseTimeHi, NextSubgroupKey
-
-	oStructureToChrono := [], a_gateways := [], a_gatewaysConvertingToWarpGates := [], a_WarpgatesOnCoolDown := []
-
-	numGetControlGroupObject(oNexusGroup, CG_nexus_Ctrlgroup_key)
-	for index, unit in oNexusGroup.units
-	{
-		if (unit.type = aUnitID.Nexus && !isUnderConstruction(unit.unitIndex))
-			nexus_chrono_count += Floor(unit.energy/25)
-	}
-
-	IF !nexus_chrono_count
-		return
-
-	Unitcount := DumpUnitMemory(MemDump)
-
-	if (StructureToChrono = aUnitID.WarpGate)
-	{
-		while (A_Index <= Unitcount)
-		{
-			unit := A_Index - 1
-			if isTargetDead(TargetFilter := numgetUnitTargetFilter(MemDump, unit)) || !isOwnerLocal(numgetUnitOwner(MemDump, Unit))
-			|| isTargetUnderConstruction(TargetFilter)
-		       Continue
-	    	Type := numgetUnitModelType(numgetUnitModelPointer(MemDump, Unit))
-	    	IF ( type = aUnitID["WarpGate"] && !isUnitChronoed(unit)) && (cooldown := getWarpGateCooldown(unit))
-				a_WarpgatesOnCoolDown.insert({"Unit": unit, "Cooldown": cooldown})
-			Else IF (type = aUnitID["Gateway"] && !isUnitChronoed(unit))
-			{
-				if isGatewayConvertingToWarpGate(unit)
-					a_gatewaysConvertingToWarpGates.insert(unit) 
-				else 
-				{		
-					progress :=  getBuildStats(unit, QueueSize)	; need && QueueSize as if progress reports 0 when idle it will be added to the list
-					if ( (progress < .95 && QueueSize) || QueueSize > 1) ; as queue size of 1 means theres only 1 item being produced
-						a_gateways.insert({Unit: unit, QueueSize: QueueSize, progress: progress})
-				}	
-
-			}															  
-		}	
-
-		if a_WarpgatesOnCoolDown.MaxIndex()
-			bubbleSort2DArray(a_WarpgatesOnCoolDown, "Cooldown", 0)	;so warpgates with longest cooldown get chronoed first
-		if a_gatewaysConvertingToWarpGates.MaxIndex()	
-			RandomiseArray(a_gatewaysConvertingToWarpGates)
-		if a_gateways.MaxIndex()
-		{
-			bubbleSort2DArray(a_gateways, "progress", 1) 				; so the strucutes with least progress gets chronoed (providing have same queue size)
-			bubbleSort2DArray(a_gateways, "QueueSize", 0) 			; so One with the longest queue gets chronoed first
-		}
-
-		for index, Warpgate in a_WarpgatesOnCoolDown 			; so Warpgates will get chronoed 1st
-			oStructureToChrono.insert({Unit: Warpgate.Unit})	; among warpgates longest cooldown gets done first
-
-		for index, gateway in a_gatewaysConvertingToWarpGates 	; gateways converting to warpgates get chronoed next
-			oStructureToChrono.insert({Unit:gateway}) 			; among these gateways, order is random
-
-		for index, object in a_gateways 						; gateways producing a unit come last
-			oStructureToChrono.insert({Unit: object.Unit})		; among these it goes first by queue size, then progress
-	}
-	else 
-	{
-		while (A_Index <= Unitcount)
-		{
-			unit := A_Index - 1
-			if isTargetDead(TargetFilter := numgetUnitTargetFilter(MemDump, unit)) || !isOwnerLocal(numgetUnitOwner(MemDump, Unit))
-			|| isTargetUnderConstruction(TargetFilter)
-		       Continue
-	    	Type := numgetUnitModelType(numgetUnitModelPointer(MemDump, Unit))
-	    	IF ( type = StructureToChrono && !isUnitChronoed(unit) ) 
-			{	
-				progress :=  getBuildStats(unit, QueueSize)	; need && QueueSize as if progress reports 0 when idle it will be added to the list
-				if ( (progress < .95 && QueueSize) || QueueSize > 1) ; as queue size of 1 means theres only 1 item being produced
-					oStructureToChrono.insert({Unit: unit, QueueSize: QueueSize, progress: progress})
-			}
-		}
-		;	structures with the longest queues will be chronoed first
-		; 	if queue size is equal, chronoed by progress (least progressed chronoed 1st)
-
-		bubbleSort2DArray(oStructureToChrono, "progress", 1) ; so the strucutes with least progress gets chronoed (providing have same queue size)
-		bubbleSort2DArray(oStructureToChrono, "QueueSize", 0) ; so One with the longest queue gets chronoed first
-	}
-	
-	If !oStructureToChrono.maxIndex()
-		return
-	
-	MouseGetPos, start_x, start_y
-	HighlightedGroup := getSelectionHighlightedGroup()
-	selectionPage := getUnitSelectionPage()
-	max_chronod := nexus_chrono_count - CG_chrono_remainder
-	input.pSend((CG_control_group != "Off" ? aAGHotkeys.set[CG_control_group] : "") aAGHotkeys.Invoke[CG_nexus_Ctrlgroup_key])
-	timerID := stopwatch()
-	sleep, 30 	; Can use real sleep here as not a silent automation
-	for  index, object in oStructureToChrono
-	{
-		If (A_index > max_chronod)
-			Break	
-		
 		sleep, %ChronoBoostSleep%
 		getUnitMinimapPos(object.unit, click_x, click_y)
 		input.pSend(chrono_key)
@@ -2559,9 +2415,16 @@ ini_settings_write:
 	;IniWrite, %race_clipboard%, %config_file%, Read Opponents Spawn-Races, copy_to_clipboard
 
 	;[Worker Production Helper]	
-	IniWrite, %workeron%, %config_file%, Worker Production Helper, warning_enable
-	IniWrite, %workerproduction_time%, %config_file%, Worker Production Helper, production_time_lapse
-	IniWrite, %workerProductionTPIdle%, %config_file%, Worker Production Helper, workerProductionTPIdle
+	for i, race in ["Terran", "Protoss", "Zerg"]
+	{
+		for k, varName in [ "WarningsWorker|Enable", "WarningsWorker|TimeWithoutProduction", "WarningsWorker|MinWorkerCount"
+							, "WarningsWorker|MaxWorkerCount", "WarningsWorker|FollowUpCount", "WarningsWorker|FollowUpDelay", "WarningsWorker|SpokenWarning" ]
+		{
+			StringReplace, varName, varName, |, %race%
+			IniWrite, % %varName%, %config_file%, Worker Production Helper, %varName%
+		}
+	}
+
 
 	;[Minerals]
 	IniWrite, %mineralon%, %config_file%, Minerals, warning_enable
@@ -2591,7 +2454,6 @@ ini_settings_write:
 	IniWrite, %sec_supply%, %config_file%, Additional Warning Count, supply
 	IniWrite, %sec_mineral%, %config_file%, Additional Warning Count, minerals
 	IniWrite, %sec_gas%, %config_file%, Additional Warning Count, gas
-	IniWrite, %sec_workerprod%, %config_file%, Additional Warning Count, worker_production
 	IniWrite, %sec_idle%, %config_file%, Additional Warning Count, idle_workers
 
 	;[ Volume]
@@ -2605,16 +2467,12 @@ ini_settings_write:
 	IniWrite, %w_supply%, %config_file%, Warnings, supply
 	IniWrite, %w_mineral%, %config_file%, Warnings, minerals
 	IniWrite, %w_gas%, %config_file%, Warnings, gas
-	IniWrite, %w_workerprod_T%, %config_file%, Warnings, worker_production_T
-	IniWrite, %w_workerprod_P%, %config_file%, Warnings, worker_production_P
-	IniWrite, %w_workerprod_Z%, %config_file%, Warnings, worker_production_Z
 	IniWrite, %w_idle%, %config_file%, Warnings, idle_workers
 
 	;[Additional Warning Delay]
 	IniWrite, %additional_delay_supply%, %config_file%, Additional Warning Delay, supply
 	IniWrite, %additional_delay_minerals%, %config_file%, Additional Warning Delay, minerals
 	IniWrite, %additional_delay_gas%, %config_file%, Additional Warning Delay, gas
-	IniWrite, %additional_delay_worker_production%, %config_file%, Additional Warning Delay, worker_production ;sc2time
 	IniWrite, %additional_idle_workers%, %config_file%, Additional Warning Delay, idle_workers
 
 	
@@ -2977,7 +2835,7 @@ IfWinExist
 ; gui variables 
 ; because there computer was to slow to load the gui window the first time
 
-try 
+;try 
 {
 	Gui, Options:New
 	gui, font, norm s9	;here so if windows user has +/- font size this standardises it. But need to do other menus one day
@@ -3236,7 +3094,7 @@ try
 					Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#AGInvokeGroup%group%,  Edit
 			}
 
-	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vWarnings_TAB, Supply||Macro|Macro2|Warpgates
+	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vWarnings_TAB, Supply||Macro|Workers|Warpgates
 	Gui, Tab, Supply	
 	; Gui, Add, GroupBox, w420 h335, Supply				
 		Gui, Add, Checkbox, X%XTabX% y+30 Vsupplyon checked%supplyon%, Enable Alert
@@ -3355,36 +3213,41 @@ try
 			Gui, Add, Text, xs y+5 w125, Spoken Warning:
 				Gui, Add, Edit, w165 R1 Vw_idle center, %w_idle%	
 
-	Gui, Tab, Macro2
+	Gui, Tab, Workers
 		;Gui, Add, GroupBox, y+20 x%macro_R_TopGroupX% w185 h205, Worker Production	
-		Gui, Add, GroupBox, w185 h270, Worker Production	
 
-			Gui, Add, Checkbox, xp+10 yp+20  Vworkeron checked%workeron%, Enable Alert
-			Gui, Add, Text, y+10 section w105, Time without Production - Zerg:
-				Gui, Add, Edit, Number Right x+5 yp+2 w55 vTT_workerproduction_time
-					Gui, Add, UpDown, Range1-20000 Vworkerproduction_time, %workerproduction_time%
+		Gui, Add, Button, x+90 y+30 w65 h25 vMacroWarningsWorkerTerranButtonGUI gGUIMacroWarngingsWorkerDisplayRace, Terran
+		Gui, Add, Button, x+20 w65 h25 gGUIMacroWarngingsWorkerDisplayRace, Protoss
+		Gui, Add, Button, x+20 w65 h25 gGUIMacroWarngingsWorkerDisplayRace, Zerg
+		
+		GuiControlGet, MacroWarningsWorkerTerranButtonGUI, Pos
+		for k, race in ["Terran", "Protoss", "Zerg"]
+		{
+			Gui, Add, GroupBox, % "x" MacroWarningsWorkerTerranButtonGUIx " y" (MacroWarningsWorkerTerranButtonGUIy + 50) " w235 h255 vMacroWarningsWorker" race "GroupBoxGUI hidden" (A_index != 1) , %race%
+			Gui, Add, Checkbox, % "xp+15 yp+25  VWarningsWorker" race "Enable checked" WarningsWorker%race%Enable " hidden" (A_index != 1) , Enable Alert
+			Gui, Add, Text, y+10 section w125, Time without Production:
+				Gui, Add, Edit, % "Number Right x+15 yp-2 w65 vTT_WarningsWorker" race "TimeWithoutProduction hidden" (A_index != 1)
+					Gui, Add, UpDown, % "Range1-20000 vWarningsWorker" race "TimeWithoutProduction hidden" (A_index != 1), % WarningsWorker%race%TimeWithoutProduction
 
-			Gui, Add, Text, xs y+20 w105, Time without Production - T && P:
-				Gui, Add, Edit, Number Right x+5 yp+2 w55 vTT_workerProductionTPIdle
-					Gui, Add, UpDown, Range1-20000 VworkerProductionTPIdle, %workerProductionTPIdle%
+			Gui, Add, Text,xs y+20 w125, Silenced Below:
+				Gui, Add, Edit, % "Number Right x+15 yp-2 w65 vTT_WarningsWorker" race "MinWorkerCount hidden" (A_index != 1)
+					Gui, Add, UpDown, % "Range0-20000 vWarningsWorker" race "MinWorkerCount hidden" (A_index != 1), % WarningsWorker%race%MinWorkerCount
+			
+			Gui, Add, Text,xs y+20 w125, Silenced Above:
+				Gui, Add, Edit, % "Number Right x+15 yp-2 w65 vTT_WarningsWorker" race "MaxWorkerCount hidden" (A_index != 1)
+					Gui, Add, UpDown, % "Range0-20000 vWarningsWorker" race "MaxWorkerCount hidden" (A_index != 1), % WarningsWorker%race%MaxWorkerCount
 
-			Gui, Add, Text,xs y+20 w105, Secondary Warnings:
-				Gui, Add, Edit, Number Right x+5 yp-2 w55 vTT_sec_workerprod
-					Gui, Add, UpDown, Range0-20000 Vsec_workerprod, %sec_workerprod%
+			Gui, Add, Text,xs y+20 w125, Follow Up Warnings:
+				Gui, Add, Edit, % "Number Right x+15 yp-2 w65 vTT_WarningsWorker" race "FollowUpCount hidden" (A_index != 1)
+					Gui, Add, UpDown, % "Range0-20000 vWarningsWorker" race "FollowUpCount hidden" (A_index != 1), % WarningsWorker%race%FollowUpCount
 
-			Gui, Add, Text,xs y+10 w105, Secondary Delay:
-				Gui, Add, Edit, Number Right x+5 yp-2 w55 vTT_additional_delay_worker_production
-					Gui, Add, UpDown, Range1-20000 Vadditional_delay_worker_production, %additional_delay_worker_production%
+			Gui, Add, Text,xs y+10 w125, Follow Up Delay:
+				Gui, Add, Edit, % "Number Right x+15 yp-2 w65 vTT_WarningsWorker" race "FollowUpDelay hidden" (A_index != 1)
+					Gui, Add, UpDown, % "Range1-20000 vWarningsWorker" race "FollowUpDelay hidden" (A_index != 1), % WarningsWorker%race%FollowUpDelay
 
-			Gui, Add, Text, xs y+10 w85, Terran Warning:
-				Gui, Add, Edit, yp x+0 W85 R1 Vw_workerprod_T center, %w_workerprod_T%	
-
-			Gui, Add, Text, xs y+5 w85,Protoss Warning:
-				Gui, Add, Edit, yp x+0 W85 R1 Vw_workerprod_P center, %w_workerprod_P%	
-
-			Gui, Add, Text, xs y+5 w85,Zerg Warning:
-				Gui, Add, Edit, yp x+0 W85 R1 Vw_workerprod_Z center, %w_workerprod_Z%	
-
+			Gui, Add, Text, xs y+10 w85, Warning:
+				Gui, Add, Edit, % "yp x+20 W100 R1 vWarningsWorker" race "SpokenWarning center hidden" (A_index != 1), % WarningsWorker%race%SpokenWarning	
+		}
 	Gui, Tab, Warpgates
 	Gui, Add, GroupBox, y+20 w410 h135, Forgotten Gateway/Warpgate Warning
 
@@ -3634,7 +3497,7 @@ try
 											. "For structures of the same type, structures with larger production queues will chronoed first."
 											. "When structures have an equal queue size, they will be chronoed in order of progress (lowest first). "
 											. "Structures which are idle (or not on cooldown), already chronoed, or have no additional queued units and a progress of 95% or greater will not be chronoed."
-											. "`n`nNote: Gateways which are being converted to warpgates will be chronoed before gateways which have a unit in production."
+											. "`n`nGateways which are being converted to warpgates will be chronoed before gateways which have a unit in production."
 
 		Gui, Add, GroupBox, ys xs+210  w190 h160 section, Misc. Settings				
 			Gui, Add, Text, xp+10 yp+25, Sleep time (ms):
@@ -4513,17 +4376,28 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		above_upperdelta_TT := TT_above_upperdelta_TT := "A warning will be heard when the 'free' supply drops below this number. (While your supply is greater than the 'Upper Range Cutoff')."
 		minimum_supply_TT := TT_minimum_supply_TT := "Alerts are only active while your supply is above this number."
 
-		w_supply_TT := w_warpgate_TT := w_workerprod_T_TT := w_workerprod_P_TT := w_workerprod_Z_TT := w_gas_TT := w_idle_TT := w_mineral_TT := "This text is spoken during a warning."
-		TT_sec_workerprod_TT := sec_workerprod_TT := sec_idle_TT := sec_gas_TT := sec_mineral_TT := sec_supply_TT := TT_sec_supply_TT := TT_sec_mineral_TT := TT_sec_gas_TT := TT_sec_idle_TT := TT_sec_warpgate_TT := sec_warpgate_TT := "Set how many additional warnings are to be given after the first initial warning (assuming the resource does not fall below the inciting value) - the warnings then turn off."
+		w_supply_TT := w_warpgate_TT := WarningsWorkerTerranSpokenWarning_TT := WarningsWorkerProtossSpokenWarning_TT := WarningsWorkerZergSpokenWarning_TT := w_gas_TT := w_idle_TT := w_mineral_TT := "This text is spoken during a warning."
+		TT_WarningsWorkerTerranFollowUpCount_TT :=	TT_WarningsWorkerProtossFollowUpCount_TT := TT_WarningsWorkerZergFollowUpCount_TT := WarningsWorkerTerranFollowUpCount_TT := WarningsWorkerProtossFollowUpCount_TT := WarningsWorkerZergFollowUpCount_TT
+		:= sec_idle_TT := sec_gas_TT := sec_mineral_TT := sec_supply_TT := TT_sec_supply_TT := TT_sec_mineral_TT := TT_sec_gas_TT := TT_sec_idle_TT := TT_sec_warpgate_TT := sec_warpgate_TT := "Set how many additional warnings are to be given after the first initial warning (assuming the resource does not fall below the inciting value) - the warnings then turn off."
 		additional_delay_supply_TT := TT_additional_delay_supply_TT := additional_delay_minerals_TT := additional_delay_gas_TT := additional_idle_workers_TT 
 		:= TT_additional_delay_minerals_TT := TT_additional_delay_gas_TT := TT_additional_idle_workers_TT := TT_delay_warpgate_warn_followup_TT := delay_warpgate_warn_followup_TT := "This sets the delay between the initial warning, and the additional/follow-up warnings. (in real seconds)"
-		TT_additional_delay_worker_production_TT := additional_delay_worker_production_TT := "This sets the delay between the initial warning, and the additional/follow-up warnings. (in SC2 seconds)"
-		TT_workerproduction_time_TT := workerproduction_time_TT := "This only applies to Zerg.`nA warning will be heard if a drone has not been produced in this amount of time (SC2 seconds)."
+		
+		TT_WarningsWorkerTerranFollowUpDelay_TT := 	TT_WarningsWorkerProtossFollowUpDelay_TT := TT_WarningsWorkerZergFollowUpDelay_TT 
+		:= WarningsWorkerTerranFollowUpDelay_TT := WarningsWorkerProtossFollowUpDelay_TT := WarningsWorkerZergFollowUpDelay_TT := "This sets the delay between the initial warning, and the additional/follow-up warnings. (in SC2 seconds)"
+		TT_WarningsWorkerZergTimeWithoutProduction_TT := WarningsWorkerZergTimeWithoutProduction_TT := "A warning will be heard if a drone has not started (being produced) in this amount of time (SC2 seconds)" 
+		
+		TT_WarningsWorkerTerranTimeWithoutProduction_TT := WarningsWorkerTerranTimeWithoutProduction_TT
+		:= TT_WarningsWorkerProtossTimeWithoutProduction_TT := WarningsWorkerProtossTimeWithoutProduction_TT := "If all nexi/CC/Orbitals/PFs are idle for this amount of time (SC2 seconds), a warning will be made.`n`nNote: A main is considered idle if it has no unit in production and is not currently flying or morphing."
+		TT_WarningsWorkerTerranMinWorkerCount_TT := TT_WarningsWorkerProtossMinWorkerCount_TT := TT_WarningsWorkerZergMinWorkerCount_TT 
+ 		:= WarningsWorkerTerranMinWorkerCount_TT := WarningsWorkerProtossMinWorkerCount_TT := WarningsWorkerZergMinWorkerCount_TT := "Warnings are silenced while your worker count is below this number."
+		TT_WarningsWorkerTerranMaxWorkerCount_TT := TT_WarningsWorkerProtossMaxWorkerCount_TT := TT_WarningsWorkerZergMaxWorkerCount_TT 
+		:= WarningsWorkerTerranMaxWorkerCount_TT := WarningsWorkerProtossMaxWorkerCount_TT := WarningsWorkerZergMaxWorkerCount_TT :=  "Warnings are silenced while your worker count is greater than this number."
+
 		delay_warpgate_warn_TT := "If a gateway has been unconverted for this period of time (real seconds) then a warning will be made."
 		warpgate_warn_on_TT := "Enables warnings for unconverted gateways.`nNote: The warnings become active after your first gateway is converted."
 		idletrigger_TT := gas_trigger_TT := mineraltrigger_TT := TT_mineraltrigger_TT := TT_gas_trigger_TT := TT_idletrigger_TT := "The required amount to invoke a warning."
 		supplylower_TT := TT_supplylower_TT := TT_supplymid_TT := supplymid_TT := supplyupper_TT := TT_supplyupper_TT := "Dictactes when the next or previous supply delta/threashold is used."
-		TT_workerProductionTPIdle_TT := workerProductionTPIdle_TT := "This only applies to Terran & protoss.`nIf all nexi/CC/Orbitals/PFs are idle for this amount of time (SC2 seconds), a warning will be made.`n`nNote: A main is considered idle if it has no worker in production and is not currently flying or morphing."
+		
 
 		delay_warpgate_warn_TT := TT_delay_warpgate_warn_TT := "A warning will be heard when an unconverted gateway exists for this period of time.`nThis is in SC/in-game seconds.`n`nNote: An additional delay of up to three (real) seconds can be expected"
 
@@ -4928,6 +4802,32 @@ gToggleAlignUnitGUI:
 GuiControlGet, state,, SplitUnitPanel
 GUIControl, Enable%state%, unitPanelAlignNewUnits
 return 
+
+
+GUIMacroWarngingsWorkerDisplayRace:
+GuiControlGet, RaceGUI,, %A_GuiControl%
+for i, race in ["Terran", "Protoss", "Zerg"]
+{
+	for k, controlID in [	"MacroWarningsWorker|GroupBoxGUI"
+						, "WarningsWorker|Enable"
+						, "TT_WarningsWorker|TimeWithoutProduction"
+						, "WarningsWorker|TimeWithoutProduction"
+						, "TT_WarningsWorker|MinWorkerCount"
+						, "WarningsWorker|MinWorkerCount"
+						, "TT_WarningsWorker|MaxWorkerCount"
+						, "WarningsWorker|MaxWorkerCount"
+						, "TT_WarningsWorker|FollowUpCount"
+						, "WarningsWorker|FollowUpCount"
+						, "TT_WarningsWorker|FollowUpDelay"
+						, "WarningsWorker|FollowUpDelay"
+						, "WarningsWorker|SpokenWarning" ]
+	{
+		StringReplace, controlID, controlID, |, %race%,
+		GuiControl, % "hide " (race != RaceGUI) , %controlID%
+	}
+}
+return 
+
 
 BasicInjectToggleOptionsGUI:
 GuiControlGet, selectedItem,, %A_GuiControl%
@@ -5608,7 +5508,7 @@ Loop
 }
 LV_ModifyCol()  ; Auto-size all columns to fit their contents
 if UserTriedToRemoveIniAttachment
-	msgbox Your config file is always attached to a bugreport.`nIt can not be removed.
+	msgbox Your config file is always attached to a bug report.`nIt can not be removed.
 return 
 
 ; activated when a user drags and drops files onto a control
@@ -6977,7 +6877,7 @@ autoWorkerProductionCheck()
 				}
 
 				oBasesToldToBuildWorkers.insert({unitIndex: object.unitIndex, type: object.type})
-				if !isWorkerInProduction(object.unitIndex) ; also accounts for if morphing 
+				if !isWorkerInProduction(object.unitIndex) ; also accounts for if morphing/flying 
 				{
 					; this will prevent a recently converted orbital which is not near a geyser from making a working for 20 seconds
 					; giving time to lift it off and land it at the correct position

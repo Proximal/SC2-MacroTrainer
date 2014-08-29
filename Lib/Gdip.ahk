@@ -2111,7 +2111,7 @@ Gdip_TextToGraphics(pGraphics, Text, Options, Font="Arial", Width="", Height="",
 	pBrush := PassBrush ? pBrush : Gdip_BrushCreateSolid(Colour)
 	if !(hFamily && hFont && hFormat && pBrush && pGraphics)
 		return !pGraphics ? -2 : !hFamily ? -3 : !hFont ? -4 : !hFormat ? -5 : !pBrush ? -6 : 0
-   
+	
 	CreateRectF(RC, xpos, ypos, Width, Height)
 	Gdip_SetStringFormatAlign(hFormat, Align)
 	Gdip_SetTextRenderingHint(pGraphics, Rendering)
@@ -2121,9 +2121,9 @@ Gdip_TextToGraphics(pGraphics, Text, Options, Font="Arial", Width="", Height="",
 	{
 		StringSplit, ReturnRC, ReturnRC, |
 		if (vPos = "vCentre") || (vPos = "vCenter")
-			ypos += (Height-ReturnRC4)//2
+			ypos -= ReturnRC4//2 ; Changed this so vertical pos is relative to y and text
 		else if (vPos = "Top") || (vPos = "Up")
-			ypos := 0
+			ypos -= ReturnRC4 ; Changed this so vertical pos is relative to y and text
 		else if (vPos = "Bottom") || (vPos = "Down")
 			ypos := Height-ReturnRC4
 		

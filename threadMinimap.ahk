@@ -59,7 +59,7 @@ return
 ; Need this, as sometimes call from main thread to gameChange() fails
 ; also, sometimes the call succeeds, but the timers remain on
 ; it's fucking retarded! - Update: Probably due to using an old version of AHK_H. 
-
+; Also some of the routines use a the time variable set here
 gClock:
 if (!time := getTime())
 	gameChange()
@@ -128,10 +128,14 @@ gameChange(UserSavedAppliedSettings := False)
 			doUnitDetection(0, 0, 0, "Resume")
 		Else
 			doUnitDetection(0, 0, 0, "Reset") ; clear the variables within the function			
-		if (warpgate_warn_on || supplyon || workeron || alert_array[GameType, "Enabled"])
-			settimer, unit_bank_read, 2500, -6   ; %UnitDetectionTimer_ms% ; previous was 4000
+		if (warpgate_warn_on && aLocalPlayer["Race"] = "Protoss") || supplyon || alert_array[GameType, "Enabled"]
+		|| ( (aLocalPlayer["Race"] = "Terran" && WarningsWorkerTerranEnable) || (aLocalPlayer["Race"] = "Protoss" && WarningsWorkerProtossEnable) || (aLocalPlayer["Race"] = "Zerg" && WarningsWorkerProtossEnable))
+			settimer, unit_bank_read, 1500, -6   ; unitdetecion performed every second run. ; 2500 worked well %UnitDetectionTimer_ms% ; previous was 4000
 		else settimer, unit_bank_read, off
-		settimer, worker, % workeron ? 1000 : "off", -5
+		if (aLocalPlayer["Race"] = "Terran" && WarningsWorkerTerranEnable) || (aLocalPlayer["Race"] = "Protoss" && WarningsWorkerProtossEnable) 
+			settimer, workerTerranProtossCheck, 1000, -5
+		else settimer, workerTerranProtossCheck, off
+		;settimer, worker, % workeron ? 1000 : "off", -5
 		settimer, supply, % supplyon ? 200 : "off", -5
 		settimer, gClock, 1000, -4
 	}
@@ -139,7 +143,7 @@ gameChange(UserSavedAppliedSettings := False)
 	{
 		SetTimer, MiniMap_Timer, off
 		SetTimer, unit_bank_read, off
-		SetTimer, worker, off
+		SetTimer, workerTerranProtossCheck, off
 		SetTimer, supply, off
 		SetTimer, gClock, off
 		DestroyOverlays()
@@ -213,8 +217,6 @@ DrawMiniMap()
 		;pBrushWhite := Gdip_BrushCreateSolid(0xffffffff)
 		;Gdip_FillRectangle(G, pBrushWhite, minimap.BorderLeft, minimap.BorderTop , minimap.BorderWidth , minimap.BorderHeight)
 		;Gdip_DeleteBrush(pBrushWhite)
-
-		
 		
  		getEnemyUnitsMiniMap(aUnitsToDraw)
  		if DrawUnitDestinations
@@ -505,12 +507,27 @@ drawPlayerCameras(pGraphics)
 	return 
 }
 
+/*
+	2V2 each player near 200/200 time of routine
+	8.659650
+	3.111926 ; Skip unit detection
+	8.881199 ; Unit Detection
+	3.523995
+*/
+
 unit_bank_read:
 ;thread, NoTimers, true
 ;timerID := stopwatch()
 
+; Unit detection function is relatively slow, so only do it on every second routine call
+; this allows this routine to be called faster to keep the other info up-to-date more quickly
+unit_bank_readCallCount++
+doUnitDetectionOnThisRun := Mod(unit_bank_readCallCount, 2) * (alert_array[GameType, "Enabled"])
+; If nothing is on or if only unitdetection is on but it is to be skipped on this pass, just return
+if !(warpgate_warn_on && aLocalPlayer["Race"] = "Protoss") && !supplyon && !workeron && !(alert_array[GameType, "Enabled"] && doUnitDetectionOnThisRun)
+	return
 
-SupplyInProductionCount := gateway_count := warpgate_count := 0
+SupplyInProductionCount := gateway_count := warpgate_count := ZergWorkerInProductionCount := 0
 If (aLocalPlayer["Race"] = "Terran")
 	SupplyType := aUnitID["SupplyDepot"]
 Else If (aLocalPlayer["Race"] = "Protoss")
@@ -519,8 +536,7 @@ else If (aLocalPlayer["Race"] = "Zerg")
 	SupplyType := aUnitID["Egg"]	
 Time := getTime()
 a_BaseListTmp := []
-UnitBankCount := DumpUnitMemory(UBMemDump)
-while (A_Index <= UnitBankCount)
+loop, % DumpUnitMemory(UBMemDump)
 { 
 	u_iteration := A_Index -1
 	If ((Filter := numgetUnitTargetFilter(UBMemDump, u_iteration)) & DeadFilterFlag
@@ -540,14 +556,13 @@ while (A_Index <= UnitBankCount)
 			{
 				aProduction := getZergProductionFromEgg(u_iteration)
 				if (aProduction.Type = aUnitID["Overlord"])
-					SupplyInProductionCount++	
+					SupplyInProductionCount++
+				else if (aProduction.Type = aUnitID["Drone"])	
+					ZergWorkerInProductionCount++
 			}
-			else if (Filter & aUnitTargetFilter.UnderConstruction)
-			{
-				; So If unit is protoss OR unit is terran AND the supply depot is actively being constructed by an SCV
-				If (aLocalPlayer["Race"] != "Terran" || isBuildInProgressConstructionActive(numgetUnitAbilityPointer(UBMemDump, u_iteration), unit_type))
-					SupplyInProductionCount++	
-			}			
+			; So If unit is pylong/supply deopt and owner is protoss OR terran AND the supply depot is actively being constructed by an SCV
+			else if (Filter & aUnitTargetFilter.UnderConstruction && (aLocalPlayer["Race"] != "Terran" || isBuildInProgressConstructionActive(numgetUnitAbilityPointer(UBMemDump, u_iteration), unit_type)))
+				SupplyInProductionCount++	
 		}
 		if ( warpgate_warn_on AND (unit_type = aUnitID["Gateway"] OR unit_type = aUnitID["WarpGate"]) 
 			AND !(Filter & aUnitTargetFilter.UnderConstruction))
@@ -561,7 +576,8 @@ while (A_Index <= UnitBankCount)
 					For index in aGatewayWarnings
 					{
 						if aGatewayWarnings[index,"Unit"] = u_iteration
-						{	isinlist := 1
+						{	
+							isinlist := 1
 							Break
 						}		
 					}
@@ -584,14 +600,16 @@ while (A_Index <= UnitBankCount)
 		&&  !(Filter & aUnitTargetFilter.UnderConstruction)
 			a_BaseListTmp.insert(u_iteration)
 	}
-	else if (alert_array[GameType, "Enabled"]) ; these units are enemies
+	else if doUnitDetectionOnThisRun ; these units are enemies
 		doUnitDetection(u_iteration, unit_type, unit_owner)
 }
 if warpgate_warn_on
 	gosub warpgate_warn
 SupplyInProduction := SupplyInProductionCount
+ZergWorkerInProduction := ZergWorkerInProductionCount
 a_BaseList := a_BaseListTmp 
-
+if (WarningsWorkerZergEnable && aLocalPlayer["Race"] = "Zerg")
+	gosub workerZergCheck
 ;log(stopwatch(timerID))
 return
 
@@ -643,7 +661,7 @@ warpgate_warn:
 	{
 		warpgate_warn_count ++
 		warpgateGiveWarningAt := getTime() + delay_warpgate_warn_followup
-
+		time := getTime()
 		for index, object in aGatewayWarnings
 		{
 			object.time := time ; so this will display an x even with long  follow up delay
@@ -697,76 +715,89 @@ return
 ;--------------------------------------------
 ;    worker production -------------
 ;--------------------------------------------
-worker:	
-	If (aLocalPlayer["Race"] = "Terran" || aLocalPlayer["Race"] = "Protoss")
-		WorkerInProductionWarning(a_BaseList, workerProductionTPIdle, 1 + sec_workerprod, additional_delay_worker_production, 120)
-	else
-	{
-		if ( OldWorker_i <> NewWorker_i := getPlayerWorkerCount())
-		{	;A worker has been produced or killed
-			reset_worker_time := time, Worker_i = 0
-			workerproduction_time_if := workerproduction_time
-		}
-		else
-		{ 
-			if  (time - reset_worker_time) > workerproduction_time_if AND (Worker_i <= sec_workerprod) ; sec_workerprod sets how many times to play warning.
-			{
-				If ( aLocalPlayer["Race"] = "Terran"  )
-					tSpeak(w_workerprod_T)
-				Else If ( aLocalPlayer["Race"] = "Protoss" )
-					tSpeak(w_workerprod_P)
-				Else If ( aLocalPlayer["Race"] = "Zerg" )
-					tSpeak(w_workerprod_Z)
-				Else 
-					tSpeak("Build Worker")
-				workerproduction_time_if := additional_delay_worker_production ; will give the second warning after 12 ingame seconds
-				reset_worker_time := time		; This allows for the additional warnings to be delayed relative to the 1st warning
-				Worker_i ++
-			}
-		}
-		 OldWorker_i := NewWorker_i
-	}
-	return
+; This is performed after every unit bank read ~1500ms
+workerZergCheck:
+time := getTime()
+workerCount := getPlayerWorkerCount()
 
-WorkerInProductionWarning(a_BaseList, maxIdleTime, maxWarnings, folloupWarningDelay, MaxWorkerCount)	;add secondary delay and max workers
-{	global aLocalPlayer, w_workerprod_T, w_workerprod_P, w_workerprod_Z
+if (ZergWorkerInProduction || workerCount < WarningsWorkerZergMinWorkerCount || workerCount > WarningsWorkerZergMaxWorkerCount)	
+{
+	ZergLastWokerMadeTime := time, zergWorkerWarningCount = 0
+	ZergWarningTimeForNoWorkers := WarningsWorkerZergTimeWithoutProduction
+}
+else if (time - ZergLastWokerMadeTime > ZergWarningTimeForNoWorkers && zergWorkerWarningCount <= WarningsWorkerZergFollowUpCount) 
+{ 
+	ZergWarningTimeForNoWorkers := WarningsWorkerZergFollowUpDelay ; will give the second warning after 12 ingame seconds
+	ZergLastWokerMadeTime := time		; This allows for the additional warnings to be delayed relative to the 1st warning
+	zergWorkerWarningCount++
+	tSpeak(WarningsWorkerZergSpokenWarning)
+}
+return
+
+workerTerranProtossCheck:
+if aLocalPlayer["Race"] = "Terran"
+{
+		workerWarningMaxIdleTime := WarningsWorkerTerranTimeWithoutProduction
+		, workerWarningMaxWarnings := WarningsWorkerTerranFollowUpCount
+		, workerWarningFollowUpDelay := WarningsWorkerTerranFollowUpDelay
+		, workerWarningMaxWorkerCount := WarningsWorkerTerranMaxWorkerCount
+		, workerWarningMinWorkerCount := WarningsWorkerTerranMinWorkerCount
+		, workerWarningSpokenWarning := WarningsWorkerTerranSpokenWarning
+}
+else 
+{
+		workerWarningMaxIdleTime := WarningsWorkerProtossTimeWithoutProduction
+		, workerWarningMaxWarnings := WarningsWorkerProtossFollowUpCount
+		, workerWarningFollowUpDelay := WarningsWorkerProtossFollowUpDelay
+		, workerWarningMaxWorkerCount := WarningsWorkerProtossMaxWorkerCount
+		, workerWarningMinWorkerCount := WarningsWorkerProtossMinWorkerCount
+		, workerWarningSpokenWarning := WarningsWorkerProtossSpokenWarning	
+}
+WorkerInProductionWarning(a_BaseList, workerWarningMaxIdleTime, 1 + workerWarningMaxWarnings, workerWarningFollowUpDelay, workerWarningMaxWorkerCount, workerWarningMinWorkerCount, workerWarningSpokenWarning)
+return
+
+
+WorkerInProductionWarning(a_BaseList, maxIdleTime, maxWarnings, folloupWarningDelay, MaxWorkerCount, MinWorkerCount, warning)	;add secondary delay and max workers
+{
 	static lastWorkerInProduction, warningCount, lastwarning
-
-	if (getPlayerWorkerCount() >= MaxWorkerCount)	;stop warnings enough workers
-		return
-
+	
 	time := getTime()
+	workerCount := getPlayerWorkerCount()
+	if (workerCount < MinWorkerCount || workerCount > MaxWorkerCount)	;stop warnings enough workers
+	{
+		lastWorkerInProduction := time	
+		return
+	}
+	
 	for index, Base in a_BaseList
 	{
-
-		if (state := isWorkerInProduction(Base))
+		; -2 cc/orbital flying
+		; -1 CC moring
+		; 0 No worker
+		; +Int workers
+		if (state := isWorkerInProduction(Base)) > 0
 		{
+			; If just one Base has a worker in production return.
 			warningCount := 0
 			lastWorkerInProduction := time
 			return
 		}
-		else if (state < 0)
-			morphingBases++
-		else lazyBases++	;hence will only warn if there are no workers in production
-							; and at least 1 building is capable of making workers i.e not flying/moring
+		else if (state < 0) ; morphing or flying
+			morphingFlyingBases++
+		else lazyBases++	
 	}
-	if !lazyBases && morphingBases
-		lastWorkerInProduction := time	;this prevents you getting a warning immeditely after the base finishes morphing
-
-	if lazybases && (time - lastWorkerInProduction >= maxIdleTime) && ( warningCount < maxWarnings)
+	; hence will only warn if there are no workers in production
+	; and at least 1 building is capable of making workers i.e not flying/morphing	
+	; also this prevents you getting a warning immediately after the base finishes morphing
+	if !lazyBases && morphingFlyingBases
+		lastWorkerInProduction := time	
+	else if lazybases && (time - lastWorkerInProduction >= maxIdleTime) && ( warningCount < maxWarnings)
 	{
 		if (warningCount && time - lastwarning < folloupWarningDelay)
 			return
 		lastwarning := time
 		warningCount++
-		If ( aLocalPlayer["Race"] = "Terran" )
-			tSpeak(w_workerprod_T)
-		Else If ( aLocalPlayer["Race"] = "Protoss" )
-			tSpeak(w_workerprod_P)
-		Else If ( aLocalPlayer["Race"] = "Zerg" )
-			tSpeak(w_workerprod_Z)
-		Else 
-			tSpeak("Build Worker")	;dont update the idle time so it gets bigger
+		tSpeak(warning)
 	}
 	return 
 }
