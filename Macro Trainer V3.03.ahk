@@ -4668,6 +4668,8 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 									. "`n`nTerran: Available scans/mules. If none are available, (real) time until next scan."
 									. "`nProtoss: Available chrono boosts. If none are available, (real) time until next chrono."
 									. "`nZerg: Available larvae."
+									. "`n`nWith regards to Terran and Protoss the scan/chrono count includes a decimal fraction indicating how close the next scan/chrono is to being available."
+									. "`nMorphing orbitals are accounted for in this this decimal fraction."
 									. "`n`nNote: Non-control-grouped town halls and flying orbitals will not be included."										
 		DrawLocalUpgradesOverlay_TT := "Displays your current upgrade items and their chrono state (if Protoss)."
 									. "`nThis includes morphing hatches, lairs, spires, and command centres."
@@ -11124,4 +11126,3 @@ return
 ;TerranVehicleAndShipPlatingLevel2
 
 */
-

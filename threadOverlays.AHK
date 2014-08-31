@@ -1701,6 +1701,7 @@ DrawMacroTownHallOverlay(ByRef Redraw, UserScale=1, Drag=0)
 	else if (aLocalPlayer.Race = "Protoss")
 		pBitmap := a_pBitmap[aUnitID.Nexus], energyRequired := 25, textColour := " cFFCD00FF "
 	else pBitmap := a_pBitmap[aUnitID.Larva], textColour := " cFFFFFFFF "
+	textSize := 17
 
 	macroCount := 0, aCheckedUnits := [], closestOrbitalMorphTime := 99999
 	loop 10
@@ -1713,18 +1714,17 @@ DrawMacroTownHallOverlay(ByRef Redraw, UserScale=1, Drag=0)
 			{
 				if (aLocalPlayer.Race = "Terran" || aLocalPlayer.Race = "Protoss")
 				{
-					if !macroCount += Floor((energy := getUnitEnergyRaw(unit))/energyRequired) ; Use the raw/non-floored function. As the fractions are important when calculating time remaining to next scan
+					macroCount += Floor((energy := getUnitEnergyRaw(unit))/energyRequired) ; Use the raw/non-floored function. As the fractions are important when calculating time remaining to next scan
+					if aUnitID.CommandCenter != type
+					&& ((energy < energyRequired || (energy := mod(energy, energyRequired))) && energy > closestEnergy)
+						closestEnergy := energy
+					if aUnitID.OrbitalCommand = type 
+						hasOrbital := True
+					else if aUnitID.CommandCenter = type && aUnitID.OrbitalCommand = isCommandCenterMorphing(unit)
 					{
-						if (energy < energyRequired && energy > closestEnergy) 
-							closestEnergy := energy
-						if aUnitID.OrbitalCommand = type 
-							hasOrbital := True
-						else if aUnitID.CommandCenter = type && aUnitID.OrbitalCommand = isCommandCenterMorphing(unit)
-						{
-							hasMorphingOrbital := True
-							if (timeRemaining := getUnitMorphTime(unit, type, False)) < closestOrbitalMorphTime
-								closestOrbitalMorphTime := timeRemaining
-						}
+						hasMorphingOrbital := True
+						if (timeRemaining := getUnitMorphTime(unit, type, False)) < closestOrbitalMorphTime
+							closestOrbitalMorphTime := timeRemaining, closestOrbitalMorphUnit := unit
 					}
 				}
 				else macroCount += getTownHallLarvaCount(unit)
@@ -1733,19 +1733,35 @@ DrawMacroTownHallOverlay(ByRef Redraw, UserScale=1, Drag=0)
 			aCheckedUnits[unit] := True ; Prevents adding to macroCount when townHall exists in multiple ctrl Groups. Also speeds up a little bit for all other units.
 		}
 	}
-	if !macroCount && ( (aLocalPlayer.Race = "Terran" && (hasOrbital || hasMorphingOrbital)) || aLocalPlayer.Race = "Protoss")
+	; The nexus energy calculation will be a little off when it is chronoed
+	; But not a big issue, as the next draw will update the time again by a bigger margin. i.e. the numbers just change faster
+	if ( (aLocalPlayer.Race = "Terran" && (hasOrbital || hasMorphingOrbital)) || aLocalPlayer.Race = "Protoss")
 	{
-		strikeOutImage := True
-		if (aLocalPlayer.Race = "Protoss" || hasOrbital)
-			time := (energyRequired - closestEnergy) / 0.5625 ; energy rate per second for nexus/orbital
-		if aLocalPlayer.Race = "Terran"
+		if !macroCount
 		{
-			if !hasOrbital ; Then must have hasMorphingOrbital due to if check above
-				time := closestOrbitalMorphTime
-			else if (time > closestOrbitalMorphTime) ; has orbitals and a morphing orbital
-				time := closestOrbitalMorphTime
+			strikeOutImage := True
+			if (aLocalPlayer.Race = "Protoss" || hasOrbital)
+				time := (energyRequired - closestEnergy) / 0.5625 ; energy rate per second for nexus/orbital
+			if aLocalPlayer.Race = "Terran"
+			{
+				if !hasOrbital ; Then must have hasMorphingOrbital due to if check above
+					time := closestOrbitalMorphTime
+				else if (time > closestOrbitalMorphTime) ; has orbitals and a morphing orbital
+					time := closestOrbitalMorphTime
+			}
+			; Red to indicate time remaining. Make text a littler smaller, as red tends to stand out
+			macroCount := formatSeconds(gameToRealSeconds(time)), textColour := " cFFFF0000 ", textSize := 15 
 		}
-		macroCount := formatSeconds(gameToRealSeconds(time)), textColour := " cFFFF0000 " ; Red to indicate time remaining
+		; If have a morphing orbital and  (all orbitals have full energy or the morping orbital will complete faster than the new scan)
+		; Append percent of closest complete morphing orbital
+		else if (hasMorphingOrbital 
+		&& (closestEnergy = "" || closestOrbitalMorphTime < (energyRequired - closestEnergy) / 0.5625) )
+			macroCount .= "." substr(getUnitMorphTime(closestOrbitalMorphUnit, aUnitID.CommandCenter, True)//.1, 1, 1) 
+		; Else Toss or T with no morphing orbital (or a a scan which is closer to being full than the completing orbital) 
+		; and the townhalls do not have full energy. Append % of closest scan.
+		else if (closestEnergy != "")
+			macroCount .= "." substr( (closestEnergy/energyRequired)//.1, 1, 1) 
+		; else full energy on all town halls and no morphing orbital don't append anything
 	}
 		
 	hbm := CreateDIBSection(400, 400)
@@ -1755,16 +1771,21 @@ DrawMacroTownHallOverlay(ByRef Redraw, UserScale=1, Drag=0)
 	, Gdip_SetInterpolationMode(G, 2)
 	, SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
 	, Width *= UserScale *.4, Height *= UserScale *.4
+	Gdip_DrawImage(G, pBitmap, 0, 0, Width, Height, 0, 0, SourceWidth, SourceHeight)
+	; The zerg larva pic only takes up the top part of its height - so move the text up a bit. And make the text a little smaller
+	if aLocalPlayer.Race = "Zerg"
+		Gdip_TextToGraphics(G, macroCount, "x"(Width+2*UserScale) "y" (Height-3) " Top"  textColour "r4 s" 15*UserScale, Font)
+	else Gdip_TextToGraphics(G, macroCount, "x"(Width+2*UserScale) "y" (Height) " Top"  textColour "r4 s" textSize*UserScale, Font)
 	; , !macroCount ? textColour := " c00FFFFFF" : "" ; so don't see any number if 0 ; disabled. Might add an option to hide overlay on 0 - but no room 
 	; in GUI options for this and CBF moving things around
-	, stringData := Gdip_TextToGraphics(G, macroCount, "x"(Width+2*UserScale) "y" (Height)  textColour "r4 s" 18*UserScale, Font)
-	StringSplit, stringData, stringData, | ; stringData2 = y pos - stringData4 = height (rectangle)
-	if (aLocalPlayer.Race = "Terran" || aLocalPlayer.Race = "Protoss" )
-		Gdip_DrawImage(G, pBitmap, 0, stringData2 - (stringData4/2), Width, Height, 0, 0, SourceWidth, SourceHeight)
-	else 
-		Gdip_DrawImage(G, pBitmap, 0, stringData2 - (stringData4/4), Width, Height, 0, 0, SourceWidth, SourceHeight)
+	;, stringData := Gdip_TextToGraphics(G, macroCount, "x"(Width+2*UserScale) "y" (Height)  textColour "r4 s" textSize*UserScale, Font)
+	;StringSplit, stringData, stringData, | ; stringData2 = y pos - stringData4 = height (rectangle)
+	;if (aLocalPlayer.Race = "Terran" || aLocalPlayer.Race = "Protoss" )
+	;	Gdip_DrawImage(G, pBitmap, 0, stringData2 - (stringData4/2), Width, Height, 0, 0, SourceWidth, SourceHeight)
+	;else 
+	;	Gdip_DrawImage(G, pBitmap, 0, stringData2 - (stringData4/4), Width, Height, 0, 0, SourceWidth, SourceHeight)
 	if strikeOutImage
-	{	; Don't have to create/delete pen it each time. It get's deleted on exit.
+	{	; Don't have to create/delete pen each time. It get's deleted on exit.
 	;	Full size
 	;	x1 := 0, y1 := stringData2 - (stringData4/2)
 	;	, x2 := x1 + Width, y2 := stringData2 - (stringData4/2) + Height
@@ -1774,23 +1795,23 @@ DrawMacroTownHallOverlay(ByRef Redraw, UserScale=1, Drag=0)
 	; 	Two Thirds size
 	;	x1 := Width//3, y1 := stringData2 - (stringData4/2) + Height//3
 	;	, x2 := Width//1.5, y2 := stringData2 - (stringData4/2) + Height//1.5		
-	; Four fifths
-		x1 := Width//4, y1 := stringData2 - (stringData4/2) + Height//4
-		, x2 := Width//1.25, y2 := stringData2 - (stringData4/2) + Height//1.25
+	
+		x1 := Width//4, y1 := Height//4
+		, x2 := Width//1.25, y2 :=  Height//1.25
 		Gdip_SetSmoothingMode(G, 4)
 		, Gdip_DrawLine(G, a_pPens.HasKey("Red2") ? a_pPens.Red2 : a_pPens.Red2 := Gdip_CreatePen(0xFFB4141E, 2), x1, y1, x2, y2)
 		, Gdip_DrawLine(G, a_pPens.Red2, x1, y2, x2, y1)
 		, Gdip_DeletePen(pPenRed)
 	}
 	Gdip_DeleteGraphics(G)	
-
 	; Don't have to worry about size checks here, as not passing these params to updateLayeredWindow()
-	UpdateLayeredWindow(hwnd1, hdc,,,,, overlayMacroTownHallTransparency)
+	, UpdateLayeredWindow(hwnd1, hdc,,,,, overlayMacroTownHallTransparency)
 	, SelectObject(hdc, obm) 
 	, DeleteObject(hbm)  
 	, DeleteDC(hdc) 
 	Return
 }	
+
 
 getLocalUpgrades(byRef aUpgrades, percentMode)
 {
