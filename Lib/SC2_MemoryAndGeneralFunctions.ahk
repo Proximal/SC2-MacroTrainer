@@ -1049,9 +1049,9 @@ getUnitQueuedCommandString(aQueuedCommandsOrUnitIndex)
 		{
 			if (command.state = aUnitMoveStates.Patrol)
 				s .= "Patrol,"
-			else if (command.state	= aUnitMoveStates.Move)
+			else if (command.state = aUnitMoveStates.Move)
 				s .= "Move,"
-			else if (command.state	= aUnitMoveStates.Follow)
+			else if (command.state = aUnitMoveStates.Follow)
 				s .= "Follow,"
 			else if (command.state = aUnitMoveStates.HoldPosition)
 				s .= "Hold,"
@@ -1121,10 +1121,10 @@ isSocialMenuFocused()
 	Return  pointer(GameIdentifier, P_SocialMenu, 0x3DC, 0x3C4, 0x3A8, 0xA4)
 }
 
-
+; Time Alive in seconds
 getUnitTimer(unit)
 {	global 
-	return ReadMemory(B_uStructure + unit * S_uStructure + O_uTimer, GameIdentifier)
+	return ReadMemory(B_uStructure + unit * S_uStructure + O_uTimer, GameIdentifier)/4096
 }
 
 /*
@@ -2068,15 +2068,12 @@ numGetControlGroupObject(Byref oControlGroup, Group)
 numGetSelectionSorted(ByRef aSelection, ReverseOrder := False)
 {
 	aSelection := []
-	selectionCount := getSelectionCount()
-	ReadRawMemory(B_SelectionStructure, GameIdentifier, MemDump, selectionCount * S_scStructure + O_scUnitIndex)
-
-	aSelection.Count := numget(MemDump, 0, "Short")
-	aSelection.Types := numget(MemDump, O_scTypeCount, "Short")
-	
-	aSelection.HighlightedGroup := numget(MemDump, O_scTypeHighlighted, "Short")
-
-	aStorage := []
+	, selectionCount := getSelectionCount()
+	, ReadRawMemory(B_SelectionStructure, GameIdentifier, MemDump, selectionCount * S_scStructure + O_scUnitIndex)
+	, aSelection.Count := numget(MemDump, 0, "Short")
+	, aSelection.Types := numget(MemDump, O_scTypeCount, "Short")
+	, aSelection.HighlightedGroup := numget(MemDump, O_scTypeHighlighted, "Short")
+	, aStorage := []
 	loop % aSelection.Count
 	{
 		; Use a negative priority so AHKs normal object enumerates them in the correct 
@@ -2102,16 +2099,16 @@ numGetSelectionSorted(ByRef aSelection, ReverseOrder := False)
 		; when aStorage is enumerated, units will be accessed in the same order
 		; as they appear in the unit panel ie top left to bottom right 	
 	}
-	aSelection.IndicesString := substr(sIndices, 2) ; trim first "," 
-
+	
 	if (aSelection.Count && !nonLocalUnitSelected)
 		aSelection.IsGroupable := True
 	; This will convert the data into a simple indexed object
 	; The index value will be 1 more than the unit portrait location
-	aSelection.units := []
-	aSelection.TabPositions := []
-	aSelection.TabSizes := []
-	TabPosition := unitPortrait := 0
+	aSelection.IndicesString := substr(sIndices, 2) ; trim first "," 
+	, aSelection.units := []
+	, aSelection.TabPositions := []
+	, aSelection.TabSizes := []
+	, TabPosition := unitPortrait := 0
 	for priority, object in aStorage
 	{
 		for subGroupAlias, object2 in object 
@@ -2124,7 +2121,7 @@ numGetSelectionSorted(ByRef aSelection, ReverseOrder := False)
 			; so can just look up the tab location of unit type directly with no looping
 			; cant use .insert(key, tabposition) as that adjusts higher keys (adds 1 to them)!
 			aSelection.TabPositions[object2[object2.minIndex()].unitId] := TabPosition
-			tabSize := 0
+			, tabSize := 0
 			for index, unit in object2 ; (unit is an object)
 			{
 				aSelection.units.insert({ "priority": -1*priority ; convert back to positive
@@ -2134,10 +2131,10 @@ numGetSelectionSorted(ByRef aSelection, ReverseOrder := False)
 										, "tabPosition": TabPosition
 										, "unitPortrait": unitPortrait++}) ; will be 1 less than A_index when iterated
 										; Note unitPortrait++ increments after assigning value to unitPortrait
-				tabSize++ ; how many unitsa re in each tab
+				, tabSize++ ; how many units are in each tab
 			}
 			aSelection.TabSizes[object2[object2.minIndex()].unitId] := tabSize								
-			TabPosition++	
+			, TabPosition++	
 		}
 	}
 	if ReverseOrder
@@ -2972,7 +2969,7 @@ deletepBitMaps(byRef a_pBitmap)
 ; player0 = neutral 
 ; player1-14 = players/refs/specs/none/computer
 ; player15 = hostile
-; There are really 16 player slots. But I begin my player structure at player1 (too lazy to change it).
+; There are really 16 player slots. 
 
 ;----------------------
 ;	player_team_sorter
@@ -3057,7 +3054,7 @@ ParseEnemyUnits(ByRef a_EnemyUnits, ByRef aPlayer)
 	a_EnemyUnits := a_EnemyUnitsTmp
 }
 
-; returns longest player name in enemy team and can include the local player for overlays
+; returns longest player name (string length) in enemy team and can include the local player for overlays
 getLongestPlayerName(aPlayer, includeLocalPlayer := False)
 {
 	localTeam := getPlayerTeam(getLocalPlayerNumber())
@@ -3357,7 +3354,7 @@ tSpeak(Message, SAPIVol := "", SAPIRate := "")
 		
 doUnitDetection(unit, type, owner, mode = "")
 {	
-	global config_file, alert_array, time, MiniMapWarning, PrevWarning, GameIdentifier, aUnitID, GameType
+	global config_file, alert_array, time, aMiniMapWarning, PrevWarning, GameIdentifier, aUnitID, GameType
 	static Alert_TimedOut := [], Alerted_Buildings := [], Alerted_Buildings_Base := []
 
 	time := getTime()
@@ -3394,7 +3391,7 @@ doUnitDetection(unit, type, owner, mode = "")
 							return ; this warning is for the exact unitbase Address																				
 				}	
 				PrevWarning := []							
-				MiniMapWarning.insert({ "Unit": PrevWarning.unitIndex := unit 
+				aMiniMapWarning.insert({ "Unit": PrevWarning.unitIndex := unit 
 										, "Time": Time
 										, "UnitTimer": PrevWarning.UnitTimer := getUnitTimer(unit) 
 										, "Type": PrevWarning.Type := type
@@ -3472,7 +3469,7 @@ announcePreviousUnitWarning()
 		else 
 		{
 			tSpeak(PrevWarning.speech)
-			MiniMapWarning.insert({ "Unit": PrevWarning.unitIndex
+			aMiniMapWarning.insert({ "Unit": PrevWarning.unitIndex
 							, "Time":  getTime()
 							, "UnitTimer": PrevWarning.UnitTimer
 							, "Type": PrevWarning.Type 
@@ -3629,6 +3626,15 @@ readConfigFile()
 	IniRead, sub_middelta, %config_file%, Supply, sub_middelta, 5
 	IniRead, sub_upperdelta, %config_file%, Supply, sub_upperdelta, 6
 	IniRead, above_upperdelta, %config_file%, Supply, above_upperdelta, 8
+
+	;[WarningsGeyserOverSaturation]
+	section := "WarningsGeyserOverSaturation"
+	IniRead, WarningsGeyserOverSaturationEnable, %config_file%, %section%, WarningsGeyserOverSaturationEnable, 0
+	IniRead, WarningsGeyserOverSaturationMaxWorkers, %config_file%, %section%, WarningsGeyserOverSaturationMaxWorkers, 4
+	IniRead, WarningsGeyserOverSaturationMaxTime, %config_file%, %section%, WarningsGeyserOverSaturationMaxTime, 15
+	IniRead, WarningsGeyserOverSaturationFollowUpCount, %config_file%, %section%, WarningsGeyserOverSaturationFollowUpCount, 0
+	IniRead, WarningsGeyserOverSaturationFollowUpDelay, %config_file%, %section%, WarningsGeyserOverSaturationFollowUpDelay, 25
+	IniRead, WarningsGeyserOverSaturationSpokenWarning, %config_file%, %section%, WarningsGeyserOverSaturationSpokenWarning, Geyser Saturation
 
 	;[Additional Warning Count]-----set number of warnings to make
 	IniRead, sec_supply, %config_file%, Additional Warning Count, supply, 1
@@ -4404,6 +4410,34 @@ getUnitBuff(unit, byRef buffNameOrObject)
 	return 0 ; Specified buff not applied/found
 }
 
+; Returns the workers count for refiners, extractors, assimilators, and mineral patchs.
+; If units are waiting to enter the refinery before it finishes construction, it will include them as well.
+; It removes mules (this is address is 0 for non terran races).
+getResourceWorkerCount(unit, player)
+{      
+    if !p := readMemory(B_uStructure + unit * S_uStructure + O_uBuffPointer, GameIdentifier)
+        return -1
+    p := readMemory(p+0x4, GameIdentifier)
+    if !p := readMemory(p+0x78, GameIdentifier)
+        return -1
+    ; There is an array of slots here. Each slot has that owners worker count for this resource
+    ; Allies with shared control can harvest from refinery too or anyone from a mineral patch
+    ; So to get the true total amount of workers, you should loop all positions and sum them
+    ; But we would only want local player       
+    workers := readmemory(p + player*0x4, GameIdentifier)
+    mules := readmemory(p + 0x40 + player*0x4, GameIdentifier)
+    return workers - mules
+}
+
+; Returns amount of resource left in a refinery/extractor/assimilator/geyser/mineral patch 
+getRemainingResourceCount(unit)
+{
+    if !p := readMemory( B_uStructure + unit * S_uStructure + O_uBuffPointer, GameIdentifier)
+        return -1
+    p := readMemory(p + 0x4, GameIdentifier)
+    return readMemory(p + 0x50, GameIdentifier)
+}
+
 ; This seems to work for hatches, lairs and hives even when building/researching
 getTownHallLarvaCount(unit)
 {
@@ -4415,7 +4449,6 @@ getTownHallLarvaCount(unit)
 	; At +0x68 is a pointer to an array which stores the unit indexes for the spawned larva (indexes must be >> 18)
 	return ReadMemory(p + 0x5C, GameIdentifier)
 }
-
 
 ; Unit must be a nexus else function returns 'true' due to readMemory returning "Fail"
 isPhotonOverChargeActive(unit)
@@ -4500,7 +4533,7 @@ formatSeconds(seconds)
     time = 19990101  ; *Midnight* of an arbitrary date.
     time += %seconds%, seconds
     FormatTime, mss, %time%, m:ss
-    return lTrim(seconds//3600 ":" mss, "0:") ; adds hour param first so supports more than 24 hours of seconds
+    return lTrim(seconds//3600 ":" mss, "0:") 
 }
 
 gameToRealSeconds(gameSeconds)
@@ -4706,7 +4739,7 @@ getMiniMapPingIconPos(byref xPos, byref yPos)
 	}
 	if supported
 		return true, xPos := x, yPos := y
-	else return false, xPos := yPos := "" ; so click doesn't do anything
+	else return false, xPos := yPos := "" 
 }
 
 

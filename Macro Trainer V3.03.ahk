@@ -2450,13 +2450,22 @@ ini_settings_write:
 	IniWrite, %sub_upperdelta%, %config_file%, Supply, sub_upperdelta
 	IniWrite, %above_upperdelta%, %config_file%, Supply, above_upperdelta
 
+	;[WarningsGeyserOverSaturation]
+	section := "WarningsGeyserOverSaturation"
+	IniWrite, %WarningsGeyserOverSaturationEnable%, %config_file%, %section%, WarningsGeyserOverSaturationEnable	
+	IniWrite, %WarningsGeyserOverSaturationMaxWorkers%, %config_file%, %section%, WarningsGeyserOverSaturationMaxWorkers	
+	IniWrite, %WarningsGeyserOverSaturationMaxTime%, %config_file%, %section%, WarningsGeyserOverSaturationMaxTime	
+	IniWrite, %WarningsGeyserOverSaturationFollowUpCount%, %config_file%, %section%, WarningsGeyserOverSaturationFollowUpCount	
+	IniWrite, %WarningsGeyserOverSaturationFollowUpDelay%, %config_file%, %section%, WarningsGeyserOverSaturationFollowUpDelay	
+	IniWrite, %WarningsGeyserOverSaturationSpokenWarning%, %config_file%, %section%, WarningsGeyserOverSaturationSpokenWarning	
+
 	;[Additional Warning Count]-----set number of warnings to make
 	IniWrite, %sec_supply%, %config_file%, Additional Warning Count, supply
 	IniWrite, %sec_mineral%, %config_file%, Additional Warning Count, minerals
 	IniWrite, %sec_gas%, %config_file%, Additional Warning Count, gas
 	IniWrite, %sec_idle%, %config_file%, Additional Warning Count, idle_workers
 
-	;[ Volume]
+	;[Volume]
 	section := "Volume"
 	IniWrite, %speech_volume%, %config_file%, %section%, speech
 	IniWrite, %programVolume%, %config_file%, %section%, program
@@ -3159,66 +3168,90 @@ IfWinExist
 					Gui, Add, Edit, w180 R1 Vw_supply center, %w_supply%
 
 	Gui, Tab, Macro	
-		Gui, Add, GroupBox, w185 h175 section, Minerals
-			Gui, Add, Checkbox, xp+10 yp+20  Vmineralon checked%mineralon%, Enable Alert
-			Gui, Add, Text, y+10 section w105, Trigger Amount:
+		Gui, Add, GroupBox, y+15 w185 h175 section, Minerals
+			Gui, Add, Checkbox, xs+10 yp+20  Vmineralon checked%mineralon%, Enable Alert
+			Gui, Add, Text, xs+10 y+10 w105, Trigger Amount:
 				Gui, Add, Edit, Number Right x+5 yp-2 w55 vTT_mineraltrigger
 					Gui, Add, UpDown, Range1-20000 Vmineraltrigger, %mineraltrigger%
 
-			Gui, Add, Text,xs y+10 w105, Secondary Warnings:
+			Gui, Add, Text, xs+10 y+10 w105, Secondary Warnings:
 				Gui, Add, Edit, Number Right x+5 yp-2 w55 vTT_sec_mineral
 					Gui, Add, UpDown, Range0-20000 Vsec_mineral, %sec_mineral%
 
-			Gui, Add, Text,xs y+10 w105, Secondary Delay:
+			Gui, Add, Text, xs+10 y+10 w105, Secondary Delay:
 				Gui, Add, Edit, Number Right x+5 yp-2 w55 vTT_additional_delay_minerals
 					Gui, Add, UpDown, Range1-20000 Vadditional_delay_minerals, %additional_delay_minerals%
 
-			Gui, Add, Text, X%XTabX% y+5 w125, Spoken Warning:
+			Gui, Add, Text, xs+10 y+5 w125, Spoken Warning:
 				Gui, Add, Edit, w165 R1 Vw_mineral center, %w_mineral%		
 
-		Gui, Add, GroupBox, x%OriginTabX% y+20  w185 h205, Gas
+		Gui, Add, GroupBox, xs y+20  w185 h205, Gas
 			Gui, Add, Checkbox, xp+10 yp+20  Vgas_on checked%gas_on%, Enable Alert
 
-			Gui, Add, Text, y+10 section w105, Trigger Amount:
+			Gui, Add, Text, y+10 w105, Trigger Amount:
 				Gui, Add, Edit, Number Right x+5 yp-2 w55 vTT_gas_trigger
 					Gui, Add, UpDown, Range1-20000 Vgas_trigger, %gas_trigger%
 
-			Gui, Add, Text,xs y+10 w105, Secondary Warnings:
+			Gui, Add, Text, xs+10 y+10 w105, Secondary Warnings:
 				Gui, Add, Edit, Number Right x+5 yp-2 w55 vTT_sec_gas
 					Gui, Add, UpDown, Range0-20000 Vsec_gas, %sec_gas%
 
-			Gui, Add, Text,xs y+10 w105, Secondary Delay:
+			Gui, Add, Text, xs+10 y+10 w105, Secondary Delay:
 				Gui, Add, Edit, Number Right x+5 yp-2 w55 vTT_additional_delay_gas
 					Gui, Add, UpDown, Range1-20000 Vadditional_delay_gas, %additional_delay_gas%
 
-			Gui, Add, Text, xs y+5 w125, Spoken Warning:
+			Gui, Add, Text, xs+10 y+5 w125, Spoken Warning:
 				Gui, Add, Edit, w165 R1 Vw_gas center, %w_gas%		
 
-		Gui, Add, GroupBox, y%OriginTaby% X+35 w185 h175 section Vmacro_R_TopGroup, Idle Worker	;h185
+		Gui, Add, GroupBox, xs+215 ys w185 h175 section Vmacro_R_TopGroup, Idle Worker	;h185
 		GuiControlGet, macro_R_TopGroup, Pos, macro_R_TopGroup
 
-			Gui, Add, Checkbox, xp+10 yp+20  Vidleon checked%idleon%, Enable Alert
-			Gui, Add, Text, y+10 section w105, Trigger Amount:
+			Gui, Add, Checkbox, xs+10 yp+20  Vidleon checked%idleon%, Enable Alert
+			Gui, Add, Text, xs+10 y+10 w105, Trigger Amount:
 				Gui, Add, Edit, Number Right x+5 yp-2 w55 vTT_idletrigger
 					Gui, Add, UpDown, Range1-20000 Vidletrigger, %idletrigger%
 
-			Gui, Add, Text,xs y+10 w105, Secondary Warnings:
+			Gui, Add, Text, xs+10 y+10 w105, Secondary Warnings:
 				Gui, Add, Edit, Number Right x+5 yp-2 w55 vTT_sec_idle
 					Gui, Add, UpDown, Range0-20000 Vsec_idle, %sec_idle%
 
-			Gui, Add, Text,xs y+10 w105, Secondary Delay:
+			Gui, Add, Text, xs+10 y+10 w105, Secondary Delay:
 				Gui, Add, Edit, Number Right x+5 yp-2 w55 vTT_additional_idle_workers
 					Gui, Add, UpDown, Range1-20000 Vadditional_idle_workers, %additional_idle_workers%
 
-			Gui, Add, Text, xs y+5 w125, Spoken Warning:
-				Gui, Add, Edit, w165 R1 Vw_idle center, %w_idle%	
+			Gui, Add, Text, xs+10 y+5 w125, Spoken Warning:
+				Gui, Add, Edit, w165 R1 Vw_idle center, %w_idle%
+
+		
+		Gui, Add, GroupBox, xs y+20 w185 h205 section, Geyser Oversaturation	;h185
+
+			Gui, Add, Checkbox, xs+10 yp+20  VWarningsGeyserOverSaturationEnable checked%WarningsGeyserOverSaturationEnable%, Enable Alert
+			Gui, Add, Text, xs+10 y+10 w105, Trigger Amount:
+				Gui, Add, Edit, Number Right x+5 yp-2 w55 vTT_WarningsGeyserOverSaturationMaxWorkers
+					Gui, Add, UpDown, Range4-200 vWarningsGeyserOverSaturationMaxWorkers, %WarningsGeyserOverSaturationMaxWorkers%
+		
+			Gui, Add, Text, xs+10 y+10 w105, Trigger Time:
+				Gui, Add, Edit, Number Right x+5 yp-2 w55 vTT_WarningsGeyserOverSaturationMaxTime
+					Gui, Add, UpDown, Range4-200 vWarningsGeyserOverSaturationMaxTime, %WarningsGeyserOverSaturationMaxTime%					
+
+			Gui, Add, Text, xs+10 y+10 w105, Secondary Warnings:
+				Gui, Add, Edit, Number Right x+5 yp-2 w55 vTT_WarningsGeyserOverSaturationFollowUpCount
+					Gui, Add, UpDown, Range0-20000 vWarningsGeyserOverSaturationFollowUpCount, %WarningsGeyserOverSaturationFollowUpCount%
+
+			Gui, Add, Text, xs+10 y+10 w105, Secondary Delay:
+				Gui, Add, Edit, Number Right x+5 yp-2 w55 vTT_WarningsGeyserOverSaturationFollowUpDelay
+					Gui, Add, UpDown, Range1-20000 vWarningsGeyserOverSaturationFollowUpDelay, %WarningsGeyserOverSaturationFollowUpDelay%
+
+			Gui, Add, Text, xs+10 y+5 w125, Spoken Warning:
+				Gui, Add, Edit, w165 R1 VWarningsGeyserOverSaturationSpokenWarning center, %WarningsGeyserOverSaturationSpokenWarning%
+
 
 	Gui, Tab, Workers
 		;Gui, Add, GroupBox, y+20 x%macro_R_TopGroupX% w185 h205, Worker Production	
 
-		Gui, Add, Button, x+90 y+30 w65 h25 vMacroWarningsWorkerTerranButtonGUI gGUIMacroWarngingsWorkerDisplayRace, Terran
-		Gui, Add, Button, x+20 w65 h25 gGUIMacroWarngingsWorkerDisplayRace, Protoss
-		Gui, Add, Button, x+20 w65 h25 gGUIMacroWarngingsWorkerDisplayRace, Zerg
+		Gui, Add, Button, x+90 y+30 w65 h25 vMacroWarningsWorkerTerranButtonGUI gGUIMacroWarningsWorkerDisplayRace, Terran
+		Gui, Add, Button, x+20 w65 h25 gGUIMacroWarningsWorkerDisplayRace, Protoss
+		Gui, Add, Button, x+20 w65 h25 gGUIMacroWarningsWorkerDisplayRace, Zerg
 		
 		GuiControlGet, MacroWarningsWorkerTerranButtonGUI, Pos
 		for k, race in ["Terran", "Protoss", "Zerg"]
@@ -4806,7 +4839,7 @@ GUIControl, Enable%state%, unitPanelAlignNewUnits
 return 
 
 
-GUIMacroWarngingsWorkerDisplayRace:
+GUIMacroWarningsWorkerDisplayRace:
 GuiControlGet, RaceGUI,, %A_GuiControl%
 for i, race in ["Terran", "Protoss", "Zerg"]
 {
@@ -9797,7 +9830,8 @@ getUnitAbilitiesString(unit)
 {
 	B_AbilityStringPointer := 0xA4 ; string pointers for abilities start here
 	O_IndexParentTypes := 0x18
-	pAbilities := getUnitAbilityPointer(unit)
+	if !pAbilities := getUnitAbilityPointer(unit)
+		return clipboard := "pAbilities = 0"
 	p1 := readmemory(pAbilities, GameIdentifier)
 	s := "pAbilities: " chex(pAbilities) " Unit ID: " unit "`nuStruct: " chex(getunitAddress(unit)) " - " chex(getunitAddress(unit) + S_uStructure)
 	loop
@@ -11126,3 +11160,8 @@ return
 ;TerranVehicleAndShipPlatingLevel2
 
 */
+
+
+
+
+

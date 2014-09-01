@@ -107,7 +107,7 @@ gameChange(UserSavedAppliedSettings := False)
 		; aStringTable and aUnitModel are super global declared in memory and general functions
 		aUnitModel := [] 		
 		aStringTable := []
-		MiniMapWarning := [], a_BaseList := [], aGatewayWarnings := []
+		aMiniMapWarning := [], a_BaseList := [], aGatewayWarnings := []
 		if WinActive(GameIdentifier)
 			ReDrawMiniMap := ReDrawIncome := ReDrawResources := ReDrawArmySize := ReDrawWorker := RedrawUnit := ReDrawIdleWorkers := ReDrawLocalPlayerColour := 1
 		getPlayers(aPlayer, aLocalPlayer)
@@ -138,12 +138,15 @@ gameChange(UserSavedAppliedSettings := False)
 		;settimer, worker, % workeron ? 1000 : "off", -5
 		settimer, supply, % supplyon ? 200 : "off", -5
 		settimer, gClock, 1000, -4
+		settimer, geyserOversaturationCheck, % WarningsGeyserOverSaturationEnable ? 250 : "Off"
+
 	}
 	else 
 	{
 		SetTimer, MiniMap_Timer, off
 		SetTimer, unit_bank_read, off
 		SetTimer, workerTerranProtossCheck, off
+		SetTimer, geyserOversaturationCheck, off
 		SetTimer, supply, off
 		SetTimer, gClock, off
 		DestroyOverlays()
@@ -261,20 +264,20 @@ DrawMiniMap()
 	}
 	if DrawAlerts
 	{
-		While (A_index <= MiniMapWarning.MaxIndex())
+		While (A_index <= aMiniMapWarning.MaxIndex())
 		{	
 			; this will remove warnings when they time out or if the unit had died 
 			; or been cancelled and replaced with another one 
 
-			unit := MiniMapWarning[A_index, "Unit"]
-			owner := getUnitOwner(MiniMapWarning[A_index,"Unit"])	
+			unit := aMiniMapWarning[A_index, "Unit"]
+			owner := getUnitOwner(aMiniMapWarning[A_index,"Unit"])	
 
-			If (Time - MiniMapWarning[A_index, "Time"] >= 20 ;display for 20 seconds
-			|| getUnitTimer(unit) < MiniMapWarning[A_index, "UnitTimer"]
-			|| owner != MiniMapWarning[A_index, "Owner"]
-			|| getUnitType(unit) != MiniMapWarning[A_index, "Type"])
+			If (Time - aMiniMapWarning[A_index, "Time"] >= 20 ;display for 20 seconds
+			|| getUnitTimer(unit) < aMiniMapWarning[A_index, "UnitTimer"]
+			|| owner != aMiniMapWarning[A_index, "Owner"]
+			|| getUnitType(unit) != aMiniMapWarning[A_index, "Type"])
 			{	
-				MiniMapWarning.Remove(A_index, "")
+				aMiniMapWarning.Remove(A_index, "")
 				continue
 			}
 			
@@ -286,7 +289,7 @@ DrawMiniMap()
 			}
 			Else 
 				pBitmap := a_pBitmap["RedX16"]
-			getUnitMinimapPos(MiniMapWarning[A_index,"Unit"], X, Y)
+			getUnitMinimapPos(aMiniMapWarning[A_index,"Unit"], X, Y)
 
 			Width := Gdip_GetImageWidth(pBitmap), Height := Gdip_GetImageHeight(pBitmap)	
 		;	Gdip_DrawImage(G, pBitmap, (X - Width/2), (Y - Height/2), Width, Height, 0, 0, Width, Height)	
@@ -529,13 +532,13 @@ if !(warpgate_warn_on && aLocalPlayer["Race"] = "Protoss") && !supplyon && !work
 
 SupplyInProductionCount := gateway_count := warpgate_count := ZergWorkerInProductionCount := 0
 If (aLocalPlayer["Race"] = "Terran")
-	SupplyType := aUnitID["SupplyDepot"]
+	SupplyType := aUnitID["SupplyDepot"], geyserStructure := aUnitID["Refinery"]
 Else If (aLocalPlayer["Race"] = "Protoss")
-	SupplyType := aUnitID["Pylon"]
+	SupplyType := aUnitID["Pylon"], geyserStructure := aUnitID["Assimilator"]
 else If (aLocalPlayer["Race"] = "Zerg")
-	SupplyType := aUnitID["Egg"]	
+	SupplyType := aUnitID["Egg"], geyserStructure := aUnitID["Extractor"]	
 Time := getTime()
-a_BaseListTmp := []
+a_BaseListTmp := [], aGeyserStructuresTmp := []
 loop, % DumpUnitMemory(UBMemDump)
 { 
 	u_iteration := A_Index -1
@@ -564,8 +567,8 @@ loop, % DumpUnitMemory(UBMemDump)
 			else if (Filter & aUnitTargetFilter.UnderConstruction && (aLocalPlayer["Race"] != "Terran" || isBuildInProgressConstructionActive(numgetUnitAbilityPointer(UBMemDump, u_iteration), unit_type)))
 				SupplyInProductionCount++	
 		}
-		if ( warpgate_warn_on AND (unit_type = aUnitID["Gateway"] OR unit_type = aUnitID["WarpGate"]) 
-			AND !(Filter & aUnitTargetFilter.UnderConstruction))
+		else if ( warpgate_warn_on AND (unit_type = aUnitID["Gateway"] OR unit_type = aUnitID["WarpGate"]) 
+		AND !(Filter & aUnitTargetFilter.UnderConstruction))
 		{
 			if ( unit_type = aUnitID["Gateway"]) 
 			{
@@ -595,10 +598,14 @@ loop, % DumpUnitMemory(UBMemDump)
 			;	settimer warpgate_warn, 1000
 			}
 		}
-		if (unit_type = aUnitID["Nexus"] || unit_type = aUnitID["CommandCenter"] 
-		|| unit_type =  aUnitID["PlanetaryFortress"] || unit_type =  aUnitID["OrbitalCommand"])
-		&&  !(Filter & aUnitTargetFilter.UnderConstruction)
-			a_BaseListTmp.insert(u_iteration)
+		else if !(Filter & aUnitTargetFilter.UnderConstruction)
+		{
+			if (unit_type = aUnitID["Nexus"] || unit_type = aUnitID["CommandCenter"] 
+			|| unit_type =  aUnitID["PlanetaryFortress"] || unit_type =  aUnitID["OrbitalCommand"])
+				a_BaseListTmp.insert(u_iteration)
+			else if (unit_type = geyserStructure)
+				aGeyserStructuresTmp.insert(u_iteration)
+		}
 	}
 	else if doUnitDetectionOnThisRun ; these units are enemies
 		doUnitDetection(u_iteration, unit_type, unit_owner)
@@ -607,7 +614,7 @@ if warpgate_warn_on
 	gosub warpgate_warn
 SupplyInProduction := SupplyInProductionCount
 ZergWorkerInProduction := ZergWorkerInProductionCount
-a_BaseList := a_BaseListTmp 
+a_BaseList := a_BaseListTmp,  aGeyserStructures := aGeyserStructuresTmp
 if (WarningsWorkerZergEnable && aLocalPlayer["Race"] = "Zerg")
 	gosub workerZergCheck
 ;log(stopwatch(timerID))
@@ -631,10 +638,10 @@ warpgate_warn:
 		for index, object in aGatewayWarnings
 			if ( getUnitType(object.unit) != aUnitID["Gateway"] || isUnitDead(object.unit) || !isUnitLocallyOwned(object.unit) ) ;doing this in case unit dies or becomes other players gateway as this list onyl gets cleared when gateway count = 0
 			{
-				for minimapIndex, minimapObject in MiniMapWarning
+				for minimapIndex, minimapObject in aMiniMapWarning
 					if (minimapObject.unit = object.unit)
 					{
-						MiniMapWarning.remove(minimapIndex, "") 
+						aMiniMapWarning.remove(minimapIndex, "") 
 						break
 					}
 				aGatewayWarnings.remove(index, "") ; "" so deleting doesnt stuff up for loop		
@@ -651,7 +658,7 @@ warpgate_warn:
 		warpgate_warning_set := 0
 
 		for index, object in aGatewayWarnings
-			for minimapIndex, minimapObject in MiniMapWarning
+			for minimapIndex, minimapObject in aMiniMapWarning
 				if (minimapObject.unit = object.unit)
 					minimapObject.remove(minimapIndex, "")        ;lets clear the list of old gateway warnings. This gets rid of the x as soon as the gateway becomes a warpgate
 		aGatewayWarnings := []
@@ -665,7 +672,7 @@ warpgate_warn:
 		for index, object in aGatewayWarnings
 		{
 			object.time := time ; so this will display an x even with long  follow up delay
-			MiniMapWarning.insert(object)
+			aMiniMapWarning.insert(object)
 		}
 
 		if aGatewayWarnings.maxindex()
@@ -802,6 +809,76 @@ WorkerInProductionWarning(a_BaseList, maxIdleTime, maxWarnings, folloupWarningDe
 	return 
 }
 
+geyserOversaturationCheck:
+geyserOversaturationWarning(aGeyserStructures, WarningsGeyserOverSaturationMaxWorkers, WarningsGeyserOverSaturationMaxTime, WarningsGeyserOverSaturationFollowUpCount, WarningsGeyserOverSaturationFollowUpDelay, WarningsGeyserOverSaturationSpokenWarning)
+return 
+
+geyserOversaturationWarning(aGeyserStructures, maxWorkers, maxTime, maxWarnings, folloupWarningDelay, warning)
+{
+	global aMiniMapWarning
+	static aWarnings := []
+	time := getTime()
+	If (aLocalPlayer["Race"] = "Terran")
+		geyserStructure := aUnitID["Refinery"]
+	Else If (aLocalPlayer["Race"] = "Protoss")
+		geyserStructure := aUnitID["Assimilator"]
+	else If (aLocalPlayer["Race"] = "Zerg")
+		geyserStructure := aUnitID["Extractor"]
+	; Remove old warnings from previous game or if geyser no longer exists
+	for unit in aWarnings
+	{
+		if !aGeyserStructures
+			aWarnings.Remove(unit, "")		
+	}
+	for i, unit in aGeyserStructures
+	{
+		if getUnitType(unit) = geyserStructure && !(getUnitTargetFilter(unit) & aUnitTargetFilter.UnderConstruction)
+		{
+			if getResourceWorkerCount(unit, aLocalPlayer["Slot"]) >= maxWorkers
+			{
+				if !aWarnings.HasKey(unit)
+					aWarnings[unit, "start"] := time
+				else 
+				{
+					if (!aWarnings[unit].HasKey("startFollowUp") && time - aWarnings[unit, "start"] >= maxTime)
+					|| (aWarnings[unit].HasKey("startFollowUp") && time >= aWarnings[unit, "startFollowUp"] + folloupWarningDelay && aWarnings[unit, "startFollowUpCount"] <= maxWarnings)
+					{
+						aWarnings[unit, "startFollowUp"] := Time
+						, aWarnings[unit, "startFollowUpCount"] := round(aWarnings[unit, "startFollowUpCount"]) + 1
+						, aMiniMapWarning.insert({ "Unit": unit
+												, "Time":  time
+												, "UnitTimer": getUnitTimer(unit)
+												, "Type": geyserStructure
+												, "Owner":  aLocalPlayer["Slot"]})
+						, announceWarning := True
+					}
+				}
+			}
+			else if aWarnings.HasKey(unit)
+				aWarnings.Remove(unit, "")
+		}
+	}
+	; Remove any old warnings i.e. worker count lowered so they instantly disappear from the screen
+	for minimapIndex, object in aMiniMapWarning
+	{
+		if object.Type = geyserStructure && object.Owner = aLocalPlayer["Slot"] && !aWarnings.HasKey(object.Unit) ; check if still geyer and unitIndex hasn't been reused for another warning type
+			aMiniMapWarning.remove(minimapIndex, "") 
+	}
+	if announceWarning
+		tSpeak(warning)
+	return
+}
 
 
-
+/*
+		for index, object in aGatewayWarnings
+			if ( getUnitType(object.unit) != aUnitID["Gateway"] || isUnitDead(object.unit) || !isUnitLocallyOwned(object.unit) ) ;doing this in case unit dies or becomes other players gateway as this list onyl gets cleared when gateway count = 0
+			{
+				for minimapIndex, minimapObject in aMiniMapWarning
+					if (minimapObject.unit = object.unit)
+					{
+						aMiniMapWarning.remove(minimapIndex, "") 
+						break
+					}
+				aGatewayWarnings.remove(index, "") ; "" so deleting doesnt stuff up for loop		
+			}

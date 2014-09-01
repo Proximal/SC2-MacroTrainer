@@ -1701,9 +1701,8 @@ DrawMacroTownHallOverlay(ByRef Redraw, UserScale=1, Drag=0)
 	else if (aLocalPlayer.Race = "Protoss")
 		pBitmap := a_pBitmap[aUnitID.Nexus], energyRequired := 25, textColour := " cFFCD00FF "
 	else pBitmap := a_pBitmap[aUnitID.Larva], textColour := " cFFFFFFFF "
-	textSize := 17
-
-	macroCount := 0, aCheckedUnits := [], closestOrbitalMorphTime := 99999
+	
+	macroCount := 0, aCheckedUnits := [], closestOrbitalMorphTime := 99999, textSize := 17
 	loop 10
 	{
 		loop, % numgetControlGroupMemory(MemDump, A_Index - 1)
