@@ -676,13 +676,12 @@ getMiniMapRadius(Unit)
 	;Return ReadMemory(((ReadMemory(B_uStructure + (unit * S_uStructure) + O_uModelPointer, GameIdentifier) << 5) & 0xFFFFFFFF) + O_mMiniMapSize, GameIdentifier) /4096
 }
 
-
 getUnitCount()
 {	global
 	return ReadMemory(B_uCount, GameIdentifier)
 }
 
-getHighestUnitIndex() 	; this is the highest alive units index - note its out by 1 - ie it starts at 1
+getHighestUnitIndex() 	; this is the highest alive units index - note it starts at 1
 {	global				; if 1 unit is alive it will return 1 (NOT 0)
 	Return ReadMemory(B_uHighestIndex, GameIdentifier)	
 }
@@ -926,7 +925,6 @@ getUnitPositionY(unit)
 {	global
 	Return ReadMemory(B_uStructure + (unit * S_uStructure) + O_uY, GameIdentifier) /4096
 }
-
 
 getUnitPositionZ(unit)
 {	global
@@ -1231,7 +1229,7 @@ isLocalUnitHoldingXelnaga(unitIndex)
 	;else return 0
 
 
-; example: D:\My Computer\My Documents\StarCraft II\Accounts\56064144\6-S2-1-79722\Replays\
+; example: D:\My Computer\My Documents\StarCraft II\Accounts\56044444\6-S2-1-72222\Replays\
 getReplayFolder()
 {	GLOBAL
 	Return ReadMemory_Str(B_ReplayFolder, GameIdentifier) 

@@ -2841,16 +2841,15 @@ IfWinExist
 
 ; this Try is a fix for people with shitty slow computers.
 ; so if they quadruple click the icon AHK wont give a thread exit error due to duplicate 
-; gui variables 
-; because there computer was to slow to load the gui window the first time
+; gui variables because their computer was to slow to load the gui window the first time
 
-;try 
+try 
 {
 	Gui, Options:New
 	gui, font, norm s9	;here so if windows user has +/- font size this standardises it. But need to do other menus one day
 	;Gui, +ToolWindow  +E0x40000 ; E0x40000 gives it a icon on taskbar (+ToolWindow doesn't have an icon)
 	options_menu := "home32.png|radarB32.png|map32.png|Inject32.png|Group32.png|QuickGroup32.png|Worker32.png|reticule32.png|Robot32.png|key.png|warning32.ico|miscB32.png|bug32.png|settings.ico"
-	optionsMenuTitles := "Home|Detection List|MiniMap/Overlays|Injects|Auto Grouping|Quick Select|Auto Worker|Chrono Boost|Misc Automation|SC2 Keys|Warnings|Misc Abilities|Bug Report|Settings"
+	optionsMenuTitles := "Home|Detection List|MiniMap/Overlays|Injects|Auto Grouping|Quick Select|Auto Worker|Chrono Boost|Misc Automation|SC2 Keys|Macro Warnings|Misc Abilities|Bug Report|Settings"
 
 	Gosub, g_CreateUnitListsAndObjects ; used for some menu items, and for the custom unit filter gui
 
@@ -4710,7 +4709,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 									. "`nChecked = Progress bar (percent complete)"
 									. "`nGreyed  = Time remaining"
 
-		APMOverlayMode_TT := "Set the drawing mode for the APM overlay."
+		APMOverlayMode_TT := "Sets the drawing mode for the APM overlay."
 							. "`n`n Unchecked = Enemies"
 							. "`n Checked = Self"
 							. "`n Greyed = Enemies + self (self is at bottom)"
@@ -5459,7 +5458,7 @@ OptionsTree:
 					,	"Chrono Boost": "ChronoBoost_TAB"
 					,	"Misc Automation": "MiscAutomation_TAB"
 					,	"SC2 Keys": "Keys_TAB"
-					,	"Warnings": "Warnings_TAB"
+					,	"Macro Warnings": "Warnings_TAB"
 					, 	"Misc Abilities": "Misc_TAB"
 					,	"Bug Report": "Bug_TAB"
 					,	"Settings": "Settings_TAB"}	
@@ -11162,6 +11161,135 @@ return
 */
 
 
+#ifwinactive ahk_exe SC2.exe 
+left::
+right::
+up::
+down::
+finemousemove(A_ThisHotkey, true)
+return 
+
+
+/*
+for units on top of each other clicking the same border edge location twice will unload 1, then the other
+ this is not true for units horizontally next to each other
+left x 830 
+top y  939
+right x 887
+botedge y 995
+
+w := 57
+
+*/
+
+getCargoPos(position, byRef xPos, byRef yPos)
+{
+	static AspectRatio, x, y, width, supported := True
+	if (AspectRatio != newAspectRatio := getScreenAspectRatio())
+	{
+		supported := True
+		AspectRatio := newAspectRatio
+		;If (AspectRatio = "16:10")
+		;	x := (319/1680)*A_ScreenWidth, y := (830/1050)*A_ScreenHeight										
+		;Else If (AspectRatio = "5:4")
+		;	x := (292/1280)*A_ScreenWidth, y := (823/1024)*A_ScreenHeight
+		;Else If (AspectRatio = "4:3")	
+		;	x := (291/1280)*A_ScreenWidth, y := (759/960)*A_ScreenHeight
+		if (AspectRatio = "16:9")
+			x := (830/1920)*A_ScreenWidth, y := (939/1080)*A_ScreenHeight, width := 57 ; close enough to being square
+		else supported := false 
+	}
+	if supported
+	{
+		column := floor(position/2)
+	 	, row := floor(position - 2 * column)
+		, xPos := x + (column * width) + (width//2)
+		, yPos := y + (row * width + width//2)
+		return True
+	}
+	return False
+}
+
+~d::
+if (A_PriorHotkey = A_ThisHotkey && A_TimeSincePriorHotkey <= 250)
+{
+	controlGroup := 3
+	 numGetSelectionSorted(aSelection)
+	; objtree(aSelection)
+	; msgbox % HighlightedTab " | " aSelection.TabPositions[HighlightedTab]
+	 if !aSelection.TabPositions.HasKey(aUnitID.Medivac) || aSelection.TabPositions[aUnitID.Medivac] != aSelection.HighlightedGroup
+	 	return
+
+	HighlightedTab := aSelection.HighlightedGroup
+	unloadAllCargoString := ""
+	loop, 8
+		getCargoPos(A_Index - 1, xPos, yPos), unloadAllCargoString .= "{click " xPos ", " yPos "}"
+	if aSelection.Count = 1
+		input.pSend(unloadAllCargoString escape) ; send Escape as we are not 
+	else 
+	{
+		input.pSend(escape)
+		dsleep(50)
+		aUnloaded := []
+		input.pSend(aAGHotkeys.Set[controlGroup])
+		;loop, % aSelection.TabSizes[aUnitID.Medivac]
+		loop, 20
+		{
+			if A_index != 1
+			{
+				input.pSend("{click 0 0}"aAGHotkeys.Invoke[controlGroup])
+				dsleep(25)
+				;numGetSelectionSorted(aSelection)
+			} 
+			else 
+			{
+			;	input.pSend("{click Right 0 0}"aAGHotkeys.Invoke[controlGroup])
+			;	dsleep(25)			
+				v := 1
+			}
+			for i, unit in aSelection.Units 
+			{
+				if getUnitType(unit.unitIndex) = aUnitId.Medivac && !aUnloaded.HasKey(unit.UnitIndex)
+				{
+					aUnloaded[unit.UnitIndex] := True 
+					clickUnitPortraits([unit.unitPortrait], "") ; just left click it 
+					 dsleep(10)
+					;sleep 200
+					;objtree([unit.unitPortrait])
+				;	msgbox 
+					input.pSend(unloadAllCargoString)
+					break
+				} 
+				else if aSelection.Units.MaxIndex() = i
+					break, 2
+			}
+		}
+		input.pSend("{click 0 0}"aAGHotkeys.Invoke[controlGroup])
+	}
+} 
+return 
+
+{
+	s  := ""
+	loop, 8
+	{
+		getCargoPos(A_Index - 1, xPos, yPos), s .= "{click " xPos ", " yPos "}"
+	}
+	input.pSend(s)
+}
+return
 
 
 
+
+loop, 8 
+{
+	if getCargoPos(A_Index - 1, xPos, yPos)
+	{
+		;msgbox % xpos " | " ypos
+		MouseMove, xPos, yPos, 1
+		sleep 1000
+
+	}
+}
+return

@@ -832,7 +832,7 @@ geyserOversaturationWarning(aGeyserStructures, maxWorkers, maxTime, maxWarnings,
 	}
 	for i, unit in aGeyserStructures
 	{
-		if getUnitType(unit) = geyserStructure && !(getUnitTargetFilter(unit) & aUnitTargetFilter.UnderConstruction)
+		if getUnitType(unit) = geyserStructure && !(getUnitTargetFilter(unit) & (aUnitTargetFilter.UnderConstruction | aUnitTargetFilter.Dead))
 		{
 			if getResourceWorkerCount(unit, aLocalPlayer["Slot"]) >= maxWorkers
 			{
@@ -861,7 +861,7 @@ geyserOversaturationWarning(aGeyserStructures, maxWorkers, maxTime, maxWarnings,
 	; Remove any old warnings i.e. worker count lowered so they instantly disappear from the screen
 	for minimapIndex, object in aMiniMapWarning
 	{
-		if object.Type = geyserStructure && object.Owner = aLocalPlayer["Slot"] && !aWarnings.HasKey(object.Unit) ; check if still geyer and unitIndex hasn't been reused for another warning type
+		if object.Type = geyserStructure && object.Owner = aLocalPlayer["Slot"] && !aWarnings.HasKey(object.Unit) ; check if still geyser and unitIndex hasn't been reused for another warning type
 			aMiniMapWarning.remove(minimapIndex, "") 
 	}
 	if announceWarning
