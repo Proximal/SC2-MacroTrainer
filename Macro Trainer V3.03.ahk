@@ -1890,12 +1890,20 @@ return
 gEasyUnloadDescription:
 msgbox,, Easy Unload/Select,
 		(LTrim 
-		This hotkey performs two functions depending on if it is double tapped or held down.
+		This page has two separate hotkeys which perform different tasks.
 
-		Double tap this key to select any loaded transports visible on the screen.
-		(Ensure the mouse is not hovering above a medivac)
+		Unload All:
+		If enabled, when you double tap the SC2 unload all key (default is 'd') and transports containing units are the highlighted subgroup, then all of the transports will begin unloading. 
 
-		Hold this button and wave the mouse over the loaded transports to begin unloading them.
+		Easy Select/Cursor Unload:
+		If is enabled, then the 'Easy Select/Cursor Unload' hotkey will perform one of two functions depending on if it is double tapped or held down.
+		
+		1) When Double tapped this key will select all loaded transports visible on the screen.
+		(Ensure the mouse is not hovering above a transport, otherwise it may begin unloading)
+
+		2) When the button is held down the unloading mode will be invoked. Simply wave the mouse cursor over the loaded transports to begin unloading them.
+		
+		Note: This mouse hover unloading method is less reliable than the 'Unload All' method, particularly  when the Transports are stacked or you move the mouse very fast.
 		)
 return 
 
@@ -3710,7 +3718,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 			 Gui, Add, Button, x+45 w65 h25 vNew%A_LoopField%QuickSelect gg_QuickSelectGui, New
 			 Gui, Add, Button, x+20 w65 h25 vDelete%A_LoopField%QuickSelect gg_QuickSelectGui, Delete
 
-		Gui, Add, GroupBox, xs Ys+85 w380 h275 section vGroupBoxItem%A_LoopField%QuickSelect, % "Quick Select Item " aQuickSelectCopy[A_LoopField "IndexGUI"] 
+		Gui, Add, GroupBox, xs Ys+85 w380 h285 section vGroupBoxItem%A_LoopField%QuickSelect, % "Quick Select Item " aQuickSelectCopy[A_LoopField "IndexGUI"] 
 
 			Gui, Add, Checkbox, xs+15 yp+25 vquickSelect%A_LoopField%Enabled, Enable
 			Gui, Add, Text, yp+40, Hotkey:
@@ -3727,11 +3735,20 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 			QuickSelect%A_LoopField%StoreSelection_TT := "Stores the units in this control group."
 													. "`n`nNote: This uses the specified 'set control group' keys as defined in the SC2 Keys section (on the left)."
 
-			Gui, add, GroupBox, xs+200 ys+55 w165 h190, Remove
+			Gui, add, GroupBox, xs+200 ys+55 w165 h215, Remove
 			Gui, Add, Checkbox, Xp+10 yp+25  vquickSelect%A_LoopField%DeselectXelnaga, Xelnaga (tower) units
 			Gui, Add, Checkbox, Xp yp+24 vquickSelect%A_LoopField%OnScreen, Outside of camera view
 			Gui, Add, Checkbox, Xp yp+24 vquickSelect%A_LoopField%DeselectPatrolling, Patrolling units
-			Gui, Add, Checkbox, Xp yp+24 vquickSelect%A_LoopField%DeselectLoadedTransport, Loaded transports
+			if A_LoopField = Zerg 
+			{
+				Gui, Add, Checkbox, Xp yp+24 vquickSelect%A_LoopField%DeselectLoadedTransport gQuickSelectGUIEmptyLoadedTransportCheck disabled, Loaded transports
+				Gui, Add, Checkbox, Xp yp+24 vquickSelect%A_LoopField%DeselectEmptyTransport gQuickSelectGUIEmptyLoadedTransportCheck disabled, Empty transports				
+			}
+			else 
+			{
+				Gui, Add, Checkbox, Xp yp+24 vquickSelect%A_LoopField%DeselectLoadedTransport gQuickSelectGUIEmptyLoadedTransportCheck, Loaded transports
+				Gui, Add, Checkbox, Xp yp+24 vquickSelect%A_LoopField%DeselectEmptyTransport gQuickSelectGUIEmptyLoadedTransportCheck, Empty transports
+			}
 			Gui, Add, Checkbox, Xp yp+24 vquickSelect%A_LoopField%DeselectQueuedDrops, Transports queued to drop
 			Gui, Add, Checkbox, Xp yp+24 vquickSelect%A_LoopField%DeselectHoldPosition, On hold position
 			Gui, Add, Checkbox, Xp yp+24 vquickSelect%A_LoopField%DeselectFollowing, On follow command
@@ -4754,6 +4771,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 			quickSelect%A_LoopField%DeselectHoldPosition_TT := SelectArmyDeselectHoldPosition_TT
 			quickSelect%A_LoopField%DeselectFollowing_TT :=SelectArmyDeselectFollowing_TT		
 			quickSelect%A_LoopField%DeselectLoadedTransport_TT := SelectArmyDeselectLoadedTransport_TT
+			quickSelect%A_LoopField%DeselectEmptyTransport_TT := "Removes empty medivacs and warp prisms."
 			quickSelect%A_LoopField%DeselectQueuedDrops_TT := SelectArmyDeselectQueuedDrops_TT
 		}
 
@@ -4913,6 +4931,20 @@ if g1
 								. "The only exception to this is the auto-grouping function."
 return
 
+QuickSelectGUIEmptyLoadedTransportCheck:
+GuiControlGet, g1,, % A_GuiControl
+if g1
+{
+	if instr(A_GuiControl, "Empty")
+		g2 := "DeselectLoadedTransport"
+	else g2 := "DeselectEmptyTransport"
+	if instr(A_GuiControl, "Terran")
+		GuiControl,, % "quickSelectTerran" g2, 0
+	else if instr(A_GuiControl, "Protoss")
+		GuiControl,, % "quickSelectProtoss" g2, 0
+	else GuiControl,, % "quickSelectZerg" g2, 0
+}
+return
 ; Still need to save the currently displayed item (incase user hasnt clicked a button
 ; which goes here to save)
 
@@ -5045,7 +5077,6 @@ iniWriteAndUpdateQuickSelect(byRef aQuickSelectCopy, byRef aQuickSelect)
 	; This only seems to occur when im restarting a lot and testing stuff in the options menu
 	; I've added a critcal section here - this should delay the restart hotkey firing (but not if closed via tray icon)
 	; But I doubt this is what is causing the issue - probably a bug elsewhere but I can't seem to work out how to invoke it
-	
 	critical, on
 	loop, parse, lRaces, `, 
 	{
@@ -5108,6 +5139,7 @@ iniReadQuickSelect(byRef aQuickSelectCopy, byRef aQuickSelect)
 			IniRead, OnScreen, %config_file%, %section%, %itemNumber%_OnScreen, 0 
 			IniRead, DeselectPatrolling, %config_file%, %section%, %itemNumber%_DeselectPatrolling, 0 
 			IniRead, DeselectLoadedTransport, %config_file%, %section%, %itemNumber%_DeselectLoadedTransport, 0 
+			IniRead, DeselectEmptyTransport, %config_file%, %section%, %itemNumber%_DeselectEmptyTransport, 0 
 			IniRead, DeselectQueuedDrops, %config_file%, %section%, %itemNumber%_DeselectQueuedDrops, 0 
 			IniRead, DeselectHoldPosition, %config_file%, %section%, %itemNumber%_DeselectHoldPosition, 0 
 			IniRead, DeselectFollowing, %config_file%, %section%, %itemNumber%_DeselectFollowing, 0 
@@ -5136,6 +5168,7 @@ iniReadQuickSelect(byRef aQuickSelectCopy, byRef aQuickSelect)
 		    aQuickSelectCopy[Race, arrayPosition, "OnScreen"] := OnScreen
 		    aQuickSelectCopy[Race, arrayPosition, "DeselectPatrolling"] := DeselectPatrolling
 		    aQuickSelectCopy[Race, arrayPosition, "DeselectLoadedTransport"] := DeselectLoadedTransport
+		    aQuickSelectCopy[Race, arrayPosition, "DeselectEmptyTransport"] := DeselectEmptyTransport
 		    aQuickSelectCopy[Race, arrayPosition, "DeselectQueuedDrops"] := DeselectQueuedDrops
 		    aQuickSelectCopy[Race, arrayPosition, "DeselectHoldPosition"] := DeselectHoldPosition
 		    aQuickSelectCopy[Race, arrayPosition, "DeselectFollowing"] := DeselectFollowing
@@ -5163,6 +5196,7 @@ blankQuickSelectGUI(race)
 	GUIControl, , quickSelect%Race%OnScreen, 0
 	GUIControl, , quickSelect%Race%DeselectPatrolling, 0
 	GUIControl, , quickSelect%Race%DeselectLoadedTransport, 0
+	GUIControl, , quickSelect%Race%DeselectEmptyTransport, 0
 	GUIControl, , quickSelect%Race%DeselectQueuedDrops, 0
 	GUIControl, , quickSelect%Race%DeselectHoldPosition, 0
 	GUIControl, , quickSelect%Race%DeselectFollowing, 0
@@ -5187,6 +5221,7 @@ showQuickSelectItem(Race, byRef aQuickSelectCopy)
 	GUIControl, , quickSelect%Race%OnScreen, % round(aQuickSelectCopy[Race, arrayPosition, "OnScreen"])
 	GUIControl, , quickSelect%Race%DeselectPatrolling, % round(aQuickSelectCopy[Race, arrayPosition, "DeselectPatrolling"])
 	GUIControl, , quickSelect%Race%DeselectLoadedTransport, % round(aQuickSelectCopy[Race, arrayPosition, "DeselectLoadedTransport"])
+	GUIControl, , quickSelect%Race%DeselectEmptyTransport, % round(aQuickSelectCopy[Race, arrayPosition, "DeselectEmptyTransport"])
 	GUIControl, , quickSelect%Race%DeselectQueuedDrops, % round(aQuickSelectCopy[Race, arrayPosition, "DeselectQueuedDrops"])
 	GUIControl, , quickSelect%Race%DeselectHoldPosition, % round(aQuickSelectCopy[Race, arrayPosition, "DeselectHoldPosition"])
 	GUIControl, , quickSelect%Race%DeselectFollowing, % round(aQuickSelectCopy[Race, arrayPosition, "DeselectFollowing"])
@@ -5204,12 +5239,14 @@ saveCurrentQuickSelect(Race, byRef aQuickSelectCopy)
 	GuiControlGet, OnScreen, , quickSelect%Race%OnScreen
 	GuiControlGet, DeselectPatrolling, , quickSelect%Race%DeselectPatrolling
 	GuiControlGet, DeselectLoadedTransport, , quickSelect%Race%DeselectLoadedTransport
+	GuiControlGet, DeselectEmptyTransport, , quickSelect%Race%DeselectEmptyTransport
 	GuiControlGet, DeselectQueuedDrops, , quickSelect%Race%DeselectQueuedDrops
 	GuiControlGet, DeselectHoldPosition, , quickSelect%Race%DeselectHoldPosition
 	GuiControlGet, DeselectFollowing, , quickSelect%Race%DeselectFollowing
 
+
 	arrayPosition := aQuickSelectCopy[race "IndexGUI"]
-	
+	;msgbox % DeselectEmptyTransport
 	aQuickSelectCopy[Race, arrayPosition] := []
 	aQuickSelectCopy[Race, arrayPosition, "enabled"] := enabled
 	aQuickSelectCopy[Race, arrayPosition, "hotkey"] := hotkey
@@ -5227,7 +5264,7 @@ saveCurrentQuickSelect(Race, byRef aQuickSelectCopy)
 		if aUnitID.haskey(unit := trim(A_LoopField," `t`n`,"))
 		{
 			aQuickSelectCopy[Race, arrayPosition, "units"].insert(aUnitID[unit])	
-			if %unit% in Medivac,WarpPrism,WarpPrismPhasing
+			if unit in Medivac,WarpPrism,WarpPrismPhasing
 				includesTransport := True
 		}
 	}
@@ -5240,13 +5277,14 @@ saveCurrentQuickSelect(Race, byRef aQuickSelectCopy)
 ;		return 1 ; No real units were in the text field
 ;	}
 	if !includesTransport
-		DeselectLoadedTransport := DeselectQueuedDrops := False
+		DeselectLoadedTransport := DeselectEmptyTransport := DeselectQueuedDrops := False
 
 	aQuickSelectCopy[Race, arrayPosition, "storeSelection"] := storeSelection
 	aQuickSelectCopy[Race, arrayPosition, "DeselectXelnaga"] := DeselectXelnaga
 	aQuickSelectCopy[Race, arrayPosition, "OnScreen"] := OnScreen
 	aQuickSelectCopy[Race, arrayPosition, "DeselectPatrolling"] := DeselectPatrolling
 	aQuickSelectCopy[Race, arrayPosition, "DeselectLoadedTransport"] := DeselectLoadedTransport
+	aQuickSelectCopy[Race, arrayPosition, "DeselectEmptyTransport"] := DeselectEmptyTransport
 	aQuickSelectCopy[Race, arrayPosition, "DeselectQueuedDrops"] := DeselectQueuedDrops
 	aQuickSelectCopy[Race, arrayPosition, "DeselectHoldPosition"] := DeselectHoldPosition
 	aQuickSelectCopy[Race, arrayPosition, "DeselectFollowing"] := DeselectFollowing
@@ -8501,7 +8539,7 @@ quickSelect(aDeselect)
 	global clickPortraits := []
 
 	if (aDeselect.DeselectXelnaga || aDeselect.DeselectPatrolling || aDeselect.DeselectHoldPosition || aDeselect.DeselectFollowing
-	|| aDeselect.DeselectLoadedTransport || aDeselect.DeselectQueuedDrops)
+	|| aDeselect.DeselectLoadedTransport  || aDeselect.DeselectEmptyTransport|| aDeselect.DeselectQueuedDrops)
 		checkStates := True
 
 	if 0 && (aDeselect.Units.MaxIndex() = 1 && !checkStates) ; this is disabled until i fix the sort with units in same tab eg tanks/stanks + hellions/hellbats
@@ -8544,14 +8582,14 @@ quickSelect(aDeselect)
 				|| (aDeselect.DeselectHoldPosition && InStr(commandString, "Hold"))
 				|| (aDeselect.DeselectFollowing && InStr(commandString, "Follow")) ;
 					clickPortraits.insert({ "portrait":  unit.unitPortrait, "modifiers": "+"}) 
-				else if (aDeselect.DeselectLoadedTransport || aDeselect.DeselectQueuedDrops)
+				else if (aDeselect.DeselectLoadedTransport || aDeselect.DeselectEmptyTransport || aDeselect.DeselectQueuedDrops)
 				&& (unit.unitId = aUnitId.Medivac || unit.unitId = aUnitID.WarpPrism || unit.unitId = aUnitID.WarpPrismPhasing)
 				{
 					if (aDeselect.DeselectLoadedTransport && getCargoCount(unit.unitIndex))
+					|| (aDeselect.DeselectEmptyTransport && !getCargoCount(unit.unitIndex))
 					|| (aDeselect.DeselectQueuedDrops && isTransportDropQueued(unit.unitIndex))
 						clickPortraits.insert({ "portrait":  unit.unitPortrait, "modifiers": "+"})
 				}
-
 			}
 			;	selectedCount += aSelected.TabSizes[unit.unitId]
 		}
@@ -11195,15 +11233,9 @@ return
 
 
 /*
-for units on top of each other clicking the same border edge location twice will unload 1, then the other
+ for units on top of each other clicking the same border edge location twice will unload 1, then the other
  this is not true for units horizontally next to each other
-left x 830 
-top y  939
-right x 887
-botedge y 995
-
-w := 57
-
+ The portraits are close enough to being square for all resolutions
 */
 
 getCargoPos(position, byRef xPos, byRef yPos)
@@ -11213,11 +11245,14 @@ getCargoPos(position, byRef xPos, byRef yPos)
 	{
 		supported := True
 		AspectRatio := newAspectRatio
-		;If (AspectRatio = "16:10")
-		;Else If (AspectRatio = "5:4")
-		;Else If (AspectRatio = "4:3")	
-		if (AspectRatio = "16:9")
-			x := (830/1920)*A_ScreenWidth, y := (939/1080)*A_ScreenHeight, width := 57 ; close enough to being square
+		If (AspectRatio = "16:10")
+			x := (714/1680)*A_ScreenWidth, y := (914/1050)*A_ScreenHeight, width := 56  ; h := 55 
+		else If (AspectRatio = "5:4")
+			x := (525/1280)*A_ScreenWidth, y := (901/1024)*A_ScreenHeight, width := 50  ; h := 50 
+		else If (AspectRatio = "4:3")	
+			x := (524/1280)*A_ScreenWidth, y := (836/960)*A_ScreenHeight, width := 51  ; h := 50 close enough to being square
+		else if (AspectRatio = "16:9")
+			x := (830/1920)*A_ScreenWidth, y := (939/1080)*A_ScreenHeight, width := 57 ; h = 56 close enough to being square
 		else supported := false 
 	}
 	if supported
@@ -11234,13 +11269,13 @@ getCargoPos(position, byRef xPos, byRef yPos)
 UnloadAllTransports:
 if (A_PriorHotkey = A_ThisHotkey && A_TimeSincePriorHotkey <= 250)
 	unloadAllTransports(gethotkeySuffix(A_ThisHotkey))
-else keywait, % gethotkeySuffix(A_ThisHotkey), T.260 ; Make it slightly longer than the threshold to enter the routine incase just holding it down
+else keywait, % gethotkeySuffix(A_ThisHotkey), T.260 ; Make it slightly longer than the threshold to enter the routine in case just holding it down
 return 
 
-
+; Don't bother working out were a unit is in the cargo - if the transport has cargo just click all positions.
 unloadAllTransports(hotkeySuffix)
-{ 	global escape
-	controlGroup := 3
+{ 	global escape, EasyUnloadStorageKey
+
 	numGetSelectionSorted(aSelection)
 
 	if aLocalPlayer.Race = "Terran" && (!aSelection.TabPositions.HasKey(aUnitID.Medivac) || aSelection.TabPositions[aUnitID.Medivac] != aSelection.HighlightedGroup)
@@ -11265,18 +11300,15 @@ unloadAllTransports(hotkeySuffix)
 		input.pSend(unloadAllCargoString escape) ; send Escape as we should try to remove the casting reticle invoked my pressing the hotkey ability
 	else 
 	{
-		soundplay *-1
-		;keywait, d
 		input.pSend(escape)
 		aUnloaded := []
-		input.pSend(aAGHotkeys.Set[controlGroup])
-		;loop, % aSelection.TabSizes[aUnitID.Medivac]
+		input.pSend(aAGHotkeys.Set[EasyUnloadStorageKey])
 		slectionCount := aSelection.Count
 		loop, 100
 		{
 			if A_index > 1
 			{
-				input.pSend("{click 0 0}" aAGHotkeys.Invoke[controlGroup])
+				input.pSend("{click 0 0}" aAGHotkeys.Invoke[EasyUnloadStorageKey])
 				while getselectionCount() != slectionCount && A_Index <= 40
 					dsleep(1)
 				dsleep(10)
@@ -11304,7 +11336,7 @@ unloadAllTransports(hotkeySuffix)
 			}
 		} 
 
-		input.pSend("{click 0 0}" aAGHotkeys.Invoke[controlGroup])
+		input.pSend("{click 0 0}" aAGHotkeys.Invoke[EasyUnloadStorageKey])
 		setLowLevelInputHooks(False)
 		critical, off
 		Thread, Priority, -2147483648		
@@ -11314,3 +11346,6 @@ unloadAllTransports(hotkeySuffix)
 
 
 
+f2::
+objtree(aQuickSelectCopy)
+return 
