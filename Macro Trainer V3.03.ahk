@@ -2569,6 +2569,9 @@ ini_settings_write:
 	IniWrite, %EasyUnloadTerranEnable%, %config_file%, %section%, EasyUnloadTerranEnable
 	IniWrite, %EasyUnloadProtossEnable%, %config_file%, %section%, EasyUnloadProtossEnable
 	IniWrite, %EasyUnloadZergEnable%, %config_file%, %section%, EasyUnloadZergEnable
+	IniWrite, %EasyUnloadAllTerranEnable%, %config_file%, %section%, EasyUnloadAllTerranEnable
+	IniWrite, %EasyUnloadAllProtossEnable%, %config_file%, %section%, EasyUnloadAllProtossEnable
+	IniWrite, %EasyUnloadAllZergEnable%, %config_file%, %section%, EasyUnloadAllZergEnable
 	IniWrite, %EasyUnloadHotkey%, %config_file%, %section%, EasyUnloadHotkey
 	IniWrite, %EasyUnloadQueuedHotkey%, %config_file%, %section%, EasyUnloadQueuedHotkey
 	IniWrite, %EasyUnload_T_Key%, %config_file%, %section%, EasyUnload_T_Key
@@ -3039,30 +3042,29 @@ try
 
 	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vKeys_TAB, SC2 Keys|Set/Add Group|Invoke Group
 		Gui, Add, GroupBox, w280 h185, Common Keys:
-			Gui, Add, Text, xp+10 yp+30 w90, Pause Game: 
+			Gui, Add, Text, xs+10 yp+30 w90, Pause Game: 
 			Gui, Add, Edit, Readonly yp-2 x+10 w120 R1 center vpause_game , %pause_game%
 			Gui, Add, Button, yp-2 x+5 gEdit_SendHotkey v#pause_game,  Edit
 
-			Gui, Add, Text, X%XTabX% yp+35 w90, Escape/Cancel:
+			Gui, Add, Text, xs+10 yp+35 w90, Escape/Cancel:
 			Gui, Add, Edit, Readonly yp-2 x+10 w120 R1 center vescape , %escape%
 			Gui, Add, Button, yp-2 x+5 gEdit_SendHotkey v#escape,  Edit
 
-			Gui, Add, Text, X%XTabX% yp+35 w90, Base Camera:
+			Gui, Add, Text, xs+10 yp+35 w90, Base Camera:
 			Gui, Add, Edit, Readonly yp-2 x+10 w120 R1 center vbase_camera , %base_camera%
 			Gui, Add, Button, yp-2 x+5 gEdit_SendHotkey v#base_camera,  Edit
 
-			Gui, Add, Text, X%XTabX% yp+35 w90, Next Subgroup:
+			Gui, Add, Text, xs+10 yp+35 w90, Next Subgroup:
 			Gui, Add, Edit, Readonly yp-2 x+10 w120 R1 center vNextSubgroupKey , %NextSubgroupKey%
 			Gui, Add, Button, yp-2 x+5 gEdit_SendHotkey v#NextSubgroupKey,  Edit
 
-			Gui, Add, Text, X%XTabX% yp+35 w90, Select Army:
+			Gui, Add, Text, xs+10 yp+35 w90, Select Army:
 			Gui, Add, Edit, Readonly yp-2 x+10 w120 R1 center vSc2SelectArmy_Key , %Sc2SelectArmy_Key%
 			Gui, Add, Button, yp-2 x+5 gEdit_SendHotkey v#Sc2SelectArmy_Key,  Edit					
 
 			gui, font, s10
-			tmpX := XTabX-15
-			Gui, Add, Text,  X%tmpX% y+50 +wrap, Ensure the following keys match the associated SC2 Functions.
-			Gui, Add, Text,  X%tmpX% y+5 +wrap, (either change these settings here or in the SC2 Hotkey options/menu)
+			Gui, Add, Text,  xs+-15 y+50 +wrap, Ensure the following keys match the associated SC2 Functions.
+			Gui, Add, Text,  xs+-15 y+5 +wrap, (either change these settings here or in the SC2 Hotkey options/menu)
 			gui, font, 		
 
 			Gui, Tab, Set/Add Group
@@ -3927,20 +3929,28 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 			Gui, Add, Text, X380 y284 w195, Units with health/shields lower than the specified values will be removed from selection and moved to the current mouse cursor position. Stalkers will be blinked.`n`nThis is very helpful when microing units!
 	
 	Gui, Tab, Easy Select/Unload
-		Gui, Add, GroupBox, x+95 y+20 w95 h100 section, Enable
+		Gui, Add, GroupBox, x+65 y+15 w95 h50 w205 section, Enable Easy Select/Cursor Unload 
 			Gui, Add, Checkbox, xp+10 yp+25 vEasyUnloadTerranEnable Checked%EasyUnloadTerranEnable%, Terran	
-			Gui, Add, Checkbox, xp y+10 vEasyUnloadProtossEnable Checked%EasyUnloadProtossEnable%, Protoss	
-			Gui, Add, Checkbox, xp y+10 vEasyUnloadZergEnable Checked%EasyUnloadZergEnable%, Zerg
+			Gui, Add, Checkbox, x+10 yp vEasyUnloadProtossEnable Checked%EasyUnloadProtossEnable%, Protoss	
+			Gui, Add, Checkbox, x+10 yp vEasyUnloadZergEnable Checked%EasyUnloadZergEnable%, Zerg
+	
+		Gui, Add, GroupBox, xs+230 ys w100 h110, Storage Ctrl Group
+		;Gui, Add, Text, xs+10 yp+35, Storage Ctrl Group:
+			if (EasyUnloadStorageKey = 0)
+				droplist_var := 10
+			else 
+				droplist_var := EasyUnloadStorageKey  	; i have a dropdown menu now so user has to put a number, cant use another key as I use this to check the control groups
+			Gui, Add, DropDownList,  xp+20 yp+50 w45 center vEasyUnloadStorageKey Choose%droplist_var%, 1|2|3|4|5|6|7|8|9|0
 
-				Gui, Add, GroupBox, xs+105 ys w100 h100, Storage Ctrl Group
-					if (EasyUnloadStorageKey = 0)
-						droplist_var := 10
-					else 
-						droplist_var := EasyUnloadStorageKey  	; i have a dropdown menu now so user has to put a number, cant use another key as I use this to check the control groups
-					Gui, Add, DropDownList,  xp+25 yp+40 w45 center vEasyUnloadStorageKey Choose%droplist_var%, 1|2|3|4|5|6|7|8|9|0
+
+		Gui, Add, GroupBox, xs ys+60 w95 h50 w205, Enable Unload All
+			Gui, Add, Checkbox, xp+10 yp+25 vEasyUnloadAllTerranEnable Checked%EasyUnloadAllTerranEnable%, Terran	
+			Gui, Add, Checkbox, x+10 yp vEasyUnloadAllProtossEnable Checked%EasyUnloadAllProtossEnable%, Protoss	
+			Gui, Add, Checkbox, x+10 yp vEasyUnloadAllZergEnable Checked%EasyUnloadAllZergEnable%, Zerg
+			
 
 
-		Gui, Add, GroupBox, xs ys+110 w205 h55, Unload Hotkey
+		Gui, Add, GroupBox, xs y+25 w205 h55, Easy Select/Cursor Unload  Hotkey
 			Gui, Add, Text, Xp+10 yp+25 w85, Immediate:
 				Gui, Add, Edit, Readonly yp-2 xs+85 center w65 R1 vEasyUnloadHotkey gedit_hotkey, %EasyUnloadHotkey%
 				Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#EasyUnloadHotkey,  Edit 	
@@ -7652,6 +7662,7 @@ setupAutoGroup(Race, ByRef A_AutoGroup, aUnitID, A_UnitGroupSettings)
 
 CreateHotkeys()
 {	global
+	local unloadAllHotkey
 	Hotkeys:	
 
  	input.pCurrentSendDelay := -1
@@ -7734,6 +7745,16 @@ CreateHotkeys()
 		|| (aLocalPlayer["Race"] = "Protoss" && EasyUnloadProtossEnable)
 		|| (aLocalPlayer["Race"] = "Zerg" && EasyUnloadZergEnable)
 			hotkey, %EasyUnloadHotkey%, gEasyUnload, on
+
+		; Converting a send key to a hotkey so need to remove '{' and '}' if present e.g. {F1}
+		; sc ability hotkeys can only be 1 key
+		if (aLocalPlayer["Race"] = "Terran" && EasyUnloadAllTerranEnable)
+			hotkey, % "~" (SubStr(EasyUnload_T_Key, 1 , 1) != "{" ? EasyUnload_T_Key : SubStr(EasyUnload_T_Key, 2, StrLen(EasyUnload_T_Key)-2)), UnloadAllTransports, on
+		else if (aLocalPlayer["Race"] = "Protoss" && EasyUnloadAllProtossEnable)
+			hotkey, % "~" (SubStr(EasyUnload_P_Key, 1 , 1) != "{" ? EasyUnload_P_Key : SubStr(EasyUnload_P_Key, 2, StrLen(EasyUnload_P_Key)-2)), UnloadAllTransports, on
+		else if (aLocalPlayer["Race"] = "Zerg" && EasyUnloadAllZergEnable)
+			hotkey, % "~" (SubStr(EasyUnload_Z_Key, 1 , 1) != "{" ? EasyUnload_Z_Key : SubStr(EasyUnload_Z_Key, 2, StrLen(EasyUnload_Z_Key)-2)), UnloadAllTransports, on
+		
 		if SelectArmyEnable
 			hotkey, %castSelectArmy_key%, g_SelectArmy, on  ; buffer to make double tap better remove 50ms delay
 		if SplitUnitsEnable
@@ -7836,6 +7857,9 @@ disableAllHotkeys()
 		try hotkey, ~^+%InjectTimerAdvancedLarvaKey%, off
 		try hotkey,  ~%InjectTimerAdvancedLarvaKey%, off
 		try hotkey, %EasyUnloadHotkey%, off
+		try hotkey, % "~" (SubStr(EasyUnload_T_Key, 1 , 1) != "{" ? EasyUnload_T_Key : SubStr(EasyUnload_T_Key, 2, StrLen(EasyUnload_T_Key)-2)), off
+		try hotkey, % "~" (SubStr(EasyUnload_P_Key, 1 , 1) != "{" ? EasyUnload_P_Key : SubStr(EasyUnload_P_Key, 2, StrLen(EasyUnload_P_Key)-2)), off
+		try hotkey, % "~" (SubStr(EasyUnload_Z_Key, 1 , 1) != "{" ? EasyUnload_Z_Key : SubStr(EasyUnload_Z_Key, 2, StrLen(EasyUnload_Z_Key)-2)), off
 		try hotkey, %castSelectArmy_key%, off
 		try hotkey, %castSplitUnit_key%, off
 		try hotkey, %castRemoveUnit_key%, off
@@ -11190,11 +11214,8 @@ getCargoPos(position, byRef xPos, byRef yPos)
 		supported := True
 		AspectRatio := newAspectRatio
 		;If (AspectRatio = "16:10")
-		;	x := (319/1680)*A_ScreenWidth, y := (830/1050)*A_ScreenHeight										
 		;Else If (AspectRatio = "5:4")
-		;	x := (292/1280)*A_ScreenWidth, y := (823/1024)*A_ScreenHeight
 		;Else If (AspectRatio = "4:3")	
-		;	x := (291/1280)*A_ScreenWidth, y := (759/960)*A_ScreenHeight
 		if (AspectRatio = "16:9")
 			x := (830/1920)*A_ScreenWidth, y := (939/1080)*A_ScreenHeight, width := 57 ; close enough to being square
 		else supported := false 
@@ -11210,86 +11231,86 @@ getCargoPos(position, byRef xPos, byRef yPos)
 	return False
 }
 
-~d::
+UnloadAllTransports:
 if (A_PriorHotkey = A_ThisHotkey && A_TimeSincePriorHotkey <= 250)
-{
+	unloadAllTransports(gethotkeySuffix(A_ThisHotkey))
+else keywait, % gethotkeySuffix(A_ThisHotkey), T.260 ; Make it slightly longer than the threshold to enter the routine incase just holding it down
+return 
+
+
+unloadAllTransports(hotkeySuffix)
+{ 	global escape
 	controlGroup := 3
-	 numGetSelectionSorted(aSelection)
-	; objtree(aSelection)
-	; msgbox % HighlightedTab " | " aSelection.TabPositions[HighlightedTab]
-	 if !aSelection.TabPositions.HasKey(aUnitID.Medivac) || aSelection.TabPositions[aUnitID.Medivac] != aSelection.HighlightedGroup
-	 	return
+	numGetSelectionSorted(aSelection)
+
+	if aLocalPlayer.Race = "Terran" && (!aSelection.TabPositions.HasKey(aUnitID.Medivac) || aSelection.TabPositions[aUnitID.Medivac] != aSelection.HighlightedGroup)
+	 	return	
+	else if aLocalPlayer.Race = "Protoss" && ((!aSelection.TabPositions.HasKey(aUnitID.WarpPrism) || aSelection.TabPositions[aUnitID.WarpPrism] != aSelection.HighlightedGroup)
+	&& (!aSelection.TabPositions.HasKey(aUnitID.WarpPrismPhasing) || aSelection.TabPositions[aUnitID.WarpPrismPhasing] != aSelection.HighlightedGroup))
+		return
+	else if aLocalPlayer.Race = "Zerg" && (!aSelection.TabPositions.HasKey(aUnitID.overlord) || aSelection.TabPositions[aUnitID.overlord] != aSelection.HighlightedGroup)
+		return
+
 
 	HighlightedTab := aSelection.HighlightedGroup
-	unloadAllCargoString := ""
 	loop, 8
 		getCargoPos(A_Index - 1, xPos, yPos), unloadAllCargoString .= "{click " xPos ", " yPos "}"
+	
+	critical, 1000
+	setLowLevelInputHooks(True)
+	dsleep(30)
+	input.pReleaseKeys(True)
+
 	if aSelection.Count = 1
-		input.pSend(unloadAllCargoString escape) ; send Escape as we are not 
+		input.pSend(unloadAllCargoString escape) ; send Escape as we should try to remove the casting reticle invoked my pressing the hotkey ability
 	else 
 	{
+		soundplay *-1
+		;keywait, d
 		input.pSend(escape)
-		dsleep(50)
 		aUnloaded := []
 		input.pSend(aAGHotkeys.Set[controlGroup])
 		;loop, % aSelection.TabSizes[aUnitID.Medivac]
-		loop, 20
+		slectionCount := aSelection.Count
+		loop, 100
 		{
-			if A_index != 1
+			if A_index > 1
 			{
-				input.pSend("{click 0 0}"aAGHotkeys.Invoke[controlGroup])
-				dsleep(25)
-				;numGetSelectionSorted(aSelection)
+				input.pSend("{click 0 0}" aAGHotkeys.Invoke[controlGroup])
+				while getselectionCount() != slectionCount && A_Index <= 40
+					dsleep(1)
+				dsleep(10)
+				;numGetSelectionSorted(aSelection) ; should be fast enough not to need to call this
 			} 
-			else 
-			{
-			;	input.pSend("{click Right 0 0}"aAGHotkeys.Invoke[controlGroup])
-			;	dsleep(25)			
-				v := 1
-			}
 			for i, unit in aSelection.Units 
 			{
-				if getUnitType(unit.unitIndex) = aUnitId.Medivac && !aUnloaded.HasKey(unit.UnitIndex)
+					
+				if !aUnloaded.HasKey(unit.UnitIndex) && isUnitLocallyOwned(unit.unitIndex)
+				&& ((type := getUnitType(unit.unitIndex)) = aUnitId.Medivac
+				|| type = aUnitID.WarpPrism || type = aUnitID.WarpPrismPhasing || type = aUnitID.overlord)
+				&& getCargoCount(unit.UnitIndex)
 				{
-					aUnloaded[unit.UnitIndex] := True 
+					aUnloaded[unit.UnitIndex] := True
 					clickUnitPortraits([unit.unitPortrait], "") ; just left click it 
+					while getSelectionCount() != 1 && A_Index <= 40
+						dsleep(1)
 					 dsleep(10)
-					;sleep 200
-					;objtree([unit.unitPortrait])
-				;	msgbox 
 					input.pSend(unloadAllCargoString)
 					break
 				} 
 				else if aSelection.Units.MaxIndex() = i
 					break, 2
+				aUnloaded[unit.UnitIndex] := True ; Assign for non medivac units too (so they wont have to do the function calls the next time around)
 			}
-		}
-		input.pSend("{click 0 0}"aAGHotkeys.Invoke[controlGroup])
-	}
-} 
-return 
+		} 
 
-{
-	s  := ""
-	loop, 8
-	{
-		getCargoPos(A_Index - 1, xPos, yPos), s .= "{click " xPos ", " yPos "}"
-	}
-	input.pSend(s)
-}
-return
-
-
-
-
-loop, 8 
-{
-	if getCargoPos(A_Index - 1, xPos, yPos)
-	{
-		;msgbox % xpos " | " ypos
-		MouseMove, xPos, yPos, 1
-		sleep 1000
-
+		input.pSend("{click 0 0}" aAGHotkeys.Invoke[controlGroup])
+		setLowLevelInputHooks(False)
+		critical, off
+		Thread, Priority, -2147483648		
+		keywait, %hotkeySuffix%
 	}
 }
-return
+
+
+
