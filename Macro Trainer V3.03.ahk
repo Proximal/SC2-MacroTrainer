@@ -3716,13 +3716,13 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		if !aQuickSelectCopy[A_LoopField "MaxIndexGUI"]
 			aQuickSelectCopy[A_LoopField "MaxIndexGUI"] := 1
 
-		Gui, Add, GroupBox, x+5 Y+15 w400 h65 section vGroupBox%A_LoopField%QuickSelect, % " Quick Select Navigation " aQuickSelectCopy[A_LoopField "IndexGUI"] " of " aQuickSelectCopy[A_LoopField "MaxIndexGUI"]
-			 Gui, Add, Button, xp+15 yp+25 w65 h25 vPrevious%A_LoopField%QuickSelect gg_QuickSelectGui, Previous
+		Gui, Add, GroupBox, x+10 Y+15 w410 h55 section vGroupBox%A_LoopField%QuickSelect, % " Quick Select Navigation " aQuickSelectCopy[A_LoopField "IndexGUI"] " of " aQuickSelectCopy[A_LoopField "MaxIndexGUI"]
+			 Gui, Add, Button, xp+15 yp+20 w65 h25 vPrevious%A_LoopField%QuickSelect gg_QuickSelectGui, Previous
 			 Gui, Add, Button, x+20 w65 h25 vNext%A_LoopField%QuickSelect gg_QuickSelectGui, Next
-			 Gui, Add, Button, x+65 w65 h25 vNew%A_LoopField%QuickSelect gg_QuickSelectGui, New
+			 Gui, Add, Button, x+75 w65 h25 vNew%A_LoopField%QuickSelect gg_QuickSelectGui, New
 			 Gui, Add, Button, x+20 w65 h25 vDelete%A_LoopField%QuickSelect gg_QuickSelectGui, Delete
 
-		Gui, Add, GroupBox, xs Ys+75 w400 h340 section vGroupBoxItem%A_LoopField%QuickSelect, % "Quick Select Item " aQuickSelectCopy[A_LoopField "IndexGUI"] 
+		Gui, Add, GroupBox, xs Ys+65 w410 h350 section vGroupBoxItem%A_LoopField%QuickSelect, % "Quick Select Item " aQuickSelectCopy[A_LoopField "IndexGUI"] 
 
 			Gui, Add, Checkbox, xs+25 yp+20 vquickSelect%A_LoopField%Enabled, Enable
 			Gui, Add, Text, y+10, Hotkey:
@@ -3738,18 +3738,18 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 			Gui, Add, Edit, y+5 w160  r7 vquickSelect%A_LoopField%UnitsArmy, %A_Space%
 			Gui, Add, Button, y+6 gEdit_AG v#quickSelect%A_LoopField%UnitsArmy w160 h25,  Add
 
-			Gui, Add, Groupbox, xs+240 ys+20 width w150 h65, Store Selection
+			Gui, Add, Groupbox, xs+225 ys+20 width w170 h65, Store Selection
 			Gui, Add, Checkbox, xp+10 yp+20 vquickSelect%A_LoopField%CreateControlGroup gQuickSelectGUICreateAddToGroupCheck, Create group
 			Gui, Add, Checkbox, xp y+10 vquickSelect%A_LoopField%AddToControlGroup gQuickSelectGUICreateAddToGroupCheck, Add to group
-			Gui, Add, DropDownList, x+10 yp-3 w45 center vQuickSelect%A_LoopField%StoreSelection Choose10, 1|2|3|4|5|6|7|8|9|0|
+			Gui, Add, DropDownList, x+15 yp-3 w45 center vQuickSelect%A_LoopField%StoreSelection Choose10, 1|2|3|4|5|6|7|8|9|0|
 			QuickSelect%A_LoopField%StoreSelection_TT := "Stores the units in this control group."
 													. "`n`nNote: This uses the specified 'set control group' keys as defined in the SC2 Keys section (on the left)."
 
-			Gui, add, GroupBox, xs+240 ys+90 w165 h215, Modify By Attributes
+			Gui, add, GroupBox, xs+225 ys+90 w170 h245, Modify By Attributes
 			Gui, add, Text, xp+10 yp+25, Mode: 
 			Gui, Add, DropDownList, x+15 yp-3 w90 center vQuickSelect%A_LoopField%AttributeMode Choose1, Remove|Keep
 
-			Gui, Add, Checkbox, xs+250 y+15 vquickSelect%A_LoopField%DeselectXelnaga, Holding Xelnaga tower
+			Gui, Add, Checkbox, xs+235 y+15 vquickSelect%A_LoopField%DeselectXelnaga, Holding Xelnaga tower
 			Gui, Add, Checkbox, Xp y+5 vquickSelect%A_LoopField%DeselectPatrolling, Patrol
 			Gui, Add, Checkbox, Xp y+5 vquickSelect%A_LoopField%DeselectAttacking, Attack	
 			Gui, Add, Checkbox, Xp y+5 vquickSelect%A_LoopField%DeselectFollowing, Follow
@@ -3765,7 +3765,13 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 				Gui, Add, Checkbox, Xp y+5 vquickSelect%A_LoopField%DeselectLoadedTransport gQuickSelectGUIEmptyLoadedTransportCheck, Loaded transports
 				Gui, Add, Checkbox, Xp y+5 vquickSelect%A_LoopField%DeselectEmptyTransport gQuickSelectGUIEmptyLoadedTransportCheck, Empty transports
 			}
+			
 			Gui, Add, Checkbox, Xp y+5 vquickSelect%A_LoopField%DeselectQueuedDrops, Transports queued to drop
+			if A_LoopField = Protoss 
+				Gui, Add, Checkbox, Xp y+5 vquickSelect%A_LoopField%DeselectLowHP, Shields below:
+			else Gui, Add, Checkbox, Xp y+5 vquickSelect%A_LoopField%DeselectLowHP, HP below: 
+			Gui, Add, Edit, Number Right x+10 yp-2 w45 vEdit_quickSelect%A_LoopField%DeselectLowHP
+				Gui, Add, UpDown,  Range1-99 vquickSelect%A_LoopField%HPValue, 40
 		
 		state := aQuickSelectCopy[A_LoopField "MaxIndexGUI"] > 1 ? True : False
 		GUIControl, Enable%state%, Next%A_LoopField%QuickSelect
@@ -5226,6 +5232,8 @@ iniReadQuickSelect(byRef aQuickSelectCopy, byRef aQuickSelect)
 			IniRead, DeselectHoldPosition, %config_file%, %section%, %itemNumber%_DeselectHoldPosition, 0 
 			IniRead, DeselectAttacking, %config_file%, %section%, %itemNumber%_DeselectAttacking, 0 
 			IniRead, DeselectFollowing, %config_file%, %section%, %itemNumber%_DeselectFollowing, 0 
+			IniRead, DeselectLowHP, %config_file%, %section%, %itemNumber%_DeselectLowHP, 0 
+			IniRead, HPValue, %config_file%, %section%, %itemNumber%_HPValue, 40 
 
 		    aQuickSelectCopy[Race, arrayPosition] := []
 		    aQuickSelectCopy[Race, arrayPosition, "enabled"] := enabled
@@ -5261,6 +5269,9 @@ iniReadQuickSelect(byRef aQuickSelectCopy, byRef aQuickSelect)
 		    aQuickSelectCopy[Race, arrayPosition, "DeselectHoldPosition"] := DeselectHoldPosition
 		    aQuickSelectCopy[Race, arrayPosition, "DeselectAttacking"] := DeselectAttacking
 		    aQuickSelectCopy[Race, arrayPosition, "DeselectFollowing"] := DeselectFollowing
+		    aQuickSelectCopy[Race, arrayPosition, "DeselectLowHP"] := DeselectLowHP
+		    aQuickSelectCopy[Race, arrayPosition, "HPValue"] := HPValue
+
 		    if !unitExists
 		    	aQuickSelectCopy[Race].remove(arrayPosition--) ;post-decrement 
 		}
@@ -5296,6 +5307,8 @@ blankQuickSelectGUI(race)
 	GUIControl, , quickSelect%Race%DeselectHoldPosition, 0
 	GUIControl, , quickSelect%Race%DeselectAttacking, 0
 	GUIControl, , quickSelect%Race%DeselectFollowing, 0
+	GUIControl, , quickSelect%Race%DeselectLowHP, 0
+	GUIControl, , quickSelect%Race%HPValue, 40
 }
 
 showQuickSelectItem(Race, byRef aQuickSelectCopy)
@@ -5372,6 +5385,10 @@ showQuickSelectItem(Race, byRef aQuickSelectCopy)
 	GUIControl, , quickSelect%Race%DeselectHoldPosition, % round(aQuickSelectCopy[Race, arrayPosition, "DeselectHoldPosition"])
 	GUIControl, , quickSelect%Race%DeselectAttacking, % round(aQuickSelectCopy[Race, arrayPosition, "DeselectAttacking"])
 	GUIControl, , quickSelect%Race%DeselectFollowing, % round(aQuickSelectCopy[Race, arrayPosition, "DeselectFollowing"])
+	GUIControl, , quickSelect%Race%DeselectLowHP, % round(aQuickSelectCopy[Race, arrayPosition, "DeselectLowHP"])
+	if !aQuickSelectCopy[Race, arrayPosition, "HPValue"] || aQuickSelectCopy[Race, arrayPosition, "HPValue"] < 1 || aQuickSelectCopy[Race, arrayPosition, "HPValue"] > 99
+		aQuickSelectCopy[Race, arrayPosition, "HPValue"] := 40
+	GUIControl, , quickSelect%Race%HPValue, % round(aQuickSelectCopy[Race, arrayPosition, "HPValue"])
 	
 	return
 }
@@ -5398,6 +5415,8 @@ saveCurrentQuickSelect(Race, byRef aQuickSelectCopy)
 	GuiControlGet, DeselectHoldPosition, , quickSelect%Race%DeselectHoldPosition
 	GuiControlGet, DeselectAttacking, , quickSelect%Race%DeselectAttacking
 	GuiControlGet, DeselectFollowing, , quickSelect%Race%DeselectFollowing
+	GuiControlGet, DeselectLowHP, , quickSelect%Race%DeselectLowHP
+	GuiControlGet, HPValue, , quickSelect%Race%HPValue
 
 
 	arrayPosition := aQuickSelectCopy[race "IndexGUI"]
@@ -5452,7 +5471,11 @@ saveCurrentQuickSelect(Race, byRef aQuickSelectCopy)
 	aQuickSelectCopy[Race, arrayPosition, "DeselectHoldPosition"] := DeselectHoldPosition
 	aQuickSelectCopy[Race, arrayPosition, "DeselectAttacking"] := DeselectAttacking
 	aQuickSelectCopy[Race, arrayPosition, "DeselectFollowing"] := DeselectFollowing
-
+	aQuickSelectCopy[Race, arrayPosition, "DeselectLowHP"] := DeselectLowHP
+	; I think it might be possible to enter an invalid number and then click next so just check
+	if !aQuickSelectCopy[Race, arrayPosition, "HPValue"] || aQuickSelectCopy[Race, arrayPosition, "HPValue"] < 1 || aQuickSelectCopy[Race, arrayPosition, "HPValue"] > 99
+		aQuickSelectCopy[Race, arrayPosition, "HPValue"] := 40	
+	aQuickSelectCopy[Race, arrayPosition, "HPValue"] := HPValue
 	return 
 }
 
@@ -8628,6 +8651,7 @@ return
 quickSelect(aDeselect)
 {
 	global Sc2SelectArmy_Key, aAGHotkeys, Escape
+	static getUnitPercentHPReference := Func("getUnitPercentHP"), getUnitPercentShieldReference := Func("getUnitPercentShield")
 
 	if !getArmyUnitCount()
 		return 
@@ -8731,14 +8755,14 @@ quickSelect(aDeselect)
 			}
 		}
 	}
-
+	; Should add a remove hallucinations and also if on screen/control group any structures
 	numGetSelectionSorted(aSelected)
-	global clickPortraits := []
+	clickPortraits := []
 
 	if (aDeselect.DeselectXelnaga || aDeselect.DeselectPatrolling || aDeselect.DeselectHoldPosition || aDeselect.DeselectFollowing
 	|| aDeselect.DeselectIdle || aDeselect.DeselectLoadedTransport  || aDeselect.DeselectEmptyTransport|| aDeselect.DeselectQueuedDrops
-	|| aDeselect.DeselectAttacking)
-		checkStates := True
+	|| aDeselect.DeselectAttacking ||  aDeselect.DeselectLowHP)
+		checkStates := True, healthFunc := aLocalPlayer["Race"] = "Protoss" ? getUnitPercentShieldReference : getUnitPercentHPReference
 	removeByAttribute := (aDeselect.AttributeMode != "Keep")
 
 	if 0 && (aDeselect.Units.MaxIndex() = 1 && !checkStates) ; this is disabled until i fix the sort with units in same tab eg tanks/stanks + hellions/hellbats
@@ -8783,7 +8807,8 @@ quickSelect(aDeselect)
 					|| (aDeselect.DeselectHoldPosition && InStr(commandString, "Hold"))
 					|| (aDeselect.DeselectAttacking && (InStr(commandString, "Attack") || InStr(commandString, "FNA"))) 
 					|| (aDeselect.DeselectFollowing && InStr(commandString, "Follow")) 
-					|| (aDeselect.DeselectIdle && commandString = "") ;
+					|| (aDeselect.DeselectIdle && commandString = "")
+					|| (aDeselect.DeselectLowHP && healthFunc.(unit.unitIndex) <  aDeselect.HPValue / 100) ; divide by 100 as it's not saved as a decimal
 						clickPortraits.insert({ "portrait":  unit.unitPortrait, "modifiers": "+"}) 
 					else if (aDeselect.DeselectLoadedTransport || aDeselect.DeselectEmptyTransport || aDeselect.DeselectQueuedDrops)
 					&& (unit.unitId = aUnitId.Medivac || unit.unitId = aUnitID.WarpPrism || unit.unitId = aUnitID.WarpPrismPhasing)
@@ -8802,7 +8827,8 @@ quickSelect(aDeselect)
 					|| (aDeselect.DeselectHoldPosition && InStr(commandString, "Hold"))
 					|| (aDeselect.DeselectAttacking && (InStr(commandString, "Attack") || InStr(commandString, "FNA"))) 
 					|| (aDeselect.DeselectFollowing && InStr(commandString, "Follow"))
-					|| (aDeselect.DeselectIdle && commandString = "") ;
+					|| (aDeselect.DeselectIdle && commandString = "")
+					|| (aDeselect.DeselectLowHP && healthFunc.(unit.unitIndex) <  aDeselect.HPValue / 100) ; divide by 100 as it's not saved as a decimal
 						continue
 					else if (aDeselect.DeselectLoadedTransport || aDeselect.DeselectEmptyTransport || aDeselect.DeselectQueuedDrops)
 					&& (unit.unitId = aUnitId.Medivac || unit.unitId = aUnitID.WarpPrism || unit.unitId = aUnitID.WarpPrismPhasing)
