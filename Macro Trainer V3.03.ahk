@@ -2815,9 +2815,9 @@ l_UnitNamesProtossArmy := "Colossus|Mothership|Zealot|Stalker|HighTemplar|DarkTe
 l_UnitNamesZergArmy := "InfestorTerran|BanelingCocoon|Baneling|InfestedTerran|Zergling|Hydralisk|Mutalisk|Ultralisk|Roach|Infestor|Corruptor|BroodLordCocoon|BroodLord|BanelingBurrowed|HydraliskBurrowed|RoachBurrowed|ZerglingBurrowed|InfestorTerranBurrowed|InfestorBurrowed|OverlordCocoon|Overseer|UltraliskBurrowed|SwarmHostBurrowed|SwarmHost|Viper"
 l_UnitNamesArmy := l_UnitNamesTerranArmy "|" l_UnitNamesProtossArmy "|" l_UnitNamesZergArmy
 
-l_UnitNamesQuickSelectTerran := "SiegeTankSieged|SiegeTank|VikingAssault|VikingFighter|Marine|Reaper|Ghost|Marauder|Thor|ThorHighImpactPayload|Hellion|Medivac|Banshee|Raven|Battlecruiser|HellBat|WidowMine|WidowMineBurrowed|SCV|Mule"
+l_UnitNamesQuickSelectTerran := "SiegeTankSieged|SiegeTank|VikingAssault|VikingFighter|Marine|Reaper|Ghost|Marauder|Thor|ThorHighImpactPayload|Hellion|Medivac|Banshee|Raven|Battlecruiser|HellBat|WidowMine|WidowMineBurrowed|SCV|Mule|PointDefenseDrone"
 l_UnitNamesQuickSelectProtoss := "Colossus|Mothership|Zealot|Stalker|HighTemplar|DarkTemplar|Sentry|Phoenix|Carrier|VoidRay|WarpPrism|Observer|Immortal|WarpPrismPhasing|Archon|MothershipCore|Oracle|Tempest|Probe"
-l_UnitNamesQuickSelectZerg := "InfestorTerran|BanelingCocoon|Baneling|InfestedTerran|Zergling|Hydralisk|Mutalisk|Ultralisk|Roach|Infestor|Corruptor|BroodLordCocoon|BroodLord|BanelingBurrowed|HydraliskBurrowed|RoachBurrowed|ZerglingBurrowed|InfestorTerranBurrowed|InfestorBurrowed|OverlordCocoon|Overseer|UltraliskBurrowed|SwarmHostBurrowed|SwarmHost|Viper|Queen|Drone|Overlord"
+l_UnitNamesQuickSelectZerg := "InfestorTerran|BanelingCocoon|Baneling|InfestedTerran|Zergling|Hydralisk|Mutalisk|Ultralisk|Roach|Infestor|Corruptor|BroodLordCocoon|BroodLord|BanelingBurrowed|HydraliskBurrowed|RoachBurrowed|ZerglingBurrowed|InfestorTerranBurrowed|InfestorBurrowed|OverlordCocoon|Overseer|UltraliskBurrowed|SwarmHostBurrowed|SwarmHost|Viper|Queen|Drone|Overlord|Changeling|ChangelingZealot|ChangelingMarineShield|ChangelingMarine|ChangelingZerglingWings|ChangelingZergling"
 
 l_UnitPanelTerran := "TechLab|Reactor|PointDefenseDrone|CommandCenter|SupplyDepot|Refinery|Barracks|EngineeringBay|MissileTurret|Bunker|SensorTower|GhostAcademy|Factory|Starport|Armory|FusionCore|AutoTurret|SiegeTank|VikingFighter|SCV|Marine|Reaper|Ghost|Marauder|Thor|ThorHighImpactPayload|Hellion|Medivac|Banshee|Raven|Battlecruiser|Nuke|PlanetaryFortress|OrbitalCommand|MULE|HellBat|WidowMine"
 l_UnitPanelZerg := "BanelingCocoon|Baneling|Changeling|InfestedTerran|Hatchery|CreepTumor|Extractor|SpawningPool|EvolutionChamber|HydraliskDen|Spire|UltraliskCavern|InfestationPit|NydusNetwork|BanelingNest|RoachWarren|SpineCrawler|SporeCrawler|Lair|Hive|GreaterSpire|Egg|Drone|Zergling|Overlord|Hydralisk|Mutalisk|Ultralisk|Roach|Infestor|Corruptor|BroodLordCocoon|BroodLord|Queen|OverlordCocoon|Overseer|NydusCanal|Larva|SwarmHost|Viper"
@@ -3741,15 +3741,20 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 			Gui, Add, Groupbox, xs+240 ys+20 width w150 h65, Store Selection
 			Gui, Add, Checkbox, xp+10 yp+20 vquickSelect%A_LoopField%CreateControlGroup gQuickSelectGUICreateAddToGroupCheck, Create group
 			Gui, Add, Checkbox, xp y+10 vquickSelect%A_LoopField%AddToControlGroup gQuickSelectGUICreateAddToGroupCheck, Add to group
-			Gui, Add, DropDownList, x+10 yp-3 w45 center vQuickSelect%A_LoopField%StoreSelection Choose1, 1|2|3|4|5|6|7|8|9|0||
+			Gui, Add, DropDownList, x+10 yp-3 w45 center vQuickSelect%A_LoopField%StoreSelection Choose10, 1|2|3|4|5|6|7|8|9|0|
 			QuickSelect%A_LoopField%StoreSelection_TT := "Stores the units in this control group."
 													. "`n`nNote: This uses the specified 'set control group' keys as defined in the SC2 Keys section (on the left)."
 
-			Gui, add, GroupBox, xs+240 ys+90 w165 h215, Remove
-			Gui, Add, Checkbox, Xp+10 yp+25  vquickSelect%A_LoopField%DeselectXelnaga, Xelnaga (tower) units
-			Gui, Add, Checkbox, Xp y+5 vquickSelect%A_LoopField%DeselectIdle, Idle
-			Gui, Add, Checkbox, Xp y+5 vquickSelect%A_LoopField%OnScreen, Outside of camera view
-			Gui, Add, Checkbox, Xp y+5 vquickSelect%A_LoopField%DeselectPatrolling, Patrolling units
+			Gui, add, GroupBox, xs+240 ys+90 w165 h215, Modify By Attributes
+			Gui, add, Text, xp+10 yp+25, Mode: 
+			Gui, Add, DropDownList, x+15 yp-3 w90 center vQuickSelect%A_LoopField%AttributeMode Choose1, Remove|Keep
+
+			Gui, Add, Checkbox, xs+250 y+15 vquickSelect%A_LoopField%DeselectXelnaga, Holding Xelnaga tower
+			Gui, Add, Checkbox, Xp y+5 vquickSelect%A_LoopField%DeselectPatrolling, Patrol
+			Gui, Add, Checkbox, Xp y+5 vquickSelect%A_LoopField%DeselectAttacking, Attack	
+			Gui, Add, Checkbox, Xp y+5 vquickSelect%A_LoopField%DeselectFollowing, Follow
+			Gui, Add, Checkbox, Xp y+5 vquickSelect%A_LoopField%DeselectHoldPosition, Hold position
+			Gui, Add, Checkbox, Xp y+5 vquickSelect%A_LoopField%DeselectIdle, Idle		
 			if A_LoopField = Zerg 
 			{
 				Gui, Add, Checkbox, Xp y+5 vquickSelect%A_LoopField%DeselectLoadedTransport gQuickSelectGUIEmptyLoadedTransportCheck disabled, Loaded transports
@@ -3761,8 +3766,6 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 				Gui, Add, Checkbox, Xp y+5 vquickSelect%A_LoopField%DeselectEmptyTransport gQuickSelectGUIEmptyLoadedTransportCheck, Empty transports
 			}
 			Gui, Add, Checkbox, Xp y+5 vquickSelect%A_LoopField%DeselectQueuedDrops, Transports queued to drop
-			Gui, Add, Checkbox, Xp y+5 vquickSelect%A_LoopField%DeselectHoldPosition, On hold position
-			Gui, Add, Checkbox, Xp y+5 vquickSelect%A_LoopField%DeselectFollowing, On follow command
 		
 		state := aQuickSelectCopy[A_LoopField "MaxIndexGUI"] > 1 ? True : False
 		GUIControl, Enable%state%, Next%A_LoopField%QuickSelect
@@ -4777,7 +4780,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 			quickSelect%A_LoopField%UnitsArmy_TT := #quickSelect%A_LoopField%UnitsArmy_TT := "These unit types will be selected."
 
 			quickSelect%A_LoopField%DeselectXelnaga_TT := SelectArmyDeselectXelnaga_TT
-			quickSelect%A_LoopField%OnScreen_TT := SelectArmyOnScreen_TT
+			;quickSelect%A_LoopField%OnScreen_TT := SelectArmyOnScreen_TT
 			quickSelect%A_LoopField%DeselectPatrolling_TT := SelectArmyDeselectPatrolling_TT
 			quickSelect%A_LoopField%DeselectHoldPosition_TT := SelectArmyDeselectHoldPosition_TT
 			quickSelect%A_LoopField%DeselectFollowing_TT :=SelectArmyDeselectFollowing_TT		
@@ -4957,18 +4960,29 @@ if g1
 }
 return
 QuickSelectGUISelectTypesCheck:
-GuiControlGet, g1,, % A_GuiControl
-if g1
+if instr(A_GuiControl, "Terran")
+	race := "Terran"
+else if instr(A_GuiControl, "Protoss")
+	race := "Protoss"
+else race := "Zerg"
+
+GuiControlGet, g1,, quickSelect%race%SelectUnitTypes
+GuiControlGet, g2,, quickSelect%race%DeselectUnitTypes
+if !g1 && !g2 
+{
+	GuiControl, disable, quickSelect%race%UnitsArmy
+	GuiControl, disable, #quickSelect%race%UnitsArmy
+	return ; cos enabling below
+}
+else (g1 && g2)
 {
 	if instr(A_GuiControl, "DeselectUnitTypes")
-		g2 := "SelectUnitTypes"
-	else g2 := "DeselectUnitTypes"
-	if instr(A_GuiControl, "Terran")
-		GuiControl,, % "quickSelectTerran" g2, 0
-	else if instr(A_GuiControl, "Protoss")
-		GuiControl,, % "quickSelectProtoss" g2, 0
-	else GuiControl,, % "quickSelectZerg" g2, 0
+		GuiControl,, quickSelect%race%SelectUnitTypes, 0
+	else 
+		GuiControl,, quickSelect%race%DeselectUnitTypes, 0
 }
+GuiControl, enable, quickSelect%race%UnitsArmy
+GuiControl, enable, #quickSelect%race%UnitsArmy
 return
 QuickSelectGUICreateAddToGroupCheck:
 if instr(A_GuiControl, "Terran")
@@ -5200,17 +5214,17 @@ iniReadQuickSelect(byRef aQuickSelectCopy, byRef aQuickSelect)
 			IniRead, AddToControlGroup, %config_file%, %section%, %itemNumber%_AddToControlGroup, 0 
 			IniRead, storeSelection, %config_file%, %section%, %itemNumber%_storeSelection, 0 
 			IniRead, BaseSelection, %config_file%, %section%, %itemNumber%_BaseSelection, Army 
+			IniRead, AttributeMode, %config_file%, %section%, %itemNumber%_AttributeMode, Remove 
 			IniRead, SelectUnitTypes, %config_file%, %section%, %itemNumber%_SelectUnitTypes, 1 
 			IniRead, DeselectUnitTypes, %config_file%, %section%, %itemNumber%_DeselectUnitTypes, 0 
 			IniRead, DeselectXelnaga, %config_file%, %section%, %itemNumber%_DeselectXelnaga, 0 
-			IniRead, OnScreen, %config_file%, %section%, %itemNumber%_OnScreen, 0 
 			IniRead, DeselectPatrolling, %config_file%, %section%, %itemNumber%_DeselectPatrolling, 0 
 			IniRead, DeselectLoadedTransport, %config_file%, %section%, %itemNumber%_DeselectLoadedTransport, 0 
 			IniRead, DeselectEmptyTransport, %config_file%, %section%, %itemNumber%_DeselectEmptyTransport, 0 
 			IniRead, DeselectIdle, %config_file%, %section%, %itemNumber%_DeselectIdle, 0 
 			IniRead, DeselectQueuedDrops, %config_file%, %section%, %itemNumber%_DeselectQueuedDrops, 0 
 			IniRead, DeselectHoldPosition, %config_file%, %section%, %itemNumber%_DeselectHoldPosition, 0 
-			IniRead, DeselectFollowing, %config_file%, %section%, %itemNumber%_DeselectFollowing, 0 
+			IniRead, DeselectAttacking, %config_file%, %section%, %itemNumber%_DeselectAttacking, 0 
 			IniRead, DeselectFollowing, %config_file%, %section%, %itemNumber%_DeselectFollowing, 0 
 
 		    aQuickSelectCopy[Race, arrayPosition] := []
@@ -5237,14 +5251,15 @@ iniReadQuickSelect(byRef aQuickSelectCopy, byRef aQuickSelect)
 		    aQuickSelectCopy[Race, arrayPosition, "AddToControlGroup"] := AddToControlGroup
 		    aQuickSelectCopy[Race, arrayPosition, "storeSelection"] := storeSelection
 		    aQuickSelectCopy[Race, arrayPosition, "BaseSelection"] := BaseSelection
+		    aQuickSelectCopy[Race, arrayPosition, "AttributeMode"] := AttributeMode
 		    aQuickSelectCopy[Race, arrayPosition, "DeselectXelnaga"] := DeselectXelnaga
-		    aQuickSelectCopy[Race, arrayPosition, "OnScreen"] := OnScreen
 		    aQuickSelectCopy[Race, arrayPosition, "DeselectPatrolling"] := DeselectPatrolling
 		    aQuickSelectCopy[Race, arrayPosition, "DeselectLoadedTransport"] := DeselectLoadedTransport
 		    aQuickSelectCopy[Race, arrayPosition, "DeselectEmptyTransport"] := DeselectEmptyTransport
 		    aQuickSelectCopy[Race, arrayPosition, "DeselectIdle"] := DeselectIdle
 		    aQuickSelectCopy[Race, arrayPosition, "DeselectQueuedDrops"] := DeselectQueuedDrops
 		    aQuickSelectCopy[Race, arrayPosition, "DeselectHoldPosition"] := DeselectHoldPosition
+		    aQuickSelectCopy[Race, arrayPosition, "DeselectAttacking"] := DeselectAttacking
 		    aQuickSelectCopy[Race, arrayPosition, "DeselectFollowing"] := DeselectFollowing
 		    if !unitExists
 		    	aQuickSelectCopy[Race].remove(arrayPosition--) ;post-decrement 
@@ -5268,19 +5283,19 @@ blankQuickSelectGUI(race)
 	GuiControl, hide, QuickSelect%race%StoreSelection ; hide it
 	GuiControl, ChooseString, QuickSelect%Race%StoreSelection, 0
 	GuiControl, ChooseString, QuickSelect%Race%BaseSelection, Army
+	GuiControl, ChooseString, QuickSelect%Race%AttributeMode, Remove
 
 	GUIControl, , quickSelect%Race%SelectUnitTypes, 1
 	GUIControl, , quickSelect%Race%DeselectUnitTypes, 0
 	GUIControl, , quickSelect%Race%DeselectXelnaga, 0
-	GUIControl, , quickSelect%Race%OnScreen, 0
 	GUIControl, , quickSelect%Race%DeselectPatrolling, 0
 	GUIControl, , quickSelect%Race%DeselectLoadedTransport, 0
 	GUIControl, , quickSelect%Race%DeselectEmptyTransport, 0
 	GUIControl, , quickSelect%Race%DeselectIdle, 0
 	GUIControl, , quickSelect%Race%DeselectQueuedDrops, 0
 	GUIControl, , quickSelect%Race%DeselectHoldPosition, 0
+	GUIControl, , quickSelect%Race%DeselectAttacking, 0
 	GUIControl, , quickSelect%Race%DeselectFollowing, 0
-	msgbox here
 }
 
 showQuickSelectItem(Race, byRef aQuickSelectCopy)
@@ -5293,9 +5308,25 @@ showQuickSelectItem(Race, byRef aQuickSelectCopy)
 	}
 
 	GUIControl, , quickSelect%Race%enabled, % round(aQuickSelectCopy[Race, arrayPosition, "enabled"])
+	
+	GuiControl, % "enable" (aQuickSelectCopy[Race, arrayPosition, "SelectUnitTypes"] || aQuickSelectCopy[Race, arrayPosition, "DeselectUnitTypes"]), quickSelect%race%UnitsArmy
+	GuiControl, % "enable" (aQuickSelectCopy[Race, arrayPosition, "SelectUnitTypes"] || aQuickSelectCopy[Race, arrayPosition, "DeselectUnitTypes"]), #quickSelect%race%UnitsArmy		
 	if aQuickSelectCopy[Race, arrayPosition, "SelectUnitTypes"]
-		GUIControl, , quickSelect%Race%SelectUnitTypes, 1
-	else GUIControl, , quickSelect%Race%DeselectUnitTypes, 1
+	{
+		GuiControl,, quickSelect%race%SelectUnitTypes, 1
+		GuiControl,, quickSelect%race%DeselectUnitTypes, 0
+	}
+	else if aQuickSelectCopy[Race, arrayPosition, "DeselectUnitTypes"]
+	{
+		GuiControl,, quickSelect%race%SelectUnitTypes, 0
+		GuiControl,, quickSelect%race%DeselectUnitTypes, 1	
+	}
+	else 
+	{
+		GuiControl,, quickSelect%race%SelectUnitTypes, 0
+		GuiControl,, quickSelect%race%DeselectUnitTypes, 0		
+	}
+
 	GUIControl, , quickSelect%Race%_Key, % aQuickSelectCopy[Race, arrayPosition, "hotkey"]
 	GUIControl, , quickSelect%Race%UnitsArmy, %units%
 	GuiControl, ChooseString, QuickSelect%Race%StoreSelection, % aQuickSelectCopy[Race, arrayPosition, "storeSelection"] != ""
@@ -5303,7 +5334,11 @@ showQuickSelectItem(Race, byRef aQuickSelectCopy)
 																	: "0"
 	GuiControl, ChooseString, QuickSelect%Race%BaseSelection, % aQuickSelectCopy[Race, arrayPosition, "BaseSelection"]
 																? aQuickSelectCopy[Race, arrayPosition, "BaseSelection"] 
-																: "Army"
+																: "Army"																
+	GuiControl, ChooseString, QuickSelect%Race%AttributeMode, % aQuickSelectCopy[Race, arrayPosition, "AttributeMode"]
+																? aQuickSelectCopy[Race, arrayPosition, "AttributeMode"] 
+																: "Remove"
+
 	
 	if aQuickSelectCopy[Race, arrayPosition, "CreateControlGroup"]
 	{
@@ -5326,16 +5361,16 @@ showQuickSelectItem(Race, byRef aQuickSelectCopy)
 		GUIControl, , quickSelect%Race%AddToControlGroup, 0
 		GUIControl, , quickSelect%Race%CreateControlGroup, 0
 		GuiControl, Hide, QuickSelect%race%StoreSelection 		
-	}	
-												
+	}
+
 	GUIControl, , quickSelect%Race%DeselectXelnaga, % round(aQuickSelectCopy[Race, arrayPosition, "DeselectXelnaga"])
-	GUIControl, , quickSelect%Race%OnScreen, % round(aQuickSelectCopy[Race, arrayPosition, "OnScreen"])
 	GUIControl, , quickSelect%Race%DeselectPatrolling, % round(aQuickSelectCopy[Race, arrayPosition, "DeselectPatrolling"])
 	GUIControl, , quickSelect%Race%DeselectLoadedTransport, % round(aQuickSelectCopy[Race, arrayPosition, "DeselectLoadedTransport"])
 	GUIControl, , quickSelect%Race%DeselectEmptyTransport, % round(aQuickSelectCopy[Race, arrayPosition, "DeselectEmptyTransport"])
 	GUIControl, , quickSelect%Race%DeselectIdle, % round(aQuickSelectCopy[Race, arrayPosition, "DeselectIdle"])
 	GUIControl, , quickSelect%Race%DeselectQueuedDrops, % round(aQuickSelectCopy[Race, arrayPosition, "DeselectQueuedDrops"])
 	GUIControl, , quickSelect%Race%DeselectHoldPosition, % round(aQuickSelectCopy[Race, arrayPosition, "DeselectHoldPosition"])
+	GUIControl, , quickSelect%Race%DeselectAttacking, % round(aQuickSelectCopy[Race, arrayPosition, "DeselectAttacking"])
 	GUIControl, , quickSelect%Race%DeselectFollowing, % round(aQuickSelectCopy[Race, arrayPosition, "DeselectFollowing"])
 	
 	return
@@ -5353,14 +5388,15 @@ saveCurrentQuickSelect(Race, byRef aQuickSelectCopy)
 	GuiControlGet, AddToControlGroup, , QuickSelect%Race%AddToControlGroup  
 	GuiControlGet, storeSelection, , QuickSelect%Race%StoreSelection  ; 0-9 or Off
 	GuiControlGet, BaseSelection, , QuickSelect%Race%BaseSelection 
+	GuiControlGet, AttributeMode, , QuickSelect%Race%AttributeMode 
 	GuiControlGet, DeselectXelnaga, , quickSelect%Race%DeselectXelnaga
-	GuiControlGet, OnScreen, , quickSelect%Race%OnScreen
 	GuiControlGet, DeselectPatrolling, , quickSelect%Race%DeselectPatrolling
 	GuiControlGet, DeselectLoadedTransport, , quickSelect%Race%DeselectLoadedTransport
 	GuiControlGet, DeselectEmptyTransport, , quickSelect%Race%DeselectEmptyTransport
 	GuiControlGet, DeselectIdle, , quickSelect%Race%DeselectIdle
 	GuiControlGet, DeselectQueuedDrops, , quickSelect%Race%DeselectQueuedDrops
 	GuiControlGet, DeselectHoldPosition, , quickSelect%Race%DeselectHoldPosition
+	GuiControlGet, DeselectAttacking, , quickSelect%Race%DeselectAttacking
 	GuiControlGet, DeselectFollowing, , quickSelect%Race%DeselectFollowing
 
 
@@ -5394,7 +5430,8 @@ saveCurrentQuickSelect(Race, byRef aQuickSelectCopy)
 ;		aQuickSelectCopy[Race].remove(arrayPosition)
 ;		return 1 ; No real units were in the text field
 ;	}
-	if !includesTransport
+	if (SelectUnitTypes && !includesTransport)
+	|| (DeselectUnitTypes && includesTransport)
 		DeselectLoadedTransport := DeselectEmptyTransport := DeselectQueuedDrops := False
 	if SelectUnitTypes
 		DeselectUnitTypes := false
@@ -5405,14 +5442,15 @@ saveCurrentQuickSelect(Race, byRef aQuickSelectCopy)
 	aQuickSelectCopy[Race, arrayPosition, "AddToControlGroup"] := AddToControlGroup
 	aQuickSelectCopy[Race, arrayPosition, "storeSelection"] := storeSelection
 	aQuickSelectCopy[Race, arrayPosition, "BaseSelection"] := BaseSelection
+	aQuickSelectCopy[Race, arrayPosition, "AttributeMode"] := AttributeMode
 	aQuickSelectCopy[Race, arrayPosition, "DeselectXelnaga"] := DeselectXelnaga
-	aQuickSelectCopy[Race, arrayPosition, "OnScreen"] := OnScreen
 	aQuickSelectCopy[Race, arrayPosition, "DeselectPatrolling"] := DeselectPatrolling
 	aQuickSelectCopy[Race, arrayPosition, "DeselectLoadedTransport"] := DeselectLoadedTransport
 	aQuickSelectCopy[Race, arrayPosition, "DeselectEmptyTransport"] := DeselectEmptyTransport
 	aQuickSelectCopy[Race, arrayPosition, "DeselectIdle"] := DeselectIdle
 	aQuickSelectCopy[Race, arrayPosition, "DeselectQueuedDrops"] := DeselectQueuedDrops
 	aQuickSelectCopy[Race, arrayPosition, "DeselectHoldPosition"] := DeselectHoldPosition
+	aQuickSelectCopy[Race, arrayPosition, "DeselectAttacking"] := DeselectAttacking
 	aQuickSelectCopy[Race, arrayPosition, "DeselectFollowing"] := DeselectFollowing
 
 	return 
@@ -8612,19 +8650,37 @@ quickSelect(aDeselect)
 
 
 	; This checks if one of the click unit types exist on the map
-	; Otherwise user presses hotkey and is left with all the army unit selection	
-	loop, % Unitcount := DumpUnitMemory(MemDump)
+	; Otherwise user presses hotkey and is left with all the army unit selection
+	; since when selecting unit types were are actually just removing all other types - selection will be left blank, which
+	; in most situations is probably worse
+	; This is a more complicated now by allowing on army, on screen, and control groups
+	; theres no protection fro control groups
+	if aDeselect.SelectUnitTypes ; 
 	{	
-	    TargetFilter := numgetUnitTargetFilter(MemDump, unit := A_Index - 1)
-	    if (TargetFilter & DeadFilterFlag) || (numgetUnitOwner(MemDump, Unit) != aLocalPlayer["Slot"])
-	       Continue
-	    if aLookup.hasKey(numgetUnitModelType(numgetUnitModelPointer(MemDump, Unit)))
-	    {
-	    	unitTypesExist := True
-	    	break
-	    }
+		unitTypesDoesntExist := True
+		if aDeselect.BaseSelection = "Current Selection"
+		{
+			numGetUnitSelectionObject(aSelection)
+			for i, unit in aSelection
+			{
+				if aLookup.hasKey(unit.type)
+				{
+		    		unitTypesDoesntExist := False
+		    		break
+		    	}
+			}
+		}
+		else loop, % DumpUnitMemory(MemDump)
+		{	
+		    if !(numgetUnitTargetFilter(MemDump, unit := A_Index - 1) & DeadFilterFlag) && numgetUnitOwner(MemDump, Unit) = aLocalPlayer["Slot"]
+		    && aLookup.hasKey(numgetUnitModelType(numgetUnitModelPointer(MemDump, Unit)))
+		    {
+		    	unitTypesDoesntExist := False
+		    	break
+		    }
+		}
 	}
-	if (!unitTypesExist || !getArmyUnitCount())
+	if (unitTypesDoesntExist || (aDeselect.BaseSelection = "Army" && !getArmyUnitCount()))
 	{
 		input.RevertKeyState()
 		setLowLevelInputHooks(False)
@@ -8638,38 +8694,52 @@ quickSelect(aDeselect)
 	if isCastingReticleActive() 	; so can deselect units if attacking/drop/rally reticle was present
 		input.pSend(Escape) 		; in ideal conditions a dsleep() >= 15 is performed after select army key is pressed this is not required - 12isnt enough
 									; as SC will have enough time to get rid of the selection reticle itself
-
-	if aDeselect.OnScreen
-	{		
-		; If reticle was present, no delay is needed between sending escape and box dragging. 
-		; Tested by lowering CPU speed to 1.6G Hz and running linx with this function 					
-		input.pSend("{click D " 0 " " 0 "}{Click U " A_ScreenWidth " "  A_ScreenHeight "}") ;  A_ScreenHeight-240 "}")
-		dSleep(80) 		
-	}					
-	else if (getArmyUnitCount() != getSelectionCount())
+	if aDeselect.BaseSelection != "Current Selection"
 	{
-		input.pSend(Sc2SelectArmy_Key)
-		timerQuickID := stopwatch()
-		; waits for selection count to match army count 
-		; times out after 50 ms - small static sleep afterwards
-		; A_Index check is just in case stopwatch fails (it should work on every computer) - get stuck in infinite loop with input blocked
-		while (getSelectionCount() != getArmyUnitCount() && stopwatch(timerQuickID, False) < 70 && A_Index < 80)
-			dsleep(1)
-		stopwatch(timerQuickID)
-		dsleep(20)
-	} 
-	else  
-	{
-		input.pSend(Sc2SelectArmy_Key)
-		dSleep(40) 
+		if aDeselect.BaseSelection = "Units On Screen"
+		{	
+			screenSelection := True	; faster than a string compare but its not going to really make any difference
+			; If reticle was present, no delay is needed between sending escape and box dragging. 
+			; Tested by lowering CPU speed to 1.6G Hz and running linx with this function 					
+			input.pSend("{click D " 0 " " 0 "}{Click U " A_ScreenWidth " "  A_ScreenHeight "}") ;  A_ScreenHeight-240 "}")
+			dSleep(80) 		
+		}
+		else if instr(aDeselect.BaseSelection, "Control Group")
+		{
+			input.pSend(aAGHotkeys.Invoke[Substr(aDeselect.BaseSelection, 0)]) ; substr() extract last character which is the control group number 1-9
+			; Need to add a decent method to reduce the sleep time here
+			dSleep(80)
+		}
+		else ;if aDeselect.BaseSelection = "Army" ; Use as blank else 
+		{					
+			if (getArmyUnitCount() != getSelectionCount())
+			{
+				input.pSend(Sc2SelectArmy_Key)
+				timerQuickID := stopwatch()
+				; waits for selection count to match army count 
+				; times out after 50 ms - small static sleep afterwards
+				; A_Index check is just in case stopwatch fails (it should work on every computer) - get stuck in infinite loop with input blocked
+				while (getSelectionCount() != getArmyUnitCount() && stopwatch(timerQuickID, False) < 70 && A_Index < 80)
+					dsleep(1)
+				stopwatch(timerQuickID)
+				dsleep(20)
+			} 
+			else  
+			{
+				input.pSend(Sc2SelectArmy_Key)
+				dSleep(40) 
+			}
+		}
 	}
 
 	numGetSelectionSorted(aSelected)
 	global clickPortraits := []
 
 	if (aDeselect.DeselectXelnaga || aDeselect.DeselectPatrolling || aDeselect.DeselectHoldPosition || aDeselect.DeselectFollowing
-	|| aDeselect.DeselectIdle || aDeselect.DeselectLoadedTransport  || aDeselect.DeselectEmptyTransport|| aDeselect.DeselectQueuedDrops)
+	|| aDeselect.DeselectIdle || aDeselect.DeselectLoadedTransport  || aDeselect.DeselectEmptyTransport|| aDeselect.DeselectQueuedDrops
+	|| aDeselect.DeselectAttacking)
 		checkStates := True
+	removeByAttribute := (aDeselect.AttributeMode != "Keep")
 
 	if 0 && (aDeselect.Units.MaxIndex() = 1 && !checkStates) ; this is disabled until i fix the sort with units in same tab eg tanks/stanks + hellions/hellbats
 	{
@@ -8684,7 +8754,6 @@ quickSelect(aDeselect)
 					break
 				}
 			}
-
 			clickUnitPortraits(clickPortraits, "^")
 		}
 	}
@@ -8692,8 +8761,8 @@ quickSelect(aDeselect)
 	{
 		for i, unit in aSelected.units
 		{
-			if (unit.unitId = prevID) 
-				continue 
+			;if (unit.unitId = prevID) 
+			;	continue 
 			if (aDeselect.SelectUnitTypes && !aLookup.haskey(unit.unitId))
 			|| (aDeselect.DeselectUnitTypes && aLookup.haskey(unit.unitId)) 
 			{ 			
@@ -8702,24 +8771,48 @@ quickSelect(aDeselect)
 				clickPortraits.insert({ "portrait":  unit.unitPortrait, "modifiers": "+"}) 
 			}
 			; since this is a box drag remove allied units - workers will be removed via above type check
-			else if (aDeselect.OnScreen && getUnitOwner(unit.unitIndex) != aLocalPlayer["Slot"])
+			else if (screenSelection && getUnitOwner(unit.unitIndex) != aLocalPlayer["Slot"])
 				clickPortraits.insert({ "portrait":  unit.unitPortrait, "modifiers": "+"}) 
 			else if checkStates
 			{
-				commandString := getUnitQueuedCommandString(unit.unitIndex)
-				if (aDeselect.DeselectXelnaga && isLocalUnitHoldingXelnaga(unit.unitIndex))
-				|| (aDeselect.DeselectPatrolling && InStr(commandString, "Patrol"))
-				|| (aDeselect.DeselectHoldPosition && InStr(commandString, "Hold"))
-				|| (aDeselect.DeselectFollowing && InStr(commandString, "Follow")) ;
-				|| (aDeselect.DeselectIdle && commandString = "") ;
-					clickPortraits.insert({ "portrait":  unit.unitPortrait, "modifiers": "+"}) 
-				else if (aDeselect.DeselectLoadedTransport || aDeselect.DeselectEmptyTransport || aDeselect.DeselectQueuedDrops)
-				&& (unit.unitId = aUnitId.Medivac || unit.unitId = aUnitID.WarpPrism || unit.unitId = aUnitID.WarpPrismPhasing)
+				if removeByAttribute
 				{
-					if (aDeselect.DeselectLoadedTransport && getCargoCount(unit.unitIndex))
-					|| (aDeselect.DeselectEmptyTransport && !getCargoCount(unit.unitIndex))
-					|| (aDeselect.DeselectQueuedDrops && isTransportDropQueued(unit.unitIndex))
-						clickPortraits.insert({ "portrait":  unit.unitPortrait, "modifiers": "+"})
+					commandString := getUnitQueuedCommandString(unit.unitIndex)
+					if (aDeselect.DeselectXelnaga && isLocalUnitHoldingXelnaga(unit.unitIndex))
+					|| (aDeselect.DeselectPatrolling && InStr(commandString, "Patrol"))
+					|| (aDeselect.DeselectHoldPosition && InStr(commandString, "Hold"))
+					|| (aDeselect.DeselectAttacking && (InStr(commandString, "Attack") || InStr(commandString, "FNA"))) 
+					|| (aDeselect.DeselectFollowing && InStr(commandString, "Follow")) 
+					|| (aDeselect.DeselectIdle && commandString = "") ;
+						clickPortraits.insert({ "portrait":  unit.unitPortrait, "modifiers": "+"}) 
+					else if (aDeselect.DeselectLoadedTransport || aDeselect.DeselectEmptyTransport || aDeselect.DeselectQueuedDrops)
+					&& (unit.unitId = aUnitId.Medivac || unit.unitId = aUnitID.WarpPrism || unit.unitId = aUnitID.WarpPrismPhasing)
+					{
+						if (aDeselect.DeselectLoadedTransport && getCargoCount(unit.unitIndex))
+						|| (aDeselect.DeselectEmptyTransport && !getCargoCount(unit.unitIndex))
+						|| (aDeselect.DeselectQueuedDrops && isTransportDropQueued(unit.unitIndex))
+							clickPortraits.insert({ "portrait":  unit.unitPortrait, "modifiers": "+"})
+					}
+				}
+				else ; keeping  these units - For readability just have other section. Due to function changes the attribute is labelled  deselect even though we are keeping them
+				{
+					commandString := getUnitQueuedCommandString(unit.unitIndex)
+					if (aDeselect.DeselectXelnaga && isLocalUnitHoldingXelnaga(unit.unitIndex))
+					|| (aDeselect.DeselectPatrolling && InStr(commandString, "Patrol"))
+					|| (aDeselect.DeselectHoldPosition && InStr(commandString, "Hold"))
+					|| (aDeselect.DeselectAttacking && (InStr(commandString, "Attack") || InStr(commandString, "FNA"))) 
+					|| (aDeselect.DeselectFollowing && InStr(commandString, "Follow"))
+					|| (aDeselect.DeselectIdle && commandString = "") ;
+						continue
+					else if (aDeselect.DeselectLoadedTransport || aDeselect.DeselectEmptyTransport || aDeselect.DeselectQueuedDrops)
+					&& (unit.unitId = aUnitId.Medivac || unit.unitId = aUnitID.WarpPrism || unit.unitId = aUnitID.WarpPrismPhasing)
+					{
+						if (aDeselect.DeselectLoadedTransport && getCargoCount(unit.unitIndex))
+						|| (aDeselect.DeselectEmptyTransport && !getCargoCount(unit.unitIndex))
+						|| (aDeselect.DeselectQueuedDrops && isTransportDropQueued(unit.unitIndex))
+							continue
+					}
+					clickPortraits.insert({ "portrait":  unit.unitPortrait, "modifiers": "+"}) 				
 				}
 			}
 			;	selectedCount += aSelected.TabSizes[unit.unitId]
@@ -8753,8 +8846,10 @@ quickSelect(aDeselect)
 	}
 */
 
-	if (aDeselect.StoreSelection != "Off")
+	if aDeselect.CreateControlGroup
 		input.pSend(aAGHotkeys.Set[aDeselect.StoreSelection])
+	else if aDeselect.AddToControlGroup
+		input.pSend(aAGHotkeys.Add[aDeselect.StoreSelection])
 	dsleep(15)
 	input.RevertKeyState()
 	setLowLevelInputHooks(False)

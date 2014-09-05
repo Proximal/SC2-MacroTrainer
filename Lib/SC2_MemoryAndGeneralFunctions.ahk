@@ -2193,39 +2193,17 @@ isInSelection(unitIndex)
 }
 
 
-numGetUnitSelectionObject(ByRef aSelection, mode = 0)
+numGetUnitSelectionObject(ByRef aSelection)
 {	GLOBAL O_scTypeCount, O_scTypeHighlighted, S_scStructure, O_scUnitIndex, GameIdentifier, B_SelectionStructure
 	aSelection := []
-	selectionCount := getSelectionCount()
-	ReadRawMemory(B_SelectionStructure, GameIdentifier, MemDump, selectionCount * S_scStructure + O_scUnitIndex)
-	; aSelection.insert({"SelectedTypes:"})
-	aSelection["Count"]	:= numget(MemDump, 0, "Short")
-	aSelection["Types"]	:= numget(MemDump, O_scTypeCount, "Short")
-	aSelection["HighlightedGroup"]	:= numget(MemDump, O_scTypeHighlighted, "Short")
-
-	aSelection.units := []
-	if (mode = "Sort")		
-	{
-		loop % aSelection["Count"]
-		{
-			unit := numget(MemDump,(A_Index-1) * S_scStructure + O_scUnitIndex , "Int") >> 18
-			aSelection.units.insert({ "Type": getUnitType(unit), "UnitIndex": unit, "Priority": getUnitSubGroupPriority(unit)})	;NOTE this object will be accessed differently than the one below
-		}
-		bubbleSort2DArray(aSelection.units, "UnitIndex", 1) ; sort in ascending order
-		bubbleSort2DArray(aSelection.units, "Priority", 0)	; sort in descending order
-	}
-	else if (mode = "UnSortedWithPriority")		
-		loop % aSelection["Count"]
-		{
-			unit := numget(MemDump,(A_Index-1) * S_scStructure + O_scUnitIndex , "Int") >> 18
-			aSelection.units.insert({ "Type": getUnitType(unit), "UnitIndex": unit, "Priority": getUnitSubGroupPriority(unit)})
-		}	
-	else
-		loop % aSelection["Count"]
-		{
-			unit := numget(MemDump,(A_Index-1) * S_scStructure + O_scUnitIndex , "Int") >> 18
-			, owner := getUnitOwner(unit), Type := getUnitType(unit), aSelection.units.insert({"UnitIndex": unit, "Type": Type, "Owner": Owner})
-		}
+	, selectionCount := getSelectionCount()
+	, ReadRawMemory(B_SelectionStructure, GameIdentifier, MemDump, selectionCount * S_scStructure + O_scUnitIndex)
+	, aSelection["Count"]	:= numget(MemDump, 0, "Short")
+	, aSelection["Types"]	:= numget(MemDump, O_scTypeCount, "Short")
+	, aSelection["HighlightedGroup"]	:= numget(MemDump, O_scTypeHighlighted, "Short")
+	, aSelection.units := []
+	loop % aSelection["Count"]
+		owner := getUnitOwner(unit := numget(MemDump,(A_Index-1) * S_scStructure + O_scUnitIndex , "Int") >> 18), Type := getUnitType(unit), aSelection.units.insert({"UnitIndex": unit, "Type": Type, "Owner": Owner})
 	return aSelection["Count"]
 }
 ; 0-5 indicates which unit page is currently selected (in game its 1-6)
