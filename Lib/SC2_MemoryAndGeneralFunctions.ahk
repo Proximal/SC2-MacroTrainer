@@ -2602,7 +2602,7 @@ SetMiniMap(byref minimap)
 	; 23/08/14 not sure if i should round the x/y offset
 	if (minimap.MapPlayableWidth >= minimap.MapPlayableHeight)
 	{
-		minimap.scale := minimap.BorderWidth / minimap.MapPlayableWidth
+		round(minimap.scale := minimap.BorderWidth / minimap.MapPlayableWidth, 6)
 		minimap.ScreenLeft := minimap.BorderLeft
 		minimap.ScreenRight := minimap.BorderRight	
 		if minimap.MapPlayableWidth = minimap.MapPlayableHeight
@@ -2627,7 +2627,7 @@ SetMiniMap(byref minimap)
 
 	minimap.UnitMinimumRadius := 1 / minimap.scale
 	minimap.UnitMaximumRadius := 10
-	minimap.AddToRadius := 1 / minimap.scale			
+	minimap.AddToRadius := 1 / minimap.scale	
 	Return
 }
 
@@ -2701,27 +2701,53 @@ deletePens(byRef a_pPens)
 ; so as to allow the rectangle to be filled correctly without overlap
 ; Note width is used to calculate x,y pos - so cant +1 w/h until after they are calculated!
 ; Not sure if I should use floor or round. 
+; Note must use parenthesis and use //1 last so the operations occur in the same order for both draw and fill and any floating point impression occurs equally for both before the floor divide.
+; other wise if for example width has a value like 1.999999999999998 (width//1+enlarge) will result in 2  one function and 3 in the other and the their will be gaps/
+; Can see it on the commune map =
 
-; I Would have thought rouding/flooring would be necessary in the fill rectangle as well ie something like
-; Edit: Its because I've already rounded the x,y pos in the get unit minimap pos
+
 
 drawUnitRectangle(G, x, y, radius, colour := "black")
 { 	
 	global minimap, static enlarge := 1
 	; The w,h + enlarge in function call increase size so as to help hide inaccuracy
-	width := radius * 2 * minimap.scale 
-	, height := radius * 2 * minimap.scale 
-	, Gdip_DrawRectangle(G, a_pPens[colour], (x - 1 - width / 2)//1, (y - 1 - height /2)//1, (width + 1)//1+enlarge, (height + 1)//1+enlarge)
+	width := height := radius * 2 * minimap.scale 
+	, Gdip_DrawRectangle(G, a_pPens[colour], (x - 1 - width / 2)//1, (y - 1 - height /2)//1, (width + 1 + enlarge)//1, (height + 1+enlarge)//1)
 }
 
 FillUnitRectangle(G, x, y, radius, colour)
 { 	global minimap, static enlarge := 1
 	; The w,h + enlarge in function call increase size so as to help hide inaccuracy
+	width := height := radius * 2 * minimap.scale 
+	, Gdip_FillRectangle(G, a_pBrushes[colour], (x - width / 2)//1, (y - height /2)//1, (width+enlarge)//1, (height+enlarge)//1)
+}
+/*
+drawUnitRectangleTest(x, y, radius)
+{ 	
+	global minimap, static enlarge := 1
+	; The w,h + enlarge in function call increase size so as to help hide inaccuracy
+	msgbox % radius
 	width := radius * 2 * minimap.scale 
-	, height := radius * 2 * minimap.scale
-	, Gdip_FillRectangle(G, a_pBrushes[colour], (x - width / 2)//1, (y - height /2)//1, width//1+enlarge, height//1+enlarge)
+	, height := radius * 2 * minimap.scale 
+	x := (x - 1 - width / 2)//1
+	y := (y - 1 - height /2)//1
+	width := (width + 1)//1+enlarge
+	height := (height + 1)//1+enlarge
+	msgbox % clipboard := x ", " y "`n" width ", " height
 }
 
+FillUnitRectangleTest(x, y, radius)
+{ 	global minimap, static enlarge := 1
+	; The w,h + enlarge in function call increase size so as to help hide inaccuracy
+	width := radius * 2 * minimap.scale 
+	, height := radius * 2 * minimap.scale
+	x:= (x - width / 2)//1
+	y := (y - height /2)//1
+	width := width//1+enlarge
+	height := height//1+enlarge
+	msgbox % clipboard := x ", " y "`n" width ", " height
+}
+*/
 
 isUnitLocallyOwned(Unit) ; 1 its local player owned
 {	global aLocalPlayer

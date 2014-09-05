@@ -122,7 +122,7 @@ Else
 {
 	Menu Tray, Icon, Included Files\Used_Icons\Starcraft-2.ico
 
-	global debugGame := False
+	global debugGame := 1
 	hotkey, ^+!F12, g_GiveLocalPlayerResources
 	hotkey, *>!F12, g_testKeydowns ; Just for testing will remove soon
 }
@@ -1903,7 +1903,7 @@ msgbox,, Easy Unload/Select,
 
 		2) When the button is held down the unloading mode will be invoked. Simply wave the mouse cursor over the loaded transports to begin unloading them.
 		
-		Note: This mouse hover unloading method is less reliable than the 'Unload All' method, particularly  when the Transports are stacked or you move the mouse very fast.
+		Note: This mouse hover unloading method is less reliable than the 'Unload All' method, particularly  when the transports are stacked or you the mouse is moved very fast.
 		)
 return 
 
@@ -3926,7 +3926,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 			Gui, Add, Text, xp yp+25, Hotkey:
 			Gui, Add, Edit, Readonly yp-2 xs+105 center w65 R1 vcastRemoveUnit_key gedit_hotkey, %castRemoveUnit_key%
 			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#castRemoveUnit_key,  Edit
-			Gui, Add, Text, Xs+15 yp+45 w360, This removes the first unit (top left of selection card) from the selected units.`n`nThis is very useful for 'cloning' workers to geisers or sending 1 ling towards a group of banelings etc.
+			Gui, Add, Text, Xs+15 yp+45 w360, This removes the first unit (top left of selection card) from the selected units.`n`nThis is useful for 'cloning' workers to geisers or sending 1 ling towards a group of banelings etc.
 		Gui, add, GroupBox, xs ys+195 w405 h190, Remove Damaged Units
 			Gui, Add, Checkbox, yp+25 xs+15 vRemoveDamagedUnitsEnable Checked%RemoveDamagedUnitsEnable%, Enable	
 			Gui, Add, Text, xp yp+25, Hotkey:
@@ -3943,7 +3943,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 			Gui, Add, Edit, Number Right xs+125 yp-2 w45 vEdit_RemoveDamagedUnitsHealthLevel
 				Gui, Add, UpDown,  Range1-99 vRemoveDamagedUnitsHealthLevel, % Round(RemoveDamagedUnitsHealthLevel * 100) 
 
-			Gui, Add, Text, X380 y284 w195, Units with health/shields lower than the specified values will be removed from selection and moved to the current mouse cursor position. Stalkers will be blinked.`n`nThis is very helpful when microing units!
+			Gui, Add, Text, X380 y284 w195, Units with health/shields lower than the specified values will be removed from selection and moved to the current mouse cursor position each time the hotkey is pressed. Stalkers will be blinked.`n`nThis is very helpful when microing small numbers units!
 	
 	Gui, Tab, Easy Select/Unload
 		Gui, Add, GroupBox, x+65 y+15 w95 h50 w205 section, Enable Easy Select/Cursor Unload 
@@ -3976,7 +3976,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 	;			Gui, Add, Edit, Readonly yp-2 xs+85 center w65 vEasyUnloadQueuedHotkey gedit_hotkey, %EasyUnloadQueuedHotkey%
 	;			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#EasyUnloadQueuedHotkey,  Edit 			
 		
-		Gui, Add, GroupBox, xs y+25 w205 h120, SC2 Unload All Button
+		Gui, Add, GroupBox, xs y+25 w205 h120, SC2 Unload All Key
 			Gui, Add, Text, Xp+10 yp+25 w85, Terran:
 			Gui, Add, Edit, Readonly yp-2 xs+85 w65 R1 center vEasyUnload_T_Key, %EasyUnload_T_Key%
 				Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#EasyUnload_T_Key,  Edit
@@ -11223,14 +11223,6 @@ return
 */
 
 
-#ifwinactive ahk_exe SC2.exe 
-left::
-right::
-up::
-down::
-finemousemove(A_ThisHotkey, true)
-return 
-
 
 /*
  for units on top of each other clicking the same border edge location twice will unload 1, then the other
@@ -11344,8 +11336,30 @@ unloadAllTransports(hotkeySuffix)
 	}
 }
 
-
-
-f2::
-objtree(aQuickSelectCopy)
+/*
+f1::
+SetFormat, FloatFast, 0.15
+msgbox % clipboard := serdes(minimap)
+msgbox % u := getSelectedUnitIndex()
+rad := getMiniMapRadius(u)
+x := getUnitPositionX(u)
+y := getUnitPositiony(u)
+drawUnitRectangleTest(x, y, rad)
+FillUnitRectangleTest(x, y, rad)
 return 
+
+/*
+139.000000, 106.000000
+3.000000, 3.000000
+
+140.000000, 107.000000
+2.000000, 2.000000
+
+;361
+
+; both 15
+139.000000000000000, 106.000000000000000
+3.000000000000000, 3.000000000000000
+
+139.000000000000000, 106.000000000000000
+3.000000000000000, 3.000000000000000

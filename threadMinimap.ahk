@@ -217,9 +217,9 @@ DrawMiniMap()
 
 	if DrawMiniMap
 	{
-		;pBrushWhite := Gdip_BrushCreateSolid(0xffffffff)
-		;Gdip_FillRectangle(G, pBrushWhite, minimap.BorderLeft, minimap.BorderTop , minimap.BorderWidth , minimap.BorderHeight)
-		;Gdip_DeleteBrush(pBrushWhite)
+		pBrushWhite := Gdip_BrushCreateSolid(0xffffffff)
+		Gdip_FillRectangle(G, pBrushWhite, minimap.BorderLeft, minimap.BorderTop , minimap.BorderWidth , minimap.BorderHeight)
+		Gdip_DeleteBrush(pBrushWhite)
 		
  		getEnemyUnitsMiniMap(aUnitsToDraw)
  		if DrawUnitDestinations
@@ -310,10 +310,9 @@ Return
 getEnemyUnitsMiniMap(byref aUnitsToDraw)
 {  LOCAL Unitcount, UnitAddress, pUnitModel, Filter, MemDump, Radius, x, y, PlayerColours, MemDump, PlayerColours, Unitcount, owner, unitName
  	, Colour, Type, QueuedCommands
+  
   aUnitsToDraw := [], aUnitsToDraw.Normal := [], aUnitsToDraw.Custom := []
-
   PlayerColours := arePlayerColoursEnabled()
-  QueuedCommands := ""
   Unitcount := DumpUnitMemory(MemDump)
   while (A_Index <= Unitcount)
   {
@@ -334,11 +333,25 @@ getEnemyUnitsMiniMap(byref aUnitsToDraw)
      {
           if (!Radius := aUnitInfo[Type, "Radius"])
               Radius := aUnitInfo[Type, "Radius"] := numgetUnitModelMiniMapRadius(pUnitModel)
-          if (Radius < minimap.UnitMinimumRadius) ; probes and such
+         ; This can sometimes cause the outline box rectangle to be too big for the filled square????
+         ; eg for workers on the commune map.... 
+         ; if you assign the written 6 decimal numeric value of minimap.UnitMinimumRadius it works!
+         ; both 6 decimal or places or 15.
+         ; ie   radius := 0.705426 or radius := 0.705426356589147  
+         ; But 	Radius := minimap.UnitMinimumRadius - doest work even though 	Radius := round(minimap.UnitMinimumRadius, 6) does!
+         ; im guessing it's something like some operation is modified if it sees it as a string or float or something
+         ; even though Radius := minimap.UnitMinimumRadius and Radius := round(minimap.UnitMinimumRadius, 15) both produce floats as checked in if radius is float
+         ; I dont understand :( !!!!!!!!!
+         ; Theres something funky going on in AHK - as sometimes it draws correctly with Radius := minimap.UnitMinimumRadius after a restart
+         ; Im just going to set it in the minimap routine minimap.UnitMinimumRadius := round(1 / minimap.scale, 15) 
+         ; The gdip drawRectangle method passes the values as floats which dllcall will pass as a value with A 32-bit floating point number, which provides 6 digits of precision. 
+         ; MSDN states that drawRectangle should use ints and not floats but that causes the black rectangle to disappear....
+
+         if (Radius < minimap.UnitMinimumRadius) ; probes and such
            	Radius := minimap.UnitMinimumRadius
-          
+
 	       x := numget(MemDump, UnitAddress + O_uX, "int")/4096
-           , y :=  numget(MemDump, UnitAddress + O_uY, "int")/4096
+           , y := numget(MemDump, UnitAddress + O_uY, "int")/4096
            , customFlag := True
 	      , mapToMinimapPos(x, y) ; don't round them. As fraction might be important when subtracting scaled width in draw/fill rectangle
 
