@@ -217,9 +217,9 @@ DrawMiniMap()
 
 	if DrawMiniMap
 	{
-		pBrushWhite := Gdip_BrushCreateSolid(0xffffffff)
-		Gdip_FillRectangle(G, pBrushWhite, minimap.BorderLeft, minimap.BorderTop , minimap.BorderWidth , minimap.BorderHeight)
-		Gdip_DeleteBrush(pBrushWhite)
+	;	pBrushWhite := Gdip_BrushCreateSolid(0xffffffff)
+	;	Gdip_FillRectangle(G, pBrushWhite, minimap.BorderLeft, minimap.BorderTop , minimap.BorderWidth , minimap.BorderHeight)
+	;	Gdip_DeleteBrush(pBrushWhite)
 		
  		getEnemyUnitsMiniMap(aUnitsToDraw)
  		if DrawUnitDestinations
