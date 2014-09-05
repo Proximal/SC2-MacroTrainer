@@ -223,7 +223,7 @@ DrawMiniMap()
 		
  		getEnemyUnitsMiniMap(aUnitsToDraw)
  		if DrawUnitDestinations
- 			Gdip_SetSmoothingMode(G, 4), drawUnitDestinations(G, aUnitsToDraw)
+ 			Gdip_SetSmoothingMode(G, 4), drawUnitDestinations(G, aUnitsToDraw, aSpecialAlerts)
  		; Don't anti alias. As that will blur where the rectangle meets the fill colour	
  		Gdip_SetSmoothingMode(G, 3)
 		for index, unit in aUnitsToDraw.Normal
@@ -235,6 +235,11 @@ DrawMiniMap()
 		; Fill the custom highlighted units last, so that their colours won't be drawn over.			
 		for index, unit in aUnitsToDraw.Custom
 			FillUnitRectangle(G, unit.X, unit.Y, unit.Radius, unit.Colour)
+		if DrawUnitDestinations
+		{
+			For i, alert in aSpecialAlerts
+				Gdip_DrawImage(G, alert.pBitmap, alert.x, alert.y, alert.Width, alert.Height, 0, 0, alert.Width, alert.Height)
+		}
 	}
 	Gdip_SetInterpolationMode(G, 2)	
 	If (DrawSpawningRaces && getTime() - round(TimeReadRacesSet) <= 14) ;round used to change undefined var to 0 for resume so dont display races
@@ -382,8 +387,9 @@ getEnemyUnitsMiniMap(byref aUnitsToDraw)
   Return
 }
 
-drawUnitDestinations(pGraphics, byRef aUnitsToDraw)
+drawUnitDestinations(pGraphics, byRef aUnitsToDraw, byRef aSpecialAlerts)
 {	
+	aSpecialAlerts := [] ; so nukes are not obstructed by unit being drawn over the top
 	loop, 2 ; Using a 2x loop should be faster than an another for loop on top
 	{
 		for indexOuter, unit in (A_Index = 1 ? aUnitsToDraw.Normal : aUnitsToDraw.Custom)
@@ -415,7 +421,8 @@ drawUnitDestinations(pGraphics, byRef aUnitsToDraw)
 				{	
 					mapToMinimapPos(x := command.targetX, y := command.targetY)
 					Width := Gdip_GetImageWidth(pBitmap := a_pBitmap["pingNuke"]), Height := Gdip_GetImageHeight(pBitmap)	
-					Gdip_DrawImage(pGraphics, pBitmap, (X - Width/2), (Y - Height/2), Width, Height, 0, 0, Width, Height)
+					;Gdip_DrawImage(pGraphics, pBitmap, (X - Width/2), (Y - Height/2), Width, Height, 0, 0, Width, Height)
+					aSpecialAlerts.Insert( {pBitmap: pBitmap, Width: Width, Height: Height, x: X - Width/2, y : Y - Height/2})
 					colour := "Yellow"
 					; better to actually just let it draw a yellow line so if not shift queued, can see units move path
 					;continue 

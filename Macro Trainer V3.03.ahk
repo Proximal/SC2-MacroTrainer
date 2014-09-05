@@ -1896,14 +1896,14 @@ msgbox,, Easy Unload/Select,
 		If enabled, when you double tap the SC2 unload all key (default is 'd') and transports containing units are the highlighted subgroup, then all of the transports will begin unloading. 
 
 		Easy Select/Cursor Unload:
-		If is enabled, then the 'Easy Select/Cursor Unload' hotkey will perform one of two functions depending on if it is double tapped or held down.
+		If enabled, then the 'Easy Select/Cursor Unload' hotkey will perform one of two functions depending on if it is double tapped or held down.
 		
 		1) When Double tapped this key will select all loaded transports visible on the screen.
 		(Ensure the mouse is not hovering above a transport, otherwise it may begin unloading)
 
 		2) When the button is held down the unloading mode will be invoked. Simply wave the mouse cursor over the loaded transports to begin unloading them.
 		
-		Note: This mouse hover unloading method is less reliable than the 'Unload All' method, particularly  when the transports are stacked or you the mouse is moved very fast.
+		Note: This mouse hover unloading method is less reliable than the 'Unload All' method, particularly  when the transports are stacked or the mouse is moved very fast.
 		)
 return 
 
@@ -3539,7 +3539,7 @@ IfWinExist
 		Gui, Add, GroupBox, xs ys+180 w190 w400 h220, About
 			Gui, Add, Text, xp+10 yp+25 w380, % "This is a semi-automatic function. It allows you to create a group of structures which will be chronoed "
 											. "when the assigned hotkey is pressed.`n`n"
-											. "Structures are chronoed according to their listed order in the group (higher structures are come first).`n`n"
+											. "Structures are chronoed according to their listed order in the group (higher structures come first).`n`n"
 											. "For structures of the same type, structures with larger production queues will chronoed first."
 											. "When structures have an equal queue size, they will be chronoed in order of progress (lowest first). "
 											. "Structures which are idle (or not on cooldown), already chronoed, or have no additional queued units and a progress of 95% or greater will not be chronoed."
@@ -3768,8 +3768,8 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 			
 			Gui, Add, Checkbox, Xp y+5 vquickSelect%A_LoopField%DeselectQueuedDrops, Transports queued to drop
 			if A_LoopField = Protoss 
-				Gui, Add, Checkbox, Xp y+5 vquickSelect%A_LoopField%DeselectLowHP, Shields below:
-			else Gui, Add, Checkbox, Xp y+5 vquickSelect%A_LoopField%DeselectLowHP, HP below: 
+				Gui, Add, Checkbox, Xp y+5 vquickSelect%A_LoopField%DeselectLowHP, Shield`% below:
+			else Gui, Add, Checkbox, Xp y+5 vquickSelect%A_LoopField%DeselectLowHP, HP`% below: 
 			Gui, Add, Edit, Number Right x+10 yp-2 w45 vEdit_quickSelect%A_LoopField%DeselectLowHP
 				Gui, Add, UpDown,  Range1-99 vquickSelect%A_LoopField%HPValue, 40
 		
@@ -4815,8 +4815,8 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 
 		l_DeselectArmy_TT := #l_DeselectArmy_TT := "These unit types will be deselected."
 		EasyUnloadHotkey_TT := #EasyUnloadHotkey_TT := "This hotkey performs two functions depending on if it is double tapped or held down."
-													. "`n`nDouble tap this key to select any loaded transports visible on the screen."
-													. "`n`n Hold this button and wave the mouse over the loaded transports to begin unloading them."
+													. "`n`nFunction 1) Double tap this key to select any loaded transports visible on the screen."
+													. "`n`nFunction 2) Hold this button and wave the mouse over the loaded transports to begin unloading them."
 		EasyUnloadStorageKey_TT := "The selected/unloaded transports will be stored in this control group."		
 							. "`n`nYou must ensure the corresponding ""Set Control Group keys"", ""Add to Control Group Keys"",`nand ""Invoke Group Keys"" (under SC2 Keys on the left) match your SC2 hotkey setup."									
 
@@ -11548,11 +11548,11 @@ unloadAllTransports(hotkeySuffix)
 		aUnloaded := []
 		input.pSend(aAGHotkeys.Set[EasyUnloadStorageKey])
 		slectionCount := aSelection.Count
-		loop, 100
+		loop, 40
 		{
 			if A_index > 1
 			{
-				input.pSend("{click 0 0}" aAGHotkeys.Invoke[EasyUnloadStorageKey])
+				input.pSend("{click 0 0}" aAGHotkeys.Invoke[EasyUnloadStorageKey]) ; clicking screen prevents camera focus when invoking the control group multiple times
 				while getselectionCount() != slectionCount && A_Index <= 40
 					dsleep(1)
 				dsleep(10)
