@@ -3768,8 +3768,16 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 			
 			Gui, Add, Checkbox, Xp y+5 vquickSelect%A_LoopField%DeselectQueuedDrops, Transports queued to drop
 			if A_LoopField = Protoss 
+			{
+				Gui, Add, Checkbox, Xp y+5 vquickSelect%A_LoopField%DeselectHallucinations, Hallucinations
 				Gui, Add, Checkbox, Xp y+5 vquickSelect%A_LoopField%DeselectLowHP, Shield`% below:
-			else Gui, Add, Checkbox, Xp y+5 vquickSelect%A_LoopField%DeselectLowHP, HP`% below: 
+			}
+			else 
+			{ 
+				; Technically i shouldn't disable for zerg and should have a shield level as they can make protoss units via neural parasiting probes/sentries
+				Gui, Add, Checkbox, Xp y+5 vquickSelect%A_LoopField%DeselectHallucinations disabled, Hallucinations
+				Gui, Add, Checkbox, Xp y+5 vquickSelect%A_LoopField%DeselectLowHP, HP`% below:
+			} 
 			Gui, Add, Edit, Number Right x+10 yp-2 w45 vEdit_quickSelect%A_LoopField%DeselectLowHP
 				Gui, Add, UpDown,  Range1-99 vquickSelect%A_LoopField%HPValue, 40
 		
@@ -5227,6 +5235,7 @@ iniReadQuickSelect(byRef aQuickSelectCopy, byRef aQuickSelect)
 			IniRead, DeselectPatrolling, %config_file%, %section%, %itemNumber%_DeselectPatrolling, 0 
 			IniRead, DeselectLoadedTransport, %config_file%, %section%, %itemNumber%_DeselectLoadedTransport, 0 
 			IniRead, DeselectEmptyTransport, %config_file%, %section%, %itemNumber%_DeselectEmptyTransport, 0 
+			IniRead, DeselectHallucinations, %config_file%, %section%, %itemNumber%_DeselectHallucinations, 0 
 			IniRead, DeselectIdle, %config_file%, %section%, %itemNumber%_DeselectIdle, 0 
 			IniRead, DeselectQueuedDrops, %config_file%, %section%, %itemNumber%_DeselectQueuedDrops, 0 
 			IniRead, DeselectHoldPosition, %config_file%, %section%, %itemNumber%_DeselectHoldPosition, 0 
@@ -5264,6 +5273,7 @@ iniReadQuickSelect(byRef aQuickSelectCopy, byRef aQuickSelect)
 		    aQuickSelectCopy[Race, arrayPosition, "DeselectPatrolling"] := DeselectPatrolling
 		    aQuickSelectCopy[Race, arrayPosition, "DeselectLoadedTransport"] := DeselectLoadedTransport
 		    aQuickSelectCopy[Race, arrayPosition, "DeselectEmptyTransport"] := DeselectEmptyTransport
+		    aQuickSelectCopy[Race, arrayPosition, "DeselectHallucinations"] := DeselectHallucinations
 		    aQuickSelectCopy[Race, arrayPosition, "DeselectIdle"] := DeselectIdle
 		    aQuickSelectCopy[Race, arrayPosition, "DeselectQueuedDrops"] := DeselectQueuedDrops
 		    aQuickSelectCopy[Race, arrayPosition, "DeselectHoldPosition"] := DeselectHoldPosition
@@ -5302,6 +5312,7 @@ blankQuickSelectGUI(race)
 	GUIControl, , quickSelect%Race%DeselectPatrolling, 0
 	GUIControl, , quickSelect%Race%DeselectLoadedTransport, 0
 	GUIControl, , quickSelect%Race%DeselectEmptyTransport, 0
+	GUIControl, , quickSelect%Race%DeselectHallucinations, 0
 	GUIControl, , quickSelect%Race%DeselectIdle, 0
 	GUIControl, , quickSelect%Race%DeselectQueuedDrops, 0
 	GUIControl, , quickSelect%Race%DeselectHoldPosition, 0
@@ -5380,6 +5391,7 @@ showQuickSelectItem(Race, byRef aQuickSelectCopy)
 	GUIControl, , quickSelect%Race%DeselectPatrolling, % round(aQuickSelectCopy[Race, arrayPosition, "DeselectPatrolling"])
 	GUIControl, , quickSelect%Race%DeselectLoadedTransport, % round(aQuickSelectCopy[Race, arrayPosition, "DeselectLoadedTransport"])
 	GUIControl, , quickSelect%Race%DeselectEmptyTransport, % round(aQuickSelectCopy[Race, arrayPosition, "DeselectEmptyTransport"])
+	GUIControl, , quickSelect%Race%DeselectHallucinations, % round(aQuickSelectCopy[Race, arrayPosition, "DeselectHallucinations"])
 	GUIControl, , quickSelect%Race%DeselectIdle, % round(aQuickSelectCopy[Race, arrayPosition, "DeselectIdle"])
 	GUIControl, , quickSelect%Race%DeselectQueuedDrops, % round(aQuickSelectCopy[Race, arrayPosition, "DeselectQueuedDrops"])
 	GUIControl, , quickSelect%Race%DeselectHoldPosition, % round(aQuickSelectCopy[Race, arrayPosition, "DeselectHoldPosition"])
@@ -5410,6 +5422,7 @@ saveCurrentQuickSelect(Race, byRef aQuickSelectCopy)
 	GuiControlGet, DeselectPatrolling, , quickSelect%Race%DeselectPatrolling
 	GuiControlGet, DeselectLoadedTransport, , quickSelect%Race%DeselectLoadedTransport
 	GuiControlGet, DeselectEmptyTransport, , quickSelect%Race%DeselectEmptyTransport
+	GuiControlGet, DeselectHallucinations, , quickSelect%Race%DeselectHallucinations
 	GuiControlGet, DeselectIdle, , quickSelect%Race%DeselectIdle
 	GuiControlGet, DeselectQueuedDrops, , quickSelect%Race%DeselectQueuedDrops
 	GuiControlGet, DeselectHoldPosition, , quickSelect%Race%DeselectHoldPosition
@@ -5454,6 +5467,7 @@ saveCurrentQuickSelect(Race, byRef aQuickSelectCopy)
 		DeselectLoadedTransport := DeselectEmptyTransport := DeselectQueuedDrops := False
 	if SelectUnitTypes
 		DeselectUnitTypes := false
+	DeselectHallucinations := (DeselectHallucinations && race = "Protoss") ; if not toss set to 0
 
 	aQuickSelectCopy[Race, arrayPosition, "SelectUnitTypes"] := SelectUnitTypes
 	aQuickSelectCopy[Race, arrayPosition, "DeselectUnitTypes"] := DeselectUnitTypes
@@ -5466,6 +5480,7 @@ saveCurrentQuickSelect(Race, byRef aQuickSelectCopy)
 	aQuickSelectCopy[Race, arrayPosition, "DeselectPatrolling"] := DeselectPatrolling
 	aQuickSelectCopy[Race, arrayPosition, "DeselectLoadedTransport"] := DeselectLoadedTransport
 	aQuickSelectCopy[Race, arrayPosition, "DeselectEmptyTransport"] := DeselectEmptyTransport
+	aQuickSelectCopy[Race, arrayPosition, "DeselectHallucinations"] := DeselectHallucinations
 	aQuickSelectCopy[Race, arrayPosition, "DeselectIdle"] := DeselectIdle
 	aQuickSelectCopy[Race, arrayPosition, "DeselectQueuedDrops"] := DeselectQueuedDrops
 	aQuickSelectCopy[Race, arrayPosition, "DeselectHoldPosition"] := DeselectHoldPosition
@@ -8755,16 +8770,22 @@ quickSelect(aDeselect)
 			}
 		}
 	}
-	; Should add a remove hallucinations and also if on screen/control group any structures
+	; if on screen/control group any structures
+	; And overlords as zerg transports 
+	; and fix GUI warning when no unit types selected
+
 	numGetSelectionSorted(aSelected)
 	clickPortraits := []
 
 	if (aDeselect.DeselectXelnaga || aDeselect.DeselectPatrolling || aDeselect.DeselectHoldPosition || aDeselect.DeselectFollowing
 	|| aDeselect.DeselectIdle || aDeselect.DeselectLoadedTransport  || aDeselect.DeselectEmptyTransport|| aDeselect.DeselectQueuedDrops
-	|| aDeselect.DeselectAttacking ||  aDeselect.DeselectLowHP)
-		checkStates := True, healthFunc := aLocalPlayer["Race"] = "Protoss" ? getUnitPercentShieldReference : getUnitPercentHPReference
+	|| aDeselect.DeselectAttacking ||  aDeselect.DeselectLowHP || (aDeselect.DeselectHallucinations && aLocalPlayer["Race"] = "Protoss"))
+		checkStates := True, healthFunc := aLocalPlayer["Race"] = "Protoss" ? getUnitPercentShieldReference : getUnitPercentHPReference ; faster than checking targ filter for has shield on each unit
+		, checkTransportAttributes := (aDeselect.DeselectLoadedTransport || aDeselect.DeselectEmptyTransport || aDeselect.DeselectQueuedDrops)
+		, checkHallucinations := (aDeselect.DeselectHallucinations && aLocalPlayer["Race"] = "Protoss")
+	
 	removeByAttribute := (aDeselect.AttributeMode != "Keep")
-
+	
 	if 0 && (aDeselect.Units.MaxIndex() = 1 && !checkStates) ; this is disabled until i fix the sort with units in same tab eg tanks/stanks + hellions/hellbats
 	{
 		clickUnitType := aDeselect["Units", 1]
@@ -8796,50 +8817,30 @@ quickSelect(aDeselect)
 			}
 			; since this is a box drag remove allied units - workers will be removed via above type check
 			else if (screenSelection && getUnitOwner(unit.unitIndex) != aLocalPlayer["Slot"])
-				clickPortraits.insert({ "portrait":  unit.unitPortrait, "modifiers": "+"}) 
+				clickPortraits.insert( {"portrait":  unit.unitPortrait, "modifiers": "+"}) 
 			else if checkStates
 			{
-				if removeByAttribute
+				commandString := getUnitQueuedCommandString(unit.unitIndex)
+				if (aDeselect.DeselectXelnaga && isLocalUnitHoldingXelnaga(unit.unitIndex))
+				|| (aDeselect.DeselectPatrolling && InStr(commandString, "Patrol"))
+				|| (aDeselect.DeselectHoldPosition && InStr(commandString, "Hold"))
+				|| (aDeselect.DeselectAttacking && (InStr(commandString, "Attack") || InStr(commandString, "FNA"))) 
+				|| (aDeselect.DeselectFollowing && InStr(commandString, "Follow")) 
+				|| (aDeselect.DeselectIdle && commandString = "")
+				|| (aDeselect.DeselectLowHP && healthFunc.(unit.unitIndex) <  aDeselect.HPValue / 100) ; divide by 100 as it's not saved as a decimal
+				|| (checkHallucinations && getunittargetfilter(unit.UnitIndex) & aUnitTargetFilter.Hallucination)
+				|| 	(	checkTransportAttributes
+						&& (unit.unitId = aUnitId.Medivac || unit.unitId = aUnitID.WarpPrism || unit.unitId = aUnitID.WarpPrismPhasing) 
+						&& (	(aDeselect.DeselectLoadedTransport && getCargoCount(unit.unitIndex))
+								|| (aDeselect.DeselectEmptyTransport && !getCargoCount(unit.unitIndex))
+								|| (aDeselect.DeselectQueuedDrops && isTransportDropQueued(unit.unitIndex))))
 				{
-					commandString := getUnitQueuedCommandString(unit.unitIndex)
-					if (aDeselect.DeselectXelnaga && isLocalUnitHoldingXelnaga(unit.unitIndex))
-					|| (aDeselect.DeselectPatrolling && InStr(commandString, "Patrol"))
-					|| (aDeselect.DeselectHoldPosition && InStr(commandString, "Hold"))
-					|| (aDeselect.DeselectAttacking && (InStr(commandString, "Attack") || InStr(commandString, "FNA"))) 
-					|| (aDeselect.DeselectFollowing && InStr(commandString, "Follow")) 
-					|| (aDeselect.DeselectIdle && commandString = "")
-					|| (aDeselect.DeselectLowHP && healthFunc.(unit.unitIndex) <  aDeselect.HPValue / 100) ; divide by 100 as it's not saved as a decimal
+					if removeByAttribute
 						clickPortraits.insert({ "portrait":  unit.unitPortrait, "modifiers": "+"}) 
-					else if (aDeselect.DeselectLoadedTransport || aDeselect.DeselectEmptyTransport || aDeselect.DeselectQueuedDrops)
-					&& (unit.unitId = aUnitId.Medivac || unit.unitId = aUnitID.WarpPrism || unit.unitId = aUnitID.WarpPrismPhasing)
-					{
-						if (aDeselect.DeselectLoadedTransport && getCargoCount(unit.unitIndex))
-						|| (aDeselect.DeselectEmptyTransport && !getCargoCount(unit.unitIndex))
-						|| (aDeselect.DeselectQueuedDrops && isTransportDropQueued(unit.unitIndex))
-							clickPortraits.insert({ "portrait":  unit.unitPortrait, "modifiers": "+"})
-					}
+					;else continue ; We wish to keep it. (the else if!removeByAttribute means we don't have to continue here) Due to function changes the attribute is labelled  deselect even though we are keeping them
 				}
-				else ; keeping  these units - For readability just have other section. Due to function changes the attribute is labelled  deselect even though we are keeping them
-				{
-					commandString := getUnitQueuedCommandString(unit.unitIndex)
-					if (aDeselect.DeselectXelnaga && isLocalUnitHoldingXelnaga(unit.unitIndex))
-					|| (aDeselect.DeselectPatrolling && InStr(commandString, "Patrol"))
-					|| (aDeselect.DeselectHoldPosition && InStr(commandString, "Hold"))
-					|| (aDeselect.DeselectAttacking && (InStr(commandString, "Attack") || InStr(commandString, "FNA"))) 
-					|| (aDeselect.DeselectFollowing && InStr(commandString, "Follow"))
-					|| (aDeselect.DeselectIdle && commandString = "")
-					|| (aDeselect.DeselectLowHP && healthFunc.(unit.unitIndex) <  aDeselect.HPValue / 100) ; divide by 100 as it's not saved as a decimal
-						continue
-					else if (aDeselect.DeselectLoadedTransport || aDeselect.DeselectEmptyTransport || aDeselect.DeselectQueuedDrops)
-					&& (unit.unitId = aUnitId.Medivac || unit.unitId = aUnitID.WarpPrism || unit.unitId = aUnitID.WarpPrismPhasing)
-					{
-						if (aDeselect.DeselectLoadedTransport && getCargoCount(unit.unitIndex))
-						|| (aDeselect.DeselectEmptyTransport && !getCargoCount(unit.unitIndex))
-						|| (aDeselect.DeselectQueuedDrops && isTransportDropQueued(unit.unitIndex))
-							continue
-					}
-					clickPortraits.insert({ "portrait":  unit.unitPortrait, "modifiers": "+"}) 				
-				}
+				else if !removeByAttribute ; keeping units which have the above attributes - so remove any which do not have at least one
+					clickPortraits.insert({ "portrait":  unit.unitPortrait, "modifiers": "+"}) 
 			}
 			;	selectedCount += aSelected.TabSizes[unit.unitId]
 		}
@@ -11615,3 +11616,6 @@ return
 
 139.000000000000000, 106.000000000000000
 3.000000000000000, 3.000000000000000
+
+*/
+

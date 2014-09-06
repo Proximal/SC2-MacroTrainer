@@ -2082,7 +2082,7 @@ numGetSelectionSorted(ByRef aSelection, ReverseOrder := False)
 													? unitId  - .1 ; Dirty hack for hallucinations
 													: (aUnitSubGroupAlias.hasKey(unitId) 
 															? aUnitSubGroupAlias[unitId] 
-															:  unitId)
+															:  unitId) 
 		, sIndices .= "," unitIndex
 		if !isUnitLocallyOwned(unitIndex)
 			nonLocalUnitSelected := True										
@@ -2090,14 +2090,17 @@ numGetSelectionSorted(ByRef aSelection, ReverseOrder := False)
 	; So i only have to check and make one object
 	;	if !isObject(aStorage[priority])
 	;		aStorage[priority] := []
-		if !isObject(aStorage[priority, subGroupAlias])
-		  	aStorage[priority, subGroupAlias] := []
-		aStorage[priority, subGroupAlias].insert({"unitIndex": unitIndex, "unitId": unitId})
+		if !isObject(aStorage[priority, subGroupAlias ""])
+		  	aStorage[priority, subGroupAlias ""] := []
+		; "" needed for hallucination trick to work force as string? 
+		; Need to put the "" here - won't worker if use it on the subgroup alias line
+		; Obviously need to put "" for all three lines here
+		; Note when looking in objtree() the order on the right is correct - the order in the tall left treeview panel is
+		aStorage[priority, subGroupAlias ""].insert({"unitIndex": unitIndex, "unitId": unitId})
 		
 		; when aStorage is enumerated, units will be accessed in the same order
 		; as they appear in the unit panel ie top left to bottom right 	
 	}
-	
 	if (aSelection.Count && !nonLocalUnitSelected)
 		aSelection.IsGroupable := True
 	; This will convert the data into a simple indexed object
@@ -2129,7 +2132,7 @@ numGetSelectionSorted(ByRef aSelection, ReverseOrder := False)
 										, "tabPosition": TabPosition
 										, "unitPortrait": unitPortrait++}) ; will be 1 less than A_index when iterated
 										; Note unitPortrait++ increments after assigning value to unitPortrait
-				, tabSize++ ; how many units are in each tab
+				, tabSize++ ; how many units are in each tab - this is wrong when hallucinations are present!
 			}
 			aSelection.TabSizes[object2[object2.minIndex()].unitId] := tabSize								
 			, TabPosition++	
