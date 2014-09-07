@@ -2817,7 +2817,7 @@ l_UnitNamesArmy := l_UnitNamesTerranArmy "|" l_UnitNamesProtossArmy "|" l_UnitNa
 
 l_UnitNamesQuickSelectTerran := "SiegeTankSieged|SiegeTank|VikingAssault|VikingFighter|Marine|Reaper|Ghost|Marauder|Thor|ThorHighImpactPayload|Hellion|Medivac|Banshee|Raven|Battlecruiser|HellBat|WidowMine|WidowMineBurrowed|SCV|Mule|PointDefenseDrone"
 l_UnitNamesQuickSelectProtoss := "Colossus|Mothership|Zealot|Stalker|HighTemplar|DarkTemplar|Sentry|Phoenix|Carrier|VoidRay|WarpPrism|Observer|Immortal|WarpPrismPhasing|Archon|MothershipCore|Oracle|Tempest|Probe"
-l_UnitNamesQuickSelectZerg := "InfestorTerran|BanelingCocoon|Baneling|InfestedTerran|Zergling|Hydralisk|Mutalisk|Ultralisk|Roach|Infestor|Corruptor|BroodLordCocoon|BroodLord|BanelingBurrowed|HydraliskBurrowed|RoachBurrowed|ZerglingBurrowed|InfestorTerranBurrowed|InfestorBurrowed|OverlordCocoon|Overseer|UltraliskBurrowed|SwarmHostBurrowed|SwarmHost|Viper|Queen|Drone|Overlord|Changeling|ChangelingZealot|ChangelingMarineShield|ChangelingMarine|ChangelingZerglingWings|ChangelingZergling"
+l_UnitNamesQuickSelectZerg := "InfestorTerran|BanelingCocoon|Baneling|InfestedTerran|Zergling|Hydralisk|Mutalisk|Ultralisk|Roach|Infestor|Corruptor|BroodLordCocoon|BroodLord|BanelingBurrowed|HydraliskBurrowed|RoachBurrowed|ZerglingBurrowed|InfestorTerranBurrowed|InfestorBurrowed|OverlordCocoon|Overseer|UltraliskBurrowed|SwarmHostBurrowed|SwarmHost|Viper|Queen|QueenBurrowed|Drone|DroneBurrowed|Overlord|Changeling|ChangelingZealot|ChangelingMarineShield|ChangelingMarine|ChangelingZerglingWings|ChangelingZergling"
 
 l_UnitPanelTerran := "TechLab|Reactor|PointDefenseDrone|CommandCenter|SupplyDepot|Refinery|Barracks|EngineeringBay|MissileTurret|Bunker|SensorTower|GhostAcademy|Factory|Starport|Armory|FusionCore|AutoTurret|SiegeTank|VikingFighter|SCV|Marine|Reaper|Ghost|Marauder|Thor|ThorHighImpactPayload|Hellion|Medivac|Banshee|Raven|Battlecruiser|Nuke|PlanetaryFortress|OrbitalCommand|MULE|HellBat|WidowMine"
 l_UnitPanelZerg := "BanelingCocoon|Baneling|Changeling|InfestedTerran|Hatchery|CreepTumor|Extractor|SpawningPool|EvolutionChamber|HydraliskDen|Spire|UltraliskCavern|InfestationPit|NydusNetwork|BanelingNest|RoachWarren|SpineCrawler|SporeCrawler|Lair|Hive|GreaterSpire|Egg|Drone|Zergling|Overlord|Hydralisk|Mutalisk|Ultralisk|Roach|Infestor|Corruptor|BroodLordCocoon|BroodLord|Queen|OverlordCocoon|Overseer|NydusCanal|Larva|SwarmHost|Viper"
@@ -3716,56 +3716,46 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		if !aQuickSelectCopy[A_LoopField "MaxIndexGUI"]
 			aQuickSelectCopy[A_LoopField "MaxIndexGUI"] := 1
 
-		Gui, Add, GroupBox, x+10 Y+15 w410 h55 section vGroupBox%A_LoopField%QuickSelect, % " Quick Select Navigation " aQuickSelectCopy[A_LoopField "IndexGUI"] " of " aQuickSelectCopy[A_LoopField "MaxIndexGUI"]
+		Gui, Add, GroupBox, x+10 Y+5 w410 h55 section vGroupBox%A_LoopField%QuickSelect, % " Quick Select Navigation " aQuickSelectCopy[A_LoopField "IndexGUI"] " of " aQuickSelectCopy[A_LoopField "MaxIndexGUI"]
 			 Gui, Add, Button, xp+15 yp+20 w65 h25 vPrevious%A_LoopField%QuickSelect gg_QuickSelectGui, Previous
 			 Gui, Add, Button, x+20 w65 h25 vNext%A_LoopField%QuickSelect gg_QuickSelectGui, Next
 			 Gui, Add, Button, x+75 w65 h25 vNew%A_LoopField%QuickSelect gg_QuickSelectGui, New
 			 Gui, Add, Button, x+20 w65 h25 vDelete%A_LoopField%QuickSelect gg_QuickSelectGui, Delete
 
-		Gui, Add, GroupBox, xs Ys+65 w410 h350 section vGroupBoxItem%A_LoopField%QuickSelect, % "Quick Select Item " aQuickSelectCopy[A_LoopField "IndexGUI"] 
+		Gui, Add, GroupBox, xs Ys+65 w410 h355 section vGroupBoxItem%A_LoopField%QuickSelect, % "Quick Select Item " aQuickSelectCopy[A_LoopField "IndexGUI"] 
 
 			Gui, Add, Checkbox, xs+25 yp+20 vquickSelect%A_LoopField%Enabled, Enable
-			Gui, Add, Text, y+10, Hotkey:
-				Gui, Add, Edit, Readonly yp-2 x+10 center w65 R1 vquickSelect%A_LoopField%_Key gedit_hotkey, %A_Space%
-			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#quickSelect%A_LoopField%_Key,  Edit	
-			Gui, Add, Groupbox, xs+15 y+10 w180 h50, Starting Selection 
-			Gui, Add, DropDownList, xp+10 yp+20 w105 center vQuickSelect%A_LoopField%BaseSelection Choose1, Army|Units On Screen|Current Selection|Control Group 1|Control Group 2|Control Group 3|Control Group 4|Control Group 5|Control Group 6|Control Group 7|Control Group 8|Control Group 9|Control Group 0
+			;Gui, Add, Text, y+10, Hotkey:
+			Gui, Add, Groupbox, xs+15 y+10 w180 h50, Hotkey
+				Gui, Add, Edit, Readonly xp+10 yp+20 center w105 R1 vquickSelect%A_LoopField%_Key gedit_hotkey, %A_Space%
+			Gui, Add, Button, yp-2 x+15 gEdit_hotkey v#quickSelect%A_LoopField%_Key,  Edit	
+			Gui, Add, Groupbox, xs+15 y+20 w180 h50, Starting Selection 
+			Gui, Add, DropDownList, xp+10 yp+20 w105 center vQuickSelect%A_LoopField%BaseSelection gQuickSelectGUBaseSelectionZergTransportCheck Choose1, Army|Units On Screen|Current Selection|Control Group 1|Control Group 2|Control Group 3|Control Group 4|Control Group 5|Control Group 6|Control Group 7|Control Group 8|Control Group 9|Control Group 0
 			
-			Gui, Add, Groupbox, xs+15 y+20 width w180 h195, Filter Unit Types
-			Gui, Add, Checkbox, xp+10 yp+20 vquickSelect%A_LoopField%SelectUnitTypes gQuickSelectGUISelectTypesCheck, Select these types
+			Gui, Add, Groupbox, xs+15 y+20 width w180 h180, Filter Unit Types
+			Gui, Add, Checkbox, xp+10 yp+20 vquickSelect%A_LoopField%SelectUnitTypes gQuickSelectGUISelectTypesCheck, Keep these types
 			Gui, Add, Checkbox, xp y+5 vquickSelect%A_LoopField%DeselectUnitTypes gQuickSelectGUISelectTypesCheck, Remove these types
 			;Gui, Add, Text, xs+15 y+10, Units
-			Gui, Add, Edit, y+5 w160  r7 vquickSelect%A_LoopField%UnitsArmy, %A_Space%
+			Gui, Add, Edit, y+5 w160  r6 vquickSelect%A_LoopField%UnitsArmy, %A_Space%
 			Gui, Add, Button, y+6 gEdit_AG v#quickSelect%A_LoopField%UnitsArmy w160 h25,  Add
 
 			Gui, Add, Groupbox, xs+225 ys+20 width w170 h65, Store Selection
 			Gui, Add, Checkbox, xp+10 yp+20 vquickSelect%A_LoopField%CreateControlGroup gQuickSelectGUICreateAddToGroupCheck, Create group
 			Gui, Add, Checkbox, xp y+10 vquickSelect%A_LoopField%AddToControlGroup gQuickSelectGUICreateAddToGroupCheck, Add to group
 			Gui, Add, DropDownList, x+15 yp-3 w45 center vQuickSelect%A_LoopField%StoreSelection Choose10, 1|2|3|4|5|6|7|8|9|0|
-			QuickSelect%A_LoopField%StoreSelection_TT := "Stores the units in this control group."
-													. "`n`nNote: This uses the specified 'set control group' keys as defined in the SC2 Keys section (on the left)."
 
-			Gui, add, GroupBox, xs+225 ys+90 w170 h245, Modify By Attributes
+			Gui, add, GroupBox, xs+225 ys+90 w170 h256, Modify By Attributes
 			Gui, add, Text, xp+10 yp+25, Mode: 
 			Gui, Add, DropDownList, x+15 yp-3 w90 center vQuickSelect%A_LoopField%AttributeMode Choose1, Remove|Keep
 
-			Gui, Add, Checkbox, xs+235 y+15 vquickSelect%A_LoopField%DeselectXelnaga, Holding Xelnaga tower
+			Gui, Add, Checkbox, xs+235 y+10 vquickSelect%A_LoopField%DeselectXelnaga, Holding Xelnaga tower
 			Gui, Add, Checkbox, Xp y+5 vquickSelect%A_LoopField%DeselectPatrolling, Patrol
 			Gui, Add, Checkbox, Xp y+5 vquickSelect%A_LoopField%DeselectAttacking, Attack	
 			Gui, Add, Checkbox, Xp y+5 vquickSelect%A_LoopField%DeselectFollowing, Follow
 			Gui, Add, Checkbox, Xp y+5 vquickSelect%A_LoopField%DeselectHoldPosition, Hold position
 			Gui, Add, Checkbox, Xp y+5 vquickSelect%A_LoopField%DeselectIdle, Idle		
-			if A_LoopField = Zerg 
-			{
-				Gui, Add, Checkbox, Xp y+5 vquickSelect%A_LoopField%DeselectLoadedTransport gQuickSelectGUIEmptyLoadedTransportCheck disabled, Loaded transports
-				Gui, Add, Checkbox, Xp y+5 vquickSelect%A_LoopField%DeselectEmptyTransport gQuickSelectGUIEmptyLoadedTransportCheck disabled, Empty transports				
-			}
-			else 
-			{
-				Gui, Add, Checkbox, Xp y+5 vquickSelect%A_LoopField%DeselectLoadedTransport gQuickSelectGUIEmptyLoadedTransportCheck, Loaded transports
-				Gui, Add, Checkbox, Xp y+5 vquickSelect%A_LoopField%DeselectEmptyTransport gQuickSelectGUIEmptyLoadedTransportCheck, Empty transports
-			}
-			
+			Gui, Add, Checkbox, Xp y+5 vquickSelect%A_LoopField%DeselectLoadedTransport gQuickSelectGUIEmptyLoadedTransportCheck, Loaded transports
+			Gui, Add, Checkbox, Xp y+5 vquickSelect%A_LoopField%DeselectEmptyTransport gQuickSelectGUIEmptyLoadedTransportCheck, Empty transports
 			Gui, Add, Checkbox, Xp y+5 vquickSelect%A_LoopField%DeselectQueuedDrops, Transports queued to drop
 			if A_LoopField = Protoss 
 			{
@@ -3774,11 +3764,11 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 			}
 			else 
 			{ 
-				; Technically i shouldn't disable for zerg and should have a shield level as they can make protoss units via neural parasiting probes/sentries
+				; Technically i shouldn't disable for zerg and should have a shield level as they can make protoss units via neural parasiting probes/sentries but thats never gonna happen
 				Gui, Add, Checkbox, Xp y+5 vquickSelect%A_LoopField%DeselectHallucinations disabled, Hallucinations
 				Gui, Add, Checkbox, Xp y+5 vquickSelect%A_LoopField%DeselectLowHP, HP`% below:
 			} 
-			Gui, Add, Edit, Number Right x+10 yp-2 w45 vEdit_quickSelect%A_LoopField%DeselectLowHP
+			Gui, Add, Edit, Number Right x+10 yp-3 w45 vEdit_quickSelect%A_LoopField%DeselectLowHP
 				Gui, Add, UpDown,  Range1-99 vquickSelect%A_LoopField%HPValue, 40
 		
 		state := aQuickSelectCopy[A_LoopField "MaxIndexGUI"] > 1 ? True : False
@@ -4778,7 +4768,6 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		SelectArmyOnScreen_TT := "When checked, only the units currently on screen will be selected.`n`nThis is new and hasn't been tested much.`nNote: If no units are on screen, then your previously selected units will remain selected."
 		
 		SelectArmyDeselectPatrolling_TT := "Units with a patrol command queued will be removed from the selection group.`n`nThis is very useful if you dont want to select some units e.g. banes/lings at your base or a drop ship waiting outside a base!`nJust set them to patrol and they will not be selected with your army."
-				. "`n`nNote: Units set to follow a patrolling unit will also me removed."
 		SelectArmyDeselectHoldPosition_TT := "Units with a hold position command queued will be removed from the selection group."
 		SelectArmyDeselectFollowing_TT := "Units with a follow command queued will be removed from the selection group."
 		SelectArmyDeselectLoadedTransport_TT := "Removes loaded medivacs and warp prisms"
@@ -4787,20 +4776,45 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 
 		loop, parse, l_Races, `,
 		{
-			New%A_LoopField%QuickSelect_TT := "Create a new quick select item."
-			Delete%A_LoopField%QuickSelect_TT := "Delte the currently displayed item."
+			New%A_LoopField%QuickSelect_TT := "Creates a new quick select item."
+			Delete%A_LoopField%QuickSelect_TT := "Delete the currently displayed item."
 			quickSelect%A_LoopField%Enabled_TT := "Enables this item during a match"
 			#quickSelect%A_LoopField%_Key_TT := quickSelect%A_LoopField%_Key_TT := "The hotkey used to invoke this quick select item."
-			quickSelect%A_LoopField%UnitsArmy_TT := #quickSelect%A_LoopField%UnitsArmy_TT := "These unit types will be selected."
+			
+			QuickSelect%A_LoopField%BaseSelection_TT := "This determines which units are initially selected. After this initial selection units are either kept or removed as required by the other options."
+														. "`n`nArmy: The SC select all army hotkey is used."
+														. "`nUnits On Screen: The units currently on the screen are selected. This produces the same result as the 'remove units outside of camera view' option in previous MacroTrainer versions."
+														. "`nCurrent Selection: The currently selected units are used."
+														. "`nControl Groups: The specified control group is used."
+														. "`n`nNote: Structures are automatically removed."
 
-			quickSelect%A_LoopField%DeselectXelnaga_TT := SelectArmyDeselectXelnaga_TT
+			quickSelect%A_LoopField%SelectUnitTypes_TT := "When enabled the specified units are kept selected. All other types of units are removed."
+														. "`n`nNote: Disabling both the 'Keep these types' and 'Remove these types' options, disables filtering by unit type."
+			quickSelect%A_LoopField%DeselectUnitTypes_TT := "When enabled the specified unit types are removed."
+														. "`n`nNote: Disabling the 'Keep these types' and 'Remove these types' options, disables filtering by unit type."
+			quickSelect%A_LoopField%UnitsArmy_TT := #quickSelect%A_LoopField%UnitsArmy_TT := "These units types will either be removed from selection or kept in the selection as governed by the checkboxes above."
+													. "`nWhen both of the checkboxes above un-ticked, then this unit type list is ignored."
+			quickSelect%A_LoopField%CreateControlGroup_TT := "The remaining selected untils will be stored in specified control group."
+			quickSelect%A_LoopField%AddToControlGroup_TT := "The remaining selected untils will be added to the specified control group."
+
+			QuickSelect%A_LoopField%StoreSelection_TT := "Units are either assigned or added to this control group depending upon the specified options."
+										. "`n`nNote: This uses the specified 'control group' keys as defined in the SC2 Keys section (on the left)."
+
+			quickSelect%A_LoopField%DeselectXelnaga_TT := "Units which have control of a Xelnaga tower."
 			;quickSelect%A_LoopField%OnScreen_TT := SelectArmyOnScreen_TT
-			quickSelect%A_LoopField%DeselectPatrolling_TT := SelectArmyDeselectPatrolling_TT
-			quickSelect%A_LoopField%DeselectHoldPosition_TT := SelectArmyDeselectHoldPosition_TT
-			quickSelect%A_LoopField%DeselectFollowing_TT :=SelectArmyDeselectFollowing_TT		
-			quickSelect%A_LoopField%DeselectLoadedTransport_TT := SelectArmyDeselectLoadedTransport_TT
-			quickSelect%A_LoopField%DeselectEmptyTransport_TT := "Removes empty medivacs and warp prisms."
-			quickSelect%A_LoopField%DeselectQueuedDrops_TT := SelectArmyDeselectQueuedDrops_TT
+			quickSelect%A_LoopField%DeselectPatrolling_TT := "Units which are patrolling or queued to perform a patrol command."
+			quickSelect%A_LoopField%DeselectAttacking_TT := "Units which are attacking or queued to perform an attack command."
+			quickSelect%A_LoopField%DeselectHoldPosition_TT := "Units which are on hold position or queued to perform a hold position command."
+			quickSelect%A_LoopField%DeselectIdle_TT := "Units which are not performing any action/command."
+			quickSelect%A_LoopField%DeselectFollowing_TT := "Units which are following another unit or queued to perform a follow command."		
+			quickSelect%A_LoopField%DeselectLoadedTransport_TT := "Refers to medivacs, warp prisms, phasing warp prisms, and overlords which contain units."
+																. "`n`nNote: With regards to zerg, this option is disabled if the 'starting selection' is set to 'Army', as the army selection does not contain overlords."
+			quickSelect%A_LoopField%DeselectEmptyTransport_TT := "Refers to medivacs, warp prisms, phasing warp prisms, and overlords which do not contain units."
+																. "`n`nNote: With regards to zerg, this option is disabled if the 'starting selection' is set to 'Army', as the army selection does not contain overlords."
+			quickSelect%A_LoopField%DeselectQueuedDrops_TT := "Refers to medivacs, warp prisms, phasing warp prisms, and overlords are set/queued to perform an unload command."
+																. "`n`nNote: With regards to zerg, this option is disabled if the 'starting selection' is set to 'Army', as the army selection does not contain overlords."
+		
+			quickSelect%A_LoopField%DeselectLowHP_TT := "Refers to Terran and Zerg units with health, or Protoss units with shields lower than the specified (percentage) value. "
 		}
 
 		castRemoveDamagedUnits_key_TT := #castRemoveDamagedUnits_key_TT := castRemoveUnit_key_TT := #castRemoveUnit_key_TT 
@@ -4958,6 +4972,25 @@ if g1
 								. "`n`nDue to the altered UI none of the automations are guaranteed to work correctly even if they 'appear' to work. "
 								. "The only exception to this is the auto-grouping function."
 return
+QuickSelectGUBaseSelectionZergTransportCheck:
+; Zerg army selection will not include transports (orverlords) so uncheck them and disable
+if instr(A_GuiControl, "Zerg")
+{
+	GuiControlGet, g1,, QuickSelectZergBaseSelection
+	if g1 = Army
+	{
+		GuiControl,, quickSelectZergDeselectLoadedTransport, 0
+		GuiControl,, quickSelectZergDeselectEmptyTransport, 0
+		GuiControl, Disable, quickSelectZergDeselectLoadedTransport
+		GuiControl, Disable, quickSelectZergDeselectEmptyTransport
+	}
+	else 
+	{
+		GuiControl, Enable, quickSelectZergDeselectLoadedTransport
+		GuiControl, Enable, quickSelectZergDeselectEmptyTransport		
+	}
+}
+return
 
 QuickSelectGUIEmptyLoadedTransportCheck:
 GuiControlGet, g1,, % A_GuiControl
@@ -5048,23 +5081,26 @@ else
 
 if instr(A_GuiControl, "New")
 {
-	GuiControlGet, units, , quickSelect%Race%UnitsArmy ; comma delimited list
-	if !trim(units, " `t`,")
-	{
-		msgbox, % 64 + 8192 + 262144, New Item, The current unit field is empty.`n`nPlease add some units before creating a new item.
-		return
-	}
-	saveCurrentQuickSelect(race, aQuickSelectCopy)
-	if blankIndex := quickSelectFindPosiitionWithNoUnits(race, aQuickSelectCopy) 
-	{
-		aQuickSelectCopy[race "IndexGUI"] := blankIndex
-		showQuickSelectItem(race, aQuickSelectCopy)
-	}
-	else 
-	{
+	; Due to changes in quickSelect the unit tab can now be empty and still be valid
+	; so these checks are disabled
+	; I should probably add a warning though if 'select/Remove these types' are checked and unit tab is empty
+	;GuiControlGet, units, , quickSelect%Race%UnitsArmy ; comma delimited list
+	;if !trim(units, " `t`,")
+	;{
+	;	msgbox, % 64 + 8192 + 262144, New Item, The current unit field is empty.`n`nPlease add some units before creating a new item.
+	;	return
+	;}
+	;saveCurrentQuickSelect(race, aQuickSelectCopy)
+	;if blankIndex := quickSelectFindPosiitionWithNoUnits(race, aQuickSelectCopy) 
+	;{
+	;	aQuickSelectCopy[race "IndexGUI"] := blankIndex
+	;	showQuickSelectItem(race, aQuickSelectCopy)
+	;}
+	;else 
+	;{
 		aQuickSelectCopy[race "IndexGUI"] := aQuickSelectCopy[race "MaxIndexGUI"] := round(aQuickSelectCopy[race "MaxIndexGUI"] + 1)	
 		blankQuickSelectGUI(race)
-	}
+	;}
 }
 else if instr(A_GuiControl, "Delete")
 {
@@ -5312,6 +5348,11 @@ blankQuickSelectGUI(race)
 	GUIControl, , quickSelect%Race%DeselectPatrolling, 0
 	GUIControl, , quickSelect%Race%DeselectLoadedTransport, 0
 	GUIControl, , quickSelect%Race%DeselectEmptyTransport, 0
+	if race = zerg
+	{ 
+		GUIControl, Disable, quickSelect%Race%DeselectLoadedTransport
+		GUIControl, Disable, quickSelect%Race%DeselectEmptyTransport
+	}
 	GUIControl, , quickSelect%Race%DeselectHallucinations, 0
 	GUIControl, , quickSelect%Race%DeselectIdle, 0
 	GUIControl, , quickSelect%Race%DeselectQueuedDrops, 0
@@ -5362,8 +5403,21 @@ showQuickSelectItem(Race, byRef aQuickSelectCopy)
 	GuiControl, ChooseString, QuickSelect%Race%AttributeMode, % aQuickSelectCopy[Race, arrayPosition, "AttributeMode"]
 																? aQuickSelectCopy[Race, arrayPosition, "AttributeMode"] 
 																: "Remove"
+	if (race = "Zerg" && aQuickSelectCopy[Race, arrayPosition, "BaseSelection"] = "Army")														
+	{ 
+		GUIControl, Disable, quickSelect%Race%DeselectLoadedTransport
+		GUIControl, Disable, quickSelect%Race%DeselectEmptyTransport
+		GUIControl, , quickSelect%Race%DeselectLoadedTransport, 0
+		GUIControl, , quickSelect%Race%DeselectEmptyTransport, 0
+	}
+	else if (race != "Zerg" || aQuickSelectCopy[Race, arrayPosition, "BaseSelection"] != "Army")	
+	{
+		GUIControl, Enable, quickSelect%Race%DeselectLoadedTransport ; No need to enable for Toss/Terran, but saves anther if else
+		GUIControl, Enable, quickSelect%Race%DeselectEmptyTransport		
+		GUIControl, , quickSelect%Race%DeselectLoadedTransport, % round(aQuickSelectCopy[Race, arrayPosition, "DeselectLoadedTransport"])
+		GUIControl, , quickSelect%Race%DeselectEmptyTransport, % round(aQuickSelectCopy[Race, arrayPosition, "DeselectEmptyTransport"])
+	}
 
-	
 	if aQuickSelectCopy[Race, arrayPosition, "CreateControlGroup"]
 	{
 		GUIControl, , quickSelect%Race%CreateControlGroup, 1
@@ -5389,8 +5443,7 @@ showQuickSelectItem(Race, byRef aQuickSelectCopy)
 
 	GUIControl, , quickSelect%Race%DeselectXelnaga, % round(aQuickSelectCopy[Race, arrayPosition, "DeselectXelnaga"])
 	GUIControl, , quickSelect%Race%DeselectPatrolling, % round(aQuickSelectCopy[Race, arrayPosition, "DeselectPatrolling"])
-	GUIControl, , quickSelect%Race%DeselectLoadedTransport, % round(aQuickSelectCopy[Race, arrayPosition, "DeselectLoadedTransport"])
-	GUIControl, , quickSelect%Race%DeselectEmptyTransport, % round(aQuickSelectCopy[Race, arrayPosition, "DeselectEmptyTransport"])
+
 	GUIControl, , quickSelect%Race%DeselectHallucinations, % round(aQuickSelectCopy[Race, arrayPosition, "DeselectHallucinations"])
 	GUIControl, , quickSelect%Race%DeselectIdle, % round(aQuickSelectCopy[Race, arrayPosition, "DeselectIdle"])
 	GUIControl, , quickSelect%Race%DeselectQueuedDrops, % round(aQuickSelectCopy[Race, arrayPosition, "DeselectQueuedDrops"])
@@ -5450,7 +5503,7 @@ saveCurrentQuickSelect(Race, byRef aQuickSelectCopy)
 		if aUnitID.haskey(unit := trim(A_LoopField," `t`n`,"))
 		{
 			aQuickSelectCopy[Race, arrayPosition, "units"].insert(aUnitID[unit])	
-			if unit in Medivac,WarpPrism,WarpPrismPhasing
+			if unit in Medivac,WarpPrism,WarpPrismPhasing,Overlord
 				includesTransport := True
 		}
 	}
@@ -5464,6 +5517,7 @@ saveCurrentQuickSelect(Race, byRef aQuickSelectCopy)
 ;	}
 	if (SelectUnitTypes && !includesTransport)
 	|| (DeselectUnitTypes && includesTransport)
+	|| (race = "Zerg" && BaseSelection = "Army")
 		DeselectLoadedTransport := DeselectEmptyTransport := DeselectQueuedDrops := False
 	if SelectUnitTypes
 		DeselectUnitTypes := false
@@ -8737,7 +8791,6 @@ quickSelect(aDeselect)
 	{
 		if aDeselect.BaseSelection = "Units On Screen"
 		{	
-			screenSelection := True	; faster than a string compare but its not going to really make any difference
 			; If reticle was present, no delay is needed between sending escape and box dragging. 
 			; Tested by lowering CPU speed to 1.6G Hz and running linx with this function 					
 			input.pSend("{click D " 0 " " 0 "}{Click U " A_ScreenWidth " "  A_ScreenHeight "}") ;  A_ScreenHeight-240 "}")
@@ -8770,9 +8823,12 @@ quickSelect(aDeselect)
 			}
 		}
 	}
-	; if on screen/control group any structures
+	; if on control-group/current selection  remove any structures. 
+	; Note if you box drag some units and structures at the same time - only units are selected
+	; however if you *Shift* box drag again (and don't select any currently unselected units) the structures will be selected.
 	; And overlords as zerg transports 
 	; and fix GUI warning when no unit types selected
+
 
 	numGetSelectionSorted(aSelected)
 	clickPortraits := []
@@ -8785,8 +8841,14 @@ quickSelect(aDeselect)
 		, checkHallucinations := (aDeselect.DeselectHallucinations && aLocalPlayer["Race"] = "Protoss")
 	
 	removeByAttribute := (aDeselect.AttributeMode != "Keep")
-	
-	if 0 && (aDeselect.Units.MaxIndex() = 1 && !checkStates) ; this is disabled until i fix the sort with units in same tab eg tanks/stanks + hellions/hellbats
+
+	removeStructures := (instr(aDeselect.BaseSelection, "Control") || aDeselect.BaseSelection = "Current Selection" )
+	; Could also add gameType != 1v1
+	removeAllied := (removeStructures || aDeselect.BaseSelection = "Units On Screen")
+
+	; this is disabled until i fix the sort with units in same tab eg tanks/stanks + hellions/hellbats
+	; And also need to consider the consequence of hallucinations and the issues with tabSize/position in numgetSelectionSorted()
+	if 0 && (aDeselect.Units.MaxIndex() = 1 && !checkStates) 
 	{
 		clickUnitType := aDeselect["Units", 1]
 		if aSelected.TabPositions.HasKey(clickUnitType)
@@ -8808,15 +8870,17 @@ quickSelect(aDeselect)
 		{
 			;if (unit.unitId = prevID) 
 			;	continue 
+			;if (aDeselect.SelectUnitTypes && !aLookup.haskey(unit.unitId))
+			;|| (aDeselect.DeselectUnitTypes && aLookup.haskey(unit.unitId)) 
+			;{ 
+			;	prevID := unit.unitId 	; this is disabled until i fix the sort with units in same tab eg tanks/stanks + hellions/hellbats ; And also need to consider the consequence of hallucinations and the issues with tabSize/position in numgetSelectionSorted()
+			;	clickPortraits.insert({ "portrait":  unit.unitPortrait, "modifiers": "^+"})
+			;	clickPortraits.insert({ "portrait":  unit.unitPortrait, "modifiers": "+"}) 
+			;}
 			if (aDeselect.SelectUnitTypes && !aLookup.haskey(unit.unitId))
 			|| (aDeselect.DeselectUnitTypes && aLookup.haskey(unit.unitId)) 
-			{ 			
-			;	prevID := unit.unitId 	; this is disabled until i fix the sort with units in same tab eg tanks/stanks + hellions/hellbats
-			;	clickPortraits.insert({ "portrait":  unit.unitPortrait, "modifiers": "^+"})
-				clickPortraits.insert({ "portrait":  unit.unitPortrait, "modifiers": "+"}) 
-			}
-			; since this is a box drag remove allied units - workers will be removed via above type check
-			else if (screenSelection && getUnitOwner(unit.unitIndex) != aLocalPlayer["Slot"])
+			|| (removeStructures && unit.TargetFilter & aUnitTargetFilter.Structure)
+			|| (removeAllied && getUnitOwner(unit.unitIndex) != aLocalPlayer["Slot"])
 				clickPortraits.insert( {"portrait":  unit.unitPortrait, "modifiers": "+"}) 
 			else if checkStates
 			{
@@ -8827,8 +8891,8 @@ quickSelect(aDeselect)
 				|| (aDeselect.DeselectAttacking && (InStr(commandString, "Attack") || InStr(commandString, "FNA"))) 
 				|| (aDeselect.DeselectFollowing && InStr(commandString, "Follow")) 
 				|| (aDeselect.DeselectIdle && commandString = "")
-				|| (aDeselect.DeselectLowHP && healthFunc.(unit.unitIndex) <  aDeselect.HPValue / 100) ; divide by 100 as it's not saved as a decimal
-				|| (checkHallucinations && getunittargetfilter(unit.UnitIndex) & aUnitTargetFilter.Hallucination)
+				|| (aDeselect.DeselectLowHP && healthFunc.(unit.unitIndex) <  aDeselect.HPValue / 100) ; divide by 100 as it's not saved as a decimal ; Since aSelected now contains the units targFilter, could just check if has shields to determine which func to call
+				|| (checkHallucinations && unit.TargetFilter & aUnitTargetFilter.Hallucination)
 				|| 	(	checkTransportAttributes
 						&& (unit.unitId = aUnitId.Medivac || unit.unitId = aUnitID.WarpPrism || unit.unitId = aUnitID.WarpPrismPhasing) 
 						&& (	(aDeselect.DeselectLoadedTransport && getCargoCount(unit.unitIndex))
@@ -11619,3 +11683,17 @@ return
 
 */
 
+f1::
+numGetSelectionSorted(sel)
+objtree(sel)
+return 
+
+
+aSelectUnits := []
+selectionCount := getSelectionCount()
+ReadRawMemory(B_SelectionStructure, GameIdentifier, MemDump, selectionCount * S_scStructure + O_scUnitIndex)
+loop, % selectionCount
+{
+	unit := numget(MemDump,(A_Index-1) * S_scStructure + O_scUnitIndex , "Int") >> 18
+	aSelectUnits[unit] := True
+}

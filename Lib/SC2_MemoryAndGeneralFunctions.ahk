@@ -2063,8 +2063,17 @@ numGetControlGroupObject(Byref oControlGroup, Group)
 ; numGetSelectionBubbleSort i.e. bubble sort took 86.56 ms
 ; numGetSelectionSorted took just 4.75 ms ~18X faster!
 
+
+; Important Notes: ******************
+; If hallucinations are present as well as real units of same type
+; The tabsize[unitType] will = the real units size
+; There will be no mention of the tab size for the hallucinations
+; and tabPositions[unitType] will = the real unit types tab position 
+; So be very careful when using this data in functions
+
 numGetSelectionSorted(ByRef aSelection, ReverseOrder := False)
 {
+	global aLocalPlayer
 	aSelection := []
 	, selectionCount := getSelectionCount()
 	, ReadRawMemory(B_SelectionStructure, GameIdentifier, MemDump, selectionCount * S_scStructure + O_scUnitIndex)
@@ -2078,25 +2087,22 @@ numGetSelectionSorted(ByRef aSelection, ReverseOrder := False)
 		; unit panel order (backwards to how they would normally be enumerated)
 		priority := -1 * getUnitSubGroupPriority(unitIndex := numget(MemDump,(A_Index-1) * S_scStructure + O_scUnitIndex , "Int") >> 18)
 		, unitId := getUnitType(unitIndex)
-		, subGroupAlias := getUnitTargetFilter(unitIndex) & aUnitTargetFilter.Hallucination 
+		, subGroupAlias := (filter := getUnitTargetFilter(unitIndex)) & aUnitTargetFilter.Hallucination 
 													? unitId  - .1 ; Dirty hack for hallucinations
 													: (aUnitSubGroupAlias.hasKey(unitId) 
 															? aUnitSubGroupAlias[unitId] 
 															:  unitId) 
 		, sIndices .= "," unitIndex
-		if !isUnitLocallyOwned(unitIndex)
+		if aLocalPlayer["Slot"] != getUnitOwner(Unit)
 			nonLocalUnitSelected := True										
-	; AHK automatically creates an object if it doesn't exist when using this syntax
-	; So i only have to check and make one object
-	;	if !isObject(aStorage[priority])
-	;		aStorage[priority] := []
+
 		if !isObject(aStorage[priority, subGroupAlias ""])
 		  	aStorage[priority, subGroupAlias ""] := []
 		; "" needed for hallucination trick to work force as string? 
 		; Need to put the "" here - won't worker if use it on the subgroup alias line
 		; Obviously need to put "" for all three lines here
-		; Note when looking in objtree() the order on the right is correct - the order in the tall left treeview panel is
-		aStorage[priority, subGroupAlias ""].insert({"unitIndex": unitIndex, "unitId": unitId})
+		; Note when looking in objtree() the order on the right is correct - the order in the tall left treeview panel is not
+		aStorage[priority, subGroupAlias ""].insert({"unitIndex": unitIndex, "unitId": unitId, "Filter": filter})
 		
 		; when aStorage is enumerated, units will be accessed in the same order
 		; as they appear in the unit panel ie top left to bottom right 	
@@ -2129,10 +2135,11 @@ numGetSelectionSorted(ByRef aSelection, ReverseOrder := False)
 										, "subGroupAlias": subGroupAlias
 										, "unitIndex": unit.unitIndex
 										, "unitId": unit.unitId
+										, "TargetFilter": unit.Filter
 										, "tabPosition": TabPosition
 										, "unitPortrait": unitPortrait++}) ; will be 1 less than A_index when iterated
 										; Note unitPortrait++ increments after assigning value to unitPortrait
-				, tabSize++ ; how many units are in each tab - this is wrong when hallucinations are present!
+				, tabSize++ ; how many units are in each tab - this is misleading when hallucinations are present! (this will equal the real units) as they are in there own tab
 			}
 			aSelection.TabSizes[object2[object2.minIndex()].unitId] := tabSize								
 			, TabPosition++	
