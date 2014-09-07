@@ -2062,6 +2062,8 @@ numGetControlGroupObject(Byref oControlGroup, Group)
 ; Test Case: 238 units were selected in SC2
 ; numGetSelectionBubbleSort i.e. bubble sort took 86.56 ms
 ; numGetSelectionSorted took just 4.75 ms ~18X faster!
+; 8/09/14 Added another loop to account for hallucinations properly
+; the function now takes 5.53 ms - The previous version of the function took 5.34 ms. This was with 235 protoss units of all types and sc was running the background.
 
 
 ; Important Notes: ******************
@@ -2086,63 +2088,65 @@ numGetSelectionSorted(ByRef aSelection, ReverseOrder := False)
 		; Use a negative priority so AHKs normal object enumerates them in the correct 
 		; unit panel order (backwards to how they would normally be enumerated)
 		priority := -1 * getUnitSubGroupPriority(unitIndex := numget(MemDump,(A_Index-1) * S_scStructure + O_scUnitIndex , "Int") >> 18)
-		, unitId := getUnitType(unitIndex)
-		, subGroupAlias := (filter := getUnitTargetFilter(unitIndex)) & aUnitTargetFilter.Hallucination 
-													? unitId  - .1 ; Dirty hack for hallucinations
-													: (aUnitSubGroupAlias.hasKey(unitId) 
-															? aUnitSubGroupAlias[unitId] 
-															:  unitId) 
+		, subGroupAlias := aUnitSubGroupAlias.hasKey(unitId := getUnitType(unitIndex)) ? aUnitSubGroupAlias[unitId] : unitId 
 		, sIndices .= "," unitIndex
-		if aLocalPlayer["Slot"] != getUnitOwner(Unit)
+		, hallucinationOrder := !((filter := getUnitTargetFilter(unitIndex)) & aUnitTargetFilter.Hallucination) ; hallucinations come first so they get key 0 real units get key 1
+		if aLocalPlayer["Slot"] != getUnitOwner(unitIndex)
 			nonLocalUnitSelected := True										
 
-		if !isObject(aStorage[priority, subGroupAlias ""])
-		  	aStorage[priority, subGroupAlias ""] := []
-		; "" needed for hallucination trick to work force as string? 
-		; Need to put the "" here - won't worker if use it on the subgroup alias line
-		; Obviously need to put "" for all three lines here
+		if !isObject(aStorage[priority, subGroupAlias])
+		  	aStorage[priority, subGroupAlias] := [], aStorage[priority, subGroupAlias, 0] := [], aStorage[priority, subGroupAlias, 1] := []
 		; Note when looking in objtree() the order on the right is correct - the order in the tall left treeview panel is not
-		aStorage[priority, subGroupAlias ""].insert({"unitIndex": unitIndex, "unitId": unitId, "Filter": filter})
+		aStorage[priority, subGroupAlias, hallucinationOrder].insert({"unitIndex": unitIndex, "unitId": unitId, "Filter": filter})
 		
 		; when aStorage is enumerated, units will be accessed in the same order
 		; as they appear in the unit panel ie top left to bottom right 	
 	}
-	if (aSelection.Count && !nonLocalUnitSelected)
-		aSelection.IsGroupable := True
+
+	aSelection.IsGroupable := (aSelection.Count && !nonLocalUnitSelected)
 	; This will convert the data into a simple indexed object
 	; The index value will be 1 more than the unit portrait location
-	aSelection.IndicesString := substr(sIndices, 2) ; trim first "," 
+	, aSelection.IndicesString := substr(sIndices, 2) ; trim first "," 
 	, aSelection.units := []
 	, aSelection.TabPositions := []
 	, aSelection.TabSizes := []
 	, TabPosition := unitPortrait := 0
 	for priority, object in aStorage
 	{
-		for subGroupAlias, object2 in object 
+		for subGroupAlias, object in object 
 		{
-			; I put the next couple of lines here so they don't get needlessly looped
-			; inside the next for loop
-			if (TabPosition = aSelection.HighlightedGroup)
-				aSelection.HighlightedId :=  object2[object2.minIndex()].unitId
-			; Tab positions are stored with the unitId as key
-			; so can just look up the tab location of unit type directly with no looping
-			; cant use .insert(key, tabposition) as that adjusts higher keys (adds 1 to them)!
-			aSelection.TabPositions[object2[object2.minIndex()].unitId] := TabPosition
-			, tabSize := 0
-			for index, unit in object2 ; (unit is an object)
+			for hallucinationOrder, object2 in object 
 			{
-				aSelection.units.insert({ "priority": -1*priority ; convert back to positive
-										, "subGroupAlias": subGroupAlias
-										, "unitIndex": unit.unitIndex
-										, "unitId": unit.unitId
-										, "TargetFilter": unit.Filter
-										, "tabPosition": TabPosition
-										, "unitPortrait": unitPortrait++}) ; will be 1 less than A_index when iterated
-										; Note unitPortrait++ increments after assigning value to unitPortrait
-				, tabSize++ ; how many units are in each tab - this is misleading when hallucinations are present! (this will equal the real units) as they are in there own tab
+				; Above we are explicitly creating a 0 and 1 object for the hallucination check/order.
+				; So now we have to check if this has any keys - otherwise will get a blank key in the TabPositions and TabSizes fields
+				; doing the check here will be slightly faster than doing the check above on every single unit (as here it's only doing it practically for each unit type)
+				if object2.MaxIndex()
+				{
+					; I put the next couple of lines here so they don't get needlessly looped
+					; inside the next for loop
+					if (TabPosition = aSelection.HighlightedGroup)
+						aSelection.HighlightedId :=  object2[1].unitId
+					; Tab positions are stored with the unitId as key
+					; so can just look up the tab location of unit type directly with no looping
+					; cant use .insert(key, tabposition) as that adjusts higher keys (adds 1 to them)!
+					aSelection.TabPositions[object2[1].unitId] := TabPosition
+					, tabSize := 0
+					for index, unit in object2 ; (unit is an object)
+					{
+						aSelection.units.insert({ "priority": -1*priority ; convert back to positive
+												, "subGroupAlias": subGroupAlias
+												, "unitIndex": unit.unitIndex
+												, "unitId": unit.unitId
+												, "TargetFilter": unit.Filter
+												, "tabPosition": TabPosition
+												, "unitPortrait": unitPortrait++}) ; will be 1 less than A_index when iterated
+												; Note unitPortrait++ increments after assigning value to unitPortrait
+						, tabSize++ ; how many units are in each tab - this is misleading when hallucinations are present! (this will equal the real units) as they are in there own tab
+					}
+					aSelection.TabSizes[object2[1].unitId] := tabSize								
+					, TabPosition++	
+				}
 			}
-			aSelection.TabSizes[object2[object2.minIndex()].unitId] := tabSize								
-			, TabPosition++	
 		}
 	}
 	if ReverseOrder

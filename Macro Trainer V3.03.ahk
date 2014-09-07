@@ -55,8 +55,8 @@ SetWorkingDir %A_ScriptDir%  ; Ensures a consistent starting directory.
 #InstallMouseHook
 #InstallKeybdHook
 #UseHook
-#KeyHistory 0 ; don't need it
-;#KeyHistory 500 ; testing
+;#KeyHistory 0 ; don't need it
+#KeyHistory 500 ; testing
 #Persistent
 #NoEnv  ; Recommended for performance and compatibility with future AutoHotkey releases.
 #MaxThreads 20 ; don't know if this will affect anything
@@ -4800,6 +4800,10 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 			QuickSelect%A_LoopField%StoreSelection_TT := "Units are either assigned or added to this control group depending upon the specified options."
 										. "`n`nNote: This uses the specified 'control group' keys as defined in the SC2 Keys section (on the left)."
 
+			QuickSelect%A_LoopField%AttributeMode_TT := "Determines how the below attributes alters the selection."
+													. "`nRemove: Units which have one or more of the marked attributes are removed."
+													. "`nKeep: Units which have one or more of the marked attributes are kept. (All others are removed.)"
+
 			quickSelect%A_LoopField%DeselectXelnaga_TT := "Units which have control of a Xelnaga tower."
 			;quickSelect%A_LoopField%OnScreen_TT := SelectArmyOnScreen_TT
 			quickSelect%A_LoopField%DeselectPatrolling_TT := "Units which are patrolling or queued to perform a patrol command."
@@ -4814,7 +4818,8 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 			quickSelect%A_LoopField%DeselectQueuedDrops_TT := "Refers to medivacs, warp prisms, phasing warp prisms, and overlords are set/queued to perform an unload command."
 																. "`n`nNote: With regards to zerg, this option is disabled if the 'starting selection' is set to 'Army', as the army selection does not contain overlords."
 		
-			quickSelect%A_LoopField%DeselectLowHP_TT := "Refers to Terran and Zerg units with health, or Protoss units with shields lower than the specified (percentage) value. "
+			quickSelect%A_LoopField%DeselectLowHP_TT := "Refers to units with" (A_LoopField = "Protoss" ? " shields " : " health ") "lower than the specified (percentage) value. "
+			Edit_quickSelect%A_LoopField%DeselectLowHP_TT := quickSelect%A_LoopField%HPValue_TT := "This is a percentage value i.e. 40 = 40%."
 		}
 
 		castRemoveDamagedUnits_key_TT := #castRemoveDamagedUnits_key_TT := castRemoveUnit_key_TT := #castRemoveUnit_key_TT 
@@ -8894,7 +8899,7 @@ quickSelect(aDeselect)
 				|| (aDeselect.DeselectLowHP && healthFunc.(unit.unitIndex) <  aDeselect.HPValue / 100) ; divide by 100 as it's not saved as a decimal ; Since aSelected now contains the units targFilter, could just check if has shields to determine which func to call
 				|| (checkHallucinations && unit.TargetFilter & aUnitTargetFilter.Hallucination)
 				|| 	(	checkTransportAttributes
-						&& (unit.unitId = aUnitId.Medivac || unit.unitId = aUnitID.WarpPrism || unit.unitId = aUnitID.WarpPrismPhasing) 
+						&& (unit.unitId = aUnitId.Medivac || unit.unitId = aUnitID.WarpPrism || unit.unitId = aUnitID.WarpPrismPhasing) ; !removeByAttribute - if keeping 
 						&& (	(aDeselect.DeselectLoadedTransport && getCargoCount(unit.unitIndex))
 								|| (aDeselect.DeselectEmptyTransport && !getCargoCount(unit.unitIndex))
 								|| (aDeselect.DeselectQueuedDrops && isTransportDropQueued(unit.unitIndex))))
@@ -11683,17 +11688,5 @@ return
 
 */
 
-f1::
-numGetSelectionSorted(sel)
-objtree(sel)
-return 
 
 
-aSelectUnits := []
-selectionCount := getSelectionCount()
-ReadRawMemory(B_SelectionStructure, GameIdentifier, MemDump, selectionCount * S_scStructure + O_scUnitIndex)
-loop, % selectionCount
-{
-	unit := numget(MemDump,(A_Index-1) * S_scStructure + O_scUnitIndex , "Int") >> 18
-	aSelectUnits[unit] := True
-}
