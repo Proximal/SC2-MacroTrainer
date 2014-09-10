@@ -132,6 +132,18 @@ if aSelectedRows.MinIndex() && LV_GetCount()
 LV_ModifyCol(1, "AutoHdr") ; resize column if user altered it
 return
 
+GUIAutoChronoEnableCheck:
+GuiControlGet, g1,, AutoChronoEnabled
+GuiControlGet, g2,, AutoChronoSelectionEnabled
+if (g1 && g2)
+{
+	if instr(A_GuiControl, "Selection")
+		GUIControl,, AutoChronoEnabled, 0
+	else GUIControl,, AutoChronoSelectionEnabled, 0
+}
+return 
+
+
 iniReadAutoChrono(byRef aAutoChronoCopy, byRef aAutoChrono)
 {
 
@@ -152,12 +164,13 @@ iniReadAutoChrono(byRef aAutoChronoCopy, byRef aAutoChrono)
 
 		if (enabled = "error")
 			break 
-
+		IniRead, selectionEnabled, %config_file%, %section%, %itemNumber%_selectionEnabled, error
 		IniRead, hotkey, %config_file%, %section%, %itemNumber%_hotkey, %A_Space%
 		IniRead, units, %config_file%, %section%, %itemNumber%_units, %A_Space%
 
 	    aAutoChronoCopy["Items", arrayPosition] := []
 	    aAutoChronoCopy["Items", arrayPosition, "enabled"] := enabled
+	    aAutoChronoCopy["Items", arrayPosition, "selectionEnabled"] := selectionEnabled
 	    aAutoChronoCopy["Items", arrayPosition, "hotkey"] := hotkey
 	    aAutoChronoCopy["Items", arrayPosition, "units"] := []
 
@@ -227,12 +240,14 @@ iniWriteAndUpdateAutoChrono(byRef aAutoChronoCopy, byRef aAutoChrono)
 saveCurrentAutoChronoItem(byRef aAutoChronoCopy)
 {
 	GuiControlGet, enabled,, AutoChronoEnabled
+	GuiControlGet, selectionEnabled,, AutoChronoSelectionEnabled
 	GuiControlGet, hotkey,, AutoChrono_Key
 
 	arrayPosition := aAutoChronoCopy["IndexGUI"]
 
 	aAutoChronoCopy["Items", arrayPosition] := []
 	aAutoChronoCopy["Items", arrayPosition, "enabled"] := enabled
+	aAutoChronoCopy["Items", arrayPosition, "selectionEnabled"] := enabled ? 0 : selectionEnabled
 	aAutoChronoCopy["Items", arrayPosition, "hotkey"] := hotkey
 	aAutoChronoCopy["Items", arrayPosition, "units"] := []
 	userPriority := 1
@@ -254,7 +269,7 @@ saveCurrentAutoChronoItem(byRef aAutoChronoCopy)
 
 autoChronoFindPosiitionWithNoUnits(byRef aAutoChronoCopy)
 {
-	loop, 1000
+	loop, 100
 	{
 		if !IsObject(aAutoChronoCopy["Items", A_Index])
 			break
@@ -278,12 +293,16 @@ showAutoChronoItem(byRef aAutoChronoCopy)
 			LV_ADD("", aUnitName[typeID])
 	}
 	GUIControl,, AutoChronoEnabled, % round(aAutoChronoCopy["Items", arrayPosition, "enabled"])
+	if aAutoChronoCopy["Items", arrayPosition, "enabled"]
+		GUIControl,, AutoChronoSelectionEnabled, 0
+	else GUIControl,, AutoChronoSelectionEnabled, % round(aAutoChronoCopy["Items", arrayPosition, "selectionEnabled"])
 	GUIControl,, AutoChrono_Key, % aAutoChronoCopy["Items", arrayPosition, "hotkey"]
 	return
 }
 blankAutoChronoGUI()
 {
 	GUIControl,, AutoChronoEnabled, 0
+	GUIControl,, AutoChronoSelectionEnabled, 0
 	GUIControl,, AutoChrono_Key,
 	removeAllItemsFromListView("AutoChronoListView")
 	return

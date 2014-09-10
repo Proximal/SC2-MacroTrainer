@@ -2154,45 +2154,93 @@ numGetSelectionSorted(ByRef aSelection, ReverseOrder := False)
   	return aSelection["Count"]	
 }
 
-numGetSelectionBubbleSort(ByRef aSelection, ReverseOrder := False)
+/*
+This was just a test to compare the speed of using a machine code function vs the current numgetselectionSorted()
+If it was significantly faster, I would re-write the c++ function so it was nicer to look at - an array of an array syntax or something.
+However, as I suspected the actual MCode function is blazingly fast - ~0.004 ms, but all the additional numput/numget calls
+result in it being slower than the current AHK function. For 235 units it was ~7.6 ms.
+If I could have the function write these values directly back into the object, then it would be worth it. But wouldnt be easy.
+
+numGetSelectionSortedMachineCodeTest(ByRef aSelection, byRef aStorage)
 {
+	global aLocalPlayer
+	static mCodeF 
+	if !mCodeF
+		mCodeF := MCode("1,x86:558BEC83EC0C8B450C5633F6488945F474768B450853578BD6C1E2028D0CB504000000014D0C8D3C888D1C90897DFC8B3F895DF88B1B3BDF7F4675288B7C90048B5C88043BFB7C38751A8B7C900C8B4C880C3BF97F2A750C8B4C90108B550C3B0C907C1C8B55FC8B4DF86A045F8B1A8B318919893283C10483C2044F75EF33F6463B75F472915F5B33C0405EC9C3")
 	aSelection := []
-	selectionCount := getSelectionCount()
-	ReadRawMemory(B_SelectionStructure, GameIdentifier, MemDump, selectionCount * S_scStructure + O_scUnitIndex)
-
-	aSelection.Count := numget(MemDump, 0, "Short")
-	aSelection.Types := numget(MemDump, O_scTypeCount, "Short")
-	
-	aSelection.HighlightedGroup := numget(MemDump, O_scTypeHighlighted, "Short")
-
-	aSelection.units := []
+	, selectionCount := getSelectionCount()
+	, ReadRawMemory(B_SelectionStructure, GameIdentifier, MemDump, selectionCount * S_scStructure + O_scUnitIndex)
+	, aSelection.Count := numget(MemDump, 0, "Short")
+	, aSelection.Types := numget(MemDump, O_scTypeCount, "Short")
+	, aSelection.HighlightedGroup := numget(MemDump, O_scTypeHighlighted, "Short")
+	, aStorage := []
+	, aSelection.units := []
+	VarSetCapacity(buffer, aSelection.Count * 16, 0)
 	loop % aSelection.Count
 	{
+		priority := getUnitSubGroupPriority(unitIndex := numget(MemDump,(A_Index-1) * S_scStructure + O_scUnitIndex , "Int") >> 18)
+		subGroupAlias := aUnitSubGroupAlias.hasKey(unitId := getUnitType(unitIndex)) ? aUnitSubGroupAlias[unitId] : unitId 
+		sIndices .= "," unitIndex
+		hallucination := ((filter := getUnitTargetFilter(unitIndex)) & aUnitTargetFilter.Hallucination) ; hallucinations come first so they get key 0 real units get key 1
+		if aLocalPlayer["Slot"] != getUnitOwner(unitIndex)
+			nonLocalUnitSelected := True										
 
-		aSelection.units.insert({ "unitIndex": unit := numget(MemDump,(A_Index-1) * S_scStructure + O_scUnitIndex , "Int") >> 18
-								, "unitId": unitId := getUnitType(unit)
-								, "priority": getUnitSubGroupPriority(unit)
-							
-								; What this does is: 
-								; if unit is hallucinated assign a value (subgroup alias) .1 lower than 
-								; the non-hallucinated version (so they will be sorted before real units)
-								; If the unit isn't hallucinated check if check has a subgroup alias
-								; if it does, then assign that subgroup alias, otherwise assign the unitID/type
-
-								, "subGroup": getUnitTargetFilter(unit) & aUnitTargetFilter.Hallucination 
-												? unitId  - .1 ; Dirty hack for hallucinations
-												: (aUnitSubGroupAlias.hasKey(unitId) 
-														? aUnitSubGroupAlias[unitId] 
-														:  unitId) ;})
-								, name: aUnitName[unitId]}) ; Include name for easy testing
+		NumPut(priority, buffer,  (A_Index-1)*16, "Int")
+		, NumPut(subGroupAlias, buffer,  (A_Index-1)*16 +4, "Int")
+		, NumPut(hallucination, buffer,  (A_Index-1)*16 +8, "Int")
+		, NumPut(unitIndex, buffer,  (A_Index-1)*16 +12, "Int")
 	}
-
-	bubbleSort2DArray(aSelection.units, "unitIndex", !ReverseOrder)   ; 0 on reverse
-	bubbleSort2DArray(aSelection.units, "subGroup", !ReverseOrder)
-	bubbleSort2DArray(aSelection.units, "Priority", ReverseOrder)
-
-  	return aSelection["Count"]	
+	DllCall(mCodeF, "Ptr", &buffer, "int", aSelection.Count, "cdecl int")
+	loop, % aSelection.Count
+		aStorage[A_Index] := NumGet(buffer, (A_Index-1)*16+12, "Int") ; retrieve the UnitIndex values
+	return
 }
+
+int sort(int* buffer, unsigned int count)
+{
+	int size = 4;
+	int swap; 
+	for (int i = 0; i < count-1; i++)
+	{
+		int priorityA = i*size + 0;
+		int unitIDA = i*size + 1;
+		int hallucinationA = i*size + 2;
+		int unitIndexA = i*size + 3;
+
+		int priorityB = priorityA + size;
+		int unitIDB = unitIDA + size;
+		int hallucinationB = hallucinationA + size; 
+		int unitIndexB = unitIndexA + size; 
+
+		if (buffer[priorityA] > buffer[priorityB])
+			continue;
+		else if (buffer[priorityA] == buffer[priorityB])
+		{
+			if (buffer[unitIDA] < buffer[unitIDB])
+				continue;
+			else if (buffer[unitIDA] == buffer[unitIDB])
+			{
+				if (buffer[hallucinationA] > buffer[hallucinationB])
+					continue;
+				else if (buffer[hallucinationA] == buffer[hallucinationB])
+				{
+					if (buffer[unitIndexA] < buffer[unitIndexB])
+						continue;
+				}
+			}
+		}
+		for (int j = 0; j < size; j++)
+		{
+			swap = buffer[priorityA+j];
+			buffer[priorityA+j] = buffer[priorityB+j];
+			buffer[priorityB+j] = swap;
+		}
+		i = 0;
+	}
+	return 1;
+}
+
+*/
 
 isInSelection(unitIndex)
 {

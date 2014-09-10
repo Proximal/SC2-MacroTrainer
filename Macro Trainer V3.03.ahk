@@ -994,30 +994,25 @@ setupSelectArmyUnits(l_input, aUnitID)
 
 Cast_ChronoStructure:
 Thread, NoTimers, True
-item := ""
 for index, object in aAutoChrono["Items"]
 {
 	; concatenating literal string forces comparison as strings, else 1 = +1 
 	; Also check if enabled - as user could have same hotkey for multiple items but one is disabled.
-	if ("" object.hotkey = A_ThisHotkey && object.enabled)
+	if ("" object.hotkey = A_ThisHotkey && (object.enabled || object.selectionEnabled))
 	{
-		item := index
-		break
+		MTBlockInput, On
+		input.releaseKeys(True) ; don't use postmessage.
+		sleep, 60
+		Cast_ChronoStructure(aAutoChrono["Items", index, "Units"], aAutoChrono["Items", index, "selectionEnabled"])
+		MTBlockInput, Off
+		return
 	}
-}
-if (item != "") ; item should never be blank but im just leaving it like this just in case as i cant be bothered checking
-{
-	MTBlockInput, On
-	input.releaseKeys(True) ; don't use postmessage.
-	sleep, 60
-	Cast_ChronoStructure(aAutoChrono["Items", item, "Units"])
-	MTBlockInput, Off
 }
 return
 
 ; aStructuresToChrono is an array which keys are the unit types and their values are the chrono order
 ; lower chrono order is chronoed first
-Cast_ChronoStructure(aStructuresToChrono)
+Cast_ChronoStructure(aStructuresToChrono, selectionMode := False)
 {	GLOBAL aUnitID, CG_control_group, chrono_key, CG_nexus_Ctrlgroup_key, CG_chrono_remainder, ChronoBoostSleep
 	, HumanMouse, HumanMouseTimeLo, HumanMouseTimeHi, NextSubgroupKey
 
@@ -1032,26 +1027,51 @@ Cast_ChronoStructure(aStructuresToChrono)
 
 	IF !nexus_chrono_count
 		return
-	loop, % DumpUnitMemory(MemDump)
+	if !selectionMode
 	{
-		unit := A_Index - 1
-		if isTargetDead(TargetFilter := numgetUnitTargetFilter(MemDump, unit)) || !isOwnerLocal(numgetUnitOwner(MemDump, Unit))
-		|| isTargetUnderConstruction(TargetFilter)
-	       Continue
-    	if aStructuresToChrono.HasKey(Type := numgetUnitModelType(numgetUnitModelPointer(MemDump, Unit))) && !isUnitChronoed(unit)
-    	{
-	    	IF ( type = aUnitID["WarpGate"]) && (cooldown := getWarpGateCooldown(unit))
-				a_WarpgatesOnCoolDown.insert({"Unit": unit, "Cooldown": cooldown})
-			Else IF (type = aUnitID["Gateway"] && isGatewayConvertingToWarpGate(unit))
-					a_gatewaysConvertingToWarpGates.insert(unit) 
-			else
-			{	
-				progress :=  getBuildStats(unit, QueueSize)	; need && QueueSize as if progress reports 0 when idle it will be added to the list
-				if ( (progress < .95 && QueueSize) || QueueSize > 1) ; as queue size of 1 means theres only 1 item in queue being produced
-					oStructureToChrono.insert({Unit: unit, QueueSize: QueueSize, progress: progress, userOrder: round(aStructuresToChrono[type])})
+		loop, % DumpUnitMemory(MemDump)
+		{
+			unit := A_Index - 1
+			if isTargetDead(TargetFilter := numgetUnitTargetFilter(MemDump, unit)) || !isOwnerLocal(numgetUnitOwner(MemDump, Unit))
+			|| isTargetUnderConstruction(TargetFilter)
+		       Continue
+	    	if aStructuresToChrono.HasKey(Type := numgetUnitModelType(numgetUnitModelPointer(MemDump, Unit))) && !isUnitChronoed(unit)
+	    	{
+		    	IF ( type = aUnitID["WarpGate"]) && (cooldown := getWarpGateCooldown(unit))
+					a_WarpgatesOnCoolDown.insert({"Unit": unit, "Cooldown": cooldown})
+				Else IF (type = aUnitID["Gateway"] && isGatewayConvertingToWarpGate(unit))
+						a_gatewaysConvertingToWarpGates.insert(unit) 
+				else
+				{	
+					progress := getBuildStats(unit, QueueSize)	; need && QueueSize as if progress reports 0 when idle it will be added to the list
+					if ( (progress < .95 && QueueSize) || QueueSize > 1) ; as queue size of 1 means theres only 1 item in queue being produced
+						oStructureToChrono.insert({Unit: unit, QueueSize: QueueSize, progress: progress, userOrder: round(aStructuresToChrono[type])})
+				}
+	    	}														  
+		}	
+	}
+	else 
+	{	
+		numGetUnitSelectionObject(aSelection)
+		for i, unit in aSelection.Units
+		{
+			If aLocalPlayer.Slot != unit.owner || isTargetUnderConstruction(getunittargetfilter(unit.UnitIndex))
+				continue
+			if aStructuresToChrono.HasKey(unit.Type) && !isUnitChronoed(unit.UnitIndex)
+			{
+		    	IF (unit.Type = aUnitID["WarpGate"]) && (cooldown := getWarpGateCooldown(unit.UnitIndex))
+					a_WarpgatesOnCoolDown.insert({"Unit": unit.UnitIndex, "Cooldown": cooldown})
+				Else IF (unit.Type = aUnitID["Gateway"] && isGatewayConvertingToWarpGate(unit.UnitIndex))
+					a_gatewaysConvertingToWarpGates.insert(unit.UnitIndex) 
+				else
+				{	
+					progress := getBuildStats(unit.UnitIndex, QueueSize)	; need && QueueSize as if progress reports 0 when idle it will be added to the list
+					if ( (progress < .95 && QueueSize) || QueueSize > 1) ; as queue size of 1 means theres only 1 item in queue being produced
+						oStructureToChrono.insert({Unit: unit.UnitIndex, QueueSize: QueueSize, progress: progress, userOrder: round(aStructuresToChrono[unit.Type])})
+				}				
 			}
-    	}														  
-	}	
+		}
+	}
 
 	if a_WarpgatesOnCoolDown.MaxIndex()
 		bubbleSort2DArray(a_WarpgatesOnCoolDown, "Cooldown", 0)	;so warpgates with longest cooldown get chronoed first
@@ -1890,20 +1910,22 @@ return
 gEasyUnloadDescription:
 msgbox,, Easy Unload/Select,
 		(LTrim 
-		This page has two separate hotkeys which perform different tasks.
+		This page has two separate hotkeys which perform three different tasks.
 
 		Unload All:
 		If enabled, when you double tap the SC2 unload all key (default is 'd') and transports containing units are the highlighted subgroup, then all of the transports will begin unloading. 
 
+		====================================================
+
 		Easy Select/Cursor Unload:
 		If enabled, then the 'Easy Select/Cursor Unload' hotkey will perform one of two functions depending on if it is double tapped or held down.
 		
-		1) When Double tapped this key will select all loaded transports visible on the screen.
+		1) When double tapped this hotkey will select all loaded transports visible on the screen.
 		(Ensure the mouse is not hovering above a transport, otherwise it may begin unloading)
 
-		2) When the button is held down the unloading mode will be invoked. Simply wave the mouse cursor over the loaded transports to begin unloading them.
+		2) When the hotkey is held down the unloading mode will be invoked. Simply wave the mouse cursor over the loaded transports to begin unloading them.
 		
-		Note: This mouse hover unloading method is less reliable than the 'Unload All' method, particularly  when the transports are stacked or the mouse is moved very fast.
+		Note: This mouse cursor unloading method is less reliable than the 'Unload All' method, particularly  when the transports are stacked or the mouse is moved very fast.
 		)
 return 
 
@@ -3568,7 +3590,8 @@ IfWinExist
 		 Gui, Add, Button, x+20 w65 h25 vDeleteAutoChrono gAutoChronoGui, Delete
 
 	Gui, Add, GroupBox, xs Ys+85 w380 h280 section vGroupBoxItemAutoChrono, % "Chrono Item " aAutoChronoCopy["IndexGUI"] 
-		Gui, Add, Checkbox, xs+15 yp+25 vAutoChronoEnabled, Enable
+		Gui, Add, Checkbox, xs+15 yp+25 vAutoChronoEnabled gGUIAutoChronoEnableCheck, Enable all structures
+		Gui, Add, Checkbox, xs+15 yp+25 vAutoChronoSelectionEnabled gGUIAutoChronoEnableCheck, Enable selection mode
 		Gui, Add, Text, yp+30, Hotkey:
 			Gui, Add, Edit, Readonly yp-2 x+10 center w65 R1 vAutoChrono_Key gedit_hotkey, %A_Space%
 		Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#AutoChrono_Key,  Edit	
@@ -3986,7 +4009,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 
 
 		Gui, Add, GroupBox, xs y+25 w205 h55, Easy Select/Cursor Unload  Hotkey
-			Gui, Add, Text, Xp+10 yp+25 w85, Immediate:
+			Gui, Add, Text, Xp+10 yp+25 w85, Hotkey:
 				Gui, Add, Edit, Readonly yp-2 xs+85 center w65 R1 vEasyUnloadHotkey gedit_hotkey, %EasyUnloadHotkey%
 				Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#EasyUnloadHotkey,  Edit 	
 
@@ -3994,7 +4017,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 	;			Gui, Add, Edit, Readonly yp-2 xs+85 center w65 vEasyUnloadQueuedHotkey gedit_hotkey, %EasyUnloadQueuedHotkey%
 	;			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#EasyUnloadQueuedHotkey,  Edit 			
 		
-		Gui, Add, GroupBox, xs y+25 w205 h120, SC2 Unload All Key
+		Gui, Add, GroupBox, xs y+25 w205 h120, SC2 Unload All Key / Unload All Hotkey
 			Gui, Add, Text, Xp+10 yp+25 w85, Terran:
 			Gui, Add, Edit, Readonly yp-2 xs+85 w65 R1 center vEasyUnload_T_Key, %EasyUnload_T_Key%
 				Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#EasyUnload_T_Key,  Edit
@@ -4628,6 +4651,11 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 				. "If you want instant chronoboosts, a value of 0 ms works reliably for me.`n"
 				. "If 0 ms is not reliable for you, try increasing the sleep time in one or two ms increments. (it doesn't require much)"
 		CG_chrono_remainder_TT := TT_CG_chrono_remainder_TT := "This is how many full chronoboosts will remain afterwards between all your nexi.`nA setting of 1 will leave 1 full chronoboost (or 25 energy) on one of your nexi."
+		
+		AutoChronoEnabled_TT := "All of the listed structures will be chronoed."
+		AutoChronoSelectionEnabled_TT := "Only the currently selected structures will be chronoed."
+										. "`n`nNote: The structures must still be listed in the panel on the right."
+
 		AddUnitAutoChrono_TT := "Adds a new structure to the current list."
 		RemoveUnitAutoChrono_TT := "Removes selected structure(s)."
 		MoveUpUnitAutoChrono_TT := "Increases the selected structure's chrono priority."
@@ -4773,6 +4801,13 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		SelectArmyDeselectLoadedTransport_TT := "Removes loaded medivacs and warp prisms"
 		SelectArmyDeselectQueuedDrops_TT := "Removes transports which have a drop command queued`n`nDoesn't include tranports which have begun unloading."
 
+	EasyUnloadHotkey_TT := #EasyUnloadHotkey_TT := "This hotkey performs two functions depending on if it is double tapped or held down."
+													. "`n`nFunction 1) Double tap this key to select any loaded transports visible on the screen."
+													. "`n`nFunction 2) Hold this button and wave the mouse over the loaded transports to begin unloading them."		
+													. "`n`nClick the 'About' button below for more information."
+		EasyUnload_T_Key_TT := EasyUnload_P_Key_TT := EasyUnload_Z_Key_TT := "This needs to correspond to the SC2 unload all key."
+															. "`nThis key is used by both the 'Easy Select/Cursor Unload' and 'Unload All' functions."
+															. "`n`nIf the unload all feature is enabled, then when you double tap this key (and transports are the selected and highlighted unit type) all of the transports will immediately begin unloading."
 
 		loop, parse, l_Races, `,
 		{
@@ -4841,9 +4876,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 															. "`n`nYou must ensure the corresponding ""Set Control Group keys"" match your SC2 hotkey setup."
 
 		l_DeselectArmy_TT := #l_DeselectArmy_TT := "These unit types will be deselected."
-		EasyUnloadHotkey_TT := #EasyUnloadHotkey_TT := "This hotkey performs two functions depending on if it is double tapped or held down."
-													. "`n`nFunction 1) Double tap this key to select any loaded transports visible on the screen."
-													. "`n`nFunction 2) Hold this button and wave the mouse over the loaded transports to begin unloading them."
+		
 		EasyUnloadStorageKey_TT := "The selected/unloaded transports will be stored in this control group."		
 							. "`n`nYou must ensure the corresponding ""Set Control Group keys"", ""Add to Control Group Keys"",`nand ""Invoke Group Keys"" (under SC2 Keys on the left) match your SC2 hotkey setup."									
 
@@ -8069,7 +8102,7 @@ CreateHotkeys()
 		{
 			for i, object in aAutoChrono["Items"]
 			{
-				if (object.enabled && object.Units.MaxIndex())
+				if ((object.enabled || object.selectionEnabled) && object.Units.MaxIndex())
 					try hotkey, % object.hotkey, Cast_ChronoStructure, on	
 			}
 		}
@@ -11657,36 +11690,3 @@ unloadAllTransports(hotkeySuffix)
 		keywait, %hotkeySuffix%
 	}
 }
-
-/*
-f1::
-SetFormat, FloatFast, 0.15
-msgbox % clipboard := serdes(minimap)
-msgbox % u := getSelectedUnitIndex()
-rad := getMiniMapRadius(u)
-x := getUnitPositionX(u)
-y := getUnitPositiony(u)
-drawUnitRectangleTest(x, y, rad)
-FillUnitRectangleTest(x, y, rad)
-return 
-
-/*
-139.000000, 106.000000
-3.000000, 3.000000
-
-140.000000, 107.000000
-2.000000, 2.000000
-
-;361
-
-; both 15
-139.000000000000000, 106.000000000000000
-3.000000000000000, 3.000000000000000
-
-139.000000000000000, 106.000000000000000
-3.000000000000000, 3.000000000000000
-
-*/
-
-
-
