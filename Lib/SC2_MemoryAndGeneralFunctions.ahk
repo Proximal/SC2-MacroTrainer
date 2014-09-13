@@ -2254,15 +2254,14 @@ isInSelection(unitIndex)
 	return 0
 }
 
-
 numGetUnitSelectionObject(ByRef aSelection)
 {	GLOBAL O_scTypeCount, O_scTypeHighlighted, S_scStructure, O_scUnitIndex, GameIdentifier, B_SelectionStructure
 	aSelection := []
 	, selectionCount := getSelectionCount()
 	, ReadRawMemory(B_SelectionStructure, GameIdentifier, MemDump, selectionCount * S_scStructure + O_scUnitIndex)
-	, aSelection["Count"]	:= numget(MemDump, 0, "Short")
-	, aSelection["Types"]	:= numget(MemDump, O_scTypeCount, "Short")
-	, aSelection["HighlightedGroup"]	:= numget(MemDump, O_scTypeHighlighted, "Short")
+	, aSelection["Count"] := numget(MemDump, 0, "Short")
+	, aSelection["Types"] := numget(MemDump, O_scTypeCount, "Short")
+	, aSelection["HighlightedGroup"] := numget(MemDump, O_scTypeHighlighted, "Short")
 	, aSelection.units := []
 	loop % aSelection["Count"]
 		owner := getUnitOwner(unit := numget(MemDump,(A_Index-1) * S_scStructure + O_scUnitIndex , "Int") >> 18), Type := getUnitType(unit), aSelection.units.insert({"UnitIndex": unit, "Type": Type, "Owner": Owner})

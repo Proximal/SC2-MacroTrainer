@@ -3191,11 +3191,11 @@ IfWinExist
 				Gui, Add, Edit, Number Right x+10 yp-2 w45 vTT_minimum_supply
 				Gui, Add, UpDown, Range1-200 Vminimum_supply, %minimum_supply%	
 
-				Gui, Add, Text,xs y+15 w125, Secondary Warnings:
+				Gui, Add, Text,xs y+15 w125, Follow Up Warnings:
 					Gui, Add, Edit, Number Right x+10 yp-2 w45 vTT_sec_supply
 						Gui, Add, UpDown, Range0-200 Vsec_supply, %sec_supply%
 
-				Gui, Add, Text,y+15 xs w125, Secondary Delay:
+				Gui, Add, Text,y+15 xs w125, Follow Up Delay:
 					Gui, Add, Edit, Number Right x+10 yp-2 w45 vTT_additional_delay_supply
 						Gui, Add, UpDown, Range0-200 Vadditional_delay_supply, %additional_delay_supply%
 
@@ -3209,11 +3209,11 @@ IfWinExist
 				Gui, Add, Edit, Number Right x+5 yp-2 w55 vTT_mineraltrigger
 					Gui, Add, UpDown, Range1-20000 Vmineraltrigger, %mineraltrigger%
 
-			Gui, Add, Text, xs+10 y+10 w105, Secondary Warnings:
+			Gui, Add, Text, xs+10 y+10 w105, Follow Up Warnings:
 				Gui, Add, Edit, Number Right x+5 yp-2 w55 vTT_sec_mineral
 					Gui, Add, UpDown, Range0-20000 Vsec_mineral, %sec_mineral%
 
-			Gui, Add, Text, xs+10 y+10 w105, Secondary Delay:
+			Gui, Add, Text, xs+10 y+10 w105, Follow Up Delay:
 				Gui, Add, Edit, Number Right x+5 yp-2 w55 vTT_additional_delay_minerals
 					Gui, Add, UpDown, Range1-20000 Vadditional_delay_minerals, %additional_delay_minerals%
 
@@ -3227,11 +3227,11 @@ IfWinExist
 				Gui, Add, Edit, Number Right x+5 yp-2 w55 vTT_gas_trigger
 					Gui, Add, UpDown, Range1-20000 Vgas_trigger, %gas_trigger%
 
-			Gui, Add, Text, xs+10 y+10 w105, Secondary Warnings:
+			Gui, Add, Text, xs+10 y+10 w105, Follow Up Warnings:
 				Gui, Add, Edit, Number Right x+5 yp-2 w55 vTT_sec_gas
 					Gui, Add, UpDown, Range0-20000 Vsec_gas, %sec_gas%
 
-			Gui, Add, Text, xs+10 y+10 w105, Secondary Delay:
+			Gui, Add, Text, xs+10 y+10 w105, Follow Up Delay:
 				Gui, Add, Edit, Number Right x+5 yp-2 w55 vTT_additional_delay_gas
 					Gui, Add, UpDown, Range1-20000 Vadditional_delay_gas, %additional_delay_gas%
 
@@ -3246,11 +3246,11 @@ IfWinExist
 				Gui, Add, Edit, Number Right x+5 yp-2 w55 vTT_idletrigger
 					Gui, Add, UpDown, Range1-20000 Vidletrigger, %idletrigger%
 
-			Gui, Add, Text, xs+10 y+10 w105, Secondary Warnings:
+			Gui, Add, Text, xs+10 y+10 w105, Follow Up Warnings:
 				Gui, Add, Edit, Number Right x+5 yp-2 w55 vTT_sec_idle
 					Gui, Add, UpDown, Range0-20000 Vsec_idle, %sec_idle%
 
-			Gui, Add, Text, xs+10 y+10 w105, Secondary Delay:
+			Gui, Add, Text, xs+10 y+10 w105, Follow Up Delay:
 				Gui, Add, Edit, Number Right x+5 yp-2 w55 vTT_additional_idle_workers
 					Gui, Add, UpDown, Range1-20000 Vadditional_idle_workers, %additional_idle_workers%
 
@@ -3269,11 +3269,11 @@ IfWinExist
 				Gui, Add, Edit, Number Right x+5 yp-2 w55 vTT_WarningsGeyserOverSaturationMaxTime
 					Gui, Add, UpDown, Range4-200 vWarningsGeyserOverSaturationMaxTime, %WarningsGeyserOverSaturationMaxTime%					
 
-			Gui, Add, Text, xs+10 y+10 w105, Secondary Warnings:
+			Gui, Add, Text, xs+10 y+10 w105, Follow Up Warnings:
 				Gui, Add, Edit, Number Right x+5 yp-2 w55 vTT_WarningsGeyserOverSaturationFollowUpCount
 					Gui, Add, UpDown, Range0-20000 vWarningsGeyserOverSaturationFollowUpCount, %WarningsGeyserOverSaturationFollowUpCount%
 
-			Gui, Add, Text, xs+10 y+10 w105, Secondary Delay:
+			Gui, Add, Text, xs+10 y+10 w105, Follow Up Delay:
 				Gui, Add, Edit, Number Right x+5 yp-2 w55 vTT_WarningsGeyserOverSaturationFollowUpDelay
 					Gui, Add, UpDown, Range1-20000 vWarningsGeyserOverSaturationFollowUpDelay, %WarningsGeyserOverSaturationFollowUpDelay%
 
@@ -3291,9 +3291,9 @@ IfWinExist
 		GuiControlGet, MacroWarningsWorkerTerranButtonGUI, Pos
 		for k, race in ["Terran", "Protoss", "Zerg"]
 		{
-			Gui, Add, GroupBox, % "x" MacroWarningsWorkerTerranButtonGUIx " y" (MacroWarningsWorkerTerranButtonGUIy + 50) " w235 h255 vMacroWarningsWorker" race "GroupBoxGUI hidden" (A_index != 1) , %race%
+			Gui, Add, GroupBox, % "x" MacroWarningsWorkerTerranButtonGUIx " y" (MacroWarningsWorkerTerranButtonGUIy + 50) " w235 h255 vMacroWarningsWorker" race "GroupBoxGUI hidden" (A_index != 1) , %race% Worker Production
 			Gui, Add, Checkbox, % "xp+15 yp+25  VWarningsWorker" race "Enable checked" WarningsWorker%race%Enable " hidden" (A_index != 1) , Enable Alert
-			Gui, Add, Text, y+10 section w125, Time without Production:
+			Gui, Add, Text, y+10 section w125, Time Without Production:
 				Gui, Add, Edit, % "Number Right x+15 yp-2 w65 vTT_WarningsWorker" race "TimeWithoutProduction hidden" (A_index != 1)
 					Gui, Add, UpDown, % "Range1-20000 vWarningsWorker" race "TimeWithoutProduction hidden" (A_index != 1), % WarningsWorker%race%TimeWithoutProduction
 
@@ -3329,7 +3329,7 @@ IfWinExist
 				Gui, Add, Edit,  Number Right x+5 yp-2 w55 vTT_delay_warpgate_warn
 					Gui, Add, UpDown, Range1-20000 Vdelay_warpgate_warn, %delay_warpgate_warn%			
 
-			Gui, Add, Text, x%xtabx% y+10  w105, Secondary Delay:
+			Gui, Add, Text, x%xtabx% y+10  w105, Follow Up Delay:
 				Gui, Add, Edit,  Number Right x+5 yp-2 w55 vTT_delay_warpgate_warn_followup
 					Gui, Add, UpDown, Range1-20000 Vdelay_warpgate_warn_followup, %delay_warpgate_warn_followup%						
 
@@ -3338,9 +3338,10 @@ IfWinExist
 		
 		Gui, Font, s10 BOLD
 		Gui, add, text, xs ys+110 cRED, Note:
-		Gui, Font, s10 norm
-		Gui, add, text, xp+50 yp w340, These warnings will become active AFTER you convert your first warpgate.
-		Gui, Font, s9 norm	
+		Gui, Font, s9 norm
+		;Gui, Font, s10 norm
+		Gui, add, text, xp+50 yp w340, These warnings will become active AFTER you convert your first warpgate.`n`nThe gateway will also be marked on the minimap providing the 'Display Alerts' option is enabled. (MiniMap/Overlays-->General)
+		;Gui, Font, s9 norm	
 
 	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vMisc_TAB, Misc Abilities
 		Gui, Add, GroupBox, w240 h150 section, Misc Hotkeys
@@ -3801,20 +3802,25 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 	}
 
 	Gui, Tab, Info
+		Gui, add, GroupBox, section y+25 w405 h305
 		Gui, Font, s10 BOLD
-		Gui, add, text, x+25 y+12 w380, Quick Select 
-		Gui, Font, s10 norm
-		Gui, add, text, xp y+15 w380, 
+		Gui, add, text, xs+10 ys+25 w380, Quick Select 
+		;Gui, Font, s10 norm
+		Gui, Font, s9 norm
+		Gui, add, text, xp+10 y+15 w360, 
 		( LTrim
-			This allows you to instantly select any number of (army) unit types with a single hotkey.
-			In other words, it is like selecting a predefined control group, but you never have to issue the initial grouping command.		
+			This is a powerful feature with many possible uses.
+
+			In its simplest form, it allows you to instantly select any number of unit types with a single hotkey. In other words, it is like selecting a predefined control group, but you never have to issue the initial grouping command.		
+
+			Structures are automatically removed, however non-army units (workers, queens, mules, overlords etc) are not. If the starting selection is set to anything other than 'Army' and you are not specifying the unit types to keep, you should consider enabling the 'Remove these types' option and specifying these non-army units there.
 		)
 		Gui, Font, s10 BOLD
 		Gui, add, text, xp y+25 cRed, Note:
-		Gui, Font, s10 norm
-		Gui, add, text, xp y+10 w380, You will need to ensure the 'Select Army' key found under 'SC2 keys'->'Common' (on the left) matches your SC2 hotkey.
+		Gui, Font, s9 norm
+		Gui, add, text, xp+10 y+10 w360, You will need to ensure the keys found under 'SC2 keys' (on the left) match your SC2 hotkey.
 
-		Gui, Font, s9
+		;Gui, Font, s9
 	;	Gui, add, text, xp y+15 w380, Test 
 		;Gui, add, text, xp y+15 w380, Test 
 
@@ -4190,7 +4196,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 
 	;	Gui, add, text, y+15 X%CurrentGuiTabX%, Custom Unit Highlights:
 		
-		Gui, add, GroupBox, y+25 x%groupboxGuiX% w410 h205, Custom Unit Highlights
+		Gui, add, GroupBox, y+25 x%groupboxGuiX% w410 h210, Custom Unit Highlights
 
 			Gui, add, text, yp+30 X%CurrentGuiTabX%, Unit:
 			Gui, Add, Edit, yp-2 x%xguiUnitBox% w300 section  center r1 vUnitHighlightList1, %UnitHighlightList1%
@@ -4476,14 +4482,16 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		above_upperdelta_TT := TT_above_upperdelta_TT := "A warning will be heard when the 'free' supply drops below this number. (While your supply is greater than the 'Upper Range Cutoff')."
 		minimum_supply_TT := TT_minimum_supply_TT := "Alerts are only active while your supply is above this number."
 
-		w_supply_TT := w_warpgate_TT := WarningsWorkerTerranSpokenWarning_TT := WarningsWorkerProtossSpokenWarning_TT := WarningsWorkerZergSpokenWarning_TT := w_gas_TT := w_idle_TT := w_mineral_TT := "This text is spoken during a warning."
+		WarningsGeyserOverSaturationSpokenWarning_TT := w_supply_TT := w_warpgate_TT := WarningsWorkerTerranSpokenWarning_TT := WarningsWorkerProtossSpokenWarning_TT := WarningsWorkerZergSpokenWarning_TT := w_gas_TT := w_idle_TT := w_mineral_TT := "This text is spoken during a warning."
 		TT_WarningsWorkerTerranFollowUpCount_TT :=	TT_WarningsWorkerProtossFollowUpCount_TT := TT_WarningsWorkerZergFollowUpCount_TT := WarningsWorkerTerranFollowUpCount_TT := WarningsWorkerProtossFollowUpCount_TT := WarningsWorkerZergFollowUpCount_TT
-		:= sec_idle_TT := sec_gas_TT := sec_mineral_TT := sec_supply_TT := TT_sec_supply_TT := TT_sec_mineral_TT := TT_sec_gas_TT := TT_sec_idle_TT := TT_sec_warpgate_TT := sec_warpgate_TT := "Set how many additional warnings are to be given after the first initial warning (assuming the resource does not fall below the inciting value) - the warnings then turn off."
+		:= sec_idle_TT := sec_gas_TT := sec_mineral_TT := sec_supply_TT := TT_sec_supply_TT := TT_sec_mineral_TT := TT_sec_gas_TT := TT_sec_idle_TT := TT_sec_warpgate_TT := sec_warpgate_TT 
+		:= TT_WarningsGeyserOverSaturationFollowUpCount_TT := WarningsGeyserOverSaturationFollowUpCount_TT := "Sets how many additional warnings are to be given after the first initial warning (assuming the resource does not fall below the inciting value) - the warnings then turn off."
 		additional_delay_supply_TT := TT_additional_delay_supply_TT := additional_delay_minerals_TT := additional_delay_gas_TT := additional_idle_workers_TT 
 		:= TT_additional_delay_minerals_TT := TT_additional_delay_gas_TT := TT_additional_idle_workers_TT := TT_delay_warpgate_warn_followup_TT := delay_warpgate_warn_followup_TT := "This sets the delay between the initial warning, and the additional/follow-up warnings. (in real seconds)"
 		
 		TT_WarningsWorkerTerranFollowUpDelay_TT := 	TT_WarningsWorkerProtossFollowUpDelay_TT := TT_WarningsWorkerZergFollowUpDelay_TT 
-		:= WarningsWorkerTerranFollowUpDelay_TT := WarningsWorkerProtossFollowUpDelay_TT := WarningsWorkerZergFollowUpDelay_TT := "This sets the delay between the initial warning, and the additional/follow-up warnings. (in SC2 seconds)"
+		:= WarningsWorkerTerranFollowUpDelay_TT := WarningsWorkerProtossFollowUpDelay_TT := WarningsWorkerZergFollowUpDelay_TT 
+		:= TT_WarningsGeyserOverSaturationFollowUpDelay_TT := WarningsGeyserOverSaturationFollowUpDelay_TT := "This sets the delay between the initial warning, and the additional/follow-up warnings. (in SC2 seconds)"
 		TT_WarningsWorkerZergTimeWithoutProduction_TT := WarningsWorkerZergTimeWithoutProduction_TT := "A warning will be heard if a drone has not started (being produced) in this amount of time (SC2 seconds)" 
 		
 		TT_WarningsWorkerTerranTimeWithoutProduction_TT := WarningsWorkerTerranTimeWithoutProduction_TT
@@ -4498,14 +4506,17 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		idletrigger_TT := gas_trigger_TT := mineraltrigger_TT := TT_mineraltrigger_TT := TT_gas_trigger_TT := TT_idletrigger_TT := "The required amount to invoke a warning."
 		supplylower_TT := TT_supplylower_TT := TT_supplymid_TT := supplymid_TT := supplyupper_TT := TT_supplyupper_TT := "Dictactes when the next or previous supply delta/threashold is used."
 		
-
+		TT_WarningsGeyserOverSaturationMaxWorkers_TT := WarningsGeyserOverSaturationMaxWorkers_TT := "When this many (or more) workers have been mining from a geyser for too long a warning will be issued.`n`nNote:  The geyser will also be marked on the minimap providing the 'Display Alerts' option is enabled. (MiniMap/Overlays-->General)"
+		TT_WarningsGeyserOverSaturationMaxTime_TT := WarningsGeyserOverSaturationMaxTime_TT := "A warning is issued when the geyser has been oversaturated (too many harvesters) for longer than this period of time (SC seconds). "
+																							. "`n`nNote:  The geyser will also be marked on the minimap providing the 'Display Alerts' option is enabled. (MiniMap/Overlays-->General)"
+		WarningsGeyserOverSaturationEnable_TT := "When too many workers are mining from a gas geyser for too long a warning is issued.`n`nNote:  The geyser will also be marked on the minimap providing the 'Display Alerts' option is enabled. (MiniMap/Overlays-->General)"
 		delay_warpgate_warn_TT := TT_delay_warpgate_warn_TT := "A warning will be heard when an unconverted gateway exists for this period of time.`nThis is in SC/in-game seconds.`n`nNote: An additional delay of up to three (real) seconds can be expected"
 
-		 TT_delay_warpgate_warn_followup_TT := delay_warpgate_warn_followup_TT := "This sets the delay between the initial warning and the additional/follow-up warnings.`n`nNote: This is in SC2 (in game) seconds."
+		TT_delay_warpgate_warn_followup_TT := delay_warpgate_warn_followup_TT := "This sets the delay between the initial warning and the additional/follow-up warnings.`n`nNote: This is in SC2 (in game) seconds."
 		DrawMiniMap_TT := "Draws enemy units on the minimap i.e. A Minimap Hack"
-		DrawSpawningRaces_TT := "Displays a race icon over the enemies spawning location at the start of the match."
+		DrawSpawningRaces_TT := "Displays a race icon over the enemy's spawning location at the start of the match."
 
-		DrawAlerts_TT := "While using the 'detection list' function an 'x' will be briefly displayed on the minimap during a unit warning.`n`nUnconverted gateways will also be marked (if that macro is enabled)."
+		DrawAlerts_TT := "While using the 'detection list' function an 'x' will be briefly displayed on the minimap during a unit warning.`n`nUnconverted gateways and oversaturated geysers will also be marked (if those macros are enabled)."
 
 		UnitHighlightExcludeList_TT := #UnitHighlightExcludeList_TT := "These units will not be displayed on the minimap."
 
@@ -4751,7 +4762,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		HostileColourAssist_TT := "During team games while using hostile colours (green, yellow, and red) enemy bases will still be displayed using player colours.`n`n"
 								. "This helps when co-ordinating attacks e.g. Let's attack yellow!"
 
-		DrawUnitDestinations_TT := "Draws blue, green, orange, yellow and red lines on the minimap to indicate an enemy unit's current move state and destination."
+		DrawUnitDestinations_TT := "Draws blue, green, orange, yellow, and red lines on the minimap to indicate an enemy unit's current move state and destination."
 								. "`nAlso draws an alert icon at the destination of nuclear strikes."
 								. "`n`nBlue - Patrol"
 								. "`nGreen - Move"
@@ -4774,8 +4785,8 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 									. "`nProtoss: Available chrono boosts. If none are available, (real) time until next chrono."
 									. "`nZerg: Available larvae."
 									. "`n`nWith regards to Terran and Protoss the scan/chrono count includes a decimal fraction indicating how close the next scan/chrono is to being available."
-									. "`nMorphing orbitals are accounted for in this this decimal fraction."
-									. "`n`nNote: Non-control-grouped town halls and flying orbitals will not be included."										
+									. "`nMorphing orbitals are accounted for in this this decimal fraction and the time until next scan."
+									. "`n`nNote: Non-control-grouped town halls and flying orbitals are not included."										
 		DrawLocalUpgradesOverlay_TT := "Displays your current upgrade items and their chrono state (if Protoss)."
 									. "`nThis includes morphing hatches, lairs, spires, and command centres."
 									. "`n`nUnchecked = Off"
@@ -4821,7 +4832,9 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 														. "`nUnits On Screen: The units currently on the screen are selected. This produces the same result as the 'remove units outside of camera view' option in previous MacroTrainer versions."
 														. "`nCurrent Selection: The currently selected units are used."
 														. "`nControl Groups: The specified control group is used."
-														. "`n`nNote: Structures are automatically removed."
+														. "`n`nNote:"
+														. "`nStructures are automatically removed, but non-army units such as workers, queens, mules, overlords etc are not!"
+														. "`nIf the starting selection is set to anything other than 'Army' and you are not specifying the unit types to keep, you should enable the 'Remove these types' option and specify them there."
 
 			quickSelect%A_LoopField%SelectUnitTypes_TT := "When enabled the specified units are kept selected. All other types of units are removed."
 														. "`n`nNote: Disabling both the 'Keep these types' and 'Remove these types' options, disables filtering by unit type."
@@ -11690,3 +11703,19 @@ unloadAllTransports(hotkeySuffix)
 		keywait, %hotkeySuffix%
 	}
 }
+
+
+#If, WinActive(GameIdentifier) && isPlaying && aLocalPlayer.Race = "Terran" && !isMenuOpen()
+&& numGetSelectionSorted(aSelection) && (aSelection.TabPositions.HasKey(aUnitID["Marauder"]) || aSelection.TabPositions.HasKey(aUnitID["Marine"]))
+&& (aSelection.HighLightedId != aUnitID["SCV"] || !isUserBusyBuilding()) ; This line allows a turret to be built if an scv is in the same selection as a marine/marauder
+t::
+if aSelection.HighLightedId = aUnitID["Marauder"] || aSelection.HighLightedId = aUnitID["Marine"]
+	tabPos := aSelection.HighlightedGroup
+else if aSelection.TabPositions.HasKey(aUnitID["Marine"])
+    tabPos := aSelection.TabPositions[aUnitID["Marine"]] 
+else tabPos := aSelection.TabPositions[aUnitID["Marauder"]] 
+
+if (tabsToSend := tabPos - aSelection.HighlightedGroup) < 0
+    send, % "+{tab " abs(tabsToSend) "}t{tab "  abs(tabsToSend) "}"
+else send {tab %tabsToSend%}t+{tab %tabsToSend%}
+return

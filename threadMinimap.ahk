@@ -130,6 +130,7 @@ gameChange(UserSavedAppliedSettings := False)
 			doUnitDetection(0, 0, 0, "Reset") ; clear the variables within the function			
 		if (warpgate_warn_on && aLocalPlayer["Race"] = "Protoss") || supplyon || alert_array[GameType, "Enabled"]
 		|| ( (aLocalPlayer["Race"] = "Terran" && WarningsWorkerTerranEnable) || (aLocalPlayer["Race"] = "Protoss" && WarningsWorkerProtossEnable) || (aLocalPlayer["Race"] = "Zerg" && WarningsWorkerProtossEnable))
+		|| geyserOversaturationCheck	
 			settimer, unit_bank_read, 1500, -6   ; unitdetecion performed every second run. ; 2500 worked well %UnitDetectionTimer_ms% ; previous was 4000
 		else settimer, unit_bank_read, off
 		if (aLocalPlayer["Race"] = "Terran" && WarningsWorkerTerranEnable) || (aLocalPlayer["Race"] = "Protoss" && WarningsWorkerProtossEnable) 
@@ -313,44 +314,26 @@ Return
 }
 
 getEnemyUnitsMiniMap(byref aUnitsToDraw)
-{  LOCAL Unitcount, UnitAddress, pUnitModel, Filter, MemDump, Radius, x, y, PlayerColours, MemDump, PlayerColours, Unitcount, owner, unitName
+{  LOCAL UnitAddress, pUnitModel, Filter, MemDump, Radius, x, y, PlayerColours, MemDump, PlayerColours, owner, unitName
  	, Colour, Type, QueuedCommands
   
   aUnitsToDraw := [], aUnitsToDraw.Normal := [], aUnitsToDraw.Custom := []
   PlayerColours := arePlayerColoursEnabled()
-  Unitcount := DumpUnitMemory(MemDump)
-  while (A_Index <= Unitcount)
+  loop, % DumpUnitMemory(MemDump)
   {
      Filter := numget(MemDump, (UnitAddress := (A_Index - 1) * S_uStructure) + O_uTargetFilter, "Int64")
      ; Hidden e.g. marines in medivac/bunker etc. 
      ; Otherwise these unit colours get drawn over the top - medivac highlight colour is hidden.
-     if (Filter & DeadFilterFlag) || (Filter & aUnitTargetFilter.Hidden)  
-        Continue
-     
-     if aMiniMapUnits.Exclude.HasKey(Type := numgetUnitModelType(pUnitModel := numget(MemDump, UnitAddress + O_uModelPointer, "Int")))
-           Continue
+     if (Filter & DeadFilterFlag || Filter & aUnitTargetFilter.Hidden || aMiniMapUnits.Exclude.HasKey(Type := numgetUnitModelType(pUnitModel := numget(MemDump, UnitAddress + O_uModelPointer, "Int"))))
+     	Continue
 
-     owner := numget(MemDump, UnitAddress + O_uOwner, "Char")   
      ;if  (aPlayer[Owner, "Team"] <> aLocalPlayer["Team"] && Owner && type >= aUnitID["Colossus"] && !aChangeling.HasKey(type)) 
      ;|| (aChangeling.HasKey(type) && aPlayer[Owner, "Team"] = aLocalPlayer["Team"] ) ; as a changeling owner becomes whoever it is mimicking - its team also becomes theirs
      
-     if  (aPlayer[Owner, "Team"] != aLocalPlayer["Team"] && Owner && type >= aUnitID["Colossus"])  ; This changeling check is no longer required as reading the first unit owner now (not the third)
+     if (aPlayer[owner := numget(MemDump, UnitAddress + O_uOwner, "Char"), "Team"] != aLocalPlayer["Team"] && Owner && type >= aUnitID["Colossus"])  ; This changeling check is no longer required as reading the first unit owner now (not the third)
      {
           if (!Radius := aUnitInfo[Type, "Radius"])
               Radius := aUnitInfo[Type, "Radius"] := numgetUnitModelMiniMapRadius(pUnitModel)
-         ; This can sometimes cause the outline box rectangle to be too big for the filled square????
-         ; eg for workers on the commune map.... 
-         ; if you assign the written 6 decimal numeric value of minimap.UnitMinimumRadius it works!
-         ; both 6 decimal or places or 15.
-         ; ie   radius := 0.705426 or radius := 0.705426356589147  
-         ; But 	Radius := minimap.UnitMinimumRadius - doest work even though 	Radius := round(minimap.UnitMinimumRadius, 6) does!
-         ; im guessing it's something like some operation is modified if it sees it as a string or float or something
-         ; even though Radius := minimap.UnitMinimumRadius and Radius := round(minimap.UnitMinimumRadius, 15) both produce floats as checked in if radius is float
-         ; I dont understand :( !!!!!!!!!
-         ; Theres something funky going on in AHK - as sometimes it draws correctly with Radius := minimap.UnitMinimumRadius after a restart
-         ; Im just going to set it in the minimap routine minimap.UnitMinimumRadius := round(1 / minimap.scale, 15) 
-         ; The gdip drawRectangle method passes the values as floats which dllcall will pass as a value with A 32-bit floating point number, which provides 6 digits of precision. 
-         ; MSDN states that drawRectangle should use ints and not floats but that causes the black rectangle to disappear....
 
          if (Radius < minimap.UnitMinimumRadius) ; probes and such
            	Radius := minimap.UnitMinimumRadius
@@ -545,9 +528,10 @@ unit_bank_read:
 ; Unit detection function is relatively slow, so only do it on every second routine call
 ; this allows this routine to be called faster to keep the other info up-to-date more quickly
 unit_bank_readCallCount++
-doUnitDetectionOnThisRun := Mod(unit_bank_readCallCount, 2) * (alert_array[GameType, "Enabled"])
+doUnitDetectionOnThisRun := Mod(unit_bank_readCallCount, 2) * (alert_array[GameType, "Enabled"] = 1)
 ; If nothing is on or if only unitdetection is on but it is to be skipped on this pass, just return
-if !(warpgate_warn_on && aLocalPlayer["Race"] = "Protoss") && !supplyon && !workeron && !(alert_array[GameType, "Enabled"] && doUnitDetectionOnThisRun)
+if !(warpgate_warn_on && aLocalPlayer["Race"] = "Protoss") && !WarningsGeyserOverSaturationEnable && !supplyon && !workeron && !doUnitDetectionOnThisRun
+&& !(WarningsWorkerZergEnable && aLocalPlayer["Race"] = "Zerg")
 	return
 
 SupplyInProductionCount := gateway_count := warpgate_count := ZergWorkerInProductionCount := 0
@@ -583,7 +567,7 @@ loop, % DumpUnitMemory(UBMemDump)
 				else if (aProduction.Type = aUnitID["Drone"])	
 					ZergWorkerInProductionCount++
 			}
-			; So If unit is pylong/supply deopt and owner is protoss OR terran AND the supply depot is actively being constructed by an SCV
+			; So If unit is pylon/supply deopt and owner is protoss OR terran AND the supply depot is actively being constructed by an SCV
 			else if (Filter & aUnitTargetFilter.UnderConstruction && (aLocalPlayer["Race"] != "Terran" || isBuildInProgressConstructionActive(numgetUnitAbilityPointer(UBMemDump, u_iteration), unit_type)))
 				SupplyInProductionCount++	
 		}
@@ -654,9 +638,10 @@ return
 warpgate_warn:
 	if  (!isWarpGateTechComplete)
 		return
-	if gateway_count  ; this prvents the minmap warning showing converted gateways until they naturally time out in the drawing section
+	if gateway_count  ; this remove warning x on the minmap once they start converting to warpgates - so don't have to wait for the alert 'x' to naturally time out in the minimap section
 		for index, object in aGatewayWarnings
-			if ( getUnitType(object.unit) != aUnitID["Gateway"] || isUnitDead(object.unit) || !isUnitLocallyOwned(object.unit) ) ;doing this in case unit dies or becomes other players gateway as this list onyl gets cleared when gateway count = 0
+			if (getUnitType(object.unit) != aUnitID["Gateway"] || isUnitDead(object.unit) || !isUnitLocallyOwned(object.unit) ) ;doing this in case unit dies or becomes other players gateway as this list onyl gets cleared when gateway count = 0
+			|| isGatewayConvertingToWarpGate(object.unit)
 			{
 				for minimapIndex, minimapObject in aMiniMapWarning
 					if (minimapObject.unit = object.unit)
@@ -700,8 +685,6 @@ warpgate_warn:
 	}
 
 return
-
-
 
 ;--------------------------------------------
 ;    suply -------------
