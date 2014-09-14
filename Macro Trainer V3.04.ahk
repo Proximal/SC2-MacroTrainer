@@ -55,8 +55,8 @@ SetWorkingDir %A_ScriptDir%  ; Ensures a consistent starting directory.
 #InstallMouseHook
 #InstallKeybdHook
 #UseHook
-;#KeyHistory 0 ; don't need it
-#KeyHistory 500 ; testing
+#KeyHistory 0 ; don't need it
+;#KeyHistory 500 ; testing
 #Persistent
 #NoEnv  ; Recommended for performance and compatibility with future AutoHotkey releases.
 #MaxThreads 20 ; don't know if this will affect anything
@@ -122,7 +122,7 @@ Else
 {
 	Menu Tray, Icon, Included Files\Used_Icons\Starcraft-2.ico
 
-	global debugGame := 1
+	global debugGame := False
 	hotkey, ^+!F12, g_GiveLocalPlayerResources
 	hotkey, *>!F12, g_testKeydowns ; Just for testing will remove soon
 }
@@ -137,10 +137,6 @@ if (ErrorLevel || wHookTimout < 600)
 Global aThreads := CriticalObject() ; Thread safe object
 aThreads.Speech := AhkDllThread("Included Files\ahkH\AutoHotkeyMini.dll")
 aThreads.Speech.ahktextdll(generateSpeechScript())
-
-;Global aThreadsTest := CriticalObject() ; Thread safe object
-;aThreadsTest.Speech := AhkDllThread("Included Files\ahkH\AutoHotkeyMini.dll") 
-;aThreadsTest.Speech.ahktextdll(generateSpeechScript())
 
 start:
 global config_file := "MT_Config.ini"
@@ -161,7 +157,7 @@ MT_CurrentInstance := [] ; Used to store random info about the current run
 program := []
 program.info := {"IsUpdating": 0} ; program.Info.IsUpdating := 0 ;has to stay here as first instance of creating infor object
 
-ProgramVersion := 3.03
+ProgramVersion := 3.04
 
 l_GameType := "1v1,2v2,3v3,4v4,FFA"
 l_Races := "Terran,Protoss,Zerg"
@@ -11704,18 +11700,3 @@ unloadAllTransports(hotkeySuffix)
 	}
 }
 
-
-#If, WinActive(GameIdentifier) && isPlaying && aLocalPlayer.Race = "Terran" && !isMenuOpen()
-&& numGetSelectionSorted(aSelection) && (aSelection.TabPositions.HasKey(aUnitID["Marauder"]) || aSelection.TabPositions.HasKey(aUnitID["Marine"]))
-&& (aSelection.HighLightedId != aUnitID["SCV"] || !isUserBusyBuilding()) ; This line allows a turret to be built if an scv is in the same selection as a marine/marauder
-t::
-if aSelection.HighLightedId = aUnitID["Marauder"] || aSelection.HighLightedId = aUnitID["Marine"]
-	tabPos := aSelection.HighlightedGroup
-else if aSelection.TabPositions.HasKey(aUnitID["Marine"])
-    tabPos := aSelection.TabPositions[aUnitID["Marine"]] 
-else tabPos := aSelection.TabPositions[aUnitID["Marauder"]] 
-
-if (tabsToSend := tabPos - aSelection.HighlightedGroup) < 0
-    send, % "+{tab " abs(tabsToSend) "}t{tab "  abs(tabsToSend) "}"
-else send {tab %tabsToSend%}t+{tab %tabsToSend%}
-return

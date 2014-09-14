@@ -3420,7 +3420,6 @@ doUnitDetection(unit, type, owner, mode = "")
 	global config_file, alert_array, time, aMiniMapWarning, PrevWarning, GameIdentifier, aUnitID, GameType
 	static Alert_TimedOut := [], Alerted_Buildings := [], Alerted_Buildings_Base := []
 
-	time := getTime()
 	if !mode
 	{
 		;i should really compare the unit type, as theres a chance that the warned unit has died and was replaced with another unit which should be warned

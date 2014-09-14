@@ -133,6 +133,15 @@ gameChange(UserSavedAppliedSettings := False)
 		|| geyserOversaturationCheck	
 			settimer, unit_bank_read, 1500, -6   ; unitdetecion performed every second run. ; 2500 worked well %UnitDetectionTimer_ms% ; previous was 4000
 		else settimer, unit_bank_read, off
+		aAlertIDLookUp := [] ; Create a 'quick lookup' array so don't have to check every enemy unit type in the slow unit detection function
+		if alert_array[GameType, "Enabled"]
+		{
+			loop, % alert_array[GameType, "list", "size"]
+			{
+				aAlertIDLookUp[aUnitID[alert_array[GameType, A_Index, "IDName"]]] := True
+			}
+		}
+
 		if (aLocalPlayer["Race"] = "Terran" && WarningsWorkerTerranEnable) || (aLocalPlayer["Race"] = "Protoss" && WarningsWorkerProtossEnable) 
 			settimer, workerTerranProtossCheck, 1000, -5
 		else settimer, workerTerranProtossCheck, off
@@ -519,6 +528,9 @@ drawPlayerCameras(pGraphics)
 	3.111926 ; Skip unit detection
 	8.881199 ; Unit Detection
 	3.523995
+14/09/14	added an aAlertIDLookUp So now it only performs the unit detection function
+			on units types which have an associated warning. Should speed it up considerably.
+			I can't be bothered re-writing the unit detection function atm.
 */
 
 unit_bank_read:
@@ -574,7 +586,7 @@ loop, % DumpUnitMemory(UBMemDump)
 		else if ( warpgate_warn_on AND (unit_type = aUnitID["Gateway"] OR unit_type = aUnitID["WarpGate"]) 
 		AND !(Filter & aUnitTargetFilter.UnderConstruction))
 		{
-			if ( unit_type = aUnitID["Gateway"]) 
+			if (isWarpGateTechComplete && unit_type = aUnitID["Gateway"] && !isGatewayConvertingToWarpGate(u_iteration)) 
 			{
 				gateway_count ++	
 				if warpgate_warning_set
@@ -589,7 +601,7 @@ loop, % DumpUnitMemory(UBMemDump)
 						}		
 					}
 					if !isinlist
-						aGatewayWarnings.insert({ "Unit": u_iteration 
+						aGatewayWarnings.insert({ "Unit": u_iteration  
 												, "Time": Time
 												, "UnitTimer": getUnitTimer(u_iteration)
 												, "Type": unit_type
@@ -611,7 +623,7 @@ loop, % DumpUnitMemory(UBMemDump)
 				aGeyserStructuresTmp.insert(u_iteration)
 		}
 	}
-	else if doUnitDetectionOnThisRun ; these units are enemies
+	else if (doUnitDetectionOnThisRun && aAlertIDLookUp.HasKey(unit_type)) ; these units are enemies and have an entry in the alertWarnings
 		doUnitDetection(u_iteration, unit_type, unit_owner)
 }
 if warpgate_warn_on
@@ -665,7 +677,7 @@ warpgate_warn:
 		for index, object in aGatewayWarnings
 			for minimapIndex, minimapObject in aMiniMapWarning
 				if (minimapObject.unit = object.unit)
-					minimapObject.remove(minimapIndex, "")        ;lets clear the list of old gateway warnings. This gets rid of the x as soon as the gateway becomes a warpgate
+					aMiniMapWarning.remove(minimapIndex, "")        ;lets clear the list of old gateway warnings. This gets rid of the x as soon as the gateway becomes a warpgate
 		aGatewayWarnings := []
 
 	}
