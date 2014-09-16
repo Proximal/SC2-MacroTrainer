@@ -91,14 +91,21 @@
         You can use this code to check if you have installed the class correctly.
         if (_ClassMemory.__Class != "_ClassMemory")
             msgbox class memory not correctly installed. Or the (global class) variable "_ClassMemory" has been overwritten
-        else msgbox class memory correctly installed
-        
 
         Open a process with sufficient access to read and write memory addresses (this is required before you can use the other functions)
-        You only need to do this once. But if the process closes, then you will need to reopen.
+        You only need to do this once. But if the process closes/restarts, then you will need to perform this step again. Refer to the notes section below.
         Also, if the target process is running as admin, then the script will also require admin rights!
-            calc := new _ClassMemory("ahk_exe calc.exe") ; Note: This can be an ahk_exe, ahk_class, ahk_pid, or simply the window title. 
-            
+        Note: The program identifier can be any AHK windowTitle i.e.ahk_exe, ahk_class, ahk_pid, or simply the window title.
+        hProcessCopy is an optional variable in which the opened handled is stored. 
+          
+            calc := new _ClassMemory("ahk_exe calc.exe", "", hProcessCopy) 
+       
+        A couple of ways to check if the above method was successful
+            if !isObject(calc)
+                msgbox failed to open a handle
+            if !hProcessCopy
+                msgbox failed to open a handle 
+
         Get the processes base address
             msgbox % calc.BaseAddress
         
@@ -138,10 +145,10 @@
 
 
     Notes: 
-        When opening a new process:
-        If returned process handle is zero then the program isn't running or you passed an incorrect program identifier parameter
-        If the returned process handle is blank, openProcess failed. If the target process has admin rights, then the script also needs to be ran as admin.
-
+        If the target process exits and then starts again (or restarts) you will need to free the derived object and then use the new operator to create a new object
+        I.e. 
+        calc := [] ; or calc := "" ; free the object. This is actually optional if using the line below, as the line below would free the previous derived object calc prior to initialising the new copy.
+        calc := new _ClassMemory("ahk_exe calc.exe") ; Create a new derived object to read calcs memory.
 */
 
 class _ClassMemory
@@ -177,7 +184,7 @@ class _ClassMemory
     ;   handle (Output)     Optional variable in which a copy of the opened processes handle will be stored.
     ;                       Values:
     ;                           Null    OpenProcess failed. If the target process has admin rights, then the script also needs to be ran as admin. Consult A_LastError for more information.
-    ;                           0       The program isn't running or you passed an incorrect program identifier parameter  
+    ;                           0       The program isn't running (not found) or you passed an incorrect program identifier parameter. 
     ;                           Positive Integer    A handle to the process. (Success)
     ;   windowMatchMode -   Determines the matching mode used when finding the program (windowTitle).
     ;                       The default value is 3 i.e. an exact match. Refer to AHK's setTitleMathMode for more information.
@@ -366,13 +373,13 @@ class _ClassMemory
             encodingSize := (encoding = "utf-16" || encoding = "cp1200") ? 2 : 1
             charType := encodingSize = 1 ? "Char" : "Short"
             Loop
-            {
+            {   ; I could save a few reads here by always reading in 4 byte chunks, and then looping through the 4 byte chunks in charType sizes checking for null.
                 if (!DllCall("ReadProcessMemory", "UInt", this.hProcess, "UInt", address + (A_index - 1) * encodingSize, "Ptr", &buffer, "Uint", encodingSize, "Ptr", 0) 
                 || ErrorLevel)
                     return "", this.ReadStringLastError := True ;this.hProcess ? "Fail" : "Handle Is closed: " this.hProcess
                 else if (0 = NumGet(buffer, 0, charType)) ; NULL terminator
                 {
-                    if (bufferSize < sizeBytes := A_Index * encodingSize) ; A_Index will equal the size of the string in bytes
+                    if (bufferSize < sizeBytes := A_Index * encodingSize) 
                         VarSetCapacity(buffer, sizeBytes)
                     break
                 }   

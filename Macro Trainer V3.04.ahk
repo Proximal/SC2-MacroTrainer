@@ -11714,3 +11714,5 @@ if (tabsToSend := tabPos - aSelection.HighlightedGroup) < 0
     send, % "+{tab " abs(tabsToSend) "}t{tab "  abs(tabsToSend) "}"
 else send {tab %tabsToSend%}t+{tab %tabsToSend%}
 return
+
+
