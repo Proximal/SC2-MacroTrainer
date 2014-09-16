@@ -178,9 +178,9 @@ MiniMap_Timer:
 Return
 
 ShutdownProcedure:
-	Closed := ReadMemory()
-	Closed := ReadRawMemory()
-	Closed := ReadMemory_Str()
+	ReadMemory()
+	ReadRawMemory()
+	ReadMemory_Str()
 	deletepBitMaps(a_pBitmap)
 	deletePens(a_pPens)
 	deleteBrushArray(a_pBrushes)
@@ -883,7 +883,6 @@ geyserOversaturationWarning(aGeyserStructures, maxWorkers, maxTime, maxWarnings,
 		tSpeak(warning)
 	return
 }
-
 
 /*
 		for index, object in aGatewayWarnings

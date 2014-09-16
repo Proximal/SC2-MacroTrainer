@@ -2677,11 +2677,9 @@ initialiseBrushColours(aHexColours, byRef a_pBrushes)
 		, UnitHighlightList4Colour, UnitHighlightList5Colour, UnitHighlightList6Colour
 		, UnitHighlightList7Colour
 
-	; If there is already a brush, lets delete it before creating new ones
-	; This is required as the userhighlight brushes colours can change
+	; Userhighlight brushes colours can change
 
-	if aHexColours[aHexColours.MinIndex()]
-		deleteBrushArray(a_pBrushes)
+	deleteBrushArray(a_pBrushes)
 	a_pBrushes := []
 	for colour, hexValue in aHexColours
 		a_pBrushes[colour] := Gdip_BrushCreateSolid(0xcFF hexValue)
@@ -2701,8 +2699,6 @@ initialiseBrushColours(aHexColours, byRef a_pBrushes)
 	return 
 }
 
-
-
 deleteBrushArray(byRef a_pBrushes)
 {
 	for colour, pBrush in a_pBrushes
@@ -2713,7 +2709,9 @@ deleteBrushArray(byRef a_pBrushes)
 
 ; 11/02/14 
 ; Just realised i don't think i delete any pens
-; but I thinks? they are all static static anyway so it doesnt matter.
+; but I think? they are all static static anyway so it doesnt really matter.
+; There a couple of static pens in functions which won't be deleted - but a couple of dangling pointers
+; doesn't mean anything, as they will of course be freed when the program exits.
 
 initialisePenColours(aHexColours, penSize := 1)
 {

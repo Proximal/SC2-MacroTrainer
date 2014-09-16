@@ -63,10 +63,21 @@
         writeBuffer()
         getProcessBaseAddress()
         getBaseAddressOfModule()
-
+        modulePatternScan()
+        addressPatternScan()
+        processPatternScan()
+        rawPatternScan()
     Internal methods: (not as useful)
         pointer()
         getAddressFromOffsets()  
+        getModules()
+        GetModuleFileNameEx()
+        EnumProcessModulesEx()
+        GetModuleInformation()
+        getNeedleFromAOBPattern()
+        VirtualQueryEx()
+        patternScan()
+        bufferScanForMaskedPattern()      
 
     Usage:
 
@@ -147,9 +158,34 @@ class _ClassMemory
                     ; Although unsigned 64bit values are not supported, you can read them as int64 or doubles and interpret
                     ; the negative numbers as large values
 
-    ; The byRef handle can be used to check if it opened the process successfully
-    ; otherwise can check if the returned value is an object
-    ; Refer to openProcess() method for details on these parameters
+    ; Method:    __new(program, dwDesiredAccess := "", byRef handle := "", windowMatchMode := 3)
+    ; Example:  derivedObject := new _ClassMemory("ahk_exe calc.exe")
+    ;           This is the first method which should be called when trying to access a program's memory. 
+    ;           If the process is successfully opened, an object is returned which can be used to read that processes memory space.
+    ;           [derivedObject].hProcess stores the opened handle.
+    ;           If the target process closes and re-opens, simply free the derived object and use the new operator again to open a new handle.
+    ; Parameters:
+    ;   program             The program to be opened. This can be any AHK windowTitle identifier, such as 
+    ;                       ahk_exe, ahk_class, ahk_pid, or simply the window title. e.g. "ahk_exe SC2.exe" or "Starcraft II".
+    ;                       It's safer not to use the window title, as some things can have the same window title e.g. an open folder called "Starcraft II"
+    ;                       would have the same window title as the game itself.
+    ;   dwDesiredAccess     The access rights requested when opening the process.
+    ;                       If this parameter is null the process will be opened with the following rights
+    ;                       PROCESS_QUERY_INFORMATION, PROCESS_VM_OPERATION, PROCESS_VM_READ, PROCESS_VM_WRITE
+    ;                       This access level is sufficient to allow all of the methods in this class to work.
+    ;                       Specific process access rights are listed here http://msdn.microsoft.com/en-us/library/windows/desktop/ms684880(v=vs.85).aspx                           
+    ;   handle (Output)     Optional variable in which a copy of the opened processes handle will be stored.
+    ;                       Values:
+    ;                           Null    OpenProcess failed. If the target process has admin rights, then the script also needs to be ran as admin. Consult A_LastError for more information.
+    ;                           0       The program isn't running or you passed an incorrect program identifier parameter  
+    ;                           Positive Integer    A handle to the process. (Success)
+    ;   windowMatchMode -   Determines the matching mode used when finding the program (windowTitle).
+    ;                       The default value is 3 i.e. an exact match. Refer to AHK's setTitleMathMode for more information.
+    ; Return Values: 
+    ;   Object  On success an object is returned which can be used to read the processes memory.
+    ;   Null    Failure. A_LastError and the optional handle parameter can be consulted for more information. 
+
+
     __new(program, dwDesiredAccess := "", byRef handle := "", windowMatchMode := 3)
     {
         if !(handle := this.openProcess(program, dwDesiredAccess, windowMatchMode))
@@ -158,6 +194,7 @@ class _ClassMemory
         this.BaseAddress := this.getProcessBaseAddress(program, windowMatchMode)
         return this
     }
+    ; Called when the derived object is freed.
     __delete()
     {
         this.closeProcess(this.hProcess)
@@ -169,14 +206,28 @@ class _ClassMemory
         return 1.2
     }
 
-    ; program can be an ahk_exe, ahk_class, ahk_pid, or simply the window title. e.g. "ahk_exe SC2.exe" or "Starcraft II"
-    ; but its safer not to use the window title, as some things can have the same window title - e.g. an open folder called "Starcraft II"
-    ; would have the same window title as the game itself.
-
+    ; Method:   openProcess(program, dwDesiredAccess := "", windowMatchMode := 3)
+    ;           Opens a handle to the target program. This handle is required by the other methods.
+    ;           The handle is stored in [derivedObject].hProcess
+    ;           ***Note: There is no reason to call this method directly. Instead you should use the new operator to open handles
+    ;           to new programs, or if the target process closes and re-opens, simply free the derived object and use the new operator again.
+    ; Parameters:
+    ;   program             The program to be opened. This can be any AHK windowTitle identifier, such as 
+    ;                       ahk_exe, ahk_class, ahk_pid, or simply the window title. e.g. "ahk_exe SC2.exe" or "Starcraft II"
+    ;                       its safer not to use the window title, as some things can have the same window title - e.g. an open folder called "Starcraft II"
+    ;                       would have the same window title as the game itself.
+    ;                       the base address of the pointer.
+    ;   dwDesiredAccess     The access rights requested when opening the process.
+    ;                       If this parameter is null the process will be opened with the following rights
+    ;                       PROCESS_QUERY_INFORMATION, PROCESS_VM_OPERATION, PROCESS_VM_READ, PROCESS_VM_WRITE
+    ;                       This access level is sufficient to allow all of the methods in this class to work.
+    ;                       Specific process access rights are listed here http://msdn.microsoft.com/en-us/library/windows/desktop/ms684880(v=vs.85).aspx                           
+    ;   windowMatchMode     Determines the matching mode used when finding the program (windowTitle).
+    ;                       The default value is 3 i.e. an exact match. Refer to AHK's setTitleMathMode for more information.
     ; Return Values: 
-    ;   0 - The program isn't running or you passed an incorrect program identifier parameter
-    ;   Null/blank -  OpenProcess failed. If the target process has admin rights, then the script also needs to be ran as admin.
-    ;   Positive integer - A handle to the process.
+    ;   0                   The program isn't running or you passed an incorrect program identifier parameter
+    ;   Null/blank          OpenProcess failed. If the target process has admin rights, then the script also needs to be ran as admin.
+    ;   Positive integer    A handle to the process.
 
     openProcess(program, dwDesiredAccess := "", windowMatchMode := 3)
     {
@@ -199,17 +250,28 @@ class _ClassMemory
             SetTitleMatchMode, %mode%    ; In case executed in autoexec
         if !pid
             return this.hProcess := 0 
+        ; method directly called close handle if already open.
+        if this.hProcess  
+            this.closeProcess(this.hProcess)
         return this.hProcess := DllCall("OpenProcess", "UInt", dwDesiredAccess, "Int", False, "UInt", pid) ; NULL/Blank if failed to open process for some reason
     }   
 
-    ; When the script exits or the derived object is cleared/destroyed any open handles will automatically be closed!
+    ; When the script exits or the derived object is freed/destroyed any open handles will automatically be closed!
     ; That is, you don't need to call this function.
-    closeProcess(hProcess)
+    closeProcess(hProcess := "")
     {
+        ; method called directly and no handle was passed, so assume they mean to close the current handle
+        if (hProcess = "")
+            hProcess := this.hProcess, this.hProcess := ""
+        ; hProcess is this objects hProcess, so blank it.
+        ; Probably should only blank it when closeHandle returns success, but if hProcess is valid it shouldn't fail
+        ; closeHandle will return success even if the program is no longer running
+        else if (hProcess = this.hProcess)
+            this.hProcess := ""
         ; if there was an error when opening handle, handle will be null
         if hProcess
             return DllCall("CloseHandle", "UInt", hProcess)
-        return
+        return ; null returned 
     }
     ; Method:   read(address, type := "UInt", aOffsets*)
     ;           Reads various integer type values
@@ -408,9 +470,9 @@ class _ClassMemory
     { 
         For index, offset in offsets
         {
-            if (index = offsets.maxIndex() && A_index = 1)
+            if offsets.maxIndex() = 1
                 pointer := offset + this.Read(base)
-            Else IF (A_Index = 1) 
+            Else If (A_Index = 1) 
                 pointer := this.Read(offset + this.Read(base))
             Else If (index = offsets.MaxIndex())
                 pointer += offset
