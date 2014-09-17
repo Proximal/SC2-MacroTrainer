@@ -109,6 +109,7 @@ InstallSC2Files()
 	FileInstall, Included Files\Used_Icons\Units\Terran\marine.png, %A_Temp%\UnitPanelMacroTrainer\marine.png, 1
 	FileInstall, Included Files\Used_Icons\Units\Terran\medivac.png, %A_Temp%\UnitPanelMacroTrainer\medivac.png, 1
 	FileInstall, Included Files\Used_Icons\Units\Terran\mule.png, %A_Temp%\UnitPanelMacroTrainer\mule.png, 1
+	FileInstall, Included Files\Used_Icons\Units\Terran\Nuke.png, %A_Temp%\UnitPanelMacroTrainer\Nuke.png, 1
 	FileInstall, Included Files\Used_Icons\Units\Terran\PointDefenseDrone.png, %A_Temp%\UnitPanelMacroTrainer\PointDefenseDrone.png, 1
 	FileInstall, Included Files\Used_Icons\Units\Terran\raven.png, %A_Temp%\UnitPanelMacroTrainer\raven.png, 1
 	FileInstall, Included Files\Used_Icons\Units\Terran\reaper.png, %A_Temp%\UnitPanelMacroTrainer\reaper.png, 1

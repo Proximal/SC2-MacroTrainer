@@ -9381,14 +9381,25 @@ sortSelectedUnitsByDistance(byref aSelectedUnits, Amount = 3)	;takes a simple ar
 
 debugData()
 { 	global aPlayer, O_mTop, GameIdentifier
-	, A_UnitGroupSettings, aLocalPlayer, aUnitName
+	, A_UnitGroupSettings, aLocalPlayer, aUnitName, SC2WindowEXStyles
 	Player := getLocalPlayerNumber()
 	
 	SysGet, VirtualScreenWidth, 78
 	SysGet, VirtualScreenHeight, 79	
 	DesktopScreenCoordinates(XminVritual, YminVritual, XmaxVritual, YmaxVritual)
 	process, exist, %GameExe%
-	pid := ErrorLevel
+	if (pid := ErrorLevel)
+	{
+		windowStyle := WinGet("EXStyle", GameIdentifier)
+		if SC2WindowEXStyles.WindowedFullScreen = windowStyle
+			windowMode := "WindowedFullScreen"
+		else if SC2WindowEXStyles.FullScreen = windowStyle
+			windowMode := "FullScreen"
+		else if SC2WindowEXStyles.Windowed = windowStyle
+			windowMode := "Windowed"
+		else windowMode := "Refer to style"
+	}
+
 
 	DllCall("QueryPerformanceFrequency", "Int64*", Frequency), DllCall("QueryPerformanceCounter", "Int64*", CurrentTick)
 	getSystemTimerResolutions(MinTimer, MaxTimer)
@@ -9421,6 +9432,8 @@ debugData()
 	. "SC PID: " pid "`n"
 	. "SC Vr.: " getProcessFileVersion(GameExe) "`n"
 	. "SC Base.: " dectohex(getProcessBaseAddress(GameIdentifier)) "`n"
+	. "Window: " windowStyle "`n"
+	. "Widow Mode: " windowMode   "`n"
 	. "==========================================="
 	. "`n"
 	. "`n"
@@ -11714,5 +11727,5 @@ if (tabsToSend := tabPos - aSelection.HighlightedGroup) < 0
     send, % "+{tab " abs(tabsToSend) "}t{tab "  abs(tabsToSend) "}"
 else send {tab %tabsToSend%}t+{tab %tabsToSend%}
 return
-
+#if
 
