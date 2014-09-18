@@ -1,22 +1,28 @@
 ﻿/*
     18/05/14
-        -   Fixed issue with get getBaseAddressOfModule() returning the incorrect module 
+        -   Fixed issue with get getModuleBaseAddress() returning the incorrect module 
             when specified module name formed part of another modules name
     10/06/14
         -   Fixed a bug introduced by the above change, which prevented the function returning 
             the base address of the process.
     12/07/14 - version 1.0
-        -   Added writeBuffer() method
+        -   Added writeRaw() method
         -   Added a version number to the class
     30/07/14 - version 1.1
         -   EnumProcessModulesEx() is now used instead of EnumProcessModules().
-            This allows for getBaseAddressOfModule() in a 64 bit AHK process to enumerate
+            This allows for getModuleBaseAddress() in a 64 bit AHK process to enumerate
             (and find) the modules in a 32 bit target process.
     1/08/14 - version 1.2
         -   getProcessBaseAddress() dllcall now returns Int64. This prevents a negative number (overflow)
             when reading the base address of a 64 bit target process from a 32 bit AHK process.
     17/08/14
-        - Change class name to _ClassMemory
+        -   Change class name to _ClassMemory
+    19/09/14
+        -   Renamed some methods.
+        -   Old name --> New name
+        -   getBaseAddressOfModule() --> getModuleBaseAddress()
+        -   ReadRawMemory() --> ReadRaw()
+        -   writeBuffer() --> writeRaw()
 
 
     RHCP's basic memory class:
@@ -31,12 +37,12 @@
 
     read(), readString(), write(), and writeString() can be used to read and write memory addresses respectively.
 
-    ReadRawMemory() can be used to dump large chunks of memory, this is considerably faster when
+    ReadRaw() can be used to dump large chunks of memory, this is considerably faster when
     reading data from a large structure compared to repeated calls to read().
     Although, most people wouldn't notice the performance difference. This does however require you 
     to retrieve the values using AHK's numget()/strGet() from the dumped memory.
 
-    In a similar fashion writeBuffer() allows a buffer to be be written in a single operation. 
+    In a similar fashion writeRaw() allows a buffer to be be written in a single operation. 
     
     When the new operator is used this class returns an object which can be used to read that processes 
     memory space.
@@ -57,12 +63,12 @@
     Commonly used methods:
         read()
         readString()
-        ReadRawMemory()
+        ReadRaw()
         write()
         writeString()
-        writeBuffer()
+        writeRaw()
         getProcessBaseAddress()
-        getBaseAddressOfModule()
+        getModuleBaseAddress()
         modulePatternScan()
         addressPatternScan()
         processPatternScan()
@@ -83,7 +89,7 @@
 
         **Note: If you wish to try this calc example, ensure you run the 32 bit version of calc.exe - 
                 which is in C:\Windows\SysWOW64\calc.exe on 64 bit systems. You can still read/write directly to
-                a 64 bit calc process address (I doubt pointers will work), but the getBaseAddressOfModule() example 
+                a 64 bit calc process address (I doubt pointers will work), but the getModuleBaseAddress() example 
                 will not work unless the you are using a 64 bit version of ahk (it will return -4 indicating the operation is not possible)
 
         The contents of this file can be copied directly into your script. Alternately you can copy the classMemory.ahk file into your library folder,
@@ -110,7 +116,7 @@
             msgbox % calc.BaseAddress
         
         Get the base address of a module
-            msgbox % calc.getBaseAddressOfModule("GDI32.dll")
+            msgbox % calc.getModuleBaseAddress("GDI32.dll")
 
         The rest of these examples are just for illustration (the addresses specified are probably not valid).
         You can use cheat engine to find real addresses to read and write to for testing purposes.
@@ -124,7 +130,7 @@
         read a pointer with offsets 0x20 and 0x15C which points to a uchar 
             value := calc.read(pointerBase, "UChar", 0x20, 0x15C)
 
-        Note: read(), readString(), ReadRawMemory(), write(), and writeString() all support pointers/offsets
+        Note: read(), readString(), ReadRaw(), write(), and writeString() all support pointers/offsets
             An array of pointers can be passed directly, i.e.
             arrayPointerOffsets := [0x20, 0x15C]
             value := calc.read(pointerBase, "UChar", arrayPointerOffsets*)
@@ -308,7 +314,7 @@ class _ClassMemory
             return result
         return        
     }
-    ; Method:   ReadRawMemory(address, byRef buffer, bytes := 4, aOffsets*)
+    ; Method:   ReadRaw(address, byRef buffer, bytes := 4, aOffsets*)
     ;           Reads an area of the processes memory and stores it in the buffer variable
     ; Parameters:
     ;       address  -  The memory address of the area to read or if using the offsets parameter
@@ -329,7 +335,7 @@ class _ClassMemory
     ;                   This method offers significant (~30% and up) performance boost when reading large areas of memory. 
     ;                   As calling ReadProcessMemory for four bytes takes a similar amount of time as it does for 1,000 bytes.                
 
-    ReadRawMemory(address, byRef buffer, bytes := 4, aOffsets*)
+    ReadRaw(address, byRef buffer, bytes := 4, aOffsets*)
     {
         VarSetCapacity(buffer, bytes)
         return DllCall("ReadProcessMemory", "UInt", this.hProcess, "UInt", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, "Ptr", &buffer, "UInt", bytes, "Ptr", 0)
@@ -440,7 +446,7 @@ class _ClassMemory
         return DllCall("WriteProcessMemory", "UInt", this.hProcess, "UInt", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, type "*", value, "Uint", this.aTypeSize[type], "Ptr", 0) 
     }
 
-    ; Method:   writeBuffer(address, byRef buffer, byRef bufferSize := 0, aOffsets*)
+    ; Method:   writeRaw(address, byRef buffer, byRef bufferSize := 0, aOffsets*)
     ;           Writes a buffer to the process.
     ; Parameters:
     ;   address -       The memory address to which the contents of the buffer will be written 
@@ -453,7 +459,7 @@ class _ClassMemory
     ; Return Values:
     ;       Non Zero -  Indicates success.
     ;       Zero     -  Indicates failure. Check errorLevel and A_LastError for more information
-    writeBuffer(address, pBuffer, sizeBytes, aOffsets*)
+    writeRaw(address, pBuffer, sizeBytes, aOffsets*)
     {
         return DllCall("WriteProcessMemory", "UInt", this.hProcess, "UInt", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, "Ptr", pBuffer, "Uint", sizeBytes, "Ptr", 0) 
     }
@@ -537,10 +543,10 @@ class _ClassMemory
     ; http://winprogger.com/getmodulefilenameex-enumprocessmodulesex-failures-in-wow64/
     ; http://stackoverflow.com/questions/3801517/how-to-enum-modules-in-a-64bit-process-from-a-32bit-wow-process
 
-    ; Method:           getBaseAddressOfModule(module := "", byRef sizeOfImage := "", byRef entryPoint := "")
+    ; Method:           getModuleBaseAddress(module := "", byRef sizeOfImage := "", byRef entryPoint := "")
     ; Parameters:
     ;   module -        The file name of the module/dll to find e.g. "GDI32.dll", "Battle.net.dll" etc
-    ;                   If no module (null) is specified, the address of the base module - main()/program will be returned 
+    ;                   If no module (null) is specified, the address of the base module - main()/program/process will be returned 
     ;                   e.g. C:\Games\StarCraft II\Versions\Base28667\SC2.exe
     ;   aModuleInfo -   A module Info object is returned in this variable. 
     ;                   This object contains the keys: lpBaseOfDll, SizeOfImage, and EntryPoint 
@@ -555,7 +561,7 @@ class _ClassMemory
     ;           A 32 bit AHK can only enumerate the modules of a 32 bit process
     ;           This method requires PROCESS_QUERY_INFORMATION + PROCESS_VM_READ access rights. These are included by default with this class.
 
-    getBaseAddressOfModule(module := "", byRef aModuleInfo := "")
+    getModuleBaseAddress(module := "", byRef aModuleInfo := "")
     {
         if !this.hProcess
             return -2
@@ -677,7 +683,7 @@ class _ClassMemory
     ;   aAOBPattern* -  A variadic list of byte values i.e. the array of bytes to find.
     ;                   Wild card bytes should be indicated by using a single '?'.
     ; Return Values:
-    ;   Null            Failed to find or retrieve the specified module. ErrorLevel is set to the returned error from getBaseAddressOfModule()
+    ;   Null            Failed to find or retrieve the specified module. ErrorLevel is set to the returned error from getModuleBaseAddress()
     ;                   refer to that method for more information.
     ;   0               The pattern was not found inside the module
     ;   -9              VirtualQueryEx() failed
@@ -688,7 +694,7 @@ class _ClassMemory
         MEM_COMMIT := 0x1000, MEM_MAPPED := 0x40000, MEM_PRIVATE := 0x20000
         , PAGE_NOACCESS := 0x01, PAGE_GUARD := 0x100
 
-        if (result := this.getBaseAddressOfModule(module, aModuleInfo)) > 0 
+        if (result := this.getModuleBaseAddress(module, aModuleInfo)) > 0 
         {
             if !patternSize := this.getNeedleFromAOBPattern(patternMask, AOBBuffer, aAOBPattern*)
                 return -10 ;no pattern
@@ -794,7 +800,7 @@ class _ClassMemory
 
     ; Method:           rawPatternScan(byRef buffer, sizeOfBufferBytes := "", aAOBPattern*)   
     ;                   Scans a binary buffer for an array of bytes pattern. 
-    ;                   This is useful if you have already dumped a region of memory via readRawMemory()
+    ;                   This is useful if you have already dumped a region of memory via ReadRaw()
     ; Parameters:
     ;   buffer              The binary buffer to be searched.
     ;   sizeOfBufferBytes   The size of the binary buffer. If null or 0 the size is automatically retrieved.
@@ -862,7 +868,7 @@ class _ClassMemory
     {
         if aPattern.MaxIndex() > sizeOfRegionBytes
             return -1
-        if !this.ReadRawMemory(startAddress, buffer, sizeOfRegionBytes)
+        if !this.ReadRaw(startAddress, buffer, sizeOfRegionBytes)
             return -2
         while (i := A_Index - 1) <= sizeOfRegionBytes - aAOBPattern.MaxIndex() 
         {
@@ -908,7 +914,7 @@ class _ClassMemory
 
     patternScan(startAddress, sizeOfRegionBytes, byRef patternMask, byRef needleBuffer)
     {
-        if !this.ReadRawMemory(startAddress, buffer, sizeOfRegionBytes)
+        if !this.ReadRaw(startAddress, buffer, sizeOfRegionBytes)
             return -1      
         if (offset := this.bufferScanForMaskedPattern(&buffer, sizeOfRegionBytes, patternMask, &needleBuffer)) >= 0
             return startAddress + offset 

@@ -8,7 +8,7 @@ pointer(game, base, offsets*)
 { 
 	For index, offset in offsets
 	{
-		if (index = offsets.maxIndex() && A_index = 1)
+		If offsets.maxIndex() = 1
 			pointer := offset + ReadMemory(base, game)
 		Else IF (A_Index = 1) 
 			pointer := ReadMemory(offset + ReadMemory(base, game), game)

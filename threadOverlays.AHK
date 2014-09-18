@@ -933,14 +933,14 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 					{
 						for i, aProduction in aQueueInfo
 						{
-							if (QueuedType := aUnitID[aProduction.Item])
+							if (QueuedType := aUnitID[aProduction.Item]) ;|| (aProduction.Item = "NukeArm" && (QueuedType := aUnitID["Nuke"]))
 							{
 								; this could fail in first game when no unit has been made yet of this type (QueuedPriority will be blank)
 								; But thats a good thing! as it will allow the prioritys to match when then filter trys to remove units (hence it allows the filter to work)
 								QueuedPriority := aUnitInfo[QueuedType, "Priority"]  
 								;aEnemyUnitConstruction[Owner, QueuedPriority, QueuedType] := round(aEnemyUnitConstruction[Owner, QueuedPriority, QueuedType]) + 1 ; ? aEnemyUnitConstruction[Owner, QueuedPriority, QueuedType] + 1 : 1 	
 							
-							aEnemyUnitConstruction[Owner, QueuedPriority, QueuedType] := {"progress": (aEnemyUnitConstruction[Owner, QueuedPriority, QueuedType].progress > aProduction.progress ? aEnemyUnitConstruction[Owner, QueuedPriority, QueuedType].progress : aProduction.progress)
+								aEnemyUnitConstruction[Owner, QueuedPriority, QueuedType] := {"progress": (aEnemyUnitConstruction[Owner, QueuedPriority, QueuedType].progress > aProduction.progress ? aEnemyUnitConstruction[Owner, QueuedPriority, QueuedType].progress : aProduction.progress)
 																							, "count": round(aEnemyUnitConstruction[Owner, QueuedPriority, QueuedType].count) + 1 }
 
 							} ; this count for upgrades allows the number of nukes being produced to be displayed
