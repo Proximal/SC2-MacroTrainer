@@ -15,9 +15,10 @@
     1/08/14 - version 1.2
         -   getProcessBaseAddress() dllcall now returns Int64. This prevents a negative number (overflow)
             when reading the base address of a 64 bit target process from a 32 bit AHK process.
+        -   Added various pattern scan methods.
     17/08/14
         -   Change class name to _ClassMemory
-    19/09/14
+    19/09/14 - version 1.3
         -   Renamed some methods.
         -   Old name --> New name
         -   getBaseAddressOfModule() --> getModuleBaseAddress()
@@ -216,7 +217,7 @@ class _ClassMemory
 
     version()
     {
-        return 1.2
+        return 1.3
     }
 
     ; Method:   openProcess(program, dwDesiredAccess := "", windowMatchMode := 3)
@@ -546,8 +547,8 @@ class _ClassMemory
     ; Method:           getModuleBaseAddress(module := "", byRef sizeOfImage := "", byRef entryPoint := "")
     ; Parameters:
     ;   module -        The file name of the module/dll to find e.g. "GDI32.dll", "Battle.net.dll" etc
-    ;                   If no module (null) is specified, the address of the base module - main()/program/process will be returned 
-    ;                   e.g. C:\Games\StarCraft II\Versions\Base28667\SC2.exe
+    ;                   If no module (null) is specified, the address of the base module - main()/process will be returned 
+    ;                   e.g. C:\Games\StarCraft II\Versions\Base28667\SC2.exe (i.e. the same as calling getProcessBaseAddress())
     ;   aModuleInfo -   A module Info object is returned in this variable. 
     ;                   This object contains the keys: lpBaseOfDll, SizeOfImage, and EntryPoint 
     ; Return Values: 
