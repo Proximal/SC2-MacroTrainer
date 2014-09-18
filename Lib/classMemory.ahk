@@ -22,7 +22,7 @@
         -   Renamed some methods.
         -   Old name --> New name
         -   getBaseAddressOfModule() --> getModuleBaseAddress()
-        -   ReadRawMemory() --> ReadRaw()
+        -   ReadRawMemory() --> readRaw()
         -   writeBuffer() --> writeRaw()
 
 
@@ -38,8 +38,9 @@
 
     read(), readString(), write(), and writeString() can be used to read and write memory addresses respectively.
 
-    ReadRaw() can be used to dump large chunks of memory, this is considerably faster when
-    reading data from a large structure compared to repeated calls to read().
+    readRaw() can be used to dump large chunks of memory, this is considerably faster when
+    reading data from a large structure compared to repeated calls to read(). 
+    For example, reading a single UInt takes approximately the same amount of time as reading 1000 bytes via readRaw().
     Although, most people wouldn't notice the performance difference. This does however require you 
     to retrieve the values using AHK's numget()/strGet() from the dumped memory.
 
@@ -49,7 +50,7 @@
     memory space.
     To read another process simply create another object.
 
-    process handles are automatically closed when the script exits/restarts or when you free the object.
+    Process handles are automatically closed when the script exits/restarts or when you free the object.
 
     Note:
     This was written for 32 bit target processes, but the various read/write functions
@@ -64,7 +65,7 @@
     Commonly used methods:
         read()
         readString()
-        ReadRaw()
+        readRaw()
         write()
         writeString()
         writeRaw()
@@ -131,7 +132,7 @@
         read a pointer with offsets 0x20 and 0x15C which points to a uchar 
             value := calc.read(pointerBase, "UChar", 0x20, 0x15C)
 
-        Note: read(), readString(), ReadRaw(), write(), and writeString() all support pointers/offsets
+        Note: read(), readString(), readRaw(), write(), and writeString() all support pointers/offsets
             An array of pointers can be passed directly, i.e.
             arrayPointerOffsets := [0x20, 0x15C]
             value := calc.read(pointerBase, "UChar", arrayPointerOffsets*)
@@ -297,7 +298,7 @@ class _ClassMemory
     ;                   Note: Types must not contain spaces i.e. " UInt" or "UInt " will not work. 
     ;                   When an invalid type is passed the method returns NULL and sets ErrorLevel to -2
     ;       aOffsets* - A variadic list of offsets. When using offsets the address parameter should equal the base address of the pointer.
-    ;                   The address (bass address) and offsets should point to the memory address which holds to the integer.  
+    ;                   The address (bass address) and offsets should point to the memory address which holds the integer.  
     ; Return Values:
     ;       integer -   Indicates success.
     ;       Null    -   Indicates failure. Check ErrorLevel and A_LastError for more information.
@@ -315,7 +316,7 @@ class _ClassMemory
             return result
         return        
     }
-    ; Method:   ReadRaw(address, byRef buffer, bytes := 4, aOffsets*)
+    ; Method:   readRaw(address, byRef buffer, bytes := 4, aOffsets*)
     ;           Reads an area of the processes memory and stores it in the buffer variable
     ; Parameters:
     ;       address  -  The memory address of the area to read or if using the offsets parameter
@@ -336,7 +337,7 @@ class _ClassMemory
     ;                   This method offers significant (~30% and up) performance boost when reading large areas of memory. 
     ;                   As calling ReadProcessMemory for four bytes takes a similar amount of time as it does for 1,000 bytes.                
 
-    ReadRaw(address, byRef buffer, bytes := 4, aOffsets*)
+    readRaw(address, byRef buffer, bytes := 4, aOffsets*)
     {
         VarSetCapacity(buffer, bytes)
         return DllCall("ReadProcessMemory", "UInt", this.hProcess, "UInt", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, "Ptr", &buffer, "UInt", bytes, "Ptr", 0)
@@ -801,7 +802,7 @@ class _ClassMemory
 
     ; Method:           rawPatternScan(byRef buffer, sizeOfBufferBytes := "", aAOBPattern*)   
     ;                   Scans a binary buffer for an array of bytes pattern. 
-    ;                   This is useful if you have already dumped a region of memory via ReadRaw()
+    ;                   This is useful if you have already dumped a region of memory via readRaw()
     ; Parameters:
     ;   buffer              The binary buffer to be searched.
     ;   sizeOfBufferBytes   The size of the binary buffer. If null or 0 the size is automatically retrieved.
@@ -869,7 +870,7 @@ class _ClassMemory
     {
         if aPattern.MaxIndex() > sizeOfRegionBytes
             return -1
-        if !this.ReadRaw(startAddress, buffer, sizeOfRegionBytes)
+        if !this.readRaw(startAddress, buffer, sizeOfRegionBytes)
             return -2
         while (i := A_Index - 1) <= sizeOfRegionBytes - aAOBPattern.MaxIndex() 
         {
@@ -915,7 +916,7 @@ class _ClassMemory
 
     patternScan(startAddress, sizeOfRegionBytes, byRef patternMask, byRef needleBuffer)
     {
-        if !this.ReadRaw(startAddress, buffer, sizeOfRegionBytes)
+        if !this.readRaw(startAddress, buffer, sizeOfRegionBytes)
             return -1      
         if (offset := this.bufferScanForMaskedPattern(&buffer, sizeOfRegionBytes, patternMask, &needleBuffer)) >= 0
             return startAddress + offset 
