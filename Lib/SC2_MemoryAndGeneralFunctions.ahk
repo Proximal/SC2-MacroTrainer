@@ -2160,7 +2160,8 @@ If it was significantly faster, I would re-write the c++ function so it was nice
 However, as I suspected the actual MCode function is blazingly fast - ~0.004 ms, but all the additional numput/numget calls
 result in it being slower than the current AHK function. For 235 units it was ~7.6 ms.
 If I could have the function write these values directly back into the object, then it would be worth it. But wouldnt be easy.
-
+Perhaps it would be possible to pass everything as a single delimited string to the function and then have
+it return a delimited string of unit indexes in order, or better yet write it directly to a passed variable pointer. This would eliminate all numputs/numgets
 numGetSelectionSortedMachineCodeTest(ByRef aSelection, byRef aStorage)
 {
 	global aLocalPlayer

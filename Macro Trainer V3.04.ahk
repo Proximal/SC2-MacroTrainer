@@ -122,7 +122,7 @@ Else
 {
 	Menu Tray, Icon, Included Files\Used_Icons\Starcraft-2.ico
 
-	global debugGame := True
+	global debugGame := False
 	hotkey, ^+!F12, g_GiveLocalPlayerResources
 	hotkey, *>!F12, g_testKeydowns ; Just for testing will remove soon
 }
@@ -11728,4 +11728,3 @@ if (tabsToSend := tabPos - aSelection.HighlightedGroup) < 0
 else send {tab %tabsToSend%}t+{tab %tabsToSend%}
 return
 #if
-
