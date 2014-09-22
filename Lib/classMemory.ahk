@@ -24,17 +24,29 @@
         -   getBaseAddressOfModule() --> getModuleBaseAddress()
         -   ReadRawMemory() --> readRaw()
         -   writeBuffer() --> writeRaw()
-
+    23/09/14 - version 1.4
+        - The various read and write methods should now support pointers in 64 bit target applications providing AHK is also 64 bit.
+            -> When the new operator is used the target application's bitness is checked. If it 64 bit, pointers will then be read as Int64s.
+            -> A 32 bit AHK can read/write and use pointers in a 64 bit target application providing the addresses can fit inside a 4 byte ptr.
+               If the address is too large, only the lower 4 bytes are passed to ReadProcessMemory()/WriteProcessMemory() i.e. the wrong address is passed.
+        - readString() has been slightly optimised when reading null terminated strings of unknown size.
+        - New methods:
+            - suspend(), resume(), and isTargetProcess64Bit()
+        - OpenProcess() has been modified and closeProcess() has been replaced by CloseHandle()
+            -> These two changes will not affect users unless your code calls them directly.
+        - Fixed a bug in _MEMORY_BASIC_INFORMATION
+        - Added 'aRights' object which contains various handle access constants.
 
     RHCP's basic memory class:
 
     This is a basic wrapper for commonly used read and write memory functions.
-    This allows scripts to read/write integers and strings of various types.
-    Pointer addresses can easily be read/written by passing the base address and offsets to the various read/write functions
+    It also contains a variety of pattern scan functions. 
+    This class allows scripts to read/write integers and strings of various types. 
+    Pointer addresses can easily be read/written by passing the base address and offsets to the various read/write functions.
     
     Process handles are kept open between reads. This increases speed.
-    Note, if a program closes/restarts then the process handle will be invalid
-    and you will need to re-open another handle (blank/destroy the object and then recreate the it)
+    However, if a program closes/restarts then the process handle will become invalid
+    and you will need to re-open another handle (blank/destroy the object and recreate it)
 
     read(), readString(), write(), and writeString() can be used to read and write memory addresses respectively.
 
@@ -46,21 +58,21 @@
 
     In a similar fashion writeRaw() allows a buffer to be be written in a single operation. 
     
-    When the new operator is used this class returns an object which can be used to read that processes 
-    memory space.
-    To read another process simply create another object.
+    When the new operator is used this class returns an object which can be used to read that process's 
+    memory space.To read another process simply create another object.
 
     Process handles are automatically closed when the script exits/restarts or when you free the object.
 
-    Note:
-    This was written for 32 bit target processes, but the various read/write functions
-    should still work when directly reading/writing an address in a 64 bit process. 
-    The pointer parts of these functions wont, as I assume pointers are stored as 64bit values.
+    Notes:
+        This was initially written for 32 bit target processes, however the various read/write functions
+        should now completely support pointers in 64 bit target applications. The only caveat is that the AHK exe must also be 64 bit.  
+        If AHK is 32 bit and the target application is 64 bit you can still read, write, and use pointers, so long as the addresses
+        can fit inside a 4 byte pointer. The pointer pBaseAddress parameter in ReadProcessMemory()/WriteProcessMemory() is the limiting factor here.
+        If AHK is 32 bit pBaseAddress will be a 4 byte pointer. This limits the maximum address which can be passed to the 32 bit range.
 
-    Also very large (unsigned) 64 bit integers may not be read correctly - the current function works 
-    for the 64 bit ints I use it on. AHK doesn't directly support 64bit unsigned ints anyway
+        If the process has admin privileges, then the AHK script will also require admin privileges. 
 
-    If the process has admin privileges, then the AHK script will also require admin privileges to work. 
+        AHK doesn't support unsigned 64bit ints, you can however read them as Int64 and interpret negative values as large numbers.       
 
     Commonly used methods:
         read()
@@ -71,28 +83,35 @@
         writeRaw()
         getProcessBaseAddress()
         getModuleBaseAddress()
+
+    Less commonly used methods:    
         modulePatternScan()
         addressPatternScan()
         processPatternScan()
         rawPatternScan()
-    Internal methods: (not as useful)
-        pointer()
-        getAddressFromOffsets()  
         getModules()
+        suspend()
+        resume()
+
+    Internal methods: (some may be useful when directly called)
+        getAddressFromOffsets() ; This will return the final memory address of a pointer. This is useful if the pointed address only changes on startup or map/level change and you want to eliminate the overhead associated with pointers.
+        isTargetProcess64Bit()
+        pointer() 
         GetModuleFileNameEx()
         EnumProcessModulesEx()
         GetModuleInformation()
         getNeedleFromAOBPattern()
-        VirtualQueryEx()
+        virtualQueryEx()
         patternScan()
-        bufferScanForMaskedPattern()      
+        bufferScanForMaskedPattern()
+        openProcess()
+        closeHandle()   
 
     Usage:
 
-        **Note: If you wish to try this calc example, ensure you run the 32 bit version of calc.exe - 
-                which is in C:\Windows\SysWOW64\calc.exe on 64 bit systems. You can still read/write directly to
-                a 64 bit calc process address (I doubt pointers will work), but the getModuleBaseAddress() example 
-                will not work unless the you are using a 64 bit version of ahk (it will return -4 indicating the operation is not possible)
+        **Note: If you wish to try this calc example, consider using the 32 bit version of calc.exe - 
+                which is in C:\Windows\SysWOW64\calc.exe on 64 bit systems. If calc.exe is 64 bit and the AHK exe is 32 bit
+                the getModuleBaseAddress() example will not work.
 
         The contents of this file can be copied directly into your script. Alternately you can copy the classMemory.ahk file into your library folder,
         in which case you will need to use the #include directive in your script i.e. #Include <classMemory>
@@ -108,70 +127,84 @@
           
             calc := new _ClassMemory("ahk_exe calc.exe", "", hProcessCopy) 
        
-        A couple of ways to check if the above method was successful
+        A couple of ways to check if the above method was successful.
             if !isObject(calc)
                 msgbox failed to open a handle
             if !hProcessCopy
-                msgbox failed to open a handle 
+                msgbox failed to open a handle. Error Code = %hProcessCopy%
 
-        Get the processes base address
-            msgbox % calc.BaseAddress
-        
-        Get the base address of a module
+        Get the process's base address.
+            msgbox % calc.BaseAddress ; When using the new operator this property is automatically set to the result of getProcessBaseAddress()
+        Or 
+            msgbox % calc.getModuleBaseAddress()
+
+        Get the base address of a specific module.
             msgbox % calc.getModuleBaseAddress("GDI32.dll")
 
         The rest of these examples are just for illustration (the addresses specified are probably not valid).
         You can use cheat engine to find real addresses to read and write to for testing purposes.
         
-        write 1234 to a UInt at address 0x0016CB60
+        Write 1234 as a UInt at address 0x0016CB60.
             calc.write(0x0016CB60, 1234, "UInt")
 
-        read a UInt
+        Read a UInt.
             value := calc.read(0x0016CB60, "UInt")
 
-        read a pointer with offsets 0x20 and 0x15C which points to a uchar 
+        Read a pointer with offsets 0x20 and 0x15C which points to a UChar. 
             value := calc.read(pointerBase, "UChar", 0x20, 0x15C)
 
-        Note: read(), readString(), readRaw(), write(), and writeString() all support pointers/offsets
-            An array of pointers can be passed directly, i.e.
+        Note: read(), readString(), readRaw(), write(), writeString(), and writeRaw() all support pointers/offsets.
+        An array of pointers can be passed directly, i.e.
             arrayPointerOffsets := [0x20, 0x15C]
             value := calc.read(pointerBase, "UChar", arrayPointerOffsets*)
-            Or they can be entered manually
+        Or they can be entered manually.
             value := calc.read(pointerBase, "UChar", 0x20, 0x15C)
 
         
-        read a utf-16 null terminated string of unknown size at address 0x1234556 - the function will read each character until the null terminator is found
+        Read a utf-16 null terminated string of unknown size at address 0x1234556 - the function will read until the null terminator is found or something goes wrong.
             string := calc.readString(0x1234556, length := 0, encoding := "utf-16")
         
-        read a utf-8 encoded character string which is 12 bytes long at address 0x1234556
+        Read a utf-8 encoded string which is 12 bytes long at address 0x1234556.
             string := calc.readString(0x1234556, 12)
 
-        By default a null terminator is included at the end of written strings for writeString()
+        By default a null terminator is included at the end of written strings for writeString().
         The nullterminator property can be used to change this.
             _ClassMemory.insertNullTerminator := False ; This will change the property for all processes
             calc.insertNullTerminator := False ; Changes the property for just this process     
 
 
     Notes: 
-        If the target process exits and then starts again (or restarts) you will need to free the derived object and then use the new operator to create a new object
-        I.e. 
+        If the target process exits and then starts again (or restarts) you will need to free the derived object and then use the new operator to create a new object i.e. 
         calc := [] ; or calc := "" ; free the object. This is actually optional if using the line below, as the line below would free the previous derived object calc prior to initialising the new copy.
-        calc := new _ClassMemory("ahk_exe calc.exe") ; Create a new derived object to read calcs memory.
+        calc := new _ClassMemory("ahk_exe calc.exe") ; Create a new derived object to read calc's memory.
 */
 
 class _ClassMemory
 {
-    static baseAddress, hProcess
+    ; List of useful accessible values. Some of these inherited values (the non objects) are set when the new operator is used.
+    static baseAddress, hProcess, PID, currentProgram
     , insertNullTerminator := True
     , readStringLastError := False
+    , isTarget64bit := False
+    , ptrType := "UInt"
     , aTypeSize := {    "UChar":    1,  "Char":     1
                     ,   "UShort":   2,  "Short":    2
                     ,   "UInt":     4,  "Int":      4
                     ,   "UFloat":   4,  "Float":    4
                     ,   "Int64":    8,  "Double":   8}  
-
-                    ; Although unsigned 64bit values are not supported, you can read them as int64 or doubles and interpret
-                    ; the negative numbers as large values
+    , aRights := {  "PROCESS_ALL_ACCESS": 0x001F0FFF
+                ,   "PROCESS_CREATE_PROCESS": 0x0080
+                ,   "PROCESS_CREATE_THREAD": 0x0002
+                ,   "PROCESS_DUP_HANDLE": 0x0040
+                ,   "PROCESS_QUERY_INFORMATION": 0x0400
+                ,   "PROCESS_QUERY_LIMITED_INFORMATION": 0x1000
+                ,   "PROCESS_SET_INFORMATION": 0x0200
+                ,   "PROCESS_SET_QUOTA": 0x0100
+                ,   "PROCESS_SUSPEND_RESUME": 0x0800
+                ,   "PROCESS_TERMINATE": 0x0001
+                ,   "PROCESS_VM_OPERATION": 0x0008
+                ,   "PROCESS_VM_READ": 0x0010
+                ,   "PROCESS_VM_WRITE": 0x0020}
 
     ; Method:    __new(program, dwDesiredAccess := "", byRef handle := "", windowMatchMode := 3)
     ; Example:  derivedObject := new _ClassMemory("ahk_exe calc.exe")
@@ -203,91 +236,85 @@ class _ClassMemory
 
     __new(program, dwDesiredAccess := "", byRef handle := "", windowMatchMode := 3)
     {
-        if !(handle := this.openProcess(program, dwDesiredAccess, windowMatchMode))
-            return ""
-        this.readStringLastError := False
-        this.BaseAddress := this.getProcessBaseAddress(program, windowMatchMode)
-        return this
+        if this.PID := handle := this.findPID(program, windowMatchMode) ; set handle to 0 if program not found
+        {
+            ; This default access level is sufficient to read and write memory addresses, and to perform pattern scans.
+            ; if the program is run using admin privileges, then this script will also need admin privileges
+            if dwDesiredAccess is not integer       
+                dwDesiredAccess := this.aRights.PROCESS_QUERY_INFORMATION | this.aRights.PROCESS_VM_OPERATION | this.aRights.PROCESS_VM_READ | this.aRights.PROCESS_VM_WRITE 
+            if this.hProcess := handle := this.OpenProcess(this.PID, dwDesiredAccess) ; NULL/Blank if failed to open process for some reason
+            {
+                this.readStringLastError := False
+                this.currentProgram := program
+                if this.isTarget64bit := this.isTargetProcess64Bit(this.PID, this.hProcess, dwDesiredAccess)
+                    this.ptrType := "Int64"
+                else this.ptrType := "UInt" ; If false or Null (fails) assume 32bit
+                this.BaseAddress := this.getProcessBaseAddress(program, windowMatchMode)
+                return this
+            }
+        }
+        return
     }
-    ; Called when the derived object is freed.
+
     __delete()
     {
-        this.closeProcess(this.hProcess)
+        this.closeHandle(this.hProcess)
         return
     }
 
     version()
     {
-        return 1.3
-    }
+        return 1.4
+    }   
 
-    ; Method:   openProcess(program, dwDesiredAccess := "", windowMatchMode := 3)
-    ;           Opens a handle to the target program. This handle is required by the other methods.
-    ;           The handle is stored in [derivedObject].hProcess
-    ;           ***Note: There is no reason to call this method directly. Instead you should use the new operator to open handles
-    ;           to new programs, or if the target process closes and re-opens, simply free the derived object and use the new operator again.
-    ; Parameters:
-    ;   program             The program to be opened. This can be any AHK windowTitle identifier, such as 
-    ;                       ahk_exe, ahk_class, ahk_pid, or simply the window title. e.g. "ahk_exe SC2.exe" or "Starcraft II"
-    ;                       its safer not to use the window title, as some things can have the same window title - e.g. an open folder called "Starcraft II"
-    ;                       would have the same window title as the game itself.
-    ;                       the base address of the pointer.
-    ;   dwDesiredAccess     The access rights requested when opening the process.
-    ;                       If this parameter is null the process will be opened with the following rights
-    ;                       PROCESS_QUERY_INFORMATION, PROCESS_VM_OPERATION, PROCESS_VM_READ, PROCESS_VM_WRITE
-    ;                       This access level is sufficient to allow all of the methods in this class to work.
-    ;                       Specific process access rights are listed here http://msdn.microsoft.com/en-us/library/windows/desktop/ms684880(v=vs.85).aspx                           
-    ;   windowMatchMode     Determines the matching mode used when finding the program (windowTitle).
-    ;                       The default value is 3 i.e. an exact match. Refer to AHK's setTitleMathMode for more information.
-    ; Return Values: 
-    ;   0                   The program isn't running or you passed an incorrect program identifier parameter
-    ;   Null/blank          OpenProcess failed. If the target process has admin rights, then the script also needs to be ran as admin.
-    ;   Positive integer    A handle to the process.
-
-    openProcess(program, dwDesiredAccess := "", windowMatchMode := 3)
+    findPID(program, windowMatchMode := 3)
     {
-        ; if an application closes/restarts the previous handle becomes invalid so reopen it to be safe (closing a now invalid handle is fine i.e. wont cause an issue)
-        
-        ; This default access level is sufficient to read and write memory addresses.
-        ; if the program is run using admin privileges, then this script will also need admin privileges
-        if dwDesiredAccess is not integer
-            dwDesiredAccess := (PROCESS_QUERY_INFORMATION := 0x0400) | (PROCESS_VM_OPERATION := 0x8) | (PROCESS_VM_READ := 0x10) | (PROCESS_VM_WRITE := 0x20)
         if windowMatchMode
         {
             ; This is a string and will not contain the 0x prefix
-            mode :=  A_TitleMatchMode
+            mode := A_TitleMatchMode
             ; remove hex prefix as SetTitleMatchMode will throw a run time error. This will occur if integer mode is set to hex.
             StringReplace, windowMatchMode, windowMatchMode, 0x 
             SetTitleMatchMode, %windowMatchMode%
         }
-        WinGet, pid, pid, % this.currentProgram := program
+        WinGet, pid, pid, %program%
         if windowMatchMode
             SetTitleMatchMode, %mode%    ; In case executed in autoexec
-        if !pid
-            return this.hProcess := 0 
-        ; method directly called close handle if already open.
-        if this.hProcess  
-            this.closeProcess(this.hProcess)
-        return this.hProcess := DllCall("OpenProcess", "UInt", dwDesiredAccess, "Int", False, "UInt", pid) ; NULL/Blank if failed to open process for some reason
+        return pid ? pid : 0 ; PID is null on fail, return 0
+    }
+
+    ; Method:   openProcess(PID, dwDesiredAccess)
+    ;           ***Note:    This is an internal method which shouldn't be called directly unless you absolutely know what you are doing.
+    ;                       This is because the new operator, in addition to calling this method also sets other values
+    ;                       which are required for the other methods to work correctly. 
+    ; Parameters:
+    ;   PID                 The Process ID of the target process.  
+    ;   dwDesiredAccess     The access rights requested when opening the process.
+    ;                       Specific process access rights are listed here http://msdn.microsoft.com/en-us/library/windows/desktop/ms684880(v=vs.85).aspx                           
+    ; Return Values: 
+    ;   Null/blank          OpenProcess failed. If the target process has admin rights, then the script also needs to be ran as admin.
+    ;   Positive integer    A handle to the process.
+
+    openProcess(PID, dwDesiredAccess)
+    {
+        return DllCall("OpenProcess", "UInt", dwDesiredAccess, "Int", False, "UInt", PID) ; NULL/Blank if failed to open process for some reason
     }   
 
-    ; When the script exits or the derived object is freed/destroyed any open handles will automatically be closed!
-    ; That is, you don't need to call this function.
-    closeProcess(hProcess := "")
+    ; Method:   openProcess(PID, dwDesiredAccess)
+    ;           Note:   This is an internal method which is automatically called when the script exits or the derived object is freed/destroyed.
+    ;                   There is no need to call this method directly. If you wish to close the handle simply free the derived object. 
+    ;                   i.e. derivedObject := [] ; or derivedObject := ""
+    ; Parameters:
+    ;   hProcess        The handle to the process, as returned by openProcess().
+    ; Return Values: 
+    ;   Non-Zero        Success
+    ;   0               Failure
+
+    closeHandle(hProcess)
     {
-        ; method called directly and no handle was passed, so assume they mean to close the current handle
-        if (hProcess = "")
-            hProcess := this.hProcess, this.hProcess := ""
-        ; hProcess is this objects hProcess, so blank it.
-        ; Probably should only blank it when closeHandle returns success, but if hProcess is valid it shouldn't fail
-        ; closeHandle will return success even if the program is no longer running
-        else if (hProcess = this.hProcess)
-            this.hProcess := ""
-        ; if there was an error when opening handle, handle will be null
-        if hProcess
-            return DllCall("CloseHandle", "UInt", hProcess)
-        return ; null returned 
+        return DllCall("CloseHandle", "UInt", hProcess)
     }
+
     ; Method:   read(address, type := "UInt", aOffsets*)
     ;           Reads various integer type values
     ; Parameters:
@@ -306,16 +333,18 @@ class _ClassMemory
     ;                   against null i.e. if (result = "") then an error has occurred.
     ;                   When reading doubles, adjusting "SetFormat, float, totalWidth.DecimalPlaces"
     ;                   may be required depending on your requirements.
+
     read(address, type := "UInt", aOffsets*)
     {
         ; If invalid type RPM() returns success (as bytes to read resolves to null in dllCall())
         ; so set errorlevel to invalid parameter for DLLCall() i.e. -2
         if !this.aTypeSize.hasKey(type)
             return "", ErrorLevel := -2 
-        if DllCall("ReadProcessMemory","UInt",  this.hProcess, "UInt", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, type "*", result, "UInt", this.aTypeSize[type], "Ptr",0)
+        if DllCall("ReadProcessMemory", "UInt",  this.hProcess, "Ptr", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, type "*", result, "UInt", this.aTypeSize[type], "Ptr",0)
             return result
         return        
     }
+
     ; Method:   readRaw(address, byRef buffer, bytes := 4, aOffsets*)
     ;           Reads an area of the processes memory and stores it in the buffer variable
     ; Parameters:
@@ -340,7 +369,7 @@ class _ClassMemory
     readRaw(address, byRef buffer, bytes := 4, aOffsets*)
     {
         VarSetCapacity(buffer, bytes)
-        return DllCall("ReadProcessMemory", "UInt", this.hProcess, "UInt", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, "Ptr", &buffer, "UInt", bytes, "Ptr", 0)
+        return DllCall("ReadProcessMemory", "UInt", this.hProcess, "Ptr", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, "Ptr", &buffer, "UInt", bytes, "Ptr", 0)
     }
 
     ; Method:   readString(address, sizeBytes := 0, encoding := "utf-8", aOffsets*)
@@ -378,24 +407,27 @@ class _ClassMemory
             address := this.getAddressFromOffsets(address, aOffsets*)
         if !sizeBytes  ; read until null terminator is found or something goes wrong
         {
+            ; Even if there are multi-byte-characters (bigger than the encodingSize i.e. surrogates) in the string, when reading in encodingSize byte chunks they will never register as null (as they will have bits set on those bytes)
             encodingSize := (encoding = "utf-16" || encoding = "cp1200") ? 2 : 1
             charType := encodingSize = 1 ? "Char" : "Short"
             Loop
-            {   ; I could save a few reads here by always reading in 4 byte chunks, and then looping through the 4 byte chunks in charType sizes checking for null.
-                if (!DllCall("ReadProcessMemory", "UInt", this.hProcess, "UInt", address + (A_index - 1) * encodingSize, "Ptr", &buffer, "Uint", encodingSize, "Ptr", 0) 
-                || ErrorLevel)
-                    return "", this.ReadStringLastError := True ;this.hProcess ? "Fail" : "Handle Is closed: " this.hProcess
-                else if (0 = NumGet(buffer, 0, charType)) ; NULL terminator
+            {   ; Lets save a few reads by reading in 4 byte chunks
+                if !DllCall("ReadProcessMemory", "UInt", this.hProcess, "Ptr", address + ((outterIndex := A_index) - 1) * 4, "Ptr", &buffer, "Uint", 4, "Ptr", 0) || ErrorLevel
+                    return "", this.ReadStringLastError := True 
+                else loop, % 4 / encodingSize
                 {
-                    if (bufferSize < sizeBytes := A_Index * encodingSize) 
-                        VarSetCapacity(buffer, sizeBytes)
-                    break
-                }   
+                    if NumGet(buffer, (A_Index - 1) * encodingSize, charType) = 0 ; NULL terminator
+                    {
+                        if (bufferSize < sizeBytes := outterIndex * 4 - (4 - A_Index *  encodingSize)) 
+                            VarSetCapacity(buffer, sizeBytes)
+                        break, 2
+                    }  
+                } 
             }
         }
-        if DllCall("ReadProcessMemory", "UInt", this.hProcess, "UInt", address, "Ptr", &buffer, "Uint", sizeBytes, "Ptr", 0)   
+        if DllCall("ReadProcessMemory", "UInt", this.hProcess, "Ptr", address, "Ptr", &buffer, "Uint", sizeBytes, "Ptr", 0)   
             return StrGet(&buffer,, encoding)  
-        return "", this.ReadStringLastError := True ; !this.hProcess ? "Handle Is closed: " this.hProcess : "Fail"              
+        return "", this.ReadStringLastError := True             
     }
 
     ; Method:  writeString(address, string, encoding := "utf-8", aOffsets*)
@@ -422,7 +454,7 @@ class _ClassMemory
         requiredSize := StrPut(string, encoding) * encodingSize - (this.insertNullTerminator ? 0 : encodingSize)
         VarSetCapacity(buffer, requiredSize)
         StrPut(string, &buffer, this.insertNullTerminator ? StrLen(string) : StrLen(string) + 1, encoding)
-        return DllCall("WriteProcessMemory", "UInt", this.hProcess, "UInt", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, "Ptr", &buffer, "Uint", requiredSize, "Ptr", 0)
+        return DllCall("WriteProcessMemory", "UInt", this.hProcess, "Ptr", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, "Ptr", &buffer, "Uint", requiredSize, "Ptr", 0)
     }
     
     ; Method:   write(address, value, type := "Uint", aOffsets*)
@@ -445,7 +477,7 @@ class _ClassMemory
     {
         if !this.aTypeSize.hasKey(type)
             return "", ErrorLevel := -2 
-        return DllCall("WriteProcessMemory", "UInt", this.hProcess, "UInt", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, type "*", value, "Uint", this.aTypeSize[type], "Ptr", 0) 
+        return DllCall("WriteProcessMemory", "UInt", this.hProcess, "Ptr", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, type "*", value, "Uint", this.aTypeSize[type], "Ptr", 0) 
     }
 
     ; Method:   writeRaw(address, byRef buffer, byRef bufferSize := 0, aOffsets*)
@@ -461,10 +493,12 @@ class _ClassMemory
     ; Return Values:
     ;       Non Zero -  Indicates success.
     ;       Zero     -  Indicates failure. Check errorLevel and A_LastError for more information
+
     writeRaw(address, pBuffer, sizeBytes, aOffsets*)
     {
-        return DllCall("WriteProcessMemory", "UInt", this.hProcess, "UInt", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, "Ptr", pBuffer, "Uint", sizeBytes, "Ptr", 0) 
+        return DllCall("WriteProcessMemory", "UInt", this.hProcess, "Ptr", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, "Ptr", pBuffer, "Uint", sizeBytes, "Ptr", 0) 
     }
+
     ; Method:           pointer(base, finalType := "UInt", offsets*)
     ;                   This is an internal method. Since the other various methods all offer this functionality, they should be used instead.
     ;                   This will read integer values of both pointers and non-pointers (i.e. a single memory address)
@@ -480,33 +514,43 @@ class _ClassMemory
     ;       Null    -   Indicates failure. Check ErrorLevel and A_LastError for more information.
     ;       Note:       Since the returned integer value may be 0, to check for success/failure compare the result
     ;                   against null i.e. if (result = "") then an error has occurred.
-
+    ;                   If the target application is 64bit the pointers are read as an 8 byte Int64 (this.PtrType)
+    
     pointer(base, finalType := "UInt", offsets*)
     { 
         For index, offset in offsets
         {
             if offsets.maxIndex() = 1
-                pointer := offset + this.Read(base)
+                pointer := offset + this.Read(base, this.ptrType)
             Else If (A_Index = 1) 
-                pointer := this.Read(offset + this.Read(base))
+                pointer := this.Read(offset + this.Read(base, this.ptrType), this.ptrType)
             Else If (index = offsets.MaxIndex())
                 pointer += offset
-            Else pointer := this.Read(pointer + offset)
+            Else pointer := this.Read(pointer + offset, this.ptrType)
         }   
         Return this.Read(offsets.maxIndex() ? pointer : base, finalType)
     }
-    ; Method:           getAddressFromOffsets(address, aOffsets*)
-    ;                   This is an internal method used by the various methods to determine the final pointer address.
+
+    ; Method:               getAddressFromOffsets(address, aOffsets*)
+    ;                       Returns the final address of a pointer.
+    ;                       This is an internal method used by various methods however, this method may be useful if you are 
+    ;                       looking to eliminate the overhead overhead associated with reading pointers which only change 
+    ;                       on startup or map/level change. In other words you can cache the final address and
+    ;                       read from this address directly.
     ; Parameters:
-    ;   address -       The base address of the pointer.
-    ;   aOffsets* -     A variadic list of offsets used to calculate the pointers final address.
-    ;                   At least one offset must be present.
-    ; Return Values:    The same as the pointer() method
+    ;   address             The base address of the pointer.
+    ;   aOffsets*           A variadic list of offsets used to calculate the pointers final address.
+    ;                       At least one offset must be present.
+    ; Return Values:    
+    ;   Positive integer    The final memory address pointed to by the pointer.
+    ;   Negative integer    Failure
+    ;   Null                Failure
+    ; Note:                 If the target application is 64bit the pointers are read as an 8 byte Int64 (this.PtrType)
 
     getAddressFromOffsets(address, aOffsets*)
     {
         lastOffset := aOffsets.Remove() ;remove the highest key so can use pointer() to find final memory address (minus the last offset)
-        return  this.pointer(address, "UInt", aOffsets*) + lastOffset       
+        return  this.pointer(address, this.ptrType, aOffsets*) + lastOffset       
     }
 
     ; Interesting note:
@@ -520,15 +564,29 @@ class _ClassMemory
     ; This function will return the correct address regardless of the 
     ; bitness (32 or 64 bit) of both the AHK exe and the target process.
 
-    ; WindowTitle can be anything ahk_exe ahk_class etc
-    getProcessBaseAddress(WindowTitle, windowMatchMode := 3)   
+
+    ; Method:   getProcessBaseAddress(WindowTitle, windowMatchMode := 3)
+    ;           Returns the base address of a process. This is the same as calling getModuleBaseAddress() and passing 
+    ;           a null value as the module parameter, however getProcessBaseAddress() should work regardless of the bitness
+    ;           of both the AHK exe and the target process.    
+    ; Parameters:
+    ;   windowTitle         This can be any AHK windowTitle identifier, such as 
+    ;                       ahk_exe, ahk_class, ahk_pid, or simply the window title. e.g. "ahk_exe SC2.exe" or "Starcraft II".
+    ;                       It's safer not to use the window title, as some things can have the same window title e.g. an open folder called "Starcraft II"
+    ;                       would have the same window title as the game itself.
+    ;   windowMatchMode     Determines the matching mode used when finding the program's window (windowTitle).
+    ;                       The default value is 3 i.e. an exact match. Refer to AHK's setTitleMathMode for more information.
+    ; Return Values:
+    ;   Positive integer    The base address of the process (success).
+    ;   Null                The process's window couldn't be found.
+    ;   0                   The GetWindowLong or GetWindowLongPtr call failed.
+  
+    getProcessBaseAddress(windowTitle, windowMatchMode := 3)   
     {
         if windowMatchMode
         {
-            ; This is a string and will not contain the 0x prefix
-            mode := A_TitleMatchMode
-            ; remove hex prefix as SetTitleMatchMode will throw a run time error. This will occur if integer mode is set to hex.
-            StringReplace, windowMatchMode, windowMatchMode, 0x
+            mode := A_TitleMatchMode ; This is a string and will not contain the 0x prefix
+            StringReplace, windowMatchMode, windowMatchMode, 0x ; remove hex prefix as SetTitleMatchMode will throw a run time error. This will occur if integer mode is set to hex.
             SetTitleMatchMode, %windowMatchMode%    ;mode 3 is an exact match
         }
         WinGet, hWnd, ID, %WindowTitle%
@@ -550,12 +608,11 @@ class _ClassMemory
     ;   module -        The file name of the module/dll to find e.g. "GDI32.dll", "Battle.net.dll" etc
     ;                   If no module (null) is specified, the address of the base module - main()/process will be returned 
     ;                   e.g. C:\Games\StarCraft II\Versions\Base28667\SC2.exe (i.e. the same as calling getProcessBaseAddress())
-    ;   aModuleInfo -   A module Info object is returned in this variable. 
+    ;   aModuleInfo -   (Optional) A module Info object is returned in this variable. 
     ;                   This object contains the keys: lpBaseOfDll, SizeOfImage, and EntryPoint 
     ; Return Values: 
     ;   Positive integer - The module's base/load address (success).
     ;   -1 - Module not found
-    ;   -2 - The process handle has been closed.
     ;   -3 - EnumProcessModulesEx failed
     ;   -4 - The AHK script is 32 bit and you are trying to access the modules of a 64 bit target process. Or the target process has been closed.
     ;   -5 - GetModuleInformation failed.
@@ -565,14 +622,8 @@ class _ClassMemory
 
     getModuleBaseAddress(module := "", byRef aModuleInfo := "")
     {
-        if !this.hProcess
-            return -2
-        if (A_PtrSize = 4)
-        {
-            DllCall("IsWow64Process", "Ptr", this.hProcess, "Int*", result)
-            if !result 
-                return -4 ; AHK is 32bit and target process is 64 bit, this function wont work
-        }
+        if (A_PtrSize = 4 && this.IsTarget64bit)
+            return -4 ; AHK is 32bit and target process is 64 bit, this function wont work
         if (module = "")
             mainExeFullPath := this.GetModuleFileNameEx() ; mainExeName = main executable module of the process (will include full directory path)
         if !moduleCount := this.EnumProcessModulesEx(lphModule)
@@ -583,25 +634,83 @@ class _ClassMemory
             moduleFullPath := this.GetModuleFileNameEx(hModule := numget(lphModule, (A_index - 1) * A_PtrSize))
             SplitPath, moduleFullPath, fileName ; strips the path so = GDI32.dll
             if (module = "" && mainExeFullPath = moduleFullPath) || (module != "" && module = filename)
-            {
-                if this.GetModuleInformation(hModule, aModuleInfo)
-                    return aModuleInfo.lpBaseOfDll
-                else return -5 ; Failed to get module info
-            }
+                return this.GetModuleInformation(hModule, aModuleInfo) ? aModuleInfo.lpBaseOfDll : -5 ; Failed to get module info
         }
         return -1 ; not found
     }
 
+    ; Method:  isTargetProcess64Bit(PID, hProcess := "", currentHandleAccess := "")
+    ;          Determines if a process is 64 bit.
+    ; Parameters:
+    ;   PID                     The Process ID of the target process. If required this is used to open a temporary process handle.  
+    ;   hProcess                (Optional) A handle to the process, as returned by openProcess() i.e. [derivedObject].hProcess
+    ;   currentHandleAccess     (Optional) The dwDesiredAccess value used when opening the process handle which has been 
+    ;                           passed as the hProcess parameter. If specifying hProcess, you should also specify this value.                 
+    ; Return Values:
+    ;   True    The target application is 64 bit.
+    ;   False   The target application is 32 bit.
+    ;   Null    The method failed.
+    ; Notes:
+    ;   This is an internal method which is called when the new operator is used. It is used to set the pointer type for 32/64 bit applications so the pointer methods will work.
+    ;   This operation requires a handle with PROCESS_QUERY_INFORMATION or PROCESS_QUERY_LIMITED_INFORMATION access rights.
+    ;   If the currentHandleAccess parameter does not contain these rights (or not passed) or if the hProcess (process handle) is invalid (or not passed)
+    ;   a temporary handle is opened to perform this operation. Otherwise if hProcess and currentHandleAccess appear valid  
+    ;   the passed hProcess is used to perform the operation.
+
+    isTargetProcess64Bit(PID, hProcess := "", currentHandleAccess := "")
+    {
+        if !A_Is64bitOS
+            return False 
+        ; If insufficient rights, open a temporary handle
+        else if !hProcess || !(currentHandleAccess & (this.aRights.PROCESS_QUERY_INFORMATION | this.aRights.PROCESS_QUERY_LIMITED_INFORMATION))
+            closeHandle := hProcess := this.openProcess(PID, this.aRights.PROCESS_QUERY_INFORMATION)
+        if (hProcess && DllCall("IsWow64Process", "Ptr", hProcess, "Int*", Wow64Process))
+            result := !Wow64Process
+        return result, closeHandle ? this.CloseHandle(hProcess) : ""
+    }
+    /*
+        _Out_  PBOOL Wow64Proces value set to:
+        True if the process is running under WOW64 - 32bit app on 64bit OS.
+        False if the process is running under 32-bit Windows!
+        False if the process is a 64-bit application running under 64-bit Windows.
+    */  
+
+    ; Method: suspend() / resume()
+    ; Notes:
+    ;   These are undocumented Windows functions which suspend and resume the process. Here be dragons.
+    ;   The process handle must have PROCESS_SUSPEND_RESUME access rights. 
+    ;   That is, you must specify this when using the new operator, as it is not included. 
+    ;   Some people say it requires more rights and just use PROCESS_ALL_ACCESS, however PROCESS_SUSPEND_RESUME has worked for me.
+    ;   Suspending a process manually can be quite helpful when reversing memory addresses and pointers, although it's not at all required. 
+    ;   As an unorthodox example, memory addresses holding pointers are often stored in a slightly obfuscated manner i.e. they require bit operations to calculate their
+    ;   true stored value (address). This obfuscation can prevent Cheat Engine from finding the true origin of a pointer or links to other memory regions. If there 
+    ;   are no static addresses between the obfuscated address and the final destination address then CE wont find anything (there are ways around this in CE). One way around this is to
+    ;   suspend the process, write the true/deobfuscated value to the address and then perform your scans. Afterwards write back the original values and resume the process.
+
+    suspend()
+    {
+        return DllCall("ntdll\NtSuspendProcess", "UInt", this.hProcess)
+    }  
+
+    resume()
+    {
+        return DllCall("ntdll\NtResumeProcess", "UInt", this.hProcess)
+    } 
+
+    ; Method:               getModules(byRef aModules)
+    ;                       Stores the process's loaded modules as an array of object modules in the aModules parameter.
+    ; Parameters:
+    ;   aModules            An unquoted variable name. The loaded modules of the process are stored in this variable as an array of objects.
+    ;                       Each object in this array has the following keys: Name, lpBaseOfDll, SizeOfImage, and EntryPoint. 
+    ; Return Values:
+    ;   Positive integer    The size of the aModules array. (Success)
+    ;   -3                  EnumProcessModulesEx failed.
+    ;   -4                  The AHK script is 32 bit and you are trying to access the modules of a 64 bit target process.
+
     getModules(byRef aModules)
     {
-        if !this.hProcess
-            return -2
-        if (A_PtrSize = 4)
-        {
-            DllCall("IsWow64Process", "Ptr", this.hProcess, "Int*", result)
-            if !result 
-                return -4 ; AHK is 32bit and target process is 64 bit, this function wont work
-        }      
+        if (A_PtrSize = 4 && this.IsTarget64bit)
+            return -4 ; AHK is 32bit and target process is 64 bit, this function wont work     
         aModules := []
         if !moduleCount := this.EnumProcessModulesEx(lphModule)
             return -3  
@@ -657,8 +766,7 @@ class _ClassMemory
                 return 0
             else if (size >= reqSize)
                 break
-            else 
-                size := VarSetCapacity(lphModule, reqSize)  
+            else size := VarSetCapacity(lphModule, reqSize)  
         }
         return reqSize / A_PtrSize ; module count  ; sizeof(HMODULE) - enumerate the array of HMODULEs     
     }
@@ -682,7 +790,7 @@ class _ClassMemory
     ;   module -        The file name of the module/dll to search e.g. "GDI32.dll", "Battle.net.dll" etc
     ;                   If no module (null) is specified, the executable file of the process will be used. 
     ;                   e.g. C:\Games\StarCraft II\Versions\Base28667\SC2.exe
-    ;   aAOBPattern* -  A variadic list of byte values i.e. the array of bytes to find.
+    ;   aAOBPattern*    A variadic list of byte values i.e. the array of bytes to find.
     ;                   Wild card bytes should be indicated by using a single '?'.
     ; Return Values:
     ;   Null            Failed to find or retrieve the specified module. ErrorLevel is set to the returned error from getModuleBaseAddress()
@@ -732,9 +840,9 @@ class _ClassMemory
     ; Method:               addressPatternScan(startAddress, sizeOfRegionBytes, aAOBPattern*)
     ;                       Scans a specified memory region for an array of bytes pattern.
     ; Parameters:
-    ;   startAddress -      The memory address from which to begin the search.
-    ;   sizeOfRegionBytes - The numbers of bytes to scan in the memory region.
-    ;   aAOBPattern* -      A variadic list of byte values i.e. the array of bytes to find.
+    ;   startAddress        The memory address from which to begin the search.
+    ;   sizeOfRegionBytes   The numbers of bytes to scan in the memory region.
+    ;   aAOBPattern*        A variadic list of byte values i.e. the array of bytes to find.
     ;                       Wild card bytes should be indicated by using a single '?'.      
     ; Return Values:
     ;   Positive integer    Success. The memory address of the found pattern.
@@ -750,7 +858,8 @@ class _ClassMemory
     }
    
     ; Method:       processPatternScan(aAOBPattern*)
-    ;               Scan the memory space of the current process for an array of bytes pattern.  
+    ;               Scan the memory space of the current process for an array of bytes pattern. 
+    ;               Only scans up to address 0x7FFFFFFF (maximum useful area for a 32 bit process)   
     ; Parameters:
     ;   startAddress -      The memory address from which to begin the search.
     ;   aAOBPattern* -      A variadic list of byte values i.e. the array of bytes to find.
@@ -854,7 +963,7 @@ class _ClassMemory
     VirtualQueryEx(address, byRef aInfo)
     {
         if (aInfo.__Class != "memory._MEMORY_BASIC_INFORMATION")
-            aInfo := new this._MEMORY_BASIC_INFORMATION()
+            aInfo := new this._MEMORY_BASIC_INFORMATION(this.IsTarget64bit)
         return aInfo.SizeOfStructure = DLLCall("VirtualQueryEx" 
                                                 , "Ptr", this.hProcess
                                                 , "Ptr", address
@@ -980,11 +1089,13 @@ class _ClassMemory
         DllCall("GlobalFree", "ptr", p)
         return
     }
+
     class _MEMORY_BASIC_INFORMATION
     {
-        __new()
+        __new(IsTarget64bit := False)
         {   
-            if !this.pStructure := DllCall("GlobalAlloc", "UInt", 0, "UInt", this.SizeOfStructure := A_PtrSize = 4 ? 28 : 48, "Ptr")
+            this.IsTarget64bit := IsTarget64bit
+            if !this.pStructure := DllCall("GlobalAlloc", "UInt", 0, "UInt", this.SizeOfStructure := this.IsTarget64bit ? 48 : 28, "Ptr")
                 return ""
             return this
         }
@@ -1003,6 +1114,8 @@ class _ClassMemory
                              ,   "Type": {"Offset": 24, "Type": "UInt"} }
                 ; For 64bit the int64 should really be unsigned. But AHK doesn't support these
                 ; so this won't work correctly for higher memory address areas
+                ; Also as I suspected the module bitness should be based on the target app - not the AHK exe
+                ; http://stackoverflow.com/questions/20068219/readprocessmemory-on-a-64-bit-proces-always-returns-error-299 
                 , a64bit := {   "BaseAddress": {"Offset": 0, "Type": "Int64"}
                             ,    "AllocationBase": {"Offset": 8, "Type": "Int64"}
                             ,    "AllocationProtect": {"Offset": 16, "Type": "UInt"}
@@ -1011,9 +1124,9 @@ class _ClassMemory
                             ,    "Protect": {"Offset": 36, "Type": "UInt"}
                             ,    "Type": {"Offset": 40, "Type": "UInt"} }
 
-            if (A_PtrSize = 4 && a32bit.HasKey(key))
+            if !this.IsTarget64bit && a32bit.HasKey(key)
                 return numget(this.pStructure+0, a32bit[key].Offset, a32bit[key].Type)
-            else if (A_PtrSize = 8 && a64bit.HasKey(key))
+            else if this.IsTarget64bit && a64bit.HasKey(key)
                 return numget(this.pStructure+0, a64bit[key].Offset, a64bit[key].Type)            
         }
         Ptr()
