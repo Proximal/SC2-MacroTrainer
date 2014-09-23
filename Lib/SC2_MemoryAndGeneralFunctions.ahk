@@ -153,18 +153,19 @@ loadMemoryAddresses(base, version := "")
 {
 	if (version = "2.1.0.28667")
 	{
-		versionMatch := "2.1.0.28667"
+		versionMatch := version
 		#include %A_ScriptDir%\Included Files\oldOffsets\2.1.0.28667.ahk
+	}
+	else if (version = "2.1.1.29261" || version = "2.1.2.30315" || version = "2.1.3.30508") 
+	{
+		versionMatch := version
+		#include %A_ScriptDir%\Included Files\oldOffsets\2.1.1.29261-2.1.3.30508.ahk 
 	}
 	else ; load most recent in case patch didn't change offsets.
 	{
 		; These two versions have matching offsets
-		if (version = "2.1.1.29261") 
-			versionMatch := "2.1.1.29261"
-		else if (version = "2.1.2.30315") 
-			versionMatch := "2.1.2.30315"
-		else if (version = "2.1.3.30508" || !version) ; !version in case the findVersion function stuffs up and returns 0/blank, thereby just assume match with latest offsets
-			versionMatch := "2.1.3.30508"
+		if (version = "2.1.4.32283" || !version) ; !version in case the findVersion function stuffs up and returns 0/blank, thereby just assume match with latest offsets
+			versionMatch := "2.1.4.32283"
 		else versionMatch := false
 		;	[Memory Addresses]
 		B_LocalCharacterNameID := base + 0x4FA81F4 ; stored as string Name#123 There are a couple of these, but only one works after SC restart or out of game
@@ -229,8 +230,10 @@ loadMemoryAddresses(base, version := "")
 		 B_rStructure := base + 0x02F6C850	; Havent updated as dont use this
 			 S_rStructure := 0x10
 
-		 P_ChatFocus := base + 0x03140BCC ;Just when chat box is in focus ; value = True if open. There will be 2 of these.
-			 O1_ChatFocus := 0x124 
+		 ; Also be sure to check the pointer in a real game. Ones which appear valid via mapeditor maps may not work.
+		 ; must be 0 when chat box not open yet another menu window is
+		 P_ChatFocus := base + 0x03140650 ;Just when chat box is in focus ; value = True if open. There will be 2 of these.
+			 O1_ChatFocus := 0x394 
 			 O2_ChatFocus := 0x174 		; tends to end with this offset
 
 		 P_MenuFocus := base + 0x0502B26C 	;this is all menus and includes chat box when in focus 

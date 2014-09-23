@@ -11713,39 +11713,4 @@ unloadAllTransports(hotkeySuffix)
 	}
 }
 
-#If, WinActive(GameIdentifier) && isPlaying && aLocalPlayer.Race = "Terran" && !isMenuOpen()
-&& numGetSelectionSorted(aSelection) && (aSelection.TabPositions.HasKey(aUnitID["Marauder"]) || aSelection.TabPositions.HasKey(aUnitID["Marine"]))
-&& (aSelection.HighLightedId != aUnitID["SCV"] || !isUserBusyBuilding()) ; This line allows a turret to be built if an scv is in the same selection as a marine/marauder
-t::
-if aSelection.HighLightedId = aUnitID["Marauder"] || aSelection.HighLightedId = aUnitID["Marine"]
-    tabPos := aSelection.HighlightedGroup
-else if aSelection.TabPositions.HasKey(aUnitID["Marine"])
-    tabPos := aSelection.TabPositions[aUnitID["Marine"]] 
-else tabPos := aSelection.TabPositions[aUnitID["Marauder"]] 
 
-if (tabsToSend := tabPos - aSelection.HighlightedGroup) < 0
-    send, % "+{tab " abs(tabsToSend) "}t{tab "  abs(tabsToSend) "}"
-else send {tab %tabsToSend%}t+{tab %tabsToSend%}
-return
-#if
-
-f1::
-msgbox % getWarpGateCooldown(getSelectedUnitIndex())
-
-return
-isHatchInjected(Hatch)
-
-getCursorUniteee()
-{
-	p1 := readMemory(B_UnitCursor, GameIdentifier)
-	p2 := readMemory(p1 + O1_UnitCursor, GameIdentifier)
-	if (index := readMemory(p2 + O2_UnitCursor, GameIdentifier))
-		return index >> 18
-	return -1
-}
-
-getSelectedUnitIndexRaw(i=0) ;IF Blank just return the first selected unit (at position 0)
-{	global
-	Return ReadMemory(B_SelectionStructure + O_scUnitIndex + i * S_scStructure, GameIdentifier)	;how the game does it
-	; returns the same thing ; Return ReadMemory(B_SelectionStructure + O_scUnitIndex + i * S_scStructure, GameIdentifier, 2) /4
-}
