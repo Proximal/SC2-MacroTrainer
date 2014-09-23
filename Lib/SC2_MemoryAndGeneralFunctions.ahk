@@ -74,7 +74,7 @@ Global B_LocalCharacterNameID
 , O_mSubgroupPriority
 , O_mMiniMapSize
 , B_SelectionStructure
-, B_CtrlGroupOneStructure
+, B_CtrlGroupStructure
 , S_CtrlGroup
 , S_scStructure
 , O_scTypeCount
@@ -167,12 +167,12 @@ loadMemoryAddresses(base, version := "")
 			versionMatch := "2.1.3.30508"
 		else versionMatch := false
 		;	[Memory Addresses]
-		B_LocalCharacterNameID := base + 0x04F15C14 ; stored as string Name#123
-		B_LocalPlayerSlot := base + 0x112E5F0 ; note 1byte and has a second 'copy' (ReplayWatchedPlayer) just after +1byte eg LS =16d=10h, hex 1010 (2bytes) & LS =01d = hex 0101
+		B_LocalCharacterNameID := base + 0x4FA81F4 ; stored as string Name#123 There are a couple of these, but only one works after SC restart or out of game
+		B_LocalPlayerSlot := base + 0x11596A8 ;0x112E5F0 ; note 1byte and has a second 'copy' (ReplayWatchedPlayer) just after +1byte eg LS =16d=10h, hex 1010 (2bytes) & LS =01d = hex 0101
 		B_ReplayWatchedPlayer := B_LocalPlayerSlot + 0x1
 		;B_pStructure := base + 0x35F55A8  ; start at Player1			 
-		B_pStructure := base + 0x35F4798 			 
-		S_pStructure := 0xE10
+		B_pStructure := base + 0x3620CB0 ;0x35F4798 			 
+		S_pStructure := 0xE18
 			 O_pStatus := 0x0
 			 O_pXcam := 0x8
 			 O_pYcam := 0xC	
@@ -180,35 +180,39 @@ loadMemoryAddresses(base, version := "")
 			 O_pCamAngle := 0x14
 			 O_pCamRotation := 0x18
 
-			 O_pTeam := 0x1C
-			 O_pType := 0x1D ;
+			 ; 8 bytes were inserted here
+			 O_pTeam := 0x1C 
+			 O_pType := 0x1D ;same
 			 O_pVictoryStatus := 0x1E
-			 O_pName := 0x60 ;+8
+			 O_pName := 0x64 
 			 
-			 O_pRacePointer := 0x158
-			 O_pColour := 0x1B0
-			 O_pAccountID := 0x1C0 ; ????
+			 O_pRacePointer := 0x160
+			 O_pColour := 0x1B8
+			 O_pAccountID := 0x218 ; This moved by quite a bit (more than the others) 0x1C0 
 
-			 O_pAPM := 0x5E8 	; 0x598 	
-			 O_pEPM := 0x5D8 	; ?????
+			 O_pAPM := 0x5F0 	; Instantaneous
+			 O_pAPMAverage := 0x5F8
+			 O_pEPM := 0x630 	; Instantaneous
+			 O_pEPMAverage := 0x638 	
 
-			 O_pWorkerCount := 0x7D8 ; **Care dont confuse this with HighestWorkerCount
-			 O_pTotalUnitsBuilt := 0x658 ; eg numbers of units made (includes 6 starting scvs) 
-			 O_pWorkersBuilt := 0x7E8 ; number of workers made (includes the 6 at the start of the game)
-			 O_pHighestWorkerCount := 0x800 ; the current highest worker account achieved
-			 O_pBaseCount := 0x848 
-			 O_pSupplyCap := 0x898		
-			 O_pSupply := 0x8B0 ;+ 12		
-			 O_pMinerals := 0x8F0 ;+18
-			 O_pGas := 0x8F8
+			 O_pWorkerCount := 0x7E0 ; **Care dont confuse this with HighestWorkerCount
+			 O_pTotalUnitsBuilt := 0x660 ; eg numbers of units made (includes 6 starting scvs) 
+			 O_pWorkersBuilt := 0x7F0 ; number of workers made (includes the 6 at the start of the game)
+			 O_pHighestWorkerCount := 0x808 ; the current highest worker account achieved
+			 O_pBaseCount := 0x850 
 
-			 O_pArmySupply := 0x8D0	 
-			 O_pMineralIncome := 0x970
-			 O_pGasIncome := 0x978
-			 O_pArmyMineralSize := 0xC58 	; there are two (identical?) values for minerals/gas 
-			 O_pArmyGasSize := 0xC80 		; ** care dont use max army gas/mineral size! 
+			 O_pSupplyCap := 0x8A0		
+			 O_pSupply := 0x8B8 		
+			 O_pMinerals := 0x8F8 
+			 O_pGas := 0x900
 
-		 P_IdleWorker := base + 0x03114D30		
+			 O_pArmySupply := 0x8D8	 
+			 O_pMineralIncome := 0x978
+			 O_pGasIncome := 0x980
+			 O_pArmyMineralSize := 0xC60 	; there are two (identical?) values for minerals/gas 
+			 O_pArmyGasSize := 0xC88 		; ** care dont use max army gas/mineral size! 
+
+		 P_IdleWorker := base + 0x03140650		
 			 O1_IdleWorker := 0x358
 			 O2_IdleWorker := 0x244 	; tends to always end with this offset if finding via pointer scan
 
@@ -220,25 +224,26 @@ loadMemoryAddresses(base, version := "")
 		;   two timers which have the same value.  GameGetMissionTime() refers to the second (+0x4) of these two timers.
 		;	And via IDA (Function: GameGetMissionTime) (-0x800000 from IDA address)
 
-		 B_Timer := base + 0x35428DC ; 0x353C41C 			
+		 B_Timer := base + 0x356EDF0 ;0x35428DC ;			
 
-		 B_rStructure := base + 0x02F6C850	; ?? Havent updated as dont use this
+		 B_rStructure := base + 0x02F6C850	; Havent updated as dont use this
 			 S_rStructure := 0x10
 
-		 P_ChatFocus := base + 0x03114D30 ;Just when chat box is in focus ; value = True if open
-			 O1_ChatFocus := 0x394 
+		 P_ChatFocus := base + 0x03140BCC ;Just when chat box is in focus ; value = True if open. There will be 2 of these.
+			 O1_ChatFocus := 0x124 
 			 O2_ChatFocus := 0x174 		; tends to end with this offset
 
-		 P_MenuFocus := base + 0x04FFA324 	;this is all menus and includes chat box when in focus ; old 0x3F04C04
+		 P_MenuFocus := base + 0x0502B26C 	;this is all menus and includes chat box when in focus 
 			 O1_MenuFocus := 0x17C 			; tends to end with this offse
 
 		P_SocialMenu := base + 0x0409B098 ; ???? Havent updated as dont use it
 
-		 B_uCount := base + 0x3672FA8 ; or 0x2F75568	; This is the units alive (and includes missiles) 			
-		 												; There are two of these values and they only differ the instant a unit dies esp with missle fire (ive used the higher value) - perhaps one updates slightly quicker - dont think i use this offset anymore
-		 							
-		 B_uHighestIndex := base + 0x3672FC0  			; this is actually the highest currently alive unit (includes missiles while alive) and starts at 1 NOT 0! i.e. 1 unit alive = 1
-		 B_uStructure := base + 0x3673000 			
+		 B_uCount := base + 0x369F528 ; or 0x2FA0778	; This is the units alive (and includes missiles) 			
+		 												; There are two of these values and they only differ the instant a unit dies esp with missle fire (ive used the higher value) - perhaps one updates slightly quicker - dont think i use this offset anymore other than as a value in debugData()
+		 												; Theres another one which excludes structures
+
+		 B_uHighestIndex := base + 0x369F540  			; This is actually the highest currently alive unit (includes missiles while alive) and starts at 1 NOT 0! i.e. 1 unit alive = 1
+		 B_uStructure := base + 0x0369f580 ; B_uHighestIndex+0x40    			
 		 S_uStructure := 0x1C0
 			 O_uModelPointer := 0x8
 			 O_uTargetFilter := 0x14
@@ -266,7 +271,6 @@ loadMemoryAddresses(base, version := "")
 			
 		;CommandQueue 	; separate structure
 			 O_cqState := 0x40	
-
 		
 		; Unit Model Structure	
 		 O_mUnitID := 0x6	
@@ -274,48 +278,44 @@ loadMemoryAddresses(base, version := "")
 		 O_mMiniMapSize := 0x3AC ;0x39C
 		
 		; selection and ctrl groups
-		 B_SelectionStructure := base + 0x31D8508
+		 B_SelectionStructure := base + 0x3204530 ;0x31D8508
 
 		; Note: This is actually the second control group in the group structure. 
 		; The structure begins with ctrl group 0, then goes to 1, But I originally used ctrl group 1 as base cos 
 		; im an idiot. 
 		; when getting info for group 1, the negative offset will work fine 
 
-		 B_CtrlGroupOneStructure := base + 0x31DD730
+		 B_CtrlGroupStructure := base + 0x3207BF8
 		 S_CtrlGroup := 0x1B60
 		 S_scStructure := 0x4	; Unit Selection & Ctrl Group Structures
 			 O_scTypeCount := 0x2
 			 O_scTypeHighlighted := 0x4
 			 O_scUnitIndex := 0x8
 
-	;	P_PlayerColours := base + 0x03D28A84 ; 0 when enemies red  1 when player colours
-	;		O1_PlayerColours := 0x4
-	;		O2_PlayerColours := 0x17c
-
-		; give the army unit count (i.e. same as in the select army icon) - unit count not supply
-		; dont confuse with similar one which includes army unit counts in production 
-		B_localArmyUnitCount := base + 0x03114D30
+		; gives the select army unit count (i.e. same as in the select army icon) - unit count not supply
+		; dont confuse with similar value which includes army unit counts in production - or if in map editor unit count/index.
+		B_localArmyUnitCount := base + 0x03140650
 			O1_localArmyUnitCount := 0x354
 			O2_localArmyUnitCount := 0x248
 
-		 B_TeamColours := base + 0x3115E7C ; 2 when team colours is on, else 0
-		; another one at + 0x4FBCB98
+		 B_TeamColours := base + 0x3141EA4 ; 2 when team colours is on, else 0
+		; another one at + 0x4FEDA58
 
-		 P_SelectionPage := base + 0x03114D30  	; ***theres one other 3 lvl pointer but for a split second (every second or so) it points to 
-			 O1_SelectionPage := 0x320			; the wrong address! You need to increase CE timer resolution to see this happening! Check it!
+		 P_SelectionPage := base + 0x03140650  	; Tends to end with these offsets. ***theres one other 3 lvl pointer but for a split second (every few second or so) it points to 
+			 O1_SelectionPage := 0x320			; the wrong address! You need to increase CE timer resolution to see this happening! Or better yet use the 'continually perform the pointer scan until stopped' option.
 			 O2_SelectionPage := 0x15C			;this is for the currently selected unit portrait page ie 1-6 in game (really starts at 0-5)
 			 O3_SelectionPage := 0x14C 			;might actually be a 2 or 1 byte value....but works fine as 4
 
 		DeadFilterFlag := 0x0000000200000000	
 		BuriedFilterFlag := 0x0000000010000000
 
-		 B_MapStruct := base + 0x3542874 		;0x353C3B4 ;0x3534EDC ; 0X024C9E7C 
+		 B_MapStruct := base + 0x356ED8C		;0x353C3B4 ;0x3534EDC ; 0X024C9E7C 
 			 O_mLeft := B_MapStruct + 0xDC	                                   
 			 O_mBottom := B_MapStruct + 0xE0	                                   
 			 O_mRight := B_MapStruct + 0xE4	    ; MapRight 157.999756 (akilon wastes) after dividing 4096   (647167 before)                  
 			 O_mTop := B_MapStruct + 0xE8	   	; MapTop: 622591 (akilon wastes) before dividing 4096  
 
-		B_camLeft := base + 0x31165D8
+		B_camLeft := base + 0x3142600
 		B_camBottom := B_camLeft + 0x4
 		B_camRight := B_camBottom + 0x4
 		B_camTop := B_camRight + 0x4
@@ -328,13 +328,13 @@ loadMemoryAddresses(base, version := "")
 							, Follow: 512
 							, FollowNoAttack: 515} ; This is used by unit spell casters such as infestors and High temps which dont have a real attack 
 			
-		B_UnitCursor :=	base + 0x03114D30 
+		B_UnitCursor :=	base + 0x03140650 ;0x03114D30 
 			O1_UnitCursor := 0x2C0	 					
 			O2_UnitCursor := 0x21C 					
 
-	 															; If used as 4byte value, will return 256 	there are 2 of these memory addresses
-		 P_IsUserPerformingAction := base + 0x03114D30 			; This is a 1byte value and return 1  when user is casting or in is rallying a hatch via gather/rally or is in middle of issuing Amove/patrol command but
-			 O1_IsUserPerformingAction := 0x230 					; if youre searching for a 4byte value in CE offset will be at 0x254 (but really if using it as 1 byte it is 0x255) - but im lazy and use it as a 4byte with my pointer command
+	 	; This base can be the same as B_UnitCursor				; If used as 4byte value, will return 256 	there are 2 of these memory addresses
+		 P_IsUserPerformingAction := base + 0x03140650 			; This is a 1byte value and return 1  when user is casting or in is rallying a hatch via gather/rally or is in middle of issuing Amove/patrol command but
+			 O1_IsUserPerformingAction := 0x230 				; if youre searching for a 4byte value in CE offset will be at 0x254 (but really if using it as 1 byte it is 0x255) - but im lazy and use it as a 4byte with my pointer command
 																; also 1 when placing a structure (after structure is selected) or trying to land rax to make a addon Also gives 1 when trying to burrow spore/spine
 																; When searching for 4 byte value this offset will be 0x254 
 																; this address is really really useful!
@@ -348,7 +348,8 @@ loadMemoryAddresses(base, version := "")
 			04_IsUserBuildingWithWorker := 0x168 				; BUT will also give 1 when a hatch is selected!!!
 
 	*/
-		 P_IsBuildCardDisplayed := base + 0x0312872C 		; this displays 1 (swarm host) or 0 with units selected - displays 7 when targeting reticle displayed/or placing a building (same thing)
+		; This tends to have the same offsets (though there are a few to choose from)
+		 P_IsBuildCardDisplayed := base + 0x03154754 		; this displays 1 (swarm host) or 0 with units selected - displays 7 when targeting reticle displayed/or placing a building (same thing)
 			 01_IsBuildCardDisplayed := 0x7C 				; **but when either build card is displayed it displays 6 (even when all advanced structures are greyed out)!!!!
 			 02_IsBuildCardDisplayed := 0x74 				; also displays 6 when the toss hallucination card is displayed
 			 03_IsBuildCardDisplayed := 0x398 				; could use this in place of the current 'is user performing action offset'
@@ -383,11 +384,11 @@ loadMemoryAddresses(base, version := "")
 											  	;shift = 1, ctrl = 2, alt = 4 (and add them together)
 
 															
-		 B_CameraDragScroll := base + 0x3057DB0  			; 1 byte Returns 1 when user is moving camera via DragScroll i.e. mmouse button the main map But not when on the minimap (or if mbutton is held down on the unit panel)
+		 B_CameraDragScroll := base + 0x30834D8   			; 1 byte Returns 1 when user is moving camera via DragScroll i.e. mmouse button the main map But not when on the minimap (or if mbutton is held down on the unit panel)
 
 		
-		 B_InputStructure := base + 0x30580C0  		
-			 B_iMouseButtons := B_InputStructure + 0x0 		; 1 Byte 	MouseButton state 1 for Lbutton,  2 for middle mouse, 4 for rbutton
+		 B_InputStructure := base + 0x30837E8  		
+			 B_iMouseButtons := B_InputStructure + 0x0 		; 1 Byte 	MouseButton state 1 for Lbutton,  2 for middle mouse, 4 for rbutton, 8 xbutton1, 16 xbutton2
 			 B_iSpace := B_iMouseButtons + 0x8 				; 1 Bytes
 			 B_iNums := B_iSpace + 0x2  					; 2 Bytes
 			 B_iChars := B_iNums + 0x2 						; 4 Bytes 
@@ -404,15 +405,15 @@ loadMemoryAddresses(base, version := "")
 			 02_CameraMovingViaMouseAtScreenEdge := 0x20C				; 2 = Top 						5 = Right Edge			
 			 03_CameraMovingViaMouseAtScreenEdge := 0x5A4				; 3 = Diagonal Right/Top 	  	6 = Diagonal Left/ Bot	
 																		; 7 = Bottom Edge 			 	8 = Diagonal Right/Bot 
-																		; Note need to do a pointer scan with max offset > 1200d!
-		 B_IsGamePaused := base + 0x31FEF1D 						
+																		; Note need to do a pointer scan with max offset > 1200d! Tends to have the same offsets
+		 B_IsGamePaused := base + 0x322AF55 						
 
-		 B_FramesPerSecond := base + 0x04FBD484
-		 B_Gamespeed  := base + 0x4EFE5E8
+		 B_FramesPerSecond := base + 0x4FEE3C4 
+		 B_Gamespeed  := base + 0x4F2A6A8
 
 		; example: D:\My Computer\My Documents\StarCraft II\Accounts\56025555\6-S2-1-34555\Replays\
 		; this works for En, Fr, and Kr languages 
-		 B_ReplayFolder :=  base + 0x4F7B228 ;0x04F701F8
+		 B_ReplayFolder :=  base + 0x4FA9A68 
 
 		; Horizontal resolution ; 4 bytes
 		; vertical resolution ; The next 4 bytes immediately after the Horizontal resolution 
@@ -420,7 +421,7 @@ loadMemoryAddresses(base, version := "")
 		; There will be 3 green static addresses (+many non-statics) One of them will change depending on resolution
 		; Can resize in window mode and it will change too
 
-		 B_HorizontalResolution := base + 0x4FF9DD8
+		 B_HorizontalResolution := base + 0x502AD20
 		 B_VerticalResolution := B_HorizontalResolution + 0x4
 
 	/*
@@ -505,7 +506,7 @@ getCameraBoundsTop()
 IsInControlGroup(group, unitIndex)
 {
 	count := getControlGroupCount(Group)
-	ReadRawMemory(B_CtrlGroupOneStructure + S_CtrlGroup * (group - 1), GameIdentifier, Memory,  O_scUnitIndex + count * S_scStructure)
+	ReadRawMemory(B_CtrlGroupStructure + S_CtrlGroup * group, GameIdentifier, Memory,  O_scUnitIndex + count * S_scStructure)
 	loop, % count 
 	{
 		if (unitIndex = (NumGet(Memory, O_scUnitIndex + (A_Index - 1) * S_scStructure, "UInt") >> 18))		
@@ -522,24 +523,24 @@ isInControlGroup(group, unit)
 		if (unit = getCtrlGroupedUnitIndex(Group,  A_Index - 1))
 			Return 1	;the unit is in this control group
 	Return 0			
-}	;	ctrl_unit_number := ReadMemory(B_CtrlGroupOneStructure + S_CtrlGroup * (group - 1) + O_scUnitIndex +(A_Index - 1) * S_scStructure, GameIdentifier, 2)/4
+}	;	ctrl_unit_number := ReadMemory(B_CtrlGroupStructure + S_CtrlGroup * group + O_scUnitIndex +(A_Index - 1) * S_scStructure, GameIdentifier, 2)/4
 */
 ; Could dump the entire group (S_CtrlGroup). But that seems wasteful 
 numgetControlGroupMemory(BYREF MemDump, group)
 {
 	if count := getControlGroupCount(Group)
-		ReadRawMemory(B_CtrlGroupOneStructure + S_CtrlGroup * (group - 1) + O_scUnitIndex, GameIdentifier, MemDump, count * S_scStructure)
+		ReadRawMemory(B_CtrlGroupStructure + S_CtrlGroup * group + O_scUnitIndex, GameIdentifier, MemDump, count * S_scStructure)
 	return count
 }
 
 getCtrlGroupedUnitIndex(group, i=0)
 {	global
-	Return ReadMemory(B_CtrlGroupOneStructure + S_CtrlGroup * (group - 1) + O_scUnitIndex + i * S_scStructure, GameIdentifier) >> 18
+	Return ReadMemory(B_CtrlGroupStructure + S_CtrlGroup * group + O_scUnitIndex + i * S_scStructure, GameIdentifier) >> 18
 }
 
 getControlGroupCount(Group)
 {	global
-	Return	ReadMemory(B_CtrlGroupOneStructure + S_CtrlGroup * (Group - 1), GameIdentifier, 2)
+	Return	ReadMemory(B_CtrlGroupStructure + S_CtrlGroup * Group, GameIdentifier, 2)
 }	
 
 getTime()
@@ -1993,11 +1994,11 @@ getCharacerInfo(byref returnName := "", byref returnID := "")
 
 ; note ctrl group base address really starts with ctrl group 0 - but the negative offset from ctrl group 1 works fine
 numGetControlGroupObject(Byref oControlGroup, Group)
-{	GLOBAL B_CtrlGroupOneStructure, S_CtrlGroup, GameIdentifier, S_scStructure, O_scUnitIndex
+{	GLOBAL B_CtrlGroupStructure, S_CtrlGroup, GameIdentifier, S_scStructure, O_scUnitIndex
 	oControlGroup := []
 	GroupSize := getControlGroupCount(Group)
 
-	ReadRawMemory(B_CtrlGroupOneStructure + S_CtrlGroup * (group - 1), GameIdentifier, MemDump, GroupSize * S_scStructure + O_scUnitIndex)
+	ReadRawMemory(B_CtrlGroupStructure + S_CtrlGroup * group, GameIdentifier, MemDump, GroupSize * S_scStructure + O_scUnitIndex)
 ;	oControlGroup["Count"]	:= numget(MemDump, 0, "Short")
 ;	oControlGroup["Types"]	:= numget(MemDump, O_scTypeCount, "Short") ;this will get whats actually in the memory
 	oControlGroup["Count"]	:= oControlGroup["Types"] := 0
@@ -2154,6 +2155,36 @@ numGetSelectionSorted(ByRef aSelection, ReverseOrder := False)
   	return aSelection["Count"]	
 }
 
+
+
+/*
+numGetSelectionSortedTest(ReverseOrder := False)
+{
+	global aLocalPlayer
+	static dllFunction := "d:\My Computer\My Documents\Visual Studio 2010\Projects\fddgf\Debug\fddgf.dll"
+	selectionCount := getSelectionCount()
+	ReadRawMemory(B_SelectionStructure, GameIdentifier, MemDump, selectionCount * S_scStructure + O_scUnitIndex)
+	if !func
+		func := DllCall("GetProcAddress", Ptr, DllCall("LoadLibrary", Str, dllFunction, "Ptr"), AStr, "sortSelection", "Ptr")
+	
+	loop % selectionCount
+	{
+		priority := getUnitSubGroupPriority(unitIndex := numget(MemDump,(A_Index-1) * S_scStructure + O_scUnitIndex , "Int") >> 18)
+		subGroupAlias := aUnitSubGroupAlias.hasKey(unitId := getUnitType(unitIndex)) ? aUnitSubGroupAlias[unitId] : unitId 
+		hallucinationOrder := (getUnitTargetFilter(unitIndex) & aUnitTargetFilter.Hallucination) ; hallucinations come first so they get key 0 real units get key 1
+		testString .= (A_Index != 1 ? "|" : "") priority "," subGroupAlias "," 	hallucinationOrder "," unitIndex				
+		; when aStorage is enumerated, units will be accessed in the same order
+		; as they appear in the unit panel ie top left to bottom right 	
+
+	}
+	id := stopwatch()
+	DllCall(func, "astr", testString, "Cdecl Int")
+	msgbox % stopwatch(id)
+	return testString
+}
+*/
+
+
 /*
 This was just a test to compare the speed of using a machine code function vs the current numgetselectionSorted()
 If it was significantly faster, I would re-write the c++ function so it was nicer to look at - an array of an array syntax or something.
@@ -2308,13 +2339,13 @@ numgetUnitModelPointer(ByRef Memory, Unit)
 }
 
  getGroupedQueensWhichCanInject(ByRef aControlGroup,  CheckMoveState := 0)
- {	GLOBAL aUnitID, O_scTypeCount, O_scTypeHighlighted, S_CtrlGroup, O_scUnitIndex, GameIdentifier, B_CtrlGroupOneStructure
+ {	GLOBAL aUnitID, O_scTypeCount, O_scTypeHighlighted, S_CtrlGroup, O_scUnitIndex, GameIdentifier, B_CtrlGroupStructure
  	, S_uStructure, GameIdentifier, MI_Queen_Group, S_scStructure, aUnitMoveStates
 	aControlGroup := []
 	group := MI_Queen_Group
 	groupCount := getControlGroupCount(Group)
 
-	ReadRawMemory(B_CtrlGroupOneStructure + S_CtrlGroup * (Group - 1), GameIdentifier, MemDump, groupCount * S_CtrlGroup + O_scUnitIndex)
+	ReadRawMemory(B_CtrlGroupStructure + S_CtrlGroup * Group, GameIdentifier, MemDump, groupCount * S_CtrlGroup + O_scUnitIndex)
 
 	aControlGroup["UnitCount"]	:= numget(MemDump, 0, "Short")
 	aControlGroup["Types"]	:= numget(MemDump, O_scTypeCount, "Short")
@@ -4815,7 +4846,7 @@ getMiniMapPingIconPos(byref xPos, byref yPos)
 
 addressPatternScan()
 { 	
-	;#include <classMemory>
+	
 	global B_Timer
 	;if !isObject(mem)
 	mem := new memory(GameIdentifier)
@@ -4824,4 +4855,11 @@ addressPatternScan()
 								, 0x01, 0x74, 0x06, 0x01, 0x0D, "?", "?", "?", "?", 0x83, 0x3D, "?", "?"
 								, "?", "?", 0x00, 0x56, 0xBE, 0xFF, 0xFF, 0xFF, 0x7F)
 		B_Timer := ReadMemory(off1 + 28, GameIdentifier)
+
+
+
+
+
+
+		return  B_Timer
 }

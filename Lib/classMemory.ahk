@@ -607,7 +607,7 @@ class _ClassMemory
     ; Parameters:
     ;   module -        The file name of the module/dll to find e.g. "GDI32.dll", "Battle.net.dll" etc
     ;                   If no module (null) is specified, the address of the base module - main()/process will be returned 
-    ;                   e.g. C:\Games\StarCraft II\Versions\Base28667\SC2.exe (i.e. the same as calling getProcessBaseAddress())
+    ;                   e.g. C:\Games\StarCraft II\Versions\Base28667\SC2.exe (i.e. the same as calling getProcessBaseAddress() or getModuleBaseAddress("SC2.exe"))
     ;   aModuleInfo -   (Optional) A module Info object is returned in this variable. 
     ;                   This object contains the keys: lpBaseOfDll, SizeOfImage, and EntryPoint 
     ; Return Values: 

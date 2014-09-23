@@ -11728,3 +11728,24 @@ if (tabsToSend := tabPos - aSelection.HighlightedGroup) < 0
 else send {tab %tabsToSend%}t+{tab %tabsToSend%}
 return
 #if
+
+f1::
+msgbox % getWarpGateCooldown(getSelectedUnitIndex())
+
+return
+isHatchInjected(Hatch)
+
+getCursorUniteee()
+{
+	p1 := readMemory(B_UnitCursor, GameIdentifier)
+	p2 := readMemory(p1 + O1_UnitCursor, GameIdentifier)
+	if (index := readMemory(p2 + O2_UnitCursor, GameIdentifier))
+		return index >> 18
+	return -1
+}
+
+getSelectedUnitIndexRaw(i=0) ;IF Blank just return the first selected unit (at position 0)
+{	global
+	Return ReadMemory(B_SelectionStructure + O_scUnitIndex + i * S_scStructure, GameIdentifier)	;how the game does it
+	; returns the same thing ; Return ReadMemory(B_SelectionStructure + O_scUnitIndex + i * S_scStructure, GameIdentifier, 2) /4
+}
