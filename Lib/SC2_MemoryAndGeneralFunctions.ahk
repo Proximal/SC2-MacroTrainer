@@ -3823,6 +3823,8 @@ readConfigFile()
 	IniRead, pSendDelay, %config_file%, %section%, pSendDelay, -1
 	IniRead, pClickDelay, %config_file%, %section%, pClickDelay, -1
 	IniRead, EventKeyDelay, %config_file%, %section%, EventKeyDelay, -1
+	
+	IniRead, LauncherMode, %config_file%, %section%, LauncherMode, Battle.net
 	IniRead, auto_update, %config_file%, %section%, auto_check_updates, 1
 	IniRead, launch_settings, %config_file%, %section%, launch_settings, 0
 	IniRead, MaxWindowOnStart, %config_file%, %section%, MaxWindowOnStart, 1
@@ -4684,7 +4686,7 @@ modifyOverlay(overlay, byRef Redraw, byRef overlayCreated, byRef Drag, byRef Dra
 	return 1
 }
 
-; returns the Game path
+; returns the Game path. Blank if file doesn't exist
 ; e.g.	C:\Games\StarCraft II\StarCraft II.exe
 StarcraftExePath()
 {
@@ -4692,21 +4694,31 @@ StarcraftExePath()
 		RegRead, GamePath, HKEY_LOCAL_MACHINE, SOFTWARE\Wow6432Node\Blizzard Entertainment\StarCraft II Retail, GamePath
 	else 
 		RegRead, GamePath, HKEY_LOCAL_MACHINE, SOFTWARE\Blizzard Entertainment\StarCraft II Retail, GamePath
-	return GamePath
+	; Im not sure if my SC install is corrupted now, after a reinstall or more likely due to the new battle.net launcher
+	; The above registry key is no longer written. 
+	if !FileExist(GamePath)
+		GamePath := StarcraftInstallPath() "\" "StarCraft II.exe"
+	return FileExist(GamePath) ? GamePath : ""
 }
 
+switcherExePath()
+{
+	return (installPath := StarcraftInstallPath()) && FileExist(switcherPath := RTrim(installPath, "\") "\Support\SC2Switcher.exe") ? switcherPath : ""		
+}
 ; returns the Install path
-; e.g.	C:\Games\StarCraft II\
+; e.g.	C:\Games\StarCraft II
 ; if doesnt exist returns blank
 StarcraftInstallPath()
 {
-	if A_Is64bitOS
-		RegRead, SC2InstallPath, HKEY_LOCAL_MACHINE, SOFTWARE\Wow6432Node\Blizzard Entertainment\StarCraft II Retail, InstallPath
-	else 
-		RegRead, SC2InstallPath, HKEY_LOCAL_MACHINE, SOFTWARE\Blizzard Entertainment\StarCraft II Retail, InstallPath
-	return SC2InstallPath
+	; This key may no longer be valid/set when installing SC....or my install is just corrupted, try using the windows uninstall path
+	wowNode := A_Is64bitOS ? "Wow6432Node\" : ""
+	RegRead, SC2InstallPath, HKEY_LOCAL_MACHINE, SOFTWARE\%wowNode%Blizzard Entertainment\StarCraft II Retail, InstallPath ; I think this has a final backslash (cant test now)
+	if (SC2InstallPath = "" || !InStr(FileExist(SC2InstallPath), "D")) ; Try to read the Windows uninstall path e.g. C:\Games\StarCraft II\StarCraft II
+		RegRead, SC2InstallPath, HKEY_LOCAL_MACHINE, SOFTWARE\%wowNode%Microsoft\Windows\CurrentVersion\Uninstall\StarCraft II, InstallLocation ; C:\Games\StarCraft II - no backslash
+	if strlen(SC2InstallPath) > 3 ; i.e. not c:\  ...Not that anyone would ever install it in root
+		SC2InstallPath := RTrim(SC2InstallPath, "\")
+	return InStr(FileExist(SC2InstallPath), "D") ? SC2InstallPath : ""
 }
-
 
 ; portrait numbers begin at 0 i.e. first page contains portraits 0-23
 ; clickTabPage is the real tab number ! its not off by 1! i.e. tab 1 = 1

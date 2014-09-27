@@ -1211,6 +1211,7 @@ Gdip_DrawImagePointsRect(pGraphics, pBitmap, Points, sx="", sy="", sw="", sh="",
 ;						0		|0		|0		|1		|0
 ;						0.05	|0.05	|0.05	|0		|1
 ;						)
+;						Explains matrix - http://www.autohotkey.com/board/topic/59125-any-way-to-colorize-image/page-2 
 ;
 ; notes					MatrixBright = 1.5|0|0|0|0|0|1.5|0|0|0|0|0|1.5|0|0|0|0|0|1|0|0.05|0.05|0.05|0|1
 ;						MatrixGreyScale = 0.299|0.299|0.299|0|0|0.587|0.587|0.587|0|0|0.114|0.114|0.114|0|0|0|0|0|1|0|0|0|0|0|1

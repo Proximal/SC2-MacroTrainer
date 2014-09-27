@@ -261,8 +261,10 @@ process, exist, %GameExe%
 If !errorlevel
 {
 	MT_CurrentInstance.SCWasRunning := False
-	try run % StarcraftExePath(), % StarcraftInstallPath()
-	;try ShellRun(StarcraftExePath(),, StarcraftInstallPath())
+	if (LauncherMode = "Battle.net" && StarcraftExePath())
+		run, % StarcraftExePath(), % StarcraftInstallPath(), UseErrorLevel ; try doesn't seem to work now after reinstaling SC - so use errorlevel to suppress runtime errors
+	else if (LauncherMode = "Starcraft" && switcherExePath())
+		run, % switcherExePath(), % StarcraftInstallPath(), UseErrorLevel
 }
 else MT_CurrentInstance.SCWasRunning := True
 Process, wait, %GameExe%	
@@ -2622,6 +2624,7 @@ ini_settings_write:
 	IniWrite, %pSendDelay%, %config_file%, %section%, pSendDelay
 	IniWrite, %pClickDelay%, %config_file%, %section%, pClickDelay
 
+	IniWrite, % LauncherMode := (LauncherMode = 1 ? "Battle.net" : LauncherMode = 2 ? "Starcraft" : "Off"), %config_file%, %section%, LauncherMode
 	IniWrite, %auto_update%, %config_file%, %section%, auto_check_updates
 	Iniwrite, %launch_settings%, %config_file%, %section%, launch_settings
 	Iniwrite, %MaxWindowOnStart%, %config_file%, %section%, MaxWindowOnStart
@@ -3421,7 +3424,12 @@ IfWinExist
 			
 			;yp+30
 
-		Gui, Add, GroupBox, xs ys+115 w161 h170, Key Blocking
+		Gui, Add, GroupBox, xs ys+115 w161 h85, Launcher 
+			Gui, Add, Radio, % "xp+10 yp+25 vLauncherMode checked" (LauncherMode = "Battle.net"), Battle.net 
+			Gui, Add, Radio, % "checked" (LauncherMode = "Starcraft"), Starcraft 
+			Gui, Add, Radio, % "checked" (LauncherMode = "Off" || (LauncherMode != "Battle.net" && LauncherMode != "Starcraft")), Disabled 
+
+		Gui, Add, GroupBox, xs ys+205 w161 h80, Key Blocking
 			Gui, Add, Checkbox, xp+10 yp+25 vLwinDisable checked%LwinDisable%, Disable Left Windows Key
 		;	Gui, Add, Checkbox,xp+10 yp+25 vBlockingStandard checked%BlockingStandard%, Standard Keys	
 		;	Gui, Add, Checkbox, y+10 vBlockingFunctional checked%BlockingFunctional%, Functional F-Keys 	
@@ -9548,21 +9556,137 @@ debugData()
 
 */
 
-getAccountFolder()
-{
-	; example: D:\My Computer\My Documents\StarCraft II\Accounts\56088844\6-S2-1-49888\Replays\
-	replayFolder := getReplayFolder()
-	StringReplace, ModifiedString, replayFolder,  \Accounts\, ?, All ;replace with ? which cant occur in name
-	stringSplit, output, ModifiedString, ?
-	; output1 D:\My Computer\My Documents\StarCraft II
-	; output2 56053888\6-S2-1-49882\Replays\
-	loop % strlen(output2)
-		if ((Char := substr(output2, A_Index, 1)) = "\") ; read each character of account number until reach '\' of next folder
-			break
-		else AccountNumber .= Char ;
+f1::
+SC2Hotkeys.get()
+return 
+convertSC2HotkeyStringIntoSendCommand(2)
 
-	return output1 "\" AccountNumber "\"
+getAccountFolder()
+{ 	; D:\My Computer\My Documents\StarCraft II\Accounts\56088844\6-S2-1-49888\Replays\ --> D:\My Computer\My Documents\StarCraft II\Accounts\
+	return InStr(FileExist(folder := SubStr(replayFolder := getReplayFolder(), 1, InStr(replayFolder, "\", False, InStr(replayFolder, "Accounts\") + 9))), "D") ? folder : ""
 }
+
+class SC2Hotkeys
+{
+	get()
+	{
+		this.getHotkeyProfile(file, suffix)
+		if (suffix = "_GLS" || suffix = "_GRS")
+			obj := this.readProfileGrid(file, suffix)
+		else obj := this.readProfileNonGrid(file, suffix)	
+		objtree(obj)
+		msgbox %suffix%
+	}
+	getHotkeyProfile(byRef file, byRef suffix)
+	{
+		file := suffix := ""
+		accountFolder := getAccountFolder()
+		variablesFilePath := accountFolder "Variables.txt"
+		Loop, Read, %variablesFilePath%
+		{
+			if instr(A_LoopReadLine, "hotkeyprofile=")
+				hotkeyProfile := SubStr(A_LoopReadLine, 15)
+		} until hotkeyProfile
+		file := accountFolder "Hotkeys\" hotkeyProfile ".SC2Hotkeys"
+		if hotkeyProfile in 0_Default,1_NameRightSide,2_GridLeftSide,3_GridRightSide,4_Classic
+		{
+			if !FileExist(file) ; Although extremely unlikely, you can save a hotkeyProfile with these names i.e. 0_Default.SC2Hotkeys
+			{
+				if (hotkeyProfile = "1_NameRightSide")
+					suffix := "_NRS"
+				else if (hotkeyProfile = "2_GridLeftSide")
+					suffix := "_GLS"
+				else if (hotkeyProfile = "3_GridRightSide")
+					suffix := "_GRS"
+				else if (hotkeyProfile = "4_Classic")
+					suffix := "_SC1"
+				else suffix := "Standard" ; 0_Default
+			}
+		}
+		if !suffix
+			IniRead, suffix, %file%, Settings, Suffix, Standard		
+		return 
+	}
+	getDefaultKeys(suffix)
+	{
+		keys =
+			( LTrim c 			;					Standard 			_NRS 				_SC1 				section 				key
+				TrainMarine 						|a 					|m					|m 					|Commands 				|Marine/Barracks
+				trainReaper 						|r 					|p					|e 					|Commands 				|Reaper/Barracks
+				trainMarauder			 			|d					|u					|f					|Commands 				|Marauder/Barracks
+				trainGhost 							|g  				|g					|g 					|Commands 				|Ghost/Barracks
+				trainHellion 						|e 					|h					|v 					|Commands 				|Hellion/Factory
+				trainWidowMine 						|d 					|u					|d 					|Commands 				|WidowMine/Factory
+				trainSiegeTank 						|s 					|i					|t 					|Commands 				|SiegeTank/Factory
+				trainHellionTank 					|r 					|p					|h	 				|Commands 				|HellionTank/Factory
+				trainThor 							|t 					|d					|g 					|Commands 				|Thor/Factory
+				trainVikingFighter 					|v	 				|k					|w 					|Commands 				|VikingFighter/Starport
+				trainMedivac 						|d 					|m					|d 					|Commands 				|Medivac/Starport
+				trainRaven 							|r 					|v					|v 					|Commands 				|Raven/Starport
+				trainBanshee 						|e 					|n					|e 					|Commands 				|Banshee/Starport
+				trainBattlecruiser  				|b 					|b					|b 					|Commands 				|Battlecruiser/Starport
+			)
+		if suffix not in Standard,_NRS,_SC1
+			return 
+		obj := []
+		arrayPos := suffix = "_NRS" ? 3 : suffix = "_SC1" ? 4 : 2
+		msgbox % arrayPos
+		loop, parse, keys, `n, %A_Tab%
+		{
+			a := StrSplit(A_LoopField, "|", A_Tab A_Space)
+			obj.insert(a.1, {"hotkey": a[arrayPos], "section": a[5], "key": a[6]})
+		}
+		return obj
+	}
+	
+	readProfileNonGrid(file, suffix)
+	{
+		obj := this.getDefaultKeys(suffix)
+		if FileExist(file) ; This isn't required due to inireads default value, but theres little point if the file doesn't exist
+		{
+			for k, item in obj 
+				IniRead, %k%, %file%, % item.section, % item.key, % item.hotkey
+		}
+	 ; I need to think carefully about how this obj is constructed. But can always improve it after writing the auto production functions
+	 ; Should most likely use a unitID or unitName lookup 
+		for k, item in obj
+			obj[k] := item.hotkey
+		return obj
+	}
+	readProfileGrid(file, suffix)
+	{
+		keys := suffix = "_GRS" ? "uiop[jkl;'nm,./" : "qwertasdfgzxcvp"
+		; my keyVar base is 1. SC keyvar in hotkey profile is 00 based
+		loop, parse, keys
+			IniRead, key%A_Index%, %file%, Hotkeys, % "CommandButton" (A_Index-1 < 10 ? "0" : "") A_Index-1, %A_LoopField%		
+		; doing this won't be all that nice for spells/commands due to having to add multiple gaps
+		trainBarracks := "trainMarine|trainReaper|trainMarauder|trainGhost"
+		loop, parse, trainBarracks, | 
+			%A_LoopField% := key%A_Index% 
+		trainStarport := "trainVikingFighter|trainMedivac|trainRaven|trainBanshee|trainBattlecruiser"
+		loop, parse, trainStarport, | 
+			%A_LoopField% := key%A_Index% 
+		obj := []
+		allKeys := trainBarracks "|" trainStarport
+		loop, parse, allKeys, |
+			obj[A_LoopField] := %A_LoopField%
+		return obj						
+	}
+}
+
+
+
+
+msgboxList(items*)
+{
+	for i, item in items 
+		s .= item "`n"
+	msgbox % substr(s, 1, -1)
+}
+
+
+
+
 
 
 /*
@@ -11712,5 +11836,244 @@ unloadAllTransports(hotkeySuffix)
 		keywait, %hotkeySuffix%
 	}
 }
+
+
+
+
+
+CreatepBitmaps(a_pBitmap, aUnitID, MatrixColour)
+global a_pBitmap
+vDraw := new testDraw("test", 150, 150, 400, 400)
+vDraw.fillTerran()
+vDraw.refresh()
+return 
+
+
+
+
+vDraw.destroy()
+vDraw := ""
+msgbox % isobject(vdraw)
+return 
+
+/*
+hover on each icon 
+click each icon 
+feedback on which Icon was clicked
+set a new line of icons
+allow icons to be moved up or down
+*/
+autoProductionGUIEventHandler(wParam, lParam, msg, hwnd)
+{
+;	static object
+	if !object := testDraw.hwndLookup[hwnd]
+		return
+	object.refresh(lParam & 0xFFFF, lParam >> 16, msg)
+	;if msg = 0x200
+	;	settimer, __autoProductionGUIHoverTimer, 50
+	return 
+
+	__autoProductionGUIHoverTimer:
+	CoordMode, Mouse, Screen
+	MouseGetPos, x, y
+	if !object.collisionCheck(x, y, True)
+	{
+		object.refresh()
+		object := "" ; free the reference, allowing AHK to delete the object if required
+		settimer,, Off
+	}
+	return 
+}
+
+class testDraw
+{
+	__new(overlay, x, y, w, h)
+	{
+		Gui, %overlay%: -Caption Hwndhwnd -E0x20 +E0x80000 +LastFound  +ToolWindow +AlwaysOnTop
+		Gui, %overlay%: Show, NA X%x% Y%y% W%w% H%h%, % overlay
+		this.base.hwndLookup[hwnd] := this
+		OnMessage(0x201, "autoProductionGUIEventHandler")
+		OnMessage(0x200, "autoProductionGUIEventHandler") ; need to make clickable to work i.e. -E0x20
+		this.Overlay := overlay
+		this.hwnd := hwnd
+		this.wWindow := w, this.hWindow := h, this.xWindow := x, this.yWindow := y		
+		this.Items := []
+		this.lineStats["y"] := 0, this.lineStats["x"] := 0
+		this.line := 0
+		this.pBitmapTick := Gdip_CreateBitmapFromFile("tick.png")
+		return this
+	}
+	fillTerran()
+	{
+		this.addItems(["SCV", enabled, func])
+		this.addItems("SCV")
+		this.pushDownLine()
+		this.addItems("marine", "marauder", "reaper", "ghost")
+		this.pushDownLine()
+		this.addItems("hellion", "siegetank", "thor", "hellbat", "widowMine")
+		this.pushDownLine()
+		this.addItems("vikingfighter", "medivac", "banshee", "raven", "battlecruiser")
+	}
+	destroy()
+	{
+		try Gui, % this.Overlay ": Destroy"
+		this.base.hwndLookup.remove(this.hwnd, "") ; hwndLookup creates a circular reference - so can't have it in __delete() as it would prevent __delete() being called
+		return
+	}
+	pushDownLine(offset := 0)
+	{
+		this.lineStats.y += this.items[this.items.maxIndex(), "Height"] + offset
+		this.lineStats.x := 0
+	}
+	pushItemRight(offset := 0)
+	{
+		this.lineStats.x += this.items[this.items.maxIndex(), "Width"] + offset
+	}
+
+	addItems(names*)
+	{
+		for i, name in names 
+		{
+			pBitmap := a_pBitmap[aUnitId[name]]
+			width := Gdip_GetImageWidth(pBitmap)
+			height := Gdip_GetImageHeight(pBitmap)
+			y := this.lineStats.y
+			x := this.lineStats.x
+			SourceWidth := Width := Gdip_GetImageWidth(pBitmap) 
+			SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
+			item := {	name: name
+					, 	pBitmap: pBitmap
+					, 	width: width *= .75
+					, 	height: Height *= .75
+					, 	SourceWidth: SourceWidth
+					, 	SourceHeight: SourceHeight
+					,	enabled: 0
+					, 	x: x 
+					, 	y: y}
+
+			this.lineStats.x += width + 0
+			this.Items.Insert(item)
+		}
+	}
+	setCanvas(byRef hbm, byRef hdc, byRef G)
+	{
+		hbm := CreateDIBSection(this.wWindow, this.hWindow), hdc := CreateCompatibleDC(), obm := SelectObject(hdc, hbm)
+		, G := Gdip_GraphicsFromHDC(hdc), Gdip_SetInterpolationMode(G, 2), Gdip_SetSmoothingMode(G, 4)	
+	}
+	cleanup(byRef hbm, byRef hdc, byRef G)
+	{
+		Gdip_DeleteGraphics(G),	SelectObject(hdc, obm), DeleteObject(hbm), DeleteDC(hdc) 			
+	}
+	findBorderEdges(byRef x, byRef y)
+	{
+		x := this.Items.1.x, y := this.Items.1.y 
+		for i, item in this.Items
+		{
+			if item.x > x 
+				x := item.x
+			if item.y > y 
+				y := item.y	
+		}
+		x += this.Items.1.width, y += this.Items.1.height
+		return
+	}
+	drawTick(G, item)
+	{
+		grayScaleMatrix := "0.299|0.299|0.299|0|0|0.587|0.587|0.587|0|0|0.114|0.114|0.114|0|0|0|0|0|1|0|0|0|0|0|1"
+		x := item.x, y := item.y, w := item.width, h := item.height
+		Gdip_DrawImage(G, this.pBitmapTick
+			, x += w - width := .25 * (sourceWidth := Gdip_GetImageWidth(this.pBitmapTick))
+			, y += h - height := .25 * (sourceHeight := Gdip_GetImageHeight(this.pBitmapTick)) 	
+			, width, height, 0, 0, sourceWidth, sourceHeight)
+	}
+	drawItems(g, highlightedIndex := "")
+	{
+		pBrush := Gdip_BrushCreateSolid(0x78000000)
+		pBrushHighlight := Gdip_BrushCreateSolid(0x480066FF)
+		this.findBorderEdges(x2, y2)
+		Gdip_FillRoundedRectangle(G, pBrush, this.items.1.x, this.items.1.y, x2, y2, 2)
+		for i, item in this.Items
+		{
+			if (highlightedIndex = i)
+				Gdip_FillRoundedRectangle(G, pBrushHighlight, item.x, item.y, item.width, item.height, 2)
+			Gdip_DrawImage(G, item.pBitmap, item.x, item.y, item.Width, item.Height, 0, 0, item.SourceWidth, item.SourceHeight)
+			if item.enabled 
+				this.drawTick(G, item)			
+		}
+		Gdip_DeleteBrush(pBrush), Gdip_DeleteBrush(pBrushHighlight)
+	}
+	refresh(x := "", y := "", msg := "")
+	{
+		this.setCanvas(hbm, hdc, G)
+		itemIndex := this.collisionCheck(x, y)
+		if (itemIndex && msg = 0x201)
+			this.items[itemIndex, "enabled"] := !this.items[itemIndex, "enabled"]
+		if itemIndex
+			this.timer()
+		this.drawItems(G, itemIndex)
+		UpdateLayeredWindow(this.hwnd, hdc)
+		this.cleanup(hbm, hdc, G)	
+	}
+	timer()
+	{
+		static object 
+		object := this
+		settimer, ___thislabelme, 50
+		return 
+		; currently this timer won't support multiple derived objects
+		; but this shouldn't cause an issue unless the guis are stacked
+		; And i'm only every creating 1 gui from this.
+		___thislabelme:
+		CoordMode, Mouse, Screen
+		MouseGetPos, x, y
+		if !object.collisionCheck(x, y, True)
+		{
+			object.refresh()
+			object := "" ; free the reference, allowing AHK to delete the object if required
+			settimer,, Off
+		}
+		return
+	}
+	collisionCheck(x, y, offsetWindow := False)
+	{
+		if offsetWindow ; Dont need to offset window if onMessage x, y as theyre relative to top left of window
+			x -= this.xWindow, y -= this.yWindow
+		for i, item in this.items 
+		{ 
+			if item.x <= x && x <= item.x + item.width && item.y <= y && y <= item.y + item.height 
+				return i
+		}
+		return
+	}
+
+}
+*/
+
+
+#If, WinActive(GameIdentifier) && isPlaying && aLocalPlayer.Race = "Terran" && !isMenuOpen()
+&& numGetSelectionSorted(aSelection) && (aSelection.TabPositions.HasKey(aUnitID["Marauder"]) || aSelection.TabPositions.HasKey(aUnitID["Marine"]))
+&& (aSelection.HighLightedId != aUnitID["SCV"] || !isUserBusyBuilding()) ; This line allows a turret to be built if an scv is in the same selection as a marine/marauder
+t::
+if aSelection.HighLightedId = aUnitID["Marauder"] || aSelection.HighLightedId = aUnitID["Marine"]
+    tabPos := aSelection.HighlightedGroup
+else if aSelection.TabPositions.HasKey(aUnitID["Marine"])
+    tabPos := aSelection.TabPositions[aUnitID["Marine"]] 
+else tabPos := aSelection.TabPositions[aUnitID["Marauder"]] 
+
+if (tabsToSend := tabPos - aSelection.HighlightedGroup) < 0
+    send, % "+{tab " abs(tabsToSend) "}t{tab "  abs(tabsToSend) "}"
+else send {tab %tabsToSend%}t+{tab %tabsToSend%}
+return
+#if
+
+
+
+
+
+
+
+
+
+
 
 
