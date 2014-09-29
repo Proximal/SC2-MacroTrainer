@@ -3096,7 +3096,7 @@ getPlayers(byref aPlayer, byref aLocalPlayer, byref aEnemyAndLocalPlayer := "")
 	aEnemyAndLocalPlayer.Insert(aLocalPlayer) 
 	return	
 }
-
+; works for arrays too!
 IsInList(Var, items*)
 {
 	for key, item in items

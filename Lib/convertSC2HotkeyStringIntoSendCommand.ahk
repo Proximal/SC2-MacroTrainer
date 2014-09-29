@@ -63,7 +63,6 @@
 	- A Suffix= line 
 		indicating the standard hotkey profile the active settings are based on 
 		(if there's no Suffix line then it's based on "Standard")
-			null 	Normal Left Side i.e. standard (its literally blank/null)
 			_NRS  	Normal Right Side (for lefties)
 			_GLS  	Grid Left Side
 			_GRS  	Grid Right Side (for lefties)

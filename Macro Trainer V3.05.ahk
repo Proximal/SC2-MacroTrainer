@@ -7728,15 +7728,15 @@ openCloseProcess(programOrHandle := "", Close := False)
 }
 
 ; Used for RE
-SuspendProcess(hwnd)
+SuspendProcess(hProcess)
 {
-	return DllCall("ntdll\NtSuspendProcess","uint",hwnd)
+	return DllCall("ntdll\NtSuspendProcess","uint",hProcess)
 }
 
 ; Used for RE
-ResumeProcess(hwnd)
+ResumeProcess(hProcess)
 {
-	return DllCall("ntdll\NtResumeProcess","uint",hwnd)
+	return DllCall("ntdll\NtResumeProcess","uint",hProcess)
 }
 
 
@@ -9556,26 +9556,27 @@ debugData()
 
 */
 
-f1::
-SC2Hotkeys.get()
-return 
-convertSC2HotkeyStringIntoSendCommand(2)
-
 getAccountFolder()
-{ 	; D:\My Computer\My Documents\StarCraft II\Accounts\56088844\6-S2-1-49888\Replays\ --> D:\My Computer\My Documents\StarCraft II\Accounts\
+{ 	; D:\My Computer\My Documents\StarCraft II\Accounts\56088844\6-S2-1-49888\Replays\ --> D:\My Computer\My Documents\StarCraft II\Accounts\56088844
 	return InStr(FileExist(folder := SubStr(replayFolder := getReplayFolder(), 1, InStr(replayFolder, "\", False, InStr(replayFolder, "Accounts\") + 9))), "D") ? folder : ""
 }
 
 class SC2Hotkeys
 {
-	get()
+	static aCurrentHotkeys
+	getAllKeys() ; stores the keys as well for individual key lookup
 	{
 		this.getHotkeyProfile(file, suffix)
 		if (suffix = "_GLS" || suffix = "_GRS")
 			obj := this.readProfileGrid(file, suffix)
 		else obj := this.readProfileNonGrid(file, suffix)	
-		objtree(obj)
-		msgbox %suffix%
+		return this.aCurrentHotkeys := obj
+	}
+	getkey(hotkeyReference)
+	{
+		if !isobject(this.aCurrentHotkeys) ; haven't set the keys yet
+			this.getAllKeys()
+		return this.aCurrentHotkeys[hotkeyReference]
 	}
 	getHotkeyProfile(byRef file, byRef suffix)
 	{
@@ -9609,32 +9610,33 @@ class SC2Hotkeys
 	}
 	getDefaultKeys(suffix)
 	{
+		; Section and key columns are not used by grid layout
 		keys =
-			( LTrim c 			;					Standard 			_NRS 				_SC1 				section 				key
-				TrainMarine 						|a 					|m					|m 					|Commands 				|Marine/Barracks
-				trainReaper 						|r 					|p					|e 					|Commands 				|Reaper/Barracks
-				trainMarauder			 			|d					|u					|f					|Commands 				|Marauder/Barracks
-				trainGhost 							|g  				|g					|g 					|Commands 				|Ghost/Barracks
-				trainHellion 						|e 					|h					|v 					|Commands 				|Hellion/Factory
-				trainWidowMine 						|d 					|u					|d 					|Commands 				|WidowMine/Factory
-				trainSiegeTank 						|s 					|i					|t 					|Commands 				|SiegeTank/Factory
-				trainHellionTank 					|r 					|p					|h	 				|Commands 				|HellionTank/Factory
-				trainThor 							|t 					|d					|g 					|Commands 				|Thor/Factory
-				trainVikingFighter 					|v	 				|k					|w 					|Commands 				|VikingFighter/Starport
-				trainMedivac 						|d 					|m					|d 					|Commands 				|Medivac/Starport
-				trainRaven 							|r 					|v					|v 					|Commands 				|Raven/Starport
-				trainBanshee 						|e 					|n					|e 					|Commands 				|Banshee/Starport
-				trainBattlecruiser  				|b 					|b					|b 					|Commands 				|Battlecruiser/Starport
+			( LTrim c 			;					Standard 			_NRS 				_SC1 				grid							section 				key+myLookupReference
+				trainMarine 						|a 					|m					|m 					|CommandButton00				|Commands 				|Marine/Barracks
+				trainReaper 						|r 					|p					|e 					|CommandButton01				|Commands 				|Reaper/Barracks
+				trainMarauder			 			|d					|u					|f					|CommandButton02				|Commands 				|Marauder/Barracks
+				trainGhost 							|g  				|g					|g 					|CommandButton03				|Commands 				|Ghost/Barracks
+				trainHellion 						|e 					|h					|v 					|CommandButton00				|Commands 				|Hellion/Factory
+				trainWidowMine 						|d 					|u					|d 					|CommandButton01				|Commands 				|WidowMine/Factory
+				trainSiegeTank 						|s 					|i					|t 					|CommandButton02				|Commands 				|SiegeTank/Factory
+				trainHellionTank 					|r 					|p					|h	 				|CommandButton03				|Commands 				|HellionTank/Factory
+				trainThor 							|t 					|d					|g 					|CommandButton04				|Commands 				|Thor/Factory
+				trainVikingFighter 					|v	 				|k					|w 					|CommandButton00				|Commands 				|VikingFighter/Starport
+				trainMedivac 						|d 					|m					|d 					|CommandButton01				|Commands 				|Medivac/Starport
+				trainRaven 							|r 					|v					|v 					|CommandButton02				|Commands 				|Raven/Starport
+				trainBanshee 						|e 					|n					|e 					|CommandButton03				|Commands 				|Banshee/Starport
+				trainBattlecruiser  				|b 					|b					|b 					|CommandButton04				|Commands 				|Battlecruiser/Starport
 			)
-		if suffix not in Standard,_NRS,_SC1
-			return 
+		if suffix not in Standard,_NRS,_SC1,_GLS,_GRS
+			suffix :=  "Standard" ; lets just try to use standard - should shrow and error somewhere to alert user
 		obj := []
-		arrayPos := suffix = "_NRS" ? 3 : suffix = "_SC1" ? 4 : 2
-		msgbox % arrayPos
+		arrayPos := suffix = "_NRS" ? 3 : suffix = "_SC1" ? 4 : suffix = "_GLS" || suffix = "_GRS" ? 5 : 2
+		msgbox % arrayPos " | " suffix
 		loop, parse, keys, `n, %A_Tab%
 		{
 			a := StrSplit(A_LoopField, "|", A_Tab A_Space)
-			obj.insert(a.1, {"hotkey": a[arrayPos], "section": a[5], "key": a[6]})
+			obj.insert(a.7, {"hotkey": a[arrayPos], "section": a[6], "key": a[7]})
 		}
 		return obj
 	}
@@ -9645,33 +9647,113 @@ class SC2Hotkeys
 		if FileExist(file) ; This isn't required due to inireads default value, but theres little point if the file doesn't exist
 		{
 			for k, item in obj 
-				IniRead, %k%, %file%, % item.section, % item.key, % item.hotkey
+			{
+				IniRead, hotkey, %file%, % item.section, % item.key, % item.hotkey
+				obj[k].hotkey := hotkey
+			}
 		}
 	 ; I need to think carefully about how this obj is constructed. But can always improve it after writing the auto production functions
 	 ; Should most likely use a unitID or unitName lookup 
 		for k, item in obj
-			obj[k] := item.hotkey
+			obj[k] := this.convertHotkey(item.hotkey)
 		return obj
 	}
 	readProfileGrid(file, suffix)
 	{
+		
+		obj := this.getDefaultKeys(suffix)
 		keys := suffix = "_GRS" ? "uiop[jkl;'nm,./" : "qwertasdfgzxcvp"
-		; my keyVar base is 1. SC keyvar in hotkey profile is 00 based
+		aLookup := []
 		loop, parse, keys
-			IniRead, key%A_Index%, %file%, Hotkeys, % "CommandButton" (A_Index-1 < 10 ? "0" : "") A_Index-1, %A_LoopField%		
-		; doing this won't be all that nice for spells/commands due to having to add multiple gaps
-		trainBarracks := "trainMarine|trainReaper|trainMarauder|trainGhost"
-		loop, parse, trainBarracks, | 
-			%A_LoopField% := key%A_Index% 
-		trainStarport := "trainVikingFighter|trainMedivac|trainRaven|trainBanshee|trainBattlecruiser"
-		loop, parse, trainStarport, | 
-			%A_LoopField% := key%A_Index% 
-		obj := []
-		allKeys := trainBarracks "|" trainStarport
-		loop, parse, allKeys, |
-			obj[A_LoopField] := %A_LoopField%
+		{
+			IniRead, key, %file%, Hotkeys, % "CommandButton" (id := (A_Index-1 < 10 ? "0" : "") A_Index-1), %A_LoopField%
+			aLookup["CommandButton" id] := key	
+		}
+		for i, item in obj 
+			obj[i] := this.convertHotkey(aLookup[item.hotkey])
 		return obj						
 	}
+	convertHotkey(String)
+	{
+							;	"SC2Key": "AhkKey"
+		static aTranslate := {	"PageUp": "PgUp"
+							,	"PageDown": "PgDn"
+							,	"NumPadMultiply": "NumpadMult"
+							,  	"NumPadDivide": "NumpadDiv"
+							,	"NumPadPlus": "NumpadAdd"				
+							,	"NumPadMinus": "NumpadSub"
+
+							, 	"Grave": "``" ;note needs escape character!
+							, 	"Minus": "-"
+							, 	"Equals": "="
+							, 	"BracketOpen": "["
+							, 	"BracketClose": "]"
+							,	"BackSlash": "\"						
+							, 	"SemiColon": ";"
+							, 	"Apostrophe": "'"
+							, 	"Comma": ","
+							, 	"Period": "."
+							,	"Slash": "/"
+
+							, 	"LeftMouseButton": "LButton"
+							, 	"RightMouseButton": "RButton"
+							,	"MiddleMouseButton": "MButton"
+							, 	"ForwardMouseButton": "XButton1"
+							, 	"BackMouseButton": "XButton2" }
+							; apparently nothing can be bound to the wheel (i thought you COULD do that in sc2....)
+
+		; NumpadDel maps to real delete key, same for NumpadIns, Home, End and num-UP,Down,Left,Right, and Num-PageUp/Down and enter
+		; {NumpadClear} (num5 with numlock off) doesnt map to anything
+		; nothing can be mapped to windows keys or app keys
+
+	; when two hotkeys are present "hotkey,alternateHokey" - note SC stores literal , keys as comma so this is safe 
+	if p := instr(String, ",")
+		String := SubStr(String, 1, p-1)
+
+	; Easier to use string replace here and have the modifiers separate and outside of the
+	; aTranslate associative array. As AHK Associative arrays are indexed alphabetically (not in order in which keys were added)
+	; so this would result in modifier strings being incorrectly converted
+	; SC2 Hotkeys are done in this Order Control+Alt+Shift+Keyname
+	StringReplace, String, String, Control+, ^, All ;use modifier+ so if user actually has something bound to it wont cause issue
+	StringReplace, String, String, Alt+, !, All 
+	StringReplace, String, String, Shift+, +, All 	;this will also act to remove SC2's joining '+'
+
+
+		; string replace accounts for differences between AHK send Syntax and SC2 hotkey storage
+
+		for SC2Key, AhkKey in aTranslate
+			StringReplace, String, String, %SC2Key%, %AhkKey%, All 
+
+		; I don't think this is required as you can't bind those characters
+		; At least, they're not written to the hotkey file like that
+		;if String in !,#,+,^,{,} ; string must be 1 character length to match
+		;	return "{" String "}"
+
+		aModifiers := ["+", "^", "!"]
+		;lets remove the modifiers so can see command length
+		for index, modifier in 	aModifiers
+			if inStr(string, modifier)
+			{
+				StringReplace, String, String, %modifier%,, All
+				StringModifiers .= modifier
+			}
+
+		; lets correct for any difference in the command names
+		; CapsLock ScrollLock NumLock
+		; cant bind anything to windows key or appskey in game
+
+		if (StrLen(string) > 1)
+			string := StringModifiers "{" string "}" ; as AHK commands > 1 are enclosed in brackets
+		else string := StringModifiers string
+
+		if (string = "+=") 		; AHK cant send this correctly != and +- work fine
+			string := "+{=}" 	; +!= works fine too as does !+= and ^+=
+
+		; lower-case, if want to use with AHKs sendinput a 'H' is equivalent to '+H'
+		StringLower, string, string
+		return string
+	}
+
 }
 
 
@@ -12073,7 +12155,206 @@ return
 
 
 
+class autoBuild
+{
+	static aAutoBuild
+
+	set(arrayOfUnitIDs)
+	{
+		this.aAutoBuild := []
+		if aLocalPlayer.Race = "Terran"
+		{
+			;this.aAutoBuild["Barracks"] := this.getBarracksAuto()
+			for i, unitName in ["marine", "reaper", "marauder", "ghost"]
+			{
+				if isInList(unitName, this.aAutoBuild["Barracks"]*)
+					this.aAutoBuild.Barracks[unitName].autoBuild := True, this.aAutoBuild.Barracks.autoBuild := True
+			}
+		}
+	}
+
+	getTerranStructureItems()
+	{
+		raxUnits = 
+		( ltrim c ;			techlab 	minerals 	vespene 	supply 		Req. structure		hotkeyReference 		structure
+			marine 			|0 			|50 		|0 			|1 			|					|Marine/Barracks 		|Barracks
+			reaper 			|0 			|50 		|50 		|1 			|					|Reaper/Barracks 		|Barracks
+			marauder 		|1 			|100 		|25 		|2  		|					|Marauder/Barracks 		|Barracks
+			ghost 			|1 			|200 		|100 		|2 			|GhostAcademy		|Ghost/Barracks  	    |Barracks	; Need to add tech reference and make other script thread keep track of tech structures for lookup
+		)
+
+		obj := []
+		loop, parse, raxUnits, `n, %A_Tab%
+		{
+			a := StrSplit(A_LoopField, "|", A_Tab A_Space)
+			if !isobject(obj[a.8]) 
+				obj[a.8] := []
+			obj[a.8, a.1] := []
+			;  [barracks, unitType]
+			obj[a.8, a.1, "buildKey"] := SC2Hotkeys.getkey(a.7)
+			obj[a.8, a.1, "autoBuild"] := True
+			obj[a.8, a.1].insert("requires", {"techlab": a.2, "minerals": a.3, "vespene": a.4, "supply": a.5, "structure": aUnitID[a.6]})
+		}
+		return obj
+	}
+	setCurrentResources()
+	{
+		this.CurrentMinerals := getPlayerMinerals()
+		this.CurrentGas  := getPlayerGas()
+		this.FreeSupply := getPlayerFreeSupply()	
+	}
+
+	build(race)
+	{
+		this.setCurrentResources()
+		if this.FreeSupply <= 0
+			return 
+		this.aAutoBuild := this.getTerranStructureItems()
+		;objtree(this.aAutoBuild)
+		;msgbox
+		if (race = "Terran")
+			this.buildTerran()		
+	}
+
+	buildTerran()
+	{
+		if this.aAutoBuild["Barracks", "autoBuild"] || 1
+		{
+			group := 5
+			objtree(this.aAutoBuild)
+			if raxCount := this.getStructureCountInGroup(group, aUnitID.Barracks, aUnitIndexs)
+			{
+				this.terranArmyProduction(aUnitIndexs, nonTechLabs, techLabs)
+				structureCount := techLabs 
+				for i, unitName in ["ghost", "marauder", "reaper", "marine"]
+				{
+					if this.aAutoBuild.Barracks[unitName].autoBuild && (!this.aAutoBuild.Barracks[unitName].requires.techlab || techLabs)
+					{
+						sendString .= sRepeat(this.aAutoBuild.Barracks[unitName].buildKey, this.howManyUnitsCanBeProduced(structureCount, this.aAutoBuild.Barracks[unitName].requires))
+						if (unitName = "reaper")
+							structureCount += nonTechLabs
+					}
+
+
+				}
 
 
 
+				msgbox % nonTechLabs " | " techLabs  " nontect tech"
 
+				if this.aAutoBuild["Barracks", "marauder", "autoBuild"] && techLabs
+				{
+					
+				}
+				remainingSlots := techLabs + nonTechLabs
+				if this.aAutoBuild["Barracks", "reaper", "autoBuild"] && remainingSlots 
+				{
+					msgbox remainingSlots %remainingSlots%
+					if count := this.howManyUnitsCanBeProduced(remainingSlots, this.aAutoBuild["Barracks", "reaper", "requires"])
+					{
+						hotkey := this.aAutoBuild["Barracks", "reaper", "buildKey"]
+						sendString .= sRepeat(hotkey, count)
+					}
+					
+				}	
+				msgbox % remainingSlots " marine" 			
+				if this.aAutoBuild["Barracks", "marine", "autoBuild"] && remainingSlots 
+				{
+					if count := this.howManyUnitsCanBeProduced(remainingSlots, this.aAutoBuild["Barracks", "marine", "requires"])
+					{
+						hotkey := this.aAutoBuild["Barracks", "marine", "buildKey"]
+						sendString .= sRepeat(hotkey, count)
+					}
+					msgbox %count%
+				}
+			}
+		}
+		msgbox % raxCount " raxCount"
+		msgbox here`n%sendString%
+	}
+	howManyUnitsCanBeProduced(byRef structureCount, aRequires)
+	{
+		params := [], count := 0
+		if aRequires.minerals
+			params.insert(floor(this.CurrentMinerals / aRequires.minerals))
+		if aRequires.vespene	
+			params.insert(floor(this.CurrentGas / aRequires.vespene))
+		if aRequires.supply
+			params.insert(floor(this.FreeSupply / aRequires.supply))
+		params.insert(structureCount)
+		if count := lowestValue(params*)
+		{
+			this.CurrentMinerals -= count * aRequires.minerals
+			this.CurrentGas -= count * aRequires.vespene
+			this.FreeSupply -= count * aRequires.supply
+			structureCount -= count
+		}	
+		return count
+	}
+	; I have to think about the best way to incorporate unit % complete
+	getStructureCountInGroup(group, unitID, byRef aUnitIndexs)
+	{
+		count := 0, aUnitIndexs := []
+		groupSize := getControlGroupCount(Group)
+		ReadRawMemory(B_CtrlGroupStructure + S_CtrlGroup * group, GameIdentifier, Memory,  O_scUnitIndex + groupSize * S_scStructure)
+		loop, % groupSize 
+		{
+			unitIndex := NumGet(Memory, O_scUnitIndex + (A_Index - 1) * S_scStructure, "UInt") >> 18
+			if getUnitType(unitIndex) = unitId 
+			&& getUnitOwner(unitIndex) = aLocalPlayer.slot 
+			&& 	!(getunittargetfilter(unitIndex) & (aUnitTargetFilter.Dead | aUnitTargetFilter.UnderConstruction))	
+				count++, aUnitIndexs.insert(unitIndex)
+		}	
+		return count
+	}
+
+	terranArmyProduction(aUnitIndexs, byRef nonTechLabs, byRef techLabs)
+	{
+		nonTechLabs := techLabs := 0
+		for i, unitIndex in aUnitIndexs
+		{
+			getStructureProductionInfo(unitIndex, aUnitId.Barracks, aUnits)
+			filledSlots := this.filledSlotCount(aUnits)
+			addon := getAddonStatus(getUnitAbilityPointer(unitIndex), aUnitId.Barracks)
+			if (addon = 1) ; reactor
+				nonTechLabs += 2 - filledSlots
+			else if (addon = -1)
+				techLabs += 1 - filledSlots
+			else nonTechLabs += 1 - filledSlots
+		}
+		return 
+	}
+
+	filledSlotCount(structureProductionItem)
+	{
+		count := 0
+		for i, item in structureProductionItem
+		{
+			if item.progress < .8
+				count++
+		}
+		return count
+	}
+
+}
+
+f1::
+	SetPlayerMinerals(150)
+	SetPlayerGas(100)
+ autoBuild.build("Terran")
+return 
+
+/*
+
+			aBarracks 
+				controlGroup
+				autoBuild 
+				units 
+					marine
+						autoBuild
+						requires
+							minerals
+							vespene
+							supply
+							techlab
+						buildKey
