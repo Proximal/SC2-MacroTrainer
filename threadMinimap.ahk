@@ -19,6 +19,10 @@ OnExit, ShutdownProcedure
 	pCriticalSection := "2", pCriticalSection := %pCriticalSection%
 	aThreads := CriticalObject(pObject, pCriticalSection)
 */ 
+localUnitDataCriSec = %1% 
+aLocalUnitData = %2% 
+aLocalUnitData := Object(aLocalUnitData+0)
+
 scriptWinTitle := changeScriptMainWinTitle()
 global aThreads
 
@@ -555,6 +559,11 @@ else If (aLocalPlayer["Race"] = "Zerg")
 	SupplyType := aUnitID["Egg"], geyserStructure := aUnitID["Extractor"]	
 Time := getTime()
 a_BaseListTmp := [], aGeyserStructuresTmp := []
+
+
+aTmpCompleteStructures := []
+
+
 loop, % DumpUnitMemory(UBMemDump)
 { 
 	u_iteration := A_Index -1
@@ -621,6 +630,14 @@ loop, % DumpUnitMemory(UBMemDump)
 				a_BaseListTmp.insert(u_iteration)
 			else if (unit_type = geyserStructure)
 				aGeyserStructuresTmp.insert(u_iteration)
+			
+
+			if !isobject(aTmpCompleteStructures[unit_type])
+			;	aTmpCompleteStructures[unit_type] := []
+			;aTmpCompleteStructures[unit_type, u_iteration] := True
+			aTmpCompleteStructures[unit_type] .=  (aTmpCompleteStructures[unit_type] != "" ? "|" : "") u_iteration 
+
+
 		}
 	}
 	else if (doUnitDetectionOnThisRun && aAlertIDLookUp.HasKey(unit_type)) ; these units are enemies and have an entry in the alertWarnings
@@ -631,6 +648,28 @@ if warpgate_warn_on
 SupplyInProduction := SupplyInProductionCount
 ZergWorkerInProduction := ZergWorkerInProductionCount
 a_BaseList := a_BaseListTmp,  aGeyserStructures := aGeyserStructuresTmp
+
+thread, NoTimers, true
+Lock(localUnitDataCriSec)
+for k in aLocalUnitData
+	aLocalUnitData.remove(k, "")
+
+/*	
+for type, obj in aTmpCompleteStructures
+{
+	;aLocalUnitData[k] := v
+	aLocalUnitData[type] := []
+	for unitIndex, v in obj
+		aLocalUnitData[type, unitIndex] := v
+}
+*/
+for type, indexes in aTmpCompleteStructures
+{
+	aLocalUnitData[type] := indexes
+}
+UnLock(localUnitDataCriSec)
+thread, NoTimers, false
+
 if (WarningsWorkerZergEnable && aLocalPlayer["Race"] = "Zerg")
 	gosub workerZergCheck
 ;log(stopwatch(timerID))

@@ -138,6 +138,9 @@ Global aThreads := CriticalObject() ; Thread safe object
 aThreads.Speech := AhkDllThread("Included Files\ahkH\AutoHotkeyMini.dll")
 aThreads.Speech.ahktextdll(generateSpeechScript())
 
+global aLocalUnitData := []
+global localUnitDataCriSec := CriticalSection()
+
 start:
 global config_file := "MT_Config.ini"
 old_backup_DIR := "Old Macro Trainers"
@@ -7489,7 +7492,8 @@ autoWorkerProductionCheck()
 		setLowLevelInputHooks(True)
 		dsleep(30)
 
-
+		; I should change this so pReleaseKeys isn't called until absolutely necessary
+		; that way wont get a double press when build aborts 
 		input.pReleaseKeys(True)
 
 		dSleep(40) ; increase safety ensure selection buffer fully updated
@@ -9632,7 +9636,7 @@ class SC2Hotkeys
 			suffix :=  "Standard" ; lets just try to use standard - should shrow and error somewhere to alert user
 		obj := []
 		arrayPos := suffix = "_NRS" ? 3 : suffix = "_SC1" ? 4 : suffix = "_GLS" || suffix = "_GRS" ? 5 : 2
-		msgbox % arrayPos " | " suffix
+		;msgbox % arrayPos " | " suffix
 		loop, parse, keys, `n, %A_Tab%
 		{
 			a := StrSplit(A_LoopField, "|", A_Tab A_Space)
@@ -11251,32 +11255,6 @@ _handle := DllCall("MyDll\StartReceiver", "Ptr", &array)
 ; To read the data later use:
 MsgBox % StrGet(NumGet(array,0,"PTR"))
 
-/*
-
-f3::
-tSpeak(clipboard := isUnitPatrolling(getSelectedUnitIndex()))
-
-	aRemoveUnits := []
-	findUnitsToRemoveFromArmy(aRemoveUnits, SelectArmyDeselectXelnaga, SelectArmyDeselectPatrolling, l_ActiveDeselectArmy)
-		bubbleSort2DArray(aRemoveUnits, "Unit", 0) ;clicks highest units first, so dont have to calculate new click positions due to the units moving down one spot in the panel grid	
-		bubbleSort2DArray(aRemoveUnits, "Priority", 1)	; sort in ascending order so select units lower down 1st		
-	ObjTree(aRemoveUnits,"aSelectedUnits")
-return
-
-
-	state := getUnitMoveState(getSelectedUnitIndex())
-	if (state = aUnitMoveStates.Amove)
-		tSpeak("A move")
-	else if (state = aUnitMoveStates.Patrol)
-		tSpeak("Patrol")
-	else if (state = aUnitMoveStates.HoldPosition)
-		tSpeak("Hold")
-	else if (state = aUnitMoveStates.Move)
-		tSpeak("move")
-	else if (state = aUnitMoveStates.Follow)
-		tSpeak("Follow")
-		
-; fold//
 */
 
 
@@ -11290,15 +11268,14 @@ launchMiniMapThread()
 			FileInstall, threadMiniMapFull.ahk, Ignore	
 		if A_IsCompiled
 			miniMapScript := LoadScriptString("threadMiniMapFull.ahk")
-		else 
-			FileRead, miniMapScript, threadMiniMap.ahk			
-		aThreads.MiniMap.ahktextdll(GlobalVarsScript("aThreads", 0, aThreads) miniMapScript)
+		else FileRead, miniMapScript, threadMiniMap.ahk			
+		aThreads.MiniMap.ahktextdll(GlobalVarsScript("aThreads", 0, aThreads) miniMapScript,, localUnitDataCriSec " " &aLocalUnitData)
 	}
 	Return 
 }
 
 launchOverlayThread()
-{
+{	
 	if !aThreads.Overlays.ahkReady()
 	{
 		if !aThreads.Overlays
@@ -11307,8 +11284,7 @@ launchOverlayThread()
 			FileInstall, threadOverlaysFull.ahk, Ignore	
 		if A_IsCompiled
 			overlayScript := LoadScriptString("threadOverlaysFull.ahk")
-		else 
-			FileRead, overlayScript, threadOverlays.ahk			
+		else FileRead, overlayScript, threadOverlays.ahk			
 		aThreads.Overlays.ahktextdll(overlayScript)
 	}
 	Return 
@@ -11342,9 +11318,6 @@ launchMiniMapThread()
 }
 
 */
-
-
-
 
 
 
@@ -12152,8 +12125,13 @@ return
 
 
 
-
-
+f1:: 
+sleep 500
+autoBuild.build("terran")
+return
+;f2::
+objtree(autoBuild.randomOrderIntoSingleArray(["a", "b", "c"], ["e", "f", "g"]))
+return 
 
 class autoBuild
 {
@@ -12175,16 +12153,28 @@ class autoBuild
 
 	getTerranStructureItems()
 	{
-		raxUnits = 
+		units = 
 		( ltrim c ;			techlab 	minerals 	vespene 	supply 		Req. structure		hotkeyReference 		structure
 			marine 			|0 			|50 		|0 			|1 			|					|Marine/Barracks 		|Barracks
 			reaper 			|0 			|50 		|50 		|1 			|					|Reaper/Barracks 		|Barracks
 			marauder 		|1 			|100 		|25 		|2  		|					|Marauder/Barracks 		|Barracks
 			ghost 			|1 			|200 		|100 		|2 			|GhostAcademy		|Ghost/Barracks  	    |Barracks	; Need to add tech reference and make other script thread keep track of tech structures for lookup
+			hellion 		|0 			|100 		|0 			|2 			| 					|Hellion/Factory 		|Factory
+			widowMine 		|0 			|75 		|25			|2 			| 					|WidowMine/Factory 		|Factory
+			siegeTank 		|1 			|150 		|125		|3 			| 					|SiegeTank/Factory 		|Factory
+			hellBat 		|0 			|100 		|0 			|2			|Armory				|HellionTank/Factory 	|Factory
+			thor 			|1 			|300 		|200 		|6			|Armory				|Thor/Factory 			|Factory
+			VikingFighter 	|0 			|150 		|75 		|2			|					|VikingFighter/Starport |Starport
+			Medivac 	 	|0 			|100 		|100 		|2			|					|Medivac/Starport 		|Starport
+			Raven 	 		|1 			|100 		|200 		|2			|					|Raven/Starport 		|Starport
+			Banshee  		|1 			|150 		|100 		|3			|					|Banshee/Starport 		|Starport
+			Battlecruiser	|1 			|400 		|300 		|6			|FusionCore			|Battlecruiser/Starport	|Starport
 		)
-
+		aBuildableUnits := {	"Barracks": ["ghost", "marauder", "reaper", "marine"]
+							, 	"Factory": ["thor", "siegeTank", "hellBat", "widowMine", "hellion"]
+							, 	"Starport": ["Battlecruiser", "Raven", "Banshee", "VikingFighter", "Medivac"] }
 		obj := []
-		loop, parse, raxUnits, `n, %A_Tab%
+		loop, parse, units, `n, %A_Tab%
 		{
 			a := StrSplit(A_LoopField, "|", A_Tab A_Space)
 			if !isobject(obj[a.8]) 
@@ -12197,82 +12187,251 @@ class autoBuild
 		}
 		return obj
 	}
+
 	setCurrentResources()
 	{
 		this.CurrentMinerals := getPlayerMinerals()
 		this.CurrentGas  := getPlayerGas()
 		this.FreeSupply := getPlayerFreeSupply()	
 	}
+	copyLocalUnits()
+	{
+		Obj := []
+		start := A_TickCount
+		while !TryLock(localUnitDataCriSec)
+		{
+			if (A_TickCount - start >= 50)
+				return "" 
+  			Sleep 5 ; ~15
+  		}
+  		thread, notimers, true 
+  		for type, indexes in aLocalUnitData
+  			Obj[type] := indexes
+  		UnLock(localUnitDataCriSec)
+  		thread, notimers, false
+  		return obj
+	}
+	canPerformBuild(loops := 36)
+	{ 	global AutoWorkerAPMProtection
+		While ( isUserBusyBuilding() || isCastingReticleActive() 
+		|| GetKeyState("LButton", "P") || GetKeyState("RButton", "P")
+		|| getkeystate("Enter", "P") 
+		|| getPlayerCurrentAPM() > AutoWorkerAPMProtection
+		||  A_mtTimeIdle < 50)
+		{
+			if (A_index > loops)
+				return False ; (actually could be 480 ms - sleep 1 usually = 20ms)
+			Thread, Priority, -2147483648	
+			sleep 1
+			Thread, Priority, 0	
+		}
+		return True		
+	}
 
 	build(race)
 	{
+
+		if !this.canPerformBuild()
+			return
 		this.setCurrentResources()
 		if this.FreeSupply <= 0
-			return 
+			return
+
+		this.localUnits := ""
+		 ; if fails to lock thread this won't be an obj, But continue - just won't build units which have requirements
+		 ; maybe i should just return
+		this.localUnits := this.copyLocalUnits()
+		if !isobject(this.localUnits)
+			soundplay *-1
 		this.aAutoBuild := this.getTerranStructureItems()
 		;objtree(this.aAutoBuild)
 		;msgbox
 		if (race = "Terran")
-			this.buildTerran()		
+			this.buildTerran()	
+
+	}
+	hasUnit(type)
+	{
+		if this.localUnits.HasKey(type)
+		{
+			indexes := this.localUnits[type]
+			loop, parse, indexes, |
+			{ 	; This is a bit overkill. The other thread updates this info ever 1.5 seconds or so
+				; and it's not a big deal if it's outdated.... but we are just checking a couple of units so might as well do it
+				if getUnitType(A_LoopField) = type 
+				&& getUnitOwner(A_LoopField) = aLocalPlayer.slot 
+				&& !(getunittargetfilter(A_LoopField) & (aUnitTargetFilter.Dead | aUnitTargetFilter.UnderConstruction))	
+					return true
+			}
+		}
+		return false
+	}
+	buildTerran()
+	{ global NextSubgroupKey
+		barracksGroup := factoryGroup := starportGroup := 5
+		;objtree(this.aAutoBuild)
+		if this.aAutoBuild.Barracks.autoBuild || 1
+			barracksString := this.buildFromStructureTerran("barracks", barracksGroup, this.aAutoBuild.Barracks, this.randomOrderIntoSingleArray(["ghost", "marauder"], ["reaper", "marine"])*)
+		if this.aAutoBuild.Factory.autoBuild || 1
+			factoryString := this.buildFromStructureTerran("factory", factoryGroup, this.aAutoBuild.Factory, this.randomOrderIntoSingleArray(["thor", "siegeTank"], ["hellBat", "widowMine", "hellion"])*)
+		if this.aAutoBuild.Starport.autoBuild || 1
+			starportString := this.buildFromStructureTerran("starport", starportGroup,  this.aAutoBuild.Starport, this.randomOrderIntoSingleArray(["Battlecruiser", "Raven", "Banshee"], ["VikingFighter", "Medivac"])*)
+		;msgboxList(barracksString, factoryString, starportString)
+		;return 
+
+		if (barracksString = "" && factoryString = "" && starportString = "") || !this.canPerformBuild(1)
+			return
+		;return
+		Thread, NoTimers, true
+		;critical, 1000
+		;setLowLevelInputHooks(True)
+		dsleep(30)
+		input.pReleaseKeys(True)
+		dSleep(20)	
+		
+
+		if numGetSelectionSorted(oSelection) && oSelection.IsGroupable
+		{
+			HighlightedGroup := getSelectionHighlightedGroup()
+			selectionPage := getUnitSelectionPage()
+			input.psend(aAGHotkeys.set[3])
+			sentTabs := 0
+			if (barracksString != "") ;&& oSelection.TabPositions.HasKey(aUnitId.barracks)
+			{
+				prevGroup := barracksGroup
+				input.psend(aAGHotkeys.Invoke[barracksGroup])
+				dSleep(50)
+				numGetSelectionSorted(oSelection)
+				 
+				tabPosition := oSelection.TabPositions[aUnitId.barracks]
+				sentTabs += tabPosition
+				tabs := sRepeat(NextSubgroupKey, tabPosition)
+				input.psend(tabs barracksString)
+			}
+
+			if (factoryString != "") ;&& oSelection.TabPositions.HasKey(aUnitId.factory)
+			{
+				if (prevGroup != factoryGroup)
+				{
+					prevGroup := factoryGroup
+					input.psend(aAGHotkeys.Invoke[factoryGroup])
+					sentTabs := 0
+					dSleep(10)
+					numGetSelectionSorted(oSelection)
+				}
+				
+				tabPosition := oSelection.TabPositions[aUnitId.factory]
+				tabs := sRepeat(NextSubgroupKey, tabPosition - sentTabs)
+				sentTabs += tabPosition
+				input.psend(tabs factoryString)
+			}		
+			if (starportString != "") ;&& oSelection.TabPositions.HasKey(aUnitId.starport)
+			{
+				if (prevGroup != starportGroup)
+				{
+					prevGroup := starportGroup ; not required
+					sentTabs := 0
+					input.psend(aAGHotkeys.Invoke[starportGroup])
+					dSleep(10)
+					numGetSelectionSorted(oSelection)
+				}
+				tabPosition := oSelection.TabPositions[aUnitId.starport]
+				tabs := sRepeat(NextSubgroupKey, tabPosition - sentTabs)
+				sentTabs += tabPosition
+				input.psend(tabs starportString)
+			}
+			restoreSelection(3, selectionPage, HighlightedGroup)
+		}
+
+
+						
+		Input.revertKeyState()
+		setLowLevelInputHooks(False)
+		critical, off
+		Thread, NoTimers, false 
+		clipboard := barracksString " | " factoryString " | " starportString
+		;msgboxList(barracksString, factoryString, starportString)
 	}
 
-	buildTerran()
+
+	; takes a variadic list of arrays. Randomly orders EACH individual array and returns a single combined array.
+	; the items of the first array will be first items in the array, the second passed array will be come next in the returned array.....and so on 
+	; This is currently just a quick solution to randomise units being produced i.e. seige tank vs thor
+	randomOrderIntoSingleArray(arrays*)
 	{
-		if this.aAutoBuild["Barracks", "autoBuild"] || 1
+		nArray := []
+		for i, array in arrays
 		{
-			group := 5
-			objtree(this.aAutoBuild)
-			if raxCount := this.getStructureCountInGroup(group, aUnitID.Barracks, aUnitIndexs)
+			aOrder := [] ; using a lookup allows for actual array ref to be passed and not to remove items from it
+			for i in array
+				aOrder.Insert(i) ; so 1 based
+			while aOrder.MaxIndex()
+				nArray.Insert(array[aOrder.remove(rand(1, aOrder.MaxIndex()))])
+		}
+		return nArray
+	}
+
+
+
+	; need to figure out a decent way to alternate between ghost/marauder and reaper/marine
+
+	; doing it this (iterating names in obj) is so much neater, but lose ability to define order. Done alphabetically which ruins everything
+	buildFromStructureTerran(structure, group, obj, units*)
+	{
+		if this.getStructureCountInGroup(group, aUnitID[structure], aUnitIndexs) && this.terranArmyProduction(aUnitIndexs, structure, nonTechLabs, techLabs)
+		{		
+			for i, name in units
 			{
-				this.terranArmyProduction(aUnitIndexs, nonTechLabs, techLabs)
-				structureCount := techLabs 
-				for i, unitName in ["ghost", "marauder", "reaper", "marine"]
+				if obj[name].autoBuild && (!obj[name].requires.structure || this.hasUnit(obj[name].requires.structure))
 				{
-					if this.aAutoBuild.Barracks[unitName].autoBuild && (!this.aAutoBuild.Barracks[unitName].requires.techlab || techLabs)
-					{
-						sendString .= sRepeat(this.aAutoBuild.Barracks[unitName].buildKey, this.howManyUnitsCanBeProduced(structureCount, this.aAutoBuild.Barracks[unitName].requires))
-						if (unitName = "reaper")
-							structureCount += nonTechLabs
-					}
-
-
-				}
-
-
-
-				msgbox % nonTechLabs " | " techLabs  " nontect tech"
-
-				if this.aAutoBuild["Barracks", "marauder", "autoBuild"] && techLabs
-				{
-					
-				}
-				remainingSlots := techLabs + nonTechLabs
-				if this.aAutoBuild["Barracks", "reaper", "autoBuild"] && remainingSlots 
-				{
-					msgbox remainingSlots %remainingSlots%
-					if count := this.howManyUnitsCanBeProduced(remainingSlots, this.aAutoBuild["Barracks", "reaper", "requires"])
-					{
-						hotkey := this.aAutoBuild["Barracks", "reaper", "buildKey"]
-						sendString .= sRepeat(hotkey, count)
-					}
-					
-				}	
-				msgbox % remainingSlots " marine" 			
-				if this.aAutoBuild["Barracks", "marine", "autoBuild"] && remainingSlots 
-				{
-					if count := this.howManyUnitsCanBeProduced(remainingSlots, this.aAutoBuild["Barracks", "marine", "requires"])
-					{
-						hotkey := this.aAutoBuild["Barracks", "marine", "buildKey"]
-						sendString .= sRepeat(hotkey, count)
-					}
-					msgbox %count%
+					sendString .= sRepeat(obj[name].buildKey, this.howManyUnitsCanBeProduced(nonTechLabs, techLabs, obj[name].requires))
 				}
 			}
 		}
-		msgbox % raxCount " raxCount"
-		msgbox here`n%sendString%
+		return sendString	
 	}
-	howManyUnitsCanBeProduced(byRef structureCount, aRequires)
+
+
+/*
+	buildTerran()
+	{
+		group := 5
+		objtree(this.aAutoBuild)
+		if this.aAutoBuild.Barracks.autoBuild this.aAutoBuild["Barracks", "autoBuild"] || 1
+			barracksString := this.buildFromStructureTerran("barracks", group, ["ghost", "marauder", "reaper", "marine"]*)
+		if this.aAutoBuild.Barracks.autoBuild this.aAutoBuild["Barracks", "factory"] || 1
+			factoryString := this.buildFromStructureTerran("factory", group, ["thor", "siegeTank", "hellBat", "widowMine", "hellion"]*)
+		if this.aAutoBuild.Barracks.autoBuild this.aAutoBuild["Barracks", "factory"] || 1
+			starportString := this.buildFromStructureTerran("starport", group, ["Battlecruiser", "Raven", "Banshee", "VikingFighter", "Medivac"]*)
+
+	}
+	; need to figure out a decent way to alternate between ghost/marauder and reaper/marine
+	buildFromStructureTerran(structure, group, units*)
+	{
+		if this.getStructureCountInGroup(group, aUnitID[structure], aUnitIndexs) && this.terranArmyProduction(aUnitIndexs, nonTechLabs, techLabs)
+		{		
+			for i, unitName in units
+			{
+				if this.aAutoBuild[structure, unitName].autoBuild && (!this.aAutoBuild[structure, unitName].requires.structure || this.hasUnit(this.aAutoBuild[structure, unitName].requires.structure))
+				{
+					sendString .= sRepeat(this.aAutoBuild[structure, unitName].buildKey, this.howManyUnitsCanBeProduced(nonTechLabs, techLabs, this.aAutoBuild[structure, unitName].requires))
+				}
+			}
+		}
+		return sendString	
+	}
+
+
+
+*/
+
+
+
+
+
+
+
+	howManyUnitsCanBeProduced(byRef remainingSlots, byRef remainingTechLabSlots, aRequires)
 	{
 		params := [], count := 0
 		if aRequires.minerals
@@ -12281,17 +12440,24 @@ class autoBuild
 			params.insert(floor(this.CurrentGas / aRequires.vespene))
 		if aRequires.supply
 			params.insert(floor(this.FreeSupply / aRequires.supply))
-		params.insert(structureCount)
+		if aRequires.Techlab
+			params.insert(remainingTechLabSlots)
+		else params.insert(remainingSlots + remainingTechLabSlots)
 		if count := lowestValue(params*)
 		{
+			if count < 0
+				return 0 ; shouldnt happen
 			this.CurrentMinerals -= count * aRequires.minerals
 			this.CurrentGas -= count * aRequires.vespene
 			this.FreeSupply -= count * aRequires.supply
-			structureCount -= count
+			if aRequires.Techlab
+				remainingTechLabSlots -= count 
+			else if (remainingSlots -= count) < 0
+				remainingTechLabSlots -= remainingSlots, remainingSlots := 0
 		}	
 		return count
 	}
-	; I have to think about the best way to incorporate unit % complete
+
 	getStructureCountInGroup(group, unitID, byRef aUnitIndexs)
 	{
 		count := 0, aUnitIndexs := []
@@ -12302,47 +12468,81 @@ class autoBuild
 			unitIndex := NumGet(Memory, O_scUnitIndex + (A_Index - 1) * S_scStructure, "UInt") >> 18
 			if getUnitType(unitIndex) = unitId 
 			&& getUnitOwner(unitIndex) = aLocalPlayer.slot 
-			&& 	!(getunittargetfilter(unitIndex) & (aUnitTargetFilter.Dead | aUnitTargetFilter.UnderConstruction))	
+			&& !(getunittargetfilter(unitIndex) & (aUnitTargetFilter.Dead | aUnitTargetFilter.UnderConstruction))	
 				count++, aUnitIndexs.insert(unitIndex)
 		}	
 		return count
 	}
 
-	terranArmyProduction(aUnitIndexs, byRef nonTechLabs, byRef techLabs)
+	terranArmyProduction(aUnitIndexs, structureName, byRef nonTechLabs, byRef techLabs)
 	{
 		nonTechLabs := techLabs := 0
 		for i, unitIndex in aUnitIndexs
 		{
-			getStructureProductionInfo(unitIndex, aUnitId.Barracks, aUnits)
-			filledSlots := this.filledSlotCount(aUnits)
-			addon := getAddonStatus(getUnitAbilityPointer(unitIndex), aUnitId.Barracks)
-			if (addon = 1) ; reactor
-				nonTechLabs += 2 - filledSlots
-			else if (addon = -1)
-				techLabs += 1 - filledSlots
-			else nonTechLabs += 1 - filledSlots
+			addon := getAddonStatus(getUnitAbilityPointer(unitIndex), aUnitId[structureName], underConstruction)
+			if !underConstruction
+			{
+				filledSlots := this.filledSlotCount(unitIndex, aUnitId[structureName])				
+				if (addon = 1) ; reactor
+					nonTechLabs += 2 - filledSlots
+				else if (addon = -1)
+					techLabs += 1 - filledSlots
+				else nonTechLabs += 1 - filledSlots
+			}
 		}
-		return 
+		;msgboxlist(nonTechLabs, techLabs) 
+		return nonTechLabs + techLabs
 	}
 
-	filledSlotCount(structureProductionItem)
+	filledSlotCount(unitIndex, unitType)
 	{
+		getStructureProductionInfo(unitIndex, unitType, aItems, queueSize)
 		count := 0
-		for i, item in structureProductionItem
+		queueSize -= aItems.MaxIndex()
+		for i, item in aItems
 		{
-			if item.progress < .8
+			if item.progress < .8 || queueSize-- > 0
 				count++
 		}
 		return count
 	}
 
+
 }
 
+
+
+
+/*
 f1::
-	SetPlayerMinerals(150)
-	SetPlayerGas(100)
+	SetPlayerMinerals(500)
+	SetPlayerGas(25)
  autoBuild.build("Terran")
 return 
+
+
+
+
+f2::
+getStructureProductionInfo(getSelectedUnitIndex(), aUnitId.Barracks, aUnits)
+objtree(aUnits)
+return 
+
+;48C18D0
+;48C17D8
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 /*
 
@@ -12358,3 +12558,8 @@ return
 							supply
 							techlab
 						buildKey
+
+
+*/
+
+

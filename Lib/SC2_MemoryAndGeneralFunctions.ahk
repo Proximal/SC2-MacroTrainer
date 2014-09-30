@@ -1672,7 +1672,7 @@ getBuildStats(building, byref QueueSize := "", byRef item := "")
 ; this will return 1 or 2 units in production for use in unit panel
 ; hence this accounts for if a reactor is present
 ; it doesn't return the full list of units queued, just the one/two which are currently being produced
-; byref totalQueueSize will return the total number of units queued though
+; byref totalQueueSize will return the total number of units queued up
 getStructureProductionInfo(unit, type, byRef aInfo, byRef totalQueueSize := "", percent := True)
 {
 	STATIC O_pQueueArray := 0x34, O_IndexParentTypes := 0x18, O_unitsQueued := 0x28
@@ -1698,7 +1698,7 @@ getStructureProductionInfo(unit, type, byRef aInfo, byRef totalQueueSize := "", 
 		return 0 ; refinery,reactor, depot, spine, extractor etc
 
 	CAbilQueue := readmemory(pAbilities + aOffsets[type], GameIdentifier)
-	totalQueueSize := readmemory(CAbilQueue + O_unitsQueued, GameIdentifier) ; this is how many units are produced at once eg 1 normal - 2 reactor / this is not the total/real queue size!
+	totalQueueSize := readmemory(CAbilQueue + O_unitsQueued, GameIdentifier) ; this is the total real queue size e.g. max 5 on non-reactor, max 8 on reactored 
 	queuedArray := readmemory(CAbilQueue + O_pQueueArray, GameIdentifier)
 
 	while (A_Index <= totalQueueSize && B_QueuedUnitInfo := readmemory(queuedArray + 4 * (A_index-1), GameIdentifier) )   ; A_index-1 = queue position ;progress = 0 not being built, but is in queue
@@ -4360,14 +4360,15 @@ getArchonMorphTime(pAbilities)
 ; In FactoryAddOns +10 is unit address of the factory
 
 ; Returns:
-;	1  reactor
-;	-1  techlab
+;	1  Complete reactor
+;	-1  Complete techlab
 ;	0  no addons or addon in construction 
 ;
 ;	There are bytes in the addons (eg BarracksAddOns) structure which indicate an addon is under construction 
 ;	but not which type it is - but when an addon is underconstruction is position in the unit panel doesn't change!
+;  	I don't need this info anyway.
 
-getAddonStatus(pAbilities, unitType)
+getAddonStatus(pAbilities, unitType, byRef underConstruction := "")
 {
 	STATIC O_IndexParentTypes := 0x18, hasRun := False, aAddonStrings := [], aOffsets := []
 	if !hasRun 
@@ -4377,25 +4378,33 @@ getAddonStatus(pAbilities, unitType)
 						 ,	aUnitID.Factory: "FactoryAddOns"
 						 ,	aUnitID.Starport: "StarportAddOns"}
 	}
-	; if offset +28 or +2C not 0 addon is present techlab or reactor - both are pointers
-	if aAddonStrings.HasKey(unitType) && readmemory(readmemory(findAbilityTypePointer(pAbilities, unitType, aAddonStrings[unitType]), GameIdentifier) + 0x28, GameIdentifier)
+	underConstruction := False
+	if aAddonStrings.HasKey(unitType)
 	{
-		if !aOffsets.HasKey(unitType) ; ie CAbilQueue offset = aOffsets[unitType] - should be the same for all 3 types of units
-			aOffsets[unitType] := O_IndexParentTypes + 4 * getCAbilQueueIndex(pAbilities, getAbilitiesCount(pAbilities)) 
+		p := readmemory(findAbilityTypePointer(pAbilities, unitType, aAddonStrings[unitType]), GameIdentifier)
+		if readmemory(p + 0xC, GameIdentifier, 1) = 0x63
+			return 0, underConstruction := True
 
-		if readmemory(readmemory(pAbilities + aOffsets[unitType], GameIdentifier) + 0x48, GameIdentifier) ; if != 0 reactor present
-			return 1 ; reactor Present
-		return -1 ; techlab present			
+		if readmemory(p + 0x28, GameIdentifier) ; if offset +28 or +2C not 0 addon is present techlab or reactor - both are pointers
+		{
+			if !aOffsets.HasKey(unitType) ; ie CAbilQueue offset = aOffsets[unitType] - should be the same for all 3 types of units
+				aOffsets[unitType] := O_IndexParentTypes + 4 * getCAbilQueueIndex(pAbilities, getAbilitiesCount(pAbilities)) 
+
+			if readmemory(readmemory(pAbilities + aOffsets[unitType], GameIdentifier) + 0x48, GameIdentifier) ; if != 0 reactor present
+				return 1 ; reactor Present
+			return -1 ; techlab present
+		}			
 	}
-	return 0 ; no addons
+	return 0 ; no complete addons
 }
 
 /*
 while addon is being constructed, order of buildings doesnt change
 
 BarracksAddOns
++C = 0x63 addon under construction (the pointers below are still 0)
 +28 also + 2C a pointer
-If pointer not 0 then has a reactor or techlab 
+If pointer not 0 then has a (fully built) reactor or techlab 
 
 */ 
 
