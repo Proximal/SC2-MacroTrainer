@@ -12549,30 +12549,4 @@ return
 */
 
 
-f1:: 
 
-
-if !isObject(mem)
- mem := new _ClassMemory(GameIdentifier, "", hProcessCopy) 
-if !isObject(mem)
-	msgbox error
-setformat, IntegerFast, H 
-;msgbox % address := mem.modulePatternScan("", 0x01, 0x0D, "?", "?", "?", "?", 0xF6, 0xD2)
-;msgbox % (TimerAddress := mem.Read(address + 2, "UInt")	) "`n" (B_Timer + 0)
-
-msgbox % clipboard := address := mem.modulePatternScan("", 0x4B, 0x23, 0xC3, 0x5B, 0x74, 0x16, 0x38, 0x48, 0x27, 0x75, 0x11, 0xA1, "?", "?", "?", "?")
-
-return 
-
-/*
-
-TimerAddress:	0x496EDF0	|	0x496EDF0
-SelectionPtr:	0x4540650	|	0x4540650
-PlayerByte:		0x25596A8	|	0x25596A8
-PlayerStruct:	0x4A20CB0	|	0x4A20CB0
-PlayerSize:		0xE18		|	0xE18
-PlayerStruct:	0x4A20CB0	|	0x4A20CB0
-PlayerSize:		0xE18		|	0xE18
-IdleWorkerPtr:	0x4540650	|	0x4540650
-ChatFocusPtr:	0x4540650	|	0x4540650
-MenuFocusPtr:	0x642B26C	|	0x642B26C

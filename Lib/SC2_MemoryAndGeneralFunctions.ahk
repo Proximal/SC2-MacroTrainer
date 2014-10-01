@@ -4910,10 +4910,12 @@ addressPatternScan() ; need to include class memory
 	if (address := mem.modulePatternScan("", 0x84, 0xC0, 0x0F, 0x84, "?", "?", "?", "?", 0xA1, "?", "?", "?", "?", 0x53)) > 0
 		s .=  "`nIdleWorkerPtr:`t" mem.Read(address+9, "UInt") "`t|`t" ( P_IdleWorker + 0)
 	else s .=  "`nIdleWorkerPtr:`t"
+	
 	; Could use same address as above as pIdle is the same as pChat
 	if (address := mem.modulePatternScan("", 0x83, 0x3D, "?", "?", "?", "?", "?", 0x74, 0x0F, 0x80, 0x3D, "?", "?", "?", "?", "?", 0x74, 0x06)) > 0
 		s .=  "`nChatFocusPtr:`t"  mem.Read(address+2, "UInt") "`t|`t"  ( P_ChatFocus + 0)
 	else s .=  "`nChatFocusPtr:`t"
+	
 	if (address := mem.modulePatternScan("", 0xA1, "?", "?", "?", "?", 0x8B, 0x90, "?", "?", "?", "?", 0x8B, 0x88, "?", "?", "?", "?", 0x8B, 0x45, 0x08)) > 0
 		s .=  "`nMenuFocusPtr:`t"  mem.Read(address+1, "UInt")	"`t|`t" ( P_MenuFocus + 0)
 	else s .=  "`nMenuFocusPtr:`t"
