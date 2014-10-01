@@ -15,3 +15,16 @@ CriticalSection(LPCRITICAL_SECTION="ÿÿÿÿ"){
   DllCall("InitializeCriticalSection","Uint",&CriticalSection%count%)
   Return &CriticalSection%count%
 }
+
+
+TryLockWait(criSec, timeOut := 50, sleepPeriod := 5)
+{
+    start := A_TickCount
+    while !TryLock(criSec)
+    {
+        if (A_TickCount - start >= 50)
+          return false 
+        Sleep sleepPeriod 
+    }
+    return true
+}

@@ -1,4 +1,4 @@
-﻿;-----------------------
+;-----------------------
 ;	For updates:
 ;	Change version number in exe and config file
 ;	Upload the changelog, file version  and new exe files to the ftp server
@@ -12125,7 +12125,7 @@ return
 
 
 
-f1:: 
+;f1:: 
 sleep 500
 autoBuild.build("terran")
 return
@@ -12197,13 +12197,8 @@ class autoBuild
 	copyLocalUnits()
 	{
 		Obj := []
-		start := A_TickCount
-		while !TryLock(localUnitDataCriSec)
-		{
-			if (A_TickCount - start >= 50)
-				return "" 
-  			Sleep 5 ; ~15
-  		}
+  		if !TryLockWait(localUnitDataCriSec, 50, 5)
+  			return ""
   		thread, notimers, true 
   		for type, indexes in aLocalUnitData
   			Obj[type] := indexes
@@ -12391,46 +12386,6 @@ class autoBuild
 		return sendString	
 	}
 
-
-/*
-	buildTerran()
-	{
-		group := 5
-		objtree(this.aAutoBuild)
-		if this.aAutoBuild.Barracks.autoBuild this.aAutoBuild["Barracks", "autoBuild"] || 1
-			barracksString := this.buildFromStructureTerran("barracks", group, ["ghost", "marauder", "reaper", "marine"]*)
-		if this.aAutoBuild.Barracks.autoBuild this.aAutoBuild["Barracks", "factory"] || 1
-			factoryString := this.buildFromStructureTerran("factory", group, ["thor", "siegeTank", "hellBat", "widowMine", "hellion"]*)
-		if this.aAutoBuild.Barracks.autoBuild this.aAutoBuild["Barracks", "factory"] || 1
-			starportString := this.buildFromStructureTerran("starport", group, ["Battlecruiser", "Raven", "Banshee", "VikingFighter", "Medivac"]*)
-
-	}
-	; need to figure out a decent way to alternate between ghost/marauder and reaper/marine
-	buildFromStructureTerran(structure, group, units*)
-	{
-		if this.getStructureCountInGroup(group, aUnitID[structure], aUnitIndexs) && this.terranArmyProduction(aUnitIndexs, nonTechLabs, techLabs)
-		{		
-			for i, unitName in units
-			{
-				if this.aAutoBuild[structure, unitName].autoBuild && (!this.aAutoBuild[structure, unitName].requires.structure || this.hasUnit(this.aAutoBuild[structure, unitName].requires.structure))
-				{
-					sendString .= sRepeat(this.aAutoBuild[structure, unitName].buildKey, this.howManyUnitsCanBeProduced(nonTechLabs, techLabs, this.aAutoBuild[structure, unitName].requires))
-				}
-			}
-		}
-		return sendString	
-	}
-
-
-
-*/
-
-
-
-
-
-
-
 	howManyUnitsCanBeProduced(byRef remainingSlots, byRef remainingTechLabSlots, aRequires)
 	{
 		params := [], count := 0
@@ -12536,7 +12491,38 @@ return
 
 
 
+/*
+	buildTerran()
+	{
+		group := 5
+		objtree(this.aAutoBuild)
+		if this.aAutoBuild.Barracks.autoBuild this.aAutoBuild["Barracks", "autoBuild"] || 1
+			barracksString := this.buildFromStructureTerran("barracks", group, ["ghost", "marauder", "reaper", "marine"]*)
+		if this.aAutoBuild.Barracks.autoBuild this.aAutoBuild["Barracks", "factory"] || 1
+			factoryString := this.buildFromStructureTerran("factory", group, ["thor", "siegeTank", "hellBat", "widowMine", "hellion"]*)
+		if this.aAutoBuild.Barracks.autoBuild this.aAutoBuild["Barracks", "factory"] || 1
+			starportString := this.buildFromStructureTerran("starport", group, ["Battlecruiser", "Raven", "Banshee", "VikingFighter", "Medivac"]*)
 
+	}
+	; need to figure out a decent way to alternate between ghost/marauder and reaper/marine
+	buildFromStructureTerran(structure, group, units*)
+	{
+		if this.getStructureCountInGroup(group, aUnitID[structure], aUnitIndexs) && this.terranArmyProduction(aUnitIndexs, nonTechLabs, techLabs)
+		{		
+			for i, unitName in units
+			{
+				if this.aAutoBuild[structure, unitName].autoBuild && (!this.aAutoBuild[structure, unitName].requires.structure || this.hasUnit(this.aAutoBuild[structure, unitName].requires.structure))
+				{
+					sendString .= sRepeat(this.aAutoBuild[structure, unitName].buildKey, this.howManyUnitsCanBeProduced(nonTechLabs, techLabs, this.aAutoBuild[structure, unitName].requires))
+				}
+			}
+		}
+		return sendString	
+	}
+
+
+
+*/
 
 
 
@@ -12563,3 +12549,30 @@ return
 */
 
 
+f1:: 
+
+
+if !isObject(mem)
+ mem := new _ClassMemory(GameIdentifier, "", hProcessCopy) 
+if !isObject(mem)
+	msgbox error
+setformat, IntegerFast, H 
+;msgbox % address := mem.modulePatternScan("", 0x01, 0x0D, "?", "?", "?", "?", 0xF6, 0xD2)
+;msgbox % (TimerAddress := mem.Read(address + 2, "UInt")	) "`n" (B_Timer + 0)
+
+msgbox % clipboard := address := mem.modulePatternScan("", 0x4B, 0x23, 0xC3, 0x5B, 0x74, 0x16, 0x38, 0x48, 0x27, 0x75, 0x11, 0xA1, "?", "?", "?", "?")
+
+return 
+
+/*
+
+TimerAddress:	0x496EDF0	|	0x496EDF0
+SelectionPtr:	0x4540650	|	0x4540650
+PlayerByte:		0x25596A8	|	0x25596A8
+PlayerStruct:	0x4A20CB0	|	0x4A20CB0
+PlayerSize:		0xE18		|	0xE18
+PlayerStruct:	0x4A20CB0	|	0x4A20CB0
+PlayerSize:		0xE18		|	0xE18
+IdleWorkerPtr:	0x4540650	|	0x4540650
+ChatFocusPtr:	0x4540650	|	0x4540650
+MenuFocusPtr:	0x642B26C	|	0x642B26C

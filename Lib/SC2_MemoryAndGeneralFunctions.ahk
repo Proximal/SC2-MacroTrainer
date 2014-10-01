@@ -4864,26 +4864,58 @@ getMiniMapPingIconPos(byref xPos, byref yPos)
 
 
 
+; Converts the olldbg plugin scanner output to a string compatible with my scanner
+singConverter(sig, mask, storeInClip := True)
+{
+	sig := trim(sig, A_Space A_Tab "\") ; "sig starts with \"
+	mask := trim(mask, A_Space A_Tab)
+	StringReplace, sig, sig, x, 0x, All
+	aSig := StrSplit(sig, "\")
+	loop, parse, mask
+		r .= (A_LoopField != "?" ? aSig[A_Index] : """?""") ", "
+	return storeInClip ? clipboard := substr(r, 1, -2) : substr(r, 1, -2) 
+}
 
-
-
-
-addressPatternScan()
+;#include <classMemory>
+addressPatternScan() ; need to include class memory
 { 	
+	mem := new _ClassMemory(GameIdentifier, "", hProcessCopy) 
+	setformat, IntegerFast, H
+	if (address := mem.modulePatternScan("", 0x01, 0x0D, "?", "?", "?", "?", 0xF6, 0xD2)) > 0
+		s .=  "TimerAddress:`t"  mem.Read(address + 2, "UInt")	 "`t|`t" (B_Timer + 0)
+	else s .=  "TimerAddress:`t"
 	
-	global B_Timer
-	;if !isObject(mem)
-	mem := new memory(GameIdentifier)
-	if pUnitTimer := mem.modulePatternScan("", 0xC1, 0xEA, 0x0A, 0xB9, 0x00, 0x01, 0x00, 0x00, 0x01, 0x0D
-								, "?", "?", "?", "?", 0xF6, 0xD2, 0xA3, "?", "?", "?", "?", 0xF6, 0xC2
-								, 0x01, 0x74, 0x06, 0x01, 0x0D, "?", "?", "?", "?", 0x83, 0x3D, "?", "?"
-								, "?", "?", 0x00, 0x56, 0xBE, 0xFF, 0xFF, 0xFF, 0x7F)
-		B_Timer := ReadMemory(off1 + 28, GameIdentifier)
+	if (address := mem.modulePatternScan("", 0x4B, 0x23, 0xC3, 0x5B, 0x74, 0x16, 0x38, 0x48, 0x27, 0x75, 0x11, 0xA1, "?", "?", "?", "?")) > 0
+		s .=  "`nSelectionPtr:`t" mem.Read(address + 12, "UInt") "`t|`t" ( P_SelectionPage + 0)
+	else s .=  "nSelectionPtr:`t"
+	
+	if (address := mem.modulePatternScan("", 0xA0, "?", "?", "?", "?", 0x38, 0x41, 0x44, 0x74, 0x53)) > 0
+		s .=  "`nPlayerByte:`t`t"  mem.Read(address+1, "UInt") "`t|`t" ( B_LocalPlayerSlot + 0)
+	else s .=  "`nPlayerByte:`t"
+	
+	if (address := mem.modulePatternScan("", 0xF, 0xB6, 0xC1, 0x69, 0xC0, "?", "?", 0, 0, 0x5)) > 0 ; Nuke's
+	{
+		s .=  "`nPlayerStruct:`t"  mem.Read(address+10, "UInt")	"`t|`t" ( B_pStructure + 0)	
+		s .=  "`nPlayerSize:`t`t" mem.Read(address+5, "UInt") "`t`t|`t" ( S_pStructure + 0)	
+	}
+	else s .=  "`nPlayerStruct:`t"  "`nPlayerSize:`t`t"
+	
+	if (address := mem.modulePatternScan("", 0x21, 0x88, "?", "?", "?", "?", 0x05, "?", "?", "?", "?", 0x3D, "?", "?", "?", "?", 0x72, 0xEE)) > 0
+	{
+		s .=  "`nPlayerStruct:`t" mem.Read(address+2, "UInt") "`t|`t" ( B_pStructure + 0)	
+		s .=  "`nPlayerSize:`t`t" mem.Read(address+7, "UInt") "`t`t|`t" ( S_pStructure + 0)
+	}
+	else s .=  "`nPlayerStruct:`t"  "`nPlayerSize:`t`t"
 
-
-
-
-
-
-		return  B_Timer
+	if (address := mem.modulePatternScan("", 0x84, 0xC0, 0x0F, 0x84, "?", "?", "?", "?", 0xA1, "?", "?", "?", "?", 0x53)) > 0
+		s .=  "`nIdleWorkerPtr:`t" mem.Read(address+9, "UInt") "`t|`t" ( P_IdleWorker + 0)
+	else s .=  "`nIdleWorkerPtr:`t"
+	; Could use same address as above as pIdle is the same as pChat
+	if (address := mem.modulePatternScan("", 0x83, 0x3D, "?", "?", "?", "?", "?", 0x74, 0x0F, 0x80, 0x3D, "?", "?", "?", "?", "?", 0x74, 0x06)) > 0
+		s .=  "`nChatFocusPtr:`t"  mem.Read(address+2, "UInt") "`t|`t"  ( P_ChatFocus + 0)
+	else s .=  "`nChatFocusPtr:`t"
+	if (address := mem.modulePatternScan("", 0xA1, "?", "?", "?", "?", 0x8B, 0x90, "?", "?", "?", "?", 0x8B, 0x88, "?", "?", "?", "?", 0x8B, 0x45, 0x08)) > 0
+		s .=  "`nMenuFocusPtr:`t"  mem.Read(address+1, "UInt")	"`t|`t" ( P_MenuFocus + 0)
+	else s .=  "`nMenuFocusPtr:`t"
+	return  s
 }
