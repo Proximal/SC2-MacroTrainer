@@ -12125,7 +12125,7 @@ return
 
 
 
-;f1:: 
+f1:: 
 sleep 500
 autoBuild.build("terran")
 return
@@ -12154,11 +12154,11 @@ class autoBuild
 	getTerranStructureItems()
 	{
 		units = 
-		( ltrim c ;			techlab 	minerals 	vespene 	supply 		Req. structure		hotkeyReference 		structure
+		( ltrim c ;			techlab 	minerals 	vespene 	supply 		Req. structure		hotkeyReference 		StructureName/lookup
 			marine 			|0 			|50 		|0 			|1 			|					|Marine/Barracks 		|Barracks
 			reaper 			|0 			|50 		|50 		|1 			|					|Reaper/Barracks 		|Barracks
 			marauder 		|1 			|100 		|25 		|2  		|					|Marauder/Barracks 		|Barracks
-			ghost 			|1 			|200 		|100 		|2 			|GhostAcademy		|Ghost/Barracks  	    |Barracks	; Need to add tech reference and make other script thread keep track of tech structures for lookup
+			ghost 			|1 			|200 		|100 		|2 			|GhostAcademy		|Ghost/Barracks  	    |Barracks	
 			hellion 		|0 			|100 		|0 			|2 			| 					|Hellion/Factory 		|Factory
 			widowMine 		|0 			|75 		|25			|2 			| 					|WidowMine/Factory 		|Factory
 			siegeTank 		|1 			|150 		|125		|3 			| 					|SiegeTank/Factory 		|Factory
@@ -12170,20 +12170,45 @@ class autoBuild
 			Banshee  		|1 			|150 		|100 		|3			|					|Banshee/Starport 		|Starport
 			Battlecruiser	|1 			|400 		|300 		|6			|FusionCore			|Battlecruiser/Starport	|Starport
 		)
-		aBuildableUnits := {	"Barracks": ["ghost", "marauder", "reaper", "marine"]
-							, 	"Factory": ["thor", "siegeTank", "hellBat", "widowMine", "hellion"]
-							, 	"Starport": ["Battlecruiser", "Raven", "Banshee", "VikingFighter", "Medivac"] }
-		obj := []
+
+		Toss = 
+		( ltrim c ;			techlab 	minerals 	vespene 	supply 		Req. structure		hotkeyReference 		StructureName/lookup
+			Zealot 			|0 			|100 		|0 			|2 			|					|Marine/Barracks 		|Gateway
+			Sentry 			|0 			|50 		|100 		|2 			|CyberneticsCore	|Marine/Barracks 		|Gateway
+			Stalker			|0 			|125 		|50 		|2 			|CyberneticsCore	|Marine/Barracks 		|Gateway
+			HighTemplar		|0 			|50 		|150 		|2 			|TemplarArchive		|Marine/Barracks 		|Gateway
+			DarkTemplar		|0 			|125 		|125 		|2 			|DarkShrine			|Marine/Barracks 		|Gateway
+
+			Phoenix			|0 			|250 		|100 		|2 			|					|Marine/Barracks 		|Stargate
+			Oracle			|0 			|150 		|150 		|3 			|					|Marine/Barracks 		|Stargate
+			VoidRay			|0 			|250 		|150 		|4 			|					|Marine/Barracks 		|Stargate
+			Tempest			|0 			|300 		|200 		|4 			|FleetBeacon		|Marine/Barracks 		|Stargate
+			Carrier			|0 			|350 		|250 		|6 			|FleetBeacon		|Marine/Barracks 		|Stargate
+
+			Observer		|0 			|25 		|75 		|1 			|					|Marine/Barracks 		|RoboticsFacility
+			WarpPrism		|0 			|200 		|0 			|2 			|					|Marine/Barracks 		|RoboticsFacility
+			Immortal		|0 			|250 		|100 		|4 			|					|Marine/Barracks 		|RoboticsFacility
+			Colossus		|0 			|300 		|200 		|6 			|RoboticsBay		|Marine/Barracks 		|RoboticsFacility
+		)
+
+		; Use am ordered array, so that build structures are looped in the listed order - no by alphabetical order
+		; Ensure the order of the structures in the table above corresponds to the order in the selection panel
+		; i.e. rax, factory, starport 
+		obj := OrderedArray() ; This is importan
 		loop, parse, units, `n, %A_Tab%
 		{
 			a := StrSplit(A_LoopField, "|", A_Tab A_Space)
 			if !isobject(obj[a.8]) 
-				obj[a.8] := []
-			obj[a.8, a.1] := []
+			{
+				obj[a.8] := [], obj[a.8, "units"] := []
+				obj[a.8, "group"] := 5
+				obj[a.8, "autoBuild"] := True
+			}
+			obj[a.8, "Units", a.1] := []
 			;  [barracks, unitType]
-			obj[a.8, a.1, "buildKey"] := SC2Hotkeys.getkey(a.7)
-			obj[a.8, a.1, "autoBuild"] := True
-			obj[a.8, a.1].insert("requires", {"techlab": a.2, "minerals": a.3, "vespene": a.4, "supply": a.5, "structure": aUnitID[a.6]})
+			obj[a.8, "Units", a.1, "buildKey"] := SC2Hotkeys.getkey(a.7)
+			obj[a.8, "Units", a.1, "autoBuild"] := True
+			obj[a.8, "Units", a.1].insert("requires", {"techlab": a.2, "minerals": a.3, "vespene": a.4, "supply": a.5, "structure": aUnitID[a.6]})
 		}
 		return obj
 	}
@@ -12263,89 +12288,55 @@ class autoBuild
 	}
 	buildTerran()
 	{ global NextSubgroupKey
-		barracksGroup := factoryGroup := starportGroup := 5
 		;objtree(this.aAutoBuild)
-		if this.aAutoBuild.Barracks.autoBuild || 1
-			barracksString := this.buildFromStructureTerran("barracks", barracksGroup, this.aAutoBuild.Barracks, this.randomOrderIntoSingleArray(["ghost", "marauder"], ["reaper", "marine"])*)
-		if this.aAutoBuild.Factory.autoBuild || 1
-			factoryString := this.buildFromStructureTerran("factory", factoryGroup, this.aAutoBuild.Factory, this.randomOrderIntoSingleArray(["thor", "siegeTank"], ["hellBat", "widowMine", "hellion"])*)
-		if this.aAutoBuild.Starport.autoBuild || 1
-			starportString := this.buildFromStructureTerran("starport", starportGroup,  this.aAutoBuild.Starport, this.randomOrderIntoSingleArray(["Battlecruiser", "Raven", "Banshee"], ["VikingFighter", "Medivac"])*)
-		;msgboxList(barracksString, factoryString, starportString)
-		;return 
 
-		if (barracksString = "" && factoryString = "" && starportString = "") || !this.canPerformBuild(1)
+		; This is an ordered array, so iterates the structures in the order that they would occur in the selection panel. e.g. rax -> factory -> starport
+		; This will reduce number of tabs required and also don't have to worry about tabbing past the end (although thats easy to deal with anyway)
+		for buildingName, item in this.aAutoBuild
+		{
+			if item.autoBuild && (this.aAutoBuild[buildingName].buildString := this.buildFromStructureTerranTech(buildingName, item.group, item.units)) != ""
+				buildStuff := True	
+			else this.aAutoBuild[buildingName].buildString := "" ; There's a slim timing window below where if an autoBild item is enabled, it may have a previous build string...might as well prevent it
+		}
+		if !buildStuff || !this.canPerformBuild(1) || !numGetSelectionSorted(oSelection) || !oSelection.IsGroupable
 			return
-		;return
+		
 		Thread, NoTimers, true
 		;critical, 1000
 		;setLowLevelInputHooks(True)
 		dsleep(30)
 		input.pReleaseKeys(True)
 		dSleep(20)	
+
+		HighlightedGroup := getSelectionHighlightedGroup()
+		selectionPage := getUnitSelectionPage()		
 		
-
-		if numGetSelectionSorted(oSelection) && oSelection.IsGroupable
+		input.psend(aAGHotkeys.set[3]) ;****!
+	
+		for buildingName, item in this.aAutoBuild
 		{
-			HighlightedGroup := getSelectionHighlightedGroup()
-			selectionPage := getUnitSelectionPage()
-			input.psend(aAGHotkeys.set[3])
-			sentTabs := 0
-			if (barracksString != "") ;&& oSelection.TabPositions.HasKey(aUnitId.barracks)
+			if !item.autoBuild || item.buildString = ""
+				continue 
+			if item.group != prevGroup
 			{
-				prevGroup := barracksGroup
-				input.psend(aAGHotkeys.Invoke[barracksGroup])
+				sentTabs := 0
+				input.psend(aAGHotkeys.Invoke[prevGroup := item.group]) ;****!
 				dSleep(50)
-				numGetSelectionSorted(oSelection)
-				 
-				tabPosition := oSelection.TabPositions[aUnitId.barracks]
-				sentTabs += tabPosition
-				tabs := sRepeat(NextSubgroupKey, tabPosition)
-				input.psend(tabs barracksString)
+				numGetSelectionSorted(oSelection)				
 			}
-
-			if (factoryString != "") ;&& oSelection.TabPositions.HasKey(aUnitId.factory)
-			{
-				if (prevGroup != factoryGroup)
-				{
-					prevGroup := factoryGroup
-					input.psend(aAGHotkeys.Invoke[factoryGroup])
-					sentTabs := 0
-					dSleep(10)
-					numGetSelectionSorted(oSelection)
-				}
-				
-				tabPosition := oSelection.TabPositions[aUnitId.factory]
-				tabs := sRepeat(NextSubgroupKey, tabPosition - sentTabs)
-				sentTabs += tabPosition
-				input.psend(tabs factoryString)
-			}		
-			if (starportString != "") ;&& oSelection.TabPositions.HasKey(aUnitId.starport)
-			{
-				if (prevGroup != starportGroup)
-				{
-					prevGroup := starportGroup ; not required
-					sentTabs := 0
-					input.psend(aAGHotkeys.Invoke[starportGroup])
-					dSleep(10)
-					numGetSelectionSorted(oSelection)
-				}
-				tabPosition := oSelection.TabPositions[aUnitId.starport]
-				tabs := sRepeat(NextSubgroupKey, tabPosition - sentTabs)
-				sentTabs += tabPosition
-				input.psend(tabs starportString)
-			}
-			restoreSelection(3, selectionPage, HighlightedGroup)
+			tabPosition := oSelection.TabPositions[aUnitId[buildingName]]
+			tabs := sRepeat(NextSubgroupKey, tabPosition - sentTabs)   ;****!
+			sentTabs := tabPosition
+			input.psend(tabs item.buildString)
 		}
+		restoreSelection(3, selectionPage, HighlightedGroup) ;****!
 
-
-						
 		Input.revertKeyState()
 		setLowLevelInputHooks(False)
 		critical, off
 		Thread, NoTimers, false 
-		clipboard := barracksString " | " factoryString " | " starportString
-		;msgboxList(barracksString, factoryString, starportString)
+		;objtree(this.aAutoBuild)
+		return
 	}
 
 
@@ -12366,27 +12357,55 @@ class autoBuild
 		return nArray
 	}
 
-
-
-	; need to figure out a decent way to alternate between ghost/marauder and reaper/marine
-
-	; doing it this (iterating names in obj) is so much neater, but lose ability to define order. Done alphabetically which ruins everything
-	buildFromStructureTerran(structure, group, obj, units*)
+	buildFromStructureTerranTech(structure, group, obj)
 	{
 		if this.getStructureCountInGroup(group, aUnitID[structure], aUnitIndexs) && this.terranArmyProduction(aUnitIndexs, structure, nonTechLabs, techLabs)
-		{		
-			for i, name in units
+		{	
+			if !this.getEnabledUnits(obj, aTechLabUnits, aNonTechLabUnits)
+				return
+			loop, 2 
 			{
-				if obj[name].autoBuild && (!obj[name].requires.structure || this.hasUnit(obj[name].requires.structure))
+				aUnits := A_Index = 1 ? aTechLabUnits : aNonTechLabUnits
+				while ((aUnits = aTechLabUnits && techLabs) || (aUnits = aNonTechLabUnits && techLabs + nonTechLabs))
+				&& (A_Index = 1 || builtSomething)
 				{
-					sendString .= sRepeat(obj[name].buildKey, this.howManyUnitsCanBeProduced(nonTechLabs, techLabs, obj[name].requires))
+					builtSomething := False 
+					; if techlab units loop through tech lab units and build 1 at a time, so can make marauder and ghost in same round
+					; if nontech lab loop through and build 1 at a time so marine + reaper can be made and not just one or the other
+					for i, name in aUnits
+					{
+						if obj[name].autoBuild && (!obj[name].requires.structure || this.hasUnit(obj[name].requires.structure))
+						&& this.howManyUnitsCanBeProduced(nonTechLabs, techLabs, obj[name].requires, 1) ; limit to 1
+						{
+							builtSomething := True
+							sendString .= sRepeat(obj[name].buildKey, 1)
+						}
+					}
 				}
 			}
 		}
 		return sendString	
 	}
 
-	howManyUnitsCanBeProduced(byRef remainingSlots, byRef remainingTechLabSlots, aRequires)
+	getEnabledUnits(obj, byRef aTechLabUnits, byRef aNonTechLabUnits)
+	{
+		aTechLabUnits := [], aNonTechLabUnits := []
+		for unitName, unit in obj 
+		{
+			if unit.AutoBuild && unit.Requires.techlab 
+				aTechLabUnits.insert(unitName)
+			else if unit.AutoBuild ; && !unit.Requires.techlab 
+				aNonTechLabUnits.insert(unitName)
+		}
+		if aTechLabUnits.MaxIndex()
+			aTechLabUnits := this.randomOrderIntoSingleArray(aTechLabUnits)
+		if aNonTechLabUnits.MaxIndex()
+			aNonTechLabUnits := this.randomOrderIntoSingleArray(aNonTechLabUnits)		
+		return round(aTechLabUnits.MaxIndex()) + round(aNonTechLabUnits.MaxIndex())
+	}
+
+
+	howManyUnitsCanBeProduced(byRef remainingSlots, byRef remainingTechLabSlots, aRequires, maxCount := "")
 	{
 		params := [], count := 0
 		if aRequires.minerals
@@ -12402,6 +12421,8 @@ class autoBuild
 		{
 			if count < 0
 				return 0 ; shouldnt happen
+			if (maxCount >= 0 && count > maxCount)
+				count := maxCount
 			this.CurrentMinerals -= count * aRequires.minerals
 			this.CurrentGas -= count * aRequires.vespene
 			this.FreeSupply -= count * aRequires.supply
@@ -12409,6 +12430,10 @@ class autoBuild
 				remainingTechLabSlots -= count 
 			else if (remainingSlots -= count) < 0
 				remainingTechLabSlots -= remainingSlots, remainingSlots := 0
+			if remainingSlots < 0
+				remainingSlots := 0
+			if remainingTechLabSlots < 0
+				remainingTechLabSlots := 0
 		}	
 		return count
 	}
@@ -12445,7 +12470,6 @@ class autoBuild
 				else nonTechLabs += 1 - filledSlots
 			}
 		}
-		;msgboxlist(nonTechLabs, techLabs) 
 		return nonTechLabs + techLabs
 	}
 
@@ -12465,6 +12489,46 @@ class autoBuild
 
 }
 
+
+
+OrderedArray()
+{
+    ; Define prototype object for ordered arrays:
+    static base := Object("__Set", "oaSet", "_NewEnum", "oaNewEnum")
+    ; Create and return new ordered array object:
+    return Object("_keys", Object(), "base", base)
+}
+
+oaSet(obj, k, v)
+{
+    ; If this function is called, the key must not already exist.
+    ; Just add this new key to the array:
+    obj._keys.Insert(k)
+    ; Since we don't return a value, the default behaviour takes effect.
+    ; That is, a new key-value pair is created and stored in the object.
+}
+
+oaNewEnum(obj)
+{
+    ; Define prototype object for custom enumerator:
+    static base := Object("Next", "oaEnumNext")
+    ; Return an enumerator wrapping our _keys array's enumerator:
+    return Object("obj", obj, "enum", obj._keys._NewEnum(), "base", base)
+}
+
+oaEnumNext(e, ByRef k, ByRef v="")
+{
+    ; If Enum.Next() returns a "true" value, it has stored a key and
+    ; value in the provided variables. In this case, "i" receives the
+    ; current index in the _keys array and "k" receives the value at
+    ; that index, which is a key in the original object:
+    if r := e.enum.Next(i,k)
+        ; We want it to appear as though the user is simply enumerating
+        ; the key-value pairs of the original object, so store the value
+        ; associated with this key in the second output variable:
+        v := e.obj[k]
+    return r
+}
 
 
 
@@ -12547,6 +12611,3 @@ return
 
 
 */
-
-
-

@@ -4879,7 +4879,7 @@ singConverter(sig, mask, storeInClip := True)
 ;#include <classMemory>
 addressPatternScan() ; need to include class memory
 { 	
-	mem := new _ClassMemory(GameIdentifier, "", hProcessCopy) 
+	mem := new _ClassMemory(GameIdentifier) 
 	setformat, IntegerFast, H
 	if (address := mem.modulePatternScan("", 0x01, 0x0D, "?", "?", "?", "?", 0xF6, 0xD2)) > 0
 		s .=  "TimerAddress:`t"  mem.Read(address + 2, "UInt")	 "`t|`t" (B_Timer + 0)
@@ -4919,5 +4919,53 @@ addressPatternScan() ; need to include class memory
 	if (address := mem.modulePatternScan("", 0xA1, "?", "?", "?", "?", 0x8B, 0x90, "?", "?", "?", "?", 0x8B, 0x88, "?", "?", "?", "?", 0x8B, 0x45, 0x08)) > 0
 		s .=  "`nMenuFocusPtr:`t"  mem.Read(address+1, "UInt")	"`t|`t" ( P_MenuFocus + 0)
 	else s .=  "`nMenuFocusPtr:`t"
+
+	if (address := mem.modulePatternScan("",  0x55, 0x8B, 0xEC, 0xA1, "?", "?", "?", "?", 0x57, 0x8B, 0xF9, 0x85, 0xC0, 0x74, 0x5B)) > 0
+	{
+		s .=  "`nHighestIndex:`t" mem.Read(address + 4, "UInt") "`t|`t" ( B_uHighestIndex + 0)	
+		s .=  "`nUnitSize:`t`t" mem.Read(address + 0x19, "UInt") "`t`t|`t" ( S_uStructure + 0)
+	}
+	else s .=  "`nHighestIndex:`t"  "`nUnitSize:`t`t"
+
+	if (address := mem.modulePatternScan("",  0x73, 0x33, 0x69, 0xC0, "?", "?", "?", "?", 0x05, "?", "?", "?", "?", 0x33, 0xC9, 0x3B, 0x10, 0x0F, 0x95, 0xC1)) > 0
+	{
+		s .=  "`nUnitSize:`t`t" mem.Read(address + 4, "UInt") "`t`t|`t"  S_uStructure + 0	
+		s .=  "`nUnitStruct:`t" mem.Read(address + 9, "UInt") "`t|`t"  B_uStructure + 0 ; usually B_uHighestIndex+0x40  
+
+	}
+	else s .=  "`nUnitSize:`t"  "`nUnitStruct:`t`t"
+
+	if (address := mem.modulePatternScan("",  0x66, 0x83, 0x3D, "?", "?", "?", "?", 0x00, 0x74, 0x15, 0x0F, 0xB7, 0x05)) > 0
+		s .=  "`nSelection:`t`t" mem.Read(address + 3, "UInt") "`t`t|`t"  B_SelectionStructure + 0	
+	else s .=  "`nSelection:`t" 
+
+	if (address := mem.modulePatternScan("",  0x69, 0xF6, "?", "?", "?", "?", 0x03, 0xF0, 0x0F, 0xB7, 0x06)) > 0
+		s .=  "`nSizeGroups:`t`t" mem.Read(address + 2, "UInt") "`t`t|`t"  S_CtrlGroup + 0	
+	else s .=  "`nSizeGroups:`t"
+
+	if (address := mem.modulePatternScan("", 0xA2, "?", "?", "?", "?", 0x8B, 0x45, 0xF4, 0x89, 0x0D, "?", "?", "?", "?")) > 0
+		s .=  "`nB_TeamColours:`t`t" mem.Read(address + 10, "UInt") "`t`t|`t"  B_TeamColours + 0	
+	else s .=  "`nB_TeamColours:`t" 
+
+	if (address := mem.modulePatternScan("", 0xC1, 0xE0, 0x0C, 0xC1, 0xE2, 0x0C, 0x4E, 0x49, 0xA3, "?", "?", "?", "?")) > 0
+		s .=  "`nB_MapStruct:`t`t" mem.Read(address + 9, "UInt") - 0xDC "`t`t|`t"  B_MapStruct + 0 ; This is actually O_mLeft so need to -0xDC offset
+	else s .=  "`nB_MapStruct:`t" 
+
+	if (address := mem.modulePatternScan("", 0x8B, 0x16, 0x89, 0x15, "?", "?", "?", "?", 0x8B, 0x46, 0x04, 0xA3)) > 0
+		s .=  "`nB_camLeft:`t`t" mem.Read(address + 4, "UInt") "`t`t|`t"  B_camLeft + 0 
+	else s .=  "`nB_camLeft:`t" 
+
+	if (address := mem.modulePatternScan("", 0x83, 0x3D, "?", "?", "?", "?", 0x00, 0x74, 0x0F, 0x80, 0x3D, "?", "?", "?", "?", 0x00, 0x74, 0x06)) > 0
+	{	
+		s .=  "`nB_UnitCursor:`t`t" mem.Read(address + 2, "UInt") "`t`t|`t"  B_UnitCursor + 0 
+		s .=  "`nIsUserPerformingAction:`t`t" mem.Read(address + 2, "UInt") "`t`t|`t"  P_IsUserPerformingAction + 0  " Same as above" ; 
+
+	}
+	else s .=  "`nB_UnitCursor:`t" "`nIsUserPerformingAction:`t" 
+	
+	if (address := mem.modulePatternScan("", 0x53, 0x8B, 0x1D, "?", "?", "?", "?", 0xEB, 0x09, 0x8D, 0x9B, "?", "?", "?", "?", 0x8B, 0x7D, 0xFC)) > 0
+		s .=  "`nP_IsBuildCardDisplayed:`t`t" mem.Read(address + 3, "UInt") "`t`t|`t"  P_IsBuildCardDisplayed + 0 
+	else s .=  "`nP_IsBuildCardDisplayed:`t" 
+
 	return  s
 }
