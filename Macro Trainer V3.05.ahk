@@ -9559,13 +9559,23 @@ debugData()
 	obviously for grid layout commands (command card) 00-14 corresond to the keyboard letters
 
 */
-
+; Includes the final backslash
+; D:\My Computer\My Documents\StarCraft II\Replays\  --- > D:\My Computer\My Documents\StarCraft II\    (In map editor game)
+; D:\My Computer\My Documents\StarCraft II\Accounts\56088844\6-S2-1-49888\Replays\ --> D:\My Computer\My Documents\StarCraft II\Accounts\56088844\
 getAccountFolder()
-{ 	; D:\My Computer\My Documents\StarCraft II\Accounts\56088844\6-S2-1-49888\Replays\ --> D:\My Computer\My Documents\StarCraft II\Accounts\56088844
-	return InStr(FileExist(folder := SubStr(replayFolder := getReplayFolder(), 1, InStr(replayFolder, "\", False, InStr(replayFolder, "Accounts\") + 9))), "D") ? folder : ""
+{ 	
+	replayFolder := getReplayFolder()
+	if !InStr(replayFolder, "Accounts\", False, -1) ; MapEditor - Root SC folder
+	{
+		if !p := InStr(replayFolder, "StarCraft II\", False, -1)
+			return ""
+		folder := SubStr(replayFolder, 1, p+12) 
+	}
+	else folder := SubStr(replayFolder, 1, p+10) 
+	return InStr(FileExist(folder), "D") ? folder : ""
 }
 
-class SC2Hotkeys
+class SC2Keys
 {
 	static aCurrentHotkeys
 	getAllKeys() ; stores the keys as well for individual key lookup
@@ -9576,7 +9586,7 @@ class SC2Hotkeys
 		else obj := this.readProfileNonGrid(file, suffix)	
 		return this.aCurrentHotkeys := obj
 	}
-	getkey(hotkeyReference)
+	key(hotkeyReference)
 	{
 		if !isobject(this.aCurrentHotkeys) ; haven't set the keys yet
 			this.getAllKeys()
@@ -9593,6 +9603,7 @@ class SC2Hotkeys
 				hotkeyProfile := SubStr(A_LoopReadLine, 15)
 		} until hotkeyProfile
 		file := accountFolder "Hotkeys\" hotkeyProfile ".SC2Hotkeys"
+
 		if hotkeyProfile in 0_Default,1_NameRightSide,2_GridLeftSide,3_GridRightSide,4_Classic
 		{
 			if !FileExist(file) ; Although extremely unlikely, you can save a hotkeyProfile with these names i.e. 0_Default.SC2Hotkeys
@@ -9614,9 +9625,10 @@ class SC2Hotkeys
 	}
 	getDefaultKeys(suffix)
 	{
-		; Section and key columns are not used by grid layout
+		; Section and key columns are not used by grid layout!
+		; column 1 isnt used either currently
 		keys =
-			( LTrim c 			;					Standard 			_NRS 				_SC1 				grid							section 				key+myLookupReference
+			( LTrim c 					;			Standard 			_NRS 				_SC1 				grid							section 				key & myLookupReference
 				trainMarine 						|a 					|m					|m 					|CommandButton00				|Commands 				|Marine/Barracks
 				trainReaper 						|r 					|p					|e 					|CommandButton01				|Commands 				|Reaper/Barracks
 				trainMarauder			 			|d					|u					|f					|CommandButton02				|Commands 				|Marauder/Barracks
@@ -9631,17 +9643,57 @@ class SC2Hotkeys
 				trainRaven 							|r 					|v					|v 					|CommandButton02				|Commands 				|Raven/Starport
 				trainBanshee 						|e 					|n					|e 					|CommandButton03				|Commands 				|Banshee/Starport
 				trainBattlecruiser  				|b 					|b					|b 					|CommandButton04				|Commands 				|Battlecruiser/Starport
+				trainZealot  						|z 					|o					|z 					|CommandButton00				|Commands 				|Zealot 				; Gateway units lack the /structure
+				trainSentry  						|e 					|n					|e 					|CommandButton01				|Commands 				|Sentry 				; SC has a menu for both gateway & warpgate
+				trainStalker  						|s 					|l					|d 					|CommandButton02				|Commands 				|Stalker 				; But it doesn't seem like you can change them individually
+				trainHighTemplar					|t 					|h					|t 					|CommandButton05				|Commands 				|HighTemplar
+				trainDarkTemplar					|d 					|k					|k 					|CommandButton06				|Commands 				|DarkTemplar
+				trainPhoenix						|x 					|p					|e 					|CommandButton00				|Commands 				|Phoenix/Stargate
+				trainOracle 						|e 					|b					|l 					|CommandButton01				|Commands 				|Oracle/Stargate
+				trainVoidRay 						|v 					|d					|o 					|CommandButton02				|Commands 				|VoidRay/Stargate
+				trainTempest 						|t 					|u					|t 					|CommandButton03				|Commands 				|Tempest/Stargate
+				trainCarrier						|c 					|i					|c 					|CommandButton04				|Commands 				|Carrier/Stargate
+				trainObserver						|b 					|o					|o 					|CommandButton00				|Commands 				|Observer/RoboticsFacility
+				trainWarpPrism						|a 					|p					|s 					|CommandButton01				|Commands 				|WarpPrism/RoboticsFacility
+				trainImmortal						|i 					|i					|i 					|CommandButton02				|Commands 				|Immortal/RoboticsFacility
+				trainColossus						|c 					|l					|v 					|CommandButton03				|Commands 				|Colossus/RoboticsFacility
 			)
+
 		if suffix not in Standard,_NRS,_SC1,_GLS,_GRS
 			suffix :=  "Standard" ; lets just try to use standard - should shrow and error somewhere to alert user
 		obj := []
 		arrayPos := suffix = "_NRS" ? 3 : suffix = "_SC1" ? 4 : suffix = "_GLS" || suffix = "_GRS" ? 5 : 2
-		;msgbox % arrayPos " | " suffix
 		loop, parse, keys, `n, %A_Tab%
 		{
 			a := StrSplit(A_LoopField, "|", A_Tab A_Space)
 			obj.insert(a.7, {"hotkey": a[arrayPos], "section": a[6], "key": a[7]})
 		}
+		return obj
+	}
+
+	readProfileHotkeysSection(file)
+	{
+		obj := []
+		; Add all new hotkey section SC hotkeys here (excluding grid keys)
+		obj.SubgroupNext := "Tab"
+		obj.SubgroupPrev := "Shift+Tab"
+		loop, 10 ; Set default control group keys
+		{
+			group := A_Index - 1
+			obj["ControlGroupRecall" group] := group
+			obj["ControlGroupAppend" group] := "Shift+" group
+			obj["ControlGroupAssign" group] := "Control+" group		
+		}
+		if FileExist(file) ; This isn't required due to inireads default value, but theres little point if the file doesn't exist
+		{
+			for k, value in obj 
+			{
+				IniRead, hotkey, %file%,  Hotkeys, %k%, %value%
+				obj[k] := hotkey
+			}
+		}
+		for k, hotkey in obj
+			obj[k] := this.convertHotkey(hotkey)
 		return obj
 	}
 	
@@ -9660,7 +9712,7 @@ class SC2Hotkeys
 	 ; Should most likely use a unitID or unitName lookup 
 		for k, item in obj
 			obj[k] := this.convertHotkey(item.hotkey)
-		return obj
+		return this.combineSimpleObjects(obj, this.readProfileHotkeysSection(file))
 	}
 	readProfileGrid(file, suffix)
 	{
@@ -9675,8 +9727,21 @@ class SC2Hotkeys
 		}
 		for i, item in obj 
 			obj[i] := this.convertHotkey(aLookup[item.hotkey])
-		return obj						
+		return this.combineSimpleObjects(obj, this.readProfileHotkeysSection(file))					
 	}
+	; No multiLevel objects!
+	combineSimpleObjects(objects*)
+	{
+		nObj := []
+		for i, obj in objects
+		{
+			for k, v in obj 
+				nObj[k] := v
+		}
+		return nObj
+	}
+	; Wrote this over a year ago, but lets roll with it
+	; I really need to spend some time checking that it covers all cases correctly
 	convertHotkey(String)
 	{
 							;	"SC2Key": "AhkKey"
@@ -9805,16 +9870,6 @@ Suffix=_SC1 = Classic
 
 
 */
-
-splitByMouseLocation(SplitctrlgroupStorage_key)
-{
-	GLOBAL aLocalPlayer, aUnitID, NextSubgroupKey
-	MouseGetPos, mx, my
-	DllCall("Sleep", Uint, 5)
-	HighlightedGroup := getSelectionHighlightedGroup()
-	input.pSend("^" SplitctrlgroupStorage_key)
-}
-
 
 /*
 	tl 	27 62
@@ -12154,45 +12209,43 @@ class autoBuild
 	getTerranStructureItems()
 	{
 		units = 
-		( ltrim c ;			techlab 	minerals 	vespene 	supply 		Req. structure		hotkeyReference 		StructureName/lookup
-			marine 			|0 			|50 		|0 			|1 			|					|Marine/Barracks 		|Barracks
-			reaper 			|0 			|50 		|50 		|1 			|					|Reaper/Barracks 		|Barracks
-			marauder 		|1 			|100 		|25 		|2  		|					|Marauder/Barracks 		|Barracks
-			ghost 			|1 			|200 		|100 		|2 			|GhostAcademy		|Ghost/Barracks  	    |Barracks	
-			hellion 		|0 			|100 		|0 			|2 			| 					|Hellion/Factory 		|Factory
-			widowMine 		|0 			|75 		|25			|2 			| 					|WidowMine/Factory 		|Factory
-			siegeTank 		|1 			|150 		|125		|3 			| 					|SiegeTank/Factory 		|Factory
-			hellBat 		|0 			|100 		|0 			|2			|Armory				|HellionTank/Factory 	|Factory
-			thor 			|1 			|300 		|200 		|6			|Armory				|Thor/Factory 			|Factory
-			VikingFighter 	|0 			|150 		|75 		|2			|					|VikingFighter/Starport |Starport
-			Medivac 	 	|0 			|100 		|100 		|2			|					|Medivac/Starport 		|Starport
-			Raven 	 		|1 			|100 		|200 		|2			|					|Raven/Starport 		|Starport
-			Banshee  		|1 			|150 		|100 		|3			|					|Banshee/Starport 		|Starport
-			Battlecruiser	|1 			|400 		|300 		|6			|FusionCore			|Battlecruiser/Starport	|Starport
+		( ltrim c ;			techlab 	minerals 	vespene 	supply 		Req. structure		hotkeyReference 				StructureName/lookup
+			marine 			|0 			|50 		|0 			|1 			|					|Marine/Barracks 				|Barracks
+			reaper 			|0 			|50 		|50 		|1 			|					|Reaper/Barracks 				|Barracks
+			marauder 		|1 			|100 		|25 		|2  		|					|Marauder/Barracks 				|Barracks
+			ghost 			|1 			|200 		|100 		|2 			|GhostAcademy		|Ghost/Barracks  	    		|Barracks	
+			hellion 		|0 			|100 		|0 			|2 			| 					|Hellion/Factory 				|Factory
+			widowMine 		|0 			|75 		|25			|2 			| 					|WidowMine/Factory 				|Factory
+			siegeTank 		|1 			|150 		|125		|3 			| 					|SiegeTank/Factory 				|Factory
+			hellBat 		|0 			|100 		|0 			|2			|Armory				|HellionTank/Factory 			|Factory
+			thor 			|1 			|300 		|200 		|6			|Armory				|Thor/Factory 					|Factory
+			VikingFighter 	|0 			|150 		|75 		|2			|					|VikingFighter/Starport 		|Starport
+			Medivac 	 	|0 			|100 		|100 		|2			|					|Medivac/Starport 				|Starport
+			Raven 	 		|1 			|100 		|200 		|2			|					|Raven/Starport 				|Starport
+			Banshee  		|1 			|150 		|100 		|3			|					|Banshee/Starport 				|Starport
+			Battlecruiser	|1 			|400 		|300 		|6			|FusionCore			|Battlecruiser/Starport			|Starport
 		)
 
 		Toss = 
-		( ltrim c ;			techlab 	minerals 	vespene 	supply 		Req. structure		hotkeyReference 		StructureName/lookup
-			Zealot 			|0 			|100 		|0 			|2 			|					|Marine/Barracks 		|Gateway
-			Sentry 			|0 			|50 		|100 		|2 			|CyberneticsCore	|Marine/Barracks 		|Gateway
-			Stalker			|0 			|125 		|50 		|2 			|CyberneticsCore	|Marine/Barracks 		|Gateway
-			HighTemplar		|0 			|50 		|150 		|2 			|TemplarArchive		|Marine/Barracks 		|Gateway
-			DarkTemplar		|0 			|125 		|125 		|2 			|DarkShrine			|Marine/Barracks 		|Gateway
-
-			Phoenix			|0 			|250 		|100 		|2 			|					|Marine/Barracks 		|Stargate
-			Oracle			|0 			|150 		|150 		|3 			|					|Marine/Barracks 		|Stargate
-			VoidRay			|0 			|250 		|150 		|4 			|					|Marine/Barracks 		|Stargate
-			Tempest			|0 			|300 		|200 		|4 			|FleetBeacon		|Marine/Barracks 		|Stargate
-			Carrier			|0 			|350 		|250 		|6 			|FleetBeacon		|Marine/Barracks 		|Stargate
-
-			Observer		|0 			|25 		|75 		|1 			|					|Marine/Barracks 		|RoboticsFacility
-			WarpPrism		|0 			|200 		|0 			|2 			|					|Marine/Barracks 		|RoboticsFacility
-			Immortal		|0 			|250 		|100 		|4 			|					|Marine/Barracks 		|RoboticsFacility
-			Colossus		|0 			|300 		|200 		|6 			|RoboticsBay		|Marine/Barracks 		|RoboticsFacility
+		( ltrim c ;			techlab 	minerals 	vespene 	supply 		Req. structure		hotkeyReference 				StructureName/lookup
+			Zealot 			|0 			|100 		|0 			|2 			|					|Zealot 		 				|Gateway
+			Sentry 			|0 			|50 		|100 		|2 			|CyberneticsCore	|Sentry			 				|Gateway
+			Stalker			|0 			|125 		|50 		|2 			|CyberneticsCore	|Stalker		 				|Gateway
+			HighTemplar		|0 			|50 		|150 		|2 			|TemplarArchive		|HighTemplar	 				|Gateway
+			DarkTemplar		|0 			|125 		|125 		|2 			|DarkShrine			|DarkTemplar	 				|Gateway
+			Phoenix			|0 			|250 		|100 		|2 			|					|Phoenix/Stargate 				|Stargate
+			Oracle			|0 			|150 		|150 		|3 			|					|Oracle/Stargate 				|Stargate
+			VoidRay			|0 			|250 		|150 		|4 			|					|VoidRay/Stargate 				|Stargate
+			Tempest			|0 			|300 		|200 		|4 			|FleetBeacon		|Tempest/Stargate 				|Stargate
+			Carrier			|0 			|350 		|250 		|6 			|FleetBeacon		|Carrier/Stargate 				|Stargate
+			Observer		|0 			|25 		|75 		|1 			|					|Observer/RoboticsFacility 		|RoboticsFacility
+			WarpPrism		|0 			|200 		|0 			|2 			|					|WarpPrism/RoboticsFacility 	|RoboticsFacility
+			Immortal		|0 			|250 		|100 		|4 			|					|Immortal/RoboticsFacility 		|RoboticsFacility
+			Colossus		|0 			|300 		|200 		|6 			|RoboticsBay		|Colossus/RoboticsFacility 		|RoboticsFacility
 		)
 
-		; Use am ordered array, so that build structures are looped in the listed order - no by alphabetical order
-		; Ensure the order of the structures in the table above corresponds to the order in the selection panel
+		; Use am ordered array, so that build structures are looped in the listed order - not by alphabetical order
+		; Ensure the order of the structures in the table above corresponds to the order in the selection panel (when they are in the same group)
 		; i.e. rax, factory, starport 
 		obj := OrderedArray() ; This is importan
 		loop, parse, units, `n, %A_Tab%
@@ -12206,7 +12259,7 @@ class autoBuild
 			}
 			obj[a.8, "Units", a.1] := []
 			;  [barracks, unitType]
-			obj[a.8, "Units", a.1, "buildKey"] := SC2Hotkeys.getkey(a.7)
+			obj[a.8, "Units", a.1, "buildKey"] := SC2Keys.key(a.7)
 			obj[a.8, "Units", a.1, "autoBuild"] := True
 			obj[a.8, "Units", a.1].insert("requires", {"techlab": a.2, "minerals": a.3, "vespene": a.4, "supply": a.5, "structure": aUnitID[a.6]})
 		}
@@ -12287,7 +12340,7 @@ class autoBuild
 		return false
 	}
 	buildTerran()
-	{ global NextSubgroupKey
+	{
 		;objtree(this.aAutoBuild)
 
 		; This is an ordered array, so iterates the structures in the order that they would occur in the selection panel. e.g. rax -> factory -> starport
@@ -12298,9 +12351,11 @@ class autoBuild
 				buildStuff := True	
 			else this.aAutoBuild[buildingName].buildString := "" ; There's a slim timing window below where if an autoBild item is enabled, it may have a previous build string...might as well prevent it
 		}
+;objtree(this.aAutoBuild)
+
 		if !buildStuff || !this.canPerformBuild(1) || !numGetSelectionSorted(oSelection) || !oSelection.IsGroupable
 			return
-		
+
 		Thread, NoTimers, true
 		;critical, 1000
 		;setLowLevelInputHooks(True)
@@ -12308,28 +12363,20 @@ class autoBuild
 		input.pReleaseKeys(True)
 		dSleep(20)	
 
-		HighlightedGroup := getSelectionHighlightedGroup()
-		selectionPage := getUnitSelectionPage()		
-		
-		input.psend(aAGHotkeys.set[3]) ;****!
-	
+		this.storeSelection(3, HighlightedGroup, selectionPage)
+
 		for buildingName, item in this.aAutoBuild
 		{
 			if !item.autoBuild || item.buildString = ""
 				continue 
 			if item.group != prevGroup
 			{
-				sentTabs := 0
-				input.psend(aAGHotkeys.Invoke[prevGroup := item.group]) ;****!
-				dSleep(50)
-				numGetSelectionSorted(oSelection)				
+				; A sleep may be required here to prevent the invoked structures from receiving the previously sent buildString 
+				this.invokeGroup(prevGroup := item.group, oSelection, sentTabs)
 			}
-			tabPosition := oSelection.TabPositions[aUnitId[buildingName]]
-			tabs := sRepeat(NextSubgroupKey, tabPosition - sentTabs)   ;****!
-			sentTabs := tabPosition
-			input.psend(tabs item.buildString)
+			this.buildUnits(item.buildString, oSelection, buildingName, sentTabs)
 		}
-		restoreSelection(3, selectionPage, HighlightedGroup) ;****!
+		this.restoreSelection(3, selectionPage, HighlightedGroup) ;****!
 
 		Input.revertKeyState()
 		setLowLevelInputHooks(False)
@@ -12338,7 +12385,29 @@ class autoBuild
 		;objtree(this.aAutoBuild)
 		return
 	}
-
+	storeSelection(group, byRef HighlightedGroup, byRef selectionPage)
+	{
+		HighlightedGroup := getSelectionHighlightedGroup()
+		selectionPage := getUnitSelectionPage()	
+		input.psend(SC2Keys.key("ControlGroupAssign" group))
+		return
+	}
+	invokeGroup(group, byRef oSelection, byRef sentTabs)
+	{
+		sentTabs := 0
+		input.psend(SC2Keys.key("ControlGroupRecall" group))
+		dSleep(50)
+		numGetSelectionSorted(oSelection)
+		return
+	}
+	buildUnits(buildString, oSelection, buildingName, byRef sentTabs)
+	{
+			tabPosition := oSelection.TabPositions[aUnitId[buildingName]]
+			tabs := sRepeat(SC2Keys.key("SubgroupNext"), tabPosition - sentTabs)   ;****!
+			sentTabs := tabPosition
+			input.psend(tabs buildString)
+			return		
+	}
 
 	; takes a variadic list of arrays. Randomly orders EACH individual array and returns a single combined array.
 	; the items of the first array will be first items in the array, the second passed array will be come next in the returned array.....and so on 
@@ -12486,6 +12555,32 @@ class autoBuild
 		return count
 	}
 
+	; This is here so I can implement AutoBuild which may have issues with hotkeys with affecting other functions
+	restoreSelection(controlGroup, selectionPage, highlightedTab)
+	{ 
+
+		input.psend(SC2Keys.key("ControlGroupRecall" controlGroup))
+		dsleep(15) ; This might not be long enough in big battles/large control group
+		if (highlightedTab && highlightedTab < getSelectionTypeCount())	; highlightedTab is zero based - TypeCount is 1 based hence < not <=
+		{
+			input.pSend(sRepeat(SC2Keys.key("SubgroupNext"), highlightedTab))
+			; Although unlikely due to speed of automation, it is possible for a unit to die and for there to be 1 less
+			; sub group now present, hence if trying to access the previously highest (and now now non existent) subgroup 
+			; this could stall here. Perhaps have a look for a max subgroup pos
+			while (getSelectionHighlightedGroup() != highlightedTab && A_Index < 40) ; Raised from 25
+				dsleep(1)
+			dsleep(4) ; This static sleep wasn't required during testing but i added it anyway. (as i didn't do in-depth testing)	
+		}	
+		; There's no point checking if the selection page still exists - if it doesn't the click
+		; will be ignored anyway
+		if selectionPage 
+		{
+			ClickUnitPortrait(0, X, Y, Xpage, Ypage, selectionPage + 1) ; for this function numbers start at 1, hence +1
+			input.pClick(Xpage, Ypage)
+		}
+		return	
+	}
+
 
 }
 
@@ -12498,7 +12593,6 @@ OrderedArray()
     ; Create and return new ordered array object:
     return Object("_keys", Object(), "base", base)
 }
-
 oaSet(obj, k, v)
 {
     ; If this function is called, the key must not already exist.
@@ -12507,7 +12601,6 @@ oaSet(obj, k, v)
     ; Since we don't return a value, the default behaviour takes effect.
     ; That is, a new key-value pair is created and stored in the object.
 }
-
 oaNewEnum(obj)
 {
     ; Define prototype object for custom enumerator:
@@ -12515,7 +12608,6 @@ oaNewEnum(obj)
     ; Return an enumerator wrapping our _keys array's enumerator:
     return Object("obj", obj, "enum", obj._keys._NewEnum(), "base", base)
 }
-
 oaEnumNext(e, ByRef k, ByRef v="")
 {
     ; If Enum.Next() returns a "true" value, it has stored a key and
@@ -12529,64 +12621,6 @@ oaEnumNext(e, ByRef k, ByRef v="")
         v := e.obj[k]
     return r
 }
-
-
-
-/*
-f1::
-	SetPlayerMinerals(500)
-	SetPlayerGas(25)
- autoBuild.build("Terran")
-return 
-
-
-
-
-f2::
-getStructureProductionInfo(getSelectedUnitIndex(), aUnitId.Barracks, aUnits)
-objtree(aUnits)
-return 
-
-;48C18D0
-;48C17D8
-
-
-
-
-
-
-/*
-	buildTerran()
-	{
-		group := 5
-		objtree(this.aAutoBuild)
-		if this.aAutoBuild.Barracks.autoBuild this.aAutoBuild["Barracks", "autoBuild"] || 1
-			barracksString := this.buildFromStructureTerran("barracks", group, ["ghost", "marauder", "reaper", "marine"]*)
-		if this.aAutoBuild.Barracks.autoBuild this.aAutoBuild["Barracks", "factory"] || 1
-			factoryString := this.buildFromStructureTerran("factory", group, ["thor", "siegeTank", "hellBat", "widowMine", "hellion"]*)
-		if this.aAutoBuild.Barracks.autoBuild this.aAutoBuild["Barracks", "factory"] || 1
-			starportString := this.buildFromStructureTerran("starport", group, ["Battlecruiser", "Raven", "Banshee", "VikingFighter", "Medivac"]*)
-
-	}
-	; need to figure out a decent way to alternate between ghost/marauder and reaper/marine
-	buildFromStructureTerran(structure, group, units*)
-	{
-		if this.getStructureCountInGroup(group, aUnitID[structure], aUnitIndexs) && this.terranArmyProduction(aUnitIndexs, nonTechLabs, techLabs)
-		{		
-			for i, unitName in units
-			{
-				if this.aAutoBuild[structure, unitName].autoBuild && (!this.aAutoBuild[structure, unitName].requires.structure || this.hasUnit(this.aAutoBuild[structure, unitName].requires.structure))
-				{
-					sendString .= sRepeat(this.aAutoBuild[structure, unitName].buildKey, this.howManyUnitsCanBeProduced(nonTechLabs, techLabs, this.aAutoBuild[structure, unitName].requires))
-				}
-			}
-		}
-		return sendString	
-	}
-
-
-
-*/
 
 
 
