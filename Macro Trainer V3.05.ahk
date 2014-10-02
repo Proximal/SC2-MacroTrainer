@@ -9627,7 +9627,7 @@ class SC2Keys
 	{
 		; Section and key columns are not used by grid layout!
 		; column 1 isnt used either currently
-		keys =
+		static keys := "
 			( LTrim c 					;			Standard 			_NRS 				_SC1 				grid							section 				key & myLookupReference
 				trainMarine 						|a 					|m					|m 					|CommandButton00				|Commands 				|Marine/Barracks
 				trainReaper 						|r 					|p					|e 					|CommandButton01				|Commands 				|Reaper/Barracks
@@ -9657,7 +9657,8 @@ class SC2Keys
 				trainWarpPrism						|a 					|p					|s 					|CommandButton01				|Commands 				|WarpPrism/RoboticsFacility
 				trainImmortal						|i 					|i					|i 					|CommandButton02				|Commands 				|Immortal/RoboticsFacility
 				trainColossus						|c 					|l					|v 					|CommandButton03				|Commands 				|Colossus/RoboticsFacility
-			)
+				trainQueen							|q 					|u					|e 					|CommandButton01				|Commands 				|Queen 		; SC only allows same key for hatch/lair/hive
+			)"
 
 		if suffix not in Standard,_NRS,_SC1,_GLS,_GRS
 			suffix :=  "Standard" ; lets just try to use standard - should shrow and error somewhere to alert user
@@ -12182,7 +12183,7 @@ return
 
 f1:: 
 sleep 500
-autoBuild.build("terran")
+autoBuild.build("zerg")
 return
 ;f2::
 objtree(autoBuild.randomOrderIntoSingleArray(["a", "b", "c"], ["e", "f", "g"]))
@@ -12208,7 +12209,7 @@ class autoBuild
 
 	getTerranStructureItems()
 	{
-		units = 
+		unitTableProtossTerran := "
 		( ltrim c ;			techlab 	minerals 	vespene 	supply 		Req. structure		hotkeyReference 				StructureName/lookup
 			marine 			|0 			|50 		|0 			|1 			|					|Marine/Barracks 				|Barracks
 			reaper 			|0 			|50 		|50 		|1 			|					|Reaper/Barracks 				|Barracks
@@ -12224,9 +12225,9 @@ class autoBuild
 			Raven 	 		|1 			|100 		|200 		|2			|					|Raven/Starport 				|Starport
 			Banshee  		|1 			|150 		|100 		|3			|					|Banshee/Starport 				|Starport
 			Battlecruiser	|1 			|400 		|300 		|6			|FusionCore			|Battlecruiser/Starport			|Starport
-		)
+		)"
 
-		Toss = 
+		unitTableProtoss := "
 		( ltrim c ;			techlab 	minerals 	vespene 	supply 		Req. structure		hotkeyReference 				StructureName/lookup
 			Zealot 			|0 			|100 		|0 			|2 			|					|Zealot 		 				|Gateway
 			Sentry 			|0 			|50 		|100 		|2 			|CyberneticsCore	|Sentry			 				|Gateway
@@ -12242,12 +12243,20 @@ class autoBuild
 			WarpPrism		|0 			|200 		|0 			|2 			|					|WarpPrism/RoboticsFacility 	|RoboticsFacility
 			Immortal		|0 			|250 		|100 		|4 			|					|Immortal/RoboticsFacility 		|RoboticsFacility
 			Colossus		|0 			|300 		|200 		|6 			|RoboticsBay		|Colossus/RoboticsFacility 		|RoboticsFacility
-		)
+		)"
 
+		unitTableZerg := "
+		( ltrim c ;			techlab 	minerals 	vespene 	supply 		Req. structure		hotkeyReference 				StructureName/lookup
+			Queen 			|0 			|150 		|0 			|2 			|SpawningPool		|Queen 		 					|Hatchery
+			Queen 			|0 			|150 		|0 			|2 			|SpawningPool		|Queen 		 					|Lair
+			Queen 			|0 			|150 		|0 			|2 			|SpawningPool		|Queen 		 					|Hive
+		)"
+		units := unitTableZerg
 		; Use am ordered array, so that build structures are looped in the listed order - not by alphabetical order
 		; Ensure the order of the structures in the table above corresponds to the order in the selection panel (when they are in the same group)
 		; i.e. rax, factory, starport 
-		obj := OrderedArray() ; This is importan
+		; Do not erase this obj or recreate it as a normal one!
+		obj := OrderedArray() ; This is important
 		loop, parse, units, `n, %A_Tab%
 		{
 			a := StrSplit(A_LoopField, "|", A_Tab A_Space)
@@ -12265,6 +12274,27 @@ class autoBuild
 		}
 		return obj
 	}
+/*
+	Object layout
+
+			Barracks  					; Structure name. These structures are in FIFO/ordered array. They do NOT iterate alphabetically
+				group 					; control group
+				autoBuild  				; Has units units which are to be built
+				units  					; []
+					marine 				; Each barracks unit type has an entry (unit name) 
+						autoBuild 		; Is auto build enabled
+						requires 		; []
+							minerals
+							vespene
+							supply
+							techlab 	; Unit requires a techlab
+							structure 	; A required structure to build unit i.e. ghost academy already converted to unitID
+						buildKey
+					reaper.... 			; []
+			Factory......  				; []
+
+
+*/
 
 	setCurrentResources()
 	{
@@ -12286,11 +12316,11 @@ class autoBuild
 	}
 	canPerformBuild(loops := 36)
 	{ 	global AutoWorkerAPMProtection
-		While ( isUserBusyBuilding() || isCastingReticleActive() 
+		While isUserBusyBuilding() || isCastingReticleActive() 
 		|| GetKeyState("LButton", "P") || GetKeyState("RButton", "P")
 		|| getkeystate("Enter", "P") 
 		|| getPlayerCurrentAPM() > AutoWorkerAPMProtection
-		||  A_mtTimeIdle < 50)
+		||  A_mtTimeIdle < 50
 		{
 			if (A_index > loops)
 				return False ; (actually could be 480 ms - sleep 1 usually = 20ms)
@@ -12301,28 +12331,7 @@ class autoBuild
 		return True		
 	}
 
-	build(race)
-	{
-
-		if !this.canPerformBuild()
-			return
-		this.setCurrentResources()
-		if this.FreeSupply <= 0
-			return
-
-		this.localUnits := ""
-		 ; if fails to lock thread this won't be an obj, But continue - just won't build units which have requirements
-		 ; maybe i should just return
-		this.localUnits := this.copyLocalUnits()
-		if !isobject(this.localUnits)
-			soundplay *-1
-		this.aAutoBuild := this.getTerranStructureItems()
-		;objtree(this.aAutoBuild)
-		;msgbox
-		if (race = "Terran")
-			this.buildTerran()	
-
-	}
+	; checks if has an appropriate tech structure to build a unit e.g. ghost academy for ghosts
 	hasUnit(type)
 	{
 		if this.localUnits.HasKey(type)
@@ -12339,20 +12348,29 @@ class autoBuild
 		}
 		return false
 	}
-	buildTerran()
+	build(race)
 	{
+		if !this.canPerformBuild()
+			return
+		this.setCurrentResources()
+		if this.FreeSupply <= 0
+			return
+		this.localUnits := ""
+		 ; if fails to lock thread this won't be an obj, But continue - just won't build units which have requirements
+		 ; maybe i should just return
+		this.localUnits := this.copyLocalUnits()
+		if !isobject(this.localUnits)
+			soundplay *-1
+		this.aAutoBuild := this.getTerranStructureItems()
 		;objtree(this.aAutoBuild)
-
 		; This is an ordered array, so iterates the structures in the order that they would occur in the selection panel. e.g. rax -> factory -> starport
 		; This will reduce number of tabs required and also don't have to worry about tabbing past the end (although thats easy to deal with anyway)
 		for buildingName, item in this.aAutoBuild
 		{
-			if item.autoBuild && (this.aAutoBuild[buildingName].buildString := this.buildFromStructureTerranTech(buildingName, item.group, item.units)) != ""
+			if item.autoBuild && (this.aAutoBuild[buildingName].buildString := this.buildFromStructure(buildingName, item.group, item.units, race)) != ""
 				buildStuff := True	
 			else this.aAutoBuild[buildingName].buildString := "" ; There's a slim timing window below where if an autoBild item is enabled, it may have a previous build string...might as well prevent it
 		}
-;objtree(this.aAutoBuild)
-
 		if !buildStuff || !this.canPerformBuild(1) || !numGetSelectionSorted(oSelection) || !oSelection.IsGroupable
 			return
 
@@ -12426,12 +12444,13 @@ class autoBuild
 		return nArray
 	}
 
-	buildFromStructureTerranTech(structure, group, obj)
+	buildFromStructure(structure, group, obj, race)
 	{
-		if this.getStructureCountInGroup(group, aUnitID[structure], aUnitIndexs) && this.terranArmyProduction(aUnitIndexs, structure, nonTechLabs, techLabs)
+		if this.getStructureCountInGroup(group, aUnitID[structure], aUnitIndexs) && this.productionStatus(aUnitIndexs, structure, nonTechLabs, techLabs, race)
 		{	
 			if !this.getEnabledUnits(obj, aTechLabUnits, aNonTechLabUnits)
 				return
+			; For non-terran races aTechLabUnits is empty and techLabs is 0. nonTechLabs will = count of structures with no units (or nearly complete) units in production
 			loop, 2 
 			{
 				aUnits := A_Index = 1 ? aTechLabUnits : aNonTechLabUnits
@@ -12523,20 +12542,21 @@ class autoBuild
 		return count
 	}
 
-	terranArmyProduction(aUnitIndexs, structureName, byRef nonTechLabs, byRef techLabs)
+	productionStatus(aUnitIndexs, structureName, byRef nonTechLabs, byRef techLabs, race)
 	{
 		nonTechLabs := techLabs := 0
 		for i, unitIndex in aUnitIndexs
 		{
-			addon := getAddonStatus(getUnitAbilityPointer(unitIndex), aUnitId[structureName], underConstruction)
+			if (race = "terran")
+				addon := getAddonStatus(getUnitAbilityPointer(unitIndex), aUnitId[structureName], underConstruction)
 			if !underConstruction
 			{
 				filledSlots := this.filledSlotCount(unitIndex, aUnitId[structureName])				
 				if (addon = 1) ; reactor
 					nonTechLabs += 2 - filledSlots
-				else if (addon = -1)
+				else if (addon = -1) ; techlab
 					techLabs += 1 - filledSlots
-				else nonTechLabs += 1 - filledSlots
+				else nonTechLabs += 1 - filledSlots ; Non-terran races and terran structures without addons
 			}
 		}
 		return nonTechLabs + techLabs
@@ -12628,20 +12648,3 @@ oaEnumNext(e, ByRef k, ByRef v="")
 
 
 
-/*
-
-			aBarracks 
-				controlGroup
-				autoBuild 
-				units 
-					marine
-						autoBuild
-						requires
-							minerals
-							vespene
-							supply
-							techlab
-						buildKey
-
-
-*/
