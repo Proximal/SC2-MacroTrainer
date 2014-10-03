@@ -241,7 +241,7 @@ loadMemoryAddresses(base, version := "")
 
 		P_SocialMenu := base + 0x0409B098 ; ???? Havent updated as dont use it
 
-		 B_uCount := base + 0x369F528 ; or 0x2FA0778	; This is the units alive (and includes missiles) 			
+		 B_uCount := base + 0x369F528 ; or 0x2FA0778	; This is the units alive (and includes missiles) - near B_uHighestIndex (-0x18)		
 		 												; There are two of these values and they only differ the instant a unit dies esp with missle fire (ive used the higher value) - perhaps one updates slightly quicker - dont think i use this offset anymore other than as a value in debugData()
 		 												; Theres another one which excludes structures
 
@@ -297,6 +297,8 @@ loadMemoryAddresses(base, version := "")
 
 		; gives the select army unit count (i.e. same as in the select army icon) - unit count not supply
 		; dont confuse with similar value which includes army unit counts in production - or if in map editor unit count/index.
+		; Shares a common base with P_IsUserPerformingAction, SelectionPtr, IdleWorkerPtr, ChatFocusPtr, B_UnitCursor, B_CameraMovingViaMouseAtScreenEdge (never realised it was so many derp)
+
 		B_localArmyUnitCount := base + 0x03140650
 			O1_localArmyUnitCount := 0x354
 			O2_localArmyUnitCount := 0x248
@@ -403,7 +405,7 @@ loadMemoryAddresses(base, version := "")
 
 
 
-		 B_CameraMovingViaMouseAtScreenEdge := base + 0x03114D30  		; Really a 1 byte value value indicates which direction screen will scroll due to mouse at edge of screen
+		 B_CameraMovingViaMouseAtScreenEdge := base + 0x03140650  		; Really a 1 byte value value indicates which direction screen will scroll due to mouse at edge of screen
 			 01_CameraMovingViaMouseAtScreenEdge := 0x2C0				; 1 = Diagonal Left/Top 		4 = Left Edge
 			 02_CameraMovingViaMouseAtScreenEdge := 0x20C				; 2 = Top 						5 = Right Edge			
 			 03_CameraMovingViaMouseAtScreenEdge := 0x5A4				; 3 = Diagonal Right/Top 	  	6 = Diagonal Left/ Bot	
@@ -4876,72 +4878,72 @@ singConverter(sig, mask, storeInClip := True)
 	return storeInClip ? clipboard := substr(r, 1, -2) : substr(r, 1, -2) 
 }
 
-;#include <classMemory>
+#include <classMemory>
 addressPatternScan() ; need to include class memory
 { 	
 	mem := new _ClassMemory(GameIdentifier) 
 	setformat, IntegerFast, H
 	if (address := mem.modulePatternScan("", 0x01, 0x0D, "?", "?", "?", "?", 0xF6, 0xD2)) > 0
-		s .=  "TimerAddress:`t"  mem.Read(address + 2, "UInt")	 "`t|`t" (B_Timer + 0)
-	else s .=  "TimerAddress:`t"
+		s .=  "B_Timer:`t`t"  mem.Read(address + 2, "UInt")	 "`t|`t" (B_Timer + 0)
+	else s .=  "B_Timer:`t`t"
 	
 	if (address := mem.modulePatternScan("", 0x4B, 0x23, 0xC3, 0x5B, 0x74, 0x16, 0x38, 0x48, 0x27, 0x75, 0x11, 0xA1, "?", "?", "?", "?")) > 0
-		s .=  "`nSelectionPtr:`t" mem.Read(address + 12, "UInt") "`t|`t" ( P_SelectionPage + 0)
-	else s .=  "nSelectionPtr:`t"
+		s .=  "`nP_SelectionPage:`t" mem.Read(address + 12, "UInt") "`t|`t" ( P_SelectionPage + 0)
+	else s .=  "nP_SelectionPage:`t"
 	
 	if (address := mem.modulePatternScan("", 0xA0, "?", "?", "?", "?", 0x38, 0x41, 0x44, 0x74, 0x53)) > 0
-		s .=  "`nPlayerByte:`t`t"  mem.Read(address+1, "UInt") "`t|`t" ( B_LocalPlayerSlot + 0)
-	else s .=  "`nPlayerByte:`t"
+		s .=  "`nB_LocalPlayerSlot:`t`t"  mem.Read(address+1, "UInt") "`t|`t" ( B_LocalPlayerSlot + 0)
+	else s .=  "`nB_LocalPlayerSlot:`t"
 	
 	if (address := mem.modulePatternScan("", 0xF, 0xB6, 0xC1, 0x69, 0xC0, "?", "?", 0, 0, 0x5)) > 0 ; Nuke's
 	{
-		s .=  "`nPlayerStruct:`t"  mem.Read(address+10, "UInt")	"`t|`t" ( B_pStructure + 0)	
-		s .=  "`nPlayerSize:`t`t" mem.Read(address+5, "UInt") "`t`t|`t" ( S_pStructure + 0)	
+		s .=  "`nB_pStructure:`t"  mem.Read(address+10, "UInt")	"`t|`t" ( B_pStructure + 0)	
+		s .=  "`nS_pStructure:`t`t" mem.Read(address+5, "UInt") "`t`t|`t" ( S_pStructure + 0)	
 	}
 	else s .=  "`nPlayerStruct:`t"  "`nPlayerSize:`t`t"
 	
 	if (address := mem.modulePatternScan("", 0x21, 0x88, "?", "?", "?", "?", 0x05, "?", "?", "?", "?", 0x3D, "?", "?", "?", "?", 0x72, 0xEE)) > 0
 	{
-		s .=  "`nPlayerStruct:`t" mem.Read(address+2, "UInt") "`t|`t" ( B_pStructure + 0)	
-		s .=  "`nPlayerSize:`t`t" mem.Read(address+7, "UInt") "`t`t|`t" ( S_pStructure + 0)
+		s .=  "`nB_pStructure:`t" mem.Read(address+2, "UInt") "`t|`t" ( B_pStructure + 0)	
+		s .=  "`nS_pStructure:`t`t" mem.Read(address+7, "UInt") "`t`t|`t" ( S_pStructure + 0)
 	}
 	else s .=  "`nPlayerStruct:`t"  "`nPlayerSize:`t`t"
 
 	if (address := mem.modulePatternScan("", 0x84, 0xC0, 0x0F, 0x84, "?", "?", "?", "?", 0xA1, "?", "?", "?", "?", 0x53)) > 0
-		s .=  "`nIdleWorkerPtr:`t" mem.Read(address+9, "UInt") "`t|`t" ( P_IdleWorker + 0)
-	else s .=  "`nIdleWorkerPtr:`t"
+		s .=  "`nP_IdleWorker:`t" mem.Read(address+9, "UInt") "`t|`t" ( P_IdleWorker + 0)
+	else s .=  "`nP_IdleWorker:`t"
 	
 	; Could use same address as above as pIdle is the same as pChat
 	if (address := mem.modulePatternScan("", 0x83, 0x3D, "?", "?", "?", "?", "?", 0x74, 0x0F, 0x80, 0x3D, "?", "?", "?", "?", "?", 0x74, 0x06)) > 0
-		s .=  "`nChatFocusPtr:`t"  mem.Read(address+2, "UInt") "`t|`t"  ( P_ChatFocus + 0)
-	else s .=  "`nChatFocusPtr:`t"
+		s .=  "`nP_ChatFocus:`t"  mem.Read(address+2, "UInt") "`t|`t"  ( P_ChatFocus + 0)
+	else s .=  "`nP_ChatFocus:`t"
 	
 	if (address := mem.modulePatternScan("", 0xA1, "?", "?", "?", "?", 0x8B, 0x90, "?", "?", "?", "?", 0x8B, 0x88, "?", "?", "?", "?", 0x8B, 0x45, 0x08)) > 0
-		s .=  "`nMenuFocusPtr:`t"  mem.Read(address+1, "UInt")	"`t|`t" ( P_MenuFocus + 0)
-	else s .=  "`nMenuFocusPtr:`t"
+		s .=  "`nP_MenuFocus:`t"  mem.Read(address+1, "UInt")	"`t|`t" ( P_MenuFocus + 0)
+	else s .=  "`nP_MenuFocus:`t"
 
 	if (address := mem.modulePatternScan("",  0x55, 0x8B, 0xEC, 0xA1, "?", "?", "?", "?", 0x57, 0x8B, 0xF9, 0x85, 0xC0, 0x74, 0x5B)) > 0
 	{
-		s .=  "`nHighestIndex:`t" mem.Read(address + 4, "UInt") "`t|`t" ( B_uHighestIndex + 0)	
-		s .=  "`nUnitSize:`t`t" mem.Read(address + 0x19, "UInt") "`t`t|`t" ( S_uStructure + 0)
+		s .=  "`nB_uHighestIndex:`t" mem.Read(address + 4, "UInt") "`t|`t" ( B_uHighestIndex + 0)	
+		s .=  "`nS_uStructure:`t`t" mem.Read(address + 0x19, "UInt") "`t`t|`t" ( S_uStructure + 0)
 	}
 	else s .=  "`nHighestIndex:`t"  "`nUnitSize:`t`t"
 
 	if (address := mem.modulePatternScan("",  0x73, 0x33, 0x69, 0xC0, "?", "?", "?", "?", 0x05, "?", "?", "?", "?", 0x33, 0xC9, 0x3B, 0x10, 0x0F, 0x95, 0xC1)) > 0
 	{
-		s .=  "`nUnitSize:`t`t" mem.Read(address + 4, "UInt") "`t`t|`t"  S_uStructure + 0	
-		s .=  "`nUnitStruct:`t" mem.Read(address + 9, "UInt") "`t|`t"  B_uStructure + 0 ; usually B_uHighestIndex+0x40  
+		s .=  "`nS_uStructure:`t`t" mem.Read(address + 4, "UInt") "`t`t|`t"  S_uStructure + 0	
+		s .=  "`nB_uStructure:`t" mem.Read(address + 9, "UInt") "`t|`t"  B_uStructure + 0 ; usually B_uHighestIndex+0x40  
 
 	}
 	else s .=  "`nUnitSize:`t"  "`nUnitStruct:`t`t"
 
 	if (address := mem.modulePatternScan("",  0x66, 0x83, 0x3D, "?", "?", "?", "?", 0x00, 0x74, 0x15, 0x0F, 0xB7, 0x05)) > 0
-		s .=  "`nSelection:`t`t" mem.Read(address + 3, "UInt") "`t`t|`t"  B_SelectionStructure + 0	
-	else s .=  "`nSelection:`t" 
+		s .=  "`nB_SelectionStructure:`t`t" mem.Read(address + 3, "UInt") "`t`t|`t"  B_SelectionStructure + 0	
+	else s .=  "`nB_SelectionStructure:`t" 
 
 	if (address := mem.modulePatternScan("",  0x69, 0xF6, "?", "?", "?", "?", 0x03, 0xF0, 0x0F, 0xB7, 0x06)) > 0
-		s .=  "`nSizeGroups:`t`t" mem.Read(address + 2, "UInt") "`t`t|`t"  S_CtrlGroup + 0	
-	else s .=  "`nSizeGroups:`t"
+		s .=  "`nS_CtrlGroup:`t`t" mem.Read(address + 2, "UInt") "`t`t|`t"  S_CtrlGroup + 0	
+	else s .=  "`nS_CtrlGroup:`t"
 
 	if (address := mem.modulePatternScan("", 0xA2, "?", "?", "?", "?", 0x8B, 0x45, 0xF4, 0x89, 0x0D, "?", "?", "?", "?")) > 0
 		s .=  "`nB_TeamColours:`t`t" mem.Read(address + 10, "UInt") "`t`t|`t"  B_TeamColours + 0	
@@ -4958,14 +4960,37 @@ addressPatternScan() ; need to include class memory
 	if (address := mem.modulePatternScan("", 0x83, 0x3D, "?", "?", "?", "?", 0x00, 0x74, 0x0F, 0x80, 0x3D, "?", "?", "?", "?", 0x00, 0x74, 0x06)) > 0
 	{	
 		s .=  "`nB_UnitCursor:`t`t" mem.Read(address + 2, "UInt") "`t`t|`t"  B_UnitCursor + 0 
-		s .=  "`nIsUserPerformingAction:`t`t" mem.Read(address + 2, "UInt") "`t`t|`t"  P_IsUserPerformingAction + 0  " Same as above" ; 
+		s .=  "`nP_IsUserPerformingAction:`t`t" mem.Read(address + 2, "UInt") "`t`t|`t"  P_IsUserPerformingAction + 0  " Same as above" ; 
 
 	}
-	else s .=  "`nB_UnitCursor:`t" "`nIsUserPerformingAction:`t" 
+	else s .=  "`nB_UnitCursor:`t" "`nP_IsUserPerformingAction:`t" 
 	
 	if (address := mem.modulePatternScan("", 0x53, 0x8B, 0x1D, "?", "?", "?", "?", 0xEB, 0x09, 0x8D, 0x9B, "?", "?", "?", "?", 0x8B, 0x7D, 0xFC)) > 0
 		s .=  "`nP_IsBuildCardDisplayed:`t`t" mem.Read(address + 3, "UInt") "`t`t|`t"  P_IsBuildCardDisplayed + 0 
 	else s .=  "`nP_IsBuildCardDisplayed:`t" 
+
+	if (address := mem.modulePatternScan("", 0xA1, "?", "?", "?", "?", 0x83, 0xE8, 0x00, 0x0F, 0xBF, 0xD6)) > 0
+		s .=  "`nB_CameraDragScroll:`t`t" mem.Read(address + 1, "UInt") "`t`t|`t"  B_CameraDragScroll + 0	
+	else s .=  "`nB_CameraDragScroll:`t" 
+
+	if (address := mem.modulePatternScan("", 0x0F, 0x84, "?", "?", "?", "?", 0xA1, "?", "?", "?", "?", 0x53, 0x56, 0x8B, 0xB0)) > 0
+		s .=  "`nB_CameraMovingViaMouseAtScreenEdge:`t`t" mem.Read(address + 7, "UInt") "`t`t|`t"  B_CameraMovingViaMouseAtScreenEdge + 0	
+	else s .=  "`nB_CameraMovingViaMouseAtScreenEdge:`t" 
+
+
+	if (address := mem.modulePatternScan("", 0x33, 0xC9, 0x89, 0x48, 0x18, 0x8B, 0x15, "?", "?", "?", "?")) > 0
+		s .=  "`nB_InputStructure:`t`t" mem.Read(address + 7, "UInt") "`t`t|`t"  B_InputStructure + 0	
+	else s .=  "`nB_InputStructure:`t" 
+
+
+	if (address := mem.modulePatternScan("", 0xA1, "?", "?", "?", "?", 0x89, 0x01, 0x8B, 0x0D, "?", "?", "?", "?", 0x89, 0x0A)) > 0 ; Second group of ?s isVertical res
+		s .=  "`nB_HorizontalResolution:`t`t" mem.Read(address + 1, "UInt") "`t`t|`t"  B_HorizontalResolution + 0	
+	else s .=  "`nB_HorizontalResolution:`t" 
+
+	if (address := mem.modulePatternScan("", 0xA1, "?", "?", "?", "?", 0x89, 0x45, 0xEC, 0x8B, 0xD8, 0x8B, 0xCF)) > 0
+		s .=  "`nB_localArmyUnitCount:`t`t" mem.Read(address + 1, "UInt") "`t`t|`t"  B_localArmyUnitCount + 0	
+	else s .=  "`nB_localArmyUnitCount:`t" 
+
 
 	return  s
 }
