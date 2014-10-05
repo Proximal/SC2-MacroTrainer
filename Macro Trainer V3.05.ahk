@@ -1,4 +1,4 @@
-;-----------------------
+﻿;-----------------------
 ;	For updates:
 ;	Change version number in exe and config file
 ;	Upload the changelog, file version  and new exe files to the ftp server
@@ -3846,7 +3846,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		;Gui, add, text, xp y+15 w380, Test 
 
 
-	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vAutoWorker_TAB, Auto||Info		
+	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vAutoWorker_TAB, Auto||Info|Army		
 	Gui, Tab, Auto
 		Gui, Add, GroupBox, x+25 Y+10 w370 h85 section, General 
 		Gui, Add, Text, xp+10 yp+20, Toggle State:
@@ -3942,6 +3942,49 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 			gui, font, norm s10
 			gui, font, 		
 
+	Gui, Tab, Army 
+
+		Gui, Add, GroupBox, x+25 Y+10 w370 h85 section, Barracks 
+			Gui, Add, Checkbox, xp+10 yp+25 vAutoBuildMarine Checked%AutoBuildMarine%, Marine
+			Gui, Add, Checkbox, xp+80 yp vAutoBuildMarauder Checked%AutoBuildMarauder%, Marauder
+			Gui, Add, Checkbox, xp+80 yp vAutoBuildReaper Checked%AutoBuildReaper%, Reaper
+			Gui, Add, Checkbox, xp+80 yp vAutoBuildGhost Checked%AutoBuildGhost%, Ghost
+		
+		Gui, Add, GroupBox, xs Ys+100 w370 h85 section, Factory 
+			Gui, Add, Checkbox, xp+10 yp+25 vAutoBuildHellion Checked%AutoBuildHellion%, Hellion
+			Gui, Add, Checkbox, xp+80 yp vAutoBuildWidowMine Checked%AutoBuildWidowMine%, WidowMine
+			Gui, Add, Checkbox, xp+80 yp vAutoBuildSiegeTank Checked%AutoBuildSiegeTank%, SiegeTank
+			Gui, Add, Checkbox, xp+80 yp vAutoBuildHellionTank Checked%AutoBuildHellionTank%, HellBat
+			Gui, Add, Checkbox, xp+80 yp vAutoBuildThor Checked%AutoBuildThor%, Thor
+
+		Gui, Add, GroupBox, xs Ys+100 w370 h85 section, Starport 
+			Gui, Add, Checkbox, xp+10 yp+25 vAutoBuildViking Checked%AutoBuildViking%, Viking
+			Gui, Add, Checkbox, xp+80 yp vAutoBuildMedivac Checked%AutoBuildMedivac%, Medivac
+			Gui, Add, Checkbox, xp+80 yp vAutoBuildRaven Checked%AutoBuildRaven%, Raven
+			Gui, Add, Checkbox, xp+80 yp vAutoBuildBanshee Checked%AutoBuildBanshee%, Banshee
+			Gui, Add, Checkbox, xp+80 yp vAutoBuildBattlecruiser Checked%AutoBuildBattlecruiser%, Battlecruiser
+
+		Gui, Add, GroupBox, xs Ys+100 w370 h85 section, Gateway 
+			Gui, Add, Checkbox, xp+10 yp+25 vAutoBuildZealot Checked%AutoBuildZealot%, Zealot
+			Gui, Add, Checkbox, xp+80 yp vAutoBuildSentry Checked%AutoBuildSentry%, Sentry		
+			Gui, Add, Checkbox, xp+80 yp vAutoBuildStalker Checked%AutoBuildStalker%, Stalker		
+			Gui, Add, Checkbox, xp+80 yp vAutoBuildHighTemplar Checked%AutoBuildHighTemplar%, HighTemplar		
+			Gui, Add, Checkbox, xp+80 yp vAutoBuildDarkTemplar Checked%AutoBuildDarkTemplar%, DarkTemplar		
+
+		Gui, Add, GroupBox, xs Ys+100 w370 h85 section, Stargate 
+			Gui, Add, Checkbox, xp+10 yp+25 vAutoBuildPhoenix Checked%AutoBuildPhoenix%, Phoenix
+			Gui, Add, Checkbox, xp+80 yp vAutoBuildOracle Checked%AutoBuildOracle%, Oracle	
+			Gui, Add, Checkbox, xp+80 yp vAutoBuildVoidRay Checked%AutoBuildVoidRay%, VoidRay	
+			Gui, Add, Checkbox, xp+80 yp vAutoBuildTempest Checked%AutoBuildTempest%, Tempest	
+			Gui, Add, Checkbox, xp+80 yp vAutoBuildCarrier Checked%AutoBuildCarrier%, Carrier	
+	
+		Gui, Add, GroupBox, xs Ys+100 w370 h85 section, RoboticsFacility 
+			Gui, Add, Checkbox, xp+10 yp+25 vAutoBuildObserver Checked%AutoBuildObserver%, Observer
+			Gui, Add, Checkbox, xp+80 yp vAutoBuildWarpPrism Checked%AutoBuildWarpPrism%, WarpPrism	
+			Gui, Add, Checkbox, xp+80 yp vAutoBuildImmortal Checked%AutoBuildImmortal%, Immortal	
+			Gui, Add, Checkbox, xp+80 yp vAutoBuildColossus Checked%AutoBuildColossus%, Colossus	
+
+				
 	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vMiscAutomation_TAB, Select Army||Spread|Remove Units|Easy Select/Unload
 	Gui, Tab, Select Army
 		Gui, add, GroupBox, y+15 w405 h130, Select Army
@@ -8362,6 +8405,8 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 				{
 					if SkipUsedQueen[Queen.unit]
 						continue
+					; Just looking through the code now... dont know why isInControlGroup and Queen energy are checked
+					; They should be always true...., perhaps a copy and paste from old code which used a different method
 					if (isQueenNearHatch(Queen, CurrentHatch, MI_QueenDistance) && isInControlGroup(MI_Queen_Group, Queen.unit) && Queen.Energy >= 25) ; previously queen type here (unit id/tpye) doesnt seem to work! weird
 					{
 						FoundQueen := CurrentHatch.NearbyQueen := SkipUsedQueen[Queen.unit] := 1 																		
@@ -12192,29 +12237,486 @@ return
 #if
 
 
+f1::
+autoBuild.optionsGUI()
+return 
 
+ObjFullyClone(obj)
+{
+	nobj := ObjClone(obj)
+	for k,v in nobj
+		if IsObject(v)
+			nobj[k] := ObjFullyClone(v)
+	return nobj
+}
 
 class autoBuild
 {
-	static aAutoBuild
+	static aAutoBuild, aProfiles
+	, aTerranStructures := ["Barracks", "Factory", "Starport"]
+	, aProtossStructures := ["Gateway", "Stargate", "RoboticsFacility"]
+	, aZergStructures := ["Hatchery", "Lair", "Hive"]
+	, terranAutoBuildControls := "Marine|Reaper|Marauder|Ghost|Hellion|WidowMine|SiegeTank|HellBat|Thor|VikingFighter|Medivac|Raven|Banshee|Battlecruiser"
+	, protossAutoBuildControls := "Zealot|Sentry|Stalker|HighTemplar|DarkTemplar|Phoenix|Oracle|VoidRay|Tempest|Carrier|Observer|WarpPrism|Immortal|Colossus"
+	, zergAutoBuildControls := "Queen"	
 
-	set(arrayOfUnitIDs)
+	optionsGUI() 
 	{
-		this.aAutoBuild := []
-		if aLocalPlayer.Race = "Terran"
+		static
+		global autoBuildGUIMarine, autoBuildGUIMarauder, autoBuildGUIReaper, autoBuildGUIGhost, autoBuildGUIHellion, autoBuildGUIWidowMine, autoBuildGUISiegeTank, autoBuildGUIHellBat, autoBuildGUIThor
+		, autoBuildGUIVikingFighter, autoBuildGUIMedivac, autoBuildGUIRaven, autoBuildGUIBanshee, autoBuildGUIBattlecruiser, autoBuildGUIZealot, autoBuildGUISentry, autoBuildGUIStalker, autoBuildGUIHighTemplar
+		, autoBuildGUIDarkTemplar, autoBuildGUIPhoenix, autoBuildGUIOracle, autoBuildGUIVoidRay, autoBuildGUITempest, autoBuildGUICarrier, autoBuildGUIObserver, autoBuildGUIWarpPrism, autoBuildGUIImmortal, autoBuildGUIColossus
+		, autoBuildGUIQueen
+		; The suffix / unit names of these controls must match exactly the unit names which are used to build these units
+		, AutoBuildGUIProfileName, AutoBuildGUIEditNameButton, AutoBuildGUIEnableHotkey, AutoBuildGUIHotkey, #AutoBuildGUIHotkey, AutoBuildGUIEditHotkeyButton
+		, AutoBuildGUIDeleteButton
+
+		displayedProfile := displayedRace := ""
+		/*
+		this.aAutoBuildProfiles := []
+		this.oAutoBuildProfiles := []
+		this.oAutoBuildProfiles.TestProfile := []
+		this.oAutoBuildProfiles.TestProfile.race := "Terran"
+		this.oAutoBuildProfiles.TestProfile.units := "Marine|Marauder|Reaper|Ghost|VikingFighter"
+
+		this.oAutoBuildProfiles.TestProfile2 := []
+		this.oAutoBuildProfiles.TestProfile2.race := "Terran"
+		this.oAutoBuildProfiles.TestProfile2.units := "WidowMine|SiegeTank|Thor|Ghost|VikingFighter"
+	*/
+		Gui AutoBuild:+LastFoundExist
+		IfWinExist 
 		{
-			;this.aAutoBuild["Barracks"] := this.getBarracksAuto()
-			for i, unitName in ["marine", "reaper", "marauder", "ghost"]
+			WinActivate
+			Return 									
+		}
+		autoBuild.readProfiles()
+		Gui, AutoBuild:New
+		Gui -MaximizeBox
+		Gui, Add, GroupBox,  w220 h280 section, Auto Build
+		Gui, Add, TreeView, xp+20 yp+20 gAutoBuildTree h240 w180
+		Gui, Add, Button, xs y+45 w80 h40 gAutoBuildGUISaveChanges, Save Changes
+		Gui, Add, Button, x+20 w80 h40, Cancel
+		
+
+		Gui, Add, GroupBox, ys section w245 h90, Profile 
+		Gui, Add, Text, xs+10 yp+25, Name:
+		Gui, Add, Edit, x+15 w110 R1 vAutoBuildGUIProfileName 
+		Gui, Add, Button, yp-2 x+10 gAutoBuildGUIEditName vAutoBuildGUIEditNameButton hidden, Change 
+		Gui, Add, Button, xs+10 yp+37 gAutoBuildNew, New
+		Gui, Add, Button, x+15 gAutoBuildTree gAutoBuildGUIDelete vAutoBuildGUIDeleteButton, Delete	
+
+		Gui, Add, GroupBox, xs ys+105 w245 h65, Hotkey 
+		Gui, Add, Checkbox, xp+15 yp+25 vAutoBuildGUIEnableHotkey gAutoBuildGUIEditEnableHotkey, Enabled
+		Gui, Add, Edit, Readonly yp-2 x+15 center w85 R1 vAutoBuildGUIHotkey 
+		Gui, Add, Button, yp-2 x+10 gAutoBuildGUIEditHotkey vAutoBuildGUIEditHotkeyButton , Edit 	
+
+
+		Gui, Add, GroupBox, xs yp+60 w280 h150 section, Units
+		Gui, Add, Checkbox, xs+10 ys+25 vAutoBuildGUIMarine Hidden Disabled gAutoBuildGUIToggleUnit, Marine
+		Gui, Add, Checkbox, vAutoBuildGUIMarauder Hidden gAutoBuildGUIToggleUnit, Marauder
+		Gui, Add, Checkbox, vAutoBuildGUIReaper Hidden gAutoBuildGUIToggleUnit, Reaper
+		Gui, Add, Checkbox, vAutoBuildGUIGhost Hidden gAutoBuildGUIToggleUnit, Ghost
+
+		Gui, Add, Checkbox, xp+90 ys+25 vAutoBuildGUIHellion Hidden gAutoBuildGUIToggleUnit, Hellion
+		Gui, Add, Checkbox, vAutoBuildGUIWidowMine Hidden gAutoBuildGUIToggleUnit, WidowMine
+		Gui, Add, Checkbox, vAutoBuildGUISiegeTank Hidden gAutoBuildGUIToggleUnit, SiegeTank
+		Gui, Add, Checkbox, vAutoBuildGUIHellBat Hidden gAutoBuildGUIToggleUnit, HellBat
+		Gui, Add, Checkbox, vAutoBuildGUIThor Hidden gAutoBuildGUIToggleUnit, Thor
+
+		Gui, Add, Checkbox, xp+90 ys+25 vautoBuildGUIVikingFighter Hidden gAutoBuildGUIToggleUnit, Viking
+		Gui, Add, Checkbox, vAutoBuildGUIMedivac Hidden gAutoBuildGUIToggleUnit, Medivac
+		Gui, Add, Checkbox, vAutoBuildGUIRaven Hidden gAutoBuildGUIToggleUnit, Raven
+		Gui, Add, Checkbox, vAutoBuildGUIBanshee Hidden, Banshee
+		Gui, Add, Checkbox, vAutoBuildGUIBattlecruiser Hidden gAutoBuildGUIToggleUnit, Battlecruiser
+
+		Gui, Add, Checkbox, xs+10 ys+25 vAutoBuildGUIZealot Hidden gAutoBuildGUIToggleUnit, Zealot
+		Gui, Add, Checkbox, vAutoBuildGUISentry Hidden gAutoBuildGUIToggleUnit, Sentry		
+		Gui, Add, Checkbox, vAutoBuildGUIStalker Hidden gAutoBuildGUIToggleUnit, Stalker		
+		Gui, Add, Checkbox, vAutoBuildGUIHighTemplar Hidden gAutoBuildGUIToggleUnit, HighTemplar		
+		Gui, Add, Checkbox, vAutoBuildGUIDarkTemplar Hidden gAutoBuildGUIToggleUnit, DarkTemplar	
+
+		Gui, Add, Checkbox, xp+90 ys+25 vAutoBuildGUIPhoenix Hidden gAutoBuildGUIToggleUnit, Phoenix
+		Gui, Add, Checkbox, vAutoBuildGUIOracle Hidden gAutoBuildGUIToggleUnit, Oracle	
+		Gui, Add, Checkbox, vAutoBuildGUIVoidRay Hidden gAutoBuildGUIToggleUnit, VoidRay	
+		Gui, Add, Checkbox, vAutoBuildGUITempest Hidden gAutoBuildGUIToggleUnit, Tempest	
+		Gui, Add, Checkbox, vAutoBuildGUICarrier Hidden gAutoBuildGUIToggleUnit, Carrier	
+			
+		Gui, Add, Checkbox, xp+90 ys+25 vAutoBuildGUIObserver Hidden gAutoBuildGUIToggleUnit, Observer
+		Gui, Add, Checkbox, vAutoBuildGUIWarpPrism Hidden gAutoBuildGUIToggleUnit, WarpPrism	
+		Gui, Add, Checkbox, vAutoBuildGUIImmortal Hidden gAutoBuildGUIToggleUnit, Immortal	
+		Gui, Add, Checkbox, vAutoBuildGUIColossus Hidden gAutoBuildGUIToggleUnit, Colossus	
+
+		Gui, Add, Checkbox, xs+10 ys+25 vAutoBuildGUIQueen Hidden gAutoBuildGUIToggleUnit, Queen
+		TV_Add("Terran",, "Bold")
+		TV_Add("Protoss",, "Bold")
+		TV_Add("Zerg",, "Bold")
+		this.insertProfilesIntoGUI(this.oAutoBuildProfiles)
+		Gui, Show, w650 h455, Auto Build
+		return 
+
+		AutoBuildTree:
+		;soundplay *-1
+		selectedID := TV_GetSelection()
+		TV_GetText(selectedText, selectedID)
+		if !TV_GetParent(selectedID) ; must be the top parent. Since only one level no looping is required
+		{ 	
+			
+			; The Terran, protoss, zerg parents have been clicked
+			displayedProfile := "" ; no active profile is now being displayed
+			displayedRace := selectedText
+			autoBuild.autoBuildGUIShow(displayedRace, True)
+
+		}
+		else ; child / profile selected
+		{
+			if (displayedProfile != selectedText)
 			{
-				if isInList(unitName, this.aAutoBuild["Barracks"]*)
-					this.aAutoBuild.Barracks[unitName].autoBuild := True, this.aAutoBuild.Barracks.autoBuild := True
+				displayedProfile := selectedText
+				autoBuild.autoBuildDisplayProfile(displayedProfile)
 			}
+		}
+		return
+		AutoBuildGUISaveChanges:
+		autoBuild.writeOutProfiles()
+		return 
+
+		AutoBuildGUIToggleUnit:
+		autoBuild.autoBuildUpdateDisplayedProfile()
+		return
+
+		AutoBuildNew:
+		GuiControlGet, profileName,, AutoBuildGUIProfileName	
+		if result := autoBuild.isInvalidProfileName(profileName := trim(profileName, A_space A_Tab))
+		{
+			if result = 1
+				msgbox Invalid profile name.`nNames must not be purely numeric or blank.
+			else if result = 2 
+				msgbox That profile name is already in use.
+			else msgbox error 
+		}
+		else 
+		{
+			;if autoBuild.autoBuildGUIHighlightedProfile() = "" ; Parent race is selected
+			autoBuild.GUIcreateProfile(profileName)
+		}
+		return
+		AutoBuildGUIDelete:
+		autoBuild.GUIDeleteProfile()
+		return
+
+		AutoBuildGUIEditHotkey:
+		GuiControlGet, hotkey,, AutoBuildGUIHotkey
+		hotkey := HotkeyGUI("AutoBuild", hotkey,, "Select Hotkey:")
+		if (hotkey != "")
+			GUIControl,, AutoBuildGUIHotkey, %hotkey%
+		autoBuild.autoBuildUpdateDisplayedProfile()	
+		return
+
+		AutoBuildGUIEditEnableHotkey:
+		GuiControlGet, isChecked,, AutoBuildGUIEnableHotkey
+		if isChecked
+		{
+			GuiControlGet, hotkey,, AutoBuildGUIHotkey
+			if (hotkey = "")
+			{
+				hotkey := HotkeyGUI("AutoBuild", hotkey,, "Select Hotkey:")
+				if (hotkey = "") ; user cancelled it. So uncheck enabled
+					GuiControl,, AutoBuildGUIEnableHotkey, 0
+				GUIControl,, AutoBuildGUIHotkey, %hotkey%
+			}
+		}
+		autoBuild.autoBuildUpdateDisplayedProfile()	
+		return 
+		AutoBuildGUIEditName: ; Change the name of a selected profile
+		GuiControlGet, newName,, AutoBuildGUIProfileName	
+		if result := autoBuild.isInvalidProfileName(newName := trim(newName, A_space A_Tab))
+		{
+			if result = 1
+				msgbox Invalid profile name.`nNames must not be purely numeric or blank.
+			else if result = 2 
+				msgbox The profile name is already in use.
+			else msgbox error 
+		}
+		else autoBuild.GUIChangeProfileName(newName)
+		return	
+
+		AutoBuildGuiClose:
+		AutoBuildGuiEscape:
+		Gui Destroy
+		return
+	}
+	GUIcreateProfile(profileName)
+	{
+		if !isobject(this.oAutoBuildProfiles)
+			this.oAutoBuildProfiles := []
+		
+		race := this.autoBuildGUIHighlightedRace(ID)
+		if currentProfile := this.autoBuildGUIHighlightedProfile()
+			this.oAutoBuildProfiles[profileName] := ObjFullyClone(this.oAutoBuildProfiles[currentProfile])
+		else this.oAutoBuildProfiles[profileName] := []
+		this.oAutoBuildProfiles[profileName].race := race
+		TV_Add(profileName, ID, "select")
+		return
+	}
+	GUIDeleteProfile()
+	{
+		if currentProfile := this.autoBuildGUIHighlightedProfile(treeViewID)
+		{
+			this.oAutoBuildProfiles.remove(currentProfile)
+			TV_Delete(treeViewID)
+		}
+		return
+	}
+	GUIChangeProfileName(newName)
+	{
+		if currentProfile := this.autoBuildGUIHighlightedProfile(treeViewID) ; If a profile is selected
+		{
+			this.oAutoBuildProfiles[newName] := this.oAutoBuildProfiles[currentProfile] 
+			this.oAutoBuildProfiles.Remove(currentProfile)
+			TV_Modify(treeViewID,, newName)
+		}
+		return
+	}
+	autoBuildUpdateDisplayedProfile()
+	{
+		race := this.autoBuildGUIHighlightedRace()
+		if race = terran 
+			unitControls := this.terranAutoBuildControls
+		else if race = protoss
+			unitControls := this.protossAutoBuildControls
+		else unitControls := this.zergAutoBuildControls	
+		profileName := this.autoBuildGUIHighlightedProfile()
+		this.oAutoBuildProfiles[profileName].units := ""
+		for i, controlVarName in strsplit(unitControls, "|")
+		{
+			StringReplace, realUnitName, controlVarName, AutoBuildGUI ; remove "AutoBuildGUI" from AutoBuildGUIMarine
+			GuiControlGet, enabled,, AutoBuildGUI%controlVarName%
+			if enabled
+				this.oAutoBuildProfiles[profileName].units .= realUnitName "|"
+		}
+		this.oAutoBuildProfiles[profileName].units := SubStr(this.oAutoBuildProfiles[profileName].units, 1, -1)		
+		GuiControlGet, enabled,, AutoBuildGUIEnableHotkey
+		this.oAutoBuildProfiles[profileName].HotkeyEnabled := enabled
+		GuiControlGet, hotkey,, AutoBuildGUIHotkey
+		this.oAutoBuildProfiles[profileName].Hotkey := hotkey
+		return 
+	}
+	isInvalidProfileName(name)
+	{
+		if (name = "")
+			return 1
+		if name is number ; Easier way to prevent issues with nubmer only names ie objRemove() issues
+			return 1
+		for profileName in this.oAutoBuildProfiles
+		{
+			if (name = profileName)
+				return 2
+		}
+		return False
+	}
+	autoBuildGUIHighlightedRace(byRef parentID := "")
+	{
+		selectedID := TV_GetSelection()
+		if !parentID := TV_GetParent(selectedID) 
+			parentID := selectedID
+		TV_GetText(raceText, parentID)
+		return raceText
+	}
+	autoBuildGUIHighlightedProfile(byRef treeViewID := "")
+	{
+		treeViewID := TV_GetSelection()
+		if !TV_GetParent(treeViewID)
+			return ; A race is selected not a profile
+		TV_GetText(profileName, treeViewID)
+		return profileName
+	}	
+	autoBuildGUIShow(race, disable := False)
+	{
+		if race = terran
+			showControls := this.terranAutoBuildControls, hideControls := this.protossAutoBuildControls "|" this.zergAutoBuildControls
+		else if race = protoss
+		 	showControls := this.protossAutoBuildControls, hideControls := this.terranAutoBuildControls "|" this.zergAutoBuildControls
+		else showControls := this.zergAutoBuildControls, hideControls := this.terranAutoBuildControls "|" this.protossAutoBuildControls
+		GuiControl,, AutoBuildGUIProfileName,
+		GuiControl,, AutoBuildGUIHotkey,
+		GuiControl, disable%disable%, AutoBuildGUIHotkey,
+		GuiControl,, AutoBuildGUIEnableHotkey, 0
+		GuiControl, disable%disable%, AutoBuildGUIEnableHotkey, 0
+		
+		GuiControl, disable%disable%, AutoBuildGUIEditHotkeyButton, 0
+		GuiControl, disable%disable%, AutoBuildGUIDeleteButton, 0
+		GuiControl, % "show" (!disable), AutoBuildGUIEditNameButton ; Should only be visible when a profile is selected
+
+
+		loop, parse, showControls, |
+		{
+			GuiControlGet, isVisible, AutoBuild:Visible, AutoBuildGUI%A_LoopField%
+			GuiControl,, AutoBuildGUI%A_LoopField%, 0
+			GuiControl, disable%disable%, AutoBuildGUI%A_LoopField%
+			if isVisible = 0 ; use = 0 so if it fails for some reason (shouldnt occur) it wont show it as isVisible will be null
+				GuiControl, AutoBuild:show, AutoBuildGUI%A_LoopField%
+		}	
+		loop, parse, hideControls, |
+		{
+			GuiControlGet, isVisible, AutoBuild:Visible, AutoBuildGUI%A_LoopField%
+			if isVisible = 1
+				GuiControl, AutoBuild:Hide, AutoBuildGUI%A_LoopField%
+		}			
+	}
+	autoBuildDisplayProfile(profileName)
+	{
+		this.autoBuildGUIShow(this.oAutoBuildProfiles[profileName].race)
+		for i, controlSuffix in strsplit(this.oAutoBuildProfiles[profileName].units, "|")
+			GuiControl,, AutoBuildGUI%controlSuffix%, 1
+		GuiControl,, AutoBuildGUIProfileName, %profileName%
+		GuiControl,, AutoBuildGUIEnableHotkey, % round(this.oAutoBuildProfiles[profileName].HotkeyEnabled)
+		GuiControl,, AutoBuildGUIHotkey, % this.oAutoBuildProfiles[profileName].Hotkey
+		return 
+	}
+	autoBuildDisplayUncheckAll()
+	{
+		for i, controlSuffix in strsplit(this.terranAutoBuildControls "|" this.protossAutoBuildControls "|" this.zergAutoBuildControls, "|")
+				GuiControl,, AutoBuildGUI%controlSuffix%, 0
+		return
+	}
+
+	insertProfilesIntoGUI(oProfiles)
+	{
+		raceID := [], raceID.terran := TV_GetNext(), raceID.protoss := TV_GetNext(raceID.terran), raceID.zerg := TV_GetNext(raceID.protoss)
+		for profileName, oProfile in oProfiles
+			TV_Add(profileName, raceID[oProfile.race])
+		return
+	}
+	writeOutProfiles()
+	{
+		IniWrite, % serDes(this.oAutoBuildProfiles), %config_file%, AutoBuild, hotkeyProfiles
+	}
+	readProfiles()
+	{
+		IniRead, serdes,  %config_file%, AutoBuild, hotkeyProfiles, 1
+		if !isobject(this.oAutoBuildProfiles := serDes(serdes))
+			this.oAutoBuildProfiles := []
+	}
+
+	readConfigCurrent() ; current state of the units
+	{
+		this.aAutoBuild := this.getProductionObject()
+		for i, structureName in this.aTerranStructures
+		{
+			hasEnabledUnits := False
+			for i, unitName in this.aAutoBuild.terran[structureName].units 
+			{
+				IniRead, state,  %config_file%, autoBuildCurrent, unitName, 0 ; enabled/disabled
+				if unitName.autoBuild := state
+					hasEnabledUnits := True
+			}
+			if hasEnabledUnits
+				this.aAutoBuild.terran[structureName].autoBuild := True
+		}
+		for i, structureName in this.aProtossStructures
+		{
+			hasEnabledUnits := False
+			for i, unitName in this.aAutoBuild.protoss[structureName].units 
+			{
+				IniRead, state,  %config_file%, autoBuildCurrent, unitName, 0 ; enabled/disabled
+				if unitName.autoBuild := state
+					hasEnabledUnits := True
+			}
+			if hasEnabledUnits
+				this.aAutoBuild.protoss[structureName].autoBuild := True
+		}
+		for i, structureName in this.aZergStructures
+		{
+			hasEnabledUnits := False
+			for i, unitName in this.aAutoBuild.zerg[structureName].units 
+			{
+				IniRead, state,  %config_file%, autoBuildCurrent, unitName, 0 ; enabled/disabled
+				if unitName.autoBuild := state
+					hasEnabledUnits := True
+			}
+			if hasEnabledUnits
+				this.aAutoBuild.zerg[structureName].autoBuild := True
 		}
 	}
 
-	getTerranStructureItems()
+	readConfigHotkeys()
 	{
-		unitTableProtossTerran := "
+		this.aProfiles := []
+		arrayPosition := 0
+		section := "AutoBuildProfiles" 
+		loop 
+		{
+			arrayPosition++
+			itemNumber := A_Index
+			IniRead, unitNames, %config_file%, %section%, %itemNumber%_unitNames, error ;unitNames of enabled units
+			if (enabled = "error")
+				break 
+			IniRead, hotkey, %config_file%, %section%, %itemNumber%_hotkey, %A_Space%	
+			this.aProfiles.insert({ "units": unitNames, "hotkey": hotkey})
+		}
+	} 
+
+	invokeProfile(hotkey)
+	{
+		for i, obj in this.aProfiles
+		{
+			if obj.hotkey "" = hotkey 
+				this.invokeUnits(obj.units)
+		}
+		return
+	}
+	; unit names is a pipe delimited list
+	; Disables all units and enables the passed units
+	invokeUnits(unitNames := "") 
+	{
+		this.disableAllUnits()
+		for i, unitName in StrSplit(trim(unitNames, "|" A_Space A_Tab), "|")
+		{
+			if unitName = queen 
+			{
+				this.aAutoBuild.hatchery.autoBuild := this.aAutoBuild.hatchery.units[unitName] := True
+				this.aAutoBuild.lair.autoBuild := this.aAutoBuild.lair.units[unitName] := True
+				this.aAutoBuild.hive.autoBuild := this.aAutoBuild.hive.units[unitName] := True
+			}
+			else if structure := this.getStructureFromUnitName(unitName)
+				this.aAutoBuild[structure].autoBuild := this.aAutoBuild[structure].units[unitName] := True		 
+		}
+		return
+	}
+	disableAllUnits()
+	{
+		structures := "Barracks|Factory|Starport|Gateway|Stargate|RoboticsFacility|Hatchery|Lair|Hive"
+		loop, parse, structures, |
+		{
+			structure := A_LoopField
+			this.aAutoBuild[structure].autoBuild := False 
+			for unitName, unit in this.aAutoBuild[structure].units
+				unit.autoBuild := False
+		}
+		return
+	}
+
+	; don't pass queen to this function
+	getStructureFromUnitName(unitName)
+	{
+		if unitName in marine,reaper,marauder,ghost
+			return "barracks"
+		if unitName in hellion,widowMine,siegeTank,hellBat,thor
+			return "factory"
+		if unitName in VikingFighter,Medivac,Raven,Banshee,Battlecruiser
+			return "starport"
+		if unitName in Zealot,Sentry,Stalker,HighTemplar,DarkTemplar
+			return "Gateway"	
+		if unitName in Phoenix,Oracle,VoidRay,Tempest,Carrier
+			return "Stargate"		
+		if unitName in Observer,WarpPrism,Immortal,Colossus
+			return "RoboticsFacility"	
+		return
+	}
+
+	getProductionObject()
+	{
+		unitTableTerran := "
 		( ltrim c ;			techlab 	minerals 	vespene 	supply 		Req. structure		hotkeyReference 				StructureName/lookup
 			marine 			|0 			|50 		|0 			|1 			|					|Marine/Barracks 				|Barracks
 			reaper 			|0 			|50 		|50 		|1 			|					|Reaper/Barracks 				|Barracks
@@ -12256,32 +12758,43 @@ class autoBuild
 			Queen 			|0 			|150 		|0 			|2 			|SpawningPool		|Queen 		 					|Lair
 			Queen 			|0 			|150 		|0 			|2 			|SpawningPool		|Queen 		 					|Hive
 		)"
-		units := unitTableZerg
 		; Use am ordered array, so that build structures are looped in the listed order - not by alphabetical order
 		; Ensure the order of the structures in the table above corresponds to the order in the selection panel (when they are in the same group)
 		; i.e. rax, factory, starport 
 		; Do not erase this obj or recreate it as a normal one!
-		obj := OrderedArray() ; This is important
-		loop, parse, units, `n, %A_Tab%
+		raceObj := []
+		for i, race in ["terran", "protoss", "zerg"]
 		{
-			a := StrSplit(A_LoopField, "|", A_Tab A_Space)
-			if !isobject(obj[a.8]) 
+			if race = terran
+				units := unitTableTerran
+			else if race = protoss
+				units := unitTableProtoss
+			else units := unitTableZerg
+			obj := OrderedArray() ; This is important
+			loop, parse, units, `n, %A_Tab%
 			{
-				obj[a.8] := [], obj[a.8, "units"] := []
-				obj[a.8, "group"] := 5
-				obj[a.8, "autoBuild"] := True
+				a := StrSplit(A_LoopField, "|", A_Tab A_Space)
+				if !isobject(obj[a.8]) 
+				{
+					obj[a.8] := [], obj[a.8, "units"] := []
+					obj[a.8, "group"] := 5
+					obj[a.8, "autoBuild"] := True
+				}
+				obj[a.8, "Units", a.1] := []
+				;  [barracks, unitType]
+				obj[a.8, "Units", a.1, "buildKey"] := SC2Keys.key(a.7) ; Need to update this once SC loads
+				obj[a.8, "Units", a.1, "autoBuild"] := True
+				obj[a.8, "Units", a.1, "structureLookup"] := a.8
+				obj[a.8, "Units", a.1, "raceLookup"] := race
+				obj[a.8, "Units", a.1].insert("requires", {"techlab": a.2, "minerals": a.3, "vespene": a.4, "supply": a.5, "structure": aUnitID[a.6]})
 			}
-			obj[a.8, "Units", a.1] := []
-			;  [barracks, unitType]
-			obj[a.8, "Units", a.1, "buildKey"] := SC2Keys.key(a.7)
-			obj[a.8, "Units", a.1, "autoBuild"] := True
-			obj[a.8, "Units", a.1].insert("requires", {"techlab": a.2, "minerals": a.3, "vespene": a.4, "supply": a.5, "structure": aUnitID[a.6]})
+			raceObj[race] := obj
 		}
-		return obj
+		return raceObj
 	}
 /*
 	Object layout
-
+		Terran
 			Barracks  					; Structure name. These structures are in FIFO/ordered array. They do NOT iterate alphabetically
 				group 					; control group
 				autoBuild  				; Has units units which are to be built
@@ -12297,7 +12810,8 @@ class autoBuild
 						buildKey
 					reaper.... 			; []
 			Factory......  				; []
-
+		Protoss
+			......
 
 */
 
