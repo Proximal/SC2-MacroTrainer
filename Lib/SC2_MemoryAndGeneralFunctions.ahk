@@ -3894,7 +3894,18 @@ readConfigFile()
 	IniRead, AutoWorkerMaxWorkerProtoss, %config_file%, %section%, AutoWorkerMaxWorkerProtoss, 80
 	IniRead, AutoWorkerMaxWorkerPerBaseProtoss, %config_file%, %section%, AutoWorkerMaxWorkerPerBaseProtoss, 30
 
-	
+
+	section := "AutoBuild"
+	IniRead, AutoBuildBarracksGroup, %config_file%, %section%, AutoBuildBarracksGroup, 5
+	IniRead, AutoBuildFactoryGroup, %config_file%, %section%, AutoBuildFactoryGroup, 5
+	IniRead, AutoBuildStarportGroup, %config_file%, %section%, AutoBuildStarportGroup, 5
+	IniRead, AutoBuildGatewayGroup, %config_file%, %section%, AutoBuildGatewayGroup, 6
+	IniRead, AutoBuildStargateGroup, %config_file%, %section%, AutoBuildStargateGroup, 6
+	IniRead, AutoBuilRoboticsFacilityGroup, %config_file%, %section%, AutoBuilRoboticsFacilityGroup, 6
+	IniRead, AutoBuildHatcheryGroup, %config_file%, %section%, AutoBuildHatcheryGroup, 4
+	IniRead, AutoBuildLairGroup, %config_file%, %section%, AutoBuildLairGroup, 4
+	IniRead, AutoBuildHiveGroup, %config_file%, %section%, AutoBuildHiveGroup, 4
+
 	;[Misc Automation]
 	section := "Misc Automation"
 	IniRead, SelectArmyEnable, %config_file%, %section%, SelectArmyEnable, 0	;enable disable
