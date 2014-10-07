@@ -12016,21 +12016,20 @@ unloadAllTransports(hotkeySuffix)
 
 
 
-
+f1::
+if IsObject(vDraw)
+{
+	vDraw.destroy(), vDraw := ""
+	return
+}
 CreatepBitmaps(a_pBitmap, aUnitID, MatrixColour)
 global a_pBitmap
-vDraw := new testDraw("test", 150, 150, 400, 400)
+vDraw := new testDraw("test", 1400, 150, 400, 400)
 vDraw.fillTerran()
 vDraw.refresh()
 return 
 
 
-
-
-vDraw.destroy()
-vDraw := ""
-msgbox % isobject(vdraw)
-return 
 
 /*
 hover on each icon 
@@ -12065,7 +12064,7 @@ class testDraw
 {
 	__new(overlay, x, y, w, h)
 	{
-		Gui, %overlay%: -Caption Hwndhwnd -E0x20 +E0x80000 +LastFound  +ToolWindow +AlwaysOnTop
+		Gui, %overlay%: -Caption Hwndhwnd -E0x20 +E0x80000 +LastFound +ToolWindow +AlwaysOnTop
 		Gui, %overlay%: Show, NA X%x% Y%y% W%w% H%h%, % overlay
 		this.base.hwndLookup[hwnd] := this
 		OnMessage(0x201, "autoProductionGUIEventHandler")
@@ -12077,12 +12076,14 @@ class testDraw
 		this.lineStats["y"] := 0, this.lineStats["x"] := 0
 		this.line := 0
 		this.pBitmapTick := Gdip_CreateBitmapFromFile("tick.png")
+		this.pPauseGreen := Gdip_CreateBitmapFromFile("pauseGreen.png")
 		return this
 	}
 	fillTerran()
 	{
-		this.addItems(["SCV", enabled, func])
 		this.addItems("SCV")
+		this.pushItemRight(3)
+		this.addItems("pauseButton")
 		this.pushDownLine()
 		this.addItems("marine", "marauder", "reaper", "ghost")
 		this.pushDownLine()
@@ -12094,23 +12095,28 @@ class testDraw
 	{
 		try Gui, % this.Overlay ": Destroy"
 		this.base.hwndLookup.remove(this.hwnd, "") ; hwndLookup creates a circular reference - so can't have it in __delete() as it would prevent __delete() being called
+		Gdip_DisposeImage(this.pBitmapTick)
+		Gdip_DisposeImage(this.pPauseGreen)
 		return
 	}
-	pushDownLine(offset := 0)
+	pushDownLine(count := 1, offset := 0)
 	{
-		this.lineStats.y += this.items[this.items.maxIndex(), "Height"] + offset
+		this.lineStats.y += count * (this.items[this.items.minIndex(), "Height"] + offset) ; Use minIndex so dont have to worry about pause icon sise
 		this.lineStats.x := 0
 	}
-	pushItemRight(offset := 0)
+	pushItemRight(count := 1, offset := 0)
 	{
-		this.lineStats.x += this.items[this.items.maxIndex(), "Width"] + offset
+		this.lineStats.x += count * (this.items[this.items.minIndex(), "Width"] + offset)
 	}
 
 	addItems(names*)
 	{
 		for i, name in names 
 		{
-			pBitmap := a_pBitmap[aUnitId[name]]
+			if (name = "pauseButton")
+				pBitmap := this.pPauseGreen
+			else 
+				pBitmap := a_pBitmap[aUnitId[name]]
 			width := Gdip_GetImageWidth(pBitmap)
 			height := Gdip_GetImageHeight(pBitmap)
 			y := this.lineStats.y
@@ -12119,14 +12125,13 @@ class testDraw
 			SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
 			item := {	name: name
 					, 	pBitmap: pBitmap
-					, 	width: width *= .75
-					, 	height: Height *= .75
+					, 	width: width *= 0.75
+					, 	height: Height *= 0.75
 					, 	SourceWidth: SourceWidth
 					, 	SourceHeight: SourceHeight
-					,	enabled: 0
+					,	enabled: autoBuild.isUnitActive(name)
 					, 	x: x 
 					, 	y: y}
-
 			this.lineStats.x += width + 0
 			this.Items.Insert(item)
 		}
@@ -12160,10 +12165,23 @@ class testDraw
 		Gdip_DrawImage(G, this.pBitmapTick
 			, x += w - width := .25 * (sourceWidth := Gdip_GetImageWidth(this.pBitmapTick))
 			, y += h - height := .25 * (sourceHeight := Gdip_GetImageHeight(this.pBitmapTick)) 	
-			, width, height, 0, 0, sourceWidth, sourceHeight)
+			, width, height, 0, 0, sourceWidth, sourceHeight, autoBuild.isPaused ? grayScaleMatrix : "")
+	}
+	drawPause(G, item)
+	{
+		
+		x := item.x, y := item.y, w := item.width, h := item.height
+		objtree(item)
+		msgbox
+		Gdip_DrawImage(G, this.pBitmap
+			, x += w - width := .25 * (sourceWidth := Gdip_GetImageWidth(this.pBitmap))
+			, y += h - height := .25 * (sourceHeight := Gdip_GetImageHeight(this.pBitmap)) 	
+			, width, height, 0, 0, sourceWidth, sourceHeight) ; autoBuild.isPaused ? redmatrix : "")		
 	}
 	drawItems(g, highlightedIndex := "")
 	{
+		redmatrix := "15|0|0|0|0|0|0|0|0|0|0|0|1|0|0|0|0|0|1|0|0|0|0|0|1"
+
 		pBrush := Gdip_BrushCreateSolid(0x78000000)
 		pBrushHighlight := Gdip_BrushCreateSolid(0x480066FF)
 		this.findBorderEdges(x2, y2)
@@ -12172,9 +12190,14 @@ class testDraw
 		{
 			if (highlightedIndex = i)
 				Gdip_FillRoundedRectangle(G, pBrushHighlight, item.x, item.y, item.width, item.height, 2)
-			Gdip_DrawImage(G, item.pBitmap, item.x, item.y, item.Width, item.Height, 0, 0, item.SourceWidth, item.SourceHeight)
-			if item.enabled 
-				this.drawTick(G, item)			
+			if item.name = "pauseButton"
+				Gdip_DrawImage(G, item.pBitmap, item.x, item.y, item.Width, item.Height, 0, 0, item.SourceWidth, item.SourceHeight, autoBuild.isPaused ? redmatrix : "")
+			else 
+			{
+				Gdip_DrawImage(G, item.pBitmap, item.x, item.y, item.Width, item.Height, 0, 0, item.SourceWidth, item.SourceHeight)
+				if item.enabled 
+					this.drawTick(G, item)	
+			}		
 		}
 		Gdip_DeleteBrush(pBrush), Gdip_DeleteBrush(pBrushHighlight)
 	}
@@ -12183,7 +12206,17 @@ class testDraw
 		this.setCanvas(hbm, hdc, G)
 		itemIndex := this.collisionCheck(x, y)
 		if (itemIndex && msg = 0x201)
-			this.items[itemIndex, "enabled"] := !this.items[itemIndex, "enabled"]
+		{
+			if this.items[itemIndex, "name"] = "pauseButton"
+				autoBuild.pause()
+			else 
+			{
+				if this.items[itemIndex, "enabled"] := !this.items[itemIndex, "enabled"]
+					autoBuild.invokeUnits(this.items[itemIndex, "name"], False)
+				else autoBuild.disableUnits(this.items[itemIndex, "name"])
+			}
+			autoBuild.resetProfileState()
+		}
 		if itemIndex
 			this.timer()
 		this.drawItems(G, itemIndex)
@@ -12243,7 +12276,7 @@ return
 #if
 
 
-f1::
+f2::
 autoBuild.setBuildObj()
 autoBuild.createHotkeys(aLocalPlayer.Race)
 return
@@ -12264,17 +12297,17 @@ autoBuildTimer:
 autoBuild.build(aLocalPlayer.Race)
 return
 
+
+
 class autoBuild
 {
 	static oAutoBuild, oProfiles := []
-	, aTerranStructures := ["Barracks", "Factory", "Starport"]
-	, aProtossStructures := ["Gateway", "Stargate", "RoboticsFacility"]
-	, aZergStructures := ["Hatchery", "Lair", "Hive"]
 	, terranAutoBuildControls := "Marine|Reaper|Marauder|Ghost|Hellion|WidowMine|SiegeTank|HellBat|Thor|VikingFighter|Medivac|Raven|Banshee|Battlecruiser"
 	, protossAutoBuildControls := "Zealot|Sentry|Stalker|HighTemplar|DarkTemplar|Phoenix|Oracle|VoidRay|Tempest|Carrier|Observer|WarpPrism|Immortal|Colossus"
 	, zergAutoBuildControls := "Queen"	
 	, oInvokedProfiles := []
-
+	, timerFreq := 1500
+	, isPaused := False
 	optionsGUI() 
 	{
 		static
@@ -12581,6 +12614,8 @@ class autoBuild
 		GuiControl,, AutoBuildGUIProfileName, %profileName%
 		GuiControl,, AutoBuildGUIEnableHotkey, % round(this.oProfilesCopy[profileName].HotkeyEnabled)
 		GuiControl,, AutoBuildGUIHotkey, % this.oProfilesCopy[profileName].Hotkey
+		if this.oProfilesCopy[profileName].Exclusive = "" ; Not set, so lets make exclusive default
+			this.oProfilesCopy[profileName].Exclusive := True
 		GuiControl,, AutoBuildGUIExclusive, % round(this.oProfilesCopy[profileName].Exclusive)
 		GuiControl,, AutoBuildGUICumulative, % !round(this.oProfilesCopy[profileName].Exclusive)
 		return 
@@ -12638,23 +12673,41 @@ class autoBuild
 		{
 			if profile.hotkey "" = hotkey && profile.HotkeyEnabled
 			{
+				this.isPaused := False
 				if !profile.IsActive 
 				{
 					this.invokeUnits(profile.units, profile.exclusive)
-					profile.IsActive := True
-					settimer, autoBuildTimer, 3000					
+					profile.IsActive := True						
 				}
 				else 
 				{
 					profile.IsActive := False					
 					if profile.exclusive 
 						hasActiveUnits := this.disableUnits() ; disable all units
-					else hasActiveUnits := this.disableUnits(profile.units)
-					if !hasActiveUnits
-						settimer, autoBuildTimer, Off	
+					else this.disableUnits(profile.units)
 				}
 			}
 		}
+		return
+	}
+	; null toggles current state
+	; 1 pauses production 
+	; 0 unpauses
+	pause(pauseProduction := "")
+	{
+		if (pauseProduction = "")
+			this.isPaused := !this.isPaused
+		else this.isPaused := (pauseProduction != 0)
+		if this.isPaused
+			settimer, autoBuildTimer, off
+		else settimer, autoBuildTimer, % this.timerFreq	
+		return
+	}
+	; If click in games GUI immediately reset the active state of the profile
+	resetProfileState()
+	{
+		for profileName, profile in this.oProfiles 
+			profile.IsActive := False
 		return
 	}
 	; unit names is a pipe delimited list
@@ -12677,11 +12730,14 @@ class autoBuild
 				this.oAutoBuild[race, structure].autoBuild := this.oAutoBuild[race, structure].units[unitName].autoBuild := True	
 			}	 
 		}
+		this.isPaused := False
+		settimer, autoBuildTimer, % this.timerFreq	
 		return
 	}
 	disableUnits(units := "")
 	{
 		StringReplace, units, units, |, `,, All
+		units := trim(units, A_Space ",")
 		structures := "Barracks|Factory|Starport|Gateway|Stargate|RoboticsFacility|Hatchery|Lair|Hive"
 		loop, parse, structures, |
 		{
@@ -12695,7 +12751,9 @@ class autoBuild
 					unit.autoBuild := False
 			}
 		}
-		return this.updateStructureState() 
+		if !areUnitsActive := this.updateStructureState() 
+			settimer, autoBuildTimer, off
+		return areUnitsActive
 	}
 	; Returns false if no units are active
 	updateStructureState()
@@ -12731,6 +12789,19 @@ class autoBuild
 			this.oAutoBuild[race, structure].autoBuild := False 
 			for unitName, unit in this.oAutoBuild[race, structure].units
 				unit.autoBuild := False
+		}
+		settimer, autoBuildTimer, off
+		return
+	}
+	isUnitActive(unitName)
+	{
+		if (unitName = "Queen")
+			return this.oAutoBuild.Zerg.hatchery.units[unitName]
+		else 
+		{
+			structure := this.getStructureFromUnitName(unitName)
+			race := this.getRaceFromUnitName(structure)
+			return this.oAutoBuild[race, structure, "units", unitName, "autoBuild"]
 		}
 		return
 	}
@@ -12900,6 +12971,7 @@ class autoBuild
 		|| getkeystate("Enter", "P") 
 		|| getPlayerCurrentAPM() > automationAPMThreshold
 		||  A_mtTimeIdle < 50
+		||  !buildCheck.hasElapsed(2)
 		{
 			if (A_index > loops)
 				return False ; (actually could be 480 ms - sleep 1 usually = 20ms)
@@ -12968,6 +13040,7 @@ class autoBuild
 		Thread, NoTimers, true
 		;critical, 1000
 		;setLowLevelInputHooks(True)
+		buildCheck.set()
 		dsleep(30)
 		input.pReleaseKeys(True)
 		dSleep(20)	
@@ -13199,3 +13272,19 @@ class autoBuild
 
 }
 
+class buildCheck
+{
+	static priorTime := 9999999999999999 
+
+	hasElapsed(seconds := 3)
+	{
+		return Abs(getTime() - this.priorTime) > seconds ; just check delta so dont have to worry about negatives
+	}
+	set(time := "")
+	{
+		if time := ""
+			priorTime := getTime()
+		else priorTime := time
+		return
+	}
+}
