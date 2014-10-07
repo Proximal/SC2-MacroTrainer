@@ -2583,7 +2583,9 @@ ini_settings_write:
 	IniWrite, %AutoBuildHatcheryGroup%, %config_file%, %section%, AutoBuildHatcheryGroup
 	IniWrite, %AutoBuildLairGroup%, %config_file%, %section%, AutoBuildLairGroup
 	IniWrite, %AutoBuildHiveGroup%, %config_file%, %section%, AutoBuildHiveGroup
-
+	
+	section := "AutomationCommon"
+	IniWrite, %automationAPMThreshold%, %config_file%, %section%, automationAPMThreshold
 
 	;[Misc Automation]
 	section := "Misc Automation"
@@ -3985,7 +3987,9 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		Gui, Add, Text, xs, Hive Group:
 		Gui, Add, DropDownList,  % "xp+160 yp-2 w45 center vAutoBuildHiveGroup Choose" (AutoBuildHiveGroup = 0 ? 10 : AutoBuildHiveGroup), 1|2|3|4||5|6|7|8|9|0
 
-
+		Gui, Add, Text, xs y+15 w85, APM Delay:
+			Gui, Add, Edit, Number Right x+4 yp-2 w50 vTT_automationAPMThreshold
+					Gui, Add, UpDown,  Range0-100000 vAutomationAPMThreshold, %automationAPMThreshold%	
 				
 	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vMiscAutomation_TAB, Select Army||Spread|Remove Units|Easy Select/Unload
 	Gui, Tab, Select Army
@@ -12280,7 +12284,7 @@ class autoBuild
 		, autoBuildGUIQueen
 		; The suffix / unit names of these controls must match exactly the unit names which are used to build these units
 		, AutoBuildGUIProfileName, AutoBuildGUIEditNameButton, AutoBuildGUIEnableHotkey, AutoBuildGUIHotkey, #AutoBuildGUIHotkey, AutoBuildGUIEditHotkeyButton
-		, AutoBuildGUIDeleteButton
+		, AutoBuildGUIDeleteButton, AutoBuildGUIExclusive, AutoBuildGUICumulative
 
 		displayedProfile := displayedRace := ""
 		Gui AutoBuild:+LastFoundExist
@@ -12307,48 +12311,50 @@ class autoBuild
 		Gui, Add, Button, xs+10 yp+37 gAutoBuildNew, New
 		Gui, Add, Button, x+15 gAutoBuildTree gAutoBuildGUIDelete vAutoBuildGUIDeleteButton, Delete	
 
-		Gui, Add, GroupBox, xs ys+105 w245 h65, Hotkey 
-		Gui, Add, Checkbox, xp+15 yp+25 vAutoBuildGUIEnableHotkey gAutoBuildGUIEditEnableHotkey, Enabled
+		Gui, Add, GroupBox, xs ys+105 w245 h75, Hotkey 
+		Gui, Add, Checkbox, xs+15 yp+25 vAutoBuildGUIEnableHotkey gAutoBuildGUIEditEnableHotkey, Enabled
 		Gui, Add, Edit, Readonly yp-2 x+15 center w85 R1 vAutoBuildGUIHotkey 
-		Gui, Add, Button, yp-2 x+10 gAutoBuildGUIEditHotkey vAutoBuildGUIEditHotkeyButton , Edit 	
-
-
-		Gui, Add, GroupBox, xs yp+60 w280 h150 section, Units
-		Gui, Add, Checkbox, xs+10 ys+25 vAutoBuildGUIMarine Hidden Disabled gAutoBuildGUIToggleUnit, Marine
-		Gui, Add, Checkbox, vAutoBuildGUIMarauder Hidden gAutoBuildGUIToggleUnit, Marauder
-		Gui, Add, Checkbox, vAutoBuildGUIReaper Hidden gAutoBuildGUIToggleUnit, Reaper
-		Gui, Add, Checkbox, vAutoBuildGUIGhost Hidden gAutoBuildGUIToggleUnit, Ghost
-
-		Gui, Add, Checkbox, xp+90 ys+25 vAutoBuildGUIHellion Hidden gAutoBuildGUIToggleUnit, Hellion
-		Gui, Add, Checkbox, vAutoBuildGUIWidowMine Hidden gAutoBuildGUIToggleUnit, WidowMine
-		Gui, Add, Checkbox, vAutoBuildGUISiegeTank Hidden gAutoBuildGUIToggleUnit, SiegeTank
-		Gui, Add, Checkbox, vAutoBuildGUIHellBat Hidden gAutoBuildGUIToggleUnit, HellBat
-		Gui, Add, Checkbox, vAutoBuildGUIThor Hidden gAutoBuildGUIToggleUnit, Thor
-
-		Gui, Add, Checkbox, xp+90 ys+25 vautoBuildGUIVikingFighter Hidden gAutoBuildGUIToggleUnit, Viking
-		Gui, Add, Checkbox, vAutoBuildGUIMedivac Hidden gAutoBuildGUIToggleUnit, Medivac
-		Gui, Add, Checkbox, vAutoBuildGUIRaven Hidden gAutoBuildGUIToggleUnit, Raven
-		Gui, Add, Checkbox, vAutoBuildGUIBanshee Hidden, Banshee
-		Gui, Add, Checkbox, vAutoBuildGUIBattlecruiser Hidden gAutoBuildGUIToggleUnit, Battlecruiser
-
-		Gui, Add, Checkbox, xs+10 ys+25 vAutoBuildGUIZealot Hidden gAutoBuildGUIToggleUnit, Zealot
-		Gui, Add, Checkbox, vAutoBuildGUISentry Hidden gAutoBuildGUIToggleUnit, Sentry		
-		Gui, Add, Checkbox, vAutoBuildGUIStalker Hidden gAutoBuildGUIToggleUnit, Stalker		
-		Gui, Add, Checkbox, vAutoBuildGUIHighTemplar Hidden gAutoBuildGUIToggleUnit, HighTemplar		
-		Gui, Add, Checkbox, vAutoBuildGUIDarkTemplar Hidden gAutoBuildGUIToggleUnit, DarkTemplar	
-
-		Gui, Add, Checkbox, xp+90 ys+25 vAutoBuildGUIPhoenix Hidden gAutoBuildGUIToggleUnit, Phoenix
-		Gui, Add, Checkbox, vAutoBuildGUIOracle Hidden gAutoBuildGUIToggleUnit, Oracle	
-		Gui, Add, Checkbox, vAutoBuildGUIVoidRay Hidden gAutoBuildGUIToggleUnit, VoidRay	
-		Gui, Add, Checkbox, vAutoBuildGUITempest Hidden gAutoBuildGUIToggleUnit, Tempest	
-		Gui, Add, Checkbox, vAutoBuildGUICarrier Hidden gAutoBuildGUIToggleUnit, Carrier	
+		Gui, Add, Button, yp-2 x+10 gAutoBuildGUIEditHotkey vAutoBuildGUIEditHotkeyButton, Edit
+		Gui, Add, Radio, xs+15 y+10 vAutoBuildGUIExclusive gAutoBuildUpdateProfile, Exclusive 
+		Gui, Add, Radio, xp+90 vAutoBuildGUICumulative gAutoBuildUpdateProfile, Cumulative 
 			
-		Gui, Add, Checkbox, xp+90 ys+25 vAutoBuildGUIObserver Hidden gAutoBuildGUIToggleUnit, Observer
-		Gui, Add, Checkbox, vAutoBuildGUIWarpPrism Hidden gAutoBuildGUIToggleUnit, WarpPrism	
-		Gui, Add, Checkbox, vAutoBuildGUIImmortal Hidden gAutoBuildGUIToggleUnit, Immortal	
-		Gui, Add, Checkbox, vAutoBuildGUIColossus Hidden gAutoBuildGUIToggleUnit, Colossus	
 
-		Gui, Add, Checkbox, xs+10 ys+25 vAutoBuildGUIQueen Hidden gAutoBuildGUIToggleUnit, Queen
+		Gui, Add, GroupBox, xs yp+40 w280 h150 section, Units
+		Gui, Add, Checkbox, xs+15 ys+25 vAutoBuildGUIMarine Hidden Disabled gAutoBuildUpdateProfile, Marine
+		Gui, Add, Checkbox, vAutoBuildGUIMarauder Hidden gAutoBuildUpdateProfile, Marauder
+		Gui, Add, Checkbox, vAutoBuildGUIReaper Hidden gAutoBuildUpdateProfile, Reaper
+		Gui, Add, Checkbox, vAutoBuildGUIGhost Hidden gAutoBuildUpdateProfile, Ghost
+
+		Gui, Add, Checkbox, xp+90 ys+25 vAutoBuildGUIHellion Hidden gAutoBuildUpdateProfile, Hellion
+		Gui, Add, Checkbox, vAutoBuildGUIWidowMine Hidden gAutoBuildUpdateProfile, WidowMine
+		Gui, Add, Checkbox, vAutoBuildGUISiegeTank Hidden gAutoBuildUpdateProfile, SiegeTank
+		Gui, Add, Checkbox, vAutoBuildGUIHellBat Hidden gAutoBuildUpdateProfile, HellBat
+		Gui, Add, Checkbox, vAutoBuildGUIThor Hidden gAutoBuildUpdateProfile, Thor
+
+		Gui, Add, Checkbox, xp+90 ys+25 vautoBuildGUIVikingFighter Hidden gAutoBuildUpdateProfile, Viking
+		Gui, Add, Checkbox, vAutoBuildGUIMedivac Hidden gAutoBuildUpdateProfile, Medivac
+		Gui, Add, Checkbox, vAutoBuildGUIRaven Hidden gAutoBuildUpdateProfile, Raven
+		Gui, Add, Checkbox, vAutoBuildGUIBanshee Hidden, Banshee
+		Gui, Add, Checkbox, vAutoBuildGUIBattlecruiser Hidden gAutoBuildUpdateProfile, Battlecruiser
+
+		Gui, Add, Checkbox, xs+15 ys+25 vAutoBuildGUIZealot Hidden gAutoBuildUpdateProfile, Zealot
+		Gui, Add, Checkbox, vAutoBuildGUISentry Hidden gAutoBuildUpdateProfile, Sentry		
+		Gui, Add, Checkbox, vAutoBuildGUIStalker Hidden gAutoBuildUpdateProfile, Stalker		
+		Gui, Add, Checkbox, vAutoBuildGUIHighTemplar Hidden gAutoBuildUpdateProfile, HighTemplar		
+		Gui, Add, Checkbox, vAutoBuildGUIDarkTemplar Hidden gAutoBuildUpdateProfile, DarkTemplar	
+
+		Gui, Add, Checkbox, xp+90 ys+25 vAutoBuildGUIPhoenix Hidden gAutoBuildUpdateProfile, Phoenix
+		Gui, Add, Checkbox, vAutoBuildGUIOracle Hidden gAutoBuildUpdateProfile, Oracle	
+		Gui, Add, Checkbox, vAutoBuildGUIVoidRay Hidden gAutoBuildUpdateProfile, VoidRay	
+		Gui, Add, Checkbox, vAutoBuildGUITempest Hidden gAutoBuildUpdateProfile, Tempest	
+		Gui, Add, Checkbox, vAutoBuildGUICarrier Hidden gAutoBuildUpdateProfile, Carrier	
+			
+		Gui, Add, Checkbox, xp+90 ys+25 vAutoBuildGUIObserver Hidden gAutoBuildUpdateProfile, Observer
+		Gui, Add, Checkbox, vAutoBuildGUIWarpPrism Hidden gAutoBuildUpdateProfile, WarpPrism	
+		Gui, Add, Checkbox, vAutoBuildGUIImmortal Hidden gAutoBuildUpdateProfile, Immortal	
+		Gui, Add, Checkbox, vAutoBuildGUIColossus Hidden gAutoBuildUpdateProfile, Colossus	
+
+		Gui, Add, Checkbox, xs+15 ys+25 vAutoBuildGUIQueen Hidden gAutoBuildUpdateProfile, Queen
 		TV_Add("Terran",, "Bold")
 		TV_Add("Protoss",, "Bold")
 		TV_Add("Zerg",, "Bold")
@@ -12379,7 +12385,7 @@ class autoBuild
 		}
 		return
 
-		AutoBuildGUIToggleUnit:
+		AutoBuildUpdateProfile:
 		autoBuild.GUIUpdateDisplayedProfile()
 		return
 
@@ -12499,6 +12505,8 @@ class autoBuild
 		this.oProfilesCopy[profileName].HotkeyEnabled := enabled
 		GuiControlGet, hotkey,, AutoBuildGUIHotkey
 		this.oProfilesCopy[profileName].Hotkey := hotkey
+		GuiControlGet, ExclusiveMode,, AutoBuildGUIExclusive
+		this.oProfilesCopy[profileName].Exclusive := ExclusiveMode
 		return 
 	}
 	isInvalidProfileName(name)
@@ -12547,6 +12555,8 @@ class autoBuild
 		GuiControl, disable%disable%, AutoBuildGUIDeleteButton, 0
 		GuiControl, % "show" (!disable), AutoBuildGUIEditNameButton ; Should only be visible when a profile is selected
 
+		GuiControl, disable%disable%, AutoBuildGUIExclusive
+		GuiControl, disable%disable%, AutoBuildGUICumulative
 
 		loop, parse, showControls, |
 		{
@@ -12571,6 +12581,8 @@ class autoBuild
 		GuiControl,, AutoBuildGUIProfileName, %profileName%
 		GuiControl,, AutoBuildGUIEnableHotkey, % round(this.oProfilesCopy[profileName].HotkeyEnabled)
 		GuiControl,, AutoBuildGUIHotkey, % this.oProfilesCopy[profileName].Hotkey
+		GuiControl,, AutoBuildGUIExclusive, % round(this.oProfilesCopy[profileName].Exclusive)
+		GuiControl,, AutoBuildGUICumulative, % !round(this.oProfilesCopy[profileName].Exclusive)
 		return 
 	}
 	autoBuildDisplayUncheckAll()
@@ -12605,9 +12617,7 @@ class autoBuild
 		for profileName, profile in this.oProfiles := this.readProfiles()
 		{
 			if profile.hotkeyenabled && race = profile.race && profile.Units != ""
-			{
 				try hotkey, % profile.hotkey, autoBuildHotkeyPress, on
-			}
 		}
 		Hotkey, If
 		return
@@ -12616,7 +12626,7 @@ class autoBuild
 	{
 		Hotkey, If, WinActive(GameIdentifier) && isPlaying && !isMenuOpen()
 		for profileName, profile in this.oProfiles
-				try hotkey, % profile.hotkey, off
+			try hotkey, % profile.hotkey, off
 		Hotkey, If
 		return
 	}
@@ -12630,15 +12640,18 @@ class autoBuild
 			{
 				if !profile.IsActive 
 				{
-					this.invokeUnits(profile.units)
+					this.invokeUnits(profile.units, profile.exclusive)
 					profile.IsActive := True
 					settimer, autoBuildTimer, 3000					
 				}
 				else 
 				{
-					this.disableAllUnits()
-					profile.IsActive := False
-					soundplay *16
+					profile.IsActive := False					
+					if profile.exclusive 
+						hasActiveUnits := this.disableUnits() ; disable all units
+					else hasActiveUnits := this.disableUnits(profile.units)
+					if !hasActiveUnits
+						settimer, autoBuildTimer, Off	
 				}
 			}
 		}
@@ -12646,9 +12659,10 @@ class autoBuild
 	}
 	; unit names is a pipe delimited list
 	; Disables all units and enables the passed units
-	invokeUnits(unitNames := "") 
+	invokeUnits(unitNames := "", disableCurrent := True) 
 	{
-		this.disableAllUnits()
+		if disableCurrent
+			this.disableUnits()
 		for i, unitName in StrSplit(trim(unitNames, "|" A_Space A_Tab), "|")
 		{
 			if unitName = queen 
@@ -12665,7 +12679,48 @@ class autoBuild
 		}
 		return
 	}
-
+	disableUnits(units := "")
+	{
+		StringReplace, units, units, |, `,, All
+		structures := "Barracks|Factory|Starport|Gateway|Stargate|RoboticsFacility|Hatchery|Lair|Hive"
+		loop, parse, structures, |
+		{
+			structure := A_LoopField
+			race := this.getRaceFromUnitName(structure)
+			for unitName, unit in this.oAutoBuild[race, structure].units
+			{
+				if (units = "")
+					unit.autoBuild := False
+				else if unitName in %units%
+					unit.autoBuild := False
+			}
+		}
+		return this.updateStructureState() 
+	}
+	; Returns false if no units are active
+	updateStructureState()
+	{
+		structures := "Barracks|Factory|Starport|Gateway|Stargate|RoboticsFacility|Hatchery|Lair|Hive"
+		hasActiveUnits := False
+		loop, parse, structures, |
+		{
+			structure := A_LoopField
+			race := this.getRaceFromUnitName(structure)
+			turnOff := True
+			for unitName, unit in this.oAutoBuild[race, structure].units
+			{
+				if unit.autoBuild
+				{
+					hasActiveUnits := True
+					turnOff := false
+					break 
+				}
+			}
+			if turnOff
+				this.oAutoBuild[race, structure].autoBuild := False
+		}
+		return hasActiveUnits		
+	}
 	disableAllUnits()
 	{
 		structures := "Barracks|Factory|Starport|Gateway|Stargate|RoboticsFacility|Hatchery|Lair|Hive"
@@ -12839,11 +12894,11 @@ class autoBuild
   		return obj
 	}
 	canPerformBuild(loops := 36)
-	{ 	global AutoWorkerAPMProtection
+	{ 	global automationAPMThreshold
 		While isUserBusyBuilding() || isCastingReticleActive() 
 		|| GetKeyState("LButton", "P") || GetKeyState("RButton", "P")
 		|| getkeystate("Enter", "P") 
-		|| getPlayerCurrentAPM() > AutoWorkerAPMProtection
+		|| getPlayerCurrentAPM() > automationAPMThreshold
 		||  A_mtTimeIdle < 50
 		{
 			if (A_index > loops)
@@ -12880,11 +12935,14 @@ class autoBuild
 	}
 	build(race)
 	{
+		global AutoWorkerAPMProtection
 		if !this.canPerformBuild()
 			return
+
 		this.setCurrentResources()
 		if this.FreeSupply <= 0
 			return
+
 		this.localUnits := ""
 		 ; if fails to lock thread this won't be an obj, But continue - just won't build units which have requirements
 		 ; maybe i should just return
@@ -12892,6 +12950,7 @@ class autoBuild
 		if !isobject(this.localUnits)
 			soundplay *-1
 		buildObj := this.oAutoBuild[race]
+
 		;objtree(buildObj)
 		;msgbox here
 		;objtree(buildObj)

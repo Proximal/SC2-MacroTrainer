@@ -3906,6 +3906,10 @@ readConfigFile()
 	IniRead, AutoBuildLairGroup, %config_file%, %section%, AutoBuildLairGroup, 4
 	IniRead, AutoBuildHiveGroup, %config_file%, %section%, AutoBuildHiveGroup, 4
 
+	section := "AutomationCommon"
+	IniRead, automationAPMThreshold, %config_file%, %section%, automationAPMThreshold, 200
+
+
 	;[Misc Automation]
 	section := "Misc Automation"
 	IniRead, SelectArmyEnable, %config_file%, %section%, SelectArmyEnable, 0	;enable disable
