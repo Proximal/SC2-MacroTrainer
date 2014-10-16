@@ -12016,7 +12016,7 @@ unloadAllTransports(hotkeySuffix)
 
 
 
-f1::
+;f1::
 if IsObject(vDraw)
 {
 	vDraw.destroy(), vDraw := ""
@@ -12041,11 +12041,12 @@ allow icons to be moved up or down
 autoProductionGUIEventHandler(wParam, lParam, msg, hwnd)
 {
 ;	static object
-	if !object := testDraw.hwndLookup[hwnd]
-		return
-	object.refresh(lParam & 0xFFFF, lParam >> 16, msg)
-	;if msg = 0x200
-	;	settimer, __autoProductionGUIHoverTimer, 50
+	if object := testDraw.hwndLookup[hwnd]
+	{
+		object.refresh(lParam & 0xFFFF, lParam >> 16, msg)
+		;if msg = 0x200
+		;	settimer, __autoProductionGUIHoverTimer, 50
+	}
 	return 
 
 	__autoProductionGUIHoverTimer:
@@ -12064,11 +12065,13 @@ class testDraw
 {
 	__new(overlay, x, y, w, h)
 	{
-		Gui, %overlay%: -Caption Hwndhwnd -E0x20 +E0x80000 +LastFound +ToolWindow +AlwaysOnTop
+		Gui, %overlay%: -Caption Hwndhwnd -E0x20 +E0x8080000 +LastFound +ToolWindow +AlwaysOnTop
+		; need to remove E0x8000000 to make it move while being dragged
 		Gui, %overlay%: Show, NA X%x% Y%y% W%w% H%h%, % overlay
 		this.base.hwndLookup[hwnd] := this
 		OnMessage(0x201, "autoProductionGUIEventHandler")
 		OnMessage(0x200, "autoProductionGUIEventHandler") ; need to make clickable to work i.e. -E0x20
+		OnMessage(0x2A3, "autoProductionGUIEventHandler") ; WM_MOUSELEAVE
 		this.Overlay := overlay
 		this.hwnd := hwnd
 		this.wWindow := w, this.hWindow := h, this.xWindow := x, this.yWindow := y		
@@ -12276,7 +12279,7 @@ return
 #if
 
 
-f2::
+;f2::
 autoBuild.setBuildObj()
 autoBuild.createHotkeys(aLocalPlayer.Race)
 return
@@ -13288,3 +13291,4 @@ class buildCheck
 		return
 	}
 }
+

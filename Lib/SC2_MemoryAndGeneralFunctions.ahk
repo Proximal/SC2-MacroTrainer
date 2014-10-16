@@ -164,7 +164,9 @@ loadMemoryAddresses(base, version := "")
 	else ; load most recent in case patch didn't change offsets.
 	{
 		; These two versions have matching offsets
-		if (version = "2.1.4.32283" || !version) ; !version in case the findVersion function stuffs up and returns 0/blank, thereby just assume match with latest offsets
+		if (version = "2.1.5.32392" || !version) ; !version in case the findVersion function stuffs up and returns 0/blank, thereby just assume match with latest offsets
+			versionMatch := "2.1.5.32392"
+		else if (version = "2.1.4.32283") 
 			versionMatch := "2.1.4.32283"
 		else versionMatch := false
 		;	[Memory Addresses]

@@ -36,6 +36,8 @@
             -> These two changes will not affect users unless your code calls them directly.
         - Fixed a bug in _MEMORY_BASIC_INFORMATION
         - Added 'aRights' object which contains various handle access constants.
+    17/10/14 - version 1.5
+        - Fixed a bug in writeString() which would cause the null terminator to be erroneously removed. 
 
     RHCP's basic memory class:
 
@@ -264,7 +266,7 @@ class _ClassMemory
 
     version()
     {
-        return 1.4
+        return 1.5
     }   
 
     findPID(program, windowMatchMode := 3)
@@ -453,7 +455,7 @@ class _ClassMemory
         encodingSize := (encoding = "utf-16" || encoding = "cp1200") ? 2 : 1
         requiredSize := StrPut(string, encoding) * encodingSize - (this.insertNullTerminator ? 0 : encodingSize)
         VarSetCapacity(buffer, requiredSize)
-        StrPut(string, &buffer, this.insertNullTerminator ? StrLen(string) : StrLen(string) + 1, encoding)
+        StrPut(string, &buffer, StrLen(string) + (this.insertNullTerminator ?  1 : 0), encoding)
         return DllCall("WriteProcessMemory", "UInt", this.hProcess, "Ptr", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, "Ptr", &buffer, "Uint", requiredSize, "Ptr", 0)
     }
     
