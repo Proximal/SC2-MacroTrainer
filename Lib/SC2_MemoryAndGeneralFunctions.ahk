@@ -61,6 +61,7 @@ Global B_LocalCharacterNameID
 , O_uDestinationY
 , O_P_uCmdQueuePointer
 , O_P_uAbilityPointer
+, O_uPoweredState
 , O_uChronoState
 , O_uInjectState
 , O_uBuffPointer
@@ -264,10 +265,11 @@ loadMemoryAddresses(base, version := "")
 			 O_P_uCmdQueuePointer := 0xD4 ;+4
 			 O_P_uAbilityPointer := 0xDC
 
-										; there are other offsets which can be used for chrono/inject state
-			 O_uChronoState := 0xE6				; pre 210 chrono and inject offsets were the same
+			 O_uPoweredState := 0xE0 									
+			 O_uChronoState := 0xE6	; there are other offsets which can be used for chrono/inject state ; pre 210 chrono and inject offsets were the same 
 			 O_uInjectState := 0xE7 ; +5 Weird this was 5 not 4 (and its values changed) chrono state just +4
 			 O_uBuffPointer := 0xEC
+
 
 			 O_uHpDamage := 0x114
 			 O_uShieldDamage := 0x118
@@ -1333,18 +1335,20 @@ isUnitChronoed(unit)
 			; dont think i have to do the if = 128 check now, but leave it just in case - havent checked 
 			; every building for a default value
 	
-	if (128 = ReadMemory(B_uStructure + unit * S_uStructure + O_uChronoState, GameIdentifier, 1))	
-		return 1
-	else return 0
+	return 128 = ReadMemory(B_uStructure + unit * S_uStructure + O_uChronoState, GameIdentifier, 1)	
 }
 
 numgetIsUnitChronoed(byref unitDump, unit)
 {	global	
-	if (128 = numget(unitDump, unit * S_uStructure + O_uChronoState, "UChar"))	
-		return 1
-	else return 0
+	return 128 = numget(unitDump, unit * S_uStructure + O_uChronoState, "UChar")	
 }
 
+numgetIsUnitPowered(byref unitDump, unit)
+{	global	
+	return 0 = numget(unitDump, unit * S_uStructure + O_uPoweredState, "UInt")	
+}
+
+; This whole area (inject/chrono/powered) is some type of bit field.
 
 ; pre patch 2.10
 ; 16 dec / 0x10 when not injected
@@ -1353,10 +1357,18 @@ numgetIsUnitChronoed(byref unitDump, unit)
 isHatchInjected(Hatch)
 {	global	; 1 byte = 18h chrono for protoss structures, 48h when injected for zerg -  10h normal state
 			; this changed in 2.10 - 0 idle 4 for inject (probably dont need the if = 4 check)
-	if (4 = ReadMemory(B_uStructure + Hatch * S_uStructure + O_uInjectState, GameIdentifier, 1))	
-		return 1
-	else return 0
+	return 4 = ReadMemory(B_uStructure + Hatch * S_uStructure + O_uInjectState, GameIdentifier, 1)
 }
+; The byte at O_uPoweredState + 7 changes to 1 when unpowered
+; O_uPoweredState - really a byte or bit field flag address (SC is testing the bytes at this address against multiple values). So there may be other things which change it too!
+; O_uPoweredState = 0 when powered 
+
+; Returns True for structures which do not require power e.g. nexus, pylons, rocks
+isUnitPowered(unit)
+{
+	return 0 = ReadMemory(B_uStructure + unit * S_uStructure + O_uPoweredState, GameIdentifier)	
+}
+
 isWorkerInProductionOld(unit) ; units can only be t or P, no Z
 {										;state = 1 in prod, 0 not, -1 if doing something else eg flying
 	local state
@@ -2721,10 +2733,11 @@ initialiseBrushColours(aHexColours, byRef a_pBrushes)
 	deleteBrushArray(a_pBrushes)
 	a_pBrushes := []
 	for colour, hexValue in aHexColours
-		a_pBrushes[colour] := Gdip_BrushCreateSolid(0xcFF hexValue)
+		a_pBrushes[colour] := Gdip_BrushCreateSolid(0xFF hexValue)
 	; Used in the unit overlay	
 	a_pBrushes["TransparentBlack"] := Gdip_BrushCreateSolid(0x78000000)
 	a_pBrushes["ScanChrono"] := Gdip_BrushCreateSolid(0xCCFF00B3)
+	a_pBrushes["redStrikeOut"] := Gdip_BrushCreateSolid(0xFFB4141E)
 	a_pBrushes["UnitHighlightHallucinationsColour"] := Gdip_BrushCreateSolid(UnitHighlightHallucinationsColour)
 	a_pBrushes["UnitHighlightInvisibleColour"] := Gdip_BrushCreateSolid(UnitHighlightInvisibleColour)
 	a_pBrushes["UnitHighlightList1Colour"] := Gdip_BrushCreateSolid(UnitHighlightList1Colour)
@@ -2752,11 +2765,13 @@ deleteBrushArray(byRef a_pBrushes)
 ; There a couple of static pens in functions which won't be deleted - but a couple of dangling pointers
 ; doesn't mean anything, as they will of course be freed when the program exits.
 
-initialisePenColours(aHexColours, penSize := 1)
+initialisePenColours(aHexColours)
 {
 	a_pPens := []
 	for colour, hexValue in aHexColours
-		a_pPens[colour] := Gdip_CreatePen(0xcFF hexValue, penSize)
+		a_pPens[colour] := Gdip_CreatePen(0xFF hexValue, 1)
+	a_pPens["redStrikeOut2"] := Gdip_CreatePen(0xFFB4141E, 2)
+	a_pPens["redStrikeOut3"] := Gdip_CreatePen(0xFFB4141E, 3)
 	return a_pPens
 }
 

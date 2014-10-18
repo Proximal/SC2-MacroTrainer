@@ -595,7 +595,7 @@ loop, % DumpUnitMemory(UBMemDump)
 		else if ( warpgate_warn_on AND (unit_type = aUnitID["Gateway"] OR unit_type = aUnitID["WarpGate"]) 
 		AND !(Filter & aUnitTargetFilter.UnderConstruction))
 		{
-			if (isWarpGateTechComplete && unit_type = aUnitID["Gateway"] && !isGatewayConvertingToWarpGate(u_iteration)) 
+			if (isWarpGateTechComplete && unit_type = aUnitID["Gateway"] && !isGatewayConvertingToWarpGate(u_iteration) && isUnitPowered(u_iteration)) 
 			{
 				gateway_count ++	
 				if warpgate_warning_set
@@ -692,7 +692,7 @@ warpgate_warn:
 	if gateway_count  ; this remove warning x on the minmap once they start converting to warpgates - so don't have to wait for the alert 'x' to naturally time out in the minimap section
 		for index, object in aGatewayWarnings
 			if (getUnitType(object.unit) != aUnitID["Gateway"] || isUnitDead(object.unit) || !isUnitLocallyOwned(object.unit) ) ;doing this in case unit dies or becomes other players gateway as this list onyl gets cleared when gateway count = 0
-			|| isGatewayConvertingToWarpGate(object.unit)
+			|| isGatewayConvertingToWarpGate(object.unit) || !isUnitPowered(object.unit)
 			{
 				for minimapIndex, minimapObject in aMiniMapWarning
 					if (minimapObject.unit = object.unit)

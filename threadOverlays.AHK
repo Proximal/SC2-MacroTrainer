@@ -116,7 +116,6 @@ If (WinActive(GameIdentifier) || Dragoverlay)
 	}
 	If DrawLocalUpgradesOverlay
 		DrawLocalUpgradesOverlay(RedrawLocalUpgrades, LocalUpgradesOverlayScale, DragOverlay)
-
 }
 else if (!WinActive(GameIdentifier) && !Dragoverlay && !areOverlaysWaitingToRedraw())
 	DestroyOverlays()
@@ -1795,13 +1794,9 @@ DrawMacroTownHallOverlay(ByRef Redraw, UserScale=1, Drag=0)
 	;	x1 := Width//3, y1 := stringData2 - (stringData4/2) + Height//3
 	;	, x2 := Width//1.5, y2 := stringData2 - (stringData4/2) + Height//1.5		
 	
-		x1 := Width//4, y1 := Height//4
-		, x2 := Width//1.25, y2 :=  Height//1.25
-		Gdip_SetSmoothingMode(G, 4)
-		, Gdip_DrawLine(G, a_pPens.HasKey("Red2") ? a_pPens.Red2 : a_pPens.Red2 := Gdip_CreatePen(0xFFB4141E, 2), x1, y1, x2, y2)
-		, Gdip_DrawLine(G, a_pPens.Red2, x1, y2, x2, y1)
-		, Gdip_DeletePen(pPenRed)
+		strikeOutUpgrade(G, 0, 0, width, height)
 	}
+	
 	Gdip_DeleteGraphics(G)	
 	; Don't have to worry about size checks here, as not passing these params to updateLayeredWindow()
 	, UpdateLayeredWindow(hwnd1, hdc,,,,, overlayMacroTownHallTransparency)
@@ -1877,7 +1872,8 @@ getLocalUpgrades(byRef aUpgrades, percentMode)
 	    															? (aUpgrades[name].progress > progress ? aUpgrades[name].progress : progress)
 	    															: (aUpgrades[name].progress && aUpgrades[name].progress < progress ? aUpgrades[name].progress : progress)
 	    								, count: round(aUpgrades[name].Count) + 1
-	    								, chrono: aLocalPlayer["Race"] = "Protoss" ? numgetIsUnitChronoed(MemDump, unit) : 0}
+	    								, chrono: aLocalPlayer["Race"] = "Protoss" ? numgetIsUnitChronoed(MemDump, unit) : 0
+	    								, unpowered: aLocalPlayer["Race"] = "Protoss" ? !numgetIsUnitPowered(MemDump, unit) : 0}
 				}
 			}
 		}
@@ -1904,6 +1900,7 @@ DrawLocalUpgradesOverlay(ByRef Redraw, UserScale = 1, Drag = 0)
 	global localUpgradesItemsPerRow, LocalUpgradesOverlayX, LocalUpgradesOverlayY, overlayLocalUpgradesTransparency
 	 		, DrawLocalUpgradesOverlay
 	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0, upgradesExistPrevious := 0
+		, grayScaleMatrix := "0.299|0.299|0.299|0|0|0.587|0.587|0.587|0|0|0.114|0.114|0.114|0|0|0|0|0|1|0|0|0|0|0|1"
 
 	percentMode := (DrawLocalUpgradesOverlay = 1) ; DrawLocalUpgradesOverlay = -1 seconds remaining mode, 1 = percent complete
 	
@@ -1944,29 +1941,30 @@ DrawLocalUpgradesOverlay(ByRef Redraw, UserScale = 1, Drag = 0)
 			SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap) 
 			, Width *= UserScale *.5, Height *= UserScale *.5	; all unit/buildings/upgrades are 38x38 after being halved
 
-			Gdip_DrawImage(G, pBitmap, DestX, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
+			Gdip_DrawImage(G, pBitmap, DestX, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight, upgrade.unpowered ? grayScaleMatrix : 1)
 
 			if (upgrade.Count > 1)
 			{
 				Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, DestX + .6*Width, DestY, Width/2.5, Height/2.5, 5)
 				, gdip_TextToGraphics(G, upgrade.Count, "x"(DestX + .5*Width + .3*Width/2) "y"(DestY + .10*Height/2)  " Bold Italic cFFFFFFFF r4 s" 11*UserScale, Font)
 			}
-			if (upgrade.Chrono)
+			if upgrade.Chrono 
 				Gdip_FillEllipse(G, a_pBrushes["ScanChrono"], DestX + .2*Width/2, DestY + .2*Height/2, 6*UserScale, 6*UserScale)
-
+			if upgrade.unpowered
+				strikeOutUpgrade(G, DestX, DestY, Width, Height, 4)
 			
-			if percentMode
+			if percentMode 
 			{
 				Gdip_SetSmoothingMode(G, 0)
 				, Gdip_FillRectangle(G, a_pBrushes.TransparentBlack, DestX + 5 * UserScale *.5, floor(DestY+Height + 5 * UserScale *.5), Width - 10 * UserScale *.5, Height/12) ;Height/16
-				, Gdip_FillRectangle(G, a_pBrushes.Green, DestX + 5 * UserScale *.5, floor(DestY+Height + 5 * UserScale *.5), Width*upgrade.progress - upgrade.progress * 10 * UserScale *.5, Height/12)
+				, Gdip_FillRectangle(G, upgrade.unpowered ? a_pBrushes.redStrikeOut : a_pBrushes.Green, DestX + 5 * UserScale *.5, floor(DestY+Height + 5 * UserScale *.5), Width*upgrade.progress - upgrade.progress * 10 * UserScale *.5, Height/12)
 				, Gdip_SetSmoothingMode(G, 4)
 			}
 			else 
 			{
 				; each picture has a 5 pixel blank surrounding border 5 * UserScale * .5 (the last .5 is the same factor used to reduce the drawn image size)
 				Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack,  DestX + 5 * UserScale *.5, floor(DestY+Height + 3 * UserScale *.5), Width - 10 * UserScale *.5, Height/2.5, 2)
-				, gdip_TextToGraphics(G, formatSeconds(upgrade.progress), "x"(DestX + Width//2) " y"floor(DestY+Height + 5 * UserScale *.5)  " centre cFFFFFFFF r4 s" 12*UserScale, Font)
+				, gdip_TextToGraphics(G, formatSeconds(upgrade.progress), "x"(DestX + Width//2) " y"floor(DestY+Height + 5 * UserScale *.5)  " centre " (upgrade.unpowered ? "cFFB4141E" : "cFFFFFFFF") " r4 s" 12*UserScale, Font)
 			}
 			
 
@@ -1995,6 +1993,18 @@ DrawLocalUpgradesOverlay(ByRef Redraw, UserScale = 1, Drag = 0)
 	upgradesExistPrevious := upgradesExist
 	Return
 }
+
+; Uses a thicker brush
+strikeOutUpgrade(G, x, y, width, height, currentSmoothingMode := 0)
+{
+	return "", x1 := x + width//4, y1 := y + height//4
+	, x2 := x + width//1.25, y2 := y + height//1.25
+	, Gdip_SetSmoothingMode(G, 4)
+	, Gdip_DrawLine(G, a_pPens.redStrikeOut2, x1, y1, x2, y2)
+	, Gdip_DrawLine(G, a_pPens.redStrikeOut2, x1, y2, x2, y1)
+	, Gdip_SetSmoothingMode(G, currentSmoothingMode)	
+}
+
 
 ; Draws the clickable positions for:
 ;	The unit portraits in the selection panel.

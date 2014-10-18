@@ -1031,7 +1031,7 @@ Cast_ChronoStructure(aStructuresToChrono, selectionMode := False)
 	, HumanMouse, HumanMouseTimeLo, HumanMouseTimeHi, NextSubgroupKey
 
 	oStructureToChrono := [], a_gatewaysConvertingToWarpGates := [], a_WarpgatesOnCoolDown := []
-
+soundplay *-1
 	numGetControlGroupObject(oNexusGroup, CG_nexus_Ctrlgroup_key)
 	for index, unit in oNexusGroup.units
 	{
@@ -1049,7 +1049,7 @@ Cast_ChronoStructure(aStructuresToChrono, selectionMode := False)
 			if isTargetDead(TargetFilter := numgetUnitTargetFilter(MemDump, unit)) || !isOwnerLocal(numgetUnitOwner(MemDump, Unit))
 			|| isTargetUnderConstruction(TargetFilter)
 		       Continue
-	    	if aStructuresToChrono.HasKey(Type := numgetUnitModelType(numgetUnitModelPointer(MemDump, Unit))) && !isUnitChronoed(unit)
+	    	if aStructuresToChrono.HasKey(Type := numgetUnitModelType(numgetUnitModelPointer(MemDump, Unit))) && !numgetIsUnitChronoed(MemDump, unit) && numgetIsUnitPowered(MemDump, unit)
 	    	{
 		    	IF ( type = aUnitID["WarpGate"]) && (cooldown := getWarpGateCooldown(unit))
 					a_WarpgatesOnCoolDown.insert({"Unit": unit, "Cooldown": cooldown})
@@ -1071,7 +1071,7 @@ Cast_ChronoStructure(aStructuresToChrono, selectionMode := False)
 		{
 			If aLocalPlayer.Slot != unit.owner || isTargetUnderConstruction(getunittargetfilter(unit.UnitIndex))
 				continue
-			if aStructuresToChrono.HasKey(unit.Type) && !isUnitChronoed(unit.UnitIndex)
+			if aStructuresToChrono.HasKey(unit.Type) && !isUnitChronoed(unit.UnitIndex) && isUnitPowered(unit.UnitIndex)
 			{
 		    	IF (unit.Type = aUnitID["WarpGate"]) && (cooldown := getWarpGateCooldown(unit.UnitIndex))
 					a_WarpgatesOnCoolDown.insert({"Unit": unit.UnitIndex, "Cooldown": cooldown})
@@ -7885,12 +7885,8 @@ selectGroup(group, preSleep := -1, postSleep := 2)
 ; 0 returns empty string (same for negative numbers)
 sRepeat(string, multiplier)
 {
-	if (multiplier > 0)
-	{
-		loop, % multiplier 
-			r .= string
-	}
-	else return
+	loop, % multiplier 
+		r .= string
 	return r
 }
 
@@ -13292,3 +13288,26 @@ class buildCheck
 	}
 }
 
+/*
+f1::
+unit := getSelectedUnitIndex()
+;getUnitAbilitiesString(unit)
+msgbox % isUnitPowered(unit)
+return 
+
+
+
+
+
+
+/*
+E0
+pAbilities: 24B78F04 Unit ID: 0
+uStruct: 4B4F580 - 4B4F740
+0 | Pointer Address 24B78F1C | Pointer Value 5C97230 | Rally
+1 | Pointer Address 24B78F20 | Pointer Value 5C972AC | que5
+2 | Pointer Address 24B78F24 | Pointer Value 5C97328 | BuildInProgress
+3 | Pointer Address 24B78F28 | Pointer Value 5C973A4 | GatewayTrain
+4 | Pointer Address 24B78F2C | Pointer Value 5C97420 | WarpGateTrain
+5 | Pointer Address 24B78F30 | Pointer Value 5C9749C | UpgradeToWarpGate
+6 | Pointer Address 24B78F34 | Pointer Value 5C97518 | MorphBackToGateway

@@ -420,7 +420,7 @@ class _ClassMemory
                 {
                     if NumGet(buffer, (A_Index - 1) * encodingSize, charType) = 0 ; NULL terminator
                     {
-                        if (bufferSize < sizeBytes := outterIndex * 4 - (4 - A_Index *  encodingSize)) 
+                        if (bufferSize < sizeBytes := outterIndex * 4 - (4 - A_Index * encodingSize)) 
                             VarSetCapacity(buffer, sizeBytes)
                         break, 2
                     }  
