@@ -577,29 +577,30 @@ class _ClassMemory
     ;                       It's safer not to use the window title, as some things can have the same window title e.g. an open folder called "Starcraft II"
     ;                       would have the same window title as the game itself.
     ;   windowMatchMode     Determines the matching mode used when finding the program's window (windowTitle).
-    ;                       The default value is 3 i.e. an exact match. Refer to AHK's setTitleMathMode for more information.
+    ;                       The default value is 3 i.e. an exact match. The current matchmode will be used if the parameter is null or 0.
+    ;                       Refer to AHK's setTitleMathMode for more information.
     ; Return Values:
     ;   Positive integer    The base address of the process (success).
     ;   Null                The process's window couldn't be found.
     ;   0                   The GetWindowLong or GetWindowLongPtr call failed.
   
-    getProcessBaseAddress(windowTitle, windowMatchMode := 3)   
+    getProcessBaseAddress(windowTitle, windowMatchMode := "3")   
     {
-        if windowMatchMode
+        if (windowMatchMode && A_TitleMatchMode != windowMatchMode)
         {
             mode := A_TitleMatchMode ; This is a string and will not contain the 0x prefix
-            StringReplace, windowMatchMode, windowMatchMode, 0x ; remove hex prefix as SetTitleMatchMode will throw a run time error. This will occur if integer mode is set to hex.
+            StringReplace, windowMatchMode, windowMatchMode, 0x ; remove hex prefix as SetTitleMatchMode will throw a run time error. This will occur if integer mode is set to hex and matchmode param is passed as an number not a string.
             SetTitleMatchMode, %windowMatchMode%    ;mode 3 is an exact match
         }
         WinGet, hWnd, ID, %WindowTitle%
-        if windowMatchMode
+        if mode
             SetTitleMatchMode, %mode%    ; In case executed in autoexec
         if !hWnd
             return ; return blank failed to find window
        ; GetWindowLong returns a Long (Int) and GetWindowLongPtr return a Long_Ptr
         return DllCall(A_PtrSize = 4     ; If DLL call fails, returned value will = 0
             ? "GetWindowLong"
-            : "GetWindowLongPtr", "Ptr", hWnd, "Uint", -6, "Int64")  ; Use Int64 to prevent negative overflow when AHK is 32 bit and target process is 64bit       
+            : "GetWindowLongPtr", "Ptr", hWnd, "Int", -6, "Int64")  ; Use Int64 to prevent negative overflow when AHK is 32 bit and target process is 64bit       
     }   
 
     ; http://winprogger.com/getmodulefilenameex-enumprocessmodulesex-failures-in-wow64/

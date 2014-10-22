@@ -1031,7 +1031,7 @@ Cast_ChronoStructure(aStructuresToChrono, selectionMode := False)
 	, HumanMouse, HumanMouseTimeLo, HumanMouseTimeHi, NextSubgroupKey
 
 	oStructureToChrono := [], a_gatewaysConvertingToWarpGates := [], a_WarpgatesOnCoolDown := []
-soundplay *-1
+
 	numGetControlGroupObject(oNexusGroup, CG_nexus_Ctrlgroup_key)
 	for index, unit in oNexusGroup.units
 	{

@@ -82,7 +82,7 @@ If (WinActive(GameIdentifier) || Dragoverlay) ;really only needed to ressize/sca
 	If DrawIncomeOverlay
 		DrawIncomeOverlay(ReDrawIncome, IncomeOverlayScale, OverlayIdent, OverlayBackgrounds, Dragoverlay)
 	If DrawAPMOverlay
-		DrawAPMOverlay(ReDrawAPM, APMOverlayScale, OverlayIdent, modeAPM_EPM, Dragoverlay)
+		DrawAPMOverlay(ReDrawAPM, APMOverlayScale, OverlayIdent, modeAPM_EPM, OverlayBackgrounds, Dragoverlay)
 	If DrawResourcesOverlay
 		DrawResourcesOverlay(ReDrawResources, ResourcesOverlayScale, OverlayIdent, OverlayBackgrounds, Dragoverlay)
 	If DrawArmySizeOverlay
@@ -358,35 +358,39 @@ DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Dr
 {	global aLocalPlayer, aHexColours, aPlayer, GameIdentifier, IncomeOverlayX, IncomeOverlayY, config_file, a_pBitmap, overlayIncomeTransparency
 	, drawLocalPlayerIncome
 	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0
-
-	DestX := i := 0
-	Options := " cFFFFFFFF r4 s" 17*UserScale					;these cant be static	
+	, prevPlayerIdentifier
+	, prevWindowWidth := 0, prevWindowHeight := 0 ; Note these refer to the size of the displayed stats and do not include the transparent background - so the real window size a little bit larger
 
 	if !modifyOverlay("IncomeOverlay", Redraw, overlayCreated, Drag, DragPrevious, IncomeOverlayX, IncomeOverlayY, 400, 400, hwnd1)
 		return
 
-	hbm := CreateDIBSection(A_ScreenWidth, A_ScreenHeight)
-	, hdc := CreateCompatibleDC()
-	, obm := SelectObject(hdc, hbm)
-	, G := Gdip_GraphicsFromHDC(hdc)
+	hbm := CreateDIBSection(A_ScreenWidth, A_ScreenHeight), hdc := CreateCompatibleDC(), obm := SelectObject(hdc, hbm), G := Gdip_GraphicsFromHDC(hdc)
 	, Gdip_SetInterpolationMode(G, 2)
 	; DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0) ; This slows things down massively, slower with bigger dibs	
+	
+	i := DestX := DestY := DestXOffset := DestYOffset := 0
+	, Options := " cFFFFFFFF r4 s" 17*UserScale
+	if prevWindowWidth   
+	{
+		Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, 0, 0, prevWindowWidth * 1.05, prevWindowHeight * 1.05, 10)
+		, DestXOffset := DestX := prevWindowWidth * .05
+		, DestYOffset := DestY := prevWindowHeight * .05
+	}
+
 	For index, player in aEnemyAndLocalPlayer
 	{
 		if ((slot_number := player["Slot"]) != aLocalPlayer["Slot"] || drawLocalPlayerIncome)
 		{				
-			DestY := i ? i*Height : 0
-
 			If (PlayerIdentifier = 1 Or PlayerIdentifier = 2 )
 			{	
 				IF (PlayerIdentifier = 2)
 					OptionsName := " Bold cFF" aHexColours[aPlayer[slot_number, "Colour"]] " r4 s" 17*UserScale
 				Else IF (PlayerIdentifier = 1)
 					OptionsName := " Bold cFFFFFFFF r4 s" 17*UserScale	
-				pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Mineral",Background]
-				SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
-				Width *= UserScale *.5, Height *= UserScale *.5		
-				gdip_TextToGraphics(G, getPlayerName(slot_number), "x0" "y"(DestY+(Height//4))  OptionsName, Font)
+				pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Mineral", 0]
+				, SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
+				, Width *= UserScale *.5, Height *= UserScale *.5		
+				, gdip_TextToGraphics(G, getPlayerName(slot_number), "x" DestXOffset "y"(DestY+(Height//4))  OptionsName, Font)
 				if !LongestNameSize
 				{
 					if drawLocalPlayerIncome
@@ -397,85 +401,90 @@ DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Dr
 					StringSplit, LongestNameSize, LongestNameData, | ;retrieve the length of the string
 					LongestNameSize := LongestNameSize3
 				}
-				DestX := LongestNameSize+10*UserScale
+				DestX := LongestNameSize+10*UserScale+DestXOffset
 			}
 			Else If (PlayerIdentifier = 3)
 			{		
 				pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"RaceFlatColour", aPlayer[slot_number, "Colour"]]
-				SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
-				Width *= UserScale *.5, Height *= UserScale *.5	
-				Gdip_DrawImage(G, pBitmap, 12*UserScale, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
-				pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Mineral",Background]
-				SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
-				Width *= UserScale *.5, Height *= UserScale *.5		
-				DestX := Width+10*UserScale
+				, SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
+				, Width *= UserScale *.5, Height *= UserScale *.5	
+				, Gdip_DrawImage(G, pBitmap, 12*UserScale, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
+				, pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Mineral", 0]
+				, SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
+				, Width *= UserScale *.5, Height *= UserScale *.5		
+				, DestX := Width+10*UserScale+DestXOffset
 			}
 			Else 
 			{
-				pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Mineral",Background]
-				SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
-				Width *= UserScale *.5, Height *= UserScale *.5	
+				pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Mineral", 0]
+				, SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
+				, Width *= UserScale *.5, Height *= UserScale *.5	
 			}
 
 			Gdip_DrawImage(G, pBitmap, DestX, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)	
-			Gdip_TextToGraphics(G, getPlayerMineralIncome(slot_number), "x"(DestX+Width+5*UserScale) "y"(DestY+(Height//4)) Options, Font)				
-
-			pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Gas",Background]
-			SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
-			Width *= UserScale *.5, Height *= UserScale *.5
-			Gdip_DrawImage(G, pBitmap, DestX + (85*UserScale), DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)	
-			Gdip_TextToGraphics(G, getPlayerGasIncome(slot_number), "x"(DestX+(85*UserScale)+Width+5*UserScale) "y"(DestY+(Height//4)) Options, Font)				
-
-			pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Worker"]
-			SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
-			Width *= UserScale *.5, Height *= UserScale *.5
-			Gdip_DrawImage(G, pBitmap, DestX + (2*85*UserScale), DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
-			TextData := Gdip_TextToGraphics(G, getPlayerWorkerCount(slot_number), "x"(DestX+(2*85*UserScale)+Width+5*UserScale) "y"(DestY+(Height//4)) Options, Font)				
+			, Gdip_TextToGraphics(G, getPlayerMineralIncome(slot_number), "x"(DestX+Width+5*UserScale) "y"(DestY+(Height//4)) Options, Font)				
+			, pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Gas", 0]
+			, SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
+			, Width *= UserScale *.5, Height *= UserScale *.5
+			, Gdip_DrawImage(G, pBitmap, DestX + (85*UserScale), DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)	
+			, Gdip_TextToGraphics(G, getPlayerGasIncome(slot_number), "x"(DestX+(85*UserScale)+Width+5*UserScale) "y"(DestY+(Height//4)) Options, Font)				
+			, pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Worker"]
+			, SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
+			, Width *= UserScale *.5, Height *= UserScale *.5
+			, Gdip_DrawImage(G, pBitmap, DestX + (2*85*UserScale), DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
+			, TextData := Gdip_TextToGraphics(G, getPlayerWorkerCount(slot_number), "x"(DestX+(2*85*UserScale)+Width+5*UserScale) "y"(DestY+(Height//4)) Options, Font)				
 			StringSplit, TextSize, TextData, | ;retrieve the length of the string
 			if (WindowWidth < CurrentWidth := DestX+(2*85*UserScale)+Width+5*UserScale + TextSize3)
 				WindowWidth := CurrentWidth
-			i++ 
+			DestY := ++i*height + DestYOffset 
 		}
 	}
-	WindowHeight := DestY+Height
+	WindowHeight := DestY - DestYOffset ; I think it looks better to have the trans. background finish here rather than a few pixels lower
 
 	if !WindowWidth
 		WindowWidth := 20	
 	else if (WindowWidth > A_ScreenWidth)
-		WindowWidth := A_ScreenWidth
-
+		WindowWidth := A_ScreenWidth - A_ScreenWidth * 0.06 ; make it a little smaller so don't have to worry about size
 	if !WindowHeight
 		WindowHeight := 20		
 	else if (WindowHeight > A_ScreenHeight)
-		WindowHeight := A_ScreenHeight
+		WindowHeight := A_ScreenHeight - A_ScreenHeight * 0.06
 
-	Gdip_DeleteGraphics(G)
-	UpdateLayeredWindow(hwnd1, hdc,,, WindowWidth, WindowHeight, overlayIncomeTransparency)
-	SelectObject(hdc, obm) ; needed else eats ram ; Select the object back into the hdc
-	DeleteObject(hbm)   ; needed else eats ram 	; Now the bitmap may be deleted
-	DeleteDC(hdc) ; Also the device context related to the bitmap may be deleted
+	; if drawBackground && ***********
+	if (prevPlayerIdentifier != PlayerIdentifier || Abs(prevWindowWidth - WindowWidth) > 5 || Abs(prevWindowHeight != WindowHeight) > 5) ; this ensure the background covers the drawn stuff even when size changes
+		recurse := true
+	prevWindowWidth := WindowWidth, prevWindowHeight := WindowHeight, prevPlayerIdentifier := PlayerIdentifier
+
+	, Gdip_DeleteGraphics(G)
+	if recurse 
+		DrawIncomeOverlay(Redraw, UserScale, PlayerIdentifier, Background, Drag)
+	else UpdateLayeredWindow(hwnd1, hdc,,, WindowWidth * 1.05, WindowHeight * 1.05, overlayIncomeTransparency)
+	SelectObject(hdc, obm), DeleteObject(hbm), DeleteDC(hdc)
 	Return
 }
 
 ; Takes ~ 2 ms 
-DrawAPMOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, modeAPM_EPM=0,Drag=0)
+DrawAPMOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, modeAPM_EPM=0, background=0, Drag=0)
 {	global aLocalPlayer, aHexColours, aPlayer, GameIdentifier, APMOverlayX, APMOverlayY, config_file, a_pBitmap, overlayAPMTransparency
 	, APMOverlayMode
 	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0
-
-	DestX := i := 0
-	Options := " cFFFFFFFF Right r4 s" 20*UserScale					;these cant be static	
+	, prevPlayerIdentifier
+	, prevWindowWidth := 0, prevWindowHeight := 0 ; Note these refer to the size of the displayed stats and do not include the transparent background - so the real window size a little bit larger
 
 	if !modifyOverlay("APMOverlay", Redraw, overlayCreated, Drag, DragPrevious, APMOverlayX, APMOverlayY, 400, 400, hwnd1)
 		return
 
-	hbm := CreateDIBSection(A_ScreenWidth, A_ScreenHeight)
-	, hdc := CreateCompatibleDC()
-	, obm := SelectObject(hdc, hbm)
-	, G := Gdip_GraphicsFromHDC(hdc)
+	hbm := CreateDIBSection(A_ScreenWidth, A_ScreenHeight), hdc := CreateCompatibleDC(), obm := SelectObject(hdc, hbm), G := Gdip_GraphicsFromHDC(hdc)
 	, Gdip_SetInterpolationMode(G, 2)
-	;DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0)	
-	DestX := 0
+
+	DestX := DestY := DestXOffset := DestYOffset := 0
+	, 	Options := " cFFFFFFFF Right r4 s" 20*UserScale
+	if prevWindowWidth   
+	{
+		Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, 0, 0, prevWindowWidth * 1.05, prevWindowHeight * 1.05, 10)
+		, DestXOffset := DestX := prevWindowWidth * .05  ; this should really be 0.025 - but this looks nice
+		, DestYOffset := DestY := prevWindowHeight * .05
+	}
 	For index, player in aEnemyAndLocalPlayer
 	{
 		slot_number := player["Slot"]
@@ -485,18 +494,14 @@ DrawAPMOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, modeAPM_EPM=0,Drag
 		;  1 = self
 		if ( (( slot_number = aLocalPlayer["Slot"] && APMOverlayMode) || (slot_number != aLocalPlayer["Slot"] && (!APMOverlayMode || APMOverlayMode = -1))) && isPlayerActive(slot_number))
 		{				
-			DestY := i ? i*Height : 0
-
 			If (PlayerIdentifier = 1 Or PlayerIdentifier = 2 )
 			{	
+				; note text size here is 17, whereas APM is 20 
 				IF (PlayerIdentifier = 2)
 					OptionsName := " Bold cFF" aHexColours[aPlayer[slot_number, "Colour"]] " r4 s" 17*UserScale
 				Else IF (PlayerIdentifier = 1)
 					OptionsName := " Bold cFFFFFFFF r4 s" 17*UserScale	
-				pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Mineral",Background]
-				SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
-				Width *= UserScale *.5, Height *= UserScale *.5		
-				gdip_TextToGraphics(G, getPlayerName(slot_number), "x0" "y"(DestY+(Height//4))  OptionsName, Font)
+				gdip_TextToGraphics(G, getPlayerName(slot_number), "x" DestXOffset "y" DestY OptionsName, Font)
 				if !LongestNameSize
 				{
 					if (APMOverlayMode = -1) 
@@ -505,50 +510,52 @@ DrawAPMOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, modeAPM_EPM=0,Drag
 						longestName := MT_CurrentGame.LongestEnemyName
 					else 
 						longestName := aLocalPlayer["Name"]
-					LongestNameData :=	gdip_TextToGraphics(G, longestName, "x0" "y"(DestY+(Height//4))  " Bold c00FFFFFF r4 s" 17*UserScale, Font) ; text is invisible ;get string size	
+					LongestNameData :=	gdip_TextToGraphics(G, longestName, "x0y0 c00FFFFFF r4 s" 17*UserScale, Font) ; text is invisible ;get string size	
 					StringSplit, LongestNameSize, LongestNameData, | ;retrieve the length of the string
 					LongestNameSize := LongestNameSize3
 				}
-				DestX := LongestNameSize+10*UserScale
-
+				DestX := LongestNameSize+10*UserScale+DestXOffset
 			}
 			Else If (PlayerIdentifier = 3)
 			{		
 				pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"RaceFlatColour", aPlayer[slot_number, "Colour"]]
-				SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
-				Width *= UserScale *.5, Height *= UserScale *.5	
-				Gdip_DrawImage(G, pBitmap, 12*UserScale, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
-				DestX := Width+10*UserScale
-				DestY += Height//4
+				, SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
+				, Width *= UserScale *.5, Height *= UserScale *.5	
+				, Gdip_DrawImage(G, pBitmap, 12*UserScale, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
+				, DestX := Width+10*UserScale+DestXOffset
+				, DestY += Height//4
 			}
-			TextData := Gdip_TextToGraphics(G, getPlayerCurrentAPM(slot_number), "x"DestX "y"DestY " W" 50*UserScale " "  Options, Font)
+
+			TextData := Gdip_TextToGraphics(G, getPlayerCurrentAPM(slot_number), "x"DestX "y"DestY " W" 46*UserScale " "  Options, Font)
 			; 24.500000|0.000000|25.140299|21.117188|2|1			
 			StringSplit, TextSize, TextData, | ;retrieve the length of the string
-			if (Height < TextSize4)
+			if (Height < TextSize4) ; prevent zerg race icons overlapping 
 				Height := TextSize4
-			if (WindowWidth < CurrentWidth := DestX+(40*UserScale) + TextSize3)
+			if (WindowWidth < CurrentWidth := DestX + 46*UserScale) ;TextSize3)
 				WindowWidth := CurrentWidth
-			Height += 5*userscale
-			i++ 
+			DestY += height  
 		}
 	}
-	WindowHeight := DestY+Height
+	WindowHeight := DestY - DestYOffset ; I think it looks better to have the trans. background finish here rather than a few pixels lower
 
 	if !WindowWidth
 		WindowWidth := 20	
 	else if (WindowWidth > A_ScreenWidth)
-		WindowWidth := A_ScreenWidth
-
+		WindowWidth := A_ScreenWidth - A_ScreenWidth * 0.06 ; make it a little smaller so don't have to worry about size
 	if !WindowHeight
 		WindowHeight := 20		
 	else if (WindowHeight > A_ScreenHeight)
-		WindowHeight := A_ScreenHeight
+		WindowHeight := A_ScreenHeight - A_ScreenHeight * 0.06
+	; if drawBackground && ***********
+	if (prevPlayerIdentifier != PlayerIdentifier || Abs(prevWindowWidth - WindowWidth) > 5 || Abs(prevWindowHeight != WindowHeight) > 5) ; this ensure the background covers the drawn stuff even when size changes
+		recurse := true
+	prevWindowWidth := WindowWidth, prevWindowHeight := WindowHeight, prevPlayerIdentifier := PlayerIdentifier
 
-	Gdip_DeleteGraphics(G)
-	UpdateLayeredWindow(hwnd1, hdc,,, WindowWidth, WindowHeight, overlayAPMTransparency)
-	SelectObject(hdc, obm) ; needed else eats ram ; Select the object back into the hdc
-	DeleteObject(hbm)   ; needed else eats ram 	; Now the bitmap may be deleted
-	DeleteDC(hdc) ; Also the device context related to the bitmap may be deleted
+	, Gdip_DeleteGraphics(G)
+	if recurse 
+		DrawAPMOverlay(Redraw, UserScale, PlayerIdentifier, modeAPM_EPM, background, Drag)
+	else UpdateLayeredWindow(hwnd1, hdc,,, WindowWidth * 1.05, WindowHeight * 1.05, overlayAPMTransparency)
+	SelectObject(hdc, obm), DeleteObject(hbm), DeleteDC(hdc) 
 	Return
 }
 
@@ -557,19 +564,23 @@ DrawResourcesOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0
 {	global aLocalPlayer, aHexColours, aPlayer, GameIdentifier, config_file, ResourcesOverlayX, ResourcesOverlayY, a_pBitmap, overlayResourceTransparency
 			, drawLocalPlayerResources
 	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0		
-
-	DestX := i := 0
-	Options := " Right cFFFFFFFF r4 s" 17*UserScale 					;these cant be static	
+	, prevPlayerIdentifier
+	, prevWindowWidth := 0, prevWindowHeight := 0 ; Note these refer to the size of the displayed stats and do not include the transparent background - so the real window size a little bit larger
 
 	if !modifyOverlay("ResourcesOverlay", Redraw, overlayCreated, Drag, DragPrevious, ResourcesOverlayX, ResourcesOverlayY, 400, 400, hwnd1)
 		return
 
-	hbm := CreateDIBSection(A_ScreenWidth, A_ScreenHeight)
-	, hdc := CreateCompatibleDC()
-	, obm := SelectObject(hdc, hbm)
-	, G := Gdip_GraphicsFromHDC(hdc)
+	hbm := CreateDIBSection(A_ScreenWidth, A_ScreenHeight), hdc := CreateCompatibleDC(), obm := SelectObject(hdc, hbm), G := Gdip_GraphicsFromHDC(hdc)
 	, Gdip_SetInterpolationMode(G, 2)
-	;DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0)		
+
+	i := DestX := DestY := DestXOffset := DestYOffset := 0
+	, Options := " Right cFFFFFFFF r4 s" 17*UserScale
+	if prevWindowWidth   
+	{
+		Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, 0, 0, prevWindowWidth * 1.05, prevWindowHeight * 1.05, 10)
+		, DestXOffset := DestX := prevWindowWidth * .05
+		, DestYOffset := DestY := prevWindowHeight * .05
+	}
 
 	; Users have requested that their own local player appear in some overlays
 	; to do this i now iterate the aEnemyAndLocalPlayer rather than the 
@@ -578,127 +589,130 @@ DrawResourcesOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0
 	{	
 		if ((slot_number := player["Slot"]) != aLocalPlayer["Slot"] || drawLocalPlayerResources)
 		{	
-			DestY := i ? i*Height : 0
-
 			If (PlayerIdentifier = 1 Or PlayerIdentifier = 2 )
 			{	
 				IF (PlayerIdentifier = 2)
 					OptionsName := " Bold cFF" aHexColours[aPlayer[slot_number, "Colour"]] " r4 s" 17*UserScale
 				Else IF (PlayerIdentifier = 1)
 					OptionsName := " Bold cFFFFFFFF r4 s" 17*UserScale		
-				pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Mineral",Background]
-				SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)		
-				Width *= UserScale *.5, Height *= UserScale *.5
-				gdip_TextToGraphics(G, getPlayerName(slot_number), "x0" "y"(DestY+(Height//4))  OptionsName, Font) ;get string size	
+				pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Mineral", 0]
+			,	SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)		
+			,	Width *= UserScale *.5, Height *= UserScale *.5
+			,	gdip_TextToGraphics(G, getPlayerName(slot_number), "x" DestXOffset "y"(DestY+(Height//4))  OptionsName, Font) ;get string size	
 				if !LongestNameSize
 				{
 					if drawLocalPlayerResources
 						longestName := MT_CurrentGame.LongestName
 					else 
 						longestName := MT_CurrentGame.LongestEnemyName
-					LongestNameData :=	gdip_TextToGraphics(G, longestName, "x0" "y"(DestY+(Height//4))  " Bold c00FFFFFF r4 s" 17*UserScale	, Font) ; text is invisible ;get string size	
+					LongestNameData :=	gdip_TextToGraphics(G, longestName, "x0" "y"(DestY+(Height//4))  " Bold c00FFFFFF r4 s" 17*UserScale, Font) ; text is invisible ;get string size	
 					StringSplit, LongestNameSize, LongestNameData, | ;retrieve the length of the string
 					LongestNameSize := LongestNameSize3
 				}
-				DestX := LongestNameSize+10*UserScale
+				DestX := LongestNameSize+10*UserScale+DestXOffset
 			}
 			Else If (PlayerIdentifier = 3)
-			{	pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"RaceFlatColour", aPlayer[slot_number, "Colour"]]
-				SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
-				Width *= UserScale *.5, Height *= UserScale *.5	
-				Gdip_DrawImage(G, pBitmap, 12*UserScale, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
-				;Gdip_DisposeImage(pBitmap)
-				pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Mineral",Background]
-				SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
-				Width *= UserScale *.5, Height *= UserScale *.5		
-				DestX := Width+10*UserScale
+			{	
+				pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"RaceFlatColour", aPlayer[slot_number, "Colour"]]
+				, SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
+				, Width *= UserScale *.5, Height *= UserScale *.5	
+				, Gdip_DrawImage(G, pBitmap, 12*UserScale, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
+				, pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Mineral", 0]
+				, SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
+				, Width *= UserScale *.5, Height *= UserScale *.5		
+				, DestX := Width+10*UserScale+DestXOffset
 			}
 			Else
 			{
-				pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Mineral",Background]
-				SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
-				Width *= UserScale *.5, Height *= UserScale *.5	
+				pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Mineral", 0]
+				, SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
+				, Width *= UserScale *.5, Height *= UserScale *.5	
 			}
-
 			Gdip_DrawImage(G, pBitmap, DestX, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)	
-			;Gdip_DisposeImage(pBitmap)
-			Gdip_TextToGraphics(G, getPlayerMinerals(slot_number), "x"(DestX+Width+5*UserScale) "y"(DestY+(Height//4)) Options  " w" 45*UserScale , Font, TextWidthHeight, TextWidthHeight)				
-			pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Gas",Background]
-			SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
-			Width *= UserScale *.5, Height *= UserScale *.5
-			Gdip_DrawImage(G, pBitmap, DestX + (85*UserScale), DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)	
-			;Gdip_DisposeImage(pBitmap)
-			Gdip_TextToGraphics(G, getPlayerGas(slot_number), "x"(DestX+(80*UserScale)+Width+5*UserScale) "y"(DestY+(Height//4)) Options  " w" 45*UserScale, Font, TextWidthHeight,TextWidthHeight)				
-
-			pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Supply",Background]
-			SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
-			Width *= UserScale *.5, Height *= UserScale *.5
-			Gdip_DrawImage(G, pBitmap, DestX + (2*85*UserScale), DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
-			;Gdip_DisposeImage(pBitmap)
-			TextData := Gdip_TextToGraphics(G, getPlayerSupply(slot_number)"/"getPlayerSupplyCap(slot_number), "x"(DestX+(2*83*UserScale)+Width+3*UserScale) "y"(DestY+(Height//4)) Options  " w" 70*UserScale, Font, TextWidthHeight, TextWidthHeight)				
+			, Gdip_TextToGraphics(G, getPlayerMinerals(slot_number), "x"(DestX+Width+5*UserScale) "y"(DestY+(Height//4)) Options  " w" 45*UserScale , Font)				
+			,pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Gas", 0]
+			, SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
+			, Width *= UserScale *.5, Height *= UserScale *.5
+			, Gdip_DrawImage(G, pBitmap, DestX + (85*UserScale), DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)	
+			, Gdip_TextToGraphics(G, getPlayerGas(slot_number), "x"(DestX+(80*UserScale)+Width+5*UserScale) "y"(DestY+(Height//4)) Options  " w" 45*UserScale, Font)				
+			, pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Supply", 0]
+			, SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
+			, Width *= UserScale *.5, Height *= UserScale *.5
+			, Gdip_DrawImage(G, pBitmap, DestX + (2*85*UserScale), DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
+			, TextData := Gdip_TextToGraphics(G, getPlayerSupply(slot_number)"/"getPlayerSupplyCap(slot_number), "x"(DestX+(2*83*UserScale)+Width+3*UserScale) "y"(DestY+(Height//4)) Options " w" 70*UserScale, Font)				
 			StringSplit, TextSize, TextData, |			
-			if (WindowWidth < CurrentWidth := DestX+(2*85*UserScale)+Width+5*UserScale + TextSize3*2)
+			if (WindowWidth < CurrentWidth := DestX+(2*85*UserScale)+Width+5*UserScale + 70*UserScale ) ;+ TextSize3)
 				WindowWidth := CurrentWidth	
 			Height += 5*userscale	;needed to stop the edge of race pic overlap'n due to Supply pic -prot then zerg
-			i++ 
+			, DestY := ++i*height + DestYOffset
 		}
 	}
-	WindowHeight := DestY+Height
+	WindowHeight := DestY - DestYOffset ; I think it looks better to have the trans. background finish here rather than a few pixels lower
 
 	if !WindowWidth
 		WindowWidth := 20	
-	else if (WindowWidth > A_ScreenWidth)
-		WindowWidth := A_ScreenWidth
-
+	else if (WindowWidth * 1.05 > A_ScreenWidth)
+		WindowWidth := A_ScreenWidth * 0.94 ; make it a little smaller so don't have to worry about size
 	if !WindowHeight
 		WindowHeight := 20		
-	else if (WindowHeight > A_ScreenHeight)
-		WindowHeight := A_ScreenHeight
+	else if (WindowHeight * 1.05 > A_ScreenHeight)
+		WindowHeight := A_ScreenHeight * 0.94
 
-	Gdip_DeleteGraphics(G)
-	, UpdateLayeredWindow(hwnd1, hdc,,, WindowWidth, WindowHeight, overlayResourceTransparency)
-	, SelectObject(hdc, obm)
-	, DeleteObject(hbm)
-	, DeleteDC(hdc)
+	; if drawBackground && ***********
+	if (prevPlayerIdentifier != PlayerIdentifier || Abs(prevWindowWidth - WindowWidth) > 5 || Abs(prevWindowHeight != WindowHeight) > 5) ; this ensure the background covers the drawn stuff even when size changes
+		recurse := true
+
+	prevWindowWidth := WindowWidth, prevWindowHeight := WindowHeight, prevPlayerIdentifier := PlayerIdentifier
+	, Gdip_DeleteGraphics(G)
+	if recurse 
+		DrawResourcesOverlay(Redraw, UserScale, PlayerIdentifier, Background, Drag)
+	else UpdateLayeredWindow(hwnd1, hdc,,, WindowWidth * 1.05, WindowHeight * 1.05, overlayResourceTransparency)
+	SelectObject(hdc, obm), DeleteObject(hbm), DeleteDC(hdc)
 	Return
 }
 
-; Takes 7 ms for 2 (enemy) players
+; Takes 3 ms for 3 (enemy) players
 DrawArmySizeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Drag=0)
 {	global aLocalPlayer, aHexColours, aPlayer, GameIdentifier, config_file, ArmySizeOverlayX, ArmySizeOverlayY, a_pBitmap, overlayArmyTransparency
 	, drawLocalPlayerArmy
 	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0	
-		
-	DestX := i := 0
-	Options := " cFFFFFFFF r4 s" 17*UserScale					;these cant be static
+	, prevPlayerIdentifier
+	, prevWindowWidth := 0, prevWindowHeight := 0 ; Note these refer to the size of the displayed stats and do not include the transparent background - so the real window size a little bit larger
 
 	if !modifyOverlay("ArmySizeOverlay", Redraw, overlayCreated, Drag, DragPrevious, ArmySizeOverlayX, ArmySizeOverlayY, 400, 400, hwnd1)
 		return
 
-	hbm := CreateDIBSection(A_ScreenWidth, A_ScreenHeight)
-	, hdc := CreateCompatibleDC()
-	, obm := SelectObject(hdc, hbm)
-	, G := Gdip_GraphicsFromHDC(hdc)
+	hbm := CreateDIBSection(A_ScreenWidth, A_ScreenHeight), hdc := CreateCompatibleDC(), obm := SelectObject(hdc, hbm), G := Gdip_GraphicsFromHDC(hdc)
 	, Gdip_SetInterpolationMode(G, 2)
-	;DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0)
+
+
+	i := DestX := DestY := DestYOffset := 0
+	, Options := " cFFFFFFFF r4 s" 17*UserScale
+	; Fill transparentBackground. This uses the prev 'window size' (size the info takes up) to determine where to draw the transparent background.
+	; This method is much faster than drawing pBitmap into the graphics of a bacground or using clip.
+	if prevWindowWidth   
+	{
+		Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, 0, 0, prevWindowWidth * 1.05, prevWindowHeight * 1.05, 10)
+		, DestX := DestXOffset := prevWindowWidth * .05
+		, DestYOffset := DestY := prevWindowHeight * .05
+	}
+
 	For index, player in aEnemyAndLocalPlayer
 	{	
 		; DrawArmySizeOverlay -1 = enemies + self
 		if ((slot_number := player["Slot"]) != aLocalPlayer["Slot"] || drawLocalPlayerArmy)
 		{	
-		;	DestY := i ? i*Height + 5*UserScale : 0
-			DestY := i ? i*Height : 0
-
+			
 			If (PlayerIdentifier = 1 Or PlayerIdentifier = 2 )
 			{	
 				IF (PlayerIdentifier = 2)
 					OptionsName := " Bold cFF" aHexColours[aPlayer[slot_number, "Colour"]] " r4 s" 17*UserScale
 				Else IF (PlayerIdentifier = 1)
 					OptionsName := " Bold cFFFFFFFF r4 s" 17*UserScale	
-				pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Mineral",Background]
-				SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
-				Width *= UserScale *.5, Height *= UserScale *.5		
-				gdip_TextToGraphics(G, getPlayerName(slot_number), "x0" "y"(DestY+(Height//4))  OptionsName, Font)		
+				pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Mineral", 0]
+				, SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
+				, Width *= UserScale *.5, Height *= UserScale *.5		
+				, gdip_TextToGraphics(G, getPlayerName(slot_number), "x" DestXOffset "y"(DestY+(Height//4))  OptionsName, Font)		
 				if !LongestNameSize
 				{
 					if (DrawArmySizeOverlay = -1) 
@@ -710,51 +724,47 @@ DrawArmySizeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,
 					StringSplit, LongestNameSize, LongestNameData, | ;retrieve the length of the string
 					LongestNameSize := LongestNameSize3
 				}
-				DestX := LongestNameSize+10*UserScale
+				DestX := LongestNameSize+10*UserScale+DestXOffset
 			}
 			Else If (PlayerIdentifier = 3)
 			{		
 				pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"RaceFlatColour", aPlayer[slot_number, "Colour"]]
-				SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
-				Width *= UserScale *.5, Height *= UserScale *.5	
-				Gdip_DrawImage(G, pBitmap, 12*UserScale, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
+				, SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
+				, Width *= UserScale *.5, Height *= UserScale *.5	
+				, Gdip_DrawImage(G, pBitmap, 12*UserScale, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
 				;Gdip_DisposeImage(pBitmap)
-				pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Mineral",Background]
-				SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
-				Width *= UserScale *.5, Height *= UserScale *.5		
-				DestX := Width+10*UserScale
+				, pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Mineral", 0]
+				, SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
+				, Width *= UserScale *.5, Height *= UserScale *.5		
+				, DestX := Width+10*UserScale+DestXOffset
 			}
 			Else
 			{
-				pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Mineral",Background]
-				SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
-				Width *= UserScale *.5, Height *= UserScale *.5	
+				pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Mineral", 0]
+				, SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
+				, Width *= UserScale *.5, Height *= UserScale *.5	
 			}
 			Gdip_DrawImage(G, pBitmap, DestX, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)	
-			;Gdip_DisposeImage(pBitmap)
-			Gdip_TextToGraphics(G, ArmyMinerals := getPlayerArmySizeMinerals(slot_number), "x"(DestX+Width+5*UserScale) "y"(DestY+(Height//4)) Options, Font)				
-			pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Gas",Background]
-			SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
-			Width *= UserScale *.5, Height *= UserScale *.5
-			Gdip_DrawImage(G, pBitmap, DestX + (85*UserScale), DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)	
-			;Gdip_DisposeImage(pBitmap)
-			Gdip_TextToGraphics(G, getPlayerArmySizeGas(slot_number), "x"(DestX+(85*UserScale)+Width+5*UserScale) "y"(DestY+(Height//4)) Options, Font)				
+			, Gdip_TextToGraphics(G, ArmyMinerals := getPlayerArmySizeMinerals(slot_number), "x"(DestX+Width+5*UserScale) "y"(DestY+(Height//4)) Options, Font)				
+			, pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Gas", 0]
+			, SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
+			, Width *= UserScale *.5, Height *= UserScale *.5
+			, Gdip_DrawImage(G, pBitmap, DestX + (85*UserScale), DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)	
+			, Gdip_TextToGraphics(G, getPlayerArmySizeGas(slot_number), "x"(DestX+(85*UserScale)+Width+5*UserScale) "y"(DestY+(Height//4)) Options, Font)				
 
-
-
-			pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Army"]
-			SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
-			Width *= UserScale *.5, Height *= UserScale *.5
-			Gdip_DrawImage(G, pBitmap, DestX + (2*85*UserScale), DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
+			, pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Army"]
+			, SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
+			, Width *= UserScale *.5, Height *= UserScale *.5
+			, Gdip_DrawImage(G, pBitmap, DestX + (2*85*UserScale), DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
 			;Gdip_DisposeImage(pBitmap)
-			TextData := Gdip_TextToGraphics(G, round(getPlayerArmySupply(slot_number)) "/" getPlayerSupply(slot_number), "x"(DestX+(2*85*UserScale)+Width+3*UserScale) "y"(DestY+(Height//4)) Options, Font)				
+			, TextData := Gdip_TextToGraphics(G, round(getPlayerArmySupply(slot_number)) "/" getPlayerSupply(slot_number), "x"(DestX+(2*85*UserScale)+Width+3*UserScale) "y"(DestY+(Height//4)) Options, Font)				
 			StringSplit, TextSize, TextData, |
 			if (WindowWidth < CurrentWidth := DestX+(2*85*UserScale)+Width+5*UserScale + TextSize3)
-				WindowWidth := CurrentWidth				
-			i++ 
+				WindowWidth := CurrentWidth	
+			DestY := ++i*height + DestYOffset		
 		}
 	}
-	WindowHeight := DestY+Height
+	WindowHeight := DestY - DestYOffset ; I think it looks better to have the trans. background finish here rather than a few pixels lower
 
 	;DesktopScreenCoordinates(Xmin, Ymin, Xmax, Ymax)
 	; If the width is larger than the created Dib section the 
@@ -766,21 +776,26 @@ DrawArmySizeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,
 	if !WindowWidth
 		WindowWidth := 20	
 	else if (WindowWidth > A_ScreenWidth)
-		WindowWidth := A_ScreenWidth
-
+		WindowWidth := A_ScreenWidth - A_ScreenWidth * 0.06 ; make it a little smaller so don't have to worry about size
 	if !WindowHeight
 		WindowHeight := 20		
 	else if (WindowHeight > A_ScreenHeight)
-		WindowHeight := A_ScreenHeight
-
-	Gdip_DeleteGraphics(G)
-	, UpdateLayeredWindow(hwnd1, hdc,,, WindowWidth, WindowHeight, overlayArmyTransparency)
-	, SelectObject(hdc, obm) 
-	, DeleteObject(hbm)  
-	, DeleteDC(hdc) 
+		WindowHeight := A_ScreenHeight - A_ScreenHeight * 0.06
+	
+	; if drawBackground && ***********
+	if (prevPlayerIdentifier != PlayerIdentifier || Abs(prevWindowWidth - WindowWidth) > 5 || Abs(prevWindowHeight != WindowHeight) > 5) ; this ensure the background covers the drawn stuff even when size changes
+		recurse := true
+	prevWindowWidth := WindowWidth, prevWindowHeight := WindowHeight, prevPlayerIdentifier := PlayerIdentifier
+	
+	, Gdip_DeleteGraphics(G)
+	if recurse
+		DrawArmySizeOverlay(Redraw, UserScale, PlayerIdentifier, Background, Drag)
+	else UpdateLayeredWindow(hwnd1, hdc,,, WindowWidth * 1.05, WindowHeight * 1.05, overlayArmyTransparency)
+	SelectObject(hdc, obm), DeleteObject(hbm), DeleteDC(hdc) 
 	Return
 }
-; Takes 0.6 ms
+
+ ; Takes 0.6 ms
 DrawWorkerOverlay(ByRef Redraw, UserScale=1,Drag=0)
 {	global aLocalPlayer, GameIdentifier, config_file, WorkerOverlayX, WorkerOverlayY, a_pBitmap, overlayHarvesterTransparency
 	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := False				
@@ -1796,7 +1811,7 @@ DrawMacroTownHallOverlay(ByRef Redraw, UserScale=1, Drag=0)
 	
 		strikeOutUpgrade(G, 0, 0, width, height)
 	}
-	
+
 	Gdip_DeleteGraphics(G)	
 	; Don't have to worry about size checks here, as not passing these params to updateLayeredWindow()
 	, UpdateLayeredWindow(hwnd1, hdc,,,,, overlayMacroTownHallTransparency)
