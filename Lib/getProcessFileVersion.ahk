@@ -2,7 +2,7 @@ getProcessFileVersion(process)
 {
 	process, exist, %process%
 	If (!pid := ErrorLevel)
-		return 0
+		return ""
 	; msdn states ComObjGet( "winmgmts:{impersonationLevel=impersonate}!\\.\root\cimv2" )
 	; Could have also used the process name ie -  ("Select * from Win32_Process where Name= '" process "'" )
 	for Item in ComObjGet("winmgmts:").ExecQuery("Select * from Win32_Process where ProcessId="  pid)
@@ -12,7 +12,7 @@ getProcessFileVersion(process)
 		if aInfo.FileVersion
 			return aInfo.FileVersion
 	}	
-	return 0
+	return ""
 }
 
 /*

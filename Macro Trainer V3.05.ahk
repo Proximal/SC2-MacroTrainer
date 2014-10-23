@@ -152,7 +152,6 @@ url.Downloads := "http://www.users.on.net/~jb10/MTSite/downloads.html"
 url.ChronoRules := "http://www.users.on.net/~jb10/MTSite/chronoBoost.html"
 url.Overlays := "http://www.users.on.net/~jb10/MTSite/miniMapOverlays.html"
 url.Homepage := "http://www.users.on.net/~jb10/MTSite/overview.html"
-url.buyBeer := "http://www.users.on.net/~jb10/MTSite/buyBeer.html"
 url.PixelColour := url.homepage "Macro Trainer/PIXEL COLOUR.htm"
 url.BugReport := "http://mt.9xq.ru/"
 
@@ -411,9 +410,22 @@ if !ErrorLevel ; User clicked ok/accept
 	; Save the value in hex RGB format in the ini rather than a random decimal value.
 	; The alpha channel will be blank, so set it to FF
 	%ChooseColourVariable% := dectohex(selectedColour | 0xFF000000) 
-	paintPictureControl(pictureHwnd, %ChooseColourVariable%)
+	if (ChooseColourVariable = "TransparentBackgroundColour") ; so the alpha component gets drawn
+		gosub, UpdateTransparentGUIColour
+	else paintPictureControl(pictureHwnd, %ChooseColourVariable%)
 }
 return
+
+UpdateTransparentGUIColour:
+GuiControlGet, value,, TransparentBackgroundSlider
+value := (value * 2.55 ) & 0xFF ; limit it to 0 - 255 (shouldn't be required).
+paintPictureControl(_TransparentBackgroundColour, TransparentBackgroundColour := (TransparentBackgroundColour & 0x00FFFFFF) | (value << 24))	
+return 
+ResetTransparentBackgroundColour:
+TransparentBackgroundColour := 0x78000000
+GuiControl,, TransparentBackgroundSlider, % ceil((TransparentBackgroundColour >> 24) / 2.55)
+paintPictureControl(_TransparentBackgroundColour, TransparentBackgroundColour)
+return 
 
 paintPictureControl(Handle, Colour, RoundCorner := 0, ControlW := "", ControlH := "")
 { 
@@ -1951,10 +1963,6 @@ Homepage:
 run % url.homepage
 return
 
-g_buyBeer:
-run % url.buyBeer
-return
-
 gUnitPanelGuide:
 run % url.Overlays
 return
@@ -2764,7 +2772,19 @@ ini_settings_write:
 			%A_LoopField% := 255
 		Iniwrite, % %A_LoopField%, %config_file%, %section%, %A_LoopField%
 	}
-	
+
+	if (Tmp_GuiControl = "save" || Tmp_GuiControl = "Apply")
+		TransparentBackgroundColour := (TransparentBackgroundColour & 0x00FFFFFF) | (ceil(TransparentBackgroundSlider * 2.55)  << 24)
+	Iniwrite, %TransparentBackgroundColour% , %config_file%, %section%, TransparentBackgroundColour
+
+	Iniwrite, %BackgroundIncomeOverlay%, %config_file%, %section%, BackgroundIncomeOverlay
+	Iniwrite, %BackgroundResourcesOverlay%, %config_file%, %section%, BackgroundResourcesOverlay
+	Iniwrite, %BackgroundArmySizeOverlay%, %config_file%, %section%, BackgroundArmySizeOverlay
+	Iniwrite, %BackgroundAPMOverlay%, %config_file%, %section%, BackgroundAPMOverlay
+	Iniwrite, %BackgroundIdleWorkersOverlay%, %config_file%, %section%, BackgroundIdleWorkersOverlay
+	Iniwrite, %BackgroundWorkerOverlay%, %config_file%, %section%, BackgroundWorkerOverlay
+	Iniwrite, %BackgroundMacroTownHallOverlay%, %config_file%, %section%, BackgroundMacroTownHallOverlay
+
 	;[MiniMap]
 	section := "MiniMap" 
 
@@ -4203,14 +4223,14 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 	Gui, Add, Tab2, w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vHome_TAB, Home||Emergency
 	Gui, Tab, Home
 			Gui, Add, Button, y+30 gTrayUpdate w150, Check For Updates
-			Gui, Add, Button, y+20 gB_HelpFile w150 vSillyGUIControlIdentVariable2, Read The Help File
-			Gui, Add, Button, y+20 gB_ChangeLog w150, Read The ChangeLog
+			Gui, Add, Button, y+20 gB_HelpFile w150, Read The Help File
+			Gui, Add, Button, y+20 gB_ChangeLog w150 vSillyGUIControlIdentVariable2, Read The ChangeLog
 			Gui, Add, Checkbox,y+30 Vlaunch_settings checked%launch_settings%, Show this menu on startup	
 
 			GuiControlGet, HomeButtonLocation, Pos, SillyGUIControlIdentVariable2 ;
 
 			Gui, Add, Button, X360 y%HomeButtonLocationY% gHomepage w150, Homepage
-			Gui, Add, Button, y+20 gG_buyBeer w150, Buy Me a Beer
+
 
 			Gui, Add, Picture, x170 y320 h90 w90 gP_Protoss_Joke vProtossPic, %A_Temp%\Protoss90.png
 			Gui, Add, Picture, x+50 yp-20 h128 w128 gP_Terran_Joke vTerranPic , %A_Temp%\Terran90.png
@@ -4228,7 +4248,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		Gui, Add, Text, xp y+15 w405, The deult key can be changed via the 'settings' Tab on the left.
 		Gui, Add, Text, xp y+20 w405, Note: The windows key must not be disabled within the SC options.`nThis program is capable of blocking the Left windows key (check settings tab).
 
-	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vMiniMap_TAB, MiniMap||MiniMap2|Overlays|Hotkeys|Info
+	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vMiniMap_TAB, MiniMap||MiniMap2|new|Overlays|Hotkeys|Info
 
 	Gui, Tab, MiniMap
 
@@ -4339,6 +4359,22 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 				Gui, add, text, y+9 X%CurrentGuiTabX%, Colour:
 				Gui, Add, Picture, xs yp-4 w300 h22 0xE HWND_UnitHighlightList7Colour v#UnitHighlightList7Colour gColourSelector ;0xE required for GDI
 				paintPictureControl(_UnitHighlightList7Colour, UnitHighlightList7Colour)	
+
+	Gui, Tab, new
+		Gui, Add, GroupBox, y+15 x+20 w285 h300 section, Overlay Background:
+			Gui, Add, Checkbox, xp+10 yp+20 vBackgroundIncomeOverlay Checked%BackgroundIncomeOverlay%, Income
+			Gui, Add, Checkbox, xp y+10 vBackgroundResourcesOverlay Checked%BackgroundResourcesOverlay%, Resources
+			Gui, Add, Checkbox, xp y+10 vBackgroundArmySizeOverlay Checked%BackgroundArmySizeOverlay%, Army Size
+			Gui, Add, Checkbox, xp y+10 vBackgroundAPMOverlay Checked%BackgroundAPMOverlay%, APM
+			Gui, add, text, xs+10 y+30 w40, Colour:
+			Gui, Add, Picture, x+10 yp-10 w210 h35 0xE HWND_TransparentBackgroundColour v#TransparentBackgroundColour gColourSelector ;0xE required for GDI
+			paintPictureControl(_TransparentBackgroundColour, TransparentBackgroundColour)	
+			Gui, add, text, xs+10 y+25 w40, Opacity:
+			Gui, Add, Slider, ToolTip  NoTicks w210 x+10 yp vTransparentBackgroundSlider gUpdateTransparentGUIColour AltSubmit, % ceil(((TransparentBackgroundColour & 0xFF000000) >> 24) / 2.55)  ;& it in case higher bits got set somehow (should never occur)
+			Gui, Add, Button, xs+10 y+10 gResetTransparentBackgroundColour, Default Colour
+			Gui, Add, Checkbox, xs+150 ys+20 vBackgroundIdleWorkersOverlay Checked%BackgroundIdleWorkersOverlay%, Idle Workers
+			Gui, Add, Checkbox, xp y+10 vBackgroundWorkerOverlay Checked%BackgroundWorkerOverlay%, Local Harvester Count
+			Gui, Add, Checkbox, xp y+10 vBackgroundMacroTownHallOverlay Checked%BackgroundMacroTownHallOverlay%, Town Hall Macro
 
 	Gui, Tab, Overlays
 			;Gui, add, text, y+20 X%XTabX%, Display Overlays:
@@ -13267,8 +13303,6 @@ class autoBuild
 		}
 		return	
 	}
-
-
 }
 
 class buildCheck
@@ -13287,27 +13321,3 @@ class buildCheck
 		return
 	}
 }
-
-/*
-f1::
-unit := getSelectedUnitIndex()
-;getUnitAbilitiesString(unit)
-msgbox % isUnitPowered(unit)
-return 
-
-
-
-
-
-
-/*
-E0
-pAbilities: 24B78F04 Unit ID: 0
-uStruct: 4B4F580 - 4B4F740
-0 | Pointer Address 24B78F1C | Pointer Value 5C97230 | Rally
-1 | Pointer Address 24B78F20 | Pointer Value 5C972AC | que5
-2 | Pointer Address 24B78F24 | Pointer Value 5C97328 | BuildInProgress
-3 | Pointer Address 24B78F28 | Pointer Value 5C973A4 | GatewayTrain
-4 | Pointer Address 24B78F2C | Pointer Value 5C97420 | WarpGateTrain
-5 | Pointer Address 24B78F30 | Pointer Value 5C9749C | UpgradeToWarpGate
-6 | Pointer Address 24B78F34 | Pointer Value 5C97518 | MorphBackToGateway

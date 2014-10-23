@@ -56,7 +56,8 @@ Return
 ; But I don't really want to test this atm, so its being left as is.
 
 gClock:
-if !time := getTime()
+time := getTime()
+if !time || getLocalPlayerNumber() = 16
 	gameChange()
 return 
 
@@ -315,7 +316,7 @@ http://support.microsoft.com/kb/311221
 ; no player IDs. When IDs (text/pic) are present it takes a bit longer
 ; Takes 0.76 ms
 DrawIdleWorkersOverlay(ByRef Redraw, UserScale=1,Drag=0, expand=1)
-{	global aLocalPlayer, GameIdentifier, config_file, IdleWorkersOverlayX, IdleWorkersOverlayY, a_pBitmap, overlayIdleWorkerTransparency, idleWorkerOverlayThreshold
+{	global aLocalPlayer, GameIdentifier, config_file, IdleWorkersOverlayX, IdleWorkersOverlayY, a_pBitmap, overlayIdleWorkerTransparency, idleWorkerOverlayThreshold, BackgroundIdleWorkersOverlay
 	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0				
 
 	DestX := DestY := 0
@@ -326,10 +327,7 @@ DrawIdleWorkersOverlay(ByRef Redraw, UserScale=1,Drag=0, expand=1)
 	if !modifyOverlay("idleWorkersOverlay", Redraw, overlayCreated, Drag, DragPrevious, idleWorkersOverlayX, idleWorkersOverlayY, 400, 400, hwnd1)
 		return
 
-	hbm := CreateDIBSection(400, 400)
-	, hdc := CreateCompatibleDC()
-	, obm := SelectObject(hdc, hbm)
-	, G := Gdip_GraphicsFromHDC(hdc)
+	hbm := CreateDIBSection(400, 400), hdc := CreateCompatibleDC(), obm := SelectObject(hdc, hbm), G := Gdip_GraphicsFromHDC(hdc)
 	, Gdip_SetInterpolationMode(G, 2)
 	, pBitmap := a_pBitmap[aLocalPlayer["Race"],"Worker"]
 	, SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
@@ -341,7 +339,9 @@ DrawIdleWorkersOverlay(ByRef Redraw, UserScale=1,Drag=0, expand=1)
 			increased := .5
 		UserScale += increased
 	}
-	Options := " cFFFFFFFF r4 s" 18*UserScale
+	if BackgroundIdleWorkersOverlay
+		Gdip_FillRoundedRectangle(G, a_pBrushes.transBackground, 0, 0, (48 + strlen(idlecount)*10) * userScale, 36 * userScale, 2)
+	, Options := " cFFFFFFFF r4 s" 18*UserScale
 	, Width *= UserScale *.5, Height *= UserScale *.5
 	, Gdip_DrawImage(G, pBitmap, DestX, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)	
 	, Gdip_TextToGraphics(G, idleCount, "x"(DestX+Width+2*UserScale) "y"(DestY+(Height//4)) Options, Font, TextWidthHeight, TextWidthHeight)
@@ -356,7 +356,7 @@ DrawIdleWorkersOverlay(ByRef Redraw, UserScale=1,Drag=0, expand=1)
 ; Takes 4.4 ms    
 DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Drag=0)
 {	global aLocalPlayer, aHexColours, aPlayer, GameIdentifier, IncomeOverlayX, IncomeOverlayY, config_file, a_pBitmap, overlayIncomeTransparency
-	, drawLocalPlayerIncome
+	, drawLocalPlayerIncome, BackgroundIncomeOverlay
 	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0
 	, prevPlayerIdentifier
 	, prevWindowWidth := 0, prevWindowHeight := 0 ; Note these refer to the size of the displayed stats and do not include the transparent background - so the real window size a little bit larger
@@ -370,9 +370,9 @@ DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Dr
 	
 	i := DestX := DestY := DestXOffset := DestYOffset := 0
 	, Options := " cFFFFFFFF r4 s" 17*UserScale
-	if prevWindowWidth   
+	if (BackgroundIncomeOverlay && prevWindowWidth)
 	{
-		Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, 0, 0, prevWindowWidth * 1.05, prevWindowHeight * 1.05, 10)
+		Gdip_FillRoundedRectangle(G, a_pBrushes.transBackground, 0, 0, prevWindowWidth * 1.05, prevWindowHeight * 1.05, 10)
 		, DestXOffset := DestX := prevWindowWidth * .05
 		, DestYOffset := DestY := prevWindowHeight * .05
 	}
@@ -450,8 +450,7 @@ DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Dr
 	else if (WindowHeight > A_ScreenHeight)
 		WindowHeight := A_ScreenHeight - A_ScreenHeight * 0.06
 
-	; if drawBackground && ***********
-	if (prevPlayerIdentifier != PlayerIdentifier || Abs(prevWindowWidth - WindowWidth) > 5 || Abs(prevWindowHeight != WindowHeight) > 5) ; this ensure the background covers the drawn stuff even when size changes
+	if (BackgroundIncomeOverlay && (prevPlayerIdentifier != PlayerIdentifier || Abs(prevWindowWidth - WindowWidth) > 5 || Abs(prevWindowHeight != WindowHeight) > 5)) ; this ensure the background covers the drawn stuff even when size changes
 		recurse := true
 	prevWindowWidth := WindowWidth, prevWindowHeight := WindowHeight, prevPlayerIdentifier := PlayerIdentifier
 
@@ -466,7 +465,7 @@ DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Dr
 ; Takes ~ 2 ms 
 DrawAPMOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, modeAPM_EPM=0, background=0, Drag=0)
 {	global aLocalPlayer, aHexColours, aPlayer, GameIdentifier, APMOverlayX, APMOverlayY, config_file, a_pBitmap, overlayAPMTransparency
-	, APMOverlayMode
+	, APMOverlayMode, BackgroundAPMOverlay
 	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0
 	, prevPlayerIdentifier
 	, prevWindowWidth := 0, prevWindowHeight := 0 ; Note these refer to the size of the displayed stats and do not include the transparent background - so the real window size a little bit larger
@@ -479,9 +478,9 @@ DrawAPMOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, modeAPM_EPM=0, bac
 
 	DestX := DestY := DestXOffset := DestYOffset := 0
 	, 	Options := " cFFFFFFFF Right r4 s" 20*UserScale
-	if prevWindowWidth   
+	if (BackgroundAPMOverlay && prevWindowWidth)
 	{
-		Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, 0, 0, prevWindowWidth * 1.05, prevWindowHeight * 1.05, 10)
+		Gdip_FillRoundedRectangle(G, a_pBrushes.transBackground, 0, 0, prevWindowWidth * 1.05, prevWindowHeight * 1.05, 10)
 		, DestXOffset := DestX := prevWindowWidth * .05  ; this should really be 0.025 - but this looks nice
 		, DestYOffset := DestY := prevWindowHeight * .05
 	}
@@ -546,8 +545,8 @@ DrawAPMOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, modeAPM_EPM=0, bac
 		WindowHeight := 20		
 	else if (WindowHeight > A_ScreenHeight)
 		WindowHeight := A_ScreenHeight - A_ScreenHeight * 0.06
-	; if drawBackground && ***********
-	if (prevPlayerIdentifier != PlayerIdentifier || Abs(prevWindowWidth - WindowWidth) > 5 || Abs(prevWindowHeight != WindowHeight) > 5) ; this ensure the background covers the drawn stuff even when size changes
+
+	if (BackgroundAPMOverlay && (prevPlayerIdentifier != PlayerIdentifier || Abs(prevWindowWidth - WindowWidth) > 5 || Abs(prevWindowHeight != WindowHeight) > 5)) ; this ensure the background covers the drawn stuff even when size changes
 		recurse := true
 	prevWindowWidth := WindowWidth, prevWindowHeight := WindowHeight, prevPlayerIdentifier := PlayerIdentifier
 
@@ -562,7 +561,7 @@ DrawAPMOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, modeAPM_EPM=0, bac
 ; Takes 4.45 ms
 DrawResourcesOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Drag=0)
 {	global aLocalPlayer, aHexColours, aPlayer, GameIdentifier, config_file, ResourcesOverlayX, ResourcesOverlayY, a_pBitmap, overlayResourceTransparency
-			, drawLocalPlayerResources
+			, drawLocalPlayerResources, BackgroundResourcesOverlay
 	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0		
 	, prevPlayerIdentifier
 	, prevWindowWidth := 0, prevWindowHeight := 0 ; Note these refer to the size of the displayed stats and do not include the transparent background - so the real window size a little bit larger
@@ -575,9 +574,9 @@ DrawResourcesOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0
 
 	i := DestX := DestY := DestXOffset := DestYOffset := 0
 	, Options := " Right cFFFFFFFF r4 s" 17*UserScale
-	if prevWindowWidth   
+	if (BackgroundResourcesOverlay && prevWindowWidth)
 	{
-		Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, 0, 0, prevWindowWidth * 1.05, prevWindowHeight * 1.05, 10)
+		Gdip_FillRoundedRectangle(G, a_pBrushes.transBackground, 0, 0, prevWindowWidth * 1.05, prevWindowHeight * 1.05, 10)
 		, DestXOffset := DestX := prevWindowWidth * .05
 		, DestYOffset := DestY := prevWindowHeight * .05
 	}
@@ -658,8 +657,7 @@ DrawResourcesOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0
 	else if (WindowHeight * 1.05 > A_ScreenHeight)
 		WindowHeight := A_ScreenHeight * 0.94
 
-	; if drawBackground && ***********
-	if (prevPlayerIdentifier != PlayerIdentifier || Abs(prevWindowWidth - WindowWidth) > 5 || Abs(prevWindowHeight != WindowHeight) > 5) ; this ensure the background covers the drawn stuff even when size changes
+	if (BackgroundResourcesOverlay && (prevPlayerIdentifier != PlayerIdentifier || Abs(prevWindowWidth - WindowWidth) > 5 || Abs(prevWindowHeight != WindowHeight) > 5)) ; this ensure the background covers the drawn stuff even when size changes
 		recurse := true
 
 	prevWindowWidth := WindowWidth, prevWindowHeight := WindowHeight, prevPlayerIdentifier := PlayerIdentifier
@@ -674,7 +672,7 @@ DrawResourcesOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0
 ; Takes 3 ms for 3 (enemy) players
 DrawArmySizeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Drag=0)
 {	global aLocalPlayer, aHexColours, aPlayer, GameIdentifier, config_file, ArmySizeOverlayX, ArmySizeOverlayY, a_pBitmap, overlayArmyTransparency
-	, drawLocalPlayerArmy
+	, drawLocalPlayerArmy, BackgroundArmySizeOverlay
 	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0	
 	, prevPlayerIdentifier
 	, prevWindowWidth := 0, prevWindowHeight := 0 ; Note these refer to the size of the displayed stats and do not include the transparent background - so the real window size a little bit larger
@@ -690,9 +688,9 @@ DrawArmySizeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,
 	, Options := " cFFFFFFFF r4 s" 17*UserScale
 	; Fill transparentBackground. This uses the prev 'window size' (size the info takes up) to determine where to draw the transparent background.
 	; This method is much faster than drawing pBitmap into the graphics of a bacground or using clip.
-	if prevWindowWidth   
+	if (BackgroundArmySizeOverlay && prevWindowWidth)
 	{
-		Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, 0, 0, prevWindowWidth * 1.05, prevWindowHeight * 1.05, 10)
+		Gdip_FillRoundedRectangle(G, a_pBrushes.transBackground, 0, 0, prevWindowWidth * 1.05, prevWindowHeight * 1.05, 10)
 		, DestX := DestXOffset := prevWindowWidth * .05
 		, DestYOffset := DestY := prevWindowHeight * .05
 	}
@@ -782,8 +780,7 @@ DrawArmySizeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,
 	else if (WindowHeight > A_ScreenHeight)
 		WindowHeight := A_ScreenHeight - A_ScreenHeight * 0.06
 	
-	; if drawBackground && ***********
-	if (prevPlayerIdentifier != PlayerIdentifier || Abs(prevWindowWidth - WindowWidth) > 5 || Abs(prevWindowHeight != WindowHeight) > 5) ; this ensure the background covers the drawn stuff even when size changes
+	if (BackgroundArmySizeOverlay && (prevPlayerIdentifier != PlayerIdentifier || Abs(prevWindowWidth - WindowWidth) > 5 || Abs(prevWindowHeight != WindowHeight) > 5)) ; this ensure the background covers the drawn stuff even when size changes
 		recurse := true
 	prevWindowWidth := WindowWidth, prevWindowHeight := WindowHeight, prevPlayerIdentifier := PlayerIdentifier
 	
@@ -797,6 +794,34 @@ DrawArmySizeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,
 
  ; Takes 0.6 ms
 DrawWorkerOverlay(ByRef Redraw, UserScale=1,Drag=0)
+{	global aLocalPlayer, GameIdentifier, config_file, WorkerOverlayX, WorkerOverlayY, a_pBitmap, overlayHarvesterTransparency, BackgroundWorkerOverlay
+	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := False				
+
+	if !modifyOverlay("WorkerOverlay", Redraw, overlayCreated, Drag, DragPrevious, WorkerOverlayX, WorkerOverlayY, 400, 400, hwnd1)
+		return
+	Options := " cFFFFFFFF r4 s" 18*UserScale
+	, DestX := DestY := 0
+	, hbm := CreateDIBSection(400, 400), hdc := CreateCompatibleDC(), obm := SelectObject(hdc, hbm), G := Gdip_GraphicsFromHDC(hdc)
+	, Gdip_SetInterpolationMode(G, 2)
+	, workerCount := getPlayerWorkerCount(aLocalPlayer["Slot"])
+
+	if BackgroundWorkerOverlay
+		Gdip_FillRoundedRectangle(G, a_pBrushes.transBackground, 0, 0, (48 + strlen(workerCount)*10) * userScale, 36 * userScale, 2)
+
+	pBitmap := a_pBitmap[aLocalPlayer["Race"],"Worker"]
+	, SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
+	, Width *= UserScale *.5, Height *= UserScale *.5
+	, Gdip_DrawImage(G, pBitmap, DestX, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)	
+	, Gdip_TextToGraphics(G, workerCount, "x"(DestX+Width+2*UserScale) "y"(DestY+(Height//4)) Options, Font)
+	, Gdip_DeleteGraphics(G)	
+
+	; Don't have to worry about size checks here, as not passing these params to updateLayeredWindow()
+	UpdateLayeredWindow(hwnd1, hdc,,,,, overlayHarvesterTransparency)
+	, SelectObject(hdc, obm), DeleteObject(hbm) , DeleteDC(hdc) 
+	Return
+}
+
+DrawWorkerOverlayOrig(ByRef Redraw, UserScale=1,Drag=0)
 {	global aLocalPlayer, GameIdentifier, config_file, WorkerOverlayX, WorkerOverlayY, a_pBitmap, overlayHarvesterTransparency
 	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := False				
 	Options := " cFFFFFFFF r4 s" 18*UserScale
@@ -817,6 +842,9 @@ DrawWorkerOverlay(ByRef Redraw, UserScale=1,Drag=0)
 	Width *= UserScale *.5, Height *= UserScale *.5
 	Gdip_DrawImage(G, pBitmap, DestX, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)	
 	Gdip_TextToGraphics(G, getPlayerWorkerCount(aLocalPlayer["Slot"]), "x"(DestX+Width+2*UserScale) "y"(DestY+(Height//4)) Options, Font, TextWidthHeight, TextWidthHeight)
+	
+	;backgroundText(G, DestX+Width+2*UserScale, (DestY+(Height//4)), "12", Options, font, pBrush)
+
 	Gdip_DeleteGraphics(G)	
 
 	; Don't have to worry about size checks here, as not passing these params to updateLayeredWindow()
@@ -1697,7 +1725,7 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 
 DrawMacroTownHallOverlay(ByRef Redraw, UserScale=1, Drag=0)
 {
-	global overlayMacroTownHallTransparency, MacroTownHallOverlayX, MacroTownHallOverlayY
+	global overlayMacroTownHallTransparency, MacroTownHallOverlayX, MacroTownHallOverlayY, BackgroundMacroTownHallOverlay
 	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := False, aTownHalls
 
 	if !modifyOverlay("MacroTownHallOverlay", Redraw, overlayCreated, Drag, DragPrevious, MacroTownHallOverlayX, MacroTownHallOverlayY, 400, 400, hwnd1)
@@ -1715,7 +1743,7 @@ DrawMacroTownHallOverlay(ByRef Redraw, UserScale=1, Drag=0)
 	else if (aLocalPlayer.Race = "Protoss")
 		pBitmap := a_pBitmap[aUnitID.Nexus], energyRequired := 25, textColour := " cFFCD00FF "
 	else pBitmap := a_pBitmap[aUnitID.Larva], textColour := " cFFFFFFFF "
-	
+
 	macroCount := 0, aCheckedUnits := [], closestOrbitalMorphTime := 99999, textSize := 17
 	loop 10
 	{
@@ -1777,18 +1805,20 @@ DrawMacroTownHallOverlay(ByRef Redraw, UserScale=1, Drag=0)
 		; else full energy on all town halls and no morphing orbital don't append anything
 	}
 		
-	hbm := CreateDIBSection(400, 400)
-	, hdc := CreateCompatibleDC()
-	, obm := SelectObject(hdc, hbm)
-	, G := Gdip_GraphicsFromHDC(hdc)
+	hbm := CreateDIBSection(400, 400), hdc := CreateCompatibleDC(), obm := SelectObject(hdc, hbm), G := Gdip_GraphicsFromHDC(hdc)
 	, Gdip_SetInterpolationMode(G, 2)
 	, SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
 	, Width *= UserScale *.4, Height *= UserScale *.4
-	Gdip_DrawImage(G, pBitmap, 0, 0, Width, Height, 0, 0, SourceWidth, SourceHeight)
-	; The zerg larva pic only takes up the top part of its height - so move the text up a bit. And make the text a little smaller
-	if aLocalPlayer.Race = "Zerg"
-		Gdip_TextToGraphics(G, macroCount, "x"(Width+2*UserScale) "y" (Height-3) " Top"  textColour "r4 s" 15*UserScale, Font)
-	else Gdip_TextToGraphics(G, macroCount, "x"(Width+2*UserScale) "y" (Height) " Top"  textColour "r4 s" textSize*UserScale, Font)
+	
+	; Can't be fucked measuring the string - this looks good enough
+	if BackgroundMacroTownHallOverlay 
+		Gdip_FillRoundedRectangle(G, a_pBrushes.transBackground, 0, 0, (36 + strlen(macroCount)*10) * userScale, 32 * userScale, 2)	
+	
+	; The zerg larva pic only takes up the top part of its height - so move the pic down a bit. And make the text a little smaller
+	if aLocalPlayer.Race = "Zerg"	
+		Gdip_DrawImage(G, pBitmap, 0, 3*UserScale , Width, Height, 0, 0, SourceWidth, SourceHeight)
+	else Gdip_DrawImage(G, pBitmap, 0, 0, Width, Height, 0, 0, SourceWidth, SourceHeight)
+	Gdip_TextToGraphics(G, macroCount, "x"(Width+2*UserScale) "y" (Height) " Top"  textColour "r4 s" textSize*UserScale, Font)
 	; , !macroCount ? textColour := " c00FFFFFF" : "" ; so don't see any number if 0 ; disabled. Might add an option to hide overlay on 0 - but no room 
 	; in GUI options for this and CBF moving things around
 	;, stringData := Gdip_TextToGraphics(G, macroCount, "x"(Width+2*UserScale) "y" (Height)  textColour "r4 s" textSize*UserScale, Font)

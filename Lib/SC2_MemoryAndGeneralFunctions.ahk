@@ -157,18 +157,20 @@ loadMemoryAddresses(base, version := "")
 		versionMatch := version
 		#include %A_ScriptDir%\Included Files\oldOffsets\2.1.0.28667.ahk
 	}
-	else if (version = "2.1.1.29261" || version = "2.1.2.30315" || version = "2.1.3.30508") 
+	else if version in 2.1.1.29261,2.1.2.30315,2.1.3.30508
 	{
 		versionMatch := version
 		#include %A_ScriptDir%\Included Files\oldOffsets\2.1.1.29261-2.1.3.30508.ahk 
 	}
 	else ; load most recent in case patch didn't change offsets.
 	{
-		; These two versions have matching offsets
-		if (version = "2.1.5.32392" || !version) ; !version in case the findVersion function stuffs up and returns 0/blank, thereby just assume match with latest offsets
-			versionMatch := "2.1.5.32392"
-		else if (version = "2.1.4.32283") 
-			versionMatch := "2.1.4.32283"
+		; These versions have matching offsets
+		; !version in case the findVersion function stuffs up and returns 0/blank, thereby just assume match with latest offsets
+		; Also worker threads do not pass the client verison
+		if (version = "2.1.6.32540" || !version) 
+			versionMatch := "2.1.6.32540"		
+		else if version in 2.1.5.32392,2.1.4.32283
+			 versionMatch := version
 		else versionMatch := false
 		;	[Memory Addresses]
 		B_LocalCharacterNameID := base + 0x4FA81F4 ; stored as string Name#123 There are a couple of these, but only one works after SC restart or out of game
@@ -2727,6 +2729,7 @@ initialiseBrushColours(aHexColours, byRef a_pBrushes)
 		, UnitHighlightList1Colour, UnitHighlightList2Colour, UnitHighlightList3Colour
 		, UnitHighlightList4Colour, UnitHighlightList5Colour, UnitHighlightList6Colour
 		, UnitHighlightList7Colour
+		, TransparentBackgroundColour
 
 	; Userhighlight brushes colours can change
 
@@ -2736,6 +2739,7 @@ initialiseBrushColours(aHexColours, byRef a_pBrushes)
 		a_pBrushes[colour] := Gdip_BrushCreateSolid(0xFF hexValue)
 	; Used in the unit overlay	
 	a_pBrushes["TransparentBlack"] := Gdip_BrushCreateSolid(0x78000000)
+	a_pBrushes["transBackground"] := Gdip_BrushCreateSolid(TransparentBackgroundColour)
 	a_pBrushes["ScanChrono"] := Gdip_BrushCreateSolid(0xCCFF00B3)
 	a_pBrushes["redStrikeOut"] := Gdip_BrushCreateSolid(0xFFB4141E)
 	a_pBrushes["UnitHighlightHallucinationsColour"] := Gdip_BrushCreateSolid(UnitHighlightHallucinationsColour)
@@ -4055,9 +4059,17 @@ readConfigFile()
 	IniRead, overlayMinimapTransparency, %config_file%, %section%, overlayMinimapTransparency, 255
 	IniRead, overlayMacroTownHallTransparency, %config_file%, %section%, overlayMacroTownHallTransparency, 255
 	IniRead, overlayLocalUpgradesTransparency, %config_file%, %section%, overlayLocalUpgradesTransparency, 255
-	
 	IniRead, localUpgradesItemsPerRow, %config_file%, %section%, localUpgradesItemsPerRow, 6
 	IniRead, IdleWorkerOverlayThreshold, %config_file%, %section%, IdleWorkerOverlayThreshold, 1
+	
+	IniRead, TransparentBackgroundColour, %config_file%, %section%, TransparentBackgroundColour, 0x78000000
+	IniRead, BackgroundIncomeOverlay, %config_file%, %section%, BackgroundIncomeOverlay, 0
+	IniRead, BackgroundResourcesOverlay, %config_file%, %section%, BackgroundResourcesOverlay, 0
+	IniRead, BackgroundArmySizeOverlay, %config_file%, %section%, BackgroundArmySizeOverlay, 0
+	IniRead, BackgroundAPMOverlay, %config_file%, %section%, BackgroundAPMOverlay, 0
+	IniRead, BackgroundIdleWorkersOverlay, %config_file%, %section%, BackgroundIdleWorkersOverlay, 0
+	IniRead, BackgroundWorkerOverlay, %config_file%, %section%, BackgroundWorkerOverlay, 0
+	IniRead, BackgroundMacroTownHallOverlay, %config_file%, %section%, BackgroundMacroTownHallOverlay, 0
 
 
 	; [UnitPanelFilter]
@@ -4126,6 +4138,7 @@ readConfigFile()
 			aChooseColourCustomPalette.insert(UnitHighlightList%A_Index%Colour & 0xFFFFFF)
 		aChooseColourCustomPalette.insert(UnitHighlightInvisibleColour & 0xFFFFFF)
 		aChooseColourCustomPalette.insert(UnitHighlightHallucinationsColour & 0xFFFFFF)
+		aChooseColourCustomPalette.insert(0) ; black
 	}
 	IniRead, UnitHighlightExcludeList, %config_file%, %section%, UnitHighlightExcludeList, CreepTumor, CreepTumorBurrowed
 	IniRead, DrawMiniMap, %config_file%, %section%, DrawMiniMap, 1

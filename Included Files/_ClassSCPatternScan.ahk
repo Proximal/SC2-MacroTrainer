@@ -1,3 +1,4 @@
+#Include <Class_LV_Colors>
 class _ClassSCPatternScan
 { 	
 	mem := new _ClassMemory(GameIdentifier) ; set when new is used
@@ -120,13 +121,21 @@ class _ClassSCPatternScan
 	listView()
 	{
 		Gui, SCPatternScan:New  ; destroy previous windows with same name
-		Gui, Add, ListView, Grid -LV0x10 NoSortHdr +resize w450 r28, Name|Address|Offset|Loaded Offset
+		Gui, Add, ListView, Grid -LV0x10 NoSortHdr hwndHLV +resize w450 r28, Name|Address|Offset|Loaded Offset
+		LV_Colors.OnMessage()
+		LV_Colors.Attach(HLV, True, True, False) ; Im not sure if you need to call detach(). The author of the class makes no mention of it.
 		for i, params in this.scanAndCombine()
+		{
 			LV_Add("", params*)
+			if params.3 = params.4 && params.3 != ""
+				LV_Colors.Row(HLV, A_Index, 0x36FC87) 	; Green match
+			else LV_Colors.Row(HLV, A_Index, 0xFF4444) 	; Red error 
+		}
 		loop, % LV_GetCount()
 			LV_ModifyCol(A_Index, "AutoHdr") ; resize contents+header
 		Gui, Add, Button, Default g__SCPatternScanClipboardDump, Dump To Clipboard
 		Gui, Show,, Pattern Scan
+		GuiControl, +Redraw, %HLV% ; This needs to be here for LV_Colours to work
 		return 
 		__SCPatternScanClipboardDump:
 		clipboard := ColumnJustify(Table_FromListview())
@@ -147,7 +156,7 @@ class _ClassSCPatternScan
 				. 	"|B_CameraDragScroll|B_CameraMovingViaMouseAtScreenEdge|B_InputStructure|B_HorizontalResolution|B_localArmyUnitCount"
 		loop, parse, methods, |
 			obj[A_LoopField] := this[A_LoopField]()
-		obj["B_pStructure Nuke"] := this.B_pStructureNuke(structureSize), obj["S_pStructure Nuke"] := structureSize
+		obj["B_pStructure Copy"] := this.B_pStructureNuke(structureSize), obj["S_pStructure Copy"] := structureSize
 		obj["B_pStructure"] := this.B_pStructure(structureSize), obj["S_pStructure"] := structureSize
 		obj["B_uHighestIndex"] := this.B_uHighestIndex(structureSize), obj["S_uStructure Copy"] := structureSize
 		obj["B_uStructure"] := this.B_uStructure(structureSize), obj["S_uStructure"] := structureSize
