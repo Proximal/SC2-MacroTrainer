@@ -418,12 +418,16 @@ return
 
 UpdateTransparentGUIColour:
 GuiControlGet, value,, TransparentBackgroundSlider
-value := (value * 2.55 ) & 0xFF ; limit it to 0 - 255 (shouldn't be required).
-paintPictureControl(_TransparentBackgroundColour, TransparentBackgroundColour := (TransparentBackgroundColour & 0x00FFFFFF) | (value << 24))	
+if !ErrorLevel
+{
+	value := (value * 2.55 ) & 0xFF ; limit it to 0 - 255 (shouldn't be required).
+	paintPictureControl(_TransparentBackgroundColour, TransparentBackgroundColour := (TransparentBackgroundColour & 0x00FFFFFF) | (value << 24))
+}	
 return 
+
 ResetTransparentBackgroundColour:
 TransparentBackgroundColour := 0x78000000
-GuiControl,, TransparentBackgroundSlider, % ceil((TransparentBackgroundColour >> 24) / 2.55)
+GuiControl,, TransparentBackgroundSlider, % round((TransparentBackgroundColour >> 24) / 2.55)
 paintPictureControl(_TransparentBackgroundColour, TransparentBackgroundColour)
 return 
 
@@ -2662,8 +2666,17 @@ ini_settings_write:
 	IniWrite, %EventKeyDelay%, %config_file%, %section%, EventKeyDelay
 	IniWrite, %pSendDelay%, %config_file%, %section%, pSendDelay
 	IniWrite, %pClickDelay%, %config_file%, %section%, pClickDelay
-
-	IniWrite, % LauncherMode := (LauncherMode = 1 ? "Battle.net" : LauncherMode = 2 ? "Starcraft" : "Off"), %config_file%, %section%, LauncherMode
+	if (Tmp_GuiControl = "save" || Tmp_GuiControl = "Apply")
+	{
+		if LauncherRadioBattleNet
+			LauncherMode := "Battle.net" 
+		else if LauncherRadioStarCraft
+			LauncherMode := "Starcraft"
+		else LauncherMode := "Off"
+	}
+	else if !LauncherMode ; Shouldn't be required
+		LauncherMode := "Off"
+	IniWrite, %LauncherMode%, %config_file%, %section%, LauncherMode
 	IniWrite, %auto_update%, %config_file%, %section%, auto_check_updates
 	Iniwrite, %launch_settings%, %config_file%, %section%, launch_settings
 	Iniwrite, %MaxWindowOnStart%, %config_file%, %section%, MaxWindowOnStart
@@ -2774,8 +2787,8 @@ ini_settings_write:
 	}
 
 	if (Tmp_GuiControl = "save" || Tmp_GuiControl = "Apply")
-		TransparentBackgroundColour := (TransparentBackgroundColour & 0x00FFFFFF) | (ceil(TransparentBackgroundSlider * 2.55)  << 24)
-	Iniwrite, %TransparentBackgroundColour% , %config_file%, %section%, TransparentBackgroundColour
+		TransparentBackgroundColour := (TransparentBackgroundColour & 0x00FFFFFF) | (round(TransparentBackgroundSlider * 2.55) << 24)
+	Iniwrite, % dectohex(TransparentBackgroundColour), %config_file%, %section%, TransparentBackgroundColour
 
 	Iniwrite, %BackgroundIncomeOverlay%, %config_file%, %section%, BackgroundIncomeOverlay
 	Iniwrite, %BackgroundResourcesOverlay%, %config_file%, %section%, BackgroundResourcesOverlay
@@ -3476,9 +3489,9 @@ IfWinExist
 			;yp+30
 
 		Gui, Add, GroupBox, xs ys+115 w161 h85, Launcher 
-			Gui, Add, Radio, % "xp+10 yp+25 vLauncherMode checked" (LauncherMode = "Battle.net"), Battle.net 
-			Gui, Add, Radio, % "checked" (LauncherMode = "Starcraft"), Starcraft 
-			Gui, Add, Radio, % "checked" (LauncherMode = "Off" || (LauncherMode != "Battle.net" && LauncherMode != "Starcraft")), Disabled 
+			Gui, Add, Radio, % "xp+10 yp+25 vLauncherRadioBattleNet checked" (LauncherMode = "Battle.net"), Battle.net 
+			Gui, Add, Radio, % "vLauncherRadioStarCraft checked" (LauncherMode = "Starcraft"), Starcraft 
+			Gui, Add, Radio, % "vLauncherRadioDisabled checked" (LauncherMode = "Off" || (LauncherMode != "Battle.net" && LauncherMode != "Starcraft")), Disabled 
 
 		Gui, Add, GroupBox, xs ys+205 w161 h80, Key Blocking
 			Gui, Add, Checkbox, xp+10 yp+25 vLwinDisable checked%LwinDisable%, Disable Left Windows Key
@@ -4248,7 +4261,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		Gui, Add, Text, xp y+15 w405, The deult key can be changed via the 'settings' Tab on the left.
 		Gui, Add, Text, xp y+20 w405, Note: The windows key must not be disabled within the SC options.`nThis program is capable of blocking the Left windows key (check settings tab).
 
-	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vMiniMap_TAB, MiniMap||MiniMap2|new|Overlays|Hotkeys|Info
+	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vMiniMap_TAB, MiniMap||MiniMap2|Overlays|Background|Hotkeys|Info
 
 	Gui, Tab, MiniMap
 
@@ -4360,22 +4373,6 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 				Gui, Add, Picture, xs yp-4 w300 h22 0xE HWND_UnitHighlightList7Colour v#UnitHighlightList7Colour gColourSelector ;0xE required for GDI
 				paintPictureControl(_UnitHighlightList7Colour, UnitHighlightList7Colour)	
 
-	Gui, Tab, new
-		Gui, Add, GroupBox, y+15 x+20 w285 h300 section, Overlay Background:
-			Gui, Add, Checkbox, xp+10 yp+20 vBackgroundIncomeOverlay Checked%BackgroundIncomeOverlay%, Income
-			Gui, Add, Checkbox, xp y+10 vBackgroundResourcesOverlay Checked%BackgroundResourcesOverlay%, Resources
-			Gui, Add, Checkbox, xp y+10 vBackgroundArmySizeOverlay Checked%BackgroundArmySizeOverlay%, Army Size
-			Gui, Add, Checkbox, xp y+10 vBackgroundAPMOverlay Checked%BackgroundAPMOverlay%, APM
-			Gui, add, text, xs+10 y+30 w40, Colour:
-			Gui, Add, Picture, x+10 yp-10 w210 h35 0xE HWND_TransparentBackgroundColour v#TransparentBackgroundColour gColourSelector ;0xE required for GDI
-			paintPictureControl(_TransparentBackgroundColour, TransparentBackgroundColour)	
-			Gui, add, text, xs+10 y+25 w40, Opacity:
-			Gui, Add, Slider, ToolTip  NoTicks w210 x+10 yp vTransparentBackgroundSlider gUpdateTransparentGUIColour AltSubmit, % ceil(((TransparentBackgroundColour & 0xFF000000) >> 24) / 2.55)  ;& it in case higher bits got set somehow (should never occur)
-			Gui, Add, Button, xs+10 y+10 gResetTransparentBackgroundColour, Default Colour
-			Gui, Add, Checkbox, xs+150 ys+20 vBackgroundIdleWorkersOverlay Checked%BackgroundIdleWorkersOverlay%, Idle Workers
-			Gui, Add, Checkbox, xp y+10 vBackgroundWorkerOverlay Checked%BackgroundWorkerOverlay%, Local Harvester Count
-			Gui, Add, Checkbox, xp y+10 vBackgroundMacroTownHallOverlay Checked%BackgroundMacroTownHallOverlay%, Town Hall Macro
-
 	Gui, Tab, Overlays
 			;Gui, add, text, y+20 X%XTabX%, Display Overlays:
 			Gui, Add, GroupBox, y+15 x+20 w195 h260 section, Display Overlays:
@@ -4450,10 +4447,24 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 				Gui, Add, Edit, Number Right xp+90 yp-2 w55 vTT_MiniMapRefresh
 					Gui, Add, UpDown,  Range50-1500 vMiniMapRefresh, %MiniMapRefresh%	
 
-	Gui, Tab, Hotkeys 
-		
-		Gui, add, GroupBox, y+25 w285 h320, Overlay Hotkeys
+	Gui, Tab, Background
+		Gui, Add, GroupBox, x+20 y+15 w285 h255 section, Enable Background:
+			Gui, Add, Checkbox, xp+10 yp+20 vBackgroundIncomeOverlay Checked%BackgroundIncomeOverlay%, Income
+			Gui, Add, Checkbox, xp y+10 vBackgroundResourcesOverlay Checked%BackgroundResourcesOverlay%, Resources
+			Gui, Add, Checkbox, xp y+10 vBackgroundArmySizeOverlay Checked%BackgroundArmySizeOverlay%, Army Size
+			Gui, Add, Checkbox, xp y+10 vBackgroundAPMOverlay Checked%BackgroundAPMOverlay%, APM
+			Gui, add, text, xs+10 y+30 w40, Colour:
+			Gui, Add, Picture, x+10 yp-10 w210 h35 0xE HWND_TransparentBackgroundColour v#TransparentBackgroundColour gColourSelector ;0xE required for GDI
+			paintPictureControl(_TransparentBackgroundColour, TransparentBackgroundColour)	
+			Gui, add, text, xs+10 y+25 w40, Opacity:
+			Gui, Add, Slider, ToolTip  NoTicks w210 x+10 yp vTransparentBackgroundSlider gUpdateTransparentGUIColour AltSubmit, % round(((TransparentBackgroundColour & 0xFF000000) >> 24) / 2.55)  ;& it in case higher bits got set somehow (should never occur). Use round not ceil
+			Gui, Add, Button, xs+10 y+10 gResetTransparentBackgroundColour, Default Colour
+			Gui, Add, Checkbox, xs+150 ys+20 vBackgroundIdleWorkersOverlay Checked%BackgroundIdleWorkersOverlay%, Idle Workers
+			Gui, Add, Checkbox, xp y+10 vBackgroundWorkerOverlay Checked%BackgroundWorkerOverlay%, Local Harvester Count
+			Gui, Add, Checkbox, xp y+10 vBackgroundMacroTownHallOverlay Checked%BackgroundMacroTownHallOverlay%, Town Hall Macro
 
+	Gui, Tab, Hotkeys 
+		Gui, add, GroupBox, x+20 y+15 w285 h320, Overlay Hotkeys
 			;Gui, Add, Text, section xp+15 yp+25, Temp. Hide MiniMap:
 			Gui, Add, Checkbox, section xp+15 yp+25 vEnableHideMiniMapHotkey checked%EnableHideMiniMapHotkey%, Temp. Hide MiniMap:
 			Gui, Add, Edit, Readonly yp-2 xp+130 center w85 R1 vTempHideMiniMapKey gedit_hotkey, %TempHideMiniMapKey%
@@ -4634,6 +4645,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		 	#UnitHighlightList%A_Index%Colour_TT := "Click Me!`n`nUnits of this type will appear this colour."
 		 									. "`n`nTo disable this feature, simply remove the units listed in the above field."
 		}
+		#TransparentBackgroundColour_TT := "Click Me!"
 
 		DrawAPMOverlay_TT := "This enables/disables the overlay."
 						. "`nThe mode can be set with via the 'mode' checkbox on right"
@@ -4948,7 +4960,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 														. "`n`nNote: Disabling the 'Keep these types' and 'Remove these types' options, disables filtering by unit type."
 			quickSelect%A_LoopField%UnitsArmy_TT := #quickSelect%A_LoopField%UnitsArmy_TT := "These units types will either be removed from selection or kept in the selection as governed by the checkboxes above."
 													. "`nWhen both of the checkboxes above un-ticked, then this unit type list is ignored."
-			quickSelect%A_LoopField%CreateControlGroup_TT := "The remaining selected untils will be stored in specified control group."
+			quickSelect%A_LoopField%CreateControlGroup_TT := "The remaining selected untils will be stored in the specified control group."
 			quickSelect%A_LoopField%AddToControlGroup_TT := "The remaining selected untils will be added to the specified control group."
 
 			QuickSelect%A_LoopField%StoreSelection_TT := "Units are either assigned or added to this control group depending upon the specified options."
@@ -5004,7 +5016,9 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		SC2AdvancedEnlargedMinimap_TT := "This option alters the size and position of the minimap."
 									. "`n`nThese minimap coordinates are used for both drawing and automations."
 									. "`nTherefore only enable this setting if you have used the 'SC2-Advanced' hack to enlarge the minimap!"
-		
+		LauncherRadioBattleNet_TT := LauncherRadioStarCraft_TT := LauncherRadioDisabled_TT := "During startup MacroTrainer will attempt to launch either the Battle.net app or Starcraft."
+
+
 		LwinDisable_TT := "Disables the Left Windows Key while in a SC2 match.`n`nMacro Trainer Left windows hotkeys (and non-overridden windows keybinds) will still function."
 		Key_EmergencyRestart_TT := #Key_EmergencyRestart_TT := "If pressed three times, this hotkey will restart the program.`n"
 					. "This is useful in the rare event that the program malfunctions or you lose keyboard/mouse input"
@@ -13321,3 +13335,9 @@ class buildCheck
 		return
 	}
 }
+f1:: 
+msgbox % ceil((0x78000000 >> 24) / 2.55)
+	. "`n" ceil(((TransparentBackgroundColour ) >> 24) / 2.55)
+	. "`n" TransparentBackgroundColour
+	. "`n" dectohex(TransparentBackgroundColour)
+	return 

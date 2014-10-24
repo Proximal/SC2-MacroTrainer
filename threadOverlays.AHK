@@ -56,8 +56,7 @@ Return
 ; But I don't really want to test this atm, so its being left as is.
 
 gClock:
-time := getTime()
-if !time || getLocalPlayerNumber() = 16
+if !(time := getTime()) || getLocalPlayerNumber() = 16
 	gameChange()
 return 
 
@@ -126,10 +125,17 @@ return
 updateUserSettings()
 {	
 	Global hasReadConfig
+	; don't need to call GameChange if settings are changed during a match
+	; as the main thread will do that.	
 	readConfigFile()
 	hasReadConfig := True
-	; don't need to call GameChange if settings are changed during a match
-	; as the main thread will do that.
+	; DestroyOverlays to account for this scenario:
+	; 	If use hotkey to enable an overlay (which is disabled i.e. off in the config)
+	; 	Then user clicks save/apply settings and quickly (~ 1 second) clicks back into SC
+	; 	hotkey enabled GUI is left displayed (but static) - as it's no longer being drawn.
+	; 	Due to the shell hook redrawing it before the settings have changed
+	DestroyOverlays()
+	gosub, gosubAllOverlays
 }
 
 gameChange()

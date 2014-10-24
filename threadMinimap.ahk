@@ -65,7 +65,7 @@ return
 ; it's fucking retarded! - Update: Probably due to using an old version of AHK_H. 
 ; Also some of the routines use a the time variable set here
 gClock:
-if (!time := getTime())
+if !(time := getTime()) || getLocalPlayerNumber() = 16
 	gameChange()
 return 
 
