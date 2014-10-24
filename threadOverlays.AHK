@@ -162,7 +162,7 @@ gameChange()
 		MT_CurrentGame.LongestEnemyName := LongestEnemyName, MT_CurrentGame.LongestName := LongestName
 		SetTimer, overlayTimer, %OverlayRefresh%
 		SetTimer, unitPanelOverlayTimer, %UnitOverlayRefresh%
-		settimer, gClock, 1000, -4 ; doesn't seem necessary any more. Updated AHK_H seems to always call the function from the main thread
+		settimer, gClock, 1000 ; doesn't seem necessary any more. Updated AHK_H seems to always call the function from the main thread
 	}
 	else 
 	{
@@ -347,7 +347,7 @@ DrawIdleWorkersOverlay(ByRef Redraw, UserScale=1,Drag=0, expand=1)
 	}
 	if BackgroundIdleWorkersOverlay
 		Gdip_FillRoundedRectangle(G, a_pBrushes.transBackground, 0, 0, (48 + strlen(idlecount)*10) * userScale, 36 * userScale, 2)
-	, Options := " cFFFFFFFF r4 s" 18*UserScale
+	Options := " cFFFFFFFF r4 s" 18*UserScale
 	, Width *= UserScale *.5, Height *= UserScale *.5
 	, Gdip_DrawImage(G, pBitmap, DestX, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)	
 	, Gdip_TextToGraphics(G, idleCount, "x"(DestX+Width+2*UserScale) "y"(DestY+(Height//4)) Options, Font, TextWidthHeight, TextWidthHeight)
@@ -460,7 +460,7 @@ DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Dr
 		recurse := true
 	prevWindowWidth := WindowWidth, prevWindowHeight := WindowHeight, prevPlayerIdentifier := PlayerIdentifier
 
-	, Gdip_DeleteGraphics(G)
+	Gdip_DeleteGraphics(G)
 	if recurse 
 		DrawIncomeOverlay(Redraw, UserScale, PlayerIdentifier, Background, Drag)
 	else UpdateLayeredWindow(hwnd1, hdc,,, WindowWidth * 1.05, WindowHeight * 1.05, overlayIncomeTransparency)
@@ -822,44 +822,12 @@ DrawWorkerOverlay(ByRef Redraw, UserScale=1,Drag=0)
 	, Gdip_DeleteGraphics(G)	
 
 	; Don't have to worry about size checks here, as not passing these params to updateLayeredWindow()
-	UpdateLayeredWindow(hwnd1, hdc,,,,, overlayHarvesterTransparency)
+	, UpdateLayeredWindow(hwnd1, hdc,,,,, overlayHarvesterTransparency)
 	, SelectObject(hdc, obm), DeleteObject(hbm) , DeleteDC(hdc) 
 	Return
 }
 
-DrawWorkerOverlayOrig(ByRef Redraw, UserScale=1,Drag=0)
-{	global aLocalPlayer, GameIdentifier, config_file, WorkerOverlayX, WorkerOverlayY, a_pBitmap, overlayHarvesterTransparency
-	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := False				
-	Options := " cFFFFFFFF r4 s" 18*UserScale
 
-	DestX := DestY := 0
-	
-	if !modifyOverlay("WorkerOverlay", Redraw, overlayCreated, Drag, DragPrevious, WorkerOverlayX, WorkerOverlayY, 400, 400, hwnd1)
-		return
-
-	hbm := CreateDIBSection(400, 400)
-	, hdc := CreateCompatibleDC()
-	, obm := SelectObject(hdc, hbm)
-	, G := Gdip_GraphicsFromHDC(hdc)
-	, Gdip_SetInterpolationMode(G, 2)
-
-	pBitmap := a_pBitmap[aLocalPlayer["Race"],"Worker"]
-	SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
-	Width *= UserScale *.5, Height *= UserScale *.5
-	Gdip_DrawImage(G, pBitmap, DestX, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)	
-	Gdip_TextToGraphics(G, getPlayerWorkerCount(aLocalPlayer["Slot"]), "x"(DestX+Width+2*UserScale) "y"(DestY+(Height//4)) Options, Font, TextWidthHeight, TextWidthHeight)
-	
-	;backgroundText(G, DestX+Width+2*UserScale, (DestY+(Height//4)), "12", Options, font, pBrush)
-
-	Gdip_DeleteGraphics(G)	
-
-	; Don't have to worry about size checks here, as not passing these params to updateLayeredWindow()
-	UpdateLayeredWindow(hwnd1, hdc,,,,, overlayHarvesterTransparency)
-	, SelectObject(hdc, obm) 
-	, DeleteObject(hbm)  
-	, DeleteDC(hdc) 
-	Return
-}
 
 ; Function takes 0.151217 ms
 DrawLocalPlayerColour(ByRef Redraw, UserScale=1,Drag=0)

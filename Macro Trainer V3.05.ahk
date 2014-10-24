@@ -4093,7 +4093,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 			Gui, Add, Edit, Number Right xs+125 yp-2 w45 vEdit_RemoveDamagedUnitsHealthLevel
 				Gui, Add, UpDown,  Range1-99 vRemoveDamagedUnitsHealthLevel, % Round(RemoveDamagedUnitsHealthLevel * 100) 
 
-			Gui, Add, Text, X380 y284 w195, Units with health/shields lower than the specified values will be removed from selection and moved to the current mouse cursor position each time the hotkey is pressed. Stalkers will be blinked.`n`nThis is very helpful when microing small numbers units!
+			Gui, Add, Text, X380 y284 w195, Units with health/shields lower than the specified values will be removed from selection and moved to the current mouse cursor position each time the hotkey is pressed. Stalkers will be blinked.`n`nThis is very helpful when microing small numbers of units!
 	
 	Gui, Tab, Easy Select/Unload
 		Gui, Add, GroupBox, x+65 y+15 w95 h50 w205 section, Enable Easy Select/Cursor Unload 
@@ -13335,9 +13335,4 @@ class buildCheck
 		return
 	}
 }
-f1:: 
-msgbox % ceil((0x78000000 >> 24) / 2.55)
-	. "`n" ceil(((TransparentBackgroundColour ) >> 24) / 2.55)
-	. "`n" TransparentBackgroundColour
-	. "`n" dectohex(TransparentBackgroundColour)
-	return 
+
