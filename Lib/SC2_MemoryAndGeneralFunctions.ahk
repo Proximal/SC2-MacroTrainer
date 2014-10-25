@@ -3217,14 +3217,14 @@ getLongestPlayerNames(byRef LongestEnemyName, byRef LongestIncludeSelf)
 	return
 }
 
+; Returns false if any redraw is false (i.e. one ore more are still being drawn)
+; returns true if all redraws are set true (i.e. waiting to be redrawn)
 areOverlaysWaitingToRedraw()
 {
-	global 
-	if (!ReDrawIncome || !ReDrawResources || !ReDrawArmySize || !ReDrawWorker 
-	|| !ReDrawIdleWorkers || !RedrawUnit || !ReDrawLocalPlayerColour || !ReDrawMiniMap
-	|| !RedrawMacroTownHall || !RedrawLocalUpgrades)
-		return False 
-	return True 
+	global
+	return (ReDrawIncome && ReDrawResources && ReDrawArmySize && ReDrawWorker 
+			&& ReDrawIdleWorkers && RedrawUnit && ReDrawLocalPlayerColour && ReDrawMiniMap
+			&& RedrawMacroTownHall && RedrawLocalUpgrades)	
 }
 
 DestroyOverlays()
@@ -3254,7 +3254,7 @@ DestroyOverlays()
 	{
 		; telling the function to destroy itself is more reliable that just using gui destroy
 		; The try is here as there is a narrow timing window after the overlay starts but before it finishes reading the ini
-		; file which could throw an AHK GUI window error due to invalue x, y pos (they havent been read yet)
+		; file which could throw an AHK GUI window error due to invalid value x, y pos (they havent been read yet)
 		; When called from the main thread via the shell hook message.
 		; This timing window could be bigger on slow computers.
 		; Actually I don't think it could be from here due to it being a creation/GUi, show error
@@ -3271,6 +3271,7 @@ DestroyOverlays()
 				:= RedrawMacroTownHall := RedrawLocalUpgrades := True
 	return True ; used by shell to check thread actually ran the function
 }
+
 
 getUnitMinimapPos(Unit, ByRef  x, ByRef y) ; Note raounded as mouse clicks dont round decimals e.g. 10.9 = 10
 {

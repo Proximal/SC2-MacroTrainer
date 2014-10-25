@@ -150,7 +150,7 @@ class _ClassSCPatternScan
 
 	scanAndCombine()
 	{
-		setformat, IntegerFast, H
+		setformat, IntegerFast, H ;This isn't called from autoExec so don't bother changing it back
 		obj := OrderedArray()
 		methods :=	"B_Timer|B_Timer|P_SelectionPage|B_LocalPlayerSlot|P_IdleWorker|P_ChatFocus|P_MenuFocus|B_SelectionStructure|S_CtrlGroup|B_TeamColours|B_MapStruct|B_camLeft|P_IsBuildCardDisplayed"
 				. 	"|B_CameraDragScroll|B_CameraMovingViaMouseAtScreenEdge|B_InputStructure|B_HorizontalResolution|B_localArmyUnitCount"

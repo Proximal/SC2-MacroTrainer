@@ -410,8 +410,9 @@ class _ClassMemory
         if !sizeBytes  ; read until null terminator is found or something goes wrong
         {
             ; Even if there are multi-byte-characters (bigger than the encodingSize i.e. surrogates) in the string, when reading in encodingSize byte chunks they will never register as null (as they will have bits set on those bytes)
-            encodingSize := (encoding = "utf-16" || encoding = "cp1200") ? 2 : 1
-            charType := encodingSize = 1 ? "Char" : "Short"
+            if (encoding = "utf-16" || encoding = "cp1200")
+                encodingSize := 2, charType := "Short"
+            else encodingSize := 1, charType := "Char"
             Loop
             {   ; Lets save a few reads by reading in 4 byte chunks
                 if !DllCall("ReadProcessMemory", "UInt", this.hProcess, "Ptr", address + ((outterIndex := A_index) - 1) * 4, "Ptr", &buffer, "Uint", 4, "Ptr", 0) || ErrorLevel
@@ -965,7 +966,8 @@ class _ClassMemory
     ; The handle must have been opened with the PROCESS_QUERY_INFORMATION access right
     VirtualQueryEx(address, byRef aInfo)
     {
-        if (aInfo.__Class != "memory._MEMORY_BASIC_INFORMATION")
+
+        if (aInfo.__Class != "_ClassMemory._MEMORY_BASIC_INFORMATION")
             aInfo := new this._MEMORY_BASIC_INFORMATION(this.IsTarget64bit)
         return aInfo.SizeOfStructure = DLLCall("VirtualQueryEx" 
                                                 , "Ptr", this.hProcess

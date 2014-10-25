@@ -76,30 +76,41 @@ return
 ; called, then this call takes ages (relatively speaking) esp. with big DIBs
 
 
-overlayTimer: 	;DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdent=0, Background=0,Drag=0)
-If (WinActive(GameIdentifier) || Dragoverlay) ;really only needed to ressize/scale not drag - as the movement is donve via  a post message - needed as overlay becomes the active window during drag etc
+overlayTimer:
+
+If (WinActive(GameIdentifier) || Dragoverlay) ;really only needed to resize/scale not drag - as the movement is done via  a post message - needed as overlay becomes the active window during drag etc
 {
-	If DrawIncomeOverlay
+	If (DrawIncomeOverlay && time)
 		DrawIncomeOverlay(ReDrawIncome, IncomeOverlayScale, OverlayIdent, OverlayBackgrounds, Dragoverlay)
-	If DrawAPMOverlay
+	If (DrawAPMOverlay && time)
 		DrawAPMOverlay(ReDrawAPM, APMOverlayScale, OverlayIdent, modeAPM_EPM, OverlayBackgrounds, Dragoverlay)
-	If DrawResourcesOverlay
+	If (DrawResourcesOverlay && time)
 		DrawResourcesOverlay(ReDrawResources, ResourcesOverlayScale, OverlayIdent, OverlayBackgrounds, Dragoverlay)
-	If DrawArmySizeOverlay
+	If (DrawArmySizeOverlay && time)
 		DrawArmySizeOverlay(ReDrawArmySize, ArmySizeOverlayScale, OverlayIdent, OverlayBackgrounds, Dragoverlay)
-	If DrawWorkerOverlay
+	If (DrawWorkerOverlay && time)
 		DrawWorkerOverlay(ReDrawWorker, WorkerOverlayScale, Dragoverlay) ;2 less parameters
-	If DrawIdleWorkersOverlay
+	If (DrawIdleWorkersOverlay && time)
 		DrawIdleWorkersOverlay(ReDrawIdleWorkers, IdleWorkersOverlayScale, dragOverlay)
-	if (DrawLocalPlayerColourOverlay && (GameType != "1v1" && GameType != "FFA"))   ;easier just to redraw it each time as otherwise have to change internal for when dragging
+	if (DrawLocalPlayerColourOverlay && time && (GameType != "1v1" && GameType != "FFA"))   ;easier just to redraw it each time as otherwise have to change internal for when dragging
 		DrawLocalPlayerColour(ReDrawLocalPlayerColour, LocalPlayerColourOverlayScale, DragOverlay)	
-	If DrawMacroTownHallOverlay
+	If (DrawMacroTownHallOverlay && time)
 		DrawMacroTownHallOverlay(RedrawMacroTownHall, MacroTownHallOverlayScale, DragOverlay)
 }
 ; sometimes the overlay timer doesnt work, so this is a backup which ensure theyre destroyed
-; I think it fails sometimes because its inside an overlay function or something
+; I think it fails sometimes because its inside an overlay function or something (probably something similar to reason below)
 else if (!WinActive(GameIdentifier) && !Dragoverlay && !areOverlaysWaitingToRedraw())
 	DestroyOverlays()
+
+; This protects against a race condition where the main thread calls gameChange() which interrupts this timer and turns it off
+; and destroys the overlays, then the this interrupted timer resumes and continues to draw the overlays leaving some of them displayed in a static form.
+; I've added an if time check to each overlay, but it's still possible (extremely unlikely) that one overlay could be left drawn. But the below check will prevent this.
+; For maximum safety this needs to be at the bottom and not part of if-else chain. gameChange sets time variable - so dont need to use RPM getTime()
+if !time
+{
+	SetTimer, overlayTimer, off 
+	DestroyOverlays()
+}
 Return
 
 unitPanelOverlayTimer:
@@ -112,13 +123,19 @@ If (WinActive(GameIdentifier) || Dragoverlay)
 		; 25-30 ms for draw
 		getEnemyUnitCount(aEnemyUnits, aEnemyUnitConstruction, aEnemyCurrentUpgrades)
 		FilterUnits(aEnemyUnits, aEnemyUnitConstruction, aUnitPanelUnits)
-		DrawUnitOverlay(RedrawUnit, UnitOverlayScale, OverlayIdent, Dragoverlay)
+		if time
+			DrawUnitOverlay(RedrawUnit, UnitOverlayScale, OverlayIdent, Dragoverlay)
 	}
-	If DrawLocalUpgradesOverlay
+	If (DrawLocalUpgradesOverlay && time)
 		DrawLocalUpgradesOverlay(RedrawLocalUpgrades, LocalUpgradesOverlayScale, DragOverlay)
 }
 else if (!WinActive(GameIdentifier) && !Dragoverlay && !areOverlaysWaitingToRedraw())
 	DestroyOverlays()
+if !time ; refer to overlayTimer for reasoning.
+{
+	SetTimer, unitPanelOverlayTimer, off 
+	DestroyOverlays()
+}
 return 
 
   
