@@ -504,23 +504,23 @@ drawPlayerCameras(pGraphics)
 		&& aPlayer[slotNumber].Type != "Computer") ; As AI don't move the camera
 		{
 			angle := getPlayerCameraAngle(slotNumber)
-			xCenter := getPlayerCameraPositionX(slotNumber)
-			yCenter := getPlayerCameraPositionY(slotNumber)
-			mapToMinimapPos(xCenter, yCenter)
+			, xCenter := getPlayerCameraPositionX(slotNumber)
+			, yCenter := getPlayerCameraPositionY(slotNumber)
+			, mapToMinimapPos(xCenter, yCenter)
 
-			x1 := xCenter - (19/1920*A_ScreenWidth/minimap.MapPlayableWidth * minimap.Width) * (angle/maxAngle)**2
-			y1 := yCenter - (13/1080*A_ScreenHeight/minimap.MapPlayableHeight * minimap.Height) * angle/maxAngle
+			, x1 := xCenter - (19/1920*A_ScreenWidth/minimap.MapPlayableWidth * minimap.Width) * (angle/maxAngle)**2
+			, y1 := yCenter - (13/1080*A_ScreenHeight/minimap.MapPlayableHeight * minimap.Height) * angle/maxAngle
 			
-			x2 := x1 + (36/1920*A_ScreenWidth/minimap.MapPlayableWidth * minimap.Width) * (angle/maxAngle)**2
-			y2 := y1 
+			, x2 := x1 + (36/1920*A_ScreenWidth/minimap.MapPlayableWidth * minimap.Width) * (angle/maxAngle)**2
+			, y2 := y1 
 
-			x3 := (x2 - (x2 - x1)/2) + (xOffset := 14/1920*A_ScreenWidth/minimap.MapPlayableWidth * minimap.Width * (angle/maxAngle)**3)
-			y3 := y2 + ((18/1080*A_ScreenHeight /minimap.MapPlayableHeight * minimap.Height) * angle/maxAngle)
+			, x3 := (x2 - (x2 - x1)/2) + (xOffset := 14/1920*A_ScreenWidth/minimap.MapPlayableWidth * minimap.Width * (angle/maxAngle)**3)
+			, y3 := y2 + ((18/1080*A_ScreenHeight /minimap.MapPlayableHeight * minimap.Height) * angle/maxAngle)
 
-			x4 := x1 + ((x2 - x1)/2) - xOffset
-			y4 := y3 
+			, x4 := x1 + ((x2 - x1)/2) - xOffset
+			, y4 := y3 
 
-			Gdip_DrawLines(pGraphics, a_pPens[aPlayer[slotNumber, "colour"]],  x1 "," y1 "|" x2 "," y2 "|" x3 "," y3 "|" x4 "," y4 "|" x1 "," y1 )
+			, Gdip_DrawLines(pGraphics, a_pPens[aPlayer[slotNumber, "colour"]],  x1 "," y1 "|" x2 "," y2 "|" x3 "," y3 "|" x4 "," y4 "|" x1 "," y1 )
 		}
 	}
 	return 

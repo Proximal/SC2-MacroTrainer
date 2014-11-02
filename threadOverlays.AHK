@@ -707,7 +707,7 @@ DrawArmySizeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,
 	, Gdip_SetInterpolationMode(G, 2)
 
 
-	i := DestX := DestY := DestYOffset := 0
+	i := DestX := DestY := DestXOffset := DestYOffset := 0
 	, Options := " cFFFFFFFF r4 s" 17*UserScale
 	; Fill transparentBackground. This uses the prev 'window size' (size the info takes up) to determine where to draw the transparent background.
 	; This method is much faster than drawing pBitmap into the graphics of a bacground or using clip.
@@ -765,6 +765,7 @@ DrawArmySizeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,
 				, SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
 				, Width *= UserScale *.5, Height *= UserScale *.5	
 			}
+			
 			Gdip_DrawImage(G, pBitmap, DestX, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)	
 			, Gdip_TextToGraphics(G, ArmyMinerals := getPlayerArmySizeMinerals(slot_number), "x"(DestX+Width+5*UserScale) "y"(DestY+(Height//4)) Options, Font)				
 			, pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Gas", 0]

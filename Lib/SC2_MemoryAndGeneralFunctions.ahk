@@ -3916,7 +3916,7 @@ readConfigFile()
 	IniRead, AutoWorkerMaxWorkerProtoss, %config_file%, %section%, AutoWorkerMaxWorkerProtoss, 80
 	IniRead, AutoWorkerMaxWorkerPerBaseProtoss, %config_file%, %section%, AutoWorkerMaxWorkerPerBaseProtoss, 30
 
-
+/*
 	section := "AutoBuild"
 	IniRead, AutoBuildBarracksGroup, %config_file%, %section%, AutoBuildBarracksGroup, 5
 	IniRead, AutoBuildFactoryGroup, %config_file%, %section%, AutoBuildFactoryGroup, 5
@@ -3930,7 +3930,7 @@ readConfigFile()
 
 	section := "AutomationCommon"
 	IniRead, automationAPMThreshold, %config_file%, %section%, automationAPMThreshold, 200
-
+*/
 
 	;[Misc Automation]
 	section := "Misc Automation"

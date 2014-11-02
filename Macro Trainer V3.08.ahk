@@ -159,7 +159,7 @@ MT_CurrentInstance := [] ; Used to store random info about the current run
 program := []
 program.info := {"IsUpdating": 0} ; program.Info.IsUpdating := 0 ;has to stay here as first instance of creating infor object
 
-ProgramVersion := 3.05
+ProgramVersion := 3.08
 
 l_GameType := "1v1,2v2,3v3,4v4,FFA"
 l_Races := "Terran,Protoss,Zerg"
@@ -274,7 +274,7 @@ Process, wait, %GameExe%
 	; 	waits for starcraft to exist
 	; 	give time for SC2 to fully launch. This may be required on slower or stressed computers
 	;	to give time for the  window to fully launch and activate to allow the
-	; 	WinGet("EXStyle") style checks to workto work properly
+	; 	WinGet("EXStyle") style checks to work properly
 	;  	Placed here, as it will also give extra time before trying to get 
 	;	base address (though it shouldn't be required for this)
 
@@ -2584,7 +2584,7 @@ ini_settings_write:
 	IniWrite, %AutoWorkerMaxWorkerProtoss%, %config_file%, %section%, AutoWorkerMaxWorkerProtoss
 	IniWrite, %AutoWorkerMaxWorkerPerBaseProtoss%, %config_file%, %section%, AutoWorkerMaxWorkerPerBaseProtoss
 
-
+/*
 	section := "AutoBuild"	
 	IniWrite, %AutoBuildBarracksGroup%, %config_file%, %section%, AutoBuildBarracksGroup
 	IniWrite, %AutoBuildFactoryGroup%, %config_file%, %section%, AutoBuildFactoryGroup
@@ -2598,6 +2598,7 @@ ini_settings_write:
 	
 	section := "AutomationCommon"
 	IniWrite, %automationAPMThreshold%, %config_file%, %section%, automationAPMThreshold
+*/
 
 	;[Misc Automation]
 	section := "Misc Automation"
@@ -2943,7 +2944,7 @@ IfWinExist
 ; so if they quadruple click the icon AHK wont give a thread exit error due to duplicate 
 ; gui variables because their computer was to slow to load the gui window the first time
 
-;try 
+try 
 {
 	Gui, Options:New
 	gui, font, norm s9	;here so if windows user has +/- font size this standardises it. But need to do other menus one day
@@ -3894,7 +3895,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		;Gui, add, text, xp y+15 w380, Test 
 
 
-	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vAutoWorker_TAB, Auto||Info|Army		
+	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vAutoWorker_TAB, Auto||Info		
 	Gui, Tab, Auto
 		Gui, Add, GroupBox, x+25 Y+10 w370 h85 section, General 
 		Gui, Add, Text, xp+10 yp+20, Toggle State:
@@ -3989,7 +3990,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 
 			gui, font, norm s10
 			gui, font, 		
-
+/*
 	Gui, Tab, Army 
 		GUI, Add, button, gLaunchAutoBuildEditor, Auto Build Editor
 
@@ -4023,7 +4024,8 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		Gui, Add, Text, xs y+15 w85, APM Delay:
 			Gui, Add, Edit, Number Right x+4 yp-2 w50 vTT_automationAPMThreshold
 					Gui, Add, UpDown,  Range0-100000 vAutomationAPMThreshold, %automationAPMThreshold%	
-				
+*/
+
 	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vMiscAutomation_TAB, Select Army||Spread|Remove Units|Easy Select/Unload
 	Gui, Tab, Select Army
 		Gui, add, GroupBox, y+15 w405 h130 section, Select Army
@@ -12305,9 +12307,8 @@ class testDraw
 	}
 
 }
-*/
 
-
+/*
 #If, WinActive(GameIdentifier) && isPlaying && aLocalPlayer.Race = "Terran" && !isMenuOpen()
 && numGetSelectionSorted(aSelection) && (aSelection.TabPositions.HasKey(aUnitID["Marauder"]) || aSelection.TabPositions.HasKey(aUnitID["Marine"]))
 && (aSelection.HighLightedId != aUnitID["SCV"] || !isUserBusyBuilding()) ; This line allows a turret to be built if an scv is in the same selection as a marine/marauder
@@ -12323,7 +12324,7 @@ if (tabsToSend := tabPos - aSelection.HighlightedGroup) < 0
 else send {tab %tabsToSend%}t+{tab %tabsToSend%}
 return
 #if
-
+*/
 
 ;f2::
 autoBuild.setBuildObj()
@@ -13335,3 +13336,6 @@ class buildCheck
 		return
 	}
 }
+
+
+
