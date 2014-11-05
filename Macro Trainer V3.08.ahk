@@ -12308,7 +12308,8 @@ class testDraw
 
 }
 
-/*
+; Global Stim
+
 #If, WinActive(GameIdentifier) && isPlaying && aLocalPlayer.Race = "Terran" && !isMenuOpen()
 && numGetSelectionSorted(aSelection) && (aSelection.TabPositions.HasKey(aUnitID["Marauder"]) || aSelection.TabPositions.HasKey(aUnitID["Marine"]))
 && (aSelection.HighLightedId != aUnitID["SCV"] || !isUserBusyBuilding()) ; This line allows a turret to be built if an scv is in the same selection as a marine/marauder
@@ -12324,7 +12325,7 @@ if (tabsToSend := tabPos - aSelection.HighlightedGroup) < 0
 else send {tab %tabsToSend%}t+{tab %tabsToSend%}
 return
 #if
-*/
+
 
 ;f2::
 autoBuild.setBuildObj()
@@ -13336,6 +13337,5 @@ class buildCheck
 		return
 	}
 }
-
 
 

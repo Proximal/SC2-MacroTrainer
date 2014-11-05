@@ -269,13 +269,13 @@ class _ClassMemory
         return 1.5
     }   
 
-    findPID(program, windowMatchMode := 3)
+    findPID(program, windowMatchMode := "3")
     {
         if windowMatchMode
         {
             ; This is a string and will not contain the 0x prefix
             mode := A_TitleMatchMode
-            ; remove hex prefix as SetTitleMatchMode will throw a run time error. This will occur if integer mode is set to hex.
+            ; remove hex prefix as SetTitleMatchMode will throw a run time error. This will occur if integer mode is set to hex and user passed an int (unquoted)
             StringReplace, windowMatchMode, windowMatchMode, 0x 
             SetTitleMatchMode, %windowMatchMode%
         }
@@ -808,37 +808,32 @@ class _ClassMemory
         MEM_COMMIT := 0x1000, MEM_MAPPED := 0x40000, MEM_PRIVATE := 0x20000
         , PAGE_NOACCESS := 0x01, PAGE_GUARD := 0x100
 
-        if (result := this.getModuleBaseAddress(module, aModuleInfo)) > 0 
+        if (result := this.getModuleBaseAddress(module, aModuleInfo)) <= 0
+             return "", ErrorLevel := result ; failed    
+        if !patternSize := this.getNeedleFromAOBPattern(patternMask, AOBBuffer, aAOBPattern*)
+            return -10 ; no pattern
+        ; Try to read the entire module in one RPM()
+        ; If fails with access (-1) iterate the modules memory pages and search the ones which are readable          
+        if (result := this.PatternScan(aModuleInfo.lpBaseOfDll, aModuleInfo.SizeOfImage, patternMask, AOBBuffer)) > 0
+            return result  ; Found
+        else if (result = 0) ; 0 = not found
+            return 0 
+        ; else RPM() failed lets iterate the pages
+        address := aModuleInfo.lpBaseOfDll
+        endAddress := address + aModuleInfo.SizeOfImage
+        loop 
         {
-            if !patternSize := this.getNeedleFromAOBPattern(patternMask, AOBBuffer, aAOBPattern*)
-                return -10 ;no pattern
-            ; Try to read the entire module in one RPM()
-            ; If fails with access (-1) iterate the modules memory pages and search the ones which are readable          
-            if (result := this.PatternScan(aModuleInfo.lpBaseOfDll, aModuleInfo.SizeOfImage, patternMask, AOBBuffer)) > 0
-                return result  ; Found
-            else if (result = 0) ; 0 = not found
-                return 0 
-            ; else RPM() failed lets iterate the pages
-            address := aModuleInfo.lpBaseOfDll
-            endAddress := address + aModuleInfo.SizeOfImage
-            loop 
-            {
-                if !this.VirtualQueryEx(address, aRegion)
-                    return -9
-                if (aRegion.State = MEM_COMMIT 
-                && !(aRegion.Protect & PAGE_NOACCESS) ; can't read this area
-                && !(aRegion.Protect & PAGE_GUARD) ; can't read this area
-                ;&& (aRegion.Type = MEM_MAPPED || aRegion.Type = MEM_PRIVATE) ;Might as well read Image sections as well
-                && aRegion.RegionSize >= patternSize)
-                {
-                    if (result := this.PatternScan(address, aRegion.RegionSize, patternMask, AOBBuffer)) > 0
-                        return result
-                }
-                if (address += aRegion.RegionSize) >= endAddress
-                    return 0
-            }
-        }
-        return "", ErrorLevel := result ; failed
+            if !this.VirtualQueryEx(address, aRegion)
+                return -9
+            if (aRegion.State = MEM_COMMIT 
+            && !(aRegion.Protect & PAGE_NOACCESS) ; can't read this area
+            && !(aRegion.Protect & PAGE_GUARD) ; can't read this area
+            ;&& (aRegion.Type = MEM_MAPPED || aRegion.Type = MEM_PRIVATE) ;Might as well read Image sections as well
+            && aRegion.RegionSize >= patternSize
+            && (result := this.PatternScan(address, aRegion.RegionSize, patternMask, AOBBuffer)) > 0)
+                return result
+        } until (address += aRegion.RegionSize) >= endAddress
+        return 0       
     }
 
     ; Method:               addressPatternScan(startAddress, sizeOfRegionBytes, aAOBPattern*)
@@ -870,47 +865,32 @@ class _ClassMemory
     ;                       Wild card bytes should be indicated by using a single '?'.
     ; Return Values:
     ;   Positive integer -  Success. The memory address of the found pattern.
-    ;   0                   The pattern doesn't exist or possibly VirtualQueryEx() failed while iterating a memory region.
-    ;   -1                  VirtualQueryEx() failed to start.
+    ;   0                   The pattern was not found.
+    ;   -1                  VirtualQueryEx() failed.
     ;   -2                  Failed to read a memory region.
     ;   -10                 The aAOBPattern* is invalid. (No bytes were passed)
 
     processPatternScan(startAddress := 0, aAOBPattern*)
     {
         address := startAddress
-        MEM_COMMIT := 0x1000       
-        MEM_MAPPED := 0x40000
-        MEM_PRIVATE := 0x20000
-        PAGE_NOACCESS := 0x01
-        PAGE_GUARD := 0x100
+        MEM_COMMIT := 0x1000, MEM_MAPPED := 0x40000, MEM_PRIVATE := 0x20000
+        PAGE_NOACCESS := 0x01, PAGE_GUARD := 0x100
         if !patternSize := this.getNeedleFromAOBPattern(patternMask, AOBBuffer, aAOBPattern*)
-            return -10
-        ; >= 0x7FFFFFFF - definitely reached the end of the useful area (at least for a 32 target process)
-        while address < 0x7FFFFFFF && this.VirtualQueryEx(address, aInfo)
+            return -10  
+        while address <= 0x7FFFFFFF ; > 0x7FFFFFFF - definitely reached the end of the useful area (at least for a 32 target process)
         {
+            if !this.VirtualQueryEx(address, aInfo)
+                return -1
             if (aInfo.State = MEM_COMMIT) 
             && !(aInfo.Protect & PAGE_NOACCESS) ; can't read this area
             && !(aInfo.Protect & PAGE_GUARD) ; can't read this area
             ;&& (aInfo.Type = MEM_MAPPED || aInfo.Type = MEM_PRIVATE) ;Might as well read Image sections as well
             && aInfo.RegionSize >= patternSize
-            {
-                if !result := this.PatternScan(address, aInfo.RegionSize, patternMask, AOBBuffer)
-                    address += aInfo.RegionSize
-                else if result > 0
-                    return result ; address of the pattern
-                else ; -2 error
-                    return result ;"Pattern.Scan() failed at address: " address "`n" A_LastError " | " ErrorLevel
-            }
-            else address += aInfo.RegionSize
+            && (result := this.PatternScan(address, aInfo.RegionSize, patternMask, AOBBuffer))
+                return result > 0 ? result : -2
+            address += aInfo.RegionSize
         }
-        ; Is there a ways to find the process maximum address? So can differentiate a not found from an error
-        ; Finding the last module and doing moduleAddres+moduleSize will still leave pages unscanned. I don't know if this area would be
-        ; use to anyone.
-
-        ; If address is non zero assume all pages were iterated. Although I believe it's still possible for this to error out 
-        ; during the loop of a non-frozen process (one of the reasons why snapshot32 is better?)
-        ; Else there was an issue with VirtualQueryEx
-        return address ? 0 : -1 ; "VirtualQueryEx() failed (or pattern not found in process space) at address: " address "`n" A_LastError " | " ErrorLevel
+        return 0
     }
 
     ; Method:           rawPatternScan(byRef buffer, sizeOfBufferBytes := "", aAOBPattern*)   
