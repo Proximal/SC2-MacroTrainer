@@ -911,13 +911,9 @@ class _ClassMemory
     {
         if !this.getNeedleFromAOBPattern(patternMask, AOBBuffer, aAOBPattern*)
             return -10
-        if sizeOfBufferBytes is not integer
+        if (sizeOfBufferBytes + 0 = "" || sizeOfBufferBytes <= 0)
             sizeOfBufferBytes := VarSetCapacity(buffer)
-        else if sizeOfBufferBytes <= 0
-            sizeOfBufferBytes := VarSetCapacity(buffer)
-        if startOffset is not Integer
-            startOffset := 0
-        else if startOffset < 0
+        if (startOffset + 0 = "" || startOffset < 0)
             startOffset := 0
         return this.bufferScanForMaskedPattern(&buffer, sizeOfBufferBytes, patternMask, &AOBBuffer, startOffset)           
     }
