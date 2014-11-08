@@ -2040,6 +2040,7 @@ GuiClose:
 GuiEscape:
 	Gui, Options:-Disabled ; as the colour selector comes here, no need to reenable the options
 	Gui Destroy
+msgbox here
 Return	
 
 ; Can only arrive here if cancel or x-close/escape the options menu
@@ -2261,13 +2262,11 @@ if FileExist(config_file) ; the file exists lets read the ini settings
 		FileCopy, %config_file%, %old_backup_DIR%\v%read_version%_%config_file%, 1 ;ie 1 = overwrite
 		Filemove, Macro Trainer V%read_version%.exe, %old_backup_DIR%\Macro Trainer V%read_version%.exe, 1 ;ie 1 = overwrite		
 		FileInstall, MT_Config.ini, %config_file%, 1 ; 1 overwrites
-		if (read_version >= 2.980)
-			Gosub, ini_settings_write ;to write back users old settings
+		Gosub, ini_settings_write ;to write back users old settings
 		Gosub, pre_startup ; Read the ini settings again - this updates the 'read version' and also helps with Control group 'ERROR' variable 
 		;IniRead, read_version, %config_file%, Version, version, 1	;this is a safety net - and used to prevent keeping user alert lists in update pre 2.6 & Auto control group 'ERROR'
 		;msgbox It seems that this is the first time that you have ran this version.`n`nYour old %config_file% & Macro Trainer have been backed up to `"\%old_backup_DIR%`". A new config file has been installed which contains your previous personalised settings`n`nPress OK to continue.
-		Pressed := CMsgbox( "Macro Trainer Vr" ProgramVersion , "It seems that this is the first time that you have ran this version.`n`nYour old " config_file " and Macro Trainer have been backed up to '\" old_backup_DIR "'.`n`nA new config file has been installed which contains your previous personalised settings`n`nPress Launch to run SC2.`n`nOtherwise press Options to open the options menu.", "*Launch|&Options", 500, 170, 45, A_Temp "\Starcraft-2.ico", 80, 0, 12)
-		If ( Pressed = "Options")
+		If newVersionFirstRunGUI(ProgramVersion, old_backup_DIR) = "Options"
 			gosub options_menu
 	}
 	else program.Info.IsUpdating := 0		
@@ -2275,7 +2274,7 @@ if FileExist(config_file) ; the file exists lets read the ini settings
 Else If A_IsCompiled  ; config file doesn't exist
 {
 	FileInstall, MT_Config.ini, %config_file%, 0 ; includes and install the ini to the working directory - 0 prevents file being overwritten
-	CMsgbox( "Macro Trainer Vr" ProgramVersion ,"This appears to be the first time you have run this program.`n`nPlease take a moment to read the help file and edit the settings in the options menu as you see fit.`n`n", "*OK", 500, 90, 10, A_Temp "\Starcraft-2.ico", 70)
+	firstRunGUI(ProgramVersion)
 	Gosub pre_startup
 	gosub options_menu
 }
@@ -7257,8 +7256,8 @@ g_UserToggleAutoWorkerState: 		; this launched via the user hotkey combination
 	|| (aLocalPlayer["Race"] = "Protoss" && (EnableAutoWorkerProtoss := !EnableAutoWorkerProtoss))
 	{
 		AW_MaxWorkersReached := TmpDisableAutoWorker := 0 		; just incase the timers bug out and this gets stuck in enabled state
-		SetTimer, g_autoWorkerProductionCheck, -1   ; so it starts immediately - cant use gosub as that negates
-		tSpeak("On")											; the sleep/timer linearity and causes double workers to be made when first turned on
+		MT_CurrentGame.MaxWorkers := ""				; This is here so that if you lose a bunch of workers and turn it back on, it won't make the exact same about again 
+		tSpeak("On")											
 		SetTimer, g_autoWorkerProductionCheck, 200
 	}
 	else 
@@ -7315,6 +7314,7 @@ autoWorkerProductionCheck()
 	, AutoWorkerMaxWorkerProtoss, AutoWorkerMaxWorkerPerBaseProtoss, AW_MaxWorkersReached
 	, aResourceLocations, aButtons, EventKeyDelay
 	, AutoWorkerAPMProtection, AutoWorkerQueueSupplyBlock, AutoWorkerAlwaysGroup, MT_CurrentGame, aUnitTargetFilter
+	, EnableAutoWorkerTerran, EnableAutoWorkerProtoss
 	
 	static TickCountRandomSet := 0, randPercent,  UninterruptedWorkersMade, waitForOribtal := 0
 
@@ -7342,7 +7342,7 @@ autoWorkerProductionCheck()
 
 	if !MT_CurrentGame.MaxWorkers 
 		MT_CurrentGame.MaxWorkers := maxWorkers + rand(-3, 2)
-	maxWorkers :=  MT_CurrentGame.MaxWorkers
+	maxWorkers := MT_CurrentGame.MaxWorkers
 
 	workers := getPlayerWorkerCount()
 
@@ -7350,6 +7350,10 @@ autoWorkerProductionCheck()
 	{ 
 		AW_MaxWorkersReached := True
 	;	UninterruptedWorkersMade := 0 
+		settimer, g_autoWorkerProductionCheck, Off 
+		if (aLocalPlayer["Race"] = "Terran")  ; This is so you don't have to press the toggle button twice to turn it back on after losing workers.
+			EnableAutoWorkerTerran := 0
+		else EnableAutoWorkerProtoss := 0
 		return 
 	}
 	if isGamePaused() || isMenuOpen() ;chat is 0 when  menu is in focus

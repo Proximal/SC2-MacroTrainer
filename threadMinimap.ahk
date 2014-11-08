@@ -632,7 +632,7 @@ loop, % DumpUnitMemory(UBMemDump)
 				aGeyserStructuresTmp.insert(u_iteration)
 			
 
-			if !isobject(aTmpCompleteStructures[unit_type])
+			;if !isobject(aTmpCompleteStructures[unit_type])
 			;	aTmpCompleteStructures[unit_type] := []
 			;aTmpCompleteStructures[unit_type, u_iteration] := True
 			aTmpCompleteStructures[unit_type] .=  (aTmpCompleteStructures[unit_type] != "" ? "|" : "") u_iteration 

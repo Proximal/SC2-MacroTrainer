@@ -795,7 +795,7 @@ class _ClassMemory
     ;                   If no module (null) is specified, the executable file of the process will be used. 
     ;                   e.g. C:\Games\StarCraft II\Versions\Base28667\SC2.exe
     ;   aAOBPattern*    A variadic list of byte values i.e. the array of bytes to find.
-    ;                   Wild card bytes should be indicated by using a single '?'.
+    ;                   Wild card bytes should be indicated by passing a non-numeric value eg "?".
     ; Return Values:
     ;   Null            Failed to find or retrieve the specified module. ErrorLevel is set to the returned error from getModuleBaseAddress()
     ;                   refer to that method for more information.
@@ -842,7 +842,7 @@ class _ClassMemory
     ;   startAddress        The memory address from which to begin the search.
     ;   sizeOfRegionBytes   The numbers of bytes to scan in the memory region.
     ;   aAOBPattern*        A variadic list of byte values i.e. the array of bytes to find.
-    ;                       Wild card bytes should be indicated by using a single '?'.      
+    ;                       Wild card bytes should be indicated by passing a non-numeric value eg "?".      
     ; Return Values:
     ;   Positive integer    Success. The memory address of the found pattern.
     ;   0                   Pattern not found
@@ -862,7 +862,7 @@ class _ClassMemory
     ; Parameters:
     ;   startAddress -      The memory address from which to begin the search.
     ;   aAOBPattern* -      A variadic list of byte values i.e. the array of bytes to find.
-    ;                       Wild card bytes should be indicated by using a single '?'.
+    ;                       Wild card bytes should be indicated by passing a non-numeric value eg "?".
     ; Return Values:
     ;   Positive integer -  Success. The memory address of the found pattern.
     ;   0                   The pattern was not found.
@@ -899,9 +899,9 @@ class _ClassMemory
     ; Parameters:
     ;   buffer              The binary buffer to be searched.
     ;   sizeOfBufferBytes   The size of the binary buffer. If null or 0 the size is automatically retrieved.
-    ;   startOffset         The offset from the start off the buffer from which to begin the search. This must be >= 0.
+    ;   startOffset         The offset from the start of the buffer from which to begin the search. This must be >= 0.
     ;   aAOBPattern*        A variadic list of byte values i.e. the array of bytes to find.
-    ;                       Wild card bytes should be indicated by using a single '?'. 
+    ;                       Wild card bytes should be indicated by passing a non-numeric value eg "?".
     ; Return Values:
     ;   >= 0                The offset of the pattern relative to the start of the haystack.
     ;   -1                  Not found.
@@ -924,10 +924,10 @@ class _ClassMemory
     ;                   The modulePatternScan(), addressPatternScan(), rawPatternScan(), and processPatternScan() methods
     ;                   allow you to directly search for an array of bytes pattern in a single method call.
     ; Parameters:
-    ;   patternMask -   (output) A string which indicates which bytes are wild/no-wild.
+    ;   patternMask -   (output) A string which indicates which bytes are wild/non-wild.
     ;   needleBuffer -  (output) The array of bytes passed via aAOBPattern* is converted to a binary needle and stored inside this variable.
     ;   aAOBPattern* -  (input) A variadic list of byte values i.e. the array of bytes from which to create the patternMask and needleBuffer.
-    ;                   Wild card bytes should be indicated by using a single '?'.
+    ;                   Wild card bytes should be indicated by passing a non-numeric value eg "?".
     ; Return Values:
     ;  The number of bytes in the binary needle and hence the number of characters in the patternMask string. 
 
@@ -935,7 +935,7 @@ class _ClassMemory
     {
         patternMask := "", VarSetCapacity(needleBuffer, aAOBPattern.MaxIndex())
         for i, v in aAOBPattern
-            patternMask .= (v = "?" ? "?" : "x"), NumPut(round(v), needleBuffer, A_Index - 1, "UChar")
+            patternMask .= (v + 0 = "" ? "?" : "x"), NumPut(round(v), needleBuffer, A_Index - 1, "UChar")
         return round(aAOBPattern.MaxIndex())
     }
 
@@ -997,7 +997,7 @@ class _ClassMemory
     ;   sizeOfRegionBytes - The numbers of bytes to scan in the memory region.
     ;   patternMask -       This string indicates which bytes must match and which bytes are wild. Each wildcard byte must be denoted by a single '?'. 
     ;                       Non wildcards can use any other single character e.g 'x'. There should be no spaces.
-    ;                       With the patternMask 'xx??x', the frist, second, and fith bytes must match. The third and fourth bytes are wild.
+    ;                       With the patternMask 'xx??x', the first, second, and fifth bytes must match. The third and fourth bytes are wild.
     ;    needleBuffer -     The variable which contains the binary needle. This needle should consist of UChar bytes.
     ; Return Values:
     ;   Positive integer    The address of the pattern.
@@ -1019,9 +1019,9 @@ class _ClassMemory
     ;   sizeOfHayStackBytes The total size of the haystack in bytes.
     ;   patternMask -       A string which indicates which bytes must match and which bytes are wild. Each wildcard byte must be denoted by a single '?'. 
     ;                       Non wildcards can use any other single character e.g 'x'. There should be no spaces.
-    ;                       With the patternMask 'xx??x', the frist, second, and fith bytes must match. The third and fourth bytes are wild.
+    ;                       With the patternMask 'xx??x', the first, second, and fifth bytes must match. The third and fourth bytes are wild.
     ;   needleAddress -     The address of the binary needle to find. This needle should consist of UChar bytes.
-    ;   startOffset -       The offset from the start off the haystack from which to begin the search. This must be >= 0.
+    ;   startOffset -       The offset from the start of the haystack from which to begin the search. This must be >= 0.
     ; Return Values:    
     ;   >= 0                Found. The pattern begins at this offset - relative to the start of the haystack.
     ;   -1                  Not found.

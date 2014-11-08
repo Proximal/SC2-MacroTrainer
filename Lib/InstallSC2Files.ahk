@@ -79,6 +79,7 @@ InstallSC2Files()
 	FileInstall, Included Files\Used_Icons\Race_TerranFlat.png, %A_Temp%\Race_TerranFlat.png, 1
 	FileInstall, Included Files\Used_Icons\Race_ZergFlat.png, %A_Temp%\Race_ZergFlat.png, 1
 	FileInstall, Included Files\Used_Icons\pingNuke.png, %A_Temp%\UnitPanelMacroTrainer\pingNuke.png, 1 ; not really a unit panel icon
+	FileInstall, Included Files\Used_Icons\SCBare128.png, %A_Temp%\UnitPanelMacroTrainer\SCBare128.png, 1
 
 	FileInstall, Included Files\Used_Icons\Buildings\Terran\armory.png,  %A_Temp%\UnitPanelMacroTrainer\armory.png, 1
 	FileInstall, Included Files\Used_Icons\Buildings\Terran\autoturret.png,  %A_Temp%\UnitPanelMacroTrainer\autoturret.png, 1

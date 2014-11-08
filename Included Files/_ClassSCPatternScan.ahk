@@ -131,7 +131,7 @@ class _ClassSCPatternScan
 				LV_Colors.Row(HLV, A_Index, 0x36FC87) 	; Green match
 			else LV_Colors.Row(HLV, A_Index, 0xFF4444) 	; Red error 
 		}
-		loop, % LV_GetCount()
+		loop, % LV_GetCount("Column")
 			LV_ModifyCol(A_Index, "AutoHdr") ; resize contents+header
 		Gui, Add, Button, Default g__SCPatternScanClipboardDump, Dump To Clipboard
 		Gui, Show,, Pattern Scan
