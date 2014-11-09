@@ -19,7 +19,7 @@ newVersionFirstRunGUI(ProgramVersion, old_backup_DIR)
 	Gui, Add, Button, x145 y145 w70 h27 Default g_newVersionFirstRunGUILaunch, &Launch
 	Gui, Add, Button, x+25 y145 w70 h27 g_newVersionFirstRunGUIOptions, &Options
 
-	Gui, Add, Picture, x7 y10, %A_Temp%\UnitPanelMacroTrainer\SCBare128.png
+	Gui, Add, Picture, x7 y10, %A_Temp%\SCBare128.png
 	Gui, Show, w506 h180, v%ProgramVersion%
 	selectText(HwndEdit, -1)
 	WinWaitClose, ahk_id %GuiHWND%

@@ -797,6 +797,7 @@ class _ClassMemory
     ;   aAOBPattern*    A variadic list of byte values i.e. the array of bytes to find.
     ;                   Wild card bytes should be indicated by passing a non-numeric value eg "?".
     ; Return Values:
+    ;   Positive int    Success. The memory address of the found pattern.   
     ;   Null            Failed to find or retrieve the specified module. ErrorLevel is set to the returned error from getModuleBaseAddress()
     ;                   refer to that method for more information.
     ;   0               The pattern was not found inside the module
@@ -814,10 +815,8 @@ class _ClassMemory
             return -10 ; no pattern
         ; Try to read the entire module in one RPM()
         ; If fails with access (-1) iterate the modules memory pages and search the ones which are readable          
-        if (result := this.PatternScan(aModuleInfo.lpBaseOfDll, aModuleInfo.SizeOfImage, patternMask, AOBBuffer)) > 0
-            return result  ; Found
-        else if (result = 0) ; 0 = not found
-            return 0 
+        if (result := this.PatternScan(aModuleInfo.lpBaseOfDll, aModuleInfo.SizeOfImage, patternMask, AOBBuffer)) >= 0
+            return result  ; Found / not found
         ; else RPM() failed lets iterate the pages
         address := aModuleInfo.lpBaseOfDll
         endAddress := address + aModuleInfo.SizeOfImage
@@ -826,8 +825,7 @@ class _ClassMemory
             if !this.VirtualQueryEx(address, aRegion)
                 return -9
             if (aRegion.State = MEM_COMMIT 
-            && !(aRegion.Protect & PAGE_NOACCESS) ; can't read this area
-            && !(aRegion.Protect & PAGE_GUARD) ; can't read this area
+            && !(aRegion.Protect & (PAGE_NOACCESS | PAGE_GUARD)) ; can't read these areas
             ;&& (aRegion.Type = MEM_MAPPED || aRegion.Type = MEM_PRIVATE) ;Might as well read Image sections as well
             && aRegion.RegionSize >= patternSize
             && (result := this.PatternScan(address, aRegion.RegionSize, patternMask, AOBBuffer)) > 0)
@@ -882,8 +880,7 @@ class _ClassMemory
             if !this.VirtualQueryEx(address, aInfo)
                 return -1
             if (aInfo.State = MEM_COMMIT) 
-            && !(aInfo.Protect & PAGE_NOACCESS) ; can't read this area
-            && !(aInfo.Protect & PAGE_GUARD) ; can't read this area
+            && !(aInfo.Protect & (PAGE_NOACCESS | PAGE_GUARD)) ; can't read these areas
             ;&& (aInfo.Type = MEM_MAPPED || aInfo.Type = MEM_PRIVATE) ;Might as well read Image sections as well
             && aInfo.RegionSize >= patternSize
             && (result := this.PatternScan(address, aInfo.RegionSize, patternMask, AOBBuffer))

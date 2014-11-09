@@ -2571,6 +2571,7 @@ ini_settings_write:
 	IniWrite, %ToggleAutoWorkerState_Key%, %config_file%, %section%, ToggleAutoWorkerState_Key
 	IniWrite, %AutoWorkerQueueSupplyBlock%, %config_file%, %section%, AutoWorkerQueueSupplyBlock
 	IniWrite, %AutoWorkerAlwaysGroup%, %config_file%, %section%, AutoWorkerAlwaysGroup
+	IniWrite, %AutoWorkerWarnMaxWorkers%, %config_file%, %section%, AutoWorkerWarnMaxWorkers
 	IniWrite, %AutoWorkerAPMProtection%, %config_file%, %section%, AutoWorkerAPMProtection
 	IniWrite, %AutoWorkerStorage_T_Key%, %config_file%, %section%, AutoWorkerStorage_T_Key
 	IniWrite, %AutoWorkerStorage_P_Key%, %config_file%, %section%, AutoWorkerStorage_P_Key
@@ -3907,11 +3908,12 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 					Gui, Add, UpDown,  Range0-100000 vAutoWorkerAPMProtection, %AutoWorkerAPMProtection%		
 
 	;	Gui, Add, Text, xs+220 yp+25 w85, Queue While Supply Blocked:			
-		Gui, Add, Checkbox, xs+205 ys+20 vAutoWorkerQueueSupplyBlock Checked%AutoWorkerQueueSupplyBlock%, Queue While Supply Blocked
+		Gui, Add, Checkbox, xs+205 ys+20 vAutoWorkerQueueSupplyBlock Checked%AutoWorkerQueueSupplyBlock%, Queue while supply blocked
 		Gui, Add, Checkbox, xp yp+20 vAutoWorkerAlwaysGroup Checked%AutoWorkerAlwaysGroup%, Always group selection **  
+		Gui, Add, Checkbox, xp yp+20 vAutoWorkerWarnMaxWorkers Checked%AutoWorkerWarnMaxWorkers%, Max worker warning
 
 		thisXTabX := XTabX + 12
-		Gui, Add, GroupBox, xs Y+45 w370 h150 section, Terran 
+		Gui, Add, GroupBox, xs ys+98 w370 h150 section, Terran 
 			Gui, Add, Checkbox, xp+10 yp+25 vEnableAutoWorkerTerranStart Checked%EnableAutoWorkerTerranStart%, Enable on match start
 
 			Gui, Add, Text, X%thisXTabX% y+15 w100, Base Ctrl Group:
@@ -4674,7 +4676,9 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 				. "`nstill send the control group key for your bases."
 				. "`n`nThis helps make the automation a little more subtle, especially in the early game. But it may not work correctly for everyone."
 				. "`nIf it fails, you will end up with your base control group selected rather than your previous units."
-				. "`n`nNote: Prior to v2.986 'disabled' was the default nature. "
+				. "`n`nNote: Prior to v2.986 'disabled' was the default nature."
+		
+		AutoWorkerWarnMaxWorkers_TT := "A spoken warning is issued when the maximum worker count has been reached.`nWarning: ""Maxed Workers"""
 
 		TT_AutoWorkerAPMProtection_TT := AutoWorkerAPMProtection_TT
 		:= TT_FInjectAPMProtection_TT := FInjectAPMProtection_TT := "Automations will be delayed while your instantaneous APM is greater than this value.`n"
@@ -7313,7 +7317,7 @@ autoWorkerProductionCheck()
 	, AutoWorkerMakeWorker_T_Key, AutoWorkerMakeWorker_P_Key, AutoWorkerMaxWorkerTerran, AutoWorkerMaxWorkerPerBaseTerran
 	, AutoWorkerMaxWorkerProtoss, AutoWorkerMaxWorkerPerBaseProtoss, AW_MaxWorkersReached
 	, aResourceLocations, aButtons, EventKeyDelay
-	, AutoWorkerAPMProtection, AutoWorkerQueueSupplyBlock, AutoWorkerAlwaysGroup, MT_CurrentGame, aUnitTargetFilter
+	, AutoWorkerAPMProtection, AutoWorkerQueueSupplyBlock, AutoWorkerAlwaysGroup, AutoWorkerWarnMaxWorkers, MT_CurrentGame, aUnitTargetFilter
 	, EnableAutoWorkerTerran, EnableAutoWorkerProtoss
 	
 	static TickCountRandomSet := 0, randPercent,  UninterruptedWorkersMade, waitForOribtal := 0
@@ -7354,6 +7358,8 @@ autoWorkerProductionCheck()
 		if (aLocalPlayer["Race"] = "Terran")  ; This is so you don't have to press the toggle button twice to turn it back on after losing workers.
 			EnableAutoWorkerTerran := 0
 		else EnableAutoWorkerProtoss := 0
+		if AutoWorkerWarnMaxWorkers
+			tSpeak("Maxed Workers")
 		return 
 	}
 	if isGamePaused() || isMenuOpen() ;chat is 0 when  menu is in focus
@@ -13341,5 +13347,6 @@ class buildCheck
 		return
 	}
 }
+
 
 
