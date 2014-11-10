@@ -1,29 +1,10 @@
 ﻿/*
-    18/05/14
-        -   Fixed issue with get getModuleBaseAddress() returning the incorrect module 
-            when specified module name formed part of another modules name
-    10/06/14
-        -   Fixed a bug introduced by the above change, which prevented the function returning 
-            the base address of the process.
-    12/07/14 - version 1.0
-        -   Added writeRaw() method
-        -   Added a version number to the class
-    30/07/14 - version 1.1
-        -   EnumProcessModulesEx() is now used instead of EnumProcessModules().
-            This allows for getModuleBaseAddress() in a 64 bit AHK process to enumerate
-            (and find) the modules in a 32 bit target process.
-    1/08/14 - version 1.2
-        -   getProcessBaseAddress() dllcall now returns Int64. This prevents a negative number (overflow)
-            when reading the base address of a 64 bit target process from a 32 bit AHK process.
-        -   Added various pattern scan methods.
-    17/08/14
-        -   Change class name to _ClassMemory
-    19/09/14 - version 1.3
-        -   Renamed some methods.
-        -   Old name --> New name
-        -   getBaseAddressOfModule() --> getModuleBaseAddress()
-        -   ReadRawMemory() --> readRaw()
-        -   writeBuffer() --> writeRaw()
+    10/11/14 - version 1.6
+        - The buffer in GetModuleFileNameEx() is now initialised to null.
+            -> Previously there was a chance that this function could return an incorrect name.
+        - Wild card bytes in the pattern scan functions can now be denoted by any non-numeric value e.g. "?", "wild" or "" (null)
+    17/10/14 - version 1.5
+        - Fixed a bug in writeString() which would cause the null terminator to be erroneously removed. 
     23/09/14 - version 1.4
         - The various read and write methods should now support pointers in 64 bit target applications providing AHK is also 64 bit.
             -> When the new operator is used the target application's bitness is checked. If it 64 bit, pointers will then be read as Int64s.
@@ -36,8 +17,31 @@
             -> These two changes will not affect users unless your code calls them directly.
         - Fixed a bug in _MEMORY_BASIC_INFORMATION
         - Added 'aRights' object which contains various handle access constants.
-    17/10/14 - version 1.5
-        - Fixed a bug in writeString() which would cause the null terminator to be erroneously removed. 
+    19/09/14 - version 1.3
+        -   Renamed some methods.
+        -   Old name --> New name
+        -   getBaseAddressOfModule() --> getModuleBaseAddress()
+        -   ReadRawMemory() --> readRaw()
+        -   writeBuffer() --> writeRaw()
+    17/08/14
+        -   Change class name to _ClassMemory
+    1/08/14 - version 1.2
+        -   getProcessBaseAddress() dllcall now returns Int64. This prevents a negative number (overflow)
+            when reading the base address of a 64 bit target process from a 32 bit AHK process.
+        -   Added various pattern scan methods.
+    30/07/14 - version 1.1
+        -   EnumProcessModulesEx() is now used instead of EnumProcessModules().
+            This allows for getModuleBaseAddress() in a 64 bit AHK process to enumerate
+            (and find) the modules in a 32 bit target process.
+    12/07/14 - version 1.0
+        -   Added writeRaw() method
+        -   Added a version number to the class
+    10/06/14
+        -   Fixed a bug introduced by the above change, which prevented the function returning 
+            the base address of the process.
+    18/05/14
+        -   Fixed issue with get getModuleBaseAddress() returning the incorrect module 
+            when specified module name formed part of another modules name
 
     RHCP's basic memory class:
 
@@ -266,7 +270,7 @@ class _ClassMemory
 
     version()
     {
-        return 1.5
+        return 1.6
     }   
 
     findPID(program, windowMatchMode := "3")
@@ -737,9 +741,16 @@ class _ClassMemory
         return -5
     }
 
+    ; lpFilename [out]
+    ; A pointer to a buffer that receives the fully qualified path to the module. 
+    ; If the size of the file name is larger than the value of the nSize parameter, the function succeeds 
+    ; but the file name is truncated and null-terminated.
+
     GetModuleFileNameEx(hModule := 0)
     {
-        VarSetCapacity(lpFilename, 2048 * (A_IsUnicode ? 2 : 1))
+        ; Initialise to null for safety as lpFilename is not null terminated (unless it has inadequate size).
+        ; Rather than bother checking for condition (i.e. the final char is null) just give the buffer a massive size.
+        VarSetCapacity(lpFilename, 2048 * (A_IsUnicode ? 2 : 1), 0) 
         DllCall("psapi\GetModuleFileNameEx"
                     , "Ptr", this.hProcess
                     , "Uint", hModule

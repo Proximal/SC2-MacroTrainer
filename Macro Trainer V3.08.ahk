@@ -2040,7 +2040,6 @@ GuiClose:
 GuiEscape:
 	Gui, Options:-Disabled ; as the colour selector comes here, no need to reenable the options
 	Gui Destroy
-msgbox here
 Return	
 
 ; Can only arrive here if cancel or x-close/escape the options menu
@@ -4964,9 +4963,9 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 			quickSelect%A_LoopField%DeselectUnitTypes_TT := "When enabled the specified unit types are removed."
 														. "`n`nNote: Disabling the 'Keep these types' and 'Remove these types' options, disables filtering by unit type."
 			quickSelect%A_LoopField%UnitsArmy_TT := #quickSelect%A_LoopField%UnitsArmy_TT := "These units types will either be removed from selection or kept in the selection as governed by the checkboxes above."
-													. "`nWhen both of the checkboxes above un-ticked, then this unit type list is ignored."
-			quickSelect%A_LoopField%CreateControlGroup_TT := "The remaining selected untils will be stored in the specified control group."
-			quickSelect%A_LoopField%AddToControlGroup_TT := "The remaining selected untils will be added to the specified control group."
+													. "`nIf both of the checkboxes are unticked then this list is ignored."
+			quickSelect%A_LoopField%CreateControlGroup_TT := "The remaining selected units will be stored in the specified control group."
+			quickSelect%A_LoopField%AddToControlGroup_TT := "The remaining selected units will be added to the specified control group."
 
 			QuickSelect%A_LoopField%StoreSelection_TT := "Units are either assigned or added to this control group depending upon the specified options."
 										. "`n`nNote: This uses the specified 'control group' keys as defined in the SC2 Keys section (on the left)."
@@ -13347,6 +13346,8 @@ class buildCheck
 		return
 	}
 }
+
+
 
 
 
