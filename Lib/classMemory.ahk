@@ -749,7 +749,7 @@ class _ClassMemory
     GetModuleFileNameEx(hModule := 0)
     {
         ; Initialise to null for safety as lpFilename is not null terminated (unless it has inadequate size).
-        ; Rather than bother checking for condition (i.e. the final char is null) just give the buffer a massive size.
+        ; Rather than bother checking for this condition (i.e. the final char is null) just give the buffer a massive size.
         VarSetCapacity(lpFilename, 2048 * (A_IsUnicode ? 2 : 1), 0) 
         DllCall("psapi\GetModuleFileNameEx"
                     , "Ptr", this.hProcess
