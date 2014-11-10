@@ -1,7 +1,5 @@
 ﻿/*
     10/11/14 - version 1.6
-        - The buffer in GetModuleFileNameEx() is now initialised to null.
-            -> Previously there was a chance that this function could return an incorrect name.
         - Wild card bytes in the pattern scan functions can now be denoted by any non-numeric value e.g. "?", "wild" or "" (null)
     17/10/14 - version 1.5
         - Fixed a bug in writeString() which would cause the null terminator to be erroneously removed. 
@@ -745,12 +743,13 @@ class _ClassMemory
     ; A pointer to a buffer that receives the fully qualified path to the module. 
     ; If the size of the file name is larger than the value of the nSize parameter, the function succeeds 
     ; but the file name is truncated and null-terminated.
+    ; If the buffer is adequate the string is still null terminated. 
 
     GetModuleFileNameEx(hModule := 0)
     {
-        ; Initialise to null for safety as lpFilename is not null terminated (unless it has inadequate size).
-        ; Rather than bother checking for this condition (i.e. the final char is null) just give the buffer a massive size.
-        VarSetCapacity(lpFilename, 2048 * (A_IsUnicode ? 2 : 1), 0) 
+        ; ANSI MAX_PATH = 260 (includes null) - unicode can be ~32K.... but no one would ever have one that size
+        ; So just give it a massive size and don't bother checking. Most coders just give it MAX_PATH size anyway
+        VarSetCapacity(lpFilename, 2048 * (A_IsUnicode ? 2 : 1)) 
         DllCall("psapi\GetModuleFileNameEx"
                     , "Ptr", this.hProcess
                     , "Uint", hModule
