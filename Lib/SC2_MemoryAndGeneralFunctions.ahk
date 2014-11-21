@@ -956,7 +956,7 @@ getUnitPositionZ(unit)
 	also, the last bit of the Command ptr (pre &) will be set to 1
 
 ;  O_cqState := 0x40
-
+; Nukes offsets/Research
 <Struct Name="QueuedCommand" Size="-1">
 <Member Name="pNextCommand" Type="Unsigned" Size="4" Offset="0"/>
 <!--
@@ -970,7 +970,7 @@ getUnitPositionZ(unit)
 <Member Name="TargetZ" Type="Fixed" Size="4" Offset="TargetY+4" AbsoluteOffset="0x30"/>
 <Member Name="Unknown" Type="Unsigned" Size="4" Offset="TargetZ+4" AbsoluteOffset="0x34"/>
 <Member Name="TargetFlags" Type="Unsigned" Size="4" Offset="Unknown+4" AbsoluteOffset="0x38"/>
-<Member Name="Flags" Type="Unsigned" Size="4" Offset="TargetFlags+4" AbsoluteOffset="0x3C"/>
+<Member Name="Flags" Type="Unsigned" Size="4" Offset="TargetFlags+4" AbsoluteOffset="0x3C"/> ; OrderFlags 
 <Member Name="AbilityCommand" Type="Unsigned" Size="1" Offset="Flags+4" AbsoluteOffset="0x40"/>
 <Member Name="Player" Type="Unsigned" Size="1" Offset="AbilityCommand+2" AbsoluteOffset="0x42"/>
 </Struct>
@@ -1012,18 +1012,21 @@ getUnitQueuedCommands(unit, byRef aQueuedMovements)
 		loop 
 		{
 			ReadRawMemory(pNextCmd & -2, GameIdentifier, cmdDump, 0x42)
-			targetFlag := numget(cmdDump, 0x38, "UInt")
-
+			, targetFlag := numget(cmdDump, 0x38, "UInt")
+			, state := numget(cmdDump, O_cqState, "Short")
+			, targetUnitIndex := numget(cmdDump, 0x20, "UInt") >> 18 
+			;OrderFlags := numget(cmdDump, 0x3C, "UInt") ; OrderFlags 
 			if !aStringTable.hasKey(pString := numget(cmdDump, 0x18, "UInt"))
 				aStringTable[pString] := ReadMemory_Str(readMemory(pString + 0x4, GameIdentifier), GameIdentifier)
-
-			state := numget(cmdDump, O_cqState, "Short")
 
 			aQueuedMovements.insert({ "targetX": targetX := numget(cmdDump, 0x28, "Int") / 4096
 									, "targetY": numget(cmdDump, 0x2C, "Int") / 4096
 									, "targetZ": numget(cmdDump, 0x30, "Int") / 4096
 									, "ability": aStringTable[pString] 
-								;	, "flag" : targetFlag
+									;, "targetFlag" : targetFlag
+									;, "OrderFlags": OrderFlags
+									;, "flagString": CommandFlagsToString(OrderFlags)
+									, "targetIndex": targetUnitIndex
 									, "state": state })
 
 			if (A_Index > 20 || !(targetFlag & aTargetFlags.targetIsPoint || targetFlag & aTargetFlags.targetIsUnit || targetFlag = 7))
@@ -1037,6 +1040,30 @@ getUnitQueuedCommands(unit, byRef aQueuedMovements)
 		return aQueuedMovements.MaxIndex() 	; interstingly after -2 & pNextCmd (the last one) it should = the first address
 	}
 	else return 0
+}
+
+
+CommandFlagsToString(commandFlags)
+{
+	static aFlags := {	Alternate: 0x1
+					, 	Queued: 0x2 ;added to end of queue.
+					, 	Preempt: 0x4 ;inserted at the start of queue.
+					, 	SmartClick: 0x8
+					, 	SmartRally: 0x10
+					, 	Subgroup: 0x20
+					, 	SetAutoCast: 0x40
+					, 	SetAutoCastOn: 0x80
+					, 	Required: 0x100
+					, 	Unknown200: 0x200 ;v these two are checked if target is neither unit nor point.
+					, 	Unknown400: 0x400 ;^ other one.
+					, 	Minimap: 0x400000 } ;this may be wrong.
+
+	for command, value in aFlags
+	{
+		if (value & commandFlags)
+			s .= command ","
+	}
+	return SubStr(s, 1, -1)
 }
 
 /*
@@ -4202,6 +4229,13 @@ getCursorUnit()
 	return -1
 }
 
+getCursorUnitType(byRef unitIndex := "")
+{
+	if (unitIndex := getCursorUnit()) >= 0
+		return getUnitType(unitIndex)
+	return 0
+}
+
 /*
 	Transport Structure (includes bunker too)
 
@@ -4911,7 +4945,7 @@ getMiniMapPingIconPos(byref xPos, byref yPos)
 }
 
 ; Converts the olldbg plugin scanner output to a string compatible with my scanner
-singConverter(sig, mask, storeInClip := True)
+sigConverter(sig, mask, storeInClip := True)
 {
 	sig := trim(sig, A_Space A_Tab "\") ; "sig starts with \"
 	mask := trim(mask, A_Space A_Tab)

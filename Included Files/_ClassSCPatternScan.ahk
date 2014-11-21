@@ -140,6 +140,11 @@ class _ClassSCPatternScan
 		__SCPatternScanClipboardDump:
 		clipboard := ColumnJustify(Table_FromListview())
 		return 
+		
+		SCPatternScanGuiClose:
+		SCPatternScanGuiEscape:
+		Gui Destroy
+		return 
 	}
 	; Returns an array of arrays
 	; each individual array has 4 items. 
