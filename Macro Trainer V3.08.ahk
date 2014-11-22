@@ -2654,6 +2654,9 @@ ini_settings_write:
 	IniWrite, %EasyUnload_Z_Key%, %config_file%, %section%, EasyUnload_Z_Key
 	IniWrite, %EasyUnloadStorageKey%, %config_file%, %section%, EasyUnloadStorageKey
 
+	IniWrite, %EnableSmartGeyser%, %config_file%, %section%, EnableSmartGeyser
+	IniWrite, %smartGeyserCtrlGroup%, %config_file%, %section%, smartGeyserCtrlGroup
+
 	;[Misc Hotkey]
 	IniWrite, %EnableWorkerCountSpeechHotkey%, %config_file%, Misc Hotkey, EnableWorkerCountSpeechHotkey
 	IniWrite, %worker_count_local_key%, %config_file%, Misc Hotkey, worker_count_key
@@ -4030,7 +4033,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 					Gui, Add, UpDown,  Range0-100000 vAutomationAPMThreshold, %automationAPMThreshold%	
 */
 
-	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vMiscAutomation_TAB, Select Army||Spread|Remove Units|Easy Select/Unload
+	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vMiscAutomation_TAB, Select Army||Spread|Remove Units|Easy Select/Unload|Smart Geyser
 	Gui, Tab, Select Army
 		Gui, add, GroupBox, y+15 w405 h130 section, Select Army
 		Gui, Add, Checkbox, Xs+15 yp+25 vSelectArmyEnable Checked%SelectArmyEnable% , Enable Select Army Function		
@@ -4238,6 +4241,12 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 			Gui, Font, s10
 			Gui, Font,
 	*/
+
+	Gui, Tab, Smart Geyser
+		Gui, Add, Checkbox, x+50 y+30 vEnableSmartGeyser checked%EnableSmartGeyser%, Enable
+		Gui, Add, text, xp y+10, Storage Ctrl Group:
+	 Gui, Add, DropDownList,  % "x+15 yp-2 w45 Center vSmartGeyserCtrlGroup Choose" (smartGeyserCtrlGroup = 0 ? 10 : smartGeyserCtrlGroup), 1|2|3|4|5|6|7|8|9||0
+
 
 	Gui, Add, Tab2, w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vHome_TAB, Home||Emergency
 	Gui, Tab, Home
@@ -8161,6 +8170,7 @@ CreateHotkeys()
 	#If, WinActive(GameIdentifier) && isPlaying && (!isMenuOpen() || isChatOpen()) 
 	#If, ((aLocalPlayer["Race"] = "Terran" && EnableAutoWorkerTerran) || (aLocalPlayer["Race"] = "Protoss" && EnableAutoWorkerProtoss)) && WinActive(GameIdentifier) && isPlaying && !isMenuOpen() 
 	;#If, WinActive(GameIdentifier) && time && !isMenuOpen() && EnableAutoWorker`%LocalPlayerRace`%
+	#if isPlaying && WinActive(GameIdentifier) && GeyserStructureHoverCheck(hoveredGeyserUnitIndex)
 	#If
 
 	Hotkey, If, WinActive(GameIdentifier)
@@ -8285,6 +8295,10 @@ CreateHotkeys()
 	Hotkey, If, ((aLocalPlayer["Race"] = "Terran" && EnableAutoWorkerTerran) || (aLocalPlayer["Race"] = "Protoss" && EnableAutoWorkerProtoss)) && WinActive(GameIdentifier) && isPlaying && !isMenuOpen() ; cant use !ischatopen() - as esc will close chat before memory reads value so wont see chat was open
 		hotkey, *~Esc, g_temporarilyDisableAutoWorkerProduction, on	
 
+	Hotkey, If, isPlaying && WinActive(GameIdentifier) && GeyserStructureHoverCheck(hoveredGeyserUnitIndex)
+	if EnableSmartGeyser
+		hotkey, RButton, g_SmartGeyserControlGroup, on	
+
 	Hotkey, If
 	; Note : I have the emergency hotkey here if the user decides to set another hotkey to <#Space, so it cant get changed
 	; but i think this could cause issues when the hotkey fails to get rebound somtimes? I dont think this actually happens
@@ -8361,7 +8375,10 @@ disableAllHotkeys()
 		try hotkey, %cast_inject_key%, off
 		try hotkey, %F_InjectOff_Key%, off
 		try hotkey, %ToggleAutoWorkerState_Key%, off	
-		
+	
+	Hotkey, If, isPlaying && WinActive(GameIdentifier) && GeyserStructureHoverCheck(hoveredGeyserUnitIndex)
+		try hotkey, RButton, off
+
 	Hotkey, If
 	; Recreate this key in case user has another fcuntion bound to it and it was turned off above.
 	hotkey, %key_EmergencyRestart%, g_EmergencyRestart, B P2147483647
@@ -13148,11 +13165,11 @@ DebugSCHotkeys()
 }
 
 
-#if isPlaying && WinActive(GameIdentifier) && hoveredUnitIndex := GeyserStructureHoverCheck()
-RButton::
-SmartGeyserControlGroup(hoveredUnitIndex)
+
+g_SmartGeyserControlGroup:
+SmartGeyserControlGroup(hoveredGeyserUnitIndex)
 return 
-#if 
+
 
 ; Does not find harvesters which are on the return run i.e. moving away from the refinery, carrying the gas back to the town hall
 getSelectedHarvestersMiningGas(byRef oSelection := "")
@@ -13184,15 +13201,21 @@ getSelectedHarvestersMiningGas(byRef oSelection := "")
 }
 
 ; Does not find harvesters which are on the return run i.e. moving away from the refinery, carrying the gas back to the town hall
-getHarvestersMiningGas()
+; The returned count value is inteded to be used when the refinery is under construction
+; i.e. to determine how many units will be mining gas from it once it finishes building
+getHarvestersMiningGas(geyserStructureIndex, byref aFoundIndexes)
 {
 	if aLocalPlayer.Race = "Terran"
 		harvesterID := aUnitId.SCV, geyserType := aUnitId.Refinery, ability := "SCVHarvest"
 	else if aLocalPlayer.Race = "Protoss"
 		harvesterID := aUnitId.Probe, geyserType := aUnitId.Assimilator, ability := "ProbeHarvest"
 	else harvesterID := aUnitId.Drone, geyserType := aUnitId.Extractor, ability := "DroneHarvest"
-	aFoundIndexes := []
-	loop, % DumpUnitMemory(MemDump)
+	aFoundIndexes := [], count := 0
+
+	unitCount := DumpUnitMemory(MemDump)
+	if underConstruction := numgetUnitTargetFilter(MemDump, geyserStructureIndex) & aUnitTargetFilter.underConstruction
+		aGeyserStructurePos := numGetUnitPositionXYZFromMemDump(MemDump, geyserStructureIndex)
+	loop, % unitCount
 	{
 		if (aUnitTargetFilter.Dead & numgetUnitTargetFilter(MemDump, unit := A_Index - 1)) 
 		|| aLocalPlayer.Slot != numgetUnitOwner(MemDump, Unit)
@@ -13201,18 +13224,30 @@ getHarvestersMiningGas()
 	   	getUnitQueuedCommands(unit, aCommands)
 		for index, command in aCommands
 		{
-			if (command.ability = ability || command.ability = "TerranBuild") ; its building the refinery
-			&& numgetUnitModelType(numgetUnitModelPointer(MemDump, command.targetIndex)) = geyserType
+			if command.ability = ability
+			&& command.targetIndex = geyserStructureIndex
+			;&& numgetUnitModelType(numgetUnitModelPointer(MemDump, command.targetIndex)) = geyserType
 			{
-				aFoundIndexes[unit] := True
+				aFoundIndexes[unit] := True, count++
 				break
 			}
-		}	    
+			else if (underConstruction)
+			&& command.ability = "TerranBuild" 
+			&& (type := numgetUnitModelType(numgetUnitModelPointer(MemDump, command.targetIndex)))
+			&& (type = aUnitId.VespeneGeyser || type = aUnitId.SpacePlatformGeyser || type = aUnitId.RichVespeneGeyser || type = aUnitId.ProtossVespeneGeyser || type = aUnitId.VespeneGeyserPretty)
+			{
+				; The target index is the actual geyser and not the refinery
+				if aCommands.MaxIndex() = index ; Else it is queued to go elsewhere when it finishes construction
+				&& isUnitNearUnit(aGeyserStructurePos, numGetUnitPositionXYZFromMemDump(MemDump, command.targetIndex), 1)
+					count++
+				aFoundIndexes[unit] := True ; in either case it should be removed - its either going to mine gas or go perform some other action and should not be directed into the geyser if selected
+			}
+		}
 	 }
-	return aFoundIndexes
+	return count
 }
 
-GeyserStructureHoverCheck()
+GeyserStructureHoverCheck(byRef hoveredGeyserUnitIndex)
 {
 	if aLocalPlayer.Race = "Terran"
 		geyserStructure := aUnitId.Refinery
@@ -13222,18 +13257,9 @@ GeyserStructureHoverCheck()
 	if (unitIndex := getCursorUnit()) >= 0
 	&& getUnitOwner(unitIndex) = aLocalPlayer.slot
 	&& getUnitType(unitIndex) = geyserStructure
-		return unitIndex
+		return True, hoveredGeyserUnitIndex := unitIndex
 	return 
 }
-
-
-getUnitQueuedCommands(getSelectedUnitIndex(), a)
-objtree(a)
-return
-
-msgbox % getSelectedUnitIndex()
-return 
-
 
 ; I need a method to determine if a worker is already harvesting (or queued to harvest from a geyser)
 ; Checking the queuedCommands targetUnitIndex will reveal if it going into (or inside a geyser)
@@ -13241,46 +13267,31 @@ return
 
 SmartGeyserControlGroup(geyserStructureIndex)
 {
-	;numGetSelectionSorted(oSelection, True)
-	
-	;geyserStructureIndex := getCursorUnit()
-	
-	if aLocalPlayer.Race = "Terran" && getunittargetfilter(geyserStructureIndex) & aUnitTargetFilter.UnderConstruction
-	{
-		; I have to consider checking for if this SCV is selected
-		; as if it gets removed along with the other units (it will still mine from geyser) - but if user then right clicks to the mineral field
-		; it may be sent there leaving 2 in refinery
-		if isBuildInProgressConstructionActive(getUnitAbilityPointer(geyserStructureIndex), aUnitID.Refinery)
-			geyserHarvesterCount := 1 ; 1 worker is already finishing the refinery
-		else geyserHarvesterCount := 0
-		; This doesn't cover all scenarios e.g. refinery under construction, with 2 SCVs waiting to enter it when it finishes
-		; the building SCV is halted and removed
-		; Cast this function again you will end up with 5 workers on gas....but its reasonably uncommon.
-		; Theres also the possibility that the building SCV is shift queued away from refinery
-	}
-	else geyserHarvesterCount := getResourceWorkerCount(geyserStructureIndex, aLocalPlayer.Slot)
-	; Theres also the issue with a probe which is waiting for the assimilator to finish
+	global smartGeyserCtrlGroup
 
-	; These two issues should be fixable by iterating all the units and checking if any are queued to enter the geyser 
-	; And then accounting for this number and also checking if these are also in the selection (don't want to deselect them)
-
+	geyserHarvesterCount := getResourceWorkerCount(geyserStructureIndex, aLocalPlayer.Slot)
+	; If refinery is not finished building then this will be 0
 	if geyserHarvesterCount >= 3
 	{
 		input.pClick(,, "Right")
 		return
 	}
-
 	aIgnoredHarvesters := [],	aSentToGeyser := []
-	harvesterID := localHarvesterID()
-
-	storageGroup := smartGeyserGroup := 3 
-	setGroup := aAGHotkeys.set[storageGroup]
-	InvokeGroup := aAGHotkeys.Invoke[storageGroup]
+	, harvesterID := localHarvesterID()
+	, setGroup := aAGHotkeys.set[smartGeyserCtrlGroup]
+	, InvokeGroup := aAGHotkeys.Invoke[smartGeyserCtrlGroup]
 
 	; This just checks the selected units for mining
-	aHarvestingGas := getSelectedHarvestersMiningGas(oSelection) ; oSelection is reversed
+	;aHarvestingGas := getSelectedHarvestersMiningGas(oSelection) ; oSelection is reversed
 
+	; This count value should only be used if the structure is under construction. Otherwise the resource count above is more reliable
+	count := getHarvestersMiningGas(geyserStructureIndex, aHarvestingGas)
+	if getunittargetfilter(geyserStructureIndex) & aUnitTargetFilter.UnderConstruction
+		geyserHarvesterCount := count 
+
+	numGetSelectionSorted(oSelection, True)
 	if oSelection.TabPositions.HasKey(harvesterID)
+	&& geyserHarvesterCount < 3
 	{
 		harvestersToKeep := 3 - geyserHarvesterCount 
 		;harvestersToRemove := oSelection.TabSizes[aUnitID.SCV] - harvestersToKeep
@@ -13347,21 +13358,32 @@ getPortraitsFromIndexes(aIndexLookUp, byRef oSelection := "", isReversed := Fals
 	return aPortraits
 }
 
-f1::
-objtree(getHarvestersMiningGas())
-return 
 
 f2::
-msgbox % getUnitAbilitiesString(getSelectedUnitIndex())
+getUnitQueuedCommands(getSelectedUnitIndex(), a)
+objtree(a)
 return 
-b :=  getSelectedUnitIndex() * S_uStructure + B_uStructure
+f1::
+; 23 5 
+a := []
+b := []
+unit := getSelectedUnitIndex()
+loop 
+{
+/*	
+	a.x := getUnitPositionX(23)
+	a.y := getUnitPositionY(23)
+	a.z := getUnitPositionZ(23)
 
-msgbox % clipboard := chex(b, True)  " - " chex(b+S_uStructure, false) "`n" getSelectedUnitIndex()
-return 
-;
-
-
-
+	b.x := getUnitPositionX(5)
+	b.y := getUnitPositionY(5)
+	b.z := getUnitPositionZ(5)	
+*/
+	;ToolTip, %  "`n`n`n`n"  isUnitNearUnit(a, b, 1.2)
+	ToolTip, %  "`n`n`n`n"  getHarvestersMiningGas(unit, a)
+	sleep 100
+}
++f1::msgbox % aUnitName[getUnitType(5)]
 /*
 
 pAbilities: 25CD9234 Unit ID: 3

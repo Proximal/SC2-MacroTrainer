@@ -2479,16 +2479,31 @@ isQueenNearHatch(Queen, Hatch, MaxXYdistance) ; takes objects which must have ke
 	x_dist := Abs(Queen.X - Hatch.X)
 	y_dist := Abs(Queen.Y- Hatch.Y)																									
 																								; there is a substantial difference in height even on 'flat ground' - using a max value of 1 should give decent results
-	Return Result := (x_dist > MaxXYdistance) || (y_dist > MaxXYdistance) || (Abs(Queen.Z - Hatch.Z) > 1) ? 0 : 1 ; 0 Not near
+	Return (x_dist > MaxXYdistance) || (y_dist > MaxXYdistance) || (Abs(Queen.Z - Hatch.Z) > 1) ? 0 : 1 ; 0 Not near
 }
 
+/*
 isUnitNearUnit(Queen, Hatch, MaxXYdistance) ; takes objects which must have keys of x, y and z
 {
 	x_dist := Abs(Queen.X - Hatch.X)
 	y_dist := Abs(Queen.Y- Hatch.Y)																											
 												; there is a substantial difference in height even on 'flat ground' - using a max value of 1 should give decent results
-	Return Result := (x_dist > MaxXYdistance) || (y_dist > MaxXYdistance) || (Abs(Queen.Z - Hatch.Z) > 1) ? 0 : 1 ; 0 Not near
+	Return (x_dist > MaxXYdistance) || (y_dist > MaxXYdistance) || (Abs(Queen.Z - Hatch.Z) > 1) ? 0 : 1 ; 0 Not near
 }
+*/
+
+; there is a substantial difference in height even on 'flat ground' - using a max value of 1 should give decent results
+isUnitNearUnit(a, b, MaxXYdistance) ; takes objects which must have keys of x, y and z
+{												
+	return Abs(a.X - b.X) <= MaxXYdistance && Abs(a.Y- b.Y)	<= MaxXYdistance && Abs(a.Z - b.Z) <= 1
+}
+
+; returns true if within specified distance
+distanceCheck(x1, y1, z1, x2, y2, z2, xMax, yMax, zMax)
+{
+	return Abs(x1 - x2) <= xMax && Abs(y1 - y2) <= yMax && Abs(z1 - z2) <= zMax
+}
+
 
  objectGetUnitXYZAndEnergy(unit) ;this will dump just a unit
  {	Local UnitDump
@@ -4010,6 +4025,8 @@ readConfigFile()
 	IniRead, EasyUnload_P_Key, %config_file%, %section%, EasyUnload_P_Key, d
 	IniRead, EasyUnload_Z_Key, %config_file%, %section%, EasyUnload_Z_Key, d
 	IniRead, EasyUnloadStorageKey, %config_file%, %section%, EasyUnloadStorageKey, 9
+	IniRead, EnableSmartGeyser, %config_file%, %section%, EnableSmartGeyser, 0
+	IniRead, smartGeyserCtrlGroup, %config_file%, %section%, smartGeyserCtrlGroup, 9
 
 	;[Alert Location]
 	IniRead, Playback_Alert_Key, %config_file%, Alert Location, Playback_Alert_Key, <#F7
