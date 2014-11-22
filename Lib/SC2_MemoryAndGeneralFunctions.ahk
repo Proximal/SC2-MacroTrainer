@@ -4025,8 +4025,9 @@ readConfigFile()
 	IniRead, EasyUnload_P_Key, %config_file%, %section%, EasyUnload_P_Key, d
 	IniRead, EasyUnload_Z_Key, %config_file%, %section%, EasyUnload_Z_Key, d
 	IniRead, EasyUnloadStorageKey, %config_file%, %section%, EasyUnloadStorageKey, 9
-	IniRead, EnableSmartGeyser, %config_file%, %section%, EnableSmartGeyser, 0
+	IniRead, smartGeyserEnable, %config_file%, %section%, smartGeyserEnable, 0
 	IniRead, smartGeyserCtrlGroup, %config_file%, %section%, smartGeyserCtrlGroup, 9
+	IniRead, smartGeyserReturnCargo, %config_file%, %section%, smartGeyserReturnCargo, 0
 
 	;[Alert Location]
 	IniRead, Playback_Alert_Key, %config_file%, Alert Location, Playback_Alert_Key, <#F7

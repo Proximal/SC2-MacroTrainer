@@ -2654,8 +2654,9 @@ ini_settings_write:
 	IniWrite, %EasyUnload_Z_Key%, %config_file%, %section%, EasyUnload_Z_Key
 	IniWrite, %EasyUnloadStorageKey%, %config_file%, %section%, EasyUnloadStorageKey
 
-	IniWrite, %EnableSmartGeyser%, %config_file%, %section%, EnableSmartGeyser
+	IniWrite, %smartGeyserEnable%, %config_file%, %section%, smartGeyserEnable
 	IniWrite, %smartGeyserCtrlGroup%, %config_file%, %section%, smartGeyserCtrlGroup
+	IniWrite, %smartGeyserReturnCargo%, %config_file%, %section%, smartGeyserReturnCargo
 
 	;[Misc Hotkey]
 	IniWrite, %EnableWorkerCountSpeechHotkey%, %config_file%, Misc Hotkey, EnableWorkerCountSpeechHotkey
@@ -4243,9 +4244,10 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 	*/
 
 	Gui, Tab, Smart Geyser
-		Gui, Add, Checkbox, x+50 y+30 vEnableSmartGeyser checked%EnableSmartGeyser%, Enable
+		Gui, Add, Checkbox, x+50 y+30 vSmartGeyserEnable checked%smartGeyserEnable%, Enable Smart Geyser 
+		Gui, Add, Checkbox, xp y+10 vSmartGeyserReturnCargo disabled checked%smartGeyserReturnCargo%, Return Cargo
 		Gui, Add, text, xp y+10, Storage Ctrl Group:
-	 Gui, Add, DropDownList,  % "x+15 yp-2 w45 Center vSmartGeyserCtrlGroup Choose" (smartGeyserCtrlGroup = 0 ? 10 : smartGeyserCtrlGroup), 1|2|3|4|5|6|7|8|9||0
+	 	Gui, Add, DropDownList,  % "x+15 yp-2 w45 Center vSmartGeyserCtrlGroup Choose" (smartGeyserCtrlGroup = 0 ? 10 : smartGeyserCtrlGroup), 1|2|3|4|5|6|7|8|9||0
 
 
 	Gui, Add, Tab2, w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vHome_TAB, Home||Emergency
@@ -8296,7 +8298,7 @@ CreateHotkeys()
 		hotkey, *~Esc, g_temporarilyDisableAutoWorkerProduction, on	
 
 	Hotkey, If, isPlaying && WinActive(GameIdentifier) && GeyserStructureHoverCheck(hoveredGeyserUnitIndex)
-	if EnableSmartGeyser
+	if SmartGeyserEnable
 		hotkey, RButton, g_SmartGeyserControlGroup, on	
 
 	Hotkey, If
@@ -13247,6 +13249,9 @@ getHarvestersMiningGas(geyserStructureIndex, byref aFoundIndexes)
 	return count
 }
 
+; If attempting to construct a building (i.e. placing the building) and the mouse/building
+; is over the refinery, this will still return false - which is good.
+
 GeyserStructureHoverCheck(byRef hoveredGeyserUnitIndex)
 {
 	if aLocalPlayer.Race = "Terran"
@@ -13289,12 +13294,18 @@ SmartGeyserControlGroup(geyserStructureIndex)
 	if getunittargetfilter(geyserStructureIndex) & aUnitTargetFilter.UnderConstruction
 		geyserHarvesterCount := count 
 
+	; An SCV who is queued to enter a geyser but was told to return cargo does not have the refinery in the queued commands (just the townhall)
+	; Also when returning cargo, this SCV is not counted in refinery's worker count		
+
 	numGetSelectionSorted(oSelection, True)
 	if oSelection.TabPositions.HasKey(harvesterID)
 	&& geyserHarvesterCount < 3
 	{
+		installedHooks := true 
+		critical, 1000
+		input.pReleaseKeys(True)
+		setLowLevelInputHooks(True)		
 		harvestersToKeep := 3 - geyserHarvesterCount 
-		;harvestersToRemove := oSelection.TabSizes[aUnitID.SCV] - harvestersToKeep
 		input.psend(setGroup)
 
 		for i, unit in oSelection.units  
@@ -13320,13 +13331,17 @@ SmartGeyserControlGroup(geyserStructureIndex)
 		if aIgnoredHarvesters.MaxIndex()
 			clickUnitPortraits(aIgnoredHarvesters) ; Harvesters which are not being sent to the geyser
 	}
+
 	input.pClick(,, "Right") ; click the geyser
+	; input.pSend("c") return Cargo
 	if aSentToGeyser.MaxIndex()
 	{
 		input.psend("{click 0 0}" InvokeGroup)
-		sleep 50 
+		dSleep(40)
 		clickUnitPortraits(getPortraitsFromIndexes(aSentToGeyser)) ; Remove the harvesters which were sent to the geyser
 	}
+	if installedHooks
+		Input.revertKeyState(), setLowLevelInputHooks(False)
 	return 	
 }
 
@@ -13359,38 +13374,3 @@ getPortraitsFromIndexes(aIndexLookUp, byRef oSelection := "", isReversed := Fals
 }
 
 
-f2::
-getUnitQueuedCommands(getSelectedUnitIndex(), a)
-objtree(a)
-return 
-f1::
-; 23 5 
-a := []
-b := []
-unit := getSelectedUnitIndex()
-loop 
-{
-/*	
-	a.x := getUnitPositionX(23)
-	a.y := getUnitPositionY(23)
-	a.z := getUnitPositionZ(23)
-
-	b.x := getUnitPositionX(5)
-	b.y := getUnitPositionY(5)
-	b.z := getUnitPositionZ(5)	
-*/
-	;ToolTip, %  "`n`n`n`n"  isUnitNearUnit(a, b, 1.2)
-	ToolTip, %  "`n`n`n`n"  getHarvestersMiningGas(unit, a)
-	sleep 100
-}
-+f1::msgbox % aUnitName[getUnitType(5)]
-/*
-
-pAbilities: 25CD9234 Unit ID: 3
-uStruct: 38FFAC0 - 38FFC80
-0 | Pointer Address 25CD924C | Pointer Value 4A47230 | stop
-1 | Pointer Address 25CD9250 | Pointer Value 4A472AC | move
-2 | Pointer Address 25CD9254 | Pointer Value 4A47328 | attack
-3 | Pointer Address 25CD9258 | Pointer Value 4A473A4 | SCVHarvest
-4 | Pointer Address 25CD925C | Pointer Value 4A47420 | Repair
-5 | Pointer Address 25CD9260 | Pointer Value 4A4749C | TerranBuild
