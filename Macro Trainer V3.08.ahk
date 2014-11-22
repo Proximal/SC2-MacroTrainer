@@ -13146,23 +13146,13 @@ DebugSCHotkeys()
 	return 
 
 }
-+f1::
-getUnitAbilitiesString(getSelectedUnitIndex())
-return 
+
 
 #if isPlaying && WinActive(GameIdentifier) && hoveredUnitIndex := GeyserStructureHoverCheck()
 RButton::
 SmartGeyserControlGroup(hoveredUnitIndex)
 return 
 #if 
-
-f1::
-getSelectedHarvestersMiningGas()
-return 
-f2::
-msgbox % getSelectedUnitIndex()
-return 
-
 
 
 getSelectedHarvestersMiningGas(byRef oSelection := "")
@@ -13181,7 +13171,8 @@ getSelectedHarvestersMiningGas(byRef oSelection := "")
 			getUnitQueuedCommands(unit.UnitIndex, aCommands)
 			for index, command in aCommands
 			{
-				if command.ability = ability && getUnitType(command.targetIndex) = geyserType
+				if (command.ability = ability || command.ability = "TerranBuild") ; its building the refinery
+				&& getUnitType(command.targetIndex) = geyserType
 				{
 					aFoundIndexes[unit.UnitIndex] := True
 					break
@@ -13210,6 +13201,14 @@ GeyserStructureHoverCheck()
 }
 
 
+getUnitQueuedCommands(getSelectedUnitIndex(), a)
+objtree(a)
+return
+
+msgbox % getSelectedUnitIndex()
+return 
+
+
 ; I need a method to determine if a worker is already harvesting (or queued to harvest from a geyser)
 ; Checking the queuedCommands targetUnitIndex will reveal if it going into (or inside a geyser)
 ; But this doesnt help when it is returning the harvested gas to the townhall
@@ -13219,19 +13218,34 @@ SmartGeyserControlGroup(geyserStructureIndex)
 	;numGetSelectionSorted(oSelection, True)
 	
 	;geyserStructureIndex := getCursorUnit()
-	geyserHarvesterCount := getResourceWorkerCount(geyserStructureIndex, aLocalPlayer.Slot)
+	
+	if aLocalPlayer.Race = "Terran" && getunittargetfilter(geyserStructureIndex) & aUnitTargetFilter.UnderConstruction
+	{
+		; I have to consider checking for if this SCV is selected
+		; as if it gets removed along with the other units (it will still mine from geyser) - but if user then right clicks to the mineral field
+		; it may be sent there leaving 2 in refinery
+		if isBuildInProgressConstructionActive(getUnitAbilityPointer(geyserStructureIndex), aUnitID.Refinery)
+			geyserHarvesterCount := 1 ; 1 worker is already finishing the refinery
+		else geyserHarvesterCount := 0
+		; This doesn't cover all scenarios e.g. refinery under construction, with 2 SCVs waiting to enter it when it finishes
+		; the building SCV is halted and removed
+		; Cast this function again you will end up with 5 workers on gas....but its reasonably uncommon.
+		; Theres also the possibility that the building SCV is shift queued away from refinery
+	}
+	else geyserHarvesterCount := getResourceWorkerCount(geyserStructureIndex, aLocalPlayer.Slot)
+	; Theres also the issue with a probe which is waiting for the assimilator to finish
+
+	; These two issues should be fixable by iterating all the units and checking if any are queued to enter the geyser 
+	; And then accounting for this number and also checking if these are also in the selection (don't want to deselect them)
+
 	if geyserHarvesterCount >= 3
 	{
 		input.pClick(,, "Right")
 		return
 	}
 
-	aRemoveUnits := [],	aKeptUnits := []
-	if aLocalPlayer.Race = "Terran"
-		harvesterID := aUnitId.SCV
-	else if aLocalPlayer.Race = "Protoss"
-		harvesterID := aUnitId.Probe
-	else harvesterID := aUnitId.Drone
+	aIgnoredHarvesters := [],	aSentToGeyser := []
+	harvesterID := localHarvesterID()
 
 	storageGroup := smartGeyserGroup := 3 
 	setGroup := aAGHotkeys.set[storageGroup]
@@ -13249,28 +13263,43 @@ SmartGeyserControlGroup(geyserStructureIndex)
 			if unit.unitID = harvesterID
 			{
 				if !harvestersToKeep || aHarvestingGas.HasKey(unit.UnitIndex) ; If enough workers on geyser or this harvester is already on a geyser
-					aRemoveUnits.Insert(unit.unitPortrait)
+					aIgnoredHarvesters.Insert(unit.unitPortrait)
 				else 
 				{ 
 					harvestersToKeep--
-					aKeptUnits[unit.unitIndex] := True
+					aSentToGeyser[unit.unitIndex] := True ; These units are sent to the geyser
 				}
 			}
-			;aKeptUnits.Insert(unit.unitPortrait)
+			else if aLocalPlayer.Race = "Terran" && unit.unitID = aUnitId.Mule
+				aIgnoredHarvesters.Insert(unit.unitPortrait)
+			; Uncomment this to prevent non-harvesters being sent to geyser
+			; Im not sure which is better, as you could accidentally box drag a worker with army units (which are defending the mineral line)
+			; and then send them to stand near a geyser on purpose to defend it - this would prevent that!
+			; so probably best to let them move to the geyser
+			;aIgnoredHarvesters.Insert(unit.unitPortrait) 
 		}
-		if aRemoveUnits.MaxIndex()
-		{
-			clickUnitPortraits(aRemoveUnits)
-		}
+		if aIgnoredHarvesters.MaxIndex()
+			clickUnitPortraits(aIgnoredHarvesters) ; Harvesters which are not being sent to the geyser
 	}
-	input.pClick(,, "Right")
-	if aRemoveUnits.MaxIndex()
+	input.pClick(,, "Right") ; click the geyser
+	if aSentToGeyser.MaxIndex()
 	{
 		input.psend("{click 0 0}" InvokeGroup)
 		sleep 50 
-		clickUnitPortraits(getPortraitsFromIndexes(aKeptUnits))
+		clickUnitPortraits(getPortraitsFromIndexes(aSentToGeyser)) ; Remove the harvesters which were sent to the geyser
 	}
 	return 	
+}
+
+localHarvesterID()
+{
+	if aLocalPlayer.Race = "Terran"
+		return aUnitId.SCV
+	else if aLocalPlayer.Race = "Protoss"
+		return aUnitId.Probe
+	else if aLocalPlayer.Race = "Zerg"
+		return aUnitId.Drone
+	else return	""
 }
 
 
