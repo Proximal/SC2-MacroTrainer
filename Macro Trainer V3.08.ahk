@@ -13154,7 +13154,7 @@ SmartGeyserControlGroup(hoveredUnitIndex)
 return 
 #if 
 
-
+; Does not find harvesters which are on the return run i.e. moving away from the refinery, carrying the gas back to the town hall
 getSelectedHarvestersMiningGas(byRef oSelection := "")
 {
 	if aLocalPlayer.Race = "Terran"
@@ -13183,6 +13183,34 @@ getSelectedHarvestersMiningGas(byRef oSelection := "")
 	return aFoundIndexes
 }
 
+; Does not find harvesters which are on the return run i.e. moving away from the refinery, carrying the gas back to the town hall
+getHarvestersMiningGas()
+{
+	if aLocalPlayer.Race = "Terran"
+		harvesterID := aUnitId.SCV, geyserType := aUnitId.Refinery, ability := "SCVHarvest"
+	else if aLocalPlayer.Race = "Protoss"
+		harvesterID := aUnitId.Probe, geyserType := aUnitId.Assimilator, ability := "ProbeHarvest"
+	else harvesterID := aUnitId.Drone, geyserType := aUnitId.Extractor, ability := "DroneHarvest"
+	aFoundIndexes := []
+	loop, % DumpUnitMemory(MemDump)
+	{
+		if (aUnitTargetFilter.Dead & numgetUnitTargetFilter(MemDump, unit := A_Index - 1)) 
+		|| aLocalPlayer.Slot != numgetUnitOwner(MemDump, Unit)
+		|| harvesterID != numgetUnitModelType(numgetUnitModelPointer(MemDump, Unit))
+	       Continue
+	   	getUnitQueuedCommands(unit, aCommands)
+		for index, command in aCommands
+		{
+			if (command.ability = ability || command.ability = "TerranBuild") ; its building the refinery
+			&& numgetUnitModelType(numgetUnitModelPointer(MemDump, command.targetIndex)) = geyserType
+			{
+				aFoundIndexes[unit] := True
+				break
+			}
+		}	    
+	 }
+	return aFoundIndexes
+}
 
 GeyserStructureHoverCheck()
 {
@@ -13193,10 +13221,8 @@ GeyserStructureHoverCheck()
 	else geyserStructure := aUnitId.Extractor
 	if (unitIndex := getCursorUnit()) >= 0
 	&& getUnitOwner(unitIndex) = aLocalPlayer.slot
-	{
-		if getUnitType(unitIndex) = geyserStructure
-			return unitIndex
-	}
+	&& getUnitType(unitIndex) = geyserStructure
+		return unitIndex
 	return 
 }
 
@@ -13251,7 +13277,9 @@ SmartGeyserControlGroup(geyserStructureIndex)
 	setGroup := aAGHotkeys.set[storageGroup]
 	InvokeGroup := aAGHotkeys.Invoke[storageGroup]
 
+	; This just checks the selected units for mining
 	aHarvestingGas := getSelectedHarvestersMiningGas(oSelection) ; oSelection is reversed
+
 	if oSelection.TabPositions.HasKey(harvesterID)
 	{
 		harvestersToKeep := 3 - geyserHarvesterCount 
@@ -13319,4 +13347,28 @@ getPortraitsFromIndexes(aIndexLookUp, byRef oSelection := "", isReversed := Fals
 	return aPortraits
 }
 
+f1::
+objtree(getHarvestersMiningGas())
+return 
 
+f2::
+msgbox % getUnitAbilitiesString(getSelectedUnitIndex())
+return 
+b :=  getSelectedUnitIndex() * S_uStructure + B_uStructure
+
+msgbox % clipboard := chex(b, True)  " - " chex(b+S_uStructure, false) "`n" getSelectedUnitIndex()
+return 
+;
+
+
+
+/*
+
+pAbilities: 25CD9234 Unit ID: 3
+uStruct: 38FFAC0 - 38FFC80
+0 | Pointer Address 25CD924C | Pointer Value 4A47230 | stop
+1 | Pointer Address 25CD9250 | Pointer Value 4A472AC | move
+2 | Pointer Address 25CD9254 | Pointer Value 4A47328 | attack
+3 | Pointer Address 25CD9258 | Pointer Value 4A473A4 | SCVHarvest
+4 | Pointer Address 25CD925C | Pointer Value 4A47420 | Repair
+5 | Pointer Address 25CD9260 | Pointer Value 4A4749C | TerranBuild

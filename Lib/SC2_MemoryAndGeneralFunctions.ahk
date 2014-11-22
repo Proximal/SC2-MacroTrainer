@@ -1183,6 +1183,7 @@ EIP=01DFD4C9
 
 */
 
+
 ; 
 ; There can be multiple units on the xelnaga, 1 spot for each of the 16 players
 ; If one player has multiple units holding the xelnaga, only the unit with the highest
@@ -1204,6 +1205,11 @@ getUnitsHoldingXelnaga(Xelnaga)
 	}
 	return -1
 }
+
+;********
+; Note: You can also check the units queued commands - This will have a xelnaga ability
+; if its holding the xelnaga
+;********
 
 ; if a local unit is on the tower, then its Index will be returned
 ; if multiple units are on the tower, the one with the highest index will be
