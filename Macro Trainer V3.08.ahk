@@ -3535,7 +3535,8 @@ try
 			Gui, Add, Button, xp yp+30 gPerformPatternScan  w75 h25, Pattern Scan
 			Gui, Add, Button, xp-90 yp  Gg_GetDebugData w75 h25,  Debug Data
 			Gui, Add, Button, xp yp+30  Gg_DebugKey w75 h25,  Key States
-			Gui, Add, Button, xp yp+30  GdegbugGUIStats vdegbugGUIVar w75 h25, Control Pos
+			Gui, Add, Button, xp+90 yp gDebugSCHotkeys  w75 h25, SC Hotkeys
+			Gui, Add, Button, xp-90 yp+30  GdegbugGUIStats vdegbugGUIVar w75 h25, Control Pos
 
 			
 
@@ -8769,9 +8770,9 @@ restoreSelection(controlGroup, selectionPage, highlightedTab)
 	
 		IF (type = aUnitID["Hatchery"] || type = aUnitID["Lair"] || type = aUnitID["Hive"])
 		{
-			MiniMapX := x := numGetUnitPositionXFromMemDump(MemDump, Unit)
-			MiniMapY := y := numGetUnitPositionYFromMemDump(MemDump, Unit)
-			z :=  numGetUnitPositionZFromMemDump(MemDump, Unit)
+			MiniMapX := x := numGetUnitPositionX(MemDump, Unit)
+			MiniMapY := y := numGetUnitPositionY(MemDump, Unit)
+			z :=  numGetUnitPositionZ(MemDump, Unit)
 			mapToMinimapPos(MiniMapX, MiniMapY)
 			isInjected := numGetIsHatchInjectedFromMemDump(MemDump, Unit)
 			Object.insert( {  "Unit": unit 
@@ -9909,11 +9910,11 @@ getMapInfoMineralsAndGeysers()
 		type := numgetUnitModelType(numgetUnitModelPointer(MemDump, unit))
 
     	IF ( type = aUnitID["MineralField"] || type = aUnitID["RichMineralField"] )
-    		resources.minerals[unit] := numGetUnitPositionXYZFromMemDump(MemDump, unit)
+    		resources.minerals[unit] := numGetUnitPositionXYZ(MemDump, unit)
     	Else If ( type = aUnitID["VespeneGeyser"] || type = aUnitID["ProtossVespeneGeyser"]  
     	|| type = aUnitID["SpacePlatformGeyser"] || type = aUnitID["RichVespeneGeyser"] 
     	|| type = aUnitID["VespeneGeyserPretty"])
-			resources.geysers[unit] := numGetUnitPositionXYZFromMemDump(MemDump, unit)
+			resources.geysers[unit] := numGetUnitPositionXYZ(MemDump, unit)
 	}
 	return resources
 }
@@ -11035,8 +11036,8 @@ Unitcount := DumpUnitMemory(MemDump)
 
 aunit1 := []
 aunit2 := []
-aunit1 := numGetUnitPositionXYZFromMemDump(MemDump, Unit1)
-aunit2 := numGetUnitPositionXYZFromMemDump(MemDump, Unit2)
+aunit1 := numGetUnitPositionXYZ(MemDump, Unit1)
+aunit2 := numGetUnitPositionXYZ(MemDump, Unit2)
 
 objtree(aunit1, "aunit1")
 objtree(aunit2, "aunit2")
@@ -11370,7 +11371,7 @@ removeDamagedUnit()
 		numGetSelectionSorted(aSelected)
 		if aSelected.TabPositions.HasKey(aUnitId.Stalker)
 		{
-			clickCommandCard(0, x, y)
+			clickCommandCard(10, x, y)
 			; left click the spell, left click to cast, right click to cause stalkers to move the remainder of the distance and for the rest of the units to move
 			input.pSend(sRepeat(NextSubgroupKey, aSelected.TabPositions[aUnitId.Stalker]) "{click " x ", " y "}{Click}{Click Right}")
 		}
@@ -12092,7 +12093,7 @@ class testDraw
 
 ; Global Stim
 
-#If, WinActive(GameIdentifier) && isPlaying && aLocalPlayer.Race = "Terran" && !isMenuOpen()
+#If, !A_IsCompiled && WinActive(GameIdentifier) && isPlaying && aLocalPlayer.Race = "Terran" && !isMenuOpen()
 && numGetSelectionSorted(aSelection) && (aSelection.TabPositions.HasKey(aUnitID["Marauder"]) || aSelection.TabPositions.HasKey(aUnitID["Marine"]))
 && (aSelection.HighLightedId != aUnitID["SCV"] || !isUserBusyBuilding()) ; This line allows a turret to be built if an scv is in the same selection as a marine/marauder
 t::
@@ -13126,6 +13127,9 @@ class buildCheck
 
 
 
+DebugSCHotkeys:
+DebugSCHotkeys()
+return 
 
 
 DebugSCHotkeys()
@@ -13202,11 +13206,22 @@ getSelectedHarvestersMiningGas(byRef oSelection := "")
 	return aFoundIndexes
 }
 
-; Does not find harvesters which are on the return run i.e. moving away from the refinery, carrying the gas back to the town hall
+; Uses map position to determine if a harvester is returning gas from the geyser in question - so not foolproof  (as command target is townhall)
+; Harvesters inside the geyser or heading towards it is accurate (command target = refinery) 
 ; The returned count value is inteded to be used when the refinery is under construction
-; i.e. to determine how many units will be mining gas from it once it finishes building
-getHarvestersMiningGas(geyserStructureIndex, byref aFoundIndexes)
+; i.e. to determine how many units will be mining gas from it once it finishes building, so these can be removed from selection (as theyre already mining from the geyser)
+getHarvestersMiningGas(geyserStructureIndex, byref aFoundIndexes, byRef underConstruction)
 {
+	static aTownHallLookup 
+
+	if !isobject(aTownHallLookup) && isobject(aUnitId)
+	{
+		aTownHallLookup := []
+		aTownHallLookup.Terran := {aUnitId.CommandCenter: True, aUnitId.OrbitalCommand: True , aUnitId.PlanetaryFortress: True}
+		aTownHallLookup.Protoss := {aUnitId.Nexus: True}
+		aTownHallLookup.Zerg := {aUnitId.Hatchery: True, aUnitId.Lair: True , aUnitId.Hive: True}
+	}	
+
 	if aLocalPlayer.Race = "Terran"
 		harvesterID := aUnitId.SCV, geyserType := aUnitId.Refinery, ability := "SCVHarvest"
 	else if aLocalPlayer.Race = "Protoss"
@@ -13215,8 +13230,8 @@ getHarvestersMiningGas(geyserStructureIndex, byref aFoundIndexes)
 	aFoundIndexes := [], count := 0
 
 	unitCount := DumpUnitMemory(MemDump)
-	if underConstruction := numgetUnitTargetFilter(MemDump, geyserStructureIndex) & aUnitTargetFilter.underConstruction
-		aGeyserStructurePos := numGetUnitPositionXYZFromMemDump(MemDump, geyserStructureIndex)
+	underConstruction := numgetUnitTargetFilter(MemDump, geyserStructureIndex) & aUnitTargetFilter.underConstruction
+	aGeyserStructurePos := numGetUnitPositionXYZ(MemDump, geyserStructureIndex)
 	loop, % unitCount
 	{
 		if (aUnitTargetFilter.Dead & numgetUnitTargetFilter(MemDump, unit := A_Index - 1)) 
@@ -13227,23 +13242,24 @@ getHarvestersMiningGas(geyserStructureIndex, byref aFoundIndexes)
 		for index, command in aCommands
 		{
 			if command.ability = ability
-			&& command.targetIndex = geyserStructureIndex
-			;&& numgetUnitModelType(numgetUnitModelPointer(MemDump, command.targetIndex)) = geyserType
+			&& (command.targetIndex = geyserStructureIndex ; harvester heading towards the geyser in question
+				|| (aLocalPlayer.Slot = numgetUnitOwner(MemDump, command.targetIndex) ; this part checks if harvester is on the return trip from the geyser in question.
+					&& aTownHallLookup[aLocalPlayer.Race].hasKey(numgetUnitModelType(numgetUnitModelPointer(MemDump, command.targetIndex))) ; Target is a townhall i.e. harvester mining minerals or gas and is returning to town hall
+					&& isUnitNearUnit(aGeyserStructurePos, aTownHallPos := numGetUnitPositionXYZ(MemDump, command.targetIndex), 7.9) ; so town hall is next to refinery
+					&& isPointNearLineSegmentWithZcheck(aGeyserStructurePos, aTownHallPos, numGetUnitPositionXYZ(MemDump, unit), 1))) ; harvester is within 1 map unit of the straight line connecting the refinery to the townhall (this wont work if there is an obstruction and the worker has to move path around it)
 			{
+				; I could do a maxIndex() check on the commands - if harvester has another queued command after this then add it to the ignore list
+				; e.g. so if you accidentally select a worker which is queued to build a structure after it mines a patch it will be deselected and not sent to geyser
 				aFoundIndexes[unit] := True, count++
 				break
 			}
-			else if (underConstruction)
+			else if (underConstruction) ; This determines if the SCV is constructing the refinery and if it's going to harvest gas from it when its done.
+			&& aCommands.MaxIndex() = index  ; Else it is queued to go elsewhere when it finishes construction
 			&& command.ability = "TerranBuild" 
-			&& (type := numgetUnitModelType(numgetUnitModelPointer(MemDump, command.targetIndex)))
+			&& (type := numgetUnitModelType(numgetUnitModelPointer(MemDump, command.targetIndex))) ; The target index is the actual geyser and not the refinery
 			&& (type = aUnitId.VespeneGeyser || type = aUnitId.SpacePlatformGeyser || type = aUnitId.RichVespeneGeyser || type = aUnitId.ProtossVespeneGeyser || type = aUnitId.VespeneGeyserPretty)
-			{
-				; The target index is the actual geyser and not the refinery
-				if aCommands.MaxIndex() = index ; Else it is queued to go elsewhere when it finishes construction
-				&& isUnitNearUnit(aGeyserStructurePos, numGetUnitPositionXYZFromMemDump(MemDump, command.targetIndex), 1)
-					count++
-				aFoundIndexes[unit] := True ; in either case it should be removed - its either going to mine gas or go perform some other action and should not be directed into the geyser if selected
-			}
+			&& isUnitNearUnit(aGeyserStructurePos, numGetUnitPositionXYZ(MemDump, command.targetIndex), 1)
+				count++, aFoundIndexes[unit] := True
 		}
 	 }
 	return count
@@ -13272,7 +13288,7 @@ GeyserStructureHoverCheck(byRef hoveredGeyserUnitIndex)
 
 SmartGeyserControlGroup(geyserStructureIndex)
 {
-	global smartGeyserCtrlGroup
+	global smartGeyserCtrlGroup, smartGeyserReturnCargo
 
 	geyserHarvesterCount := getResourceWorkerCount(geyserStructureIndex, aLocalPlayer.Slot)
 	; If refinery is not finished building then this will be 0
@@ -13290,16 +13306,15 @@ SmartGeyserControlGroup(geyserStructureIndex)
 	;aHarvestingGas := getSelectedHarvestersMiningGas(oSelection) ; oSelection is reversed
 
 	; This count value should only be used if the structure is under construction. Otherwise the resource count above is more reliable
-	count := getHarvestersMiningGas(geyserStructureIndex, aHarvestingGas)
-	if getunittargetfilter(geyserStructureIndex) & aUnitTargetFilter.UnderConstruction
+	count := getHarvestersMiningGas(geyserStructureIndex, aHarvestingGas, structureUnderConstruction)
+	if structureUnderConstruction
 		geyserHarvesterCount := count 
 
 	; An SCV who is queued to enter a geyser but was told to return cargo does not have the refinery in the queued commands (just the townhall)
 	; Also when returning cargo, this SCV is not counted in refinery's worker count		
 
 	numGetSelectionSorted(oSelection, True)
-	if oSelection.TabPositions.HasKey(harvesterID)
-	&& geyserHarvesterCount < 3
+	if oSelection.Count > 1	&& oSelection.TabPositions.HasKey(harvesterID) && geyserHarvesterCount < 3
 	{
 		installedHooks := true 
 		critical, 1000
@@ -13374,3 +13389,39 @@ getPortraitsFromIndexes(aIndexLookUp, byRef oSelection := "", isReversed := Fals
 }
 
 
+
+
+f1::
+;getHarvestersMiningGas(166, a)
+
+msgbox % getSelectedUnitIndex()
+
+return 
+
+
+f2::
+;msgbox % u:=getSelectedUnitIndex()
+;return 
+
+getUnitQueuedCommands(getSelectedUnitIndex(), a)
+objtree(a)
+msgbox % aUnitName[getUnitType(a.1.targetIndex)]
+return 
+
+
+
+line1 := []
+line2 := []
+point := []
+line1.x := 0
+line1.y := 0
+line2.x := 20
+line2.y := 0
+
+point.x := -1.1
+point.y := 0
+
+msgbox % distanceFromLine(line1, line2, point)
+. "`n" isPointNearLine(line1, line2, point, 1)
+. "`n" isPointNearLineSegmentWithZcheck(line1, line2, point, 1)
+return 

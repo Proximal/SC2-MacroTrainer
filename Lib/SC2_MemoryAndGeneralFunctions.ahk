@@ -2504,6 +2504,34 @@ distanceCheck(x1, y1, z1, x2, y2, z2, xMax, yMax, zMax)
 	return Abs(x1 - x2) <= xMax && Abs(y1 - y2) <= yMax && Abs(z1 - z2) <= zMax
 }
 
+; Returns True if point is within maxDistance of a line (as formed by linePointA and linePointB).
+; Note: This assumes that the line is infinitely long - so the function can still return true even if the point is far away from 
+; the 'ends' i.e. linePointA/linePointB but still falls on the line.
+; call isPointAlongLineSegmentWithZcheck() if need ensure point lies between the start and end of a line i.e. a line segment
+; note isPointAlongLineSegmentWithZcheck() can still return true if the point lies past the end of the line but still within the specified maxDistance
+isPointNearLine(linePointA, linePointB, point, maxDistance)
+{
+	return distanceFromLine(linePointA, linePointB, point) <= maxDistance
+}
+
+distanceFromLine(linePointA, linePointB, point)
+{
+	return (Abs( (linePointB.x - linePointA.x) * (linePointA.y - point.y) - (linePointA.x - point.x) * (linePointB.y - linePointA.y) ) 
+		/ Sqrt( (linePointB.x - linePointA.x)**2 + (linePointB.y - linePointA.y)**2))  
+}
+
+; returns true if a point lies along the line formed by linePointA and linePointB
+; Note: This creates a bounding rectangle using from the diagonal line formed from (linePointA.x, linePointA.y) (one corner) and (linePointB.x, linePointB.y) 
+; (the opposing corner) with a maxDistance buffer.
+; Note this can still return true if the point lies past the end of the line segment but still within the specified maxDistance
+isPointNearLineSegmentWithZcheck(linePointA, linePointB, point, maxDistance)
+{
+	if abs(((linePointA.z + linePointB.z) / 2) - point.z) <= 1 ; Do a z check. the avg. of pointA.z and pointB.z is used
+	&& ((point.x >= linePointA.x - maxDistance && point.x <= linePointB.x + maxDistance) || (point.x <= linePointA.x + maxDistance && point.x >= linePointB.x - maxDistance)) ; create a bounding rectangle
+	&& ((point.y >= linePointA.y - maxDistance && point.y <= linePointB.y + maxDistance) || (point.y <= linePointA.y + maxDistance && point.y >= linePointB.y - maxDistance)) ; and check point.x and point.y is contained within it.
+		return isPointNearLine(linePointA, linePointB, point, maxDistance)
+	return false
+}
 
  objectGetUnitXYZAndEnergy(unit) ;this will dump just a unit
  {	Local UnitDump
@@ -2513,15 +2541,15 @@ distanceCheck(x1, y1, z1, x2, y2, z2, xMax, yMax, zMax)
 	return { "unit": unit, "X": x, "Y": y, "Z": z, "Energy": energy}
  }
 
- numGetUnitPositionXFromMemDump(ByRef MemDump, Unit)
+ numGetUnitPositionX(ByRef MemDump, Unit)
  {	global
  	return numget(MemDump, Unit * S_uStructure + O_uX, "int")/4096
  }
- numGetUnitPositionYFromMemDump(ByRef MemDump, Unit)
+ numGetUnitPositionY(ByRef MemDump, Unit)
  {	global
  	return numget(MemDump, Unit * S_uStructure + O_uY, "int")/4096
  }
- numGetUnitPositionZFromMemDump(ByRef MemDump, Unit)
+ numGetUnitPositionZ(ByRef MemDump, Unit)
  {	global
  	return numget(MemDump, Unit * S_uStructure + O_uZ, "int")/4096
  }
@@ -2530,12 +2558,12 @@ distanceCheck(x1, y1, z1, x2, y2, z2, xMax, yMax, zMax)
  	return (4 = numget(MemDump, Unit * S_uStructure + O_uInjectState, "UChar")) ? 1 : 0
  }
 
-numGetUnitPositionXYZFromMemDump(ByRef MemDump, Unit)
+numGetUnitPositionXYZ(ByRef MemDump, Unit)
 {	
 	position := []
-	, position.x := numGetUnitPositionXFromMemDump(MemDump, Unit)
-	, position.y := numGetUnitPositionYFromMemDump(MemDump, Unit)
-	, position.z := numGetUnitPositionZFromMemDump(MemDump, Unit)
+	, position.x := numGetUnitPositionX(MemDump, Unit)
+	, position.y := numGetUnitPositionY(MemDump, Unit)
+	, position.z := numGetUnitPositionZ(MemDump, Unit)
 	return position
 }
 
@@ -4904,11 +4932,12 @@ ClickUnitPortrait(SelectionIndex=0, byref X=0, byref Y=0, byref Xpage=0, byref Y
 
 /*
 Command card has 3 rows with 5 buttons each
-bottom left button is 0 
+Top left button is 0 
 next button on right is 1
-top right button is 14
+bottom right button is 14
 This function returns the x, y co-ordinates for the specific command card button.
 */
+
 
 clickCommandCard(position, byRef x, byRef y)
 {
@@ -4919,31 +4948,32 @@ clickCommandCard(position, byRef x, byRef y)
 		AspectRatio := newAspectRatio
 		If (AspectRatio = "16:10")
 		{
-			X0 := (1314/1680)*A_ScreenWidth, y0 := (1025/1050)*A_ScreenHeight		
+			X0 := (1314/1680)*A_ScreenWidth, y0 := (893/1050)*A_ScreenHeight		
 			width := (65/1680)*A_ScreenWidth, height := (66/1050)*A_ScreenHeight										
 		}	
 		Else If (AspectRatio = "5:4")
 		{	
-			X0 := (944/1280)*A_ScreenWidth, y0 := (1000/1024)*A_ScreenHeight
+			X0 := (944/1280)*A_ScreenWidth, y0 := (880/1024)*A_ScreenHeight
 			width := (61/1280)*A_ScreenWidth, height := (60/1024)*A_ScreenHeight	
 		}	
 		Else If (AspectRatio = "4:3")
 		{	
-			X0 := (944/1280)*A_ScreenWidth, y0 := (937/960)*A_ScreenHeight
+			X0 := (944/1280)*A_ScreenWidth, y0 := (815/960)*A_ScreenHeight
 			width := (61/1280)*A_ScreenWidth, height := (61/960)*A_ScreenHeight	
 		}
 		Else if (AspectRatio = "16:9")
 		{
-			X0 := (1542/1920)*A_ScreenWidth, y0 := (1054/1080)*A_ScreenHeight
+			X0 := (1542/1920)*A_ScreenWidth, y0 := (916/1080)*A_ScreenHeight
 			width := (68/1920)*A_ScreenWidth, height := (69/1080)*A_ScreenHeight	
 		}
 	}
 	row := floor(position/5)
 	, column := floor(position - 5 * row)
 	, x := X0 + (column * width) + (width//2)
-	, y := y0 - (row * height + height//2)
+	, y := y0 + (row * height - height//2)
 	return
 }
+
 
 ; Gives the co-ordinates for the ping icon/toolbar (so don't have to worry about differ user SC hotkeys)
 getMiniMapPingIconPos(byref xPos, byref yPos)
