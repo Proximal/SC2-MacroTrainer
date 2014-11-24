@@ -2019,10 +2019,6 @@ ShutdownProcedure:
 	; so close GDIP after closing minimapThread	
 	if pToken
 		Gdip_Shutdown(pToken) 
-
-	if !A_IsCompiled
-		msgbox About to Exit
-
 	; I thought placing this here after most of the shutdown stuff would
 	; help the restart spam issue - but it hasn't :(
 	if (restartTrainer && A_OSVersion = "WIN_XP") ; apparently the below command wont work on XP
@@ -2587,7 +2583,7 @@ ini_settings_write:
 	IniWrite, %AutoWorkerMaxWorkerProtoss%, %config_file%, %section%, AutoWorkerMaxWorkerProtoss
 	IniWrite, %AutoWorkerMaxWorkerPerBaseProtoss%, %config_file%, %section%, AutoWorkerMaxWorkerPerBaseProtoss
 
-/*
+
 	section := "AutoBuild"	
 	IniWrite, %AutoBuildBarracksGroup%, %config_file%, %section%, AutoBuildBarracksGroup
 	IniWrite, %AutoBuildFactoryGroup%, %config_file%, %section%, AutoBuildFactoryGroup
@@ -2601,7 +2597,10 @@ ini_settings_write:
 	
 	section := "AutomationCommon"
 	IniWrite, %automationAPMThreshold%, %config_file%, %section%, automationAPMThreshold
-*/
+	IniWrite, %AutomationTerranCtrlGroup%, %config_file%, %section%, AutomationTerranCtrlGroup
+	IniWrite, %AutomationProtossCtrlGroup%, %config_file%, %section%, AutomationProtossCtrlGroup
+	IniWrite, %AutomationZergCtrlGroup%, %config_file%, %section%, AutomationZergCtrlGroup
+
 
 	;[Misc Automation]
 	section := "Misc Automation"
@@ -3903,7 +3902,8 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		;Gui, add, text, xp y+15 w380, Test 
 
 
-	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vAutoWorker_TAB, Auto||Info		
+	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vAutoWorker_TAB, Auto|Info|Army||		
+	;Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vAutoWorker_TAB, Auto||Info		
 	Gui, Tab, Auto
 		Gui, Add, GroupBox, x+25 Y+10 w370 h85 section, General 
 		Gui, Add, Text, xp+10 yp+20, Toggle State:
@@ -3999,7 +3999,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 
 			gui, font, norm s10
 			gui, font, 		
-/*
+
 	Gui, Tab, Army 
 		GUI, Add, button, gLaunchAutoBuildEditor, Auto Build Editor
 
@@ -4033,7 +4033,14 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		Gui, Add, Text, xs y+15 w85, APM Delay:
 			Gui, Add, Edit, Number Right x+4 yp-2 w50 vTT_automationAPMThreshold
 					Gui, Add, UpDown,  Range0-100000 vAutomationAPMThreshold, %automationAPMThreshold%	
-*/
+
+		Gui, Add, Text, xs, Terran Storage:
+		Gui, Add, DropDownList,  % "xp+90 yp-2 w45 center vAutomationTerranCtrlGroup Choose" (AutomationTerranCtrlGroup = 0 ? 10 : AutomationTerranCtrlGroup), 1|2|3|4||5|6|7|8|9|0
+		Gui, Add, Text, xs, Protoss Storage:
+		Gui, Add, DropDownList,  % "xp+90 yp-2 w45 center vAutomationProtossCtrlGroup Choose" (AutomationProtossCtrlGroup = 0 ? 10 : AutomationProtossCtrlGroup), 1|2|3|4||5|6|7|8|9|0
+		Gui, Add, Text, xs, Zerg Storage:
+		Gui, Add, DropDownList,  % "xp+90 yp-2 w45 center vAutomationZergCtrlGroup Choose" (AutomationZergCtrlGroup = 0 ? 10 : AutomationZergCtrlGroup), 1|2|3|4||5|6|7|8|9|0
+
 
 	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vMiscAutomation_TAB, Select Army||Spread|Remove Units|Easy Select/Unload|Smart Geyser
 	Gui, Tab, Select Army
@@ -11847,21 +11854,6 @@ unloadAllTransports(hotkeySuffix)
 
 
 
-;f1::
-if IsObject(vDraw)
-{
-	vDraw.destroy(), vDraw := ""
-	return
-}
-CreatepBitmaps(a_pBitmap, aUnitID, MatrixColour)
-global a_pBitmap
-vDraw := new testDraw("test", 1400, 150, 400, 400)
-vDraw.fillTerran()
-vDraw.refresh()
-return 
-
-
-
 /*
 hover on each icon 
 click each icon 
@@ -11874,12 +11866,17 @@ autoProductionGUIEventHandler(wParam, lParam, msg, hwnd)
 ;	static object
 	if object := testDraw.hwndLookup[hwnd]
 	{
-		object.refresh(lParam & 0xFFFF, lParam >> 16, msg)
+		if (msg = 0x200 && !object.isTracking)    ; WM_MOUSEMOVE
+			object.isTracking := object.setMouseLeaveTracking()
+		if msg = 0x2A3 ; WM_MOUSELEAVE
+			object.refresh() ; redraw to remove background/hover highlight			
+		else object.refresh(lParam & 0xFFFF, lParam >> 16, msg)
 		;if msg = 0x200
 		;	settimer, __autoProductionGUIHoverTimer, 50
 	}
 	return 
 
+	; Not currently used
 	__autoProductionGUIHoverTimer:
 	CoordMode, Mouse, Screen
 	MouseGetPos, x, y
@@ -11911,7 +11908,31 @@ class testDraw
 		this.line := 0
 		this.pBitmapTick := Gdip_CreateBitmapFromFile("tick.png")
 		this.pPauseGreen := Gdip_CreateBitmapFromFile("pauseGreen.png")
+		this.fillLocalRace()
+		this.Refresh()
 		return this
+	}
+	; Posts a WM_MOUSELEAVE when mouse leaves and removes the tracker.
+	; Since this msg is posted immediately if mouse is outside of GUI
+	; Need to wait until mouse in inGUI before calling it. And recall it on entering.
+	; Used to remove the highlight from the last hovered item when the mouse leaves the GUI
+	setMouseLeaveTracking()
+	{
+		VarSetCapacity(v, 16, 0)
+		NumPut(16, v, 0, "UInt") 			; cbSize
+		NumPut(0x00000003, v, 4, "UInt") 	; dwFlags (TME_LEAVE)
+		NumPut(this.hwnd, v, 8, "UInt") 	; HWND
+		NumPut(0, v, 12, "UInt") 			; dwHoverTime (ignored)	
+		DllCall("TrackMouseEvent", "Ptr", &v) ; Non-zero on success
+	}
+	fillLocalRace()
+	{
+		if aLocalPlayer.Race = "Terran"
+			this.fillTerran()
+		else if aLocalPlayer.Race = "Protoss"
+			this.fillProtoss()
+		else if aLocalPlayer.Race = "Zerg"
+			this.fillZerg()
 	}
 	fillTerran()
 	{
@@ -11924,6 +11945,24 @@ class testDraw
 		this.addItems("hellion", "siegetank", "thor", "hellbat", "widowMine")
 		this.pushDownLine()
 		this.addItems("vikingfighter", "medivac", "banshee", "raven", "battlecruiser")
+	}
+	fillProtoss()
+	{
+		this.addItems("Probe")
+		this.pushItemRight(3)
+		this.addItems("pauseButton")
+		this.pushDownLine()
+		this.addItems("zealot", "sentry", "stalker")
+		this.pushDownLine()
+		this.addItems("hightemplar", "darktemplar")
+		this.pushDownLine()
+		this.addItems("phoenix", "oracle", "voidray", "tempest", "carrier")
+	}	
+	fillZerg()
+	{
+		this.addItems("Queen")
+		this.pushItemRight(3)
+		this.addItems("pauseButton")		
 	}
 	destroy()
 	{
@@ -12005,8 +12044,8 @@ class testDraw
 	{
 		
 		x := item.x, y := item.y, w := item.width, h := item.height
-		objtree(item)
-		msgbox
+		;objtree(item)
+		;msgbox
 		Gdip_DrawImage(G, this.pBitmap
 			, x += w - width := .25 * (sourceWidth := Gdip_GetImageWidth(this.pBitmap))
 			, y += h - height := .25 * (sourceHeight := Gdip_GetImageHeight(this.pBitmap)) 	
@@ -12051,8 +12090,8 @@ class testDraw
 			}
 			autoBuild.resetProfileState()
 		}
-		if itemIndex
-			this.timer()
+		;if itemIndex
+		;	this.timer()
 		this.drawItems(G, itemIndex)
 		UpdateLayeredWindow(this.hwnd, hdc)
 		this.cleanup(hbm, hdc, G)	
@@ -12110,10 +12149,28 @@ return
 #if
 
 
-;f2::
+; *** Press F2 once to initialise auto build.
+; Then use the in-Game GUI (f1) to manipulate the production
+
+; Press F1 to show/hide the in-game GUI
+f1::
+if IsObject(vDraw)
+{
+	vDraw.destroy(), vDraw := ""
+	return
+}
+CreatepBitmaps(a_pBitmap, aUnitID, MatrixColour)
+global a_pBitmap
+vDraw := new testDraw("test", 1400, 150, 400, 400)
+return 
+
+
+
+f2::
 autoBuild.setBuildObj()
 autoBuild.createHotkeys(aLocalPlayer.Race)
 return
+
 
 
 LaunchAutoBuildEditor:
@@ -12128,7 +12185,9 @@ soundplay *-1
 return 
 
 autoBuildTimer:
-autoBuild.build(aLocalPlayer.Race)
+if !gettime()
+	SetTimer,autoBuildTimer, Off 
+else autoBuild.build(aLocalPlayer.Race)
 return
 
 
@@ -12874,14 +12933,14 @@ class autoBuild
 			return
 
 		Thread, NoTimers, true
-		;critical, 1000
-		;setLowLevelInputHooks(True)
+		critical, 1000
+		setLowLevelInputHooks(True)
 		buildCheck.set()
 		dsleep(30)
 		input.pReleaseKeys(True)
 		dSleep(20)	
-
-		this.storeSelection(3, HighlightedGroup, selectionPage)
+		storageGroup := automationStorageGroup(aLocalPlayer.Race)
+		this.storeSelection(storageGroup, HighlightedGroup, selectionPage)
 
 		for buildingName, item in buildObj
 		{
@@ -12894,7 +12953,7 @@ class autoBuild
 			}
 			this.buildUnits(item.buildString, oSelection, buildingName, sentTabs)
 		}
-		this.restoreSelection(3, selectionPage, HighlightedGroup) ;****!
+		this.restoreSelection(storageGroup, selectionPage, HighlightedGroup) ;****!
 
 		Input.revertKeyState()
 		setLowLevelInputHooks(False)
@@ -12964,7 +13023,7 @@ class autoBuild
 					for i, name in aUnits
 					{
 						if obj[name].autoBuild && (!obj[name].requires.structure || this.hasUnit(obj[name].requires.structure))
-						&& this.howManyUnitsCanBeProduced(nonTechLabs, techLabs, obj[name].requires, 1) ; limit to 1
+						&& this.howManyUnitsCanBeProduced(nonTechLabs, techLabs, obj[name].requires, 1) ; limit to 1 e.g. build 1 reaper, then build a marine on next loop  - repeat until done
 						{
 							builtSomething := True
 							sendString .= sRepeat(obj[name].buildKey, 1)
@@ -13046,6 +13105,8 @@ class autoBuild
 		return count
 	}
 
+	; returns total available production slot count
+	; and sets the slot count for tech labs and non techlabs (which includes reactors)
 	productionStatus(aUnitIndexs, structureName, byRef nonTechLabs, byRef techLabs, race)
 	{
 		nonTechLabs := techLabs := 0
@@ -13079,7 +13140,7 @@ class autoBuild
 		return count
 	}
 
-	; This is here so I can implement AutoBuild which may have issues with hotkeys with affecting other functions
+	; This is here so I can implement AutoBuild which may have issues with hotkeys affecting other functions
 	restoreSelection(controlGroup, selectionPage, highlightedTab)
 	{ 
 
@@ -13124,6 +13185,15 @@ class buildCheck
 }
 
 
+automationStorageGroup(race)
+{ 
+	global AutomationTerranCtrlGroup, AutomationProtossCtrlGroup, AutomationZergCtrlGroup
+	if race = terran 
+		return AutomationTerranCtrlGroup
+	if race = Protoss 
+		return AutomationProtossCtrlGroup
+	else return AutomationZergCtrlGroup ; Just return something so any errors are more obvious 
+}
 
 
 
@@ -13209,7 +13279,7 @@ getSelectedHarvestersMiningGas(byRef oSelection := "")
 ; Uses map position to determine if a harvester is returning gas from the geyser in question - so not foolproof  (as command target is townhall)
 ; Harvesters inside the geyser or heading towards it is accurate (command target = refinery) 
 ; The returned count value is inteded to be used when the refinery is under construction
-; i.e. to determine how many units will be mining gas from it once it finishes building, so these can be removed from selection (as theyre already mining from the geyser)
+; The found harvesters will already be mining be mining gas from it once it finishes building, so these must be removed from selection
 getHarvestersMiningGas(geyserStructureIndex, byref aFoundIndexes, byRef underConstruction)
 {
 	static aTownHallLookup 
@@ -13250,6 +13320,7 @@ getHarvestersMiningGas(geyserStructureIndex, byref aFoundIndexes, byRef underCon
 			{
 				; I could do a maxIndex() check on the commands - if harvester has another queued command after this then add it to the ignore list
 				; e.g. so if you accidentally select a worker which is queued to build a structure after it mines a patch it will be deselected and not sent to geyser
+				; But then this would create issues if the user intends for it to go to the geyser
 				aFoundIndexes[unit] := True, count++
 				break
 			}
@@ -13390,38 +13461,3 @@ getPortraitsFromIndexes(aIndexLookUp, byRef oSelection := "", isReversed := Fals
 
 
 
-
-f1::
-;getHarvestersMiningGas(166, a)
-
-msgbox % getSelectedUnitIndex()
-
-return 
-
-
-f2::
-;msgbox % u:=getSelectedUnitIndex()
-;return 
-
-getUnitQueuedCommands(getSelectedUnitIndex(), a)
-objtree(a)
-msgbox % aUnitName[getUnitType(a.1.targetIndex)]
-return 
-
-
-
-line1 := []
-line2 := []
-point := []
-line1.x := 0
-line1.y := 0
-line2.x := 20
-line2.y := 0
-
-point.x := -1.1
-point.y := 0
-
-msgbox % distanceFromLine(line1, line2, point)
-. "`n" isPointNearLine(line1, line2, point, 1)
-. "`n" isPointNearLineSegmentWithZcheck(line1, line2, point, 1)
-return 
