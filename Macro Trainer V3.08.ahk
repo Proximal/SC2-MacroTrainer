@@ -2605,8 +2605,10 @@ ini_settings_write:
 	IniWrite, %AutoBuildHiveGroup%, %config_file%, %section%, AutoBuildHiveGroup
 	IniWrite, %AutoBuildEnableGUIHotkey%, %config_file%, %section%, AutoBuildEnableGUIHotkey
 	IniWrite, %AutoBuildGUIkey%, %config_file%, %section%, AutoBuildGUIkey
+	IniWrite, %AutoBuildGUIkeyMode%, %config_file%, %section%, AutoBuildGUIkeyMode	
 	IniWrite, %AutoBuildEnableInteractGUIHotkey%, %config_file%, %section%, AutoBuildEnableInteractGUIHotkey
 	IniWrite, %AutoBuildInteractGUIKey%, %config_file%, %section%, AutoBuildInteractGUIKey
+	IniWrite, %AutoBuildInactiveOpacity%, %config_file%, %section%, AutoBuildInactiveOpacity
 
 
 	section := "AutomationCommon"
@@ -2818,6 +2820,7 @@ ini_settings_write:
 	Iniwrite, %BackgroundIdleWorkersOverlay%, %config_file%, %section%, BackgroundIdleWorkersOverlay
 	Iniwrite, %BackgroundWorkerOverlay%, %config_file%, %section%, BackgroundWorkerOverlay
 	Iniwrite, %BackgroundMacroTownHallOverlay%, %config_file%, %section%, BackgroundMacroTownHallOverlay
+	Iniwrite, %BackgroundMacroAutoBuildOverlay%, %config_file%, %section%, BackgroundMacroAutoBuildOverlay
 
 	;[MiniMap]
 	section := "MiniMap" 
@@ -2891,7 +2894,7 @@ ini_settings_write:
 	}
 	IF (Tmp_GuiControl = "save" or Tmp_GuiControl = "Apply")
 	{
-	;	initialiseBrushColours(aHexColours, a_pBrushes)
+		initialiseBrushColours(aHexColours, a_pBrushes) ; So Changes to brushes are updated for autoBuild GUI
 		if aThreads.MiniMap.ahkReady()
 		{
 			aThreads.MiniMap.ahkFunction("updateUserSettings")
@@ -4056,14 +4059,21 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		Gui, Add, DropDownList,  % "xp+90 yp-2 w45 center vAutomationZergCtrlGroup Choose" (AutomationZergCtrlGroup = 0 ? 10 : AutomationZergCtrlGroup), 1|2|3|4||5|6|7|8|9|0
 
 	Gui, Tab, ArmyGUI
-		Gui, Add, Checkbox, section x+15 y+25 vAutoBuildEnableGUIHotkey checked%AutoBuildEnableGUIHotkey%, In-game GUI:
-		Gui, Add, Edit, Readonly yp-2 xp+130 center w85 R1 vAutoBuildGUIkey gedit_hotkey, %AutoBuildGUIkey%
-		Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#AutoBuildGUIkey, Edit 
 		
-		Gui, Add, Checkbox, section xs y+15 vAutoBuildEnableInteractGUIHotkey checked%AutoBuildEnableInteractGUIHotkey%, Interact Key
+		Gui, Add, Text, section x+15 y+25, Hotkey Mode:
+		Gui, Add, DropDownList, yp-2 xp+130 vAutoBuildGUIkeyMode, Toggle||KeyDown
+		GuiControl, ChooseString, AutoBuildGUIkeyMode, %AutoBuildGUIkeyMode%		
+
+		Gui, Add, Checkbox, xs vAutoBuildEnableGUIHotkey checked%AutoBuildEnableGUIHotkey%, In-game GUI:
+		Gui, Add, Edit, Readonly yp-2 xp+130 center w85 R1 vAutoBuildGUIkey gedit_hotkey, %AutoBuildGUIkey%
+		Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#AutoBuildGUIkey, Edit
+		
+		Gui, Add, Checkbox, section xs y+25 vAutoBuildEnableInteractGUIHotkey checked%AutoBuildEnableInteractGUIHotkey%, Interact Key
 		Gui, Add, Edit, Readonly yp-2 xp+130 center w85 R1 vAutoBuildInteractGUIKey gedit_hotkey, %AutoBuildInteractGUIKey%
 		Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#AutoBuildInteractGUIKey, Edit 
 
+		Gui, add, text, xs y+25 w40, Inactive Opacity:
+			Gui, Add, Slider, NoTicks w210 x+10 yp vAutoBuildInactiveOpacity range30-255, %AutoBuildInactiveOpacity%
 
 	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vMiscAutomation_TAB, Select Army||Spread|Remove Units|Easy Select/Unload|Smart Geyser
 	Gui, Tab, Select Army
@@ -4510,6 +4520,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 			Gui, Add, Checkbox, xs+150 ys+20 vBackgroundIdleWorkersOverlay Checked%BackgroundIdleWorkersOverlay%, Idle Workers
 			Gui, Add, Checkbox, xp y+10 vBackgroundWorkerOverlay Checked%BackgroundWorkerOverlay%, Local Harvester Count
 			Gui, Add, Checkbox, xp y+10 vBackgroundMacroTownHallOverlay Checked%BackgroundMacroTownHallOverlay%, Town Hall Macro
+			Gui, Add, Checkbox, xp y+10 vBackgroundMacroAutoBuildOverlay Checked%BackgroundMacroAutoBuildOverlay%, Auto Build
 
 	Gui, Tab, Hotkeys 
 		Gui, add, GroupBox, x+20 y+15 w285 h320, Overlay Hotkeys
@@ -8260,7 +8271,7 @@ CreateHotkeys()
 	Hotkey, If, WinActive(GameIdentifier) && isPlaying && !isMenuOpen()
 		if AutoBuildEnableGUIHotkey
 			hotkey, %AutoBuildGUIkey%, AutoBuildGUIkeyPress, on
-		if AutoBuildEnableInteractGUIHotkey
+		if (AutoBuildEnableInteractGUIHotkey && AutoBuildGUIkeyMode = "Toggle")
 			hotkey, %AutoBuildInteractGUIKey%, AutoBuildGUIInteractkeyPress, on
 
 		if (InjectTimerAdvancedEnable && aLocalPlayer["Race"] = "Zerg")
@@ -11910,14 +11921,22 @@ return
 ; +E0x20 - cant interact
 
 AutoBuildGUIkeyPress:
-autoBuildGameGUI.toggleOverlay()
+if (AutoBuildGUIkeyMode = "KeyDown")
+{
+	autoBuildGameGUI.showOverlay()
+	KeyWait, % gethotkeySuffix(A_ThisHotkey), T30
+	autoBuildGameGUI.hideOverlay()
+}
+else autoBuildGameGUI.toggleOverlay()
 return 
 
 
 AutoBuildGUIInteractkeyPress:
 autoBuildGameGUI.interact(true)
+autoBuildGameGUI.Refresh() ; If mouse isn't over GUI, this will ensure the transparency Changes
 KeyWait, % gethotkeySuffix(A_ThisHotkey), T30
 autoBuildGameGUI.interact(false)
+autoBuildGameGUI.Refresh() ; If mouse isn't over GUI, this will ensure the transparency Changes
 return 
 
 LaunchAutoBuildEditor:

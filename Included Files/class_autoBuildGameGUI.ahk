@@ -48,6 +48,15 @@ class autoBuildGameGUI
 		else if !this.GUIExists
 			this.createOverlay()
 	}
+	hideOverlay()
+	{
+		this.getGUIStatus()
+		if this.GUIExists && !this.GUIHidden
+		{
+			Gui, autoBuildGUI: Cancel
+			return True ; Action was performed
+		}
+	}	
 	toggleOverlay()
 	{
 		this.getGUIStatus()
@@ -61,12 +70,12 @@ class autoBuildGameGUI
 	}	
 	createOverlay()
 	{
-		global autoBuildOverlayX, autoBuildOverlayY, AutoBuildEnableInteractGUIHotkey 
+		global autoBuildOverlayX, autoBuildOverlayY, AutoBuildEnableInteractGUIHotkey, AutoBuildGUIkeyMode 
 		this.endGameDestroy()
-		if AutoBuildEnableInteractGUIHotkey
-			Gui, autoBuildGUI: -Caption Hwndhwnd +E0x20 +E0x8080000 +LastFound +ToolWindow +AlwaysOnTop
-		else
-			Gui, autoBuildGUI: -Caption Hwndhwnd -E0x20 +E0x8080000 +LastFound +ToolWindow +AlwaysOnTop
+		Gui, autoBuildGUI: -Caption Hwndhwnd +E0x8080000 +LastFound +ToolWindow +AlwaysOnTop
+		if (AutoBuildEnableInteractGUIHotkey && AutoBuildGUIkeyMode = "Toggle")
+			this.interact(False)
+		else this.interact(True)
 		;Gui, %overlay%: -Caption Hwndhwnd -E0x20  +E0x80000 +LastFound +ToolWindow +AlwaysOnTop
 		; need to remove E0x8000000 to make it move while being dragged
 		Gui, autoBuildGUI: Show, NA X%autoBuildOverlayX% Y%autoBuildOverlayY% W400 H400, % this.OverlayTitle
@@ -86,16 +95,14 @@ class autoBuildGameGUI
 	{
 		;Gui, % "autoBuildGUI: " (enable ? "-" : "+") "E0x20"
 		if enable
-			Gui, autoBuildGUI: -E0x20
-		else Gui, autoBuildGUI: +E0x20
-	}
-	hideOverlay()
-	{
-		this.getGUIStatus()
-		if this.GUIExists && !this.GUIHidden
 		{
-			Gui, autoBuildGUI: Cancel
-			return True ; Action was performed
+			Gui, autoBuildGUI: -E0x20
+			this.CanInteract := True
+		}
+		else 
+		{
+			Gui, autoBuildGUI: +E0x20
+			this.CanInteract := False
 		}
 	}
 	starcraftLostFocus()
@@ -140,7 +147,7 @@ class autoBuildGameGUI
 			WinGet, style, style
 			this.GUIHidden := !(0x10000000 & style)
 			WinGet, ExStyle, ExStyle
-			this.WS_EX_TRANSPARENT := (0x20 & ExStyle)
+			this.WS_EX_TRANSPARENT := (0x20 & ExStyle) ; if set is cant interact
 		 }
 		 else 
 		 {
@@ -339,17 +346,19 @@ class autoBuildGameGUI
 	}
 	drawItems(g, highlightedIndex := "")
 	{
-		redmatrix := "15|0|0|0|0|0|0|0|0|0|0|0|1|0|0|0|0|0|1|0|0|0|0|0|1"
+		global a_pBrushes, BackgroundMacroAutoBuildOverlay
+		static redmatrix := "15|0|0|0|0|0|0|0|0|0|0|0|1|0|0|0|0|0|1|0|0|0|0|0|1"
 
-		pBrush := Gdip_BrushCreateSolid(0x78000000)
-		, pBrushHighlight := Gdip_BrushCreateSolid(0x480066FF)
-		, this.findBorderEdges(x2, y2)
-		, Gdip_FillRoundedRectangle(G, pBrush, this.items.1.x, this.items.1.y, x2, y2, 2)
+		if BackgroundMacroAutoBuildOverlay ; Draw the background 
+		{
+		 	this.findBorderEdges(x2, y2)
+		 	Gdip_FillRoundedRectangle(G, a_pBrushes.transBackground, this.items.1.x, this.items.1.y, x2, y2, 2)
+		}
 		for i, item in this.Items
 		{
 			if (highlightedIndex = i)
 			{
-				Gdip_FillRoundedRectangle(G, pBrushHighlight, item.x, item.y, item.width, item.height, 2)
+				Gdip_FillRoundedRectangle(G, a_pBrushes.transBlueHighlight, item.x, item.y, item.width, item.height, 2)
 				item.Hovered := True
 			}
 			else item.Hovered := False
@@ -362,7 +371,6 @@ class autoBuildGameGUI
 					this.drawTick(G, item)	
 			}		
 		}
-		Gdip_DeleteBrush(pBrush), Gdip_DeleteBrush(pBrushHighlight)
 	}
 	; We don't want to redraw the overlay on every WM_MouseMove msg
 	; As this greatly increases CPU usage and makes clicking the overlay less responsive
@@ -387,6 +395,7 @@ class autoBuildGameGUI
 
 	refresh(x := "", y := "", msg := "")
 	{
+		global autoBuildInactiveOpacity
 		this.setCanvas(hbm, hdc, G)
 		if (x != "" && y != "")
 			itemIndex := this.collisionCheck(x, y)
@@ -403,7 +412,7 @@ class autoBuildGameGUI
 			autoBuild.resetProfileState()
 		}
 		this.drawItems(G, itemIndex)
-		UpdateLayeredWindow(this.hwnd, hdc)
+		UpdateLayeredWindow(this.hwnd, hdc,,,,, this.CanInteract ? 255 : autoBuildInactiveOpacity)
 		this.cleanup(hbm, hdc, G)	
 	}
 

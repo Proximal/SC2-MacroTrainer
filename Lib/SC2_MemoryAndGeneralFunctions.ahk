@@ -2816,6 +2816,7 @@ initialiseBrushColours(aHexColours, byRef a_pBrushes)
 	; Used in the unit overlay	
 	a_pBrushes["TransparentBlack"] := Gdip_BrushCreateSolid(0x78000000)
 	a_pBrushes["transBackground"] := Gdip_BrushCreateSolid(TransparentBackgroundColour)
+	a_pBrushes["transBlueHighlight"] := Gdip_BrushCreateSolid(0x480066FF)
 	a_pBrushes["ScanChrono"] := Gdip_BrushCreateSolid(0xCCFF00B3)
 	a_pBrushes["redStrikeOut"] := Gdip_BrushCreateSolid(0xFFB4141E)
 	a_pBrushes["UnitHighlightHallucinationsColour"] := Gdip_BrushCreateSolid(UnitHighlightHallucinationsColour)
@@ -4012,6 +4013,9 @@ readConfigFile()
 	IniRead, AutoBuildGUIkey, %config_file%, %section%, AutoBuildGUIkey, F9
 	IniRead, AutoBuildEnableInteractGUIHotkey, %config_file%, %section%, AutoBuildEnableInteractGUIHotkey, 0
 	IniRead, AutoBuildInteractGUIKey, %config_file%, %section%, AutoBuildInteractGUIKey, F11
+	IniRead, AutoBuildGUIkeyMode, %config_file%, %section%, AutoBuildGUIkeyMode, Toggle
+	IniRead, AutoBuildInactiveOpacity, %config_file%, %section%, AutoBuildInactiveOpacity, 255
+
 
 	section := "AutomationCommon"
 	IniRead, automationAPMThreshold, %config_file%, %section%, automationAPMThreshold, 200
@@ -4164,7 +4168,7 @@ readConfigFile()
 	IniRead, BackgroundIdleWorkersOverlay, %config_file%, %section%, BackgroundIdleWorkersOverlay, 0
 	IniRead, BackgroundWorkerOverlay, %config_file%, %section%, BackgroundWorkerOverlay, 0
 	IniRead, BackgroundMacroTownHallOverlay, %config_file%, %section%, BackgroundMacroTownHallOverlay, 0
-
+	IniRead, BackgroundMacroAutoBuildOverlay, %config_file%, %section%, BackgroundMacroAutoBuildOverlay, 1
 
 	; [UnitPanelFilter]
 	section := "UnitPanelFilter"
