@@ -3100,7 +3100,7 @@ SetupColourArrays(ByRef HexColour, Byref MatrixColour)
 }
 
 ; These bitmaps take up a bit more than 1 MB of space (check mem usage before and after deleting)
-CreatepBitmaps(byref a_pBitmap, aUnitID, MatrixColour)
+CreatepBitmaps(byref a_pBitmap, aUnitID, MatrixColour := "")
 {
 	a_pBitmap := []
 	l_Races := "Terran,Protoss,Zerg"
@@ -3139,6 +3139,9 @@ CreatepBitmaps(byref a_pBitmap, aUnitID, MatrixColour)
 		else  ; these are upgrades and accessed by SC2 item name string
 			a_pBitmap[FileTitle] := Gdip_CreateBitmapFromFile(A_LoopFileFullPath)
 	}
+
+	a_pBitmap["greenTick"] := Gdip_CreateBitmapFromFile(A_Temp "\MacroTrainerFiles\OverlaysMisc\greenTick.png")
+	a_pBitmap["GreenPause"] := Gdip_CreateBitmapFromFile(A_Temp "\MacroTrainerFiles\OverlaysMisc\GreenPause.png")
 	a_pBitmap["PurpleX16"] := Gdip_CreateBitmapFromFile(A_Temp "\PurpleX16.png")
 	a_pBitmap["GreenX16"] := Gdip_CreateBitmapFromFile(A_Temp "\GreenX16.png")
 	a_pBitmap["RedX16"] := Gdip_CreateBitmapFromFile(A_Temp "\RedX16.png")
@@ -4004,6 +4007,9 @@ readConfigFile()
 	IniRead, AutoBuildHatcheryGroup, %config_file%, %section%, AutoBuildHatcheryGroup, 4
 	IniRead, AutoBuildLairGroup, %config_file%, %section%, AutoBuildLairGroup, 4
 	IniRead, AutoBuildHiveGroup, %config_file%, %section%, AutoBuildHiveGroup, 4
+	IniRead, AutoBuildEnableGUIHotkey, %config_file%, %section%, AutoBuildEnableGUIHotkey, 4
+	IniRead, AutoBuildEnableGUIHotkey, %config_file%, %section%, AutoBuildEnableGUIHotkey, 0
+	IniRead, AutoBuildGUIkey, %config_file%, %section%, AutoBuildGUIkey, F9
 
 	section := "AutomationCommon"
 	IniRead, automationAPMThreshold, %config_file%, %section%, automationAPMThreshold, 200
@@ -4070,13 +4076,16 @@ readConfigFile()
 	; This function will get return  the x,y coordinates for the top left, and bottom right of the 
 	; desktop screen (the area on both monitors)
 	DesktopScreenCoordinates(XminScreen, YminScreen, XmaxScreen, YmaxScreen)
-	list := "APMOverlay,IncomeOverlay,ResourcesOverlay,ArmySizeOverlay,WorkerOverlay,IdleWorkersOverlay,UnitOverlay,LocalPlayerColourOverlay,MacroTownHallOverlay,LocalUpgradesOverlay"
+	list := "APMOverlay,IncomeOverlay,ResourcesOverlay,ArmySizeOverlay,WorkerOverlay,IdleWorkersOverlay,UnitOverlay,LocalPlayerColourOverlay,MacroTownHallOverlay,LocalUpgradesOverlay,autoBuildOverlay"
 	loop, parse, list, `,
 	{
-		IniRead, Draw%A_LoopField%, %config_file%, %section%, Draw%A_LoopField%, 0
-		IniRead, %A_LoopField%Scale, %config_file%, %section%, %A_LoopField%Scale, 1
-		if (%A_LoopField%Scale < .5)	;so cant get -scales (or invisibly small)
-			%A_LoopField%Scale := .5
+		if (A_LoopField != "autoBuildOverlay") ; This overlay has no scale
+		{
+			IniRead, Draw%A_LoopField%, %config_file%, %section%, Draw%A_LoopField%, 0
+			IniRead, %A_LoopField%Scale, %config_file%, %section%, %A_LoopField%Scale, 1
+			if (%A_LoopField%Scale < .5)	;so cant get -scales (or invisibly small)
+				%A_LoopField%Scale := .5
+		}
 		; Use < for min position and >= for max as it draws to the right.
 		; Also, its still possible for the overlay to be a pixel or two before the right edge of the
 		; screen and still not be visible! or lead to a drawing/updateLayeredWindow fail.

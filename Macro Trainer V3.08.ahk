@@ -166,6 +166,7 @@ l_Races := "Terran,Protoss,Zerg"
 GLOBAL GameWindowTitle := "StarCraft II"
 GLOBAL GameIdentifier := "ahk_exe SC2.exe"
 GLOBAL GameExe := "SC2.exe"
+global a_pBitmap ; Used by the autoBUild In game GUI
 
 input.winTitle := GameIdentifier
 ; For some reason this has to come before Gdip_Startup() for reliability 
@@ -177,7 +178,8 @@ Global aAGHotkeys := []
 SetupUnitIDArray(aUnitID, aUnitName)
 getSubGroupAliasArray(aUnitSubGroupAlias)
 setupTargetFilters(aUnitTargetFilter)
-
+	
+CreatepBitmaps(a_pBitmap, aUnitID)
 Menu, Tray, Tip, MT_V%ProgramVersion% Coded By Kalamity
 
 If InStr(A_ScriptDir, old_backup_DIR)
@@ -207,9 +209,6 @@ if A_OSVersion in WIN_8,WIN_7,WIN_VISTA
 ;-----------------------
 ;	Startup
 ;-----------------------
-
-;CreatepBitmaps(a_pBitmap, aUnitID)
-;aUnitInfo := []
 
 If (auto_update AND A_IsCompiled AND url.UpdateZip := CheckForUpdates(ProgramVersion, latestVersion, url.CurrentVersionInfo))
 {
@@ -388,7 +387,7 @@ return
 #include %A_ScriptDir%\Included Files\Class_ChangeButtonNames.AHk
 ; Contains labels/routines for the chrono boost section of the GUI
 #include <classMemory>
-#Include, Included Files\_ClassSCPatternScan.ahk
+#Include, Included Files\Class_SCPatternScan.ahk
 #Include, Included Files\chronoGUIMainScript.ahk
 #include <Class_SC2Keys>
 
@@ -788,6 +787,7 @@ Return
 ; Never observed the overlays not responding to this.
 
 Adjust_overlay:
+autoBuildGameGUI.setDrag(True)
 ; use sendmessage as it's more reliable 
 aThreads.Overlays.AhkAssign.Dragoverlay := Dragoverlay := True
 aThreads.Overlays.AhkLabel.overlayTimer
@@ -806,6 +806,7 @@ WinWaitActive, %GameIdentifier%,, 2 ; wait max 2 seconds
 ; Gosub to them so that they save their new positions	
 ; Destroy and remake them.
 ; Gosub again so they are redrawn instantly
+autoBuildGameGUI.setDrag(False)
 aThreads.Overlays.AhkAssign.Dragoverlay := Dragoverlay := False	 
 aThreads.Overlays.AhkLabel.overlayTimer
 aThreads.Overlays.AhkLabel.unitPanelOverlayTimer
@@ -886,7 +887,7 @@ clock:
 		; I realise it would be a cleaner solution to call the function and pass some 'isUpdating' param
 		; but I don't feel like modifying anything and this works fine. Also have to consider
 		; when the program restarts during a match.
-		if !UpdateTimers 
+		if !UpdateTimers ; 
 		{
 			if aThreads.MiniMap.ahkReady()
 			{
@@ -895,9 +896,14 @@ clock:
 			}
 			if aThreads.Overlays.ahkReady()
 				aThreads.Overlays.ahkFunction("gameChange")
+			; Only destroy the GUI on game change
+			; The class deals with hell message SC focus loss and accounts for if the GUI hotkey is disabled (it hides the overlay)
+			autoBuildGameGUI.endGameDestroyOverlay() 
 		}	
 		inject_timer := TimeReadRacesSet := UpdateTimers := PrevWarning := WinNotActiveAtStart := ResumeWarnings := 0 ;ie so know inject timer is off
 		isPlaying := EnableAutoWorkerTerran := EnableAutoWorkerProtoss := False ; otherwise if they don't have start enabled they may need to press the hotkey twice to activate
+		getAllKeys.aCurrentHotkeys := "" ; Clear the object so next game start the class will retreive the keys again. Safer than solely relying on timer and file modify time
+		
 		setLowLevelInputHooks(False) ; Shouldn't be required anymore but I'm just gonna leave it anyway
 	}
 	; > 1,536d or 0600h -> 0.375 ; mischa's reaper bot used this as minimum time. A couple of people reported issues (e.g. auto-worker) - perhaps i wasnt't waiting long enough for game to finish loading
@@ -981,6 +987,8 @@ clock:
 		if idle_enable	;this is the idle AFK
 			settimer, user_idle, 1000, -5
 
+		SC2Keys.getAllKeys()
+		autoBuild.setBuildObj()
 		;LocalPlayerRace := aLocalPlayer["Race"] ; another messy lazy variable but used in a few spots
 		;if (EnableAutoWorker%LocalPlayerRace%Start && (aLocalPlayer["Race"] = "Terran" || aLocalPlayer["Race"] = "Protoss") )
 		if (EnableAutoWorkerTerranStart && aLocalPlayer["Race"] = "Terran")
@@ -1909,13 +1917,15 @@ ShellMessage(wParam, lParam)
 		if (SC2hWnd != lParam && !ReDrawOverlays && !Dragoverlay)
 		{
 			ReDrawOverlays  := True
+			autoBuildGameGUI.starcraftLostFocus()
 			aThreads.Overlays.AhkFunction("DestroyOverlays")
 		}
 		else if (SC2hWnd = lParam && getTime() && isInMatch)
 		{
 			;mt_Paused otherwise will redisplay the hidden and frozen overlays
 			if (ReDrawOverlays && !mt_Paused && !IsInList(aLocalPlayer.Type, "Referee", "Spectator")) ; This will redraw immediately - but this isn't needed at all
-			{  		
+			{  	
+				autoBuildGameGUI.starcraftGainedFocus()
 				; If the overlay is called before it finishes reading the iniFile could get a GUI show error
 				; due to the x and y values being NULL.
 				; This is extremely small window (even when setting the function to always draw i.e. if True 
@@ -2007,9 +2017,8 @@ ShutdownProcedure:
 		aThreads.miniMap.ahkTerminate() 
 	if aThreads.Overlays.ahkReady() 	
 		aThreads.Overlays.ahkTerminate() 	
-	; Don't really need to clear these - They will be cleared anyway 
-	; when the program exits
-	;deletepBitMaps(a_pBitmap)
+
+	deletepBitMaps(a_pBitmap)
 	;deletePens(a_pPens)
 	;deleteBrushArray(a_pBrushes)
 
@@ -2590,10 +2599,13 @@ ini_settings_write:
 	IniWrite, %AutoBuildStarportGroup%, %config_file%, %section%, AutoBuildStarportGroup
 	IniWrite, %AutoBuildGatewayGroup%, %config_file%, %section%, AutoBuildGatewayGroup
 	IniWrite, %AutoBuildStargateGroup%, %config_file%, %section%, AutoBuildStargateGroup
-	IniWrite, %AutoBuilRoboticsFacilityGroup%, %config_file%, %section%, AutoBuilRoboticsFacilityGroup
+	IniWrite, %AutoBuildRoboticsFacilityGroup%, %config_file%, %section%, AutoBuildRoboticsFacilityGroup
 	IniWrite, %AutoBuildHatcheryGroup%, %config_file%, %section%, AutoBuildHatcheryGroup
 	IniWrite, %AutoBuildLairGroup%, %config_file%, %section%, AutoBuildLairGroup
 	IniWrite, %AutoBuildHiveGroup%, %config_file%, %section%, AutoBuildHiveGroup
+	IniWrite, %AutoBuildEnableGUIHotkey%, %config_file%, %section%, AutoBuildEnableGUIHotkey
+	IniWrite, %AutoBuildGUIkey%, %config_file%, %section%, AutoBuildGUIkey
+
 	
 	section := "AutomationCommon"
 	IniWrite, %automationAPMThreshold%, %config_file%, %section%, automationAPMThreshold
@@ -3902,7 +3914,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		;Gui, add, text, xp y+15 w380, Test 
 
 
-	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vAutoWorker_TAB, Auto|Info|Army||		
+	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vAutoWorker_TAB, Auto|Info|Army||ArmyGUI		
 	;Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vAutoWorker_TAB, Auto||Info		
 	Gui, Tab, Auto
 		Gui, Add, GroupBox, x+25 Y+10 w370 h85 section, General 
@@ -4019,7 +4031,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		Gui, Add, DropDownList,  % "xp+160 yp-2 w45 center vAutoBuildStargateGroup Choose" (AutoBuildStargateGroup = 0 ? 10 : AutoBuildStargateGroup), 1|2|3|4|5||6||7|8|9|0
 	
 		Gui, Add, Text, xs, Robotics Facility Group:
-		Gui, Add, DropDownList,  % "xp+160 yp-2 w45 center vAutoBuilRoboticsFacilityGroup Choose" (AutoBuilRoboticsFacilityGroup = 0 ? 10 : AutoBuilRoboticsFacilityGroup), 1|2|3|4|5|6||7|8|9|0
+		Gui, Add, DropDownList,  % "xp+160 yp-2 w45 center vAutoBuildRoboticsFacilityGroup Choose" (AutoBuildRoboticsFacilityGroup = 0 ? 10 : AutoBuildRoboticsFacilityGroup), 1|2|3|4|5|6||7|8|9|0
 	
 		Gui, Add, Text, xs yp+60, Hatchery Group:
 		Gui, Add, DropDownList,  % "xp+160 yp-2 w45 center vAutoBuildHatcheryGroup Choose" (AutoBuildHatcheryGroup = 0 ? 10 : AutoBuildHatcheryGroup), 1|2|3|4||5|6|7|8|9|0
@@ -4041,6 +4053,10 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		Gui, Add, Text, xs, Zerg Storage:
 		Gui, Add, DropDownList,  % "xp+90 yp-2 w45 center vAutomationZergCtrlGroup Choose" (AutomationZergCtrlGroup = 0 ? 10 : AutomationZergCtrlGroup), 1|2|3|4||5|6|7|8|9|0
 
+	Gui, Tab, ArmyGUI
+		Gui, Add, Checkbox, section x+15 y+25 vAutoBuildEnableGUIHotkey checked%AutoBuildEnableGUIHotkey%, In-game GUI:
+		Gui, Add, Edit, Readonly yp-2 xp+130 center w85 R1 vAutoBuildGUIkey gedit_hotkey, %AutoBuildGUIkey%
+		Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#AutoBuildGUIkey, Edit 
 
 	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vMiscAutomation_TAB, Select Army||Spread|Remove Units|Easy Select/Unload|Smart Geyser
 	Gui, Tab, Select Army
@@ -8233,7 +8249,10 @@ CreateHotkeys()
 	; could also do if, % "EasyUnload%LocalPlayerRac%"
 	;Hotkey, If, WinActive(GameIdentifier) && !isMenuOpen() && EasyUnload`%LocalPlayerRace`%Enable && time
 
+	autoBuild.createHotkeys(aLocalPlayer.race) ; **This function has a "Hotkey, If"!! But it falls into the below firing condition
 	Hotkey, If, WinActive(GameIdentifier) && isPlaying && !isMenuOpen()
+		if AutoBuildEnableGUIHotkey
+			hotkey, %AutoBuildGUIkey%, AutoBuildGUIkeyPress, on
 		if (InjectTimerAdvancedEnable && aLocalPlayer["Race"] = "Zerg")
 		{	
 			hotkey,  ~^%InjectTimerAdvancedLarvaKey%, g_InjectTimerAdvanced, on
@@ -8355,7 +8374,9 @@ disableAllHotkeys()
 		try	hotkey, %inject_start_key%, off
 		try	hotkey, %inject_reset_key%, off	
 
-	Hotkey, If, WinActive(GameIdentifier) && isPlaying && !isMenuOpen()	
+	autoBuild.disableHotkeys() ; **This function has a "Hotkey, If"!! But it falls into the below firing condition
+	Hotkey, If, WinActive(GameIdentifier) && isPlaying && !isMenuOpen()
+		try hotkey, %AutoBuildGUIkey%, off
 		try hotkey,  ~^%InjectTimerAdvancedLarvaKey%, off
 		try hotkey,  ~+%InjectTimerAdvancedLarvaKey%, off
 		try hotkey, ~^+%InjectTimerAdvancedLarvaKey%, off
@@ -11854,281 +11875,7 @@ unloadAllTransports(hotkeySuffix)
 
 
 
-/*
-hover on each icon 
-click each icon 
-feedback on which Icon was clicked
-set a new line of icons
-allow icons to be moved up or down
-*/
-autoProductionGUIEventHandler(wParam, lParam, msg, hwnd)
-{
-;	static object
-	if object := testDraw.hwndLookup[hwnd]
-	{
-		if (msg = 0x200 && !object.isTracking)    ; WM_MOUSEMOVE
-			object.isTracking := object.setMouseLeaveTracking()
-		if msg = 0x2A3 ; WM_MOUSELEAVE
-			object.refresh() ; redraw to remove background/hover highlight			
-		else object.refresh(lParam & 0xFFFF, lParam >> 16, msg)
-		;if msg = 0x200
-		;	settimer, __autoProductionGUIHoverTimer, 50
-	}
-	return 
 
-	; Not currently used
-	__autoProductionGUIHoverTimer:
-	CoordMode, Mouse, Screen
-	MouseGetPos, x, y
-	if !object.collisionCheck(x, y, True)
-	{
-		object.refresh()
-		object := "" ; free the reference, allowing AHK to delete the object if required
-		settimer,, Off
-	}
-	return 
-}
-
-class testDraw
-{
-	__new(overlay, x, y, w, h)
-	{
-		Gui, %overlay%: -Caption Hwndhwnd -E0x20 +E0x8080000 +LastFound +ToolWindow +AlwaysOnTop
-		; need to remove E0x8000000 to make it move while being dragged
-		Gui, %overlay%: Show, NA X%x% Y%y% W%w% H%h%, % overlay
-		this.base.hwndLookup[hwnd] := this
-		OnMessage(0x201, "autoProductionGUIEventHandler")
-		OnMessage(0x200, "autoProductionGUIEventHandler") ; need to make clickable to work i.e. -E0x20
-		OnMessage(0x2A3, "autoProductionGUIEventHandler") ; WM_MOUSELEAVE
-		this.Overlay := overlay
-		this.hwnd := hwnd
-		this.wWindow := w, this.hWindow := h, this.xWindow := x, this.yWindow := y		
-		this.Items := []
-		this.lineStats["y"] := 0, this.lineStats["x"] := 0
-		this.line := 0
-		this.pBitmapTick := Gdip_CreateBitmapFromFile("tick.png")
-		this.pPauseGreen := Gdip_CreateBitmapFromFile("pauseGreen.png")
-		this.fillLocalRace()
-		this.Refresh()
-		return this
-	}
-	; Posts a WM_MOUSELEAVE when mouse leaves and removes the tracker.
-	; Since this msg is posted immediately if mouse is outside of GUI
-	; Need to wait until mouse in inGUI before calling it. And recall it on entering.
-	; Used to remove the highlight from the last hovered item when the mouse leaves the GUI
-	setMouseLeaveTracking()
-	{
-		VarSetCapacity(v, 16, 0)
-		NumPut(16, v, 0, "UInt") 			; cbSize
-		NumPut(0x00000003, v, 4, "UInt") 	; dwFlags (TME_LEAVE)
-		NumPut(this.hwnd, v, 8, "UInt") 	; HWND
-		NumPut(0, v, 12, "UInt") 			; dwHoverTime (ignored)	
-		DllCall("TrackMouseEvent", "Ptr", &v) ; Non-zero on success
-	}
-	fillLocalRace()
-	{
-		if aLocalPlayer.Race = "Terran"
-			this.fillTerran()
-		else if aLocalPlayer.Race = "Protoss"
-			this.fillProtoss()
-		else if aLocalPlayer.Race = "Zerg"
-			this.fillZerg()
-	}
-	fillTerran()
-	{
-		this.addItems("SCV")
-		this.pushItemRight(3)
-		this.addItems("pauseButton")
-		this.pushDownLine()
-		this.addItems("marine", "marauder", "reaper", "ghost")
-		this.pushDownLine()
-		this.addItems("hellion", "siegetank", "thor", "hellbat", "widowMine")
-		this.pushDownLine()
-		this.addItems("vikingfighter", "medivac", "banshee", "raven", "battlecruiser")
-	}
-	fillProtoss()
-	{
-		this.addItems("Probe")
-		this.pushItemRight(3)
-		this.addItems("pauseButton")
-		this.pushDownLine()
-		this.addItems("zealot", "sentry", "stalker")
-		this.pushDownLine()
-		this.addItems("hightemplar", "darktemplar")
-		this.pushDownLine()
-		this.addItems("phoenix", "oracle", "voidray", "tempest", "carrier")
-	}	
-	fillZerg()
-	{
-		this.addItems("Queen")
-		this.pushItemRight(3)
-		this.addItems("pauseButton")		
-	}
-	destroy()
-	{
-		try Gui, % this.Overlay ": Destroy"
-		this.base.hwndLookup.remove(this.hwnd, "") ; hwndLookup creates a circular reference - so can't have it in __delete() as it would prevent __delete() being called
-		Gdip_DisposeImage(this.pBitmapTick)
-		Gdip_DisposeImage(this.pPauseGreen)
-		return
-	}
-	pushDownLine(count := 1, offset := 0)
-	{
-		this.lineStats.y += count * (this.items[this.items.minIndex(), "Height"] + offset) ; Use minIndex so dont have to worry about pause icon sise
-		this.lineStats.x := 0
-	}
-	pushItemRight(count := 1, offset := 0)
-	{
-		this.lineStats.x += count * (this.items[this.items.minIndex(), "Width"] + offset)
-	}
-
-	addItems(names*)
-	{
-		for i, name in names 
-		{
-			if (name = "pauseButton")
-				pBitmap := this.pPauseGreen
-			else 
-				pBitmap := a_pBitmap[aUnitId[name]]
-			width := Gdip_GetImageWidth(pBitmap)
-			height := Gdip_GetImageHeight(pBitmap)
-			y := this.lineStats.y
-			x := this.lineStats.x
-			SourceWidth := Width := Gdip_GetImageWidth(pBitmap) 
-			SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
-			item := {	name: name
-					, 	pBitmap: pBitmap
-					, 	width: width *= 0.75
-					, 	height: Height *= 0.75
-					, 	SourceWidth: SourceWidth
-					, 	SourceHeight: SourceHeight
-					,	enabled: autoBuild.isUnitActive(name)
-					, 	x: x 
-					, 	y: y}
-			this.lineStats.x += width + 0
-			this.Items.Insert(item)
-		}
-	}
-	setCanvas(byRef hbm, byRef hdc, byRef G)
-	{
-		hbm := CreateDIBSection(this.wWindow, this.hWindow), hdc := CreateCompatibleDC(), obm := SelectObject(hdc, hbm)
-		, G := Gdip_GraphicsFromHDC(hdc), Gdip_SetInterpolationMode(G, 2), Gdip_SetSmoothingMode(G, 4)	
-	}
-	cleanup(byRef hbm, byRef hdc, byRef G)
-	{
-		Gdip_DeleteGraphics(G),	SelectObject(hdc, obm), DeleteObject(hbm), DeleteDC(hdc) 			
-	}
-	findBorderEdges(byRef x, byRef y)
-	{
-		x := this.Items.1.x, y := this.Items.1.y 
-		for i, item in this.Items
-		{
-			if item.x > x 
-				x := item.x
-			if item.y > y 
-				y := item.y	
-		}
-		x += this.Items.1.width, y += this.Items.1.height
-		return
-	}
-	drawTick(G, item)
-	{
-		grayScaleMatrix := "0.299|0.299|0.299|0|0|0.587|0.587|0.587|0|0|0.114|0.114|0.114|0|0|0|0|0|1|0|0|0|0|0|1"
-		x := item.x, y := item.y, w := item.width, h := item.height
-		Gdip_DrawImage(G, this.pBitmapTick
-			, x += w - width := .25 * (sourceWidth := Gdip_GetImageWidth(this.pBitmapTick))
-			, y += h - height := .25 * (sourceHeight := Gdip_GetImageHeight(this.pBitmapTick)) 	
-			, width, height, 0, 0, sourceWidth, sourceHeight, autoBuild.isPaused ? grayScaleMatrix : "")
-	}
-	drawPause(G, item)
-	{
-		
-		x := item.x, y := item.y, w := item.width, h := item.height
-		;objtree(item)
-		;msgbox
-		Gdip_DrawImage(G, this.pBitmap
-			, x += w - width := .25 * (sourceWidth := Gdip_GetImageWidth(this.pBitmap))
-			, y += h - height := .25 * (sourceHeight := Gdip_GetImageHeight(this.pBitmap)) 	
-			, width, height, 0, 0, sourceWidth, sourceHeight) ; autoBuild.isPaused ? redmatrix : "")		
-	}
-	drawItems(g, highlightedIndex := "")
-	{
-		redmatrix := "15|0|0|0|0|0|0|0|0|0|0|0|1|0|0|0|0|0|1|0|0|0|0|0|1"
-
-		pBrush := Gdip_BrushCreateSolid(0x78000000)
-		pBrushHighlight := Gdip_BrushCreateSolid(0x480066FF)
-		this.findBorderEdges(x2, y2)
-		Gdip_FillRoundedRectangle(G, pBrush, this.items.1.x, this.items.1.y, x2, y2, 2)
-		for i, item in this.Items
-		{
-			if (highlightedIndex = i)
-				Gdip_FillRoundedRectangle(G, pBrushHighlight, item.x, item.y, item.width, item.height, 2)
-			if item.name = "pauseButton"
-				Gdip_DrawImage(G, item.pBitmap, item.x, item.y, item.Width, item.Height, 0, 0, item.SourceWidth, item.SourceHeight, autoBuild.isPaused ? redmatrix : "")
-			else 
-			{
-				Gdip_DrawImage(G, item.pBitmap, item.x, item.y, item.Width, item.Height, 0, 0, item.SourceWidth, item.SourceHeight)
-				if item.enabled 
-					this.drawTick(G, item)	
-			}		
-		}
-		Gdip_DeleteBrush(pBrush), Gdip_DeleteBrush(pBrushHighlight)
-	}
-	refresh(x := "", y := "", msg := "")
-	{
-		this.setCanvas(hbm, hdc, G)
-		itemIndex := this.collisionCheck(x, y)
-		if (itemIndex && msg = 0x201)
-		{
-			if this.items[itemIndex, "name"] = "pauseButton"
-				autoBuild.pause()
-			else 
-			{
-				if this.items[itemIndex, "enabled"] := !this.items[itemIndex, "enabled"]
-					autoBuild.invokeUnits(this.items[itemIndex, "name"], False)
-				else autoBuild.disableUnits(this.items[itemIndex, "name"])
-			}
-			autoBuild.resetProfileState()
-		}
-		;if itemIndex
-		;	this.timer()
-		this.drawItems(G, itemIndex)
-		UpdateLayeredWindow(this.hwnd, hdc)
-		this.cleanup(hbm, hdc, G)	
-	}
-	timer()
-	{
-		static object 
-		object := this
-		settimer, ___thislabelme, 50
-		return 
-		; currently this timer won't support multiple derived objects
-		; but this shouldn't cause an issue unless the guis are stacked
-		; And i'm only every creating 1 gui from this.
-		___thislabelme:
-		CoordMode, Mouse, Screen
-		MouseGetPos, x, y
-		if !object.collisionCheck(x, y, True)
-		{
-			object.refresh()
-			object := "" ; free the reference, allowing AHK to delete the object if required
-			settimer,, Off
-		}
-		return
-	}
-	collisionCheck(x, y, offsetWindow := False)
-	{
-		if offsetWindow ; Dont need to offset window if onMessage x, y as theyre relative to top left of window
-			x -= this.xWindow, y -= this.yWindow
-		for i, item in this.items 
-		{ 
-			if item.x <= x && x <= item.x + item.width && item.y <= y && y <= item.y + item.height 
-				return i
-		}
-		return
-	}
-
-}
 
 ; Global Stim
 
@@ -12149,28 +11896,22 @@ return
 #if
 
 
-; *** Press F2 once to initialise auto build.
-; Then use the in-Game GUI (f1) to manipulate the production
-
-; Press F1 to show/hide the in-game GUI
-f1::
-if IsObject(vDraw)
-{
-	vDraw.destroy(), vDraw := ""
-	return
-}
-CreatepBitmaps(a_pBitmap, aUnitID, MatrixColour)
-global a_pBitmap
-vDraw := new testDraw("test", 1400, 150, 400, 400)
++f2::
+autoBuildGameGUI.unHideOverlay()
+autoBuildGameGUI.test()
+return 
+f9::
+autoBuildGameGUI.unHideOverlay()
 return 
 
+^f3::
+funkyvar := !funkyvar
+vDraw.setDrag(funkyvar)
+return 
 
-
-f2::
-autoBuild.setBuildObj()
-autoBuild.createHotkeys(aLocalPlayer.Race)
-return
-
+AutoBuildGUIkeyPress:
+autoBuildGameGUI.toggleOverlay()
+return 
 
 
 LaunchAutoBuildEditor:
@@ -12194,7 +11935,7 @@ return
 
 
 
-
+#Include, Included Files\class_AutoBuildGameGUI.ahk
 class autoBuild
 {
 	static oAutoBuild, oProfiles := []
@@ -12581,6 +12322,7 @@ class autoBuild
 						hasActiveUnits := this.disableUnits() ; disable all units
 					else this.disableUnits(profile.units)
 				}
+				this.updateInGameGUIUnitState()
 			}
 		}
 		return
@@ -12628,6 +12370,21 @@ class autoBuild
 		this.isPaused := False
 		settimer, autoBuildTimer, % this.timerFreq	
 		return
+	}
+	updateInGameGUIUnitState()
+	{
+		race := aLocalPlayer.Race 
+		for structureName, structure in this.oAutoBuild[race]
+		{
+			for unitName, unit in this.oAutoBuild[race, structureName].units 
+			{
+				if unit.autoBuild
+					list .= unitName ","
+			}
+		}
+		list := SubStr(list, 1, -1)
+		autoBuildGameGUI.setItemState(list) ; pass a Comma list of enabled units
+		return 
 	}
 	disableUnits(units := "")
 	{
@@ -12782,7 +12539,7 @@ class autoBuild
 			Queen 			|0 			|150 		|0 			|2 			|SpawningPool		|Queen 		 					|Lair
 			Queen 			|0 			|150 		|0 			|2 			|SpawningPool		|Queen 		 					|Hive
 		)"
-		global AutoBuildBarracksGroup, AutoBuildFactoryGroup, AutoBuildStarportGroup, AutoBuildGatewayGroup, AutoBuildStargateGroup, AutoBuilRoboticsFacilityGroup, AutoBuildHatcheryGroup, AutoBuildLairGroup, AutoBuildHiveGroup
+		global AutoBuildBarracksGroup, AutoBuildFactoryGroup, AutoBuildStarportGroup, AutoBuildGatewayGroup, AutoBuildStargateGroup, AutoBuildRoboticsFacilityGroup, AutoBuildHatcheryGroup, AutoBuildLairGroup, AutoBuildHiveGroup
 		; Use am ordered array, so that build structures are looped in the listed order - not by alphabetical order
 		; Ensure the order of the structures in the table above corresponds to the order in the selection panel (when they are in the same group)
 		; i.e. rax, factory, starport 
@@ -12808,7 +12565,8 @@ class autoBuild
 				}
 				obj[a.8, "Units", a.1] := []
 				;  [barracks, unitType]
-				obj[a.8, "Units", a.1, "buildKey"] := SC2Keys.key(a.7) ; Need to update this once SC loads
+				;obj[a.8, "Units", a.1, "buildKey"] := SC2Keys.key(a.7) ; Need to update this once SC loads
+				obj[a.8, "Units", a.1, "buildKeyLookup"] := a.7 ; Use a reference and get key from SC2Keys on demand
 				obj[a.8, "Units", a.1, "autoBuild"] := False
 				obj[a.8, "Units", a.1, "structureLookup"] := a.8
 				obj[a.8, "Units", a.1, "raceLookup"] := race
@@ -12833,7 +12591,7 @@ class autoBuild
 							supply
 							techlab 	; Unit requires a techlab
 							structure 	; A required structure to build unit i.e. ghost academy already converted to unitID
-						buildKey
+						buildKeyLookup  ; Reference name for the sc2keys() production key
 					reaper.... 			; []
 			Factory......  				; []
 		Protoss
@@ -12861,6 +12619,8 @@ class autoBuild
 	}
 	canPerformBuild(loops := 36)
 	{ 	global automationAPMThreshold
+		if isGamePaused() || isMenuOpen()
+			return False
 		While isUserBusyBuilding() || isCastingReticleActive() 
 		|| GetKeyState("LButton", "P") || GetKeyState("RButton", "P")
 		|| getkeystate("Enter", "P") 
@@ -12874,6 +12634,8 @@ class autoBuild
 			sleep 1
 			Thread, Priority, 0	
 		}
+		if isGamePaused() || isMenuOpen()
+			return false
 		return True		
 	}
 
@@ -12894,7 +12656,7 @@ class autoBuild
 		}
 		return false
 	}
-	; Need to call this at the start of a game to update SC keys
+	; Need to call this at the start of a game to update structure Ctrl Groups in case they changed via GUI
 	setBuildObj()
 	{
 		this.oAutoBuild := this.getProductionObject()
@@ -12923,6 +12685,8 @@ class autoBuild
 		;objtree(buildObj)
 		; This is an ordered array, so iterates the structures in the order that they would occur in the selection panel. e.g. rax -> factory -> starport
 		; This will reduce number of tabs required and also don't have to worry about tabbing past the end (although thats easy to deal with anyway)
+		if isGamePaused() || isMenuOpen() ;chat is 0 when  menu is in focus
+			return ;as let the timer continue to check
 		for buildingName, item in buildObj
 		{
 			if item.autoBuild && (buildObj[buildingName].buildString := this.buildFromStructure(buildingName, item.group, item.units, race)) != ""
@@ -13026,7 +12790,7 @@ class autoBuild
 						&& this.howManyUnitsCanBeProduced(nonTechLabs, techLabs, obj[name].requires, 1) ; limit to 1 e.g. build 1 reaper, then build a marine on next loop  - repeat until done
 						{
 							builtSomething := True
-							sendString .= sRepeat(obj[name].buildKey, 1)
+							sendString .= sRepeat(SC2Keys.key(obj[name].buildKeyLookup), 1)
 						}
 					}
 				}
@@ -13315,7 +13079,7 @@ getHarvestersMiningGas(geyserStructureIndex, byref aFoundIndexes, byRef underCon
 			&& (command.targetIndex = geyserStructureIndex ; harvester heading towards the geyser in question
 				|| (aLocalPlayer.Slot = numgetUnitOwner(MemDump, command.targetIndex) ; this part checks if harvester is on the return trip from the geyser in question.
 					&& aTownHallLookup[aLocalPlayer.Race].hasKey(numgetUnitModelType(numgetUnitModelPointer(MemDump, command.targetIndex))) ; Target is a townhall i.e. harvester mining minerals or gas and is returning to town hall
-					&& isUnitNearUnit(aGeyserStructurePos, aTownHallPos := numGetUnitPositionXYZ(MemDump, command.targetIndex), 7.9) ; so town hall is next to refinery
+					&& isUnitNearUnit(aGeyserStructurePos, aTownHallPos := numGetUnitPositionXYZ(MemDump, command.targetIndex), 9) ; so town hall is next to refinery
 					&& isPointNearLineSegmentWithZcheck(aGeyserStructurePos, aTownHallPos, numGetUnitPositionXYZ(MemDump, unit), 1))) ; harvester is within 1 map unit of the straight line connecting the refinery to the townhall (this wont work if there is an obstruction and the worker has to move path around it)
 			{
 				; I could do a maxIndex() check on the commands - if harvester has another queued command after this then add it to the ignore list
