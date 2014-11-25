@@ -887,7 +887,7 @@ clock:
 		; I realise it would be a cleaner solution to call the function and pass some 'isUpdating' param
 		; but I don't feel like modifying anything and this works fine. Also have to consider
 		; when the program restarts during a match.
-		if !UpdateTimers ; 
+		if !UpdateTimers ; Game has ended
 		{
 			if aThreads.MiniMap.ahkReady()
 			{
@@ -896,10 +896,16 @@ clock:
 			}
 			if aThreads.Overlays.ahkReady()
 				aThreads.Overlays.ahkFunction("gameChange")
-			; Only destroy the GUI on game change
-			; The class deals with hell message SC focus loss and accounts for if the GUI hotkey is disabled (it hides the overlay)
-			autoBuildGameGUI.endGameDestroyOverlay() 
 		}	
+
+		; There is an issue due to shell hook trying to restore the overlay
+		; And this function being called in resposne to options GUI settings save/apply
+		; If the GUI was visible when leaving SC it will no longer be visible.
+		; Not sure of the best/reliable method to prevent this - but its a small issue, and it seems safer - as have to consider 
+		; The setBuildObj call which will run in the below else part
+		; If user alt tabs back in fast enough (before this function runs) they will see the overlay before it deleted
+		autoBuildGameGUI.endGameDestroyOverlay() 
+
 		inject_timer := TimeReadRacesSet := UpdateTimers := PrevWarning := WinNotActiveAtStart := ResumeWarnings := 0 ;ie so know inject timer is off
 		isPlaying := EnableAutoWorkerTerran := EnableAutoWorkerProtoss := False ; otherwise if they don't have start enabled they may need to press the hotkey twice to activate
 		getAllKeys.aCurrentHotkeys := "" ; Clear the object so next game start the class will retreive the keys again. Safer than solely relying on timer and file modify time

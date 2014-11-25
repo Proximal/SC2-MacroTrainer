@@ -123,11 +123,14 @@ class autoBuildGameGUI
 	unHideOverlay()
 	{
 		this.getGUIStatus()
+
 		if this.GUIExists && this.GUIHidden
 		{	
 			Gui, autoBuildGUI: Show, NA
 			return True
 		}
+		; Do not create it if it doesn't exist. This is called from Shell msg indirectly
+		return
 	}	
 	; Destroy the GUI and all items
 	endGameDestroyOverlay()
@@ -165,20 +168,25 @@ class autoBuildGameGUI
 		if enabled ; need to remove E0x8000000 to make it move while being dragged E0x8000000 prevents window activation when it is clicked, so restore it when dragging ends.
 		{
 			this.drag := True ; Keep track of drag via a variable so don't have to call getGUIStatus() indirectly on every wm_mousemove event
-			Gui, autoBuildGUI: -E0x8000000 -E0x20
+			this.interact(True)
+			Gui, autoBuildGUI: -E0x8000000
 		}
 		else 
 		{
 			this.drag := False
 			if AutoBuildEnableInteractGUIHotkey
-				Gui, autoBuildGUI: +E0x8000000 +E0x20 +LastFound
-			else Gui, autoBuildGUI: +E0x8000000 +LastFound
+				this.interact(False)
+			Gui, autoBuildGUI: +E0x8000000 +LastFound
 			WinGetPos, x, y
 			if (x != "" && y != "") ; These made blank if not found
 			{
 				IniWrite, % autoBuildOverlayX := x, %config_file%, Overlays, autoBuildOverlayX
 				IniWrite, % autoBuildOverlayY := y, %config_file%, Overlays, autoBuildOverlayY
-			}						
+			}
+			; When the entire background is disabled (minimap/overlays-->Background)
+			; Dragging the overlay can result a unit (at edge of grid) remaining highlighted when the mouse leaves
+			; Probably due to loss of tracking state. This fixes it
+			this.isTracking := False						
 		}
 	}
 
