@@ -6,7 +6,7 @@ set a new line of icons
 allow icons to be moved up or down
 */
 ; Remember this will catch (0x201, 0x203, 0x200, 0x2A3) msgbs from an AHK GUI in this main script
-autoBuildGUIEventHandler(wParam, lParam, msg, hwnd)
+mainThreadMessageHandler(wParam, lParam, msg, hwnd)
 {
 	if autoBuildGameGUI.hwnd = hwnd
 	{
@@ -25,6 +25,8 @@ autoBuildGUIEventHandler(wParam, lParam, msg, hwnd)
 		else autoBuildGameGUI.refresh(lParam & 0xFFFF, lParam >> 16, msg)
 		return 1
 	}
+	else if msg = 0x200
+		OptionsGUITooltips()
 	return 
 
 
@@ -73,10 +75,10 @@ class autoBuildGameGUI
 		this.lineStats["y"] := 0, this.lineStats["x"] := 0
 		this.line := 0
 		this.isTracking := False
-		OnMessage(0x201, "autoBuildGUIEventHandler") ; WM_LBUTTONDOWN
-		OnMessage(0x203, "autoBuildGUIEventHandler") ; WM_LBUTTONDBLCLK required to catch second left click if they occur quickly
-		OnMessage(0x200, "autoBuildGUIEventHandler") ; WM_MOUSEMOVE need to make clickable to work i.e. -E0x20
-		OnMessage(0x2A3, "autoBuildGUIEventHandler") ; WM_MOUSELEAVE
+		OnMessage(0x201, "mainThreadMessageHandler") ; WM_LBUTTONDOWN
+		OnMessage(0x203, "mainThreadMessageHandler") ; WM_LBUTTONDBLCLK required to catch second left click if they occur quickly
+		OnMessage(0x200, "mainThreadMessageHandler") ; WM_MOUSEMOVE need to make clickable to work i.e. -E0x20
+		OnMessage(0x2A3, "mainThreadMessageHandler") ; WM_MOUSELEAVE
 		this.fillLocalRace()
 		this.Refresh()
 	}

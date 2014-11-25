@@ -5095,7 +5095,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 
 		Report_Email_TT := "Required if you are looking for a response"
 	}
-	OnMessage(0x200, "WM_MOUSEMOVE")
+	OnMessage(0x200, "mainThreadMessageHandler")
 	Gosub, G_GuiSetupDrawMiniMapDisable ; Disable controls based on current drawing settings
 	GuI, Options:Show, w615 h505, V%ProgramVersion% Settings
 }
@@ -6361,7 +6361,7 @@ Gui, Add, Button, xp-200 yp vB_ALert_Save gB_ALert_Save w100 h50, Save Changes
 
 Gui, Show, w490 h455, Alert List Editor  ; Show the window and its TreeView.
 
-OnMessage(0x200, "WM_MOUSEMOVE")
+OnMessage(0x200, "mainThreadMessageHandler")
 
 	Edit_Name_TT := "This text is read aload during the warning"
 	Edit_DWB_TT := TT_Edit_DWB_TT := "If the unit/building exists before this time, no warning will be made - this is helpful for creating multiple warnings for the same unit"
@@ -6545,7 +6545,7 @@ TV_CountP()
 	Return Count_Item
 }
 
-WM_MOUSEMOVE()
+OptionsGUITooltips()
 {
 	static CurrControl, PrevControl, _TT  ; _TT is kept blank for use by the ToolTip command below.
 
