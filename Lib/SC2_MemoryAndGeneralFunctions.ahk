@@ -4010,6 +4010,8 @@ readConfigFile()
 	IniRead, AutoBuildEnableGUIHotkey, %config_file%, %section%, AutoBuildEnableGUIHotkey, 4
 	IniRead, AutoBuildEnableGUIHotkey, %config_file%, %section%, AutoBuildEnableGUIHotkey, 0
 	IniRead, AutoBuildGUIkey, %config_file%, %section%, AutoBuildGUIkey, F9
+	IniRead, AutoBuildEnableInteractGUIHotkey, %config_file%, %section%, AutoBuildEnableInteractGUIHotkey, 0
+	IniRead, AutoBuildInteractGUIKey, %config_file%, %section%, AutoBuildInteractGUIKey, F11
 
 	section := "AutomationCommon"
 	IniRead, automationAPMThreshold, %config_file%, %section%, automationAPMThreshold, 200

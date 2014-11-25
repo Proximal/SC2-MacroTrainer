@@ -2605,8 +2605,10 @@ ini_settings_write:
 	IniWrite, %AutoBuildHiveGroup%, %config_file%, %section%, AutoBuildHiveGroup
 	IniWrite, %AutoBuildEnableGUIHotkey%, %config_file%, %section%, AutoBuildEnableGUIHotkey
 	IniWrite, %AutoBuildGUIkey%, %config_file%, %section%, AutoBuildGUIkey
+	IniWrite, %AutoBuildEnableInteractGUIHotkey%, %config_file%, %section%, AutoBuildEnableInteractGUIHotkey
+	IniWrite, %AutoBuildInteractGUIKey%, %config_file%, %section%, AutoBuildInteractGUIKey
 
-	
+
 	section := "AutomationCommon"
 	IniWrite, %automationAPMThreshold%, %config_file%, %section%, automationAPMThreshold
 	IniWrite, %AutomationTerranCtrlGroup%, %config_file%, %section%, AutomationTerranCtrlGroup
@@ -4057,6 +4059,11 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		Gui, Add, Checkbox, section x+15 y+25 vAutoBuildEnableGUIHotkey checked%AutoBuildEnableGUIHotkey%, In-game GUI:
 		Gui, Add, Edit, Readonly yp-2 xp+130 center w85 R1 vAutoBuildGUIkey gedit_hotkey, %AutoBuildGUIkey%
 		Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#AutoBuildGUIkey, Edit 
+		
+		Gui, Add, Checkbox, section xs y+15 vAutoBuildEnableInteractGUIHotkey checked%AutoBuildEnableInteractGUIHotkey%, Interact Key
+		Gui, Add, Edit, Readonly yp-2 xp+130 center w85 R1 vAutoBuildInteractGUIKey gedit_hotkey, %AutoBuildInteractGUIKey%
+		Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#AutoBuildInteractGUIKey, Edit 
+
 
 	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vMiscAutomation_TAB, Select Army||Spread|Remove Units|Easy Select/Unload|Smart Geyser
 	Gui, Tab, Select Army
@@ -8253,6 +8260,9 @@ CreateHotkeys()
 	Hotkey, If, WinActive(GameIdentifier) && isPlaying && !isMenuOpen()
 		if AutoBuildEnableGUIHotkey
 			hotkey, %AutoBuildGUIkey%, AutoBuildGUIkeyPress, on
+		if AutoBuildEnableInteractGUIHotkey
+			hotkey, %AutoBuildInteractGUIKey%, AutoBuildGUIInteractkeyPress, on
+
 		if (InjectTimerAdvancedEnable && aLocalPlayer["Race"] = "Zerg")
 		{	
 			hotkey,  ~^%InjectTimerAdvancedLarvaKey%, g_InjectTimerAdvanced, on
@@ -8377,6 +8387,7 @@ disableAllHotkeys()
 	autoBuild.disableHotkeys() ; **This function has a "Hotkey, If"!! But it falls into the below firing condition
 	Hotkey, If, WinActive(GameIdentifier) && isPlaying && !isMenuOpen()
 		try hotkey, %AutoBuildGUIkey%, off
+		try hotkey, %AutoBuildInteractGUIKey%, off
 		try hotkey,  ~^%InjectTimerAdvancedLarvaKey%, off
 		try hotkey,  ~+%InjectTimerAdvancedLarvaKey%, off
 		try hotkey, ~^+%InjectTimerAdvancedLarvaKey%, off
@@ -11896,23 +11907,18 @@ return
 #if
 
 
-+f2::
-autoBuildGameGUI.unHideOverlay()
-autoBuildGameGUI.test()
-return 
-f9::
-autoBuildGameGUI.unHideOverlay()
-return 
-
-^f3::
-funkyvar := !funkyvar
-vDraw.setDrag(funkyvar)
-return 
+; +E0x20 - cant interact
 
 AutoBuildGUIkeyPress:
 autoBuildGameGUI.toggleOverlay()
 return 
 
+
+AutoBuildGUIInteractkeyPress:
+autoBuildGameGUI.interact(true)
+KeyWait, % gethotkeySuffix(A_ThisHotkey), T30
+autoBuildGameGUI.interact(false)
+return 
 
 LaunchAutoBuildEditor:
 autoBuild.optionsGUI()

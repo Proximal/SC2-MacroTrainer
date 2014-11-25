@@ -5,6 +5,7 @@ feedback on which Icon was clicked
 set a new line of icons
 allow icons to be moved up or down
 */
+; Remember this will catch (0x201, 0x203, 0x200, 0x2A3) msgbs from an AHK GUI in this main script
 autoBuildGUIEventHandler(wParam, lParam, msg, hwnd)
 {
 	if autoBuildGameGUI.hwnd = hwnd
@@ -22,12 +23,13 @@ autoBuildGUIEventHandler(wParam, lParam, msg, hwnd)
 		else if (msg = 0x201 && autoBuildGameGUI.drag)
 			PostMessage, 0xA1, 2 ;WM_NCLBUTTONDOWN	
 		else autoBuildGameGUI.refresh(lParam & 0xFFFF, lParam >> 16, msg)
+		return 1
 	}
 	return 
+
+
 }
-
-
-
+ 
 ; This was initially a class which returned a draw object.
 ; Now it's just going to be a class which is directly called
 
@@ -57,9 +59,12 @@ class autoBuildGameGUI
 	}	
 	createOverlay()
 	{
-		global autoBuildOverlayX, autoBuildOverlayY 
+		global autoBuildOverlayX, autoBuildOverlayY, AutoBuildEnableInteractGUIHotkey 
 		this.endGameDestroy()
-		Gui, autoBuildGUI: -Caption Hwndhwnd -E0x20 +E0x8080000 +LastFound +ToolWindow +AlwaysOnTop
+		if AutoBuildEnableInteractGUIHotkey
+			Gui, autoBuildGUI: -Caption Hwndhwnd +E0x20 +E0x8080000 +LastFound +ToolWindow +AlwaysOnTop
+		else
+			Gui, autoBuildGUI: -Caption Hwndhwnd -E0x20 +E0x8080000 +LastFound +ToolWindow +AlwaysOnTop
 		;Gui, %overlay%: -Caption Hwndhwnd -E0x20  +E0x80000 +LastFound +ToolWindow +AlwaysOnTop
 		; need to remove E0x8000000 to make it move while being dragged
 		Gui, autoBuildGUI: Show, NA X%autoBuildOverlayX% Y%autoBuildOverlayY% W400 H400, % this.OverlayTitle
@@ -74,6 +79,13 @@ class autoBuildGameGUI
 		OnMessage(0x2A3, "autoBuildGUIEventHandler") ; WM_MOUSELEAVE
 		this.fillLocalRace()
 		this.Refresh()
+	}
+	interact(enable)
+	{
+		;Gui, % "autoBuildGUI: " (enable ? "-" : "+") "E0x20"
+		if enable
+			Gui, autoBuildGUI: -E0x20
+		else Gui, autoBuildGUI: +E0x20
 	}
 	hideOverlay()
 	{
@@ -125,6 +137,8 @@ class autoBuildGameGUI
 			this.GUIExists := True
 			WinGet, style, style
 			this.GUIHidden := !(0x10000000 & style)
+			WinGet, ExStyle, ExStyle
+			this.WS_EX_TRANSPARENT := (0x20 & ExStyle)
 		 }
 		 else 
 		 {
@@ -135,20 +149,21 @@ class autoBuildGameGUI
 
 	setDrag(enabled := False)
 	{
-		global autoBuildOverlayX, autoBuildOverlayY
+		global autoBuildOverlayX, autoBuildOverlayY, AutoBuildEnableInteractGUIHotkey
 		this.getGUIStatus()
 		if !this.GUIExists
 			return
 		if enabled ; need to remove E0x8000000 to make it move while being dragged E0x8000000 prevents window activation when it is clicked, so restore it when dragging ends.
 		{
 			this.drag := True ; Keep track of drag via a variable so don't have to call getGUIStatus() indirectly on every wm_mousemove event
-			Gui, autoBuildGUI: -E0x8000000
-
+			Gui, autoBuildGUI: -E0x8000000 -E0x20
 		}
 		else 
 		{
 			this.drag := False
-			Gui, autoBuildGUI: +E0x8000000 +LastFound
+			if AutoBuildEnableInteractGUIHotkey
+				Gui, autoBuildGUI: +E0x8000000 +E0x20 +LastFound
+			else Gui, autoBuildGUI: +E0x8000000 +LastFound
 			WinGetPos, x, y
 			if (x != "" && y != "") ; These made blank if not found
 			{
