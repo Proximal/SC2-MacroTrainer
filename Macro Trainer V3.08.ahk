@@ -11923,13 +11923,11 @@ else send {tab %tabsToSend%}t+{tab %tabsToSend%}
 return
 #if
 
-
-; +E0x20 - cant interact
-
 AutoBuildGUIkeyPress:
 if (AutoBuildGUIkeyMode = "KeyDown")
 {
 	autoBuildGameGUI.showOverlay()
+	autoBuildGameGUI.Refresh() ; If mouse isn't over GUI, this will ensure any previously highlighted unit is unhighlighted
 	KeyWait, % gethotkeySuffix(A_ThisHotkey), T30
 	autoBuildGameGUI.hideOverlay()
 }
