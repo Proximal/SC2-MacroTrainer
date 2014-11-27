@@ -4008,6 +4008,9 @@ readConfigFile()
 	IniRead, AutoBuildHatcheryGroup, %config_file%, %section%, AutoBuildHatcheryGroup, 4
 	IniRead, AutoBuildLairGroup, %config_file%, %section%, AutoBuildLairGroup, 4
 	IniRead, AutoBuildHiveGroup, %config_file%, %section%, AutoBuildHiveGroup, 4
+	IniRead, autoBuildMinFreeMinerals, %config_file%, %section%, autoBuildMinFreeMinerals, 150
+	IniRead, autoBuildMinFreeGas, %config_file%, %section%, autoBuildMinFreeGas, 50
+	IniRead, autoBuildMinFreeSupply, %config_file%, %section%, autoBuildMinFreeSupply, 0	
 	IniRead, AutoBuildEnableGUIHotkey, %config_file%, %section%, AutoBuildEnableGUIHotkey, 4
 	IniRead, AutoBuildEnableGUIHotkey, %config_file%, %section%, AutoBuildEnableGUIHotkey, 0
 	IniRead, AutoBuildGUIkey, %config_file%, %section%, AutoBuildGUIkey, F9

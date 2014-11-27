@@ -2609,6 +2609,9 @@ ini_settings_write:
 	IniWrite, %AutoBuildHatcheryGroup%, %config_file%, %section%, AutoBuildHatcheryGroup
 	IniWrite, %AutoBuildLairGroup%, %config_file%, %section%, AutoBuildLairGroup
 	IniWrite, %AutoBuildHiveGroup%, %config_file%, %section%, AutoBuildHiveGroup
+	IniWrite, %autoBuildMinFreeMinerals%, %config_file%, %section%, autoBuildMinFreeMinerals
+	IniWrite, %autoBuildMinFreeGas%, %config_file%, %section%, autoBuildMinFreeGas
+	IniWrite, %autoBuildMinFreeSupply%, %config_file%, %section%, autoBuildMinFreeSupply
 	IniWrite, %AutoBuildEnableGUIHotkey%, %config_file%, %section%, AutoBuildEnableGUIHotkey
 	IniWrite, %AutoBuildGUIkey%, %config_file%, %section%, AutoBuildGUIkey
 	IniWrite, %AutoBuildGUIkeyMode%, %config_file%, %section%, AutoBuildGUIkeyMode	
@@ -4053,7 +4056,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		Gui, Add, Text, xs, Hive Group:
 		Gui, Add, DropDownList,  % "xp+160 yp-2 w45 center vAutoBuildHiveGroup Choose" (AutoBuildHiveGroup = 0 ? 10 : AutoBuildHiveGroup), 1|2|3|4||5|6|7|8|9|0
 
-		Gui, Add, Text, xs y+15 w85, APM Delay:
+		Gui, Add, Text, xs section y+15 w85, APM Delay:
 			Gui, Add, Edit, Number Right x+4 yp-2 w50 vTT_automationAPMThreshold
 					Gui, Add, UpDown,  Range0-100000 vAutomationAPMThreshold, %automationAPMThreshold%	
 
@@ -4064,10 +4067,21 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		Gui, Add, Text, xs, Zerg Storage:
 		Gui, Add, DropDownList,  % "xp+90 yp-2 w45 center vAutomationZergCtrlGroup Choose" (AutomationZergCtrlGroup = 0 ? 10 : AutomationZergCtrlGroup), 1|2|3|4||5|6|7|8|9|0
 
+		Gui, Add, Text, xs+250 ys, Minerals:
+			Gui, Add, Edit, Number Right xp+60 yp-2 w50 vTT_autoBuildMinFreeMinerals
+					Gui, Add, UpDown,  Range0-3000 vAutoBuildMinFreeMinerals, %autoBuildMinFreeMinerals%	
+		Gui, Add, Text, xs+250 y+10, Gas:
+			Gui, Add, Edit, Number Right xp+60 yp-2 w50 vTT_autoBuildMinFreeGas
+					Gui, Add, UpDown,  Range0-3000 vAutoBuildMinFreeGas, %autoBuildMinFreeGas%	
+		Gui, Add, Text, xs+250 y+10, Supply:
+			Gui, Add, Edit, Number Right xp+60 yp-2 w50 vTT_autoBuildMinFreeSupply
+					Gui, Add, UpDown,  Range0-20 vAutoBuildMinFreeSupply, %autoBuildMinFreeSupply%	
+
+
 	Gui, Tab, ArmyGUI
 		
 		Gui, Add, Text, section x+15 y+25, Hotkey Mode:
-		Gui, Add, DropDownList, yp-2 xp+130 vAutoBuildGUIkeyMode, Toggle||KeyDown
+		Gui, Add, DropDownList, yp-2 xp+130 vAutoBuildGUIkeyMode gAutoBuildOptionsMenuHotkeyModeCheck, Toggle||KeyDown
 		GuiControl, ChooseString, AutoBuildGUIkeyMode, %AutoBuildGUIkeyMode%		
 
 		Gui, Add, Checkbox, xs vAutoBuildEnableGUIHotkey checked%AutoBuildEnableGUIHotkey%, In-game GUI:
@@ -4078,8 +4092,10 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		Gui, Add, Edit, Readonly yp-2 xp+130 center w85 R1 vAutoBuildInteractGUIKey gedit_hotkey, %AutoBuildInteractGUIKey%
 		Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#AutoBuildInteractGUIKey, Edit 
 
-		Gui, add, text, xs y+25 w40, Inactive Opacity:
+		Gui, add, text, xs y+25 w40 vInactiveOpacticyTextAssociatedVariable, Inactive Opacity:
 			Gui, Add, Slider, NoTicks w210 x+10 yp vAutoBuildInactiveOpacity range30-255, %AutoBuildInactiveOpacity%
+		
+		gosub, AutoBuildOptionsMenuHotkeyModeCheck
 
 	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vMiscAutomation_TAB, Select Army||Spread|Remove Units|Easy Select/Unload|Smart Geyser
 	Gui, Tab, Select Army
@@ -4292,7 +4308,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 
 	Gui, Tab, Smart Geyser
 		Gui, Add, Checkbox, x+50 y+30 vSmartGeyserEnable checked%smartGeyserEnable%, Enable Smart Geyser 
-		Gui, Add, Checkbox, xp y+10 vSmartGeyserReturnCargo disabled checked%smartGeyserReturnCargo%, Return Cargo
+		Gui, Add, Checkbox, xp y+10 vSmartGeyserReturnCargo checked%smartGeyserReturnCargo%, Return Cargo
 		Gui, Add, text, xp y+10, Storage Ctrl Group:
 	 	Gui, Add, DropDownList,  % "x+15 yp-2 w45 Center vSmartGeyserCtrlGroup Choose" (smartGeyserCtrlGroup = 0 ? 10 : smartGeyserCtrlGroup), 1|2|3|4|5|6|7|8|9||0
 
@@ -5181,6 +5197,15 @@ for i, controlID in ["BackspaceGroupBoxID", "BackspaceDragTextID", "Drag_origin"
 }
 return 
 
+AutoBuildOptionsMenuHotkeyModeCheck:
+GuiControlGet, g1,, AutoBuildGUIkeyMode
+if (g1 := g1 = "KeyDown")
+	GuiControl,, AutoBuildEnableInteractGUIHotkey, 0 ; Uncheck it if keyDown
+GuiControl, Disable%g1%, AutoBuildEnableInteractGUIHotkey
+GuiControl, Disable%g1%, #AutoBuildInteractGUIKey
+GuiControl, Disable%g1%, AutoBuildInactiveOpacity
+GuiControl, Disable%g1%, InactiveOpacticyTextAssociatedVariable
+return 
 
 GUIControlGroupCheckInjects:
 GuiControlGet, g1,, Inject_control_group
@@ -12630,9 +12655,12 @@ class autoBuild
 
 	setCurrentResources()
 	{
-		this.CurrentMinerals := getPlayerMinerals()
-		this.CurrentGas  := getPlayerGas()
-		this.FreeSupply := getPlayerFreeSupply()	
+		global autoBuildMinFreeMinerals, autoBuildMinFreeGas, autoBuildMinFreeSupply
+		; Subtract these values so that after a build event user is left with a minimum of 
+		; the specified values
+		this.CurrentMinerals := getPlayerMinerals() - autoBuildMinFreeMinerals
+		this.CurrentGas  := getPlayerGas() - autoBuildMinFreeGas
+		this.FreeSupply := getPlayerFreeSupply() - autoBuildMinFreeSupply
 	}
 	copyLocalUnits()
 	{
@@ -12801,7 +12829,8 @@ class autoBuild
 		{	
 			if !this.getEnabledUnits(obj, aTechLabUnits, aNonTechLabUnits)
 				return
-			;msgbox % nonTechLabs " | " techLabs
+			; Currently If marine+marauder is enabled and player only has rax with techlabs, only rauders are made.
+			; Could probably add a check here to deal with this - e.g. cmp rax count with tech lab / non-techlab and the type of units to be made
 			; For non-terran races aTechLabUnits is empty and techLabs is 0. nonTechLabs will = count of structures with no units (or nearly complete) units in production
 			loop, 2 
 			{
@@ -13212,6 +13241,8 @@ SmartGeyserControlGroup(geyserStructureIndex)
 	}
 
 	input.pClick(,, "Right") ; click the geyser
+	if smartGeyserReturnCargo
+		input.psend(SC2Keys.key("ReturnCargo"))
 	; input.pSend("c") return Cargo
 	if aSentToGeyser.MaxIndex()
 	{
@@ -13254,3 +13285,4 @@ getPortraitsFromIndexes(aIndexLookUp, byRef oSelection := "", isReversed := Fals
 
 
 
+;f1::msgbox % gameToRealSeconds(10) ; 14.5
