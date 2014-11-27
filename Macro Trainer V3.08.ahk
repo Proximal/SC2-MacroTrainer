@@ -7410,7 +7410,7 @@ autoWorkerProductionCheck()
 	, AutoWorkerAPMProtection, AutoWorkerQueueSupplyBlock, AutoWorkerAlwaysGroup, AutoWorkerWarnMaxWorkers, MT_CurrentGame, aUnitTargetFilter
 	, EnableAutoWorkerTerran, EnableAutoWorkerProtoss
 	
-	static TickCountRandomSet := 0, randPercent,  UninterruptedWorkersMade, waitForOribtal := 0
+	static TickCountRandomSet := 0, randPercent,  UninterruptedWorkersMade, waitForOribtal := 0, lastMadeWorkerTime := -50
 
 	if (aLocalPlayer["Race"] = "Terran") 
 	{
@@ -7462,7 +7462,11 @@ autoWorkerProductionCheck()
 	if !IsObject(MT_CurrentGame.TerranCCUnderConstructionList) ; because MT_CurrentGame gets cleared each game
 		MT_CurrentGame.TerranCCUnderConstructionList := []
 
-
+	time := getTime()
+	; Prevent queuing during small lag events
+	; Note that the hooks may still be installed removed, as lastMadeWorkerTime is only set when a worker is actually made.
+	if (Abs(time - lastMadeWorkerTime) < 1) 
+		return
 	; This will change the random percent every 12 seconds - otherwise
 	; 200ms timer kind of negates the +/- variance on the progress meter
 	if (A_TickCount - TickCountRandomSet > 12000) 
@@ -7470,7 +7474,7 @@ autoWorkerProductionCheck()
 		TickCountRandomSet := A_TickCount
 		randPercent := rand(-0.10, .20) ; rand(-0.04, .15) 
 	}
-	time := getTime()
+	
 	for index, object in oMainbaseControlGroup.units
 	{
 		if ( object.type = aUnitID["CommandCenter"] || object.type = aUnitID["OrbitalCommand"]
@@ -7496,7 +7500,7 @@ autoWorkerProductionCheck()
 					; this will prevent a recently converted orbital which is not near a geyser from making a working for 20 seconds
 					; giving time to lift it off and land it at the correct position
 					if (!nearGeyser && object.type = aUnitID["CommandCenter"] && aUnitID["OrbitalCommand"] = isCommandCenterMorphing(object.unitIndex))
-						MT_CurrentGame.TerranCCUnderConstructionList[object.unitIndex] := getTime()
+						MT_CurrentGame.TerranCCUnderConstructionList[object.unitIndex] := time
 
 					; This is used to prevent a worker being made at a CC which has been completed or obital which has just finished morphing 
 					; for less than 20 in game seconds or a just landed CC for 10 seconds
@@ -7532,7 +7536,7 @@ autoWorkerProductionCheck()
 				L_ActualBasesIndexesInBaseCtrlGroup .= "," object.unitIndex
 			}
 			else if (aLocalPlayer.race = "Terran")
-				MT_CurrentGame.TerranCCUnderConstructionList[object.unitIndex] := getTime()
+				MT_CurrentGame.TerranCCUnderConstructionList[object.unitIndex] := time
 		}
 		else if ( object.type = aUnitID["CommandCenterFlying"] || object.type = aUnitID["OrbitalCommandFlying"] )
 		{
@@ -7542,7 +7546,7 @@ autoWorkerProductionCheck()
 			{
 				if !IsObject(MT_CurrentGame.TerranCCJustLandedList) ; because MT_CurrentGame gets cleared each game
 					MT_CurrentGame.TerranCCJustLandedList := []
-				MT_CurrentGame.TerranCCJustLandedList[object.unitIndex] := getTime()
+				MT_CurrentGame.TerranCCJustLandedList[object.unitIndex] := time
 			}
 
 		}
@@ -7754,7 +7758,10 @@ autoWorkerProductionCheck()
 					for index, UnitIndex in MT_CurrentGame.CommandCenterPauseList
 					{
 						if (UnitIndex = oSelection.units[1].UnitIndex)
+						{
 							CommandCenterInList := True
+							break 
+						}
 					}
 				}
 				if !CommandCenterInList
@@ -7924,6 +7931,7 @@ autoWorkerProductionCheck()
 	;		UninterruptedWorkersMade++ ; keep track of how many workers are made in a row
 			SetTimer, g_autoWorkerProductionCheck, Off
 			SetTimer, resumeAutoWorker, -800
+			lastMadeWorkerTime := time
 			;Thread, Priority, -2147483648
 			;sleep, 800 	; this will prevent the timer running again otherwise sc2 slower to update 'isin production' 
 		}		 	; so will send another build event and queueing more workers
@@ -12000,7 +12008,7 @@ class autoBuild
 	, protossAutoBuildControls := "Zealot|Sentry|Stalker|HighTemplar|DarkTemplar|Phoenix|Oracle|VoidRay|Tempest|Carrier|Observer|WarpPrism|Immortal|Colossus"
 	, zergAutoBuildControls := "Queen"	
 	, oInvokedProfiles := []
-	, timerFreq := 7500
+	, timerFreq := 1500
 	, isPaused := False
 	optionsGUI() 
 	{
@@ -12440,9 +12448,9 @@ class autoBuild
 					list .= unitName ","
 			}
 		}
-		if (race = "Terran" && EnableAutoWorkerTerran)
+		if (EnableAutoWorkerTerran && race = "Terran")
 			list .= "SCV,"
-		else (race = "Protoss" && EnableAutoWorkerProtoss)
+		else (EnableAutoWorkerProtoss && race = "Protoss")
 			list .= "Probe,"
 		list := SubStr(list, 1, -1)
 		autoBuildGameGUI.enableItems(list) ; pass a Comma list of enabled units
@@ -12691,7 +12699,6 @@ class autoBuild
 		|| getkeystate("Enter", "P") 
 		|| getPlayerCurrentAPM() > automationAPMThreshold
 		||  A_mtTimeIdle < 50
-		||  !buildCheck.hasElapsed(2)
 		{
 			if (A_index > loops)
 				return False ; (actually could be 480 ms - sleep 1 usually = 20ms)
@@ -12730,9 +12737,16 @@ class autoBuild
 	build(race)
 	{
 		global AutoWorkerAPMProtection
+
+		if !buildCheck.hasTimeElapsed(2, 5) ; Check this before doing below, as its only going to get bigger with any delay (although its possible autoWorker could interrupt this thread and result in two build events close together)
+			return		
 		if !this.canPerformBuild()
 			return
-
+		; In case autoWorker interrupted the above function and made something
+		; However auto-worker doesn't currently set this value.
+		; Perhaps should set function specific values, otherwise they could delay each other by the full specified amounts
+		;if !buildCheck.hasTimeElapsed(2, 5) 
+		;	return				
 		this.setCurrentResources()
 		if this.FreeSupply <= 0
 			return
@@ -12766,9 +12780,9 @@ class autoBuild
 		critical, 1000
 		setLowLevelInputHooks(True)
 		buildCheck.set()
-		dsleep(30)
+		dsleep(20)
 		input.pReleaseKeys(True)
-		dSleep(20)	
+		dSleep(15)	
 		storageGroup := automationStorageGroup(aLocalPlayer.Race)
 		this.storeSelection(storageGroup, HighlightedGroup, selectionPage)
 		
@@ -12980,12 +12994,16 @@ class autoBuild
 
 	filledSlotCount(unitIndex, unitType)
 	{
-		getStructureProductionInfo(unitIndex, unitType, aItems, queueSize)
+		static TickCountRandomSet := 0, nearDone := .8
+
+		if (A_TickCount - TickCountRandomSet > 10000) 
+			TickCountRandomSet := A_TickCount, nearDone := rand(.75, .85) ; rand(-0.04, .15) 
+		getStructureProductionInfo(unitIndex, unitType, aItems, queueSize) ; Could consider using time remaining rather than % here
 		count := 0
 		queueSize -= aItems.MaxIndex()
 		for i, item in aItems
 		{
-			if item.progress < .8 || queueSize-- > 0
+			if item.progress < nearDone || queueSize-- > 0
 				count++
 		}
 		return count
@@ -13020,17 +13038,28 @@ class autoBuild
 
 class buildCheck
 {
-	static priorTime := -50 
+	static priorTimeGame := -50, priorTick := 0
 
-	hasElapsed(seconds := 3)
+	hasGameSecondsElapsed(seconds := 3)
 	{
-		return Abs(getTime() - this.priorTime) > seconds ; just check delta so dont have to worry about negatives
+		return Abs(getTime() - this.priorTimeGame) > seconds ; just check delta so dont have to worry about negatives
 	}
-	set(time := "")
+	hasRealSecondsElapsed(seconds := 3)
 	{
-		if time := ""
-			priorTime := getTime()
-		else priorTime := time
+		return (A_TickCount - this.priorTick)/1000 > seconds
+	}
+	hasTimeElapsed(gameTime, realTime) ; Both are in seconds. True if both times have elapsed
+	{
+		return this.hasGameSecondsElapsed(gameTime) && this.hasRealSecondsElapsed(realTime)
+	} 	
+	set(gameTime := "", tickCount := "")
+	{
+		if (time = "")
+			this.priorTimeGame := getTime()
+		else this.priorTimeGame := gameTime
+		if (tickCount = "")
+			this.priorTick := A_TickCount
+		else this.priorTick := tickCount
 		return
 	}
 }
@@ -13047,50 +13076,9 @@ automationStorageGroup(race)
 }
 
 
-
 DebugSCHotkeys:
 DebugSCHotkeys()
 return 
-
-
-DebugSCHotkeys()
-{
-	Gui, DebugSCHotkeys:New  ; destroy previous windows with same name
-	
-	process, exist, %GameExe%
-	If !errorlevel
-		isRunning := False 
-
-
-	SC2Keys.getHotkeyProfile(ignore1, ignore2)
-	Gui, Add, Edit, w570 r16 hwndHwndEdit readonly, % ""
-	 	.		"Account Folder:`n`n" 
-	 	.			 A_tab SC2Keys.debug.accountFolder "`n`n"
-		. 		"Variables:`n`n"
-		. 			A_Tab SC2Keys.debug.variablesFilePath "`n`n"
-		. 		"Profile:`n`n" 
-		.			A_Tab SC2Keys.debug.hotkeyProfile "`n`n"
-		. 		"Suffix:`n`n" 
-		.			A_Tab SC2Keys.debug.hotkeySuffix "`n"
-
-
-	Gui, Add, ListView, Grid -LV0x10 NoSortHdr +resize w570 r28, Name|Hotkey
-
-	for name, hotkey in SC2Keys.getAllKeys()
-		LV_Add("", name, hotkey)
-	loop, % LV_GetCount("Column")
-		LV_ModifyCol(A_Index, "AutoHdr") ; resize contents+header
-	Gui, Show,, StarCraft Hotkeys
-	selectText(HwndEdit, -1)
-	return 
-
-	DebugSCHotkeysGuiClose:
-	DebugSCHotkeysGuiEscape:
-	Gui Destroy
-	return 
-
-}
-
 
 
 g_SmartGeyserControlGroup:
