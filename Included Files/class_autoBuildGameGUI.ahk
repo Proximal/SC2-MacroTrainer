@@ -230,9 +230,14 @@ class autoBuildGameGUI
 			this.fillZerg()
 	}
 	fillTerran()
-	{
-		this.addItems("SCV")
-		this.pushItemRight(3)
+	{ 
+		global AutoBuildGUIAutoWorkerToggle
+		if AutoBuildGUIAutoWorkerToggle
+		{ 
+			this.addItems("SCV")
+			this.pushItemRight(3)
+		}
+		else this.pushItemRight(4, Gdip_GetImageWidth(a_pBitmap[aUnitID["SCV"]]) * .75) ; So the pause Icon is on the far right
 		this.addItems("pauseButton")
 		this.pushDownLine()
 		this.addItems("marine", "marauder", "reaper", "ghost")
@@ -243,8 +248,13 @@ class autoBuildGameGUI
 	}
 	fillProtoss()
 	{
-		this.addItems("Probe")
-		this.pushItemRight(3)
+		global AutoBuildGUIAutoWorkerToggle
+		if AutoBuildGUIAutoWorkerToggle
+		{ 
+			this.addItems("Probe")
+			this.pushItemRight(3)
+		}
+		else this.pushItemRight(4, Gdip_GetImageWidth(a_pBitmap[aUnitID["Probe"]]) * .75)
 		this.addItems("pauseButton")
 		this.pushDownLine()
 		this.addItems("zealot", "sentry", "stalker")
@@ -261,22 +271,29 @@ class autoBuildGameGUI
 	}
 	pushDownLine(count := 1, offset := 0)
 	{
-		this.lineStats.y += count * (this.items[this.items.minIndex(), "Height"] + offset) ; Use minIndex so dont have to worry about pause icon sise
+		this.lineStats.y += count * (round(this.items[this.items.minIndex(), "Height"]) + offset) ; Use minIndex so dont have to worry about pause icon sise
 		this.lineStats.x := 0
 	}
 	pushItemRight(count := 1, offset := 0)
 	{
-		this.lineStats.x += count * (this.items[this.items.minIndex(), "Width"] + offset)
+		this.lineStats.x += count * (round(this.items[this.items.minIndex(), "Width"]) + offset)
 	}
-
 	addItems(names*)
 	{
+		global EnableAutoWorkerTerran, EnableAutoWorkerProtoss
+		
 		for i, name in names 
 		{
 			if (name = "pauseButton")
 				pBitmap := a_pBitmap["GreenPause"]
 			else 
 				pBitmap := a_pBitmap[aUnitId[name]]
+			if (name = "SCV")
+				enabled := EnableAutoWorkerTerran
+			else if (name = "Probe")
+				enabled := EnableAutoWorkerProtoss
+			else enabled := autoBuild.isUnitActive(name)
+
 			width := Gdip_GetImageWidth(pBitmap)
 			height := Gdip_GetImageHeight(pBitmap)
 			y := this.lineStats.y
@@ -289,7 +306,7 @@ class autoBuildGameGUI
 					, 	height: Height *= 0.75
 					, 	SourceWidth: SourceWidth
 					, 	SourceHeight: SourceHeight
-					,	enabled: autoBuild.isUnitActive(name)
+					,	enabled: enabled
 					, 	x: x 
 					, 	y: y}
 			this.lineStats.x += width + 0
@@ -298,19 +315,32 @@ class autoBuildGameGUI
 	}
 	; This is called from the other autoBuild class
 	; in response to a profile hotkey press
-	setItemState(enabledList)
+	enableItems(enabledList, disableOthers := True)
 	{
 		for i, item in this.Items
 		{
 			name := item.name 
 			if name in %enabledList%
 				item.enabled := True 
-			else item.enabled := False 
+			else if disableOthers
+				item.enabled := False 
 		} 
 		this.getGUIStatus()
 		if this.GUIExists
 			this.refresh()
 		; Refresh overlay if drawn
+	}
+	disableItems(disableList)
+	{
+		for i, item in this.Items
+		{
+			name := item.name 
+			if name in %disableList%
+				item.enabled := False 
+		} 
+		this.getGUIStatus()
+		if this.GUIExists
+			this.refresh()
 	}
 	setCanvas(byRef hbm, byRef hdc, byRef G)
 	{
@@ -321,17 +351,20 @@ class autoBuildGameGUI
 	{
 		Gdip_DeleteGraphics(G),	SelectObject(hdc, obm), DeleteObject(hbm), DeleteDC(hdc) 			
 	}
-	findBorderEdges(byRef x, byRef y)
+	findBorderEdges(byRef xleft, byRef ytop, byRef xright, byRef ybot)
 	{
-		x := this.Items.1.x, y := this.Items.1.y 
+		xleft := xright := this.Items.1.x, ytop := ybot := this.Items.1.y 
 		for i, item in this.Items
 		{
-			if item.x > x 
-				x := item.x
-			if item.y > y 
-				y := item.y	
+			if item.x + item.width > xright 
+				xright := item.x + item.width
+			if item.y + item.height > ybot 
+				ybot := item.y + item.width
+			if item.x < xleft
+				xleft := item.x
+			if item.y < ytop
+				ytop := item.y				
 		}
-		x += this.Items.1.width, y += this.Items.1.height
 		return
 	}
 	drawTick(G, item)
@@ -359,8 +392,8 @@ class autoBuildGameGUI
 
 		if BackgroundMacroAutoBuildOverlay ; Draw the background 
 		{
-		 	this.findBorderEdges(x2, y2)
-		 	Gdip_FillRoundedRectangle(G, a_pBrushes.transBackground, this.items.1.x, this.items.1.y, x2, y2, 2)
+		 	this.findBorderEdges(x1,y1, x2, y2)
+		 	Gdip_FillRoundedRectangle(G, a_pBrushes.transBackground, x1, y1, x2, y2, 2)
 		}
 		for i, item in this.Items
 		{
@@ -411,6 +444,8 @@ class autoBuildGameGUI
 		{
 			if this.items[itemIndex, "name"] = "pauseButton"
 				autoBuild.pause()
+			else if this.items[itemIndex, "name"] = "SCV" || this.items[itemIndex, "name"] = "Probe"
+				settimer, g_UserToggleAutoWorkerState, -50 ; Use a negative timer give time for this onMessage Event to finish
 			else 
 			{
 				if this.items[itemIndex, "enabled"] := !this.items[itemIndex, "enabled"]

@@ -4018,6 +4018,7 @@ readConfigFile()
 	IniRead, AutoBuildInteractGUIKey, %config_file%, %section%, AutoBuildInteractGUIKey, F11
 	IniRead, AutoBuildGUIkeyMode, %config_file%, %section%, AutoBuildGUIkeyMode, Toggle
 	IniRead, AutoBuildInactiveOpacity, %config_file%, %section%, AutoBuildInactiveOpacity, 255
+	IniRead, AutoBuildGUIAutoWorkerToggle, %config_file%, %section%, AutoBuildGUIAutoWorkerToggle, 1
 
 
 	section := "AutomationCommon"

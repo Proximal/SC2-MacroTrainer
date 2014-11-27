@@ -2618,7 +2618,7 @@ ini_settings_write:
 	IniWrite, %AutoBuildEnableInteractGUIHotkey%, %config_file%, %section%, AutoBuildEnableInteractGUIHotkey
 	IniWrite, %AutoBuildInteractGUIKey%, %config_file%, %section%, AutoBuildInteractGUIKey
 	IniWrite, %AutoBuildInactiveOpacity%, %config_file%, %section%, AutoBuildInactiveOpacity
-
+	IniWrite, %AutoBuildGUIAutoWorkerToggle%, %config_file%, %section%, AutoBuildGUIAutoWorkerToggle
 
 	section := "AutomationCommon"
 	IniWrite, %automationAPMThreshold%, %config_file%, %section%, automationAPMThreshold
@@ -4094,6 +4094,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 
 		Gui, add, text, xs y+25 w40 vInactiveOpacticyTextAssociatedVariable, Inactive Opacity:
 			Gui, Add, Slider, NoTicks w210 x+10 yp vAutoBuildInactiveOpacity range30-255, %AutoBuildInactiveOpacity%
+		Gui, Add, Checkbox, xs vAutoBuildGUIAutoWorkerToggle checked%AutoBuildGUIAutoWorkerToggle%, Auto Worker Toggle
 		
 		gosub, AutoBuildOptionsMenuHotkeyModeCheck
 
@@ -7348,12 +7349,14 @@ g_UserToggleAutoWorkerState: 		; this launched via the user hotkey combination
 	{
 		AW_MaxWorkersReached := TmpDisableAutoWorker := 0 		; just incase the timers bug out and this gets stuck in enabled state
 		MT_CurrentGame.MaxWorkers := ""				; This is here so that if you lose a bunch of workers and turn it back on, it won't make the exact same about again 
+		autoBuildGameGUI.enableItems("SCV", "Probe")
 		tSpeak("On")											
 		SetTimer, g_autoWorkerProductionCheck, 200
 	}
 	else 
 	{
 		SetTimer, g_autoWorkerProductionCheck, off
+		autoBuildGameGUI.disableItems("SCV", "Probe")
 		tSpeak("Off")
 	}
 
@@ -12427,6 +12430,7 @@ class autoBuild
 	}
 	updateInGameGUIUnitState()
 	{
+		global EnableAutoWorkerTerran, EnableAutoWorkerProtoss
 		race := aLocalPlayer.Race 
 		for structureName, structure in this.oAutoBuild[race]
 		{
@@ -12436,8 +12440,12 @@ class autoBuild
 					list .= unitName ","
 			}
 		}
+		if (race = "Terran" && EnableAutoWorkerTerran)
+			list .= "SCV,"
+		else (race = "Protoss" && EnableAutoWorkerProtoss)
+			list .= "Probe,"
 		list := SubStr(list, 1, -1)
-		autoBuildGameGUI.setItemState(list) ; pass a Comma list of enabled units
+		autoBuildGameGUI.enableItems(list) ; pass a Comma list of enabled units
 		return 
 	}
 	disableUnits(units := "")
