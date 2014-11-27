@@ -11981,7 +11981,7 @@ return
 
 autoBuildTimer:
 if !gettime()
-	SetTimer,autoBuildTimer, Off 
+	SetTimer, autoBuildTimer, Off 
 else autoBuild.build(aLocalPlayer.Race)
 return
 
@@ -11997,7 +11997,7 @@ class autoBuild
 	, protossAutoBuildControls := "Zealot|Sentry|Stalker|HighTemplar|DarkTemplar|Phoenix|Oracle|VoidRay|Tempest|Carrier|Observer|WarpPrism|Immortal|Colossus"
 	, zergAutoBuildControls := "Queen"	
 	, oInvokedProfiles := []
-	, timerFreq := 1500
+	, timerFreq := 7500
 	, isPaused := False
 	optionsGUI() 
 	{
@@ -12735,7 +12735,8 @@ class autoBuild
 		this.localUnits := this.copyLocalUnits()
 		if !isobject(this.localUnits)
 			soundplay *-1
-		buildObj := this.oAutoBuild[race]
+		;buildObj := this.oAutoBuild[race]
+		buildObj := this.randomiseAssociativeArray(this.oAutoBuild[race]) ; Randomise the order in which the structures are iterated
 
 		;objtree(buildObj)
 		;msgbox here
@@ -12762,7 +12763,7 @@ class autoBuild
 		dSleep(20)	
 		storageGroup := automationStorageGroup(aLocalPlayer.Race)
 		this.storeSelection(storageGroup, HighlightedGroup, selectionPage)
-
+		
 		for buildingName, item in buildObj
 		{
 			if !item.autoBuild || item.buildString = ""
@@ -12770,9 +12771,12 @@ class autoBuild
 			if item.group != prevGroup
 			{
 				; A sleep may be required here to prevent the invoked structures from receiving the previously sent buildString 
-				this.invokeGroup(prevGroup := item.group, oSelection, sentTabs)
+				this.invokeGroup(item.group, oSelection, currentTab)
+				if (prevGroup = "") ; Hasn't been set yet so this is first build event.
+					currentTab := getSelectionHighlightedGroup() ; This accounts for the fact if the structure group is already selected, then the highlighted group/tab-position may not be 0
+				prevGroup := item.group
 			}
-			this.buildUnits(item.buildString, oSelection, buildingName, sentTabs)
+			this.buildUnits(item.buildString, oSelection, buildingName, currentTab)
 		}
 		this.restoreSelection(storageGroup, selectionPage, HighlightedGroup) ;****!
 
@@ -12789,21 +12793,26 @@ class autoBuild
 		input.psend(SC2Keys.key("ControlGroupAssign" group))
 		return
 	}
-	invokeGroup(group, byRef oSelection, byRef sentTabs)
+	invokeGroup(group, byRef oSelection, byRef currentTab)
 	{
-		sentTabs := 0
+		currentTab := 0
 		input.psend(SC2Keys.key("ControlGroupRecall" group))
-		dSleep(50)
+		dSleep(40)
 		numGetSelectionSorted(oSelection)
 		return
 	}
-	buildUnits(buildString, oSelection, buildingName, byRef sentTabs)
+
+	buildUnits(buildString, oSelection, buildingName, byRef currentTab)
 	{
-			tabPosition := oSelection.TabPositions[aUnitId[buildingName]]
-			tabs := sRepeat(SC2Keys.key("SubgroupNext"), tabPosition - sentTabs)   ;****!
-			sentTabs := tabPosition
-			input.psend(tabs buildString)
-			return		
+		tabPosition := oSelection.TabPositions[aUnitId[buildingName]]
+		tabsToSend := tabPosition - currentTab
+		currentTab := tabPosition
+		if tabsToSend > 0
+			tabString := sRepeat(SC2Keys.key("SubgroupNext"), tabsToSend)
+		else if tabsToSend < 0
+			tabString := sRepeat(SC2Keys.key("SubgroupPrev"), abs(tabsToSend))
+		input.psend(tabString buildString)
+		return
 	}
 
 	; takes a variadic list of arrays. Randomly orders EACH individual array and returns a single combined array.
@@ -12821,6 +12830,18 @@ class autoBuild
 				nArray.Insert(array[aOrder.remove(rand(1, aOrder.MaxIndex()))])
 		}
 		return nArray
+	}
+	; Returns an ordered array (array contents are iterated in the order they were created)
+	; Randomises the order of an array. Useful for arrays which have non-numeric keys.
+	; Key-value associations are maintained.
+	randomiseAssociativeArray(sourceObj)
+	{
+		nObj := OrderedArray(),	aLookUp := []
+		for k, v in sourceObj  ; Deal will non-numeric keys
+			aLookUp.Insert(k)
+		loop, % aLookUp.MaxIndex()
+			key := aLookUp.Remove(rand(aLookUp.MinIndex(), aLookUp.MaxIndex())), nObj[key] := sourceObj[key]
+		return nObj	
 	}
 
 	buildFromStructure(structure, group, obj, race)
@@ -13285,4 +13306,10 @@ getPortraitsFromIndexes(aIndexLookUp, byRef oSelection := "", isReversed := Fals
 
 
 
-;f1::msgbox % gameToRealSeconds(10) ; 14.5
+;f1::msgbox % gameToRealSeconds(10) ; 14.5 = 20
+;f1::
+numGetSelectionSorted(oSelection)
+s := autobuild.buildUnits("a", oSelection, "starport", 0)
+
+msgbox % s
+return 
