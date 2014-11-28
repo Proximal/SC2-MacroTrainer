@@ -65,8 +65,6 @@ class autoBuildGameGUI
 		else if this.GUIExists ; hide it as its visible
 			Gui, autoBuildGUI: Cancel
 		else this.createOverlay() ; doesnt exist
-		;Gui, autoBuildGUI: +lastfound 
-		;tooltip % WinExist()
 	}	
 	createOverlay()
 	{
@@ -456,10 +454,11 @@ class autoBuildGameGUI
 		if (itemIndex && msg = 0x201)
 		{
 			if this.items[itemIndex, "name"] = "pauseButton" 
-			{
-				autoBuild.pause()
-				if AutoBuildGUIAutoWorkerPause && this.isWorkerProductionEnabled()
-					settimer, g_UserToggleAutoWorkerState, -50 ; The pause button can only turn worker production off (not on)
+			{ 
+				; Toggle auto-build. If any units are active this returns false (i.e. they were previously paused)
+				; so don't turn off the worker function e.g. worker was on, but the other units were
+				if autoBuild.pause() && AutoBuildGUIAutoWorkerPause && this.isWorkerProductionEnabled() 
+					settimer, g_AutoBuildGUIToggleAutoWorkerState, -50 
 			}
 			else if this.items[itemIndex, "name"] = "OffButton"
 			{
@@ -472,7 +471,7 @@ class autoBuildGameGUI
 				autoBuild.updateInGameGUIUnitState() ; Easier just to have autoBuild check its interal state and then have it update this overlay
 			}	
 			else if this.items[itemIndex, "name"] = "SCV" || this.items[itemIndex, "name"] = "Probe"
-				settimer, g_UserToggleAutoWorkerState, -50 ; Use a negative timer give time for this onMessage Event to finish
+				settimer, g_AutoBuildGUIToggleAutoWorkerState, -50 ; Use a negative timer give time for this onMessage Event to finish
 			else 
 			{
 				if this.items[itemIndex, "enabled"] := !this.items[itemIndex, "enabled"]

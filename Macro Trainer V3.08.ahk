@@ -4083,17 +4083,17 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		Gui, Add, DropDownList, yp-2 xp+130 vAutoBuildGUIkeyMode gAutoBuildOptionsMenuHotkeyModeCheck, Toggle||KeyDown
 		GuiControl, ChooseString, AutoBuildGUIkeyMode, %AutoBuildGUIkeyMode%		
 
-		Gui, Add, Checkbox, xs vAutoBuildEnableGUIHotkey checked%AutoBuildEnableGUIHotkey%, In-game GUI:
+		Gui, Add, Checkbox, xs y+10 vAutoBuildEnableGUIHotkey checked%AutoBuildEnableGUIHotkey%, In-game GUI:
 		Gui, Add, Edit, Readonly yp-2 xp+130 center w85 R1 vAutoBuildGUIkey gedit_hotkey, %AutoBuildGUIkey%
 		Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#AutoBuildGUIkey, Edit
 		
-		Gui, Add, Checkbox, section xs y+25 vAutoBuildEnableInteractGUIHotkey checked%AutoBuildEnableInteractGUIHotkey%, Interact Key
+		Gui, Add, Checkbox, section xs y+20 vAutoBuildEnableInteractGUIHotkey checked%AutoBuildEnableInteractGUIHotkey%, Interact Key
 		Gui, Add, Edit, Readonly yp-2 xp+130 center w85 R1 vAutoBuildInteractGUIKey gedit_hotkey, %AutoBuildInteractGUIKey%
 		Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#AutoBuildInteractGUIKey, Edit 
 
-		Gui, add, text, xs y+25 w40 vInactiveOpacticyTextAssociatedVariable, Inactive Opacity:
-			Gui, Add, Slider, NoTicks w210 x+10 yp vAutoBuildInactiveOpacity range30-255, %AutoBuildInactiveOpacity%
-		Gui, Add, Checkbox, xs vAutoBuildGUIAutoWorkerToggle checked%AutoBuildGUIAutoWorkerToggle%, Include worker button
+		Gui, add, text, xs y+10 w40 vInactiveOpacticyTextAssociatedVariable, Inactive Opacity:
+			Gui, Add, Slider, NoTicks w210 x+10 yp+4 vAutoBuildInactiveOpacity range30-255, %AutoBuildInactiveOpacity%
+		Gui, Add, Checkbox, xs y+15 vAutoBuildGUIAutoWorkerToggle checked%AutoBuildGUIAutoWorkerToggle%, Include worker button
 		Gui, Add, Checkbox, xs vAutoBuildGUIAutoWorkerPause checked%AutoBuildGUIAutoWorkerPause%, Pause button disables worker production 
 		Gui, Add, Checkbox, xs vAutoBuildGUIAutoWorkerOffButton checked%AutoBuildGUIAutoWorkerOffButton%, Off button disables worker production 
 		
@@ -4805,6 +4805,18 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 					. "the current worker count per the number of fully constructed (and control grouped) main-bases`n"
 					. "WHICH are within 8 map units of a gas geyser.`n`n"
 					. "Note: A properly situated base is usually 7-7.5 map units from a geyser."
+
+		AutoBuildGUIkeyMode_TT := "Determines how the 'in-game GUI' hotkey works.`n`nToggle: The GUI is toggled on/off with each press.`n`nKeyDown: The GUI is only visible while the hotkey is depressed."
+		AutoBuildEnableGUIHotkey_TT := "Enables/Disables the hokey.`n`nThis hokey displays an in-game GUI which can be used to control unit production.`n`nToggle: The GUI is toggled on/off with each press.`n`nKeyDown: The GUI is only visible while this hotkey is depressed."
+		AutoBuildGUIkey_TT := "Displays an in-game GUI which can be used to control unit production.`n`nToggle: The GUI is toggled on/off with each press.`n`nKeyDown: The GUI is only visible while this hotkey is depressed."
+
+		AutoBuildEnableInteractGUIHotkey_TT := "When enabled the GUI can only be interacted with while this hotkey is depressed.`n`nThis allows the GUI to be visible in-game yet not clickable."
+		AutoBuildInteractGUIKey_TT := "When enabled the GUI can only be interacted with while this hotkey is depressed.`n`nThis allows the GUI to be visible in-game yet not clickable."
+		AutoBuildInactiveOpacity_TT := "While inactive (the interact key is not depressed) the GUI is drawn with this opacity."
+
+		AutoBuildGUIAutoWorkerToggle_TT := "Includes a worker icon in the GUI. This allows the auto-worker function to be toggled on/off."
+		AutoBuildGUIAutoWorkerPause_TT := "When enabled the GUI pause button will turn off the auto-worker function.`n`nNote: Unlike the other units, the auto-worker function will remain off if the pause button is pressed again to resume production."
+		AutoBuildGUIAutoWorkerOffButton_TT := "When enabled the GUI off button (the 'x') will turn off the auto-worker function."
 
 		Inject_spawn_larva_TT := #Inject_spawn_larva_TT := "This needs to correspond to your SC2 'spawn larvae' button.`n`nThis key is sent during an inject to invoke Zerg's 'spawn larvae' ability."
 
@@ -7363,25 +7375,26 @@ g_temporarilyDisableAutoWorkerProduction:
 ; The hotkey #if already checks race and enableAutoWorker state
 temporarilyDisableAutoWorkerProduction()
 return 
-
+g_AutoBuildGUIToggleAutoWorkerState: ; AutoBuild GUI calls this label so that SAPI doesnt speak
 g_UserToggleAutoWorkerState: 		; this launched via the user hotkey combination
 
-	;	if (EnableAutoWorker%LocalPlayerRace% := !EnableAutoWorker%LocalPlayerRace%)
-	if (aLocalPlayer["Race"] = "Terran" && (EnableAutoWorkerTerran := !EnableAutoWorkerTerran))
-	|| (aLocalPlayer["Race"] = "Protoss" && (EnableAutoWorkerProtoss := !EnableAutoWorkerProtoss))
-	{
-		AW_MaxWorkersReached := TmpDisableAutoWorker := 0 		; just incase the timers bug out and this gets stuck in enabled state
-		MT_CurrentGame.MaxWorkers := ""				; This is here so that if you lose a bunch of workers and turn it back on, it won't make the exact same about again 
-		autoBuildGameGUI.enableItems("SCV,Probe", False)
+if (aLocalPlayer["Race"] = "Terran" && (EnableAutoWorkerTerran := !EnableAutoWorkerTerran))
+|| (aLocalPlayer["Race"] = "Protoss" && (EnableAutoWorkerProtoss := !EnableAutoWorkerProtoss))
+{
+	AW_MaxWorkersReached := TmpDisableAutoWorker := 0 		; just incase the timers bug out and this gets stuck in enabled state
+	MT_CurrentGame.MaxWorkers := ""				; This is here so that if you lose a bunch of workers and turn it back on, it won't make the exact same about again 
+	autoBuildGameGUI.enableItems("SCV,Probe", False)
+	if (A_ThisLabel = "g_UserToggleAutoWorkerState")
 		tSpeak("On")											
-		SetTimer, g_autoWorkerProductionCheck, 200
-	}
-	else 
-	{
-		SetTimer, g_autoWorkerProductionCheck, off
-		autoBuildGameGUI.disableItems("SCV,Probe")
+	SetTimer, g_autoWorkerProductionCheck, 200
+}
+else 
+{
+	SetTimer, g_autoWorkerProductionCheck, off
+	autoBuildGameGUI.disableItems("SCV,Probe")
+	if (A_ThisLabel = "g_UserToggleAutoWorkerState")
 		tSpeak("Off")
-	}
+}
 
 return 
 
@@ -11998,6 +12011,7 @@ return
 
 
 AutoBuildGUIInteractkeyPress:
+autoBuildGameGUI.showOverlay() ; ensure overlay exists - refreshing the overlay before it exists could cause issues
 autoBuildGameGUI.interact(true)
 autoBuildGameGUI.Refresh() ; If mouse isn't over GUI, this will ensure the transparency Changes
 KeyWait, % gethotkeySuffix(A_ThisHotkey), T30
