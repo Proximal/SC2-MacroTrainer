@@ -2619,6 +2619,10 @@ ini_settings_write:
 	IniWrite, %AutoBuildInteractGUIKey%, %config_file%, %section%, AutoBuildInteractGUIKey
 	IniWrite, %AutoBuildInactiveOpacity%, %config_file%, %section%, AutoBuildInactiveOpacity
 	IniWrite, %AutoBuildGUIAutoWorkerToggle%, %config_file%, %section%, AutoBuildGUIAutoWorkerToggle
+	IniWrite, %AutoBuildGUIAutoWorkerPause%, %config_file%, %section%, AutoBuildGUIAutoWorkerPause
+	IniWrite, %AutoBuildGUIAutoWorkerOffButton%, %config_file%, %section%, AutoBuildGUIAutoWorkerOffButton
+	IniWrite, %autoBuildEnablePauseAllHotkey%, %config_file%, %section%, autoBuildEnablePauseAllHotkey
+	IniWrite, %AutoBuildPauseAllkey%, %config_file%, %section%, AutoBuildPauseAllkey
 
 	section := "AutomationCommon"
 	IniWrite, %automationAPMThreshold%, %config_file%, %section%, automationAPMThreshold
@@ -2981,8 +2985,8 @@ try
 	Gui, Options:New
 	gui, font, norm s9	;here so if windows user has +/- font size this standardises it. But need to do other menus one day
 	;Gui, +ToolWindow  +E0x40000 ; E0x40000 gives it a icon on taskbar (+ToolWindow doesn't have an icon)
-	options_menu := "home32.png|radarB32.png|map32.png|Inject32.png|Group32.png|QuickGroup32.png|Worker32.png|reticule32.png|Robot32.png|key.png|warning32.ico|miscB32.png|bug32.png|settings.ico"
-	optionsMenuTitles := "Home|Detection List|MiniMap/Overlays|Injects|Auto Grouping|Quick Select|Auto Worker|Chrono Boost|Misc Automation|SC2 Keys|Macro Warnings|Misc Abilities|Bug Report|Settings"
+	options_menu := "home32.png|map32.png|Inject32.png|Group32.png|QuickGroup32.png|Worker32.png|autoBuild32.png|reticule32.png|Robot32.png|key.png|warning32.ico|miscB32.png|bug32.png|settings.ico"
+	optionsMenuTitles := "Home|MiniMap/Overlays|Injects|Auto Grouping|Quick Select|Auto Worker|Auto Build|Chrono Boost|Misc Automation|SC2 Keys|Warnings|Misc Abilities|Bug Report|Settings"
 
 	Gosub, g_CreateUnitListsAndObjects ; used for some menu items, and for the custom unit filter gui
 
@@ -2996,7 +3000,7 @@ try
 	Gui, Add, TreeView, -Lines ReadOnly ImageList%ImageListID% h%guiMenuHeight% w150 gOptionsTree vGUIListViewIdentifyingVariableForRedraw
 	loop, parse, optionsMenuTitles, |
 		TV_Add(A_LoopField, 0, "Icon" A_Index)  
-
+		
 			Gui, Font, s10
 			GUIButtonPosition := guiMenuHeight + 13
 			Gui, Add, Button, x403 y%GUIButtonPosition% w54 h25 gIni_settings_write, Save
@@ -3234,7 +3238,7 @@ try
 					Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#AGInvokeGroup%group%,  Edit
 			}
 
-	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vWarnings_TAB, Supply||Macro|Workers|Warpgates
+	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vWarnings_TAB, Supply||Macro|Workers|Warpgates|Detection List
 	Gui, Tab, Supply	
 	; Gui, Add, GroupBox, w420 h335, Supply				
 		Gui, Add, Checkbox, X%XTabX% y+30 Vsupplyon checked%supplyon%, Enable Alert
@@ -3439,6 +3443,37 @@ try
 		Gui, add, text, xp+50 yp w340, These warnings will become active AFTER you convert your first warpgate.`n`nThe gateway will also be marked on the minimap providing the 'Display Alerts' option is enabled. (MiniMap/Overlays-->General)
 		;Gui, Font, s9 norm	
 
+	Gui, Tab, Detection List
+		loop, parse, l_GameType, `,
+			BAS_on_%A_LoopField% := alert_array[A_LoopField, "Enabled"]
+		
+		Gui, Add, GroupBox, x+45 y+60 w120 h110 section, Enable Warnings
+			Gui, Add, Checkbox, xp+15 yp+25 vBAS_on_1v1 checked%BAS_on_1v1%, 1v1
+			Gui, Add, Checkbox, x+15 yp vBAS_on_2v2 checked%BAS_on_2v2%, 2v2
+			Gui, Add, Checkbox, xs+15 y+15 vBAS_on_3v3 checked%BAS_on_3v3%, 3v3
+			Gui, Add, Checkbox, x+15 yp vBAS_on_4v4 checked%BAS_on_4v4%, 4v4
+			Gui, Add, Checkbox, xs+15 y+15 vBAS_on_FFA checked%BAS_on_FFA%, FFA 
+		
+		Gui, Add, GroupBox, Xs+140 ys w200 h55, Playback Last Alert
+			Gui, Add, Checkbox, xp+10 yp+25 vEnableLastAlertPlayBackHotkey checked%EnableLastAlertPlayBackHotkey%, Enable 			
+			;Gui, Add, Text, xp+10 yp+25 w40,Hotkey:
+				Gui, Add, Edit, Readonly yp-2 x+5 w80 R1 center vPlayback_Alert_Key , %Playback_Alert_Key%
+					Gui, Add, Button, yp-2 x+5 gEdit_hotkey v#Playback_Alert_Key,  Edit	
+		Gui, Font, s10
+		Gui, Add, Button, center Xs+140 ys+60 w200 h50 gAlert_List_Editor vAlert_List_Editor, Launch Alert List Editor
+		Gui, Font,
+
+	Gui, Add, GroupBox, Xs ys+130 w340 h145, About
+		Gui, Add, Text, xp+15 yp+25 w320, 
+		(LTrim 
+		This function provides a verbal warning for the specified item (unit/building).
+
+		It can also display a visual 'X' marker on the minimap, thereby indicating the items location.
+
+		To enable this visual feature check the 'Display Alerts' checkbox listed under MiniMap/Overlays --> MiniMap --> General.
+		)	
+
+
 	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vMisc_TAB, Misc Abilities
 		Gui, Add, GroupBox, w240 h150 section, Misc Hotkeys
 
@@ -3588,36 +3623,6 @@ try
 				Gui, Add, Button, x+30 yp+10 vMTChageIconButton Gg_MTChageIcon, Change 
 				Gui, Add, Button, x+10 vMTChageIconDefaultButton Gg_MTChageIconDefault, Default 
 				;Gui, Add, Edit, Readonly yp-2 xp-90 w80 Hidden vMTCustomIcon , %MTCustomIcon% ; invis and used to store the name
-
-	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vDetection_TAB, Detection List
-		loop, parse, l_GameType, `,
-			BAS_on_%A_LoopField% := alert_array[A_LoopField, "Enabled"]
-		
-		Gui, Add, GroupBox, x+45 y+60 w120 h110 section, Enable Warnings
-			Gui, Add, Checkbox, xp+15 yp+25 vBAS_on_1v1 checked%BAS_on_1v1%, 1v1
-			Gui, Add, Checkbox, x+15 yp vBAS_on_2v2 checked%BAS_on_2v2%, 2v2
-			Gui, Add, Checkbox, xs+15 y+15 vBAS_on_3v3 checked%BAS_on_3v3%, 3v3
-			Gui, Add, Checkbox, x+15 yp vBAS_on_4v4 checked%BAS_on_4v4%, 4v4
-			Gui, Add, Checkbox, xs+15 y+15 vBAS_on_FFA checked%BAS_on_FFA%, FFA 
-		
-		Gui, Add, GroupBox, Xs+140 ys w200 h55, Playback Last Alert
-			Gui, Add, Checkbox, xp+10 yp+25 vEnableLastAlertPlayBackHotkey checked%EnableLastAlertPlayBackHotkey%, Enable 			
-			;Gui, Add, Text, xp+10 yp+25 w40,Hotkey:
-				Gui, Add, Edit, Readonly yp-2 x+5 w80 R1 center vPlayback_Alert_Key , %Playback_Alert_Key%
-					Gui, Add, Button, yp-2 x+5 gEdit_hotkey v#Playback_Alert_Key,  Edit	
-		Gui, Font, s10
-		Gui, Add, Button, center Xs+140 ys+60 w200 h50 gAlert_List_Editor vAlert_List_Editor, Launch Alert List Editor
-		Gui, Font,
-
-	Gui, Add, GroupBox, Xs ys+130 w340 h145, About
-		Gui, Add, Text, xp+15 yp+25 w320, 
-		(LTrim 
-		This function provides a verbal warning for the specified item (unit/building).
-
-		It can also display a visual 'X' marker on the minimap, thereby indicating the items location.
-
-		To enable this visual feature check the 'Display Alerts' checkbox listed under MiniMap/Overlays --> MiniMap --> General.
-		)		
 
 	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vBug_TAB, Bug Report
 		Gui, Add, Text, x+60 y+20 section, Your Email Address:%A_Space%%A_Space%%A_Space%%A_Space%%A_Space%(optional) 
@@ -3928,7 +3933,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		;Gui, add, text, xp y+15 w380, Test 
 
 
-	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vAutoWorker_TAB, Auto|Info|Army||ArmyGUI		
+	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vAutoWorker_TAB, Auto||Info
 	;Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vAutoWorker_TAB, Auto||Info		
 	Gui, Tab, Auto
 		Gui, Add, GroupBox, x+25 Y+10 w370 h85 section, General 
@@ -4026,59 +4031,53 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 			gui, font, norm s10
 			gui, font, 		
 
+	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vAutoBuild_TAB, Army||GUI|Hotkeys|ArmySettings	
 	Gui, Tab, Army 
-		GUI, Add, button, gLaunchAutoBuildEditor, Auto Build Editor
 
-		Gui, Add, Text, section, Barracks Group:
-		Gui, Add, DropDownList,  % "xp+160 yp-2 w45 center vAutoBuildBarracksGroup Choose" (AutoBuildBarracksGroup = 0 ? 10 : AutoBuildBarracksGroup), 1|2|3|4|5||6|7|8|9|0
+		Gui, add, GroupBox, y+20 w400 h195, Structure Control Group
+		Gui, Add, Text, section xp+15 yp+25, Barracks:
+		Gui, Add, DropDownList,  % "xp+100 yp-2 w40 center vAutoBuildBarracksGroup Choose" (AutoBuildBarracksGroup = 0 ? 10 : AutoBuildBarracksGroup), 1|2|3|4|5||6|7|8|9|0
 
-		Gui, Add, Text, xs, Factory Group:
-		Gui, Add, DropDownList,  % "xp+160 yp-2 w45 center vAutoBuildFactoryGroup Choose" (AutoBuildFactoryGroup = 0 ? 10 : AutoBuildFactoryGroup), 1|2|3|4|5||6|7|8|9|0
+		Gui, Add, Text, xs, Factory:
+		Gui, Add, DropDownList,  % "xp+100 yp-2 w40 center vAutoBuildFactoryGroup Choose" (AutoBuildFactoryGroup = 0 ? 10 : AutoBuildFactoryGroup), 1|2|3|4|5||6|7|8|9|0
 
-		Gui, Add, Text, xs, Starport Group:
-		Gui, Add, DropDownList,  % "xp+160 yp-2 w45 center vAutoBuildStarportGroup Choose" (AutoBuildStarportGroup = 0 ? 10 : AutoBuildStarportGroup), 1|2|3|4|5||6|7|8|9|0
+		Gui, Add, Text, xs, Starport:
+		Gui, Add, DropDownList,  % "xp+100 yp-2 w40 center vAutoBuildStarportGroup Choose" (AutoBuildStarportGroup = 0 ? 10 : AutoBuildStarportGroup), 1|2|3|4|5||6|7|8|9|0
 
-		Gui, Add, Text, xs yp+60, Gateway Group:
-		Gui, Add, DropDownList,  % "xp+160 yp-2 w45 center vAutoBuildGatewayGroup Choose" (AutoBuildGatewayGroup = 0 ? 10 : AutoBuildGatewayGroup), 1|2|3|4|5||6|7|8|9|0
+		Gui, Add, Text, xs+220 ys, Gateway:
+		Gui, Add, DropDownList,  % "xp+100 yp-2 w40 center vAutoBuildGatewayGroup Choose" (AutoBuildGatewayGroup = 0 ? 10 : AutoBuildGatewayGroup), 1|2|3|4|5||6|7|8|9|0
 	
-		Gui, Add, Text, xs, Stargate Group:
-		Gui, Add, DropDownList,  % "xp+160 yp-2 w45 center vAutoBuildStargateGroup Choose" (AutoBuildStargateGroup = 0 ? 10 : AutoBuildStargateGroup), 1|2|3|4|5||6||7|8|9|0
+		Gui, Add, Text, xs+220 y+10, Stargate:
+		Gui, Add, DropDownList,  % "xp+100 yp-2 w40 center vAutoBuildStargateGroup Choose" (AutoBuildStargateGroup = 0 ? 10 : AutoBuildStargateGroup), 1|2|3|4|5||6||7|8|9|0
 	
-		Gui, Add, Text, xs, Robotics Facility Group:
-		Gui, Add, DropDownList,  % "xp+160 yp-2 w45 center vAutoBuildRoboticsFacilityGroup Choose" (AutoBuildRoboticsFacilityGroup = 0 ? 10 : AutoBuildRoboticsFacilityGroup), 1|2|3|4|5|6||7|8|9|0
+		Gui, Add, Text, xs+220 y+10, Robotics Facility:
+		Gui, Add, DropDownList,  % "xp+100 yp-2 w40 center vAutoBuildRoboticsFacilityGroup Choose" (AutoBuildRoboticsFacilityGroup = 0 ? 10 : AutoBuildRoboticsFacilityGroup), 1|2|3|4|5|6||7|8|9|0
 	
-		Gui, Add, Text, xs yp+60, Hatchery Group:
-		Gui, Add, DropDownList,  % "xp+160 yp-2 w45 center vAutoBuildHatcheryGroup Choose" (AutoBuildHatcheryGroup = 0 ? 10 : AutoBuildHatcheryGroup), 1|2|3|4||5|6|7|8|9|0
+		Gui, Add, Text, xs yp+30, Hatchery:
+		Gui, Add, DropDownList,  % "xp+100 yp-2 w40 center vAutoBuildHatcheryGroup Choose" (AutoBuildHatcheryGroup = 0 ? 10 : AutoBuildHatcheryGroup), 1|2|3|4||5|6|7|8|9|0
 	
-		Gui, Add, Text, xs, Lair Group:
-		Gui, Add, DropDownList,  % "xp+160 yp-2 w45 center vAutoBuildLairGroup Choose" (AutoBuildLairGroup = 0 ? 10 : AutoBuildLairGroup), 1|2|3|4||5|6|7|8|9|0
+		Gui, Add, Text, xs, Lair:
+		Gui, Add, DropDownList,  % "xp+100 yp-2 w40 center vAutoBuildLairGroup Choose" (AutoBuildLairGroup = 0 ? 10 : AutoBuildLairGroup), 1|2|3|4||5|6|7|8|9|0
 	
-		Gui, Add, Text, xs, Hive Group:
-		Gui, Add, DropDownList,  % "xp+160 yp-2 w45 center vAutoBuildHiveGroup Choose" (AutoBuildHiveGroup = 0 ? 10 : AutoBuildHiveGroup), 1|2|3|4||5|6|7|8|9|0
+		Gui, Add, Text, xs, Hive:
+		Gui, Add, DropDownList,  % "xp+100 yp-2 w40 center vAutoBuildHiveGroup Choose" (AutoBuildHiveGroup = 0 ? 10 : AutoBuildHiveGroup), 1|2|3|4||5|6|7|8|9|0
 
-		Gui, Add, Text, xs section y+15 w85, APM Delay:
-			Gui, Add, Edit, Number Right x+4 yp-2 w50 vTT_automationAPMThreshold
-					Gui, Add, UpDown,  Range0-100000 vAutomationAPMThreshold, %automationAPMThreshold%	
+		Gui, add, GroupBox, xs-15 y+20 section w400 h130, Guaranteed Free Resources
 
-		Gui, Add, Text, xs, Terran Storage:
-		Gui, Add, DropDownList,  % "xp+90 yp-2 w45 center vAutomationTerranCtrlGroup Choose" (AutomationTerranCtrlGroup = 0 ? 10 : AutomationTerranCtrlGroup), 1|2|3|4||5|6|7|8|9|0
-		Gui, Add, Text, xs, Protoss Storage:
-		Gui, Add, DropDownList,  % "xp+90 yp-2 w45 center vAutomationProtossCtrlGroup Choose" (AutomationProtossCtrlGroup = 0 ? 10 : AutomationProtossCtrlGroup), 1|2|3|4||5|6|7|8|9|0
-		Gui, Add, Text, xs, Zerg Storage:
-		Gui, Add, DropDownList,  % "xp+90 yp-2 w45 center vAutomationZergCtrlGroup Choose" (AutomationZergCtrlGroup = 0 ? 10 : AutomationZergCtrlGroup), 1|2|3|4||5|6|7|8|9|0
-
-		Gui, Add, Text, xs+250 ys, Minerals:
-			Gui, Add, Edit, Number Right xp+60 yp-2 w50 vTT_autoBuildMinFreeMinerals
+		Gui, Add, Text, xp+10 ys+25, Minerals:
+			Gui, Add, Edit, Number Right xp+50 yp-2 w50 vTT_autoBuildMinFreeMinerals
 					Gui, Add, UpDown,  Range0-3000 vAutoBuildMinFreeMinerals, %autoBuildMinFreeMinerals%	
-		Gui, Add, Text, xs+250 y+10, Gas:
-			Gui, Add, Edit, Number Right xp+60 yp-2 w50 vTT_autoBuildMinFreeGas
+		Gui, Add, Text, x+35 ys+25, Gas:
+			Gui, Add, Edit, Number Right xp+50 yp-2 w50 vTT_autoBuildMinFreeGas
 					Gui, Add, UpDown,  Range0-3000 vAutoBuildMinFreeGas, %autoBuildMinFreeGas%	
-		Gui, Add, Text, xs+250 y+10, Supply:
-			Gui, Add, Edit, Number Right xp+60 yp-2 w50 vTT_autoBuildMinFreeSupply
+		Gui, Add, Text, x+35  ys+25, Supply:
+			Gui, Add, Edit, Number Right xp+50 yp-2 w50 vTT_autoBuildMinFreeSupply
 					Gui, Add, UpDown,  Range0-20 vAutoBuildMinFreeSupply, %autoBuildMinFreeSupply%	
+		Gui, Add, Text, xs+10 y+20 w380, These values influence how many units can be made during a production cycle.`nAt the end of each cycle you will be left with a minimum of each resource value.`n`nThis helps to ensure you have enough resources to build depots/pylons and to start upgrades. 
 
+		
 
-	Gui, Tab, ArmyGUI
+	Gui, Tab, GUI
 		
 		Gui, Add, Text, section x+15 y+25, Hotkey Mode:
 		Gui, Add, DropDownList, yp-2 xp+130 vAutoBuildGUIkeyMode gAutoBuildOptionsMenuHotkeyModeCheck, Toggle||KeyDown
@@ -4094,9 +4093,33 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 
 		Gui, add, text, xs y+25 w40 vInactiveOpacticyTextAssociatedVariable, Inactive Opacity:
 			Gui, Add, Slider, NoTicks w210 x+10 yp vAutoBuildInactiveOpacity range30-255, %AutoBuildInactiveOpacity%
-		Gui, Add, Checkbox, xs vAutoBuildGUIAutoWorkerToggle checked%AutoBuildGUIAutoWorkerToggle%, Auto Worker Toggle
+		Gui, Add, Checkbox, xs vAutoBuildGUIAutoWorkerToggle checked%AutoBuildGUIAutoWorkerToggle%, Include worker button
+		Gui, Add, Checkbox, xs vAutoBuildGUIAutoWorkerPause checked%AutoBuildGUIAutoWorkerPause%, Pause button disables worker production 
+		Gui, Add, Checkbox, xs vAutoBuildGUIAutoWorkerOffButton checked%AutoBuildGUIAutoWorkerOffButton%, Off button disables worker production 
 		
 		gosub, AutoBuildOptionsMenuHotkeyModeCheck
+
+	Gui, Tab, Hotkeys
+		GUI, Add, button, gLaunchAutoBuildEditor, Profile Editor
+		Gui, Add, Checkbox, vAutoBuildEnablePauseAllHotkey checked%autoBuildEnablePauseAllHotkey%, Pause All 
+		Gui, Add, Edit, Readonly yp-2 xp+130 center w85 R1 vAutoBuildPauseAllkey gedit_hotkey, %AutoBuildPauseAllkey%
+		Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#AutoBuildPauseAllkey, Edit
+
+	Gui, Tab, ArmySettings
+		Gui, add, GroupBox, y+20 w125 h100, Control Group Storage 
+		Gui, Add, Text, xp+10 yp+25 section, Terran:
+		Gui, Add, DropDownList,  % "xp+60 yp-2 w45 center vAutomationTerranCtrlGroup Choose" (AutomationTerranCtrlGroup = 0 ? 10 : AutomationTerranCtrlGroup), 1|2|3|4||5|6|7|8|9|0
+		Gui, Add, Text, xs, Protoss:
+		Gui, Add, DropDownList,  % "xp+60 yp-2 w45 center vAutomationProtossCtrlGroup Choose" (AutomationProtossCtrlGroup = 0 ? 10 : AutomationProtossCtrlGroup), 1|2|3|4||5|6|7|8|9|0
+		Gui, Add, Text, xs, Zerg:
+		Gui, Add, DropDownList,  % "xp+60 yp-2 w45 center vAutomationZergCtrlGroup Choose" (AutomationZergCtrlGroup = 0 ? 10 : AutomationZergCtrlGroup), 1|2|3|4||5|6|7|8|9|0
+
+		Gui, add, GroupBox, xs-10 y+25 w125 h60, APM Delay 
+		;Gui, Add, Text, xs section y+25 w85, APM Delay:
+			Gui, Add, Edit, Number Right xp+30 yp+25 w50 vTT_automationAPMThreshold
+					Gui, Add, UpDown,  Range0-100000 vAutomationAPMThreshold, %automationAPMThreshold%	
+
+
 
 	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vMiscAutomation_TAB, Select Army||Spread|Remove Units|Easy Select/Unload|Smart Geyser
 	Gui, Tab, Select Army
@@ -6017,16 +6040,16 @@ OptionsTree:
 	; Key = MenuTitles: Value = Tab ID
 	if !isObject(aGUITabs)
 		aGUITabs := { 	"Home": "Home_TAB" 
-					, 	"Detection List": "Detection_TAB"
 					,	"MiniMap/Overlays": "MiniMap_TAB"
 					,	"Injects": "Injects_TAB"
 					,	"Auto Grouping": "AutoGroup_TAB"
 					,	"Quick Select": "quickSelect_TAB"
 					,	"Auto Worker": "AutoWorker_TAB"
+					,	"Auto Build": "AutoBuild_TAB"
 					,	"Chrono Boost": "ChronoBoost_TAB"
 					,	"Misc Automation": "MiscAutomation_TAB"
 					,	"SC2 Keys": "Keys_TAB"
-					,	"Macro Warnings": "Warnings_TAB"
+					,	"Warnings": "Warnings_TAB"
 					, 	"Misc Abilities": "Misc_TAB"
 					,	"Bug Report": "Bug_TAB"
 					,	"Settings": "Settings_TAB"}	
@@ -7349,14 +7372,14 @@ g_UserToggleAutoWorkerState: 		; this launched via the user hotkey combination
 	{
 		AW_MaxWorkersReached := TmpDisableAutoWorker := 0 		; just incase the timers bug out and this gets stuck in enabled state
 		MT_CurrentGame.MaxWorkers := ""				; This is here so that if you lose a bunch of workers and turn it back on, it won't make the exact same about again 
-		autoBuildGameGUI.enableItems("SCV", "Probe")
+		autoBuildGameGUI.enableItems("SCV,Probe", False)
 		tSpeak("On")											
 		SetTimer, g_autoWorkerProductionCheck, 200
 	}
 	else 
 	{
 		SetTimer, g_autoWorkerProductionCheck, off
-		autoBuildGameGUI.disableItems("SCV", "Probe")
+		autoBuildGameGUI.disableItems("SCV,Probe")
 		tSpeak("Off")
 	}
 
@@ -8315,6 +8338,8 @@ CreateHotkeys()
 			hotkey, %AutoBuildGUIkey%, AutoBuildGUIkeyPress, on
 		if (AutoBuildEnableInteractGUIHotkey && AutoBuildGUIkeyMode = "Toggle")
 			hotkey, %AutoBuildInteractGUIKey%, AutoBuildGUIInteractkeyPress, on
+		if autoBuildEnablePauseAllHotkey
+			hotkey, %AutoBuildPauseAllkey%, autoBuildPauseHotkeyPress, on
 
 		if (InjectTimerAdvancedEnable && aLocalPlayer["Race"] = "Zerg")
 		{	
@@ -8441,6 +8466,7 @@ disableAllHotkeys()
 	Hotkey, If, WinActive(GameIdentifier) && isPlaying && !isMenuOpen()
 		try hotkey, %AutoBuildGUIkey%, off
 		try hotkey, %AutoBuildInteractGUIKey%, off
+		try hotkey, %AutoBuildPauseAllkey%, off
 		try hotkey,  ~^%InjectTimerAdvancedLarvaKey%, off
 		try hotkey,  ~+%InjectTimerAdvancedLarvaKey%, off
 		try hotkey, ~^+%InjectTimerAdvancedLarvaKey%, off
@@ -11985,9 +12011,11 @@ return
 
 autoBuildHotkeyPress:
 autoBuild.invokeProfile(A_ThisHotkey "")
-
-
 soundplay *-1
+return 
+
+autoBuildPauseHotkeyPress:
+autoBuild.pause()
 return 
 
 autoBuildTimer:
@@ -12395,15 +12423,18 @@ class autoBuild
 	; null toggles current state
 	; 1 pauses production 
 	; 0 unpauses
+	; Ignored if no units are active
 	pause(pauseProduction := "")
 	{
-		if (pauseProduction = "")
+		if !this.updateStructureState()
+			this.isPaused := True
+		else if (pauseProduction = "")
 			this.isPaused := !this.isPaused
 		else this.isPaused := (pauseProduction != 0)
 		if this.isPaused
 			settimer, autoBuildTimer, off
 		else settimer, autoBuildTimer, % this.timerFreq	
-		return
+		return this.isPaused
 	}
 	; If click in games GUI immediately reset the active state of the profile
 	resetProfileState()
@@ -12473,8 +12504,11 @@ class autoBuild
 					unit.autoBuild := False
 			}
 		}
-		if !areUnitsActive := this.updateStructureState() 
+		if !areUnitsActive := this.updateStructureState()
+		{ 
 			settimer, autoBuildTimer, off
+			this.isPaused := True
+		}
 		return areUnitsActive
 	}
 	; Returns false if no units are active
@@ -12756,13 +12790,9 @@ class autoBuild
 		 ; maybe i should just return
 		this.localUnits := this.copyLocalUnits()
 		if !isobject(this.localUnits)
-			soundplay *-1
+			return 
 		;buildObj := this.oAutoBuild[race]
 		buildObj := this.randomiseAssociativeArray(this.oAutoBuild[race]) ; Randomise the order in which the structures are iterated
-
-		;objtree(buildObj)
-		;msgbox here
-		;objtree(buildObj)
 		; This is an ordered array, so iterates the structures in the order that they would occur in the selection panel. e.g. rax -> factory -> starport
 		; This will reduce number of tabs required and also don't have to worry about tabbing past the end (although thats easy to deal with anyway)
 		if isGamePaused() || isMenuOpen() ;chat is 0 when  menu is in focus
@@ -12819,7 +12849,7 @@ class autoBuild
 	{
 		currentTab := 0
 		input.psend(SC2Keys.key("ControlGroupRecall" group))
-		dSleep(40)
+		dSleep(35)
 		numGetSelectionSorted(oSelection)
 		return
 	}
@@ -13302,10 +13332,3 @@ getPortraitsFromIndexes(aIndexLookUp, byRef oSelection := "", isReversed := Fals
 
 
 
-;f1::msgbox % gameToRealSeconds(10) ; 14.5 = 20
-;f1::
-numGetSelectionSorted(oSelection)
-s := autobuild.buildUnits("a", oSelection, "starport", 0)
-
-msgbox % s
-return 

@@ -235,9 +235,10 @@ class autoBuildGameGUI
 		if AutoBuildGUIAutoWorkerToggle
 		{ 
 			this.addItems("SCV")
-			this.pushItemRight(3)
+			this.pushItemRight(2)
 		}
-		else this.pushItemRight(4, Gdip_GetImageWidth(a_pBitmap[aUnitID["SCV"]]) * .75) ; So the pause Icon is on the far right
+		else this.pushItemRight(3, Gdip_GetImageWidth(a_pBitmap[aUnitID["SCV"]]) * .75) ; So the pause Icon is on the far right
+		this.addItems("OffButton")
 		this.addItems("pauseButton")
 		this.pushDownLine()
 		this.addItems("marine", "marauder", "reaper", "ghost")
@@ -252,9 +253,10 @@ class autoBuildGameGUI
 		if AutoBuildGUIAutoWorkerToggle
 		{ 
 			this.addItems("Probe")
-			this.pushItemRight(3)
+			this.pushItemRight(2)
 		}
-		else this.pushItemRight(4, Gdip_GetImageWidth(a_pBitmap[aUnitID["Probe"]]) * .75)
+		else this.pushItemRight(3, Gdip_GetImageWidth(a_pBitmap[aUnitID["Probe"]]) * .75)
+		this.addItems("OffButton")
 		this.addItems("pauseButton")
 		this.pushDownLine()
 		this.addItems("zealot", "sentry", "stalker")
@@ -281,13 +283,16 @@ class autoBuildGameGUI
 	addItems(names*)
 	{
 		global EnableAutoWorkerTerran, EnableAutoWorkerProtoss
-		
+
 		for i, name in names 
 		{
 			if (name = "pauseButton")
-				pBitmap := a_pBitmap["GreenPause"]
+				pBitmap := a_pBitmap["GreenPause"], isUnit := False
+			else if (name = "OffButton")
+				pBitmap := a_pBitmap["redClose72"], isUnit := False 
 			else 
-				pBitmap := a_pBitmap[aUnitId[name]]
+				pBitmap := a_pBitmap[aUnitId[name]], isUnit := True
+			
 			if (name = "SCV")
 				enabled := EnableAutoWorkerTerran
 			else if (name = "Probe")
@@ -306,6 +311,7 @@ class autoBuildGameGUI
 					, 	height: Height *= 0.75
 					, 	SourceWidth: SourceWidth
 					, 	SourceHeight: SourceHeight
+					, 	isUnit: isUnit
 					,	enabled: enabled
 					, 	x: x 
 					, 	y: y}
@@ -368,13 +374,14 @@ class autoBuildGameGUI
 		return
 	}
 	drawTick(G, item)
-	{
-		grayScaleMatrix := "0.299|0.299|0.299|0|0|0.587|0.587|0.587|0|0|0.114|0.114|0.114|0|0|0|0|0|1|0|0|0|0|0|1"
-		x := item.x, y := item.y, w := item.width, h := item.height
-		Gdip_DrawImage(G, a_pBitmap["greenTick"]
+	{ 
+		static grayScaleMatrix := "0.299|0.299|0.299|0|0|0.587|0.587|0.587|0|0|0.114|0.114|0.114|0|0|0|0|0|1|0|0|0|0|0|1"
+		checkScale := (item.name != "SCV" && item.name != "Probe") ; worker production can never be 'paused' Only on/off
+		, x := item.x, y := item.y, w := item.width, h := item.height
+		, Gdip_DrawImage(G, a_pBitmap["greenTick"]
 			, x += w - width := .25 * (sourceWidth := Gdip_GetImageWidth(a_pBitmap["greenTick"]))
 			, y += h - height := .25 * (sourceHeight := Gdip_GetImageHeight(a_pBitmap["greenTick"])) 	
-			, width, height, 0, 0, sourceWidth, sourceHeight, autoBuild.isPaused ? grayScaleMatrix : "")
+			, width, height, 0, 0, sourceWidth, sourceHeight, (checkScale && autoBuild.isPaused) ? grayScaleMatrix : "")
 	}
 	drawPause(G, item)
 	{
@@ -403,14 +410,15 @@ class autoBuildGameGUI
 				item.Hovered := True
 			}
 			else item.Hovered := False
-			if item.name = "pauseButton"
-				Gdip_DrawImage(G, item.pBitmap, item.x, item.y, item.Width, item.Height, 0, 0, item.SourceWidth, item.SourceHeight, autoBuild.isPaused ? redmatrix : "")
-			else 
+			if item.isUnit ; If not pause / off icon draw ticks
 			{
 				Gdip_DrawImage(G, item.pBitmap, item.x, item.y, item.Width, item.Height, 0, 0, item.SourceWidth, item.SourceHeight)
 				if item.enabled 
 					this.drawTick(G, item)	
-			}		
+			}
+			else Gdip_DrawImage(G, item.pBitmap, item.x, item.y, item.Width, item.Height, 0, 0, item.SourceWidth, item.SourceHeight, autoBuild.isPaused && item.Name = "pauseButton" ? redmatrix : "")
+			 
+		
 		}
 	}
 	; We don't want to redraw the overlay on every WM_MouseMove msg
@@ -433,17 +441,36 @@ class autoBuildGameGUI
 		else if count ; get rid of hover when in a dead spot on the gui (no icon - just background)
 			this.refresh(x, y)
 	}
+	isWorkerProductionEnabled()
+	{
+		global EnableAutoWorkerTerran, EnableAutoWorkerProtoss
+		return (aLocalPlayer.Race = "Terran" && EnableAutoWorkerTerran) || (aLocalPlayer.Race = "Protoss" && EnableAutoWorkerProtoss)
+	}
 
 	refresh(x := "", y := "", msg := "")
 	{
-		global autoBuildInactiveOpacity
+		global autoBuildInactiveOpacity, AutoBuildGUIAutoWorkerPause, AutoBuildGUIAutoWorkerOffButton, EnableAutoWorkerTerran, EnableAutoWorkerProtoss
 		this.setCanvas(hbm, hdc, G)
 		if (x != "" && y != "")
 			itemIndex := this.collisionCheck(x, y)
 		if (itemIndex && msg = 0x201)
 		{
-			if this.items[itemIndex, "name"] = "pauseButton"
+			if this.items[itemIndex, "name"] = "pauseButton" 
+			{
 				autoBuild.pause()
+				if AutoBuildGUIAutoWorkerPause && this.isWorkerProductionEnabled()
+					settimer, g_UserToggleAutoWorkerState, -50 ; The pause button can only turn worker production off (not on)
+			}
+			else if this.items[itemIndex, "name"] = "OffButton"
+			{
+				if AutoBuildGUIAutoWorkerOffButton
+				{
+					EnableAutoWorkerTerran := EnableAutoWorkerProtoss := False ; better not to use timer for label as the autoBuild function below checks the state below
+					SetTimer, g_autoWorkerProductionCheck, off                 ; And could result in the tick being removed after the other ticks
+				}
+				autoBuild.disableUnits()
+				autoBuild.updateInGameGUIUnitState() ; Easier just to have autoBuild check its interal state and then have it update this overlay
+			}	
 			else if this.items[itemIndex, "name"] = "SCV" || this.items[itemIndex, "name"] = "Probe"
 				settimer, g_UserToggleAutoWorkerState, -50 ; Use a negative timer give time for this onMessage Event to finish
 			else 
@@ -452,7 +479,7 @@ class autoBuildGameGUI
 					autoBuild.invokeUnits(this.items[itemIndex, "name"], False)
 				else autoBuild.disableUnits(this.items[itemIndex, "name"])
 			}
-			autoBuild.resetProfileState()
+			autoBuild.resetProfileState() ; Disable any active hotkey profiles
 		}
 		this.drawItems(G, itemIndex)
 		UpdateLayeredWindow(this.hwnd, hdc,,,,, this.CanInteract ? 255 : autoBuildInactiveOpacity)

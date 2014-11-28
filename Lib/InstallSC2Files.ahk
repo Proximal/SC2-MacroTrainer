@@ -23,6 +23,7 @@ InstallSC2Files()
 	FileInstall, Included Files\GUI\Up Arrow Blue.ico, %A_Temp%\MacroTrainerFiles\GUI\Up Arrow Blue.ico, 1 
 	FileInstall, Included Files\Used_Icons\greenTick.png, %A_Temp%\MacroTrainerFiles\OverlaysMisc\greenTick.png, 1   ; AutoBuild in-game GUI
 	FileInstall, Included Files\Used_Icons\GreenPause.png, %A_Temp%\MacroTrainerFiles\OverlaysMisc\GreenPause.png, 1 ; AutoBuild in-game GUI
+	FileInstall, Included Files\Used_Icons\redClose72.png, %A_Temp%\MacroTrainerFiles\OverlaysMisc\redClose72.png, 1 ; AutoBuild in-game GUI
 
 	FileInstall, Included Files\On.wav, %A_Temp%\On.wav, 1 
 	FileInstall, Included Files\Off.wav, %A_Temp%\Off.wav, 1 
@@ -36,6 +37,7 @@ InstallSC2Files()
 	FileInstall, Included Files\Used_Icons\Inject32.png, %A_Temp%\Inject32.png, 1
 	FileInstall, Included Files\Used_Icons\Group32.png, %A_Temp%\Group32.png, 1
 	FileInstall, Included Files\Used_Icons\QuickGroup32.png, %A_Temp%\QuickGroup32.png, 1
+	FileInstall, Included Files\Used_Icons\autoBuild32.png, %A_Temp%\autoBuild32.png, 1
 	FileInstall, Included Files\Used_Icons\mine.png, %A_Temp%\mine.png, 1
 	FileInstall, Included Files\Used_Icons\reticule32.png, %A_Temp%\reticule32.png, 1
 	FileInstall, Included Files\Used_Icons\key.png, %A_Temp%\key.png, 1

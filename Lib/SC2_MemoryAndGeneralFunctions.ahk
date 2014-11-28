@@ -3141,8 +3141,9 @@ CreatepBitmaps(byref a_pBitmap, aUnitID, MatrixColour := "")
 			a_pBitmap[FileTitle] := Gdip_CreateBitmapFromFile(A_LoopFileFullPath)
 	}
 
-	a_pBitmap["greenTick"] := Gdip_CreateBitmapFromFile(A_Temp "\MacroTrainerFiles\OverlaysMisc\greenTick.png")
+	a_pBitmap["GreenTick"] := Gdip_CreateBitmapFromFile(A_Temp "\MacroTrainerFiles\OverlaysMisc\greenTick.png")
 	a_pBitmap["GreenPause"] := Gdip_CreateBitmapFromFile(A_Temp "\MacroTrainerFiles\OverlaysMisc\GreenPause.png")
+	a_pBitmap["RedClose72"] := Gdip_CreateBitmapFromFile(A_Temp "\MacroTrainerFiles\OverlaysMisc\redClose72.png")
 	a_pBitmap["PurpleX16"] := Gdip_CreateBitmapFromFile(A_Temp "\PurpleX16.png")
 	a_pBitmap["GreenX16"] := Gdip_CreateBitmapFromFile(A_Temp "\GreenX16.png")
 	a_pBitmap["RedX16"] := Gdip_CreateBitmapFromFile(A_Temp "\RedX16.png")
@@ -4019,6 +4020,10 @@ readConfigFile()
 	IniRead, AutoBuildGUIkeyMode, %config_file%, %section%, AutoBuildGUIkeyMode, Toggle
 	IniRead, AutoBuildInactiveOpacity, %config_file%, %section%, AutoBuildInactiveOpacity, 255
 	IniRead, AutoBuildGUIAutoWorkerToggle, %config_file%, %section%, AutoBuildGUIAutoWorkerToggle, 1
+	IniRead, AutoBuildGUIAutoWorkerPause, %config_file%, %section%, AutoBuildGUIAutoWorkerPause, 0
+	IniRead, AutoBuildGUIAutoWorkerOffButton, %config_file%, %section%, AutoBuildGUIAutoWorkerOffButton, 0
+	IniRead, autoBuildEnablePauseAllHotkey, %config_file%, %section%, autoBuildEnablePauseAllHotkey, 0
+	IniRead, AutoBuildPauseAllkey, %config_file%, %section%, AutoBuildPauseAllkey, F8
 
 
 	section := "AutomationCommon"
