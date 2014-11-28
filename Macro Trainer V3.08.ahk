@@ -4062,7 +4062,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		Gui, Add, Text, xs, Hive:
 		Gui, Add, DropDownList,  % "xp+100 yp-2 w40 center vAutoBuildHiveGroup Choose" (AutoBuildHiveGroup = 0 ? 10 : AutoBuildHiveGroup), 1|2|3|4||5|6|7|8|9|0
 
-		Gui, add, GroupBox, xs-15 y+20 section w400 h130, Guaranteed Free Resources
+		Gui, add, GroupBox, xs-15 y+20 section w400 h100, Guaranteed Free Resources
 
 		Gui, Add, Text, xp+10 ys+25, Minerals:
 			Gui, Add, Edit, Number Right xp+50 yp-2 w50 vTT_autoBuildMinFreeMinerals
@@ -4073,7 +4073,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		Gui, Add, Text, x+35  ys+25, Supply:
 			Gui, Add, Edit, Number Right xp+50 yp-2 w50 vTT_autoBuildMinFreeSupply
 					Gui, Add, UpDown,  Range0-20 vAutoBuildMinFreeSupply, %autoBuildMinFreeSupply%	
-		Gui, Add, Text, xs+10 y+20 w380, These values influence how many units can be made during a production cycle.`nAt the end of each cycle you will be left with a minimum of each resource value.`n`nThis helps to ensure you have enough resources to build depots/pylons and to start upgrades. 
+		Gui, Add, Text, xs+10 y+15 w380, This helps to ensure you have enough resources to build depots/pylons and to start upgrades. 
 
 		
 
@@ -4806,6 +4806,12 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 					. "WHICH are within 8 map units of a gas geyser.`n`n"
 					. "Note: A properly situated base is usually 7-7.5 map units from a geyser."
 
+		AutoBuildBarracksGroup_TT := AutoBuildFactoryGroup_TT := AutoBuildStarportGroup_TT := AutoBuildGatewayGroup_TT := AutoBuildStargateGroup_TT := AutoBuildRoboticsFacilityGroup_TT := AutoBuildHatcheryGroup_TT := AutoBuildLairGroup_TT
+		:= AutoBuildHiveGroup_TT := "The control group which contains this structure."
+
+	TT_autoBuildMinFreeMinerals_TT := autoBuildMinFreeMinerals_TT := TT_autoBuildMinFreeGas_TT := autoBuildMinFreeGas_TT := TT_autoBuildMinFreeSupply_TT 
+	:= autoBuildMinFreeSupply_TT := "These values influence how many units can be made during a production cycle.`nAt the end of each cycle you will be left with a minimum of each resource value."
+
 		AutoBuildGUIkeyMode_TT := "Determines how the 'in-game GUI' hotkey works.`n`nToggle: The GUI is toggled on/off with each press.`n`nKeyDown: The GUI is only visible while the hotkey is depressed."
 		AutoBuildEnableGUIHotkey_TT := "Enables/Disables the hokey.`n`nThis hokey displays an in-game GUI which can be used to control unit production.`n`nToggle: The GUI is toggled on/off with each press.`n`nKeyDown: The GUI is only visible while this hotkey is depressed."
 		AutoBuildGUIkey_TT := "Displays an in-game GUI which can be used to control unit production.`n`nToggle: The GUI is toggled on/off with each press.`n`nKeyDown: The GUI is only visible while this hotkey is depressed."
@@ -4816,7 +4822,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 
 		AutoBuildGUIAutoWorkerToggle_TT := "Includes a worker icon in the GUI. This allows the auto-worker function to be toggled on/off."
 		AutoBuildGUIAutoWorkerPause_TT := "When enabled the GUI pause button will turn off the auto-worker function.`n`nNote: Unlike the other units, the auto-worker function will remain off if the pause button is pressed again to resume production."
-		AutoBuildGUIAutoWorkerOffButton_TT := "When enabled the GUI off button (the 'x') will turn off the auto-worker function."
+		AutoBuildGUIAutoWorkerOffButton_TT := "When enabled the GUI off button (the red 'x') will also turn off the auto-worker function."
 
 		Inject_spawn_larva_TT := #Inject_spawn_larva_TT := "This needs to correspond to your SC2 'spawn larvae' button.`n`nThis key is sent during an inject to invoke Zerg's 'spawn larvae' ability."
 
