@@ -4087,7 +4087,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		Gui, Add, Edit, Readonly yp-2 xp+130 center w85 R1 vAutoBuildGUIkey gedit_hotkey, %AutoBuildGUIkey%
 		Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#AutoBuildGUIkey, Edit
 		
-		Gui, Add, Checkbox, section xs y+20 vAutoBuildEnableInteractGUIHotkey checked%AutoBuildEnableInteractGUIHotkey%, Interact Key
+		Gui, Add, Checkbox, section xs y+20 vAutoBuildEnableInteractGUIHotkey gAutoBuildOptionsMenuHotkeyModeCheck checked%AutoBuildEnableInteractGUIHotkey%, Interact Key
 		Gui, Add, Edit, Readonly yp-2 xp+130 center w85 R1 vAutoBuildInteractGUIKey gedit_hotkey, %AutoBuildInteractGUIKey%
 		Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#AutoBuildInteractGUIKey, Edit 
 
@@ -4096,7 +4096,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		Gui, Add, Checkbox, xs y+15 vAutoBuildGUIAutoWorkerToggle checked%AutoBuildGUIAutoWorkerToggle%, Include worker button
 		Gui, Add, Checkbox, xs vAutoBuildGUIAutoWorkerPause checked%AutoBuildGUIAutoWorkerPause%, Pause button disables worker production 
 		Gui, Add, Checkbox, xs vAutoBuildGUIAutoWorkerOffButton checked%AutoBuildGUIAutoWorkerOffButton%, Off button disables worker production 
-		
+
 		gosub, AutoBuildOptionsMenuHotkeyModeCheck
 
 	Gui, Tab, Hotkeys
@@ -5247,6 +5247,12 @@ GuiControl, Disable%g1%, AutoBuildEnableInteractGUIHotkey
 GuiControl, Disable%g1%, #AutoBuildInteractGUIKey
 GuiControl, Disable%g1%, AutoBuildInactiveOpacity
 GuiControl, Disable%g1%, InactiveOpacticyTextAssociatedVariable
+GuiControlGet, g1,, AutoBuildEnableInteractGUIHotkey
+if !g1
+{
+	GuiControl, Disable, AutoBuildInactiveOpacity
+	GuiControl, Disable, InactiveOpacticyTextAssociatedVariable
+}
 return 
 
 GUIControlGroupCheckInjects:
@@ -12031,7 +12037,6 @@ return
 
 autoBuildHotkeyPress:
 autoBuild.invokeProfile(A_ThisHotkey "")
-soundplay *-1
 return 
 
 autoBuildPauseHotkeyPress:
@@ -12056,7 +12061,7 @@ class autoBuild
 	, protossAutoBuildControls := "Zealot|Sentry|Stalker|HighTemplar|DarkTemplar|Phoenix|Oracle|VoidRay|Tempest|Carrier|Observer|WarpPrism|Immortal|Colossus"
 	, zergAutoBuildControls := "Queen"	
 	, oInvokedProfiles := []
-	, timerFreq := 1500
+	, timerFreq := 500
 	, isPaused := False
 	optionsGUI() 
 	{
@@ -12083,7 +12088,7 @@ class autoBuild
 		Gui -MaximizeBox
 		Gui, Add, GroupBox,  w220 h280 section, Auto Build
 		Gui, Add, TreeView, xp+20 yp+20 gAutoBuildTree h240 w180
-		Gui, Add, Button, xs y+45 w80 h40 gAutoBuildGUISaveChanges, Save Changes
+		Gui, Add, Button, xs y+45 w80 h40 gAutoBuildGUISaveChanges, Keep Changes
 		Gui, Add, Button, x+20 w80 h40 gAutoBuildGuiClose, Cancel
 		
 
@@ -12422,22 +12427,42 @@ class autoBuild
 		{
 			if profile.hotkey "" = hotkey && profile.HotkeyEnabled
 			{
+			;	if profile.exclusive 
+			;		nameOfProfile := profileName
 				this.isPaused := False
 				if !profile.IsActive 
 				{
 					this.invokeUnits(profile.units, profile.exclusive)
-					profile.IsActive := True						
+					profile.IsActive := True	
+					SoundPlay, %A_Temp%\On.wav					
 				}
-				else 
+				else ; disable the units associated with the hotkey
 				{
+
 					profile.IsActive := False					
 					if profile.exclusive 
 						hasActiveUnits := this.disableUnits() ; disable all units
 					else this.disableUnits(profile.units)
+					SoundPlay, %A_Temp%\Off.wav
 				}
 				this.updateInGameGUIUnitState()
+				break
 			}
 		}
+/*
+		this.oProfiles[profileNameOfHotkey]
+
+
+
+		if nameOfProfile != ""
+		{
+			for profileName, profile in this.oProfiles 
+			{
+				if nameOfProfile != "" profileName
+					profile.IsActive := False	
+			}
+		}
+*/		
 		return
 	}
 	; null toggles current state
@@ -12580,6 +12605,18 @@ class autoBuild
 			return this.oAutoBuild[race, structure, "units", unitName, "autoBuild"]
 		}
 		return
+	}
+	getActiveUnits()
+	{
+		for structureName in this.oAutoBuild[aLocalPlayer.Race]
+		{
+			for unitName, unit in this.oAutoBuild[aLocalPlayer.Race, structureName, "units"]
+			{
+				if unit.autoBuild 
+					s .= unitName ","
+			}
+		}
+		return SubStr(s, 1, -1)
 	}
 	getRaceFromStructureName(structureName)
 	{
@@ -12786,13 +12823,14 @@ class autoBuild
 	setBuildObj()
 	{
 		this.oAutoBuild := this.getProductionObject()
+		this.resetProfileState()
 		return
 	}
 	build(race)
 	{
 		global AutoWorkerAPMProtection
 
-		if !buildCheck.hasTimeElapsed(2, 5) ; Check this before doing below, as its only going to get bigger with any delay (although its possible autoWorker could interrupt this thread and result in two build events close together)
+		if !buildCheck.hasTimeElapsed(1, 3) ; Check this before doing below, as its only going to get bigger with any delay (although its possible autoWorker could interrupt this thread and result in two build events close together)
 			return		
 		if !this.canPerformBuild()
 			return
@@ -13349,6 +13387,5 @@ getPortraitsFromIndexes(aIndexLookUp, byRef oSelection := "", isReversed := Fals
 		reverseArray(aPortraits)
 	return aPortraits
 }
-
 
 
