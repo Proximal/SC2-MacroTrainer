@@ -12041,6 +12041,7 @@ return
 
 autoBuildPauseHotkeyPress:
 autoBuild.pause()
+autoBuild.updateInGameGUIUnitState() ; also updates the in-game GUI
 return 
 
 autoBuildTimer:
@@ -12048,9 +12049,6 @@ if !gettime()
 	SetTimer, autoBuildTimer, Off 
 else autoBuild.build(aLocalPlayer.Race)
 return
-
-
-
 
 
 #Include, Included Files\class_AutoBuildGameGUI.ahk
