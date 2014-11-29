@@ -12032,7 +12032,7 @@ autoBuildGameGUI.Refresh() ; If mouse isn't over GUI, this will ensure the trans
 return 
 
 LaunchAutoBuildEditor:
-autoBuild.optionsGUI()
+autoBuild.profileEditor()
 return 
 
 autoBuildHotkeyPress:
@@ -12063,7 +12063,7 @@ class autoBuild
 	, oInvokedProfiles := []
 	, timerFreq := 500
 	, isPaused := False
-	optionsGUI() 
+	profileEditor() 
 	{
 		static
 		global autoBuildGUIMarine, autoBuildGUIMarauder, autoBuildGUIReaper, autoBuildGUIGhost, autoBuildGUIHellion, autoBuildGUIWidowMine, autoBuildGUISiegeTank, autoBuildGUIHellBat, autoBuildGUIThor
@@ -12072,7 +12072,7 @@ class autoBuild
 		, autoBuildGUIQueen
 		; The suffix / unit names of these controls must match exactly the unit names which are used to build these units
 		, AutoBuildGUIProfileName, AutoBuildGUIEditNameButton, AutoBuildGUIEnableHotkey, AutoBuildGUIHotkey, #AutoBuildGUIHotkey, AutoBuildGUIEditHotkeyButton
-		, AutoBuildGUIDeleteButton, AutoBuildGUIExclusive, AutoBuildGUICumulative
+		, AutoBuildGUIDeleteButton, AutoBuildGUIExclusive
 
 		displayedProfile := displayedRace := ""
 		Gui AutoBuild:+LastFoundExist
@@ -12103,9 +12103,7 @@ class autoBuild
 		Gui, Add, Checkbox, xs+15 yp+25 vAutoBuildGUIEnableHotkey gAutoBuildGUIEditEnableHotkey, Enabled
 		Gui, Add, Edit, Readonly yp-2 x+15 center w85 R1 vAutoBuildGUIHotkey 
 		Gui, Add, Button, yp-2 x+10 gAutoBuildGUIEditHotkey vAutoBuildGUIEditHotkeyButton, Edit
-		Gui, Add, Radio, xs+15 y+10 vAutoBuildGUIExclusive gAutoBuildUpdateProfile, Exclusive 
-		Gui, Add, Radio, xp+90 vAutoBuildGUICumulative gAutoBuildUpdateProfile, Cumulative 
-			
+		Gui, Add, Checkbox, xs+15 y+10 vAutoBuildGUIExclusive gAutoBuildUpdateProfile, Exclusive Profile
 
 		Gui, Add, GroupBox, xs yp+40 w280 h150 section, Units
 		Gui, Add, Checkbox, xs+15 ys+25 vAutoBuildGUIMarine Hidden Disabled gAutoBuildUpdateProfile, Marine
@@ -12238,6 +12236,7 @@ class autoBuild
 		Gui, Destroy
 		return
 	}
+
 	GUIcreateProfile(profileName)
 	{
 		if !isobject(this.oProfilesCopy)
@@ -12280,12 +12279,13 @@ class autoBuild
 		else unitControls := this.zergAutoBuildControls	
 		profileName := this.autoBuildGUIHighlightedProfile()
 		this.oProfilesCopy[profileName].units := ""
+		enabledCount := 0
 		for i, controlVarName in strsplit(unitControls, "|")
 		{
 			StringReplace, realUnitName, controlVarName, AutoBuildGUI ; remove "AutoBuildGUI" from AutoBuildGUIMarine
 			GuiControlGet, enabled,, AutoBuildGUI%controlVarName%
 			if enabled
-				this.oProfilesCopy[profileName].units .= realUnitName "|"
+				this.oProfilesCopy[profileName].units .= realUnitName "|", enabledCount++
 		}
 		this.oProfilesCopy[profileName].units := SubStr(this.oProfilesCopy[profileName].units, 1, -1)		
 		GuiControlGet, enabled,, AutoBuildGUIEnableHotkey
@@ -12293,6 +12293,11 @@ class autoBuild
 		GuiControlGet, hotkey,, AutoBuildGUIHotkey
 		this.oProfilesCopy[profileName].Hotkey := hotkey
 		GuiControlGet, ExclusiveMode,, AutoBuildGUIExclusive
+		if (enabledCount > 1 && !ExclusiveMode) ; hotkeys with more than one unit must be exclusive
+		{
+			ExclusiveMode := 1 
+			GuiControl,, AutoBuildGUIExclusive, 1
+		}
 		this.oProfilesCopy[profileName].Exclusive := ExclusiveMode
 		return 
 	}
@@ -12343,7 +12348,6 @@ class autoBuild
 		GuiControl, % "show" (!disable), AutoBuildGUIEditNameButton ; Should only be visible when a profile is selected
 
 		GuiControl, disable%disable%, AutoBuildGUIExclusive
-		GuiControl, disable%disable%, AutoBuildGUICumulative
 
 		loop, parse, showControls, |
 		{
@@ -12364,14 +12368,18 @@ class autoBuild
 	{
 		this.GUIBuildGUIShow(this.oProfilesCopy[profileName].race)
 		for i, controlSuffix in strsplit(this.oProfilesCopy[profileName].units, "|")
+		{
 			GuiControl,, AutoBuildGUI%controlSuffix%, 1
+			enlabledCount++
+		}
 		GuiControl,, AutoBuildGUIProfileName, %profileName%
 		GuiControl,, AutoBuildGUIEnableHotkey, % round(this.oProfilesCopy[profileName].HotkeyEnabled)
 		GuiControl,, AutoBuildGUIHotkey, % this.oProfilesCopy[profileName].Hotkey
 		if this.oProfilesCopy[profileName].Exclusive = "" ; Not set, so lets make exclusive default
 			this.oProfilesCopy[profileName].Exclusive := True
+		if enlabledCount > 1
+			this.oProfilesCopy[profileName].Exclusive := True
 		GuiControl,, AutoBuildGUIExclusive, % round(this.oProfilesCopy[profileName].Exclusive)
-		GuiControl,, AutoBuildGUICumulative, % !round(this.oProfilesCopy[profileName].Exclusive)
 		return 
 	}
 	autoBuildDisplayUncheckAll()
@@ -12379,6 +12387,25 @@ class autoBuild
 		for i, controlSuffix in strsplit(this.terranAutoBuildControls "|" this.protossAutoBuildControls "|" this.zergAutoBuildControls, "|")
 				GuiControl,, AutoBuildGUI%controlSuffix%, 0
 		return
+	}
+	autoBuildProfileEditorEnabledControls(byRef aEnabledControls := "")
+	{
+		aEnabledControls := []
+		race := this.GUIHighlightedRace()
+		if race = Terran 
+			controls := "terranAutoBuildControls"
+		else if race = Protoss 
+			controls := "protossAutoBuildControls"
+		else if race = Zerg 
+			controls := "zergAutoBuildControls" 
+		else return 
+		for i, controlSuffix in strsplit(this[controls], "|")
+		{
+			GuiControlGet, enabled,, AutoBuildGUI%controlSuffix%
+			if enabled
+				aEnabledControls.insert("AutoBuildGUI" controlSuffix)
+		}
+		return round(aEnabledControls)
 	}
 
 	insertProfilesIntoGUI(oProfiles)
@@ -12427,44 +12454,45 @@ class autoBuild
 		{
 			if profile.hotkey "" = hotkey && profile.HotkeyEnabled
 			{
-			;	if profile.exclusive 
-			;		nameOfProfile := profileName
-				this.isPaused := False
-				if !profile.IsActive 
-				{
-					this.invokeUnits(profile.units, profile.exclusive)
-					profile.IsActive := True	
-					SoundPlay, %A_Temp%\On.wav					
+				if profile.exclusive
+				{ 
+					; If another profile is active or none. Enable only this profile
+					if this.ActiveHotkeyProfile != profileName
+					{
+						this.ActiveHotkeyProfile := profileName
+						this.invokeUnits(profile.units, profile.exclusive)
+						SoundPlay, %A_Temp%\On.wav	
+					}
+					else 
+					{
+						this.ActiveHotkeyProfile := ""
+						this.disableUnits(profile.units)
+						SoundPlay, %A_Temp%\Off.wav
+					}
 				}
-				else ; disable the units associated with the hotkey
+				else ; Can only have one unit in the profile if not exclusive mode
 				{
-
-					profile.IsActive := False					
-					if profile.exclusive 
-						hasActiveUnits := this.disableUnits() ; disable all units
-					else this.disableUnits(profile.units)
-					SoundPlay, %A_Temp%\Off.wav
+					; deactivate any exclusive profiles. Consequently when that profile key is pressed again 
+					; it will effectively turn on those units again (even if there were on), but disable any others
+					this.ActiveHotkeyProfile := "" 
+					if this.isUnitActive(profile.units)
+					{
+						this.disableUnits(profile.units) 
+						SoundPlay, %A_Temp%\Off.wav
+					}
+					else 
+					{
+						this.invokeUnits(profile.units, 0)
+						SoundPlay, %A_Temp%\On.wav	
+					}
 				}
 				this.updateInGameGUIUnitState()
-				break
+				break				
 			}
 		}
-/*
-		this.oProfiles[profileNameOfHotkey]
-
-
-
-		if nameOfProfile != ""
-		{
-			for profileName, profile in this.oProfiles 
-			{
-				if nameOfProfile != "" profileName
-					profile.IsActive := False	
-			}
-		}
-*/		
 		return
 	}
+
 	; null toggles current state
 	; 1 pauses production 
 	; 0 unpauses
@@ -12484,8 +12512,7 @@ class autoBuild
 	; If click in games GUI immediately reset the active state of the profile
 	resetProfileState()
 	{
-		for profileName, profile in this.oProfiles 
-			profile.IsActive := False
+		this.ActiveHotkeyProfile := ""
 		return
 	}
 	; unit names is a pipe delimited list
@@ -12596,6 +12623,7 @@ class autoBuild
 	}
 	isUnitActive(unitName)
 	{
+		unitName := trim(unitName, "|" A_Space A_Tab)
 		if (unitName = "Queen")
 			return this.oAutoBuild.Zerg.hatchery.units[unitName]
 		else 
