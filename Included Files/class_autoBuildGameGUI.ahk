@@ -5,7 +5,7 @@ feedback on which Icon was clicked
 set a new line of icons
 allow icons to be moved up or down
 */
-; Remember this will catch (0x201, 0x203, 0x200, 0x2A3) msgbs from an AHK GUI in this main script
+; Remember this will catch (0x201, 0x203, 0x200, 0x2A3) MSGs from an AHK GUI in this main script
 mainThreadMessageHandler(wParam, lParam, msg, hwnd)
 {
 	if autoBuildGameGUI.hwnd = hwnd
@@ -257,16 +257,16 @@ class autoBuildGameGUI
 		this.addItems("OffButton")
 		this.addItems("pauseButton")
 		this.pushDownLine()
-		this.addItems("zealot", "sentry", "stalker")
+		this.addItems("zealot", "sentry", "stalker", "hightemplar", "darktemplar")
 		this.pushDownLine()
-		this.addItems("hightemplar", "darktemplar")
+		this.addItems("observer", "warpPrism", "immortal", "colossus")
 		this.pushDownLine()
 		this.addItems("phoenix", "oracle", "voidray", "tempest", "carrier")
 	}	
 	fillZerg()
 	{
 		this.addItems("Queen")
-		this.pushItemRight(3)
+		this.pushItemRight()
 		this.addItems("pauseButton")		
 	}
 	pushDownLine(count := 1, offset := 0)

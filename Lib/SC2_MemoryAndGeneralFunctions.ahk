@@ -1037,7 +1037,7 @@ getUnitQueuedCommands(unit, byRef aQueuedMovements)
 			}
 
 		} Until (1 & pNextCmd := numget(cmdDump, 0, "Int"))				; loop until the last/first bit of pNextCmd is set to 1
-		return aQueuedMovements.MaxIndex() 	; interstingly after -2 & pNextCmd (the last one) it should = the first address
+		return aQueuedMovements.MaxIndex() 	; interestingly after -2 & pNextCmd (the last one) it should = the first address
 	}
 	else return 0
 }
@@ -2521,7 +2521,7 @@ distanceFromLine(linePointA, linePointB, point)
 }
 
 ; returns true if a point lies along the line formed by linePointA and linePointB
-; Note: This creates a bounding rectangle using from the diagonal line formed from (linePointA.x, linePointA.y) (one corner) and (linePointB.x, linePointB.y) 
+; Note: This creates a bounding rectangle using the diagonal line formed from (linePointA.x, linePointA.y) (one corner) and (linePointB.x, linePointB.y) 
 ; (the opposing corner) with a maxDistance buffer.
 ; Note this can still return true if the point lies past the end of the line segment but still within the specified maxDistance
 isPointNearLineSegmentWithZcheck(linePointA, linePointB, point, maxDistance)
@@ -4005,7 +4005,7 @@ readConfigFile()
 	IniRead, AutoBuildStarportGroup, %config_file%, %section%, AutoBuildStarportGroup, 5
 	IniRead, AutoBuildGatewayGroup, %config_file%, %section%, AutoBuildGatewayGroup, 6
 	IniRead, AutoBuildStargateGroup, %config_file%, %section%, AutoBuildStargateGroup, 6
-	IniRead, AutoBuilRoboticsFacilityGroup, %config_file%, %section%, AutoBuilRoboticsFacilityGroup, 6
+	IniRead, AutoBuildRoboticsFacilityGroup, %config_file%, %section%, AutoBuildRoboticsFacilityGroup, 6
 	IniRead, AutoBuildHatcheryGroup, %config_file%, %section%, AutoBuildHatcheryGroup, 4
 	IniRead, AutoBuildLairGroup, %config_file%, %section%, AutoBuildLairGroup, 4
 	IniRead, AutoBuildHiveGroup, %config_file%, %section%, AutoBuildHiveGroup, 4

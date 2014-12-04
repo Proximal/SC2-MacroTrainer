@@ -58,7 +58,7 @@ class SC2Keys
 			this.getAllKeys()
 		return this.aCurrentHotkeys[hotkeyReference]
 	}
-	getHotkeyProfile(byRef file, byRef suffix)
+	getHotkeyProfile(byRef file := "", byRef suffix := "")
 	{
 		file := suffix := ""
 		accountFolder := getAccountFolder()
@@ -93,8 +93,27 @@ class SC2Keys
 		this.debug.variablesFilePath := variablesFilePath
 		this.debug.hotkeyProfile := file
 		this.debug.hotkeySuffix := suffix
+
+		if FileExist(variablesFilePath) && getTime()
+		{
+			settimer, _SC2KeysFileModificationCheck, 2000
+			FileGetTime, modifiedTime, %variablesFilePath%
+			this.debug.VariablesModifiedTime := modifiedTime
+		}
+		else settimer, _SC2KeysFileModificationCheck, Off
 		return 
+		
+		; Monitor modification date and update keys. 
+		; This changes every time 'accept' is pressed in the options menu, as well as 'accept' in the hotkey menu. (even if nothing changes)
+		_SC2KeysFileModificationCheck:
+		if !getTime()
+			settimer, _SC2KeysFileModificationCheck, Off 
+		FileGetTime, modifiedTime, % SC2Keys.debug.variablesFilePath
+		if SC2Keys.debug.VariablesModifiedTime != modifiedTime
+			SC2Keys.getAllKeys()
+		return
 	}
+
 	getDefaultKeys(suffix)
 	{
 		; Section and key columns are not used by grid layout!

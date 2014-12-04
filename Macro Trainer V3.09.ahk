@@ -159,7 +159,7 @@ MT_CurrentInstance := [] ; Used to store random info about the current run
 program := []
 program.info := {"IsUpdating": 0} ; program.Info.IsUpdating := 0 ;has to stay here as first instance of creating infor object
 
-ProgramVersion := 3.08
+ProgramVersion := 3.09
 
 l_GameType := "1v1,2v2,3v3,4v4,FFA"
 l_Races := "Terran,Protoss,Zerg"
@@ -602,18 +602,6 @@ g_DebugKey:
 	selectText(HwndEdit, -1) ; Deselect edit box text
 return	
 
-; selects text in a text box, given absolute character positions
-;   if start is -1, the current selection is deselected
-;   if end is omitted or -1, the end of the text is used
-;       (omit both to select all)
-
-SelectText( ControlID, start=0, end=-1 )
-{
-    ; EM_SETSEL = 0x00B1
-    SendMessage, 0xB1, start, end,, ahk_id %ControlID%
-    return (ErrorLevel != "FAIL")
-}
-
 Stealth_Exit:
 	ExitApp
 	return
@@ -969,6 +957,7 @@ clock:
 		setupAutoGroup(aLocalPlayer["Race"], A_AutoGroup, aUnitID, A_UnitGroupSettings)
 		findXelnagas(aXelnagas)	
 
+		SC2Keys.getAllKeys()
 		disableAllHotkeys()
 		CreateHotkeys()	
 		if !A_IsCompiled
@@ -993,7 +982,6 @@ clock:
 		if idle_enable	;this is the idle AFK
 			settimer, user_idle, 1000, -5
 
-		SC2Keys.getAllKeys()
 		autoBuild.setBuildObj()
 		;LocalPlayerRace := aLocalPlayer["Race"] ; another messy lazy variable but used in a few spots
 		;if (EnableAutoWorker%LocalPlayerRace%Start && (aLocalPlayer["Race"] = "Terran" || aLocalPlayer["Race"] = "Protoss") )
@@ -4031,10 +4019,21 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 			gui, font, norm s10
 			gui, font, 		
 
-	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vAutoBuild_TAB, Army||GUI|Hotkeys|ArmySettings	
-	Gui, Tab, Army 
+	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vAutoBuild_TAB, Notes||Settings|GUI|Hotkeys|	
+	
+	Gui, Tab, Notes 
+		Gui, add, GroupBox, y+25 w400 h130, Note
+		gui, add, text, xp+10 yp+25 w380, 
+		( Ltrim off 
+			This feature is still under development and relies on a number of new functions, including reading the active SC hotkey profile.
+			
+			If you experience any issues please submit a bug report.
 
-		Gui, add, GroupBox, y+20 w400 h195, Structure Control Group
+			Refining unit production vs. resource allowance is on the to-do list e.g. balancing simultaneous hellion and tank production while mineral starved.
+		)
+		
+	Gui, Tab, Settings 
+		Gui, add, GroupBox, y+10 w400 h195, Structure Control Group
 		Gui, Add, Text, section xp+15 yp+25, Barracks:
 		Gui, Add, DropDownList,  % "xp+100 yp-2 w40 center vAutoBuildBarracksGroup Choose" (AutoBuildBarracksGroup = 0 ? 10 : AutoBuildBarracksGroup), 1|2|3|4|5||6|7|8|9|0
 
@@ -4062,7 +4061,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		Gui, Add, Text, xs, Hive:
 		Gui, Add, DropDownList,  % "xp+100 yp-2 w40 center vAutoBuildHiveGroup Choose" (AutoBuildHiveGroup = 0 ? 10 : AutoBuildHiveGroup), 1|2|3|4||5|6|7|8|9|0
 
-		Gui, add, GroupBox, xs-15 y+20 section w400 h100, Guaranteed Free Resources
+		Gui, add, GroupBox, xs-15 y+25 section w400 h100, Guaranteed Free Resources
 
 		Gui, Add, Text, xp+10 ys+25, Minerals:
 			Gui, Add, Edit, Number Right xp+50 yp-2 w50 vTT_autoBuildMinFreeMinerals
@@ -4075,11 +4074,23 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 					Gui, Add, UpDown,  Range0-20 vAutoBuildMinFreeSupply, %autoBuildMinFreeSupply%	
 		Gui, Add, Text, xs+10 y+15 w380, This helps to ensure you have enough resources to build depots/pylons and to start upgrades. 
 
-		
+		Gui, add, GroupBox, xs+140 ys+115 w125 h60, APM Delay 
+		;Gui, Add, Text, xs section y+25 w85, APM Delay:
+			Gui, Add, Edit, Number Right xp+30 yp+25 w50 vTT_automationAPMThreshold
+					Gui, Add, UpDown,  Range0-100000 vAutomationAPMThreshold, %automationAPMThreshold%	
+
+		Gui, add, GroupBox, xs ys+115 w125 h100, Control Group Storage 
+		Gui, Add, Text, xp+10 yp+25 section, Terran:
+		Gui, Add, DropDownList,  % "xp+60 yp-2 w45 center vAutomationTerranCtrlGroup Choose" (AutomationTerranCtrlGroup = 0 ? 10 : AutomationTerranCtrlGroup), 1|2|3|4||5|6|7|8|9|0
+		Gui, Add, Text, xs, Protoss:
+		Gui, Add, DropDownList,  % "xp+60 yp-2 w45 center vAutomationProtossCtrlGroup Choose" (AutomationProtossCtrlGroup = 0 ? 10 : AutomationProtossCtrlGroup), 1|2|3|4||5|6|7|8|9|0
+		Gui, Add, Text, xs, Zerg:
+		Gui, Add, DropDownList,  % "xp+60 yp-2 w45 center vAutomationZergCtrlGroup Choose" (AutomationZergCtrlGroup = 0 ? 10 : AutomationZergCtrlGroup), 1|2|3|4||5|6|7|8|9|0
 
 	Gui, Tab, GUI
 		
-		Gui, Add, Text, section x+15 y+25, Hotkey Mode:
+		Gui, add, GroupBox, y+10 w325 h240 section, Settings
+		Gui, Add, Text, section xp+15 yp+25, Hotkey Mode:
 		Gui, Add, DropDownList, yp-2 xp+130 vAutoBuildGUIkeyMode gAutoBuildOptionsMenuHotkeyModeCheck, Toggle||KeyDown
 		GuiControl, ChooseString, AutoBuildGUIkeyMode, %AutoBuildGUIkeyMode%		
 
@@ -4097,29 +4108,21 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		Gui, Add, Checkbox, xs vAutoBuildGUIAutoWorkerPause checked%AutoBuildGUIAutoWorkerPause%, Pause button disables worker production 
 		Gui, Add, Checkbox, xs vAutoBuildGUIAutoWorkerOffButton checked%AutoBuildGUIAutoWorkerOffButton%, Off button disables worker production 
 
+		Gui, add, GroupBox, xs-15 y+40 w325 h120 section, About 
+		gui, add, text, xp+15 yp+25 w295, 
+		( ltrim off 
+			This GUI/overlay is the primary method used to control auto production. Like other overlays it may be moved, however it cannot be resized.
+			
+			Right clicking anywhere inside this GUI will produce the same result as pressing the GUI 'pause' button. 
+		)
+
 		gosub, AutoBuildOptionsMenuHotkeyModeCheck
 
 	Gui, Tab, Hotkeys
-		GUI, Add, button, gLaunchAutoBuildEditor, Profile Editor
-		Gui, Add, Checkbox, vAutoBuildEnablePauseAllHotkey checked%autoBuildEnablePauseAllHotkey%, Pause All 
-		Gui, Add, Edit, Readonly yp-2 xp+130 center w85 R1 vAutoBuildPauseAllkey gedit_hotkey, %AutoBuildPauseAllkey%
-		Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#AutoBuildPauseAllkey, Edit
-
-	Gui, Tab, ArmySettings
-		Gui, add, GroupBox, y+20 w125 h100, Control Group Storage 
-		Gui, Add, Text, xp+10 yp+25 section, Terran:
-		Gui, Add, DropDownList,  % "xp+60 yp-2 w45 center vAutomationTerranCtrlGroup Choose" (AutomationTerranCtrlGroup = 0 ? 10 : AutomationTerranCtrlGroup), 1|2|3|4||5|6|7|8|9|0
-		Gui, Add, Text, xs, Protoss:
-		Gui, Add, DropDownList,  % "xp+60 yp-2 w45 center vAutomationProtossCtrlGroup Choose" (AutomationProtossCtrlGroup = 0 ? 10 : AutomationProtossCtrlGroup), 1|2|3|4||5|6|7|8|9|0
-		Gui, Add, Text, xs, Zerg:
-		Gui, Add, DropDownList,  % "xp+60 yp-2 w45 center vAutomationZergCtrlGroup Choose" (AutomationZergCtrlGroup = 0 ? 10 : AutomationZergCtrlGroup), 1|2|3|4||5|6|7|8|9|0
-
-		Gui, add, GroupBox, xs-10 y+25 w125 h60, APM Delay 
-		;Gui, Add, Text, xs section y+25 w85, APM Delay:
-			Gui, Add, Edit, Number Right xp+30 yp+25 w50 vTT_automationAPMThreshold
-					Gui, Add, UpDown,  Range0-100000 vAutomationAPMThreshold, %automationAPMThreshold%	
-
-
+		GUI, Add, button, gLaunchAutoBuildEditor +disabled, Profile Editor
+		Gui, Add, Checkbox, vAutoBuildEnablePauseAllHotkey checked%autoBuildEnablePauseAllHotkey% +disabled, Pause All 
+		Gui, Add, Edit, Readonly yp-2 xp+130 center w85 R1 vAutoBuildPauseAllkey gedit_hotkey +disabled, %AutoBuildPauseAllkey%
+		Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#AutoBuildPauseAllkey +disabled, Edit
 
 	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vMiscAutomation_TAB, Select Army||Spread|Remove Units|Easy Select/Unload|Smart Geyser
 	Gui, Tab, Select Army
@@ -4782,7 +4785,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		
 		AutoWorkerWarnMaxWorkers_TT := "A spoken warning is issued when the maximum worker count has been reached.`nWarning: ""Maxed Workers"""
 
-		TT_AutoWorkerAPMProtection_TT := AutoWorkerAPMProtection_TT
+		automationAPMThreshold_TT := TT_automationAPMThreshold_TT := TT_AutoWorkerAPMProtection_TT := AutoWorkerAPMProtection_TT
 		:= TT_FInjectAPMProtection_TT := FInjectAPMProtection_TT := "Automations will be delayed while your instantaneous APM is greater than this value.`n"
 				. "`nThis can be used to make the automations a little more subtle."
 				. "`n`nAlthough this shouldn't occur, if you are experiencing misgroupings or altered rally points lowering this value may help."
@@ -4935,6 +4938,9 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 				. "The lowest reliable values will vary for users, but for myself the minimap method can be used with a sleep time of 0 ms.`n"
 				. "The backspace methods require at least 8 ms."
 
+		AutomationTerranCtrlGroup_TT := AutomationProtossCtrlGroup_TT := AutomationZergCtrlGroup_TT := "This refers to the control group used to store the current unit selection."
+				. "`nThis allows the selected units to be restored after performing the automation."
+				. "`n`nNote: Use a control group which you DO NOT use in game." 	
 
 		AM_MiniMap_PixelColourAlpha_TT := AM_MiniMap_PixelColourRed_TT := AM_MiniMap_PixelColourGreen_TT := AM_MinsiMap_PixelColourBlue_TT := "The ARGB pixel colour of the mini map mineral field."
 		#ResetPixelColour_TT := "Resets the pixel colour and variance to their default settings."
@@ -7762,7 +7768,7 @@ autoWorkerProductionCheck()
 		; I should change this so pReleaseKeys isn't called until absolutely necessary
 		; that way wont get a double press when build aborts 
 		input.pReleaseKeys(True)
-
+		input.pSend("{shift up}{ctrl up}") ; testing if this reduces control bug (or if its a timing issue latery)
 		dSleep(40) ; increase safety ensure selection buffer fully updated
 
 		HighlightedGroup := getSelectionHighlightedGroup()
@@ -9148,7 +9154,7 @@ quickSelect(aDeselect)
 		{
 			input.pSend(aAGHotkeys.Invoke[Substr(aDeselect.BaseSelection, 0)]) ; substr() extract last character which is the control group number 1-9
 			; Need to add a decent method to reduce the sleep time here
-			dSleep(80)
+			dSleep(80) 	
 		}
 		else ;if aDeselect.BaseSelection = "Army" ; Use as blank else 
 		{					
@@ -10586,30 +10592,7 @@ getUnitAbilitiesString(unit)
 	return s
 }
 
-/*
 
-; speed test.
-; 25 ms to install
-; 45 ms to remove on first run - subsequent remoes ~27 ms
-;f1::
-thread, Interrupt, off
-v := v2 := 0
-loop, % loopcount := 100
-{
-	qpx(true)
-	BufferInputFast.createHotkeys(aButtons.List)
-	BufferInputFast.BlockInput()
-	v += qpx(false) * 1000
-	sleep 10
-	qpx(true)
-	BufferInputFast.disableBufferingAndBlocking()
-	BufferInputFast.disableHotkeys()
-	v2 += qpx(false) * 1000
-}
-msgbox % "Average time to:`nCreate Hotkeys " v/loopcount "`nDisable Hotkeys: " v2/loopcount
-return
-
-*/
 ; This is required for some commands to function correctly. 
 ; One example is if the chat box is open
 ; if the mouse is positioned blow the map-viewport (e.g. on the control card)
@@ -10955,7 +10938,7 @@ msgbox % "Time Taken: " QPX( False ) * 1000 "`n" a
 
 	
 return
-
+*/
 ; readModifierState()
 ; takes about 8.5 ms for modifier state to change via sendinput 
 ; ie to have readmodiferstate reflect true state
@@ -10965,392 +10948,6 @@ return
 ; This would likely be true for any other key as well. As such, this has considerable implications.
 
 
-
-/*
-
-*f1::
-
-pSend("Hello chat box", 0)
-
-
-return
-Thread, NoTimers, true
-send {enter}
-count := 0
-while (!isChatOpen())
-{
-	count := A_Index
-}
-msgbox %count%
-Thread, NoTimers, False 
-return
-/*
-*f3::
-objtree(BufferInputFast.retrieveBuffer())
-return 
-
-f1:: 
-
-setLowLevelInputHooks(False)
-BufferInputFast.createHotkeys(aButtons.List) 
-BufferInputFast.BufferInput()
-soundplay *-1   
-sleep(3000, "S")
-soundplay *-1 
-BufferInputFast.Send()
-  
-return 
-/*
-
-f2::
-settimer, g_TTTest, 200
-return 
-
-g_TTTest:
-MouseGetPos, mx, my
-r := DllCall("GetAsyncKeyState",Int, GetKeyVK("Shift"))
-r2 := getkeystate("Shift", "P")
-r3 := getkeystate("Shift")
-r4 := readModifierState()
-ToolTip, AS: %r% `n P: %r2% `n L: %r3% `n G: %r4%, (800), (810)
-
-return 
-/*
-ffff
-var := "Trainer Vr: " getProgramVersion() "`n"
-	. "Is64bitOS: " A_Is64bitOS "`n"
-	. "OSVersion: " A_OSVersion "`n"
-	. "Language Code: " A_Language "`n"
-	. "Language: " getSystemLanguage() "`n"
-	. "MinTimer: " MinTimer "`n"
-	. "MaxTimer: " MaxTimer "`n"
-	. "XRes: " SC2HorizontalResolution() "`n"
-	. "YRes: " SC2VerticalResolution() "`n"
-	. "Replay Folder: "  getReplayFolder() "`n"
-	. "Account Folder: "  getAccountFolder() "`n"
-	. "Game Exe:"	StarcraftExePath() "`n"
-	. "Game Dir:"	StarcraftInstallPath() "`n"
-
-	. "SwarmMulti.SC2Mod:`n" 
-loop, % StarcraftInstallPath() "\SwarmMulti.SC2Mod"
-	var .= A_Tab A_LoopFileName "`n"
-
-/*
-
-f1::
-send {Shift Down}
-return 
-
-*f2::
-
-	
-	startTime := A_TickCount
-
-	while (A_TickCount - StartTime < 1000 * 10)
-	{
-		soundplay *-1
-		clipboard := WriteModifiers(False, False, False)
-		sleep 250
-	}
-	soundplay *16
-
-return 
-
-
-/*
-f1::
-unit := getSelectedUnitIndex()
-msgbox %  getUnitMoveState(unit)
-
-return 
-
-f2::
-settimer, g_TTTest, 200
-getGroupedQueensWhichCanInject(1Group, 1)
-getGroupedQueensWhichCanInject(0Group, 0)
-getSelectedQueensWhichCanInject(oSelection, 1)
-objtree(oSelection, "oSelection")
-objtree(1Group, "1")
-objtree(0Group, "0")
-return 
-
-g_TTTest:
-
-testtime := A_TickCount - testtime
-;ToolTip, % isUserBusyBuilding() "`n" pointer(GameIdentifier, P_IsUserPerformingAction, O1_IsUserPerformingAction), (mx+10), (my+10)
-var := getPlayerCurrentAPM(aLocalPlayer.slot)"`n"
-var .= getPlayerCurrentAPM(1) "`n"
-var .= getPlayerCurrentAPM(2) "`n"
-var .= getPlayerCurrentAPM(3) "`n"
-var .= getPlayerCurrentAPM(4) "`n"
-
-ToolTip, %  var	, (mx+10), (my+10)
-return 
-
-/*
-
-f2::
-unit := getSelectedUnitIndex()
-progress :=  getBuildStats(unit, QueueSize)
-msgbox % progress "`n" QueueSize "`n" isUnitChronoed(unit)
-return
-
-/*
-f1::
-
-	SetBatchLines, -1
-	Thread, NoTimers, true
-sleep 500 
-soundplay *-1
-time := A_TickCount
-;	BufferInput(aButtons.List, "Buffer", 0)
-BufferInputFast.BufferInput()
-;BufferInputFast.BlockInput()
-	sleep 2500
-;	BufferInputFast.disableBufferingAndBlocking()
-;	BufferInput(aButtons.List, "Send", 0)
-BufferInputFast.send()
-;sendEvent {click Down}
-soundplay *48
-return
-
-return
-!f2::
-
-
-msgbox % GetKeyState("Lbutton", "P") "`n" GetKeyState("Lbutton") "`n"
-return
-
-+f3::
-msgbox % GetKeyState("Lbutton", "P") "`n" GetKeyState("Lbutton")
-msgbox % var
-return
-^f2::
-objtree(BufferInputFast.retrieveBuffer(), "aBuffer")
-return
-
-
-/*
-f2::
-unit := getSelectedUnitIndex()
-msgbox % clipboard := substr(dectohex(B_uStructure + unit * S_uStructure),3)
-return 
-critical, on
-	keywait, Lbutton, D
-	keywait, Lbutton
-	send, 6
-	sleep, 10
-
-	numGetUnitSelectionObject(oTestSelection)
-	objtree(oTestSelection, "oTestSelection")
-	critical, off
-return
-/*
-
-f2::
-
-MouseGetPos, mx, my 
-
-selectedunit := getSelectedUnitIndex()
-
-settimer, g_TTTest, 200
-return 
-
-g_TTTest:
-testtime := A_TickCount
-getCurrentlyHighlightedUnitType()
-testtime := A_TickCount - testtime
-;ToolTip, % isUserBusyBuilding() "`n" pointer(GameIdentifier, P_IsUserPerformingAction, O1_IsUserPerformingAction), (mx+10), (my+10)
-ToolTip, %  getUnitMoveState(selectedunit)	, (mx+10), (my+10)
-return 
-
-
-/*
-f2::
-unit1 := getSelectedUnitIndex(0)
-msgbox %  getUnitType(unit1)
-objtree(aResourceLocations.geysers)
-return
-
-
-unit1 := getSelectedUnitIndex(0)
-unit2 := getSelectedUnitIndex(0)
-Unitcount := DumpUnitMemory(MemDump)
-
-aunit1 := []
-aunit2 := []
-aunit1 := numGetUnitPositionXYZ(MemDump, Unit1)
-aunit2 := numGetUnitPositionXYZ(MemDump, Unit2)
-
-objtree(aunit1, "aunit1")
-objtree(aunit2, "aunit2")
-return
-
-/*
-f2::
-resources := []
-minerals := []
-
-	resources :=  getMineralsAndGeysers()
-	objtree(resources, "resources")
- 	minerals := groupMinerals(resources.minerals)
-
-
-	objtree(minerals, "minerals")
-return
-
-f3::
-sleep 2000
-
-for index, mineralPatch in minerals
-{
-	click_x := mineralPatch.x,  click_y := mineralPatch.y
-	mapToMinimapPos(click_x, click_y)
-	send {click Left %click_x%, %click_y%}
-	soundplay *-1
-	sleep 1000
-
-}
-	soundplay *-1
-	sleep 200
-	soundplay *-1
-return
-/*
-f2::
-
-
-
-	u := getSelectedUnitIndex()
-	o := getunitowner(u)
-	t := getPlayerTeam(o)
-	type := getUnitType(getSelectedUnitIndex())
-msgbox % ifTypeInList(type, l_Changeling)
-msgbox % l_Changeling
-msgbox % "unit: " u "`nOwner: " o "`nTeam: " t "`nType: " type "`n"  aUnitName[type] 
-return
-
-
-+f3::
-	u := getSelectedUnitIndex()
-	o := getunitowner(u)
-	t := getPlayerTeam(o)
-	type := getUnitType(getSelectedUnitIndex())
-msgbox % "unit: " u "`nOwner: " o "`nTeam: " t "`nType: " type "`n"  aUnitName[type] 
-return
-
-
-; nexus
-;queueSize Offset for nexus is +0xA4 (from pQueueInfo)
-; pQueTimerBase := 0xB0 + pQueueInfo  ; there is more infor here like number of probes in production, number of queues probes (mothership doeant affect these)
-
-
-
-;	O_P_uAbilityPointer := 0xD8 (+4)
-
-
-; //fold
-; unit + 0xE2 ; 1 byte = 18h chrono for protoss structures 10h normal
-/*
-Orbital - Unit Abilities + 9 = 24h while idle 04h when SCV in prod - 40h while flying - 1byte
-CC +9h = 76h idle / 12h scv in prod and 0A when flying - 20h when making PF - 40h  making orbital
-pf  - (Unit Abilities + 34) -> pointer  + 180 = 1byte 43 scv in production. 3 idle - there is a queue length nearby 2
-Toss - (Unit Abilities + 24!) --> pointer  + 88 = 1byte   43 proble in production. 3 idle queue length nearby
-For the nexus there is also a chrono state nearby
-
-
-
-address1 :=	(abilities pointer + 28)
-Adress 2 := (address1 + 1C) 
-Adress 3 :=  (Adress 2  + C)
-Adress 3 + 6 = warpgate timer 2 byte
-
-Note: Will give a fail if a the warpgate is virgin i.e. not warpged in a unit
-/*
-;creep tumours hatches larva broodlings
-
-
-
-
-	
-
-return
-f3::
-	SC2exe := getProcessBaseAddress(GameIdentifier)
-B_hStructure := SC2exe + 0x328C764
-	O_hHatchPointer := 0xC
-	O_hLarvaCount := 0x5C
-	O_hUnitIndexPointer := 0x1C8
-	S_hLarva := 0x94	;distance between each larva in 1 hatch
-S_hStructure := 0x6F0 
-
-
-
-
-clipboard := dectohex(B_hStructure)
-msgbox % getLarvaCount()
-;clipboard := dectohex(B_hStructure + O_hLarvaCount)
-
-return
-; there seems to be a creeptable thing
-getLarvaCount(player="")
-{ 	global aUnitID
-	count := 0
-	while (Address := HatchIndexUnitPointer(Hatch:=A_index-1)) ; checks there is a hatch or other unit
-	while (Hatch < 50), (Address := HatchIndexUnitPointer(Hatch:=A_index-1)) ; checks there is a hatch or other unit
-	{
-		clipboard := dectohex(Address)
-		Unit := getUnitIndexFromAddress(Address) ; First hatch, first larva - if there is just 1 larva it will be in this spot
-		type := getUnitType(Unit)
-		if isUnitLocallyOwned(Unit) && (type = aUnitID["Hatchery"] ||type = aUnitID["Lair"] || type = aUnitID["Hive"])
-		{
-			count += getHatchLarvaCount(Hatch)
-			msgbox % dectohex(Address) "`n" count "`n" getHatchLarvaCount(Hatch)
-		}
-	}
-		return count
-}
-getHatchBase(Hatch) ; beings @ 0 - this refers to the hatch index
-{	global	; a Positive number indicates a hatch exists - 0 nothing
-	return ReadMemory(B_hStructure + Hatch*S_hStructure, GameIdentifier)
-}
-HatchIndexUnitPointer(Hatch) ; beings @ 0 - this refers to the hatch index
-{	global	; a Positive number indicates a hatch exists - 0 nothing
-	return ReadMemory(B_hStructure + O_hHatchPointer + Hatch*S_hStructure, GameIdentifier)
-}
-
-getUnitIndexFromAddress(Address)
-{	global
-	return (Address - B_uStructure) / S_uStructure
-}
-
-getLarvaUnitIndex(Hatch=0, Larva=0) ; Refers to the hatch index and within that - so begins at 0
-{	local LarvaAddress, UnitIndex
-
-	LarvaAddress := ReadMemory(B_hStructure + (Hatch-1)*S_hStructure 
-		+ (O_hUnitIndexPointer + (Larva * S_hLarva)) , GameIdentifier) ; address is actually the mem/hex address
-	Return  (LarvaAddress - B_uStructure )/ S_uStructure	
-}
-getHatchLarvaCount(Hatch)
-{	global 
-	return ReadMemory(B_hStructure + Hatch*S_hStructure + O_hLarvaCount, GameIdentifier)
-}
-
-
-getLarvaPointer(Hatch, Larva)
-{	global
-	return ReadMemory((B_hStructure + S_hStructure * Hatch) + (O_hUnitIndexPointer + S_hLarva * Larva), GameIdentifier)
-}
-
-; How to Create a string array
-string:="CH2001" ; define a string, its address will be saved in array
-VarSetCapacity(array,10 * A_PtrSize) ; create a string array (simply a block of memory)
-NumPut(&string,array,"PTR") ; Save pointer to our string in first element/field of array (each field is as big as A_PtrSize)
-_handle := DllCall("MyDll\StartReceiver", "Ptr", &array)
-
-; To read the data later use:
-MsgBox % StrGet(NumGet(array,0,"PTR"))
-
-*/
 
 
 launchMiniMapThread()
@@ -11745,135 +11342,6 @@ debugAllKeyStates(logical := True, physical := True)
 ; 204
 ; 109ms
 ; 698 if NA isnt present
-
-
-
-
-
-/*
-*f1::
-input.pSend("{shift down}{f5 down}")
-return
-
-f2::
-send, {shift down}{shift up}
-return 
-
-controlclick,,StarCraft II,,X1,,NA
-controlclick,,StarCraft II,,X2,,NA
-return 
-
-+f4::
-loop 
-{
-	sleep 50
-	tooltip, % ReadMemory(B_iModifiers, GameIdentifier, 1) "`n" ReadMemory(B_iFkeys, GameIdentifier, 2)
-}
-
-/*
-*f1::
-MouseGetPos, x,y
-;a := input.psend("{lbutton}")
-input.pClick(x,y,"L",1, "L^")
-return 
-
-^f2::
-+f2::
-f2::
-;ControlClick [, Control-or-Pos, WinTitle, WinText, WhichButton, ClickCount, Options, ExcludeTitle, ExcludeText]
-
-;controlclick,,StarCraft II,,Left,,NA D
-controlclick,,StarCraft II,,L,,NA
-
-return 
-*/
-
-
-/*
-f1::
-DetectHiddenWindows, On
-winGet, window, list 
-s := ""
-
-loop, % window 
-{
-	WinGetTitle, title, % "ahk_id " window%A_Index%
-	s .= "`n" title
-}
-clipboard := s
-return 
-*/
-
-
-
- ; 0x156
-
-/*
-f1::
-sleep 500
-critical, 1000
-setLowLevelInputHooks(True)
-soundplay *-1 
-s := A_TickCount
-while (A_TickCount < s + 1000)
-	vta++
-s := stopwatch()
-setLowLevelInputHooks(False)
-t := stopwatch(s)
-sleep 100
-msgbox % t
-return 
-
-
-critical, off
-s := A_TickCount
-soundplay *-1 
-while (A_TickCount < s + 5000)
-	vta++
-return 
-
-
-*/
-/*
->!>+f10::
-run %comspec% /c ""C:\Users\Matthieu\Desktop\New folder (3)\MsgHookLister\x64\MsgListerApp.exe" /h > "C:\Users\Matthieu\Desktop\New folder (3)\MsgHookLister\x64\hooks.txt"",, Hide 
-sleep 1000 
-Run, "C:\Users\Matthieu\Desktop\New folder (3)\MsgHookLister\x64\hooks.txt"
-return 
-*/
-
-/*
-
-pAbilities: 246875b4 Unit ID: 0
-uStruct: 38d3000 - 38d31c0
-0 | Pointer Address 246875cc | Pointer Value 4a1b230 | RallyHatchery
-1 | Pointer Address 246875d0 | Pointer Value 4a1b2ac | que5CancelToSelection
-2 | Pointer Address 246875d4 | Pointer Value 4a1b328 | BuildInProgress
-3 | Pointer Address 246875d8 | Pointer Value 4a1b3a4 | UpgradeToLair
-4 | Pointer Address 246875dc | Pointer Value 4a1b420 | UpgradeToHive
-5 | Pointer Address 246875e0 | Pointer Value 4a1b49c | LairResearch
-6 | Pointer Address 246875e4 | Pointer Value 4a1b518 | TrainQueen
-
-
-
-
-
-
-/*
-f1::
-unit := getSelectedUnitIndex()
-type := getUnitType(unit)
-getStructureProductionInfo(unit, type, aQueueInfo)
-objtree(aQueueInfo)
-clipboard := aQueueInfo.1.item
-; TerranVehicleAndShipWeaponsLevel2
-return 
-;TerranVehicleAndShipWeaponsLevel2
-;TerranVehicleAndShipPlatingLevel2
-
-*/
-
-
 
 /*
  for units on top of each other clicking the same border edge location twice will unload 1, then the other
@@ -12523,9 +11991,9 @@ class autoBuild
 		{
 			if unitName = queen 
 			{
-				this.oAutoBuild.Zerg.hatchery.autoBuild := this.oAutoBuild.Zerg.hatchery.units[unitName] := True
-				this.oAutoBuild.Zerg.lair.autoBuild := this.oAutoBuild.Zerg.lair.units[unitName] := True
-				this.oAutoBuild.Zerg.hive.autoBuild := this.oAutoBuild.Zerg.hive.units[unitName] := True
+				this.oAutoBuild.Zerg.hatchery.autoBuild := this.oAutoBuild.Zerg.hatchery.units[unitName].autoBuild := True
+				this.oAutoBuild.Zerg.lair.autoBuild := this.oAutoBuild.Zerg.lair.units[unitName].autoBuild := True
+				this.oAutoBuild.Zerg.hive.autoBuild := this.oAutoBuild.Zerg.hive.units[unitName].autoBuild := True
 			}
 			else if structure := this.getStructureFromUnitName(unitName)
 			{
@@ -12623,7 +12091,7 @@ class autoBuild
 	{
 		unitName := trim(unitName, "|" A_Space A_Tab)
 		if (unitName = "Queen")
-			return this.oAutoBuild.Zerg.hatchery.units[unitName]
+			return this.oAutoBuild.Zerg.hatchery.units[unitName, "autoBuild"]
 		else 
 		{
 			structure := this.getStructureFromUnitName(unitName)
@@ -12798,7 +12266,7 @@ class autoBuild
 	copyLocalUnits()
 	{
 		Obj := []
-  		if !TryLockWait(localUnitDataCriSec, 50, 5)
+  		if !TryLockWait(localUnitDataCriSec, 30, 5)
   			return ""
   		thread, notimers, true 
   		for type, indexes in aLocalUnitData
@@ -12807,18 +12275,18 @@ class autoBuild
   		thread, notimers, false
   		return obj
 	}
-	canPerformBuild(loops := 36)
+	canPerformBuild(loops := 15)
 	{ 	global automationAPMThreshold
 		if isGamePaused() || isMenuOpen()
 			return False
 		While isUserBusyBuilding() || isCastingReticleActive() 
-		|| GetKeyState("LButton", "P") || GetKeyState("RButton", "P")
+		;|| GetKeyState("LButton", "P") || GetKeyState("RButton", "P")
 		|| getkeystate("Enter", "P") 
 		|| getPlayerCurrentAPM() > automationAPMThreshold
-		||  A_mtTimeIdle < 50
+		;||  A_mtTimeIdle < 50
 		{
 			if (A_index > loops)
-				return False ; (actually could be 480 ms - sleep 1 usually = 20ms)
+				return False ; (sleep 1 usually = 20ms - so 20*loop count)
 			Thread, Priority, -2147483648	
 			sleep 1
 			Thread, Priority, 0	
@@ -12894,9 +12362,10 @@ class autoBuild
 		critical, 1000
 		setLowLevelInputHooks(True)
 		buildCheck.set()
-		dsleep(20)
+		dsleep(10)
 		input.pReleaseKeys(True)
-		dSleep(15)	
+		input.pSend("{shift up}{ctrl up}") ; extra safety. 
+		dSleep(5)	
 		storageGroup := automationStorageGroup(aLocalPlayer.Race)
 		this.storeSelection(storageGroup, HighlightedGroup, selectionPage)
 		
@@ -12906,6 +12375,8 @@ class autoBuild
 				continue 
 			if item.group != prevGroup
 			{
+				if (prevGroup = "") ; click to ensure camera doesn't jump. Not required when changing grounds.
+					input.psend("{click 0 0}")
 				; A sleep may be required here to prevent the invoked structures from receiving the previously sent buildString 
 				this.invokeGroup(item.group, oSelection, currentTab)
 				if (prevGroup = "") ; Hasn't been set yet so this is first build event.
@@ -13093,6 +12564,9 @@ class autoBuild
 		{
 			if (race = "terran")
 				addon := getAddonStatus(getUnitAbilityPointer(unitIndex), aUnitId[structureName], underConstruction)
+			else if (race = "zerg")
+				underConstruction := isHatchLairOrSpireMorphing(unitIndex, aUnitId[structureName]) ; Obviously not really under construction
+
 			if !underConstruction
 			{
 				filledSlots := this.filledSlotCount(unitIndex, aUnitId[structureName])				
@@ -13233,6 +12707,9 @@ getSelectedHarvestersMiningGas(byRef oSelection := "")
 ; Harvesters inside the geyser or heading towards it is accurate (command target = refinery) 
 ; The returned count value is inteded to be used when the refinery is under construction
 ; The found harvesters will already be mining be mining gas from it once it finishes building, so these must be removed from selection
+
+; Note: For a half a second after the refinery finishes the displayed count is 0 (as the SCV transitions from building geyser to mining gas)
+; So if user clicks then (has happened to me a couple of times) you end up with 4 on gas.
 getHarvestersMiningGas(geyserStructureIndex, byref aFoundIndexes, byRef underConstruction)
 {
 	static aTownHallLookup 
@@ -13253,6 +12730,7 @@ getHarvestersMiningGas(geyserStructureIndex, byref aFoundIndexes, byRef underCon
 	aFoundIndexes := [], count := 0
 
 	unitCount := DumpUnitMemory(MemDump)
+
 	underConstruction := numgetUnitTargetFilter(MemDump, geyserStructureIndex) & aUnitTargetFilter.underConstruction
 	aGeyserStructurePos := numGetUnitPositionXYZ(MemDump, geyserStructureIndex)
 	loop, % unitCount
@@ -13269,17 +12747,17 @@ getHarvestersMiningGas(geyserStructureIndex, byref aFoundIndexes, byRef underCon
 				|| (aLocalPlayer.Slot = numgetUnitOwner(MemDump, command.targetIndex) ; this part checks if harvester is on the return trip from the geyser in question.
 					&& aTownHallLookup[aLocalPlayer.Race].hasKey(numgetUnitModelType(numgetUnitModelPointer(MemDump, command.targetIndex))) ; Target is a townhall i.e. harvester mining minerals or gas and is returning to town hall
 					&& isUnitNearUnit(aGeyserStructurePos, aTownHallPos := numGetUnitPositionXYZ(MemDump, command.targetIndex), 9) ; so town hall is next to refinery
-					&& isPointNearLineSegmentWithZcheck(aGeyserStructurePos, aTownHallPos, numGetUnitPositionXYZ(MemDump, unit), 1))) ; harvester is within 1 map unit of the straight line connecting the refinery to the townhall (this wont work if there is an obstruction and the worker has to move path around it)
-			{
+					&& isPointNearLineSegmentWithZcheck(aGeyserStructurePos, aTownHallPos, numGetUnitPositionXYZ(MemDump, unit), .9))) ; harvester is within 1 map unit of the straight line connecting the refinery to the townhall (this wont work if there is an obstruction and the worker has to move path around it)
+			{ 																														; 1 is too big and a unit returning minerals from a patch adjacent to the refinery will count (when its at the CC end of the line)
 				; I could do a maxIndex() check on the commands - if harvester has another queued command after this then add it to the ignore list
 				; e.g. so if you accidentally select a worker which is queued to build a structure after it mines a patch it will be deselected and not sent to geyser
 				; But then this would create issues if the user intends for it to go to the geyser
 				aFoundIndexes[unit] := True, count++
 				break
 			}
-			else if (underConstruction) ; This determines if the SCV is constructing the refinery and if it's going to harvest gas from it when its done.
+			;else if (underConstruction) ; This determines if the SCV is constructing the refinery and if it's going to harvest gas from it when its done.
+			else if command.ability = "TerranBuild"  ; Edit: Due to the half a second after finishing building the SCV still doesnt register as mining gas - so always perform this check even if refinery is finished
 			&& aCommands.MaxIndex() = index  ; Else it is queued to go elsewhere when it finishes construction
-			&& command.ability = "TerranBuild" 
 			&& (type := numgetUnitModelType(numgetUnitModelPointer(MemDump, command.targetIndex))) ; The target index is the actual geyser and not the refinery
 			&& (type = aUnitId.VespeneGeyser || type = aUnitId.SpacePlatformGeyser || type = aUnitId.RichVespeneGeyser || type = aUnitId.ProtossVespeneGeyser || type = aUnitId.VespeneGeyserPretty)
 			&& isUnitNearUnit(aGeyserStructurePos, numGetUnitPositionXYZ(MemDump, command.targetIndex), 1)
@@ -13315,6 +12793,7 @@ SmartGeyserControlGroup(geyserStructureIndex)
 	global smartGeyserCtrlGroup, smartGeyserReturnCargo
 
 	geyserHarvesterCount := getResourceWorkerCount(geyserStructureIndex, aLocalPlayer.Slot)
+
 	; If refinery is not finished building then this will be 0
 	if geyserHarvesterCount >= 3
 	{
@@ -13329,10 +12808,16 @@ SmartGeyserControlGroup(geyserStructureIndex)
 	; This just checks the selected units for mining
 	;aHarvestingGas := getSelectedHarvestersMiningGas(oSelection) ; oSelection is reversed
 
-	; This count value should only be used if the structure is under construction. Otherwise the resource count above is more reliable
+	; This count value should only be used if the structure is under construction. Otherwise the resource count above is more reliable.
+	; Although the resource count does not include harvesters which are returning cargo and then queued to the refinery.
+	; Edit: Actually for a half a second after the refinery finishes the displayed count is 0 (as the SCV transitions from building geyser to mining gas)
+	; So if user clicks then (has happened to me a couple of times) you end up with 4 on gas.
 	count := getHarvestersMiningGas(geyserStructureIndex, aHarvestingGas, structureUnderConstruction)
-	if structureUnderConstruction
+	if structureUnderConstruction || (aLocalPlayer.Race = "Terran" && !geyserHarvesterCount)
 		geyserHarvesterCount := count 
+
+	;tooltip, % "`n`n`n" resourceWorkerCount "`n" count "`n" (3-geyserHarvesterCount)
+	;settimer, timerRemoveme, -5000
 
 	; An SCV who is queued to enter a geyser but was told to return cargo does not have the refinery in the queued commands (just the townhall)
 	; Also when returning cargo, this SCV is not counted in refinery's worker count		
@@ -13374,7 +12859,7 @@ SmartGeyserControlGroup(geyserStructureIndex)
 	input.pClick(,, "Right") ; click the geyser
 	if smartGeyserReturnCargo
 		input.psend(SC2Keys.key("ReturnCargo"))
-	; input.pSend("c") return Cargo
+
 	if aSentToGeyser.MaxIndex()
 	{
 		input.psend("{click 0 0}" InvokeGroup)
@@ -13383,7 +12868,12 @@ SmartGeyserControlGroup(geyserStructureIndex)
 	}
 	if installedHooks
 		Input.revertKeyState(), setLowLevelInputHooks(False)
-	return 	
+	return 
+
+	; timerRemoveme:
+	;ToolTip
+	;return
+
 }
 
 localHarvesterID()
@@ -13413,5 +12903,4 @@ getPortraitsFromIndexes(aIndexLookUp, byRef oSelection := "", isReversed := Fals
 		reverseArray(aPortraits)
 	return aPortraits
 }
-
 

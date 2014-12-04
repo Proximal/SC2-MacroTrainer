@@ -4,19 +4,27 @@ DebugSCHotkeys()
 	
 	process, exist, %GameExe%
 	If !errorlevel
-		isRunning := False 
+		log := "Error: SC is not running!`n`nThe listed hotkeys are the standard default SC keys."
+	else 
+	{
+		SC2Keys.getHotkeyProfile()
+		log := "Account Folder:`n`n`t"
+		if InStr(FileExist(SC2Keys.debug.accountFolder), "D")
+			log .= SC2Keys.debug.accountFolder
+		else log .= "Directory doesn't exist! (" SC2Keys.debug.accountFolder ")", errorLog .= "`n`tAccount folder."
 
-	SC2Keys.getHotkeyProfile(ignore1, ignore2)
-	Gui, Add, Edit, w570 r16 hwndHwndEdit readonly, % ""
-	 	.		"Account Folder:`n`n" 
-	 	.			 A_tab SC2Keys.debug.accountFolder "`n`n"
-		. 		"Variables:`n`n"
-		. 			A_Tab SC2Keys.debug.variablesFilePath "`n`n"
-		. 		"Profile:`n`n" 
-		.			A_Tab SC2Keys.debug.hotkeyProfile "`n`n"
-		. 		"Suffix:`n`n" 
-		.			A_Tab SC2Keys.debug.hotkeySuffix "`n"
-
+		log .= "`n`nVariables:`n`n`t"
+		if FileExist(SC2Keys.debug.variablesFilePath)
+			log .= SC2Keys.debug.variablesFilePath
+		else log .= "Variables file doesn't exist! (" SC2Keys.debug.variablesFilePath ")", errorLog .= "`n`tVariables file"
+		
+		log .= "`n`nProfile:`n`n`t" SC2Keys.debug.hotkeyProfile
+			.  "`n`nSuffix:`n`n`t" SC2Keys.debug.hotkeySuffix "`n"
+		if (errorLog != "")
+			log .= "`nErrors have occured:" errorLog
+	} 
+	
+	Gui, Add, Edit, w570 r16 hwndHwndEdit readonly, %log%
 
 	Gui, Add, ListView, Grid -LV0x10 NoSortHdr +resize w570 r28, Name|Hotkey
 
