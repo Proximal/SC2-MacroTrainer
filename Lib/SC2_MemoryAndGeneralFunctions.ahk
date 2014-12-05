@@ -167,9 +167,9 @@ loadMemoryAddresses(base, version := "")
 		; These versions have matching offsets
 		; !version in case the findVersion function stuffs up and returns 0/blank, thereby just assume match with latest offsets
 		; Also worker threads do not pass the client verison
-		if (version = "2.1.6.32540" || !version) 
-			versionMatch := "2.1.6.32540"		
-		else if version in 2.1.5.32392,2.1.4.32283
+		if (version = "2.1.7.33148" || !version) 
+			versionMatch := "2.1.7.33148"		
+		else if version in 2.1.5.32392,2.1.4.32283,2.1.6.32540
 			 versionMatch := version
 		else versionMatch := false
 		;	[Memory Addresses]
@@ -4009,8 +4009,8 @@ readConfigFile()
 	IniRead, AutoBuildHatcheryGroup, %config_file%, %section%, AutoBuildHatcheryGroup, 4
 	IniRead, AutoBuildLairGroup, %config_file%, %section%, AutoBuildLairGroup, 4
 	IniRead, AutoBuildHiveGroup, %config_file%, %section%, AutoBuildHiveGroup, 4
-	IniRead, autoBuildMinFreeMinerals, %config_file%, %section%, autoBuildMinFreeMinerals, 150
-	IniRead, autoBuildMinFreeGas, %config_file%, %section%, autoBuildMinFreeGas, 50
+	IniRead, autoBuildMinFreeMinerals, %config_file%, %section%, autoBuildMinFreeMinerals, 100
+	IniRead, autoBuildMinFreeGas, %config_file%, %section%, autoBuildMinFreeGas, 0
 	IniRead, autoBuildMinFreeSupply, %config_file%, %section%, autoBuildMinFreeSupply, 0	
 	IniRead, AutoBuildEnableGUIHotkey, %config_file%, %section%, AutoBuildEnableGUIHotkey, 4
 	IniRead, AutoBuildEnableGUIHotkey, %config_file%, %section%, AutoBuildEnableGUIHotkey, 0
@@ -4019,12 +4019,11 @@ readConfigFile()
 	IniRead, AutoBuildInteractGUIKey, %config_file%, %section%, AutoBuildInteractGUIKey, F11
 	IniRead, AutoBuildGUIkeyMode, %config_file%, %section%, AutoBuildGUIkeyMode, Toggle
 	IniRead, AutoBuildInactiveOpacity, %config_file%, %section%, AutoBuildInactiveOpacity, 255
-	IniRead, AutoBuildGUIAutoWorkerToggle, %config_file%, %section%, AutoBuildGUIAutoWorkerToggle, 1
+	IniRead, AutoBuildGUIAutoWorkerToggle, %config_file%, %section%, AutoBuildGUIAutoWorkerToggle, 0
 	IniRead, AutoBuildGUIAutoWorkerPause, %config_file%, %section%, AutoBuildGUIAutoWorkerPause, 0
 	IniRead, AutoBuildGUIAutoWorkerOffButton, %config_file%, %section%, AutoBuildGUIAutoWorkerOffButton, 0
 	IniRead, autoBuildEnablePauseAllHotkey, %config_file%, %section%, autoBuildEnablePauseAllHotkey, 0
 	IniRead, AutoBuildPauseAllkey, %config_file%, %section%, AutoBuildPauseAllkey, F8
-
 
 	section := "AutomationCommon"
 	IniRead, automationAPMThreshold, %config_file%, %section%, automationAPMThreshold, 200

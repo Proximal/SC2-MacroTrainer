@@ -4025,7 +4025,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 	Gui, Tab, Notes 
 		Gui, add, GroupBox, y+25 w400 h130, Note
 		gui, add, text, xp+10 yp+25 w380, 
-		( Ltrim off 
+		( Ltrim off 			
 			This feature is still under development and relies on a number of new functions, including reading the active SC hotkey profile.
 			
 			If you experience any issues please submit a bug report.
@@ -4090,7 +4090,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 
 	Gui, Tab, GUI
 		
-		Gui, add, GroupBox, y+10 w325 h240 section, Settings
+		Gui, add, GroupBox, y+10 w325 h275 section, Settings
 		Gui, Add, Text, section xp+15 yp+25, Hotkey Mode:
 		Gui, Add, DropDownList, yp-2 xp+130 vAutoBuildGUIkeyMode gAutoBuildOptionsMenuHotkeyModeCheck, Toggle||KeyDown
 		GuiControl, ChooseString, AutoBuildGUIkeyMode, %AutoBuildGUIkeyMode%		
@@ -4108,8 +4108,9 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		Gui, Add, Checkbox, xs y+15 vAutoBuildGUIAutoWorkerToggle checked%AutoBuildGUIAutoWorkerToggle%, Include worker button
 		Gui, Add, Checkbox, xs vAutoBuildGUIAutoWorkerPause checked%AutoBuildGUIAutoWorkerPause%, Pause button disables worker production 
 		Gui, Add, Checkbox, xs vAutoBuildGUIAutoWorkerOffButton checked%AutoBuildGUIAutoWorkerOffButton%, Off button disables worker production 
+		gui, add, text, xs yp+25 w295, *Worker production is performed using the auto worker function. Therefore you must also configure that function if you wish to build workers.
 
-		Gui, add, GroupBox, xs-15 y+40 w325 h125 section, About 
+		Gui, add, GroupBox, xs-15 y+20 w325 h125 section, About 
 		gui, add, text, xp+15 yp+25 w295, 
 		( ltrim off 
 			This GUI/overlay is the primary method used to control auto production. Like other overlays it may be moved, however it cannot be resized.
@@ -4336,11 +4337,12 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 
 	Gui, Tab, Smart Geyser
 		Gui, add, GroupBox, y+10 w325 h155 section, Settings
-		Gui, Add, Checkbox, xp+10 yp+25 vSmartGeyserEnable checked%smartGeyserEnable%, Enable Smart Geyser 
+		Gui, Add, Checkbox, xp+10 yp+25 vSmartGeyserEnable checked%smartGeyserEnable% gSmartGeyserOptionsMenuEnableCheck, Enable Smart Geyser 
 		Gui, Add, Checkbox, xp y+10 vSmartGeyserReturnCargo checked%smartGeyserReturnCargo%, Return Cargo
 		Gui, Add, text, xp y+10, Storage Ctrl Group:
 	 	Gui, Add, DropDownList,  % "x+15 yp-2 w45 Center vSmartGeyserCtrlGroup Choose" (smartGeyserCtrlGroup = 0 ? 10 : smartGeyserCtrlGroup), 1|2|3|4|5|6|7|8|9||0
 	 	Gui, Add, text, xs+10 y+15 w305, Right clicking a group of workers towards a refinery, assimilator, or extractor will only send the correct amount of workers to harvest gas.
+	 	gosub SmartGeyserOptionsMenuEnableCheck
 
 	Gui, Add, Tab2, w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vHome_TAB, Home||Emergency
 	Gui, Tab, Home
@@ -5262,6 +5264,13 @@ if !g1
 	GuiControl, Disable, InactiveOpacticyTextAssociatedVariable
 }
 return 
+
+SmartGeyserOptionsMenuEnableCheck:
+GuiControlGet, g1,, SmartGeyserEnable
+GuiControl, Enable%g1%, SmartGeyserReturnCargo
+GuiControl, Enable%g1%, SmartGeyserCtrlGroup
+return 
+
 
 GUIControlGroupCheckInjects:
 GuiControlGet, g1,, Inject_control_group
@@ -7412,29 +7421,6 @@ else
 }
 
 return 
-
-; note use can accidentally delay production by pressing esc to cancel chat
-
-temporarilyDisableAutoWorkerProduction()
-{ 	LOCAL unitIndex, selectedUnit, QueueSize
-	if (getSelectionCount() = 1)
-	{
-		unitIndex := getSelectedUnitIndex()
-		selectedUnit := getUnitType(unitIndex)
-		if (selectedUnit = aUnitID["PlanetaryFortress"] || selectedUnit = aUnitID["CommandCenter"] 
-		|| selectedUnit = aUnitID["OrbitalCommand"] || selectedUnit = aUnitID["Nexus"])
-		&& !isUnderConstruction(unitIndex) ; so wont toggle when cancelling a main which is being built
-		{
-			getBuildStats(unitIndex, QueueSize)
-			if (QueueSize <= 2) ; so wont toggle timer if cancelling extra queued workers
-			{
-				TmpDisableAutoWorker := 1
-				SetTimer, g_RenableAutoWorkerState, -4500 ; give time for user to morph/lift base ; use timer so dont have this function queueing up
-			}
-		}
-	}
-	return 
-}
 
 delayAutoProduction()
 {
@@ -11490,7 +11476,7 @@ unloadAllTransports(hotkeySuffix)
 
 
 ; Global Stim
-
+/*
 #If, !A_IsCompiled && WinActive(GameIdentifier) && isPlaying && aLocalPlayer.Race = "Terran" && !isMenuOpen()
 && numGetSelectionSorted(aSelection) && (aSelection.TabPositions.HasKey(aUnitID["Marauder"]) || aSelection.TabPositions.HasKey(aUnitID["Marine"]))
 && (aSelection.HighLightedId != aUnitID["SCV"] || !isUserBusyBuilding()) ; This line allows a turret to be built if an scv is in the same selection as a marine/marauder
@@ -11506,6 +11492,7 @@ if (tabsToSend := tabPos - aSelection.HighlightedGroup) < 0
 else send {tab %tabsToSend%}t+{tab %tabsToSend%}
 return
 #if
+*/
 
 AutoBuildGUIkeyPress:
 if (AutoBuildGUIkeyMode = "KeyDown")
