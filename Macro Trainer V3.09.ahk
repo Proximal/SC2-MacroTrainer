@@ -1557,6 +1557,7 @@ cast_ForceInject:
 				;	|| getPlayerCurrentAPM() > FInjectAPMProtection
 				
 					While getkeystate("Enter", "P") || GetKeyState("LButton", "P") || GetKeyState("RButton", "P")
+					|| getkeystate("Tab", "P") 
 					|| isUserBusyBuilding() || isCastingReticleActive() 
 					|| getPlayerCurrentAPM() > FInjectAPMProtection
 					||  A_mtTimeIdle < 70
@@ -4108,12 +4109,12 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		Gui, Add, Checkbox, xs vAutoBuildGUIAutoWorkerPause checked%AutoBuildGUIAutoWorkerPause%, Pause button disables worker production 
 		Gui, Add, Checkbox, xs vAutoBuildGUIAutoWorkerOffButton checked%AutoBuildGUIAutoWorkerOffButton%, Off button disables worker production 
 
-		Gui, add, GroupBox, xs-15 y+40 w325 h120 section, About 
+		Gui, add, GroupBox, xs-15 y+40 w325 h125 section, About 
 		gui, add, text, xp+15 yp+25 w295, 
 		( ltrim off 
 			This GUI/overlay is the primary method used to control auto production. Like other overlays it may be moved, however it cannot be resized.
 			
-			Right clicking anywhere inside this GUI will produce the same result as pressing the GUI 'pause' button. 
+			Right clicking anywhere inside this GUI will produce the same result as pressing the GUI 'pause' button. Middle clicking is equivalent to pressing the 'off' button.
 		)
 
 		gosub, AutoBuildOptionsMenuHotkeyModeCheck
@@ -4334,11 +4335,12 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 	*/
 
 	Gui, Tab, Smart Geyser
-		Gui, Add, Checkbox, x+50 y+30 vSmartGeyserEnable checked%smartGeyserEnable%, Enable Smart Geyser 
+		Gui, add, GroupBox, y+10 w325 h155 section, Settings
+		Gui, Add, Checkbox, xp+10 yp+25 vSmartGeyserEnable checked%smartGeyserEnable%, Enable Smart Geyser 
 		Gui, Add, Checkbox, xp y+10 vSmartGeyserReturnCargo checked%smartGeyserReturnCargo%, Return Cargo
 		Gui, Add, text, xp y+10, Storage Ctrl Group:
 	 	Gui, Add, DropDownList,  % "x+15 yp-2 w45 Center vSmartGeyserCtrlGroup Choose" (smartGeyserCtrlGroup = 0 ? 10 : smartGeyserCtrlGroup), 1|2|3|4|5|6|7|8|9||0
-
+	 	Gui, Add, text, xs+10 y+15 w305, Right clicking a group of workers towards a refinery, assimilator, or extractor will only send the correct amount of workers to harvest gas.
 
 	Gui, Add, Tab2, w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vHome_TAB, Home||Emergency
 	Gui, Tab, Home
@@ -4871,7 +4873,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		TTUserIdle_HiLimit_TT := UserIdle_HiLimit_TT := "The game will not be paused after this time. (In game/SC2 seconds)"
 
 		speech_volume_TT := "The relative volume of the speech engine."
-		programVolume_TT := "The overall program volume. This affects both the speech volume and the 'beeps'.`n`nNote: This probably has no effect on WindowsXP and below."
+		programVolume_TT := "The overall program volume. This affects both the speech volume and the 'beeps'."
 		speaker_volume_up_key_TT := speaker_volume_down_key_TT := "Changes the windows master volume."
 		speech_volume_down_key_TT := speech_volume_up_key_TT := "Changes the programs TTS volume."
 		program_volume_up_key_TT := program_volume_down_key_TT := "Changes the programs overall volume."
@@ -5034,7 +5036,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 									. "`nProtoss: Available chrono boosts. If none are available, (real) time until next chrono."
 									. "`nZerg: Available larvae."
 									. "`n`nWith regards to Terran and Protoss the scan/chrono count includes a decimal fraction indicating how close the next scan/chrono is to being available."
-									. "`nMorphing orbitals are accounted for in this this decimal fraction and the time until next scan."
+									. "`nMorphing orbitals are accounted for in this decimal fraction and the time until next scan."
 									. "`n`nNote: Non-control-grouped town halls and flying orbitals are not included."										
 		DrawLocalUpgradesOverlay_TT := "Displays your current upgrade items and their chrono state (if Protoss)."
 									. "`nThis includes morphing hatches, lairs, spires, and command centres."
@@ -7381,18 +7383,13 @@ GUISelectionList(Title = "", textField := "Select Unit Type(s):", list := "Error
 }
 
 
-; there is an 'if' section in the bufferinput send that checks if the user pressed the Esc key
-; if they did, it gosubs here
-;g_temporarilyDisableAutoWorkerProductionOriginUserInputBufferSend:	
-;If !(WinActive(GameIdentifier) && time && !isMenuOpen() && EnableAutoWorker%LocalPlayerRace%)
-;		return
 ; So will turn off autoworker for 5 seconds only if user presses esc and only that main is selected
-g_temporarilyDisableAutoWorkerProduction:
 ; dont check TmpDisableAutoWorker so if cancels another builder a few seconds later it will still update it 
-;if (aLocalPlayer["Race"] = "Terran" && EnableAutoWorkerTerran) || (aLocalPlayer["Race"] = "Protoss" && EnableAutoWorkerProtoss)	
-; The hotkey #if already checks race and enableAutoWorker state
-temporarilyDisableAutoWorkerProduction()
+g_temporarilyDisableAutoProduction:
+delayAutoProduction()
 return 
+
+
 g_AutoBuildGUIToggleAutoWorkerState: ; AutoBuild GUI calls this label so that SAPI doesnt speak
 g_UserToggleAutoWorkerState: 		; this launched via the user hotkey combination
 
@@ -7414,10 +7411,6 @@ else
 		tSpeak("Off")
 }
 
-return 
-
-g_RenableAutoWorkerState:	; this is via the auto cancel in the below function (when user cancels last building worker)
-	TmpDisableAutoWorker := 0
 return 
 
 ; note use can accidentally delay production by pressing esc to cancel chat
@@ -7442,6 +7435,45 @@ temporarilyDisableAutoWorkerProduction()
 	}
 	return 
 }
+
+delayAutoProduction()
+{
+	global TmpDisableAutoWorker, EnableAutoWorkerTerran, EnableAutoWorkerProtoss
+	if getSelectionCount() = 1
+	{
+		type := getUnitType(unitIndex := getSelectedUnitIndex())
+		if isUnderConstruction(unitIndex) || aLocalPlayer["slot"] != getUnitOwner(unitIndex)
+			return
+
+		if (aLocalPlayer["Race"] = "Terran" && EnableAutoWorkerTerran && (type = aUnitID["OrbitalCommand"] || type = aUnitID["PlanetaryFortress"] || type = aUnitID["CommandCenter"]))
+		|| (aLocalPlayer["Race"] = "Protoss" && EnableAutoWorkerProtoss && type = aUnitID["Nexus"])
+		{
+			getBuildStats(unitIndex, QueueSize)
+			if (QueueSize <= 2) ; so wont toggle timer if cancelling extra queued workers
+			{
+				TmpDisableAutoWorker := True
+				SetTimer, g_RenableAutoWorkerState, -4500 ; give time for user to morph/lift base ; use timer so dont have this function queueing up
+			}			
+		}
+		else if autoBuild.getRaceFromStructureName(aUnitName[type])	&& autoBuild.isStructureActive(aUnitName[type]) ; getRaceFromStructureName Just checks if its a structure which is handled by autoBuild
+		{
+			getBuildStats(unitIndex, QueueSize)
+			if (QueueSize <= 2) ; even if reactor is present this is good. As the repeated esc presses will trigger this if they cancel enough of the units
+			{
+				autoBuild.TmpDisableAutoBuild := True
+				SetTimer, g_RenableAutoBuildState, -4500
+			}
+		}	
+	}
+	return 
+	g_RenableAutoWorkerState:
+	TmpDisableAutoWorker := False
+	return 
+	g_RenableAutoBuildState:
+	autoBuild.TmpDisableAutoBuild := False
+	return 
+}
+
 
 resumeAutoWorker:
 SetTimer, g_autoWorkerProductionCheck, 200
@@ -7739,6 +7771,7 @@ autoWorkerProductionCheck()
 		While ( isUserBusyBuilding() || isCastingReticleActive() 
 		|| GetKeyState("LButton", "P") || GetKeyState("RButton", "P")
 		|| getkeystate("Enter", "P") 
+		|| getkeystate("Tab", "P") 
 		|| getPlayerCurrentAPM() > AutoWorkerAPMProtection
 		||  A_mtTimeIdle < 50)
 		{
@@ -8308,7 +8341,7 @@ CreateHotkeys()
 	#If, WinActive(GameIdentifier) && isPlaying && !isChatOpen()
 	#If, WinActive(GameIdentifier) && isPlaying && !isMenuOpen()
 	#If, WinActive(GameIdentifier) && isPlaying && (!isMenuOpen() || isChatOpen()) 
-	#If, ((aLocalPlayer["Race"] = "Terran" && EnableAutoWorkerTerran) || (aLocalPlayer["Race"] = "Protoss" && EnableAutoWorkerProtoss)) && WinActive(GameIdentifier) && isPlaying && !isMenuOpen() 
+	;#If, ((aLocalPlayer["Race"] = "Terran" && EnableAutoWorkerTerran) || (aLocalPlayer["Race"] = "Protoss" && EnableAutoWorkerProtoss)) && WinActive(GameIdentifier) && isPlaying && !isMenuOpen() 
 	;#If, WinActive(GameIdentifier) && time && !isMenuOpen() && EnableAutoWorker`%LocalPlayerRace`%
 	#if isPlaying && WinActive(GameIdentifier) && GeyserStructureHoverCheck(hoveredGeyserUnitIndex)
 	#If
@@ -8429,6 +8462,8 @@ CreateHotkeys()
 					try hotkey, % object.hotkey, g_QuickSelect, on
 			}
 		}
+		hotkey, *~Esc, g_temporarilyDisableAutoProduction, on	; cant use !ischatopen() - as esc will close chat before memory reads value so wont see chat was open
+
 	Hotkey, If, WinActive(GameIdentifier) && isPlaying && !isChatOpen() 	
 		if (aLocalPlayer["Race"] = "Zerg") && (auto_inject <> "Disabled")
 			hotkey, %cast_inject_key%, cast_inject, on	
@@ -8436,12 +8471,6 @@ CreateHotkeys()
 			hotkey, %F_InjectOff_Key%, Cast_DisableInject, on	
 		if (aLocalPlayer["Race"] = "Terran" || aLocalPlayer["Race"] = "Protoss")
 			hotkey, %ToggleAutoWorkerState_Key%, g_UserToggleAutoWorkerState, on	
-	;Hotkey, If, WinActive(GameIdentifier) && time
-		
-
-	;Hotkey, If, WinActive(GameIdentifier) && time && !isMenuOpen() && EnableAutoWorker`%LocalPlayerRace`% ; cant use !ischatopen() - as esc will close chat before memory reads value so wont see chat was open
-	Hotkey, If, ((aLocalPlayer["Race"] = "Terran" && EnableAutoWorkerTerran) || (aLocalPlayer["Race"] = "Protoss" && EnableAutoWorkerProtoss)) && WinActive(GameIdentifier) && isPlaying && !isMenuOpen() ; cant use !ischatopen() - as esc will close chat before memory reads value so wont see chat was open
-		hotkey, *~Esc, g_temporarilyDisableAutoWorkerProduction, on	
 
 	Hotkey, If, isPlaying && WinActive(GameIdentifier) && GeyserStructureHoverCheck(hoveredGeyserUnitIndex)
 	if SmartGeyserEnable
@@ -12098,7 +12127,13 @@ class autoBuild
 			race := this.getRaceFromUnitName(structure)
 			return this.oAutoBuild[race, structure, "units", unitName, "autoBuild"]
 		}
-		return
+	}
+	isStructureActive(structure)
+	{
+		structure := trim(structure, "|" A_Space A_Tab)
+		if this.getRaceFromStructureName(structure) = "Zerg"
+			return this.oAutoBuild.Zerg.hatchery["autoBuild"]
+		else return this.oAutoBuild[this.getRaceFromUnitName(structure), structure, "autoBuild"]
 	}
 	getActiveUnits()
 	{
@@ -12280,8 +12315,9 @@ class autoBuild
 		if isGamePaused() || isMenuOpen()
 			return False
 		While isUserBusyBuilding() || isCastingReticleActive() 
-		;|| GetKeyState("LButton", "P") || GetKeyState("RButton", "P")
+		|| GetKeyState("LButton", "P") || GetKeyState("RButton", "P")
 		|| getkeystate("Enter", "P") 
+		|| getkeystate("Tab", "P") 
 		|| getPlayerCurrentAPM() > automationAPMThreshold
 		;||  A_mtTimeIdle < 50
 		{
@@ -12324,7 +12360,7 @@ class autoBuild
 	{
 		global AutoWorkerAPMProtection
 
-		if !buildCheck.hasTimeElapsed(1, 3) ; Check this before doing below, as its only going to get bigger with any delay (although its possible autoWorker could interrupt this thread and result in two build events close together)
+		if (this.tmpDisableAutoBuild || !buildCheck.hasTimeElapsed(1, 3)) ; Check this before doing below, as its only going to get bigger with any delay (although its possible autoWorker could interrupt this thread and result in two build events close together)
 			return		
 		if !this.canPerformBuild()
 			return

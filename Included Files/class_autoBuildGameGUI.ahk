@@ -5,7 +5,7 @@ feedback on which Icon was clicked
 set a new line of icons
 allow icons to be moved up or down
 */
-; Remember this will catch (0x201, 0x203, 0x200, 0x2A3) MSGs from an AHK GUI in this main script
+; Remember this will catch MSGs from any AHK GUI in this main script
 mainThreadMessageHandler(wParam, lParam, msg, hwnd)
 {
 	if autoBuildGameGUI.hwnd = hwnd
@@ -21,15 +21,20 @@ mainThreadMessageHandler(wParam, lParam, msg, hwnd)
 		else if msg = 0x2A3 ; WM_MOUSELEAVE (not 100% reliable
 			autoBuildGameGUI.MouseLeft()
 		else if (msg = 0x201 && autoBuildGameGUI.drag)
-			PostMessage, 0xA1, 2 ;WM_NCLBUTTONDOWN	
+			PostMessage, 0xA1, 2 ;WM_NCLBUTTONDOWN
+		else if (msg = 0x204 || msg = 0x206) ; Right clicks
+		{
+			autoBuildGameGUI.pauseButtonPress()
+			autoBuildGameGUI.refresh(lParam & 0xFFFF, lParam >> 16) ; So that it redraws the changed unit state, as the above method dosn't do this.
+		}
+		else if (msg = 0x207 || msg = 0x209) ; Middle mouse
+			autoBuildGameGUI.offButtonPress()
 		else autoBuildGameGUI.refresh(lParam & 0xFFFF, lParam >> 16, msg)
 		return 1
 	}
 	else if msg = 0x200
 		OptionsGUITooltips()
 	return 
-
-
 }
  
 ; This was initially a class which returned a draw object.
@@ -86,6 +91,10 @@ class autoBuildGameGUI
 		OnMessage(0x203, "mainThreadMessageHandler") ; WM_LBUTTONDBLCLK required to catch second left click if they occur quickly
 		OnMessage(0x200, "mainThreadMessageHandler") ; WM_MOUSEMOVE need to make clickable to work i.e. -E0x20
 		OnMessage(0x2A3, "mainThreadMessageHandler") ; WM_MOUSELEAVE
+		OnMessage(0x204, "mainThreadMessageHandler") ; WM_RBUTTONDOWN
+		OnMessage(0x206, "mainThreadMessageHandler") ; WM_RBUTTONDBLCLK
+		OnMessage(0x207, "mainThreadMessageHandler") ; WM_MBUTTONDOWN
+		OnMessage(0x209, "mainThreadMessageHandler") ; WM_MBUTTONDBLCLK
 		this.fillLocalRace()
 		this.Refresh()
 	}
@@ -444,32 +453,40 @@ class autoBuildGameGUI
 		global EnableAutoWorkerTerran, EnableAutoWorkerProtoss
 		return (aLocalPlayer.Race = "Terran" && EnableAutoWorkerTerran) || (aLocalPlayer.Race = "Protoss" && EnableAutoWorkerProtoss)
 	}
+	offButtonPress()
+	{
+		global AutoBuildGUIAutoWorkerOffButton, EnableAutoWorkerTerran, EnableAutoWorkerProtoss
+		if AutoBuildGUIAutoWorkerOffButton
+		{
+			EnableAutoWorkerTerran := EnableAutoWorkerProtoss := False ; better not to use timer for label as the autoBuild function below checks the state below
+			SetTimer, g_autoWorkerProductionCheck, off                 ; And could result in the tick being removed after the other ticks
+		}
+		autoBuild.disableUnits()
+		autoBuild.updateInGameGUIUnitState() ; Easier just to have autoBuild check its internal state and then have it update this overlay		
+		return
+	}
+	pauseButtonPress()
+	{
+		global AutoBuildGUIAutoWorkerPause
+		; Toggle auto-build. If any units are active this returns false (i.e. they were previously paused)
+		; so don't turn off the worker function e.g. worker was on, but the other units were
+		if autoBuild.pause() && AutoBuildGUIAutoWorkerPause && this.isWorkerProductionEnabled() 
+			settimer, g_AutoBuildGUIToggleAutoWorkerState, -50
+		return 		
+	}
 
 	refresh(x := "", y := "", msg := "")
 	{
-		global autoBuildInactiveOpacity, AutoBuildGUIAutoWorkerPause, AutoBuildGUIAutoWorkerOffButton, EnableAutoWorkerTerran, EnableAutoWorkerProtoss
+		global autoBuildInactiveOpacity
 		this.setCanvas(hbm, hdc, G)
 		if (x != "" && y != "")
 			itemIndex := this.collisionCheck(x, y)
 		if (itemIndex && msg = 0x201)
 		{
 			if this.items[itemIndex, "name"] = "pauseButton" 
-			{ 
-				; Toggle auto-build. If any units are active this returns false (i.e. they were previously paused)
-				; so don't turn off the worker function e.g. worker was on, but the other units were
-				if autoBuild.pause() && AutoBuildGUIAutoWorkerPause && this.isWorkerProductionEnabled() 
-					settimer, g_AutoBuildGUIToggleAutoWorkerState, -50 
-			}
+				this.pauseButtonPress()
 			else if this.items[itemIndex, "name"] = "OffButton"
-			{
-				if AutoBuildGUIAutoWorkerOffButton
-				{
-					EnableAutoWorkerTerran := EnableAutoWorkerProtoss := False ; better not to use timer for label as the autoBuild function below checks the state below
-					SetTimer, g_autoWorkerProductionCheck, off                 ; And could result in the tick being removed after the other ticks
-				}
-				autoBuild.disableUnits()
-				autoBuild.updateInGameGUIUnitState() ; Easier just to have autoBuild check its interal state and then have it update this overlay
-			}	
+				this.offButtonPress()	
 			else if this.items[itemIndex, "name"] = "SCV" || this.items[itemIndex, "name"] = "Probe"
 				settimer, g_AutoBuildGUIToggleAutoWorkerState, -50 ; Use a negative timer give time for this onMessage Event to finish
 			else 
