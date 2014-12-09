@@ -2205,11 +2205,67 @@ numGetSelectionSorted(ByRef aSelection, ReverseOrder := False)
 		}
 	}
 	if ReverseOrder
+	{
 		aSelection.units := reverseArray(aSelection.units) ; Have to := as byRef wont work while inside another object
+  		aSelection.IsReversed := True
+  	}
+
   	return aSelection["Count"]	
 }
 
+updateSelectionRemove(aSelection, aRemovedPortraits)
+{
+	aRemovedIndexes := []
+	for i, portrait in aRemovedPortraits
+	{
+		for index, unit in aSelection.units 
+		{
+			if unit.portrait = portrait
+			{
+				aSelection.units.remove(index)
+				aSelection.TabSizes[unit.unitId]--
+				break
+			}
+		}
+	}
+	aSelection.TabPositions := []
 
+	if aSelection.TabSizes[aSelection.HighlightedId] <= 0
+	{
+		highlihgtedTab := 0 ; reset to first tab
+	}
+
+	for i, unit in aSelection.units 
+	{
+		stuff := stuff
+	}
+
+}
+
+; SubgroupNext
+; SubgroupPrev
+tabToGroup(byRef currentGroup, TargetGroup)
+{
+	count := TargetGroup - currentGroup
+	currentGroup := TargetGroup
+	if count > 0
+		return sRepeat(SC2Keys.key("SubgroupNext"), count)
+	else if count < 0
+		return sRepeat(SC2Keys.key("SubgroupPrev"), -1 * count)
+	else return
+}
+
+
+
+; r := sRepeat("as", 3)
+; r = "asasas"
+; 0 returns empty string (same for negative numbers)
+sRepeat(string, multiplier)
+{
+	loop, % multiplier 
+		r .= string
+	return r
+}
 
 /*
 numGetSelectionSortedTest(ReverseOrder := False)
@@ -4318,8 +4374,8 @@ getCursorUnitType(byRef unitIndex := "")
 
 	Base = readmemory(getUnitAbilityPointer(unit) + 0x24)
 	+ 0x0C Current state, idle (3), load, unload(259)
-			Clicking one unit portrait to unload doesn't change it
-			shifting clicking two or more does (as does unload all)
+			Clicking one unit portrait to unload doesn't change it, nor does clicking another portrait after it finishes unloading the previous unit
+			clicking (and shift+clicking) two or more does (as does unload all)
 	+ 0x20 	Memory Address of the unit in the unit structure
 	+ 0x28 	Currently queued/loaded unit count eg 2 marines + hellbat = 3
 			This includes units queued up to be loaded.

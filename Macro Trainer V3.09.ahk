@@ -7899,7 +7899,7 @@ autoWorkerProductionCheck()
 					input.pSend(aAGHotkeys.set[controlstorageGroup])
 					stopWatchCtrlID := stopwatch()	
 				}
-				input.pSend(aAGHotkeys.Invoke[mainControlGroup]) ; safer to always send base ctrl group
+				input.pSend("{click 0 0}" aAGHotkeys.Invoke[mainControlGroup]) ; safer to always send base ctrl group
 				dSleep(10) ; wont have that many units grouped with the buildings so 10ms should be plenty. 
 				numGetSelectionSorted(oSelection)
 			}
@@ -8113,23 +8113,12 @@ selectGroup(group, preSleep := -1, postSleep := 2)
 	return	
 }
 
-; r := sRepeat("as", 3)
-; r = "asasas"
-; 0 returns empty string (same for negative numbers)
-sRepeat(string, multiplier)
-{
-	loop, % multiplier 
-		r .= string
-	return r
-}
-
 ClickMinimapPlayerView()
 {
 	mapToMinimapPos(x := getPlayerCameraPositionX(), y := getPlayerCameraPositionY())
 	input.pClick(x, y)
 	return
 }
-
 
 varInMatchList(var, Matchlist)
 {
@@ -8329,7 +8318,7 @@ CreateHotkeys()
 	#If, WinActive(GameIdentifier) && isPlaying && (!isMenuOpen() || isChatOpen()) 
 	;#If, ((aLocalPlayer["Race"] = "Terran" && EnableAutoWorkerTerran) || (aLocalPlayer["Race"] = "Protoss" && EnableAutoWorkerProtoss)) && WinActive(GameIdentifier) && isPlaying && !isMenuOpen() 
 	;#If, WinActive(GameIdentifier) && time && !isMenuOpen() && EnableAutoWorker`%LocalPlayerRace`%
-	#if isPlaying && WinActive(GameIdentifier) && GeyserStructureHoverCheck(hoveredGeyserUnitIndex)
+	#if isPlaying && WinActive(GameIdentifier) && !isCastingReticleActive() && GeyserStructureHoverCheck(hoveredGeyserUnitIndex)
 	#If
 
 	Hotkey, If, WinActive(GameIdentifier)
@@ -8458,7 +8447,7 @@ CreateHotkeys()
 		if (aLocalPlayer["Race"] = "Terran" || aLocalPlayer["Race"] = "Protoss")
 			hotkey, %ToggleAutoWorkerState_Key%, g_UserToggleAutoWorkerState, on	
 
-	Hotkey, If, isPlaying && WinActive(GameIdentifier) && GeyserStructureHoverCheck(hoveredGeyserUnitIndex)
+	Hotkey, If, isPlaying && WinActive(GameIdentifier) && !isCastingReticleActive() && GeyserStructureHoverCheck(hoveredGeyserUnitIndex)
 	if SmartGeyserEnable
 		hotkey, RButton, g_SmartGeyserControlGroup, on	
 
@@ -8543,7 +8532,7 @@ disableAllHotkeys()
 		try hotkey, %F_InjectOff_Key%, off
 		try hotkey, %ToggleAutoWorkerState_Key%, off	
 	
-	Hotkey, If, isPlaying && WinActive(GameIdentifier) && GeyserStructureHoverCheck(hoveredGeyserUnitIndex)
+	Hotkey, If, isPlaying && WinActive(GameIdentifier) && !isCastingReticleActive() && GeyserStructureHoverCheck(hoveredGeyserUnitIndex)
 		try hotkey, RButton, off
 
 	Hotkey, If
@@ -11393,12 +11382,27 @@ getCargoPos(position, byRef xPos, byRef yPos)
 }
 
 UnloadAllTransports:
-if (A_PriorHotkey = A_ThisHotkey && A_TimeSincePriorHotkey <= 250)
+;without UnloadAllTransportsFlagActive, once the user presses the hotkey twice, each press after that would
+; also activate the function. This flag ensures that the function requires two key presses within 250ms to activate each time
+; This helps reduce reactivating the function accidentally and increasing the recorded apm more than what is required
+if (A_PriorHotkey = A_ThisHotkey && A_TimeSincePriorHotkey <= 250 && UnloadAllTransportsFlagActive)
+{
 	unloadAllTransports(gethotkeySuffix(A_ThisHotkey))
-else keywait, % gethotkeySuffix(A_ThisHotkey), T.260 ; Make it slightly longer than the threshold to enter the routine in case just holding it down
+	UnloadAllTransportsFlagActive := False
+}
+else 
+{
+	UnloadAllTransportsFlagActive := True
+	keywait, % gethotkeySuffix(A_ThisHotkey), T.260 ; Make it slightly longer than the threshold to enter the routine in case just holding it down
+}
 return 
 
+
 ; Don't bother working out were a unit is in the cargo - if the transport has cargo just click all positions.
+
+; This function will make the apm sky rocket for an instant. It will double the required apm if user invokes it multiple
+; time by spamming the hotkey.
+
 unloadAllTransports(hotkeySuffix)
 { 	global escape, EasyUnloadStorageKey
 
@@ -11412,7 +11416,6 @@ unloadAllTransports(hotkeySuffix)
 	else if aLocalPlayer.Race = "Zerg" && (!aSelection.TabPositions.HasKey(aUnitID.overlord) || aSelection.TabPositions[aUnitID.overlord] != aSelection.HighlightedGroup)
 		return
 
-
 	HighlightedTab := aSelection.HighlightedGroup
 	loop, 8
 		getCargoPos(A_Index - 1, xPos, yPos), unloadAllCargoString .= "{click " xPos ", " yPos "}"
@@ -11422,9 +11425,12 @@ unloadAllTransports(hotkeySuffix)
 	dsleep(30)
 	input.pReleaseKeys(True)
 
-	if aSelection.Count = 1
+	; The isUnloading doesn't update fast enough to prevent extra apm due to user spamming the hotkey
+	; and triggering the function again
+
+	if aSelection.Count = 1 && getCargoCount(aSelection.Units.1.UnitIndex, isUnloading) && !isUnloading
 		input.pSend(unloadAllCargoString escape) ; send Escape as we should try to remove the casting reticle invoked my pressing the hotkey ability
-	else 
+	else if aSelection.Count > 1
 	{
 		input.pSend(escape)
 		aUnloaded := []
@@ -11442,11 +11448,11 @@ unloadAllTransports(hotkeySuffix)
 			} 
 			for i, unit in aSelection.Units 
 			{
-					
+				
 				if !aUnloaded.HasKey(unit.UnitIndex) && isUnitLocallyOwned(unit.unitIndex)
 				&& ((type := getUnitType(unit.unitIndex)) = aUnitId.Medivac
 				|| type = aUnitID.WarpPrism || type = aUnitID.WarpPrismPhasing || type = aUnitID.overlord)
-				&& getCargoCount(unit.UnitIndex)
+				&& getCargoCount(unit.UnitIndex, isUnloading) && !isUnloading
 				{
 					aUnloaded[unit.UnitIndex] := True
 					clickUnitPortraits([unit.unitPortrait], "") ; just left click it 
@@ -11460,23 +11466,20 @@ unloadAllTransports(hotkeySuffix)
 					break, 2
 				aUnloaded[unit.UnitIndex] := True ; Assign for non medivac units too (so they wont have to do the function calls the next time around)
 			}
-		} 
-
+		}
 		input.pSend("{click 0 0}" aAGHotkeys.Invoke[EasyUnloadStorageKey])
-		setLowLevelInputHooks(False)
-		critical, off
-		Thread, Priority, -2147483648		
-		keywait, %hotkeySuffix%
 	}
+	setLowLevelInputHooks(False)
+	critical, off
+	Thread, Priority, -2147483648		
+	keywait, %hotkeySuffix%
+	return
 }
 
 
 
-
-
-
 ; Global Stim
-/*
+
 #If, !A_IsCompiled && WinActive(GameIdentifier) && isPlaying && aLocalPlayer.Race = "Terran" && !isMenuOpen()
 && numGetSelectionSorted(aSelection) && (aSelection.TabPositions.HasKey(aUnitID["Marauder"]) || aSelection.TabPositions.HasKey(aUnitID["Marine"]))
 && (aSelection.HighLightedId != aUnitID["SCV"] || !isUserBusyBuilding()) ; This line allows a turret to be built if an scv is in the same selection as a marine/marauder
@@ -11492,7 +11495,7 @@ if (tabsToSend := tabPos - aSelection.HighlightedGroup) < 0
 else send {tab %tabsToSend%}t+{tab %tabsToSend%}
 return
 #if
-*/
+
 
 AutoBuildGUIkeyPress:
 if (AutoBuildGUIkeyMode = "KeyDown")
@@ -12838,7 +12841,7 @@ SmartGeyserControlGroup(geyserStructureIndex)
 	count := getHarvestersMiningGas(geyserStructureIndex, aHarvestingGas, structureUnderConstruction)
 	if structureUnderConstruction || (aLocalPlayer.Race = "Terran" && !geyserHarvesterCount)
 		geyserHarvesterCount := count 
-
+	harvestersToKeep := 3 - geyserHarvesterCount 
 	;tooltip, % "`n`n`n" resourceWorkerCount "`n" count "`n" (3-geyserHarvesterCount)
 	;settimer, timerRemoveme, -5000
 
@@ -12847,12 +12850,13 @@ SmartGeyserControlGroup(geyserStructureIndex)
 
 	numGetSelectionSorted(oSelection, True)
 	if oSelection.Count > 1	&& oSelection.TabPositions.HasKey(harvesterID) && geyserHarvesterCount < 3
+	&& (harvestersToKeep < oSelection.TabSizes[harvesterID] || oSelection.Count != oSelection.TabSizes[harvesterID]) ; Not enough harvesters selected to be require filtering or there are non-workers selected so leave them selected after removing the workers 
 	{
 		installedHooks := true 
 		critical, 1000
 		input.pReleaseKeys(True)
 		setLowLevelInputHooks(True)		
-		harvestersToKeep := 3 - geyserHarvesterCount 
+		
 		input.psend(setGroup)
 
 		for i, unit in oSelection.units  
@@ -12880,8 +12884,28 @@ SmartGeyserControlGroup(geyserStructureIndex)
 	}
 
 	input.pClick(,, "Right") ; click the geyser
-	if smartGeyserReturnCargo
-		input.psend(SC2Keys.key("ReturnCargo"))
+
+
+	; I should really create a function which updates the selection object after removing units 
+	; which would eliminate the need to sleep and call numgetSlectionSorted() again
+
+	; If the build card is displayed, sending return cargo 'c' will invoke build command Centre
+	; If ANY unit has been removed from the selection panel, then the abilities card (basic/advanced) is reset - i.e. return cargo ability can be used
+
+	if smartGeyserReturnCargo && (aIgnoredHarvesters.MaxIndex() || !isUserBusyBuilding())
+	{
+		if aIgnoredHarvesters.MaxIndex()
+		{
+			dSleep(10)
+			numGetSelectionSorted(oSelection)	
+		}
+		if oSelection.HighlightedGroup != harvesterID && oSelection.HighlightedGroup != aUnitId.Mule
+		{
+			firstTab := tabToGroup(oSelection.HighlightedGroup, oSelection.TabPositions[harvesterID])
+			secondTab := tabToGroup(oSelection.TabPositions[harvesterID], oSelection.HighlightedGroup)
+		}
+		input.psend(firstTab SC2Keys.key("ReturnCargo") secondTab)
+	}
 
 	if aSentToGeyser.MaxIndex()
 	{
@@ -12926,4 +12950,6 @@ getPortraitsFromIndexes(aIndexLookUp, byRef oSelection := "", isReversed := Fals
 		reverseArray(aPortraits)
 	return aPortraits
 }
+
+
 
