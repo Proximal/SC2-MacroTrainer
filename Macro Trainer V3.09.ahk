@@ -3649,7 +3649,7 @@ try
 			;	Gui, Add, Edit, Readonly xp+25 y+10  w100  center vCG_control_group , %CG_control_group%
 			;		Gui, Add, Button, yp-2 x+5 gEdit_SendHotkey v#CG_control_group,  Edit				
 			Gui, Add, Text, xs+10 yp+35, Nexus Ctrl Group:
-			Gui, Add, DropDownList, xs+125 yp w45 center gGUIControGroupCheckChrono vCG_nexus_Ctrlgroup_key Choose%CG_nexus_Ctrlgroup_key%, 1|2|3|4||5|6|7|8|9|0
+			Gui, Add, DropDownList, % "xs+125 yp w45 center gGUIControGroupCheckChrono vCG_nexus_Ctrlgroup_key Choose" (CG_nexus_Ctrlgroup_key = 0 ? 10 : CG_nexus_Ctrlgroup_key), 1|2|3|4||5|6|7|8|9|0
 			;	Gui, Add, Edit, Readonly xp+25 y+10  w100  center vCG_nexus_Ctrlgroup_key , %CG_nexus_Ctrlgroup_key%
 			;		Gui, Add, Button, yp-2 x+5 gEdit_SendHotkey v#CG_nexus_Ctrlgroup_key,  Edit		
 			Gui, Add, Text, xs+10 yp+35 ,Chrono Boost Key:
@@ -11382,7 +11382,7 @@ getCargoPos(position, byRef xPos, byRef yPos)
 }
 
 UnloadAllTransports:
-;without UnloadAllTransportsFlagActive, once the user presses the hotkey twice, each press after that would
+; without UnloadAllTransportsFlagActive, once the user presses the hotkey twice, each press after that would
 ; also activate the function. This flag ensures that the function requires two key presses within 250ms to activate each time
 ; This helps reduce reactivating the function accidentally and increasing the recorded apm more than what is required
 if (A_PriorHotkey = A_ThisHotkey && A_TimeSincePriorHotkey <= 250 && UnloadAllTransportsFlagActive)
@@ -12952,4 +12952,23 @@ getPortraitsFromIndexes(aIndexLookUp, byRef oSelection := "", isReversed := Fals
 }
 
 
+/*
+f1::
+unit := getSelectedUnitIndex()
+gameTime := getTimeFull()
+unitTimeAlive := getUnitTimer(unit)
+msgbox % gameTime
+. "`n" getTimeAtUnitConstruction(unit)
+. "`n"  gameTime - unitTimeAlive
 
+return 
+f2::
+unit := getSelectedUnitIndex()
+s := A_TickCount
+while (A_TickCount - s <= 2000)
+{
+	if (r := getTimeAtUnitConstruction(unit)) != 0 
+		msgbox  % r
+}
+soundplay *-1
+return 
