@@ -12951,6 +12951,23 @@ getPortraitsFromIndexes(aIndexLookUp, byRef oSelection := "", isReversed := Fals
 	return aPortraits
 }
 
+/*
+f1::
+address := B_uStructure + S_uStructure * getSelectedUnitIndex()
+ID := readmemory(address, GameIdentifier, 2) ; +0 Increases when the unit dies
+timesUsed := readmemory(address + 2, GameIdentifier, 2) ; +2
+dword := readmemory(address, GameIdentifier, 4) ; dword
+
+msgbox % clipboard := ID
+. "`n"  timesUsed
+. "`n`n" dword
+. "`n" getSelectedUnitIndex()
+return 
+/*
+f2::
+address := B_uStructure + S_uStructure * 5
+WriteMemory(address, GameIdentifier, 65535, "Ushort")  
+return 
 
 /*
 f1::

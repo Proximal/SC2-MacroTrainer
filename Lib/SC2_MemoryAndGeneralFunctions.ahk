@@ -3609,6 +3609,14 @@ tSpeak(Message, SAPIVol := "", SAPIRate := "")
 ; For production units e.g. marines it returns the time at which it leaves
 ; the barracks
 
+; Increases each time the unit dies (when the unit dies)
+; Starts at 1. E.g. a town hall which spawns with the map has a value of 1
+; morphing doesn't change this
+getUnitIndexReusedCount(unitIndex)
+{
+	return readmemory(B_uStructure + S_uStructure * unitIndex, GameIdentifier, 2) ; +0 Increases when the unit dies
+}
+
 ; The unitTimer is updated slower than the gameTick/time. This can cause a time to be out
 ; by a fraction depending on when the function is called e.g. 0.0625 instead of 0. So round it.
 ; I think this could cause issues if the 
@@ -3628,6 +3636,122 @@ getTimeAtUnitConstruction(unit)
 ; Also it's possible a unit won't be warned if an already warned unit dies and its unit index is reused
 ; for another unit which should be warned. Should compare timeAlive value
 
+
+doUnitDetection(unit, type, owner, mode = "")
+{	
+	global config_file, alert_array, time, aMiniMapWarning, PrevWarning, GameIdentifier, aUnitID, GameType
+	static Alert_TimedOut := [], Alerted_Buildings := [], Alerted_Buildings_Base := []
+
+	if !mode
+	{
+		;i should really compare the unit type, as theres a chance that the warned unit has died and was replaced with another unit which should be warned
+		loop_AlertList:
+		loop, % alert_array[GameType, "list", "size"]
+		{ 			; the below if statement for time		
+			Alert_Index := A_Index	;the alert index number which corresponds to the ini file/config
+			if  ( type = aUnitID[alert_array[GameType, A_Index, "IDName"]] ) ;So if its a shrine and the player is not on ur team
+			{
+				createdAtTime := getTimeAtUnitConstruction(unit) ; This will be 0 for starting units (townhall + workers)
+				unitUsedCount := getUnitIndexReusedCount(unit)
+				
+				if ( createdAtTime < alert_array[GameType, A_Index, "DWB"]) ; Each time chrono is used on it createdAtTime will be slightly lower - but this isn't an issue as the unit would already have been warned 
+				{	
+					if !Alert_TimedOut[owner, Alert_Index].HasKey(unit) || unitUsedCount != Alert_TimedOut[owner, Alert_Index, unit]
+						Alert_TimedOut[owner, Alert_Index, unit] := unitUsedCount 
+					continue ; may be an alert with a different DWB for this unit type later on in the array
+				}
+				else if (time > alert_array[GameType, A_Index, "DWA"]) ; refer to time, as createdAtTime is reduced with each chrono. (which could cause a trigger if the unit was made just after DWA)
+					continue ; may be other warnings for this unit with different times
+				Else if (Alert_TimedOut[owner, Alert_Index].HasKey(unit) && unitUsedCount = Alert_TimedOut[owner, Alert_Index, unit])
+				|| (!alert_array[GameType, A_Index, "Repeat"] && Alerted_Buildings[owner].HasKey(A_Index))
+				|| (Alerted_Buildings_Base[owner, A_Index].Haskey(unit) && unitUsedCount = Alerted_Buildings_Base[owner, A_Index, unit])
+					return 
+
+				PrevWarning := []							
+				aMiniMapWarning.insert({ "Unit": PrevWarning.unitIndex := unit 
+										, "Time": Time
+										, "UnitTimer": PrevWarning.UnitTimer := getUnitTimer(unit) 
+										, "Type": PrevWarning.Type := type
+										, "Owner":  PrevWarning.Owner := owner})
+		
+				PrevWarning.speech := alert_array[GameType, A_Index, "Name"]
+				
+				if !A_IsCompiled
+				{
+					soundplay *-1
+					string := formatSeconds(time)  "`n=========="
+					. "`nType: " aUnitName[type]
+					. "`nCreated At: " formatSeconds(createdAtTime) 
+					. "`nOwner: " owner
+					. "`nIndex Used: "  unitUsedCount
+					. "`nWarning Index: " A_Index
+					. "`n`n`n"
+					log(string)
+
+				}
+				
+				tSpeak(alert_array[GameType, A_Index, "Name"])
+				if !alert_array[GameType, A_Index, "Repeat"]	; =0 these below setup a list like above, but contins the type - to prevent rewarning
+					Alerted_Buildings[owner, A_Index] := True
+					;Alerted_Buildings.insert( {(owner): Alert_Index})
+			;	Alerted_Buildings_Base.insert( {(owner): unit}) ; prevents the same exact unit beings warned on next run thru
+				Alerted_Buildings_Base[owner, A_Index, unit] := unitUsedCount ; prevents the same exact unit beings warned on next run thru.
+				return	
+			} ;End of if unit is on list and player not on our team 
+		} ; loop, % alert_array[GameType, "list", "size"]
+	}
+	else if (Mode = "Reset")
+	{
+		Alert_TimedOut := [], Alerted_Buildings := [], Alerted_Buildings_Base := []
+		Iniwrite, 0, %config_file%, Resume Warnings, Resume ; bit pointless as its getting deleted
+		IniDelete, %config_file%, Resume Warnings
+	}
+	else If (Mode = "Save")
+	{
+		Iniwrite, % SerDes(Alert_TimedOut), %config_file%, Resume Warnings, Alert_TimedOut		
+		Iniwrite, % SerDes(Alerted_Buildings), %config_file%, Resume Warnings, Alerted_Buildings		
+		Iniwrite, % SerDes(Alerted_Buildings_Base), %config_file%, Resume Warnings, Alerted_Buildings_Base		
+		Iniwrite, 1, %config_file%, Resume Warnings, Resume
+	}
+	Else if (Mode = "Resume")
+	{
+		Alert_TimedOut := [], Alerted_Buildings := [], Alerted_Buildings_Base := []
+		Iniwrite, 0, %config_file%, Resume Warnings, Resume
+		Iniread, string, %config_file%, Resume Warnings, Alert_TimedOut, %A_space%
+		if (string != A_space)
+		{
+			Alert_TimedOut := SerDes(string)
+			; 21/08/14 I noticed today this got stuck repeating units at start of match (hatch/cc)
+			; Cant seem to make it do it again though. Got it to do it once or twice but not sure what the cause was
+			; Added safety check in case SerDes() doesn't return an object
+			; But I don't believe this is the cause.
+			; I also had the main GUI load on startup and alt-tabed in/out at start of match
+			if !IsObject(Alert_TimedOut)
+				Alert_TimedOut := []
+		}
+		Iniread, string, %config_file%, Resume Warnings, Alerted_Buildings, %A_space%
+		if (string != A_space)
+		{
+			Alerted_Buildings := SerDes(string)
+			if !IsObject(Alerted_Buildings)
+				Alerted_Buildings := []
+		}
+		Iniread, string, %config_file%, Resume Warnings, Alerted_Buildings_Base, %A_space%
+		if (string != A_space)
+		{
+			Alerted_Buildings_Base := SerDes(string)
+			if !IsObject(Alerted_Buildings_Base)
+				Alerted_Buildings_Base := []
+		}
+		IniDelete, %config_file%, Resume Warnings
+	}
+	return
+}
+
+
+
+
+
 ; I should really update this so that it doesn't have to loop each alert
 ; I.e have the alerts unitID listed as the key which contains one or more alters
 ; so then a single if haskey() could be performed
@@ -3639,7 +3763,7 @@ getTimeAtUnitConstruction(unit)
 	if currentTime - savedTime < 1 
 		same unit 
 	else new unit
-	
+
 	If it is the exact same unit currentTime and savedTime will be the same (within a fraction of a second).
 
 	If its the same unit which has been chronoed then the result (currentTime - savedTime) will be a negative number,
@@ -3650,7 +3774,7 @@ getTimeAtUnitConstruction(unit)
 
 */
 
-
+/*
 doUnitDetection(unit, type, owner, mode = "")
 {	
 	global config_file, alert_array, time, aMiniMapWarning, PrevWarning, GameIdentifier, aUnitID, GameType
@@ -3712,6 +3836,9 @@ doUnitDetection(unit, type, owner, mode = "")
 		
 				PrevWarning.speech := alert_array[GameType, A_Index, "Name"]
 				
+				if !A_IsCompiled
+					soundplay *-1
+				
 				tSpeak(alert_array[GameType, A_Index, "Name"])
 				if !alert_array[GameType, A_Index, "Repeat"]	; =0 these below setup a list like above, but contins the type - to prevent rewarning
 					Alerted_Buildings[owner, A_Index] := True
@@ -3769,6 +3896,8 @@ doUnitDetection(unit, type, owner, mode = "")
 	}
 	return
 }
+/*
+
 */
 
 ; One of the first functions i ever wrote. Very messy. But it works and im lazy
