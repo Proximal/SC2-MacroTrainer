@@ -12962,6 +12962,8 @@ msgbox % gameTime
 . "`n"  gameTime - unitTimeAlive
 
 return 
+
+; the result gets smaller with chrono boost 
 f2::
 unit := getSelectedUnitIndex()
 s := A_TickCount
@@ -12972,3 +12974,31 @@ while (A_TickCount - s <= 2000)
 }
 soundplay *-1
 return 
+
+
+/*
+
+a := 10  saved
+b := 12  current from getTimeAtUnitConstruction
+
+b - a > 1 = b created afterwards
+
+a := 10 
+b := 8 (should be 10)
+
+b - a 
+8 - 10 = -2 
+
+
+
+
+
+
+
+
+
+
+
+/*
+
+
