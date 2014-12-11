@@ -51,12 +51,6 @@ a_pPens := initialisePenColours(aHexColours)
 CreatepBitmaps(a_pBitmap, aUnitID, MatrixColour)
 global aUnitInfo := []
 readConfigFile(), hasReadConfig := True
-; This changeling check is no longer required as reading the first unit owner now (not the third)
-;aChangeling := { 	aUnitID["ChangelingZealot"]: True
-;				 ,	aUnitID["ChangelingMarineShield"]: True 
-;				 ,	aUnitID["ChangelingMarine"]: True 
-;				 ,	aUnitID["ChangelingZerglingWings"]: True 
-;				 ,	aUnitID["ChangelingZergling"]: True }				
 gameChange()
 return
 
@@ -129,22 +123,14 @@ gameChange(UserSavedAppliedSettings := False)
 
 		; Resume warning is written inside the doUnitDetection when called via Save
 		if ((ResumeWarnings || UserSavedAppliedSettings) && alert_array[GameType, "Enabled"])  
-			doUnitDetection(0, 0, 0, "Resume")
+			doUnitDetection(0, 0, 0, 0, "Resume")
 		Else
-			doUnitDetection(0, 0, 0, "Reset") ; clear the variables within the function			
+			doUnitDetection(0, 0, 0, 0, "Reset") ; clear the variables within the function			
 		if (warpgate_warn_on && aLocalPlayer["Race"] = "Protoss") || supplyon || alert_array[GameType, "Enabled"]
 		|| ( (aLocalPlayer["Race"] = "Terran" && WarningsWorkerTerranEnable) || (aLocalPlayer["Race"] = "Protoss" && WarningsWorkerProtossEnable) || (aLocalPlayer["Race"] = "Zerg" && WarningsWorkerProtossEnable))
 		|| geyserOversaturationCheck	
 			settimer, unit_bank_read, 1500, -6   ; unitdetecion performed every second run. ; 2500 worked well %UnitDetectionTimer_ms% ; previous was 4000
 		else settimer, unit_bank_read, off
-		aAlertIDLookUp := [] ; Create a 'quick lookup' array so don't have to check every enemy unit type in the slow unit detection function
-		if alert_array[GameType, "Enabled"]
-		{
-			loop, % alert_array[GameType, "list", "size"]
-			{
-				aAlertIDLookUp[aUnitID[alert_array[GameType, A_Index, "IDName"]]] := True
-			}
-		}
 
 		if (aLocalPlayer["Race"] = "Terran" && WarningsWorkerTerranEnable) || (aLocalPlayer["Race"] = "Protoss" && WarningsWorkerProtossEnable) 
 			settimer, workerTerranProtossCheck, 1000, -5
@@ -640,8 +626,8 @@ loop, % DumpUnitMemory(UBMemDump)
 
 		}
 	}
-	else if (doUnitDetectionOnThisRun && aAlertIDLookUp.HasKey(unit_type)) ; these units are enemies and have an entry in the alertWarnings
-		doUnitDetection(u_iteration, unit_type, unit_owner)
+	else if (doUnitDetectionOnThisRun && alert_array[GameType, "IDLookUp"].HasKey(unit_type)) ; these units are enemies and have an entry in the alertWarnings
+		doUnitDetection(u_iteration, unit_type, unit_owner, numGetUnitIndexReusedCount(UBMemDump, u_iteration))
 }
 if warpgate_warn_on
 	gosub warpgate_warn

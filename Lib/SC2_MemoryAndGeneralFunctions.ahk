@@ -3539,7 +3539,7 @@ createAlertArray()
 	{
 		IniRead, BAS_on_%A_LoopField%, %config_file%, Building & Unit Alert %A_LoopField%, enable, 1	;alert system on/off
 		alert_array[A_LoopField, "Enabled"] := BAS_on_%A_LoopField% ;this style name, so it matches variable name for update
-		loop,	;loop thru the building list sequentialy
+		loop	;loop thru the building list sequentially
 		{
 			IniRead, temp_name, %config_file%, Building & Unit Alert %A_LoopField%, %A_Index%_name_warning
 			if (  temp_name = "ERROR" ) ;ERROR default return
@@ -3556,6 +3556,9 @@ createAlertArray()
 			alert_array[A_LoopField, A_Index, "DWA"] := temp_DWA
 			alert_array[A_LoopField, A_Index, "Repeat"] := Temp_repeat
 			alert_array[A_LoopField, A_Index, "IDName"] := Temp_IDName
+			; This lookup has the has the id for each unit type which has an alert. 
+			; can do a simple alert_array[GameType, IDLookUp].HasKey(unitID) to check if the list has an alert for this unit type
+			alert_array[A_LoopField, "IDLookUp", aUnitID[Temp_IDName]] := True
 		}
 	}
 	Return alert_array
@@ -3617,12 +3620,17 @@ getUnitIndexReusedCount(unitIndex)
 	return readmemory(B_uStructure + S_uStructure * unitIndex, GameIdentifier, 2) ; +0 Increases when the unit dies
 }
 
+numGetUnitIndexReusedCount(ByRef MemDump, Unit)
+{	
+	return numget(MemDump, Unit * S_uStructure, "UShort")
+}
+
 ; The unitTimer is updated slower than the gameTick/time. This can cause a time to be out
 ; by a fraction depending on when the function is called e.g. 0.0625 instead of 0. So round it.
-; I think this could cause issues if the 
+; I think this could cause issues if the if the results are near x.5, so if comparing it to some other value check the deltas are within a small rang e.g. 1 
 
 ; 10/12/14 I just discovered that this is not accurate for protoss structures. 
-; Chrono boost will cause this to increase faster, so care should be used.
+; Chrono boost will cause getUnitTimer() to increase faster, and hence this will return a slightly lower value so care should be used.
 
 getTimeAtUnitConstruction(unit)
 {
@@ -3637,7 +3645,7 @@ getTimeAtUnitConstruction(unit)
 ; for another unit which should be warned. Should compare timeAlive value
 
 
-doUnitDetection(unit, type, owner, mode = "")
+doUnitDetection(unit, type, owner, unitUsedCount, mode = "")
 {	
 	global config_file, alert_array, time, aMiniMapWarning, PrevWarning, GameIdentifier, aUnitID, GameType
 	static Alert_TimedOut := [], Alerted_Buildings := [], Alerted_Buildings_Base := []
@@ -3652,8 +3660,7 @@ doUnitDetection(unit, type, owner, mode = "")
 			if  ( type = aUnitID[alert_array[GameType, A_Index, "IDName"]] ) ;So if its a shrine and the player is not on ur team
 			{
 				createdAtTime := getTimeAtUnitConstruction(unit) ; This will be 0 for starting units (townhall + workers)
-				unitUsedCount := getUnitIndexReusedCount(unit)
-				
+
 				if ( createdAtTime < alert_array[GameType, A_Index, "DWB"]) ; Each time chrono is used on it createdAtTime will be slightly lower - but this isn't an issue as the unit would already have been warned 
 				{	
 					if !Alert_TimedOut[owner, Alert_Index].HasKey(unit) || unitUsedCount != Alert_TimedOut[owner, Alert_Index, unit]
@@ -3679,13 +3686,14 @@ doUnitDetection(unit, type, owner, mode = "")
 				if !A_IsCompiled
 				{
 					soundplay *-1
-					string := formatSeconds(time)  "`n=========="
+					string := formatSeconds(time)  
+					. "`n=========="
 					. "`nType: " aUnitName[type]
 					. "`nCreated At: " formatSeconds(createdAtTime) 
 					. "`nOwner: " owner
 					. "`nIndex Used: "  unitUsedCount
 					. "`nWarning Index: " A_Index
-					. "`n`n`n"
+					. "`n`n"
 					log(string)
 
 				}
@@ -4441,7 +4449,7 @@ readConfigFile()
 	IniRead, Playback_Alert_Key, %config_file%, Alert Location, Playback_Alert_Key, <#F7
 	IniRead, EnableLastAlertPlayBackHotkey, %config_file%, Alert Location, EnableLastAlertPlayBackHotkey, 1
 
-	alert_array := [],	alert_array := createAlertArray()
+	alert_array := createAlertArray()
 	
 	;[Overlays]
 	section := "Overlays"

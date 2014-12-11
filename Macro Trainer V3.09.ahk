@@ -503,7 +503,7 @@ Thread, NoTimers, True
 ;suspend, on 
 setLowLevelInputHooks(False) ; This shouldn't do anything anymore - as they are only installed when required
 if (time && alert_array[GameType, "Enabled"])
-	aThreads.MiniMap.ahkFunction("doUnitDetection", 0, 0, 0, "Save")	
+	aThreads.MiniMap.ahkFunction("doUnitDetection", 0, 0, 0, 0, "Save")	
 restartTrainer := True
 ExitApp	;does the shutdown procedure.
 return 
@@ -2901,7 +2901,7 @@ ini_settings_write:
 		{
 			aThreads.MiniMap.ahkFunction("updateUserSettings")
 			if (time && alert_array[GameType, "Enabled"])
-				 aThreads.MiniMap.ahkFunction("doUnitDetection", 0, 0, 0, "Save")
+				 aThreads.MiniMap.ahkFunction("doUnitDetection", 0, 0, 0, 0, "Save")
 		}
 		if aThreads.Overlays.ahkReady()
 			aThreads.Overlays.ahkFunction("updateUserSettings")
@@ -5626,6 +5626,9 @@ iniReadQuickSelect(byRef aQuickSelectCopy, byRef aQuickSelect)
 		    	}
 		    }
 
+		    if !unitExists
+		    	SelectUnitTypes := DeselectUnitTypes := 0
+
 		    aQuickSelectCopy[Race, arrayPosition, "SelectUnitTypes"] := SelectUnitTypes
 		    aQuickSelectCopy[Race, arrayPosition, "DeselectUnitTypes"] := DeselectUnitTypes
 		    aQuickSelectCopy[Race, arrayPosition, "CreateControlGroup"] := CreateControlGroup
@@ -5646,8 +5649,8 @@ iniReadQuickSelect(byRef aQuickSelectCopy, byRef aQuickSelect)
 		    aQuickSelectCopy[Race, arrayPosition, "DeselectLowHP"] := DeselectLowHP
 		    aQuickSelectCopy[Race, arrayPosition, "HPValue"] := HPValue
 
-		    if !unitExists
-		    	aQuickSelectCopy[Race].remove(arrayPosition--) ;post-decrement 
+		    ;if !unitExists
+		    ;	aQuickSelectCopy[Race].remove(arrayPosition--) ;post-decrement 
 		}
 		aQuickSelectCopy[race "MaxIndexGui"] := Round(aQuickSelectCopy[race].MaxIndex())
 	}	
@@ -5826,15 +5829,19 @@ saveCurrentQuickSelect(Race, byRef aQuickSelectCopy)
 	while InStr(units, "`n`n")
 		StringReplace, units, units, `n`n, `n, All 
 	sort, units, D`n U ;remove duplicates 
+	hasUnits := False
 	loop, parse, units, `n
 	{
 		if aUnitID.haskey(unit := trim(A_LoopField," `t`n`,"))
 		{
+			hasUnits := True
 			aQuickSelectCopy[Race, arrayPosition, "units"].insert(aUnitID[unit])	
 			if unit in Medivac,WarpPrism,WarpPrismPhasing,Overlord
 				includesTransport := True
 		}
 	}
+	if !hasUnits
+		SelectUnitTypes := DeselectUnitTypes := False
 	; lets just save it anyway so that if the click previous to go back and they havent filled in the units part, 
 	; they wont lose what they just entered
 ;	if !aQuickSelectCopy[Race, arrayPosition, "units"].maxIndex()
@@ -8433,7 +8440,7 @@ CreateHotkeys()
 		{
 			for i, object in aQuickSelect[aLocalPlayer["Race"]]
 			{
-				if (object.enabled && object.Units.MaxIndex())
+				if object.enabled ;&& object.Units.MaxIndex() ; You may not want to filter by unit type, so remove this check
 					try hotkey, % object.hotkey, g_QuickSelect, on
 			}
 		}
@@ -9099,7 +9106,6 @@ quickSelect(aDeselect)
 	for i, clickUnitType in aDeselect["Units"]
 		aLookup[clickUnitType] := True
 
-
 	; This checks if one of the click unit types exist on the map
 	; Otherwise user presses hotkey and is left with all the army unit selection
 	; since when selecting unit types were are actually just removing all other types - selection will be left blank, which
@@ -9186,7 +9192,6 @@ quickSelect(aDeselect)
 	; however if you *Shift* box drag again (and don't select any currently unselected units) the structures will be selected.
 	; And overlords as zerg transports 
 	; and fix GUI warning when no unit types selected
-
 
 	numGetSelectionSorted(aSelected)
 	clickPortraits := []
