@@ -5829,18 +5829,16 @@ saveCurrentQuickSelect(Race, byRef aQuickSelectCopy)
 	while InStr(units, "`n`n")
 		StringReplace, units, units, `n`n, `n, All 
 	sort, units, D`n U ;remove duplicates 
-	hasUnits := False
 	loop, parse, units, `n
 	{
 		if aUnitID.haskey(unit := trim(A_LoopField," `t`n`,"))
 		{
-			hasUnits := True
 			aQuickSelectCopy[Race, arrayPosition, "units"].insert(aUnitID[unit])	
 			if unit in Medivac,WarpPrism,WarpPrismPhasing,Overlord
 				includesTransport := True
 		}
 	}
-	if !hasUnits
+	if !aQuickSelectCopy[Race, arrayPosition, "units"].maxIndex()
 		SelectUnitTypes := DeselectUnitTypes := False
 	; lets just save it anyway so that if the click previous to go back and they havent filled in the units part, 
 	; they wont lose what they just entered
@@ -8666,7 +8664,7 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 							sleep % ceil(sleepTime * rand(1, Inject_SleepVariance)) ; eg rand(1, 1.XXXX) as the second parameter will always have a decimal point, dont have to worry about it returning just full integers eg 1 or 2 or 3
 						Queen.Energy -= 25	
 						injectedHatches++
-						if (injectedHatches >= FInjectHatchMaxHatches && ForceInject)
+						if (ForceInject && injectedHatches >= FInjectHatchMaxHatches)
 							break, 2
 						Break
 					}
@@ -8677,6 +8675,8 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 			}
 		;	/* ; THIS Is trying to do multi injects 
 			; just realised that can only do one multi inject per inject round
+			; i.e. one queen can inject multiple hatcheries 
+			; Could do more using the {click 0, 0} trick
 			if (MissedHatcheries.maxindex() && CanQueenMultiInject)
 			{
 				local QueenMultiInjects := []
@@ -8726,7 +8726,7 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 							; cant do multi inject on more than one hatch as sending the queen ctrl group key
 							; more than 1 within a second (even after other buttons) will cause the camera to jump/focus
 							; on the queens
-							; could send another ctrl group then the queen group key
+							; could send another ctrl group then the queen group key or the {click 0, 0}
 
 							;input.pSend(MI_Queen_Group)
 							;dSleep(8) 
@@ -12956,22 +12956,27 @@ getPortraitsFromIndexes(aIndexLookUp, byRef oSelection := "", isReversed := Fals
 	return aPortraits
 }
 
-/*
+
 f1::
 address := B_uStructure + S_uStructure * getSelectedUnitIndex()
-ID := readmemory(address, GameIdentifier, 2) ; +0 Increases when the unit dies
-timesUsed := readmemory(address + 2, GameIdentifier, 2) ; +2
+timesUsed := readmemory(address, GameIdentifier, 2) ; +0 Increases when the unit dies
+indexNumber := readmemory(address + 2, GameIdentifier, 2) ; +2
 dword := readmemory(address, GameIdentifier, 4) ; dword
 
-msgbox % clipboard := ID
+msgbox % clipboard := indexNumber
 . "`n"  timesUsed
 . "`n`n" dword
 . "`n" getSelectedUnitIndex()
 return 
-/*
+
 f2::
-address := B_uStructure + S_uStructure * 5
+address := B_uStructure + S_uStructure * getSelectedUnitIndex()
 WriteMemory(address, GameIdentifier, 65535, "Ushort")  
+return 
+
+
+f3::
+msgbox % IsInControlGroupGood(1, 0)
 return 
 
 /*
@@ -13024,3 +13029,6 @@ b - a
 /*
 
 
+f1:: 
+msgbox % getSelectedUnitIndex()
+return 
