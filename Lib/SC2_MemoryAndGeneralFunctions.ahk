@@ -536,7 +536,22 @@ IsInControlGroup(group, unitIndex)
 	Return 0	
 }
 
+getControlGroupPortraitCount(group)
+{
+	count := 0
+	loop, % bufferCount := numgetControlGroupMemory(controlBuffer, group)
+	{
+		unitIndex := (fingerPrint := NumGet(controlBuffer, (A_Index - 1) * S_scStructure, "UInt")) >> 18
+		if getUnitFingerPrint(unitIndex) = fingerPrint && !(getUnitTargetFilter(unitIndex) & aUnitTargetFilter.Hidden)
+			count++
+	}
+	return count
+}
+
 ; Could dump the entire group (S_CtrlGroup). But that seems wasteful 
+; *** care should be taken with this. The base address of the dumped memory
+; is the selection part of the control group - It does not contain the type or count
+; so don't use those offsets when using numget() to retrieve indexes****
 numgetControlGroupMemory(BYREF MemDump, group)
 {
 	if count := getControlGroupCount(Group)
@@ -2475,8 +2490,8 @@ numgetUnitModelPointer(ByRef Memory, Unit)
 	{
 		fingerPrint := numget(MemDump,(A_Index-1) * S_scStructure + O_scUnitIndex , "Int")
 		unit := fingerPrint >> 18
-		;if (isUnitDead(unit) || !isUnitLocallyOwned(Unit)) ; as this is being reead from control group buffer so dead units can still be included!
-		if getUnitFingerPrint(unit) != fingerPrint || !isUnitLocallyOwned(Unit)
+		;if (isUnitDead(unit) || !isUnitLocallyOwned(Unit)) ; as this is being read from control group buffer so dead units can still be included!
+		if getUnitFingerPrint(unit) != fingerPrint || !isUnitLocallyOwned(Unit) || getunittargetfilter(Unit) & aUnitTargetFilter.hidden ; the hight check in isnearhatch() would have prevented any issue as queen is only hidden when inside overlord - not when burrowed
 			continue 
 		
 		if (aUnitID["Queen"] = type := getUnitType(unit)) 

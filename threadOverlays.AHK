@@ -1741,7 +1741,7 @@ DrawMacroTownHallOverlay(ByRef Redraw, UserScale=1, Drag=0)
 	{
 		loop, % numgetControlGroupMemory(MemDump, A_Index - 1)
 		{
-			if !aCheckedUnits.HasKey((unit := NumGet(MemDump, (A_Index - 1) * 4, "UInt") >> 18))
+			if !aCheckedUnits.HasKey((unit := NumGet(MemDump, (A_Index - 1) * S_scStructure, "UInt") >> 18))
 			&& aTownHalls.HasKey(type := getUnitType(unit))
 			&& isUnitLocallyOwned(unit) && !(getUnitTargetFilter(unit) & (aUnitTargetFilter.Dead | aUnitTargetFilter.UnderConstruction))
 			{

@@ -9100,8 +9100,11 @@ quickSelect(aDeselect)
 	; Otherwise user presses hotkey and is left with all the army unit selection
 	; since when selecting unit types were are actually just removing all other types - selection will be left blank, which
 	; in most situations is probably worse
-	; This is a more complicated now by allowing on army, on screen, and control groups
+	; This is a more complicated now by allowing army, on screen, and control groups
 	; theres no protection fro control groups
+	if aDeselect.BaseSelection = "Army" && !getArmyUnitCount()
+		goto __quickSelectFunctionRemoveHooksExit
+
 	if aDeselect.SelectUnitTypes ; 
 	{	
 		unitTypesDoesntExist := True
@@ -9127,16 +9130,8 @@ quickSelect(aDeselect)
 		    }
 		}
 	}
-	if (unitTypesDoesntExist || (aDeselect.BaseSelection = "Army" && !getArmyUnitCount()))
-	{
-		input.RevertKeyState()
-		setLowLevelInputHooks(False)
-		critical, off 
-		sleep, -1
-		Thread, Priority, -2147483648
-		sleep, 20
-		return		
-	}
+	if unitTypesDoesntExist
+		goto __quickSelectFunctionRemoveHooksExit
 
 	if isCastingReticleActive() 	; so can deselect units if attacking/drop/rally reticle was present
 		input.pSend(Escape) 		; in ideal conditions a dsleep() >= 15 is performed after select army key is pressed this is not required - 12isnt enough
@@ -9152,9 +9147,24 @@ quickSelect(aDeselect)
 		}
 		else if instr(aDeselect.BaseSelection, "Control Group")
 		{
-			input.pSend(aAGHotkeys.Invoke[Substr(aDeselect.BaseSelection, 0)]) ; substr() extract last character which is the control group number 1-9
-			; Need to add a decent method to reduce the sleep time here
-			dSleep(80) 	
+			controlGroup := Substr(aDeselect.BaseSelection, 0) ; substr() extract last character which is the control group number 0-9
+			portraitCount := getControlGroupPortraitCount(controlGroup)
+			if !portraitCount
+				goto __quickSelectFunctionRemoveHooksExit
+			if getSelectionCount() != portraitCount
+			{
+				input.pSend(aAGHotkeys.Invoke[controlGroup]) 
+				timerQuickID := stopwatch()
+				while getSelectionCount() != portraitCount && stopwatch(timerQuickID, False) < 60 && A_Index < 80
+					dsleep(1)
+				stopwatch(timerQuickID)
+				dsleep(20)				
+			}
+			else 
+			{
+				input.pSend(aAGHotkeys.Invoke[controlGroup]) 
+				dSleep(40) 	
+			}
 		}
 		else ;if aDeselect.BaseSelection = "Army" ; Use as blank else 
 		{					
@@ -9266,35 +9276,15 @@ quickSelect(aDeselect)
 
 		if clickPortraits.MaxIndex()
 			reverseArray(clickPortraits), clickUnitPortraitsWithModifiers(clickPortraits)
-		clickSelectionPage(1)	; unconditionally click page 1
+		clickSelectionPage(1)	; unconditionally click page 1. If only one unit is left selected, this will cause the unit info (move/attack speed) box to briefly appear
 	}
-/*
-	; doing everything in one go now (not removed ctrl removing units then patrolling units)
-	if (clickPortraits.MaxIndex() && (aDeselect.DeselectXelnaga || aDeselect.DeselectPatrolling || aDeselect.DeselectHoldPosition || aDeselect.DeselectFollowing
-		|| aDeselect.DeselectLoadedTransport|| aDeselect.DeselectQueuedDrops))
-	{
-
-		timerQuickID := stopwatch()
-		while (getSelectionCount() != selectedCount && stopwatch(timerQuickID, False) < 70 && A_Index < 80)
-			dsleep(1)
-
-		stopwatch(timerQuickID) ; remove the timer
-		dsleep(12)
-
-		aUnitPortraitLocations := []
-		aUnitPortraitLocations := findPortraitsToRemoveFromArmy("", aDeselect.DeselectXelnaga, aDeselect.DeselectPatrolling
-										, aDeselect.DeselectHoldPosition, aDeselect.DeselectFollowing, aDeselect.DeselectLoadedTransport 
-										, aDeselect.DeselectQueuedDrops, "")
-		clickUnitPortraits(aUnitPortraitLocations)
-
-	}
-*/
-
 	if aDeselect.CreateControlGroup
 		input.pSend(aAGHotkeys.Set[aDeselect.StoreSelection])
 	else if aDeselect.AddToControlGroup
 		input.pSend(aAGHotkeys.Add[aDeselect.StoreSelection])
 	dsleep(15)
+
+	__quickSelectFunctionRemoveHooksExit:	
 	input.RevertKeyState()
 	setLowLevelInputHooks(False)
 	critical, off 
@@ -12920,6 +12910,18 @@ getPortraitsFromIndexes(aIndexLookUp, byRef oSelection := "", isReversed := Fals
 		reverseArray(aPortraits)
 	return aPortraits
 }
+
+/*
+f1::
+u := getSelectedUnitIndex()
+
+loop 
+{
+	tooltip % "|" getunittargetfilter(u) & aUnitTargetFilter.hidden
+		. "`n" getUnitPositionZ(u)
+	sleep 200
+}
+return 
 
 /*
 
