@@ -514,39 +514,34 @@ getCameraBoundsTop()
 	return ReadMemory(B_camTop, GameIdentifier) / 4096
 }
 
+; + 0 ushort times the unit Index has been reused (increases on death)
+; + 2 ushort is index number (divide by 4 or >> 2)
+; Compare this directly with the non bit shifted values in the control group to 
+; see if it is the same unit i.e. the unit which was originally control grouped
+; and not a new one which currently exists at the same unit index
+getUnitFingerPrint(unitIndex)
+{
+	return readmemory(B_uStructure + S_uStructure * unitIndex, GameIdentifier)
+}
+
 IsInControlGroup(group, unitIndex)
 {
 	count := getControlGroupCount(Group)
 	ReadRawMemory(B_CtrlGroupStructure + S_CtrlGroup * group, GameIdentifier, Memory,  O_scUnitIndex + count * S_scStructure)
 	loop, % count 
 	{
-		if (unitIndex = (NumGet(Memory, O_scUnitIndex + (A_Index - 1) * S_scStructure, "UInt") >> 18))		
-			Return 1
+		if NumGet(Memory, O_scUnitIndex + (A_Index - 1) * S_scStructure, "UInt") >> 18 = unitIndex
+			return getUnitFingerPrint(unitIndex) = NumGet(Memory, O_scUnitIndex + (A_Index - 1) * S_scStructure, "UInt")
 	}
 	Return 0	
 }
 
-/*
-isInControlGroup(group, unit) 
-{	; group# = 1, 2,3-0  
-	global  
-	loop, % getControlGroupCount(Group)
-		if (unit = getCtrlGroupedUnitIndex(Group,  A_Index - 1))
-			Return 1	;the unit is in this control group
-	Return 0			
-}	;	ctrl_unit_number := ReadMemory(B_CtrlGroupStructure + S_CtrlGroup * group + O_scUnitIndex +(A_Index - 1) * S_scStructure, GameIdentifier, 2)/4
-*/
 ; Could dump the entire group (S_CtrlGroup). But that seems wasteful 
 numgetControlGroupMemory(BYREF MemDump, group)
 {
 	if count := getControlGroupCount(Group)
 		ReadRawMemory(B_CtrlGroupStructure + S_CtrlGroup * group + O_scUnitIndex, GameIdentifier, MemDump, count * S_scStructure)
 	return count
-}
-
-getCtrlGroupedUnitIndex(group, i=0)
-{	global
-	Return ReadMemory(B_CtrlGroupStructure + S_CtrlGroup * group + O_scUnitIndex + i * S_scStructure, GameIdentifier) >> 18
 }
 
 getControlGroupCount(Group)
@@ -574,6 +569,10 @@ ReadRawUnit(unit, ByRef Memory)	; dumps the raw memory for one unit
 	ReadRawMemory(B_uStructure + unit * S_uStructure, GameIdentifier, Memory, S_uStructure)
 	return
 }
+
+; Always check selection count before using this to iterate the selection buffer
+; due to the way SC updates the buffer / list of indexes. e.g. if the highest selected index is killed then the selection list does not change
+; but the count does. If another unit which isnt the highest index dies, then the entire selection list is rewritten
 
 getSelectedUnitIndex(i=0) ;IF Blank just return the first selected unit (at position 0)
 {	global
@@ -2066,10 +2065,12 @@ numGetControlGroupObject(Byref oControlGroup, Group)
 	oControlGroup.units := []
 	loop % numget(MemDump, 0, "Short")
 	{
-		unit := numget(MemDump,(A_Index-1) * S_scStructure + O_scUnitIndex , "Int") >> 18
-		if (!isUnitDead(unit) && isUnitLocallyOwned(unit))
-		{
+		fingerPrint := numget(MemDump,(A_Index-1) * S_scStructure + O_scUnitIndex , "Int")
+		unit := fingerPrint >> 18
 
+		;if (!isUnitDead(unit) && isUnitLocallyOwned(unit))
+		if getUnitFingerPrint(unit) = fingerPrint && isUnitLocallyOwned(unit)
+		{
 			oControlGroup.units.insert({ "UnitIndex": unit
 										, "Type": Type := getUnitType(unit)
 										, "Energy": getUnitEnergy(unit)
@@ -2472,8 +2473,10 @@ numgetUnitModelPointer(ByRef Memory, Unit)
 
 	loop % groupCount
 	{
-		unit := numget(MemDump,(A_Index-1) * S_scStructure + O_scUnitIndex , "Int") >> 18
-		if (isUnitDead(unit) || !isUnitLocallyOwned(Unit)) ; as this is being reead from control group buffer so dead units can still be included!
+		fingerPrint := numget(MemDump,(A_Index-1) * S_scStructure + O_scUnitIndex , "Int")
+		unit := fingerPrint >> 18
+		;if (isUnitDead(unit) || !isUnitLocallyOwned(Unit)) ; as this is being reead from control group buffer so dead units can still be included!
+		if getUnitFingerPrint(unit) != fingerPrint || !isUnitLocallyOwned(Unit)
 			continue 
 		
 		if (aUnitID["Queen"] = type := getUnitType(unit)) 
@@ -2494,8 +2497,7 @@ numgetUnitModelPointer(ByRef Memory, Unit)
 					|| InStr(commandString, "QueenBuild") || InStr(commandString, "Transfusion"))
 						aControlGroup.Queens.insert(objectGetUnitXYZAndEnergy(unit)), aControlGroup.Queens[aControlGroup.Queens.MaxIndex(), "Type"] := Type
 				}
-				else 
-					aControlGroup.Queens.insert(objectGetUnitXYZAndEnergy(unit)), aControlGroup.Queens[aControlGroup.Queens.MaxIndex(), "Type"] := Type
+				else aControlGroup.Queens.insert(objectGetUnitXYZAndEnergy(unit)), aControlGroup.Queens[aControlGroup.Queens.MaxIndex(), "Type"] := Type
 			}
 		}
 

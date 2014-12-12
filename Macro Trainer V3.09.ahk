@@ -8587,7 +8587,6 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 		oHatcheries := [] ; Global used to check if successful without having to iterate again. And it will update the list of hatches when using fully automated injects (which is checked to determine when to call this function)
 		local BaseCount := zergGetHatcheriesToInject(oHatcheries)
 		Local oSelection := []
-		Local SkipUsedQueen := []
 		local MissedHatcheries := []
 																		
 		; use check the ctrl group, rather than the selection buffer, then wont have to sleep for selection buffer
@@ -8643,18 +8642,18 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 
 			For Index, CurrentHatch in oHatcheries
 			{
-				Local := FoundQueen := 0
+				Local FoundQueen := 0
 				if CurrentHatch.isInjected || (InjectConserveQueenEnergy && CurrentHatch.LarvaCount >= 19) 
 					continue
 				For Index, Queen in oSelection.Queens
 				{
-					if SkipUsedQueen[Queen.unit]
+					if Queen.HasInjected 
 						continue
-					; Just looking through the code now... dont know why isInControlGroup and Queen energy are checked
+						; Just looking through the code now... dont know why isInControlGroup and Queen energy are checked
 					; They should be always true...., perhaps a copy and paste from old code which used a different method
-					if (isQueenNearHatch(Queen, CurrentHatch, MI_QueenDistance) && isInControlGroup(MI_Queen_Group, Queen.unit) && Queen.Energy >= 25) ; previously queen type here (unit id/tpye) doesnt seem to work! weird
+					if (isQueenNearHatch(Queen, CurrentHatch, MI_QueenDistance) && Queen.Energy >= 25) ; previously queen type here (unit id/tpye) doesnt seem to work! weird
 					{
-						FoundQueen := CurrentHatch.NearbyQueen := SkipUsedQueen[Queen.unit] := 1 																		
+						FoundQueen := CurrentHatch.NearbyQueen := Queen.HasInjected := 1 																		
 						input.pSend(Inject_spawn_larva)
 						click_x := CurrentHatch.MiniMapX, click_y := CurrentHatch.MiniMapY
 						If HumanMouse
@@ -8752,8 +8751,9 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 	    For Index, CurrentHatch in oHatcheries 	; so (for the most part) the inject order should match the basecamera order - though there are more rules than just age
 	    	CurrentHatch.Age := getUnitTimer(CurrentHatch.unit)
 	    bubbleSort2DArray(oHatcheries, "Age", 0) ; 0 = descending
-
-		If(Local QueenCount := getGroupedQueensWhichCanInject(oSelection))  ; this wont fetch burrowed queens!! so dont have to do a check below - as burrowed queens can make cameramove when clicking their hatch
+	    Local QueenCount
+	    Local FoundQueen
+		If QueenCount := getGroupedQueensWhichCanInject(oSelection)  ; this wont fetch burrowed queens!! so dont have to do a check below - as burrowed queens can make cameramove when clicking their hatch
 		{
 			if Inject_RestoreSelection
 				input.pSend(aAGHotkeys.set[Inject_control_group]), stopWatchCtrlID := stopwatch()
@@ -8762,36 +8762,26 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 			input.pSend(aAGHotkeys.Invoke[MI_Queen_Group])
 			For Index, CurrentHatch in oHatcheries
 			{
-				Local := FoundQueen := 0
-				click_x := CurrentHatch.MiniMapX, click_y := CurrentHatch.MiniMapY
 				if sleepTime
 					sleep % ceil( (sleepTime/2) * rand(1, Inject_SleepVariance)) 
 		;		send {click Left %click_x%, %click_y%}
-				Input.pClick(click_x, click_y)
+				Input.pClick(CurrentHatch.MiniMapX, CurrentHatch.MiniMapY)
 				if sleepTime
 					sleep % ceil( (sleepTime/2) * rand(1, Inject_SleepVariance))
 				if CurrentHatch.isInjected || (InjectConserveQueenEnergy && CurrentHatch.LarvaCount >= 19) 
 					continue
 				For Index, Queen in oSelection.Queens
 				{
-					if SkipUsedQueen[Queen.unit]
-						continue
-					if (isQueenNearHatch(Queen, CurrentHatch, MI_QueenDistance) && isInControlGroup(MI_Queen_Group, Queen.unit) && Queen.Energy >= 25) ; previously queen type here (unit id/tpye) doesnt seem to work! weird
+					if isQueenNearHatch(Queen, CurrentHatch, MI_QueenDistance)
 					{
-						FoundQueen := CurrentHatch.NearbyQueen := SkipUsedQueen[Queen.unit] := 1 																		
+						CurrentHatch.NearbyQueen := 1 																		
 						input.pSend(Inject_spawn_larva)
-						click_x := CurrentHatch.MiniMapX, click_y := CurrentHatch.MiniMapY
-					
-					;	click_x := A_ScreenWidth/2 , click_y := A_ScreenHeight/2
-					;	send {click Left %click_x%, %click_y%}
-						Input.pClick(click_x, click_y)
-						Queen.Energy -= 25	
+						Input.pClick(CurrentHatch.MiniMapX, CurrentHatch.MiniMapY)
+						oSelection.Queens.Remove(Index) ; this queen wont inject again
 						Break
 					}
 					else CurrentHatch.NearbyQueen := 0
 				}
-				if !FoundQueen
-					MissedHatcheries.insert(CurrentHatch)
 			}
 			if Inject_RestoreScreenLocation
 			{
@@ -9667,33 +9657,6 @@ clickUnitPortraitsDemo(aUnitPortraitLocations, Modifers := "+")
 	soundplay *-1
 	return	
 }
-
-sortSelectedUnitsByDistance(byref aSelectedUnits, Amount = 3)	;takes a simple array which contains the selection indexes (begins at 0)
-{ 													; the 0th selection index (1st in this array) is taken as the base unit to measure from
-	aSelectedUnits := []
-	sIndexBaseUnit := rand(0, getSelectionCount() -1) ;randomly pick a base unit 
-	uIndexBase := getSelectedUnitIndex(sIndexBaseUnit)
-	Base_x := getUnitPositionX(uIndexBase), Base_y := getUnitPositionY(uIndexBase)
-	aSelectedUnits.insert({"Unit": uIndexBase, "Priority": getUnitSubGroupPriority(uIndexBase), "Distance": 0})
-
-	while (A_Index <= getSelectionCount())	
-	{
-		unit := getSelectedUnitIndex(A_Index -1)
-		if (sIndexBaseUnit = A_Index - 1)
-			continue 
-		else
-		{
-			unit_x := getUnitPositionX(unit), unit_y := getUnitPositionY(unit)
-			aSelectedUnits.insert({"Unit": unit, "Priority": getUnitSubGroupPriority(unit), "Distance": Abs(Base_x - unit_x) + Abs(Base_y - unit_y)})
-		}
-	}
-	bubbleSort2DArray(aSelectedUnits, "Distance", 1)
-	while (aSelectedUnits.MaxIndex() > Amount)
-		aSelectedUnits.Remove(aSelectedUnits.MaxIndex()) 	
-	bubbleSort2DArray(aSelectedUnits, "Unit", 0) ;clicks highest units first, so dont have to calculate new click positions due to the units moving down one spot in the panel grid	
-	bubbleSort2DArray(aSelectedUnits, "Priority", 1)	; sort in ascending order so select units lower down 1st	
-	return 
-} 
 
 
 debugData()
@@ -12577,9 +12540,11 @@ class autoBuild
 		ReadRawMemory(B_CtrlGroupStructure + S_CtrlGroup * group, GameIdentifier, Memory,  O_scUnitIndex + groupSize * S_scStructure)
 		loop, % groupSize 
 		{
-			unitIndex := NumGet(Memory, O_scUnitIndex + (A_Index - 1) * S_scStructure, "UInt") >> 18
+			fingerPrint := NumGet(Memory, O_scUnitIndex + (A_Index - 1) * S_scStructure, "UInt")
+			, unitIndex := fingerPrint >> 18
 			if getUnitType(unitIndex) = unitId 
-			&& getUnitOwner(unitIndex) = aLocalPlayer.slot 
+			&& fingerPrint = getUnitFingerPrint(unitIndex)
+			&& getUnitOwner(unitIndex) = aLocalPlayer.slot ; dont really need this line. Could remove it to allow production out of an allys buildings (after they left)
 			&& !(getunittargetfilter(unitIndex) & (aUnitTargetFilter.Dead | aUnitTargetFilter.UnderConstruction))	
 				count++, aUnitIndexs.insert(unitIndex)
 		}	
@@ -12956,8 +12921,8 @@ getPortraitsFromIndexes(aIndexLookUp, byRef oSelection := "", isReversed := Fals
 	return aPortraits
 }
 
+/*
 
-f1::
 address := B_uStructure + S_uStructure * getSelectedUnitIndex()
 timesUsed := readmemory(address, GameIdentifier, 2) ; +0 Increases when the unit dies
 indexNumber := readmemory(address + 2, GameIdentifier, 2) ; +2
@@ -12975,8 +12940,10 @@ WriteMemory(address, GameIdentifier, 65535, "Ushort")
 return 
 
 
-f3::
-msgbox % IsInControlGroupGood(1, 0)
+f1::
+tooltip, % isInSelection(2) "`n" getSelectedUnitIndex()
+return 
+msgbox % IsInControlGroup(1, getSelectedUnitIndex())
 return 
 
 /*
