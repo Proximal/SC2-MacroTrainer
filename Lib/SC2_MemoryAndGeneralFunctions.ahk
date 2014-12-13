@@ -514,11 +514,24 @@ getCameraBoundsTop()
 	return ReadMemory(B_camTop, GameIdentifier) / 4096
 }
 
-; + 0 ushort times the unit Index has been reused (increases on death)
-; + 2 ushort is index number (divide by 4 or >> 2)
-; Compare this directly with the non bit shifted values in the control group to 
+; 11/12/14
+; Identifying a specific unit is now possible i.e. can tell if a unit at a specific unit index
+; is the same one which was previously there. 
+; It's sad that I didn't realise this long ago, it would have simplified so many things.
+
+; 
+; Unit Base + 0 ushort times the unit Index has been reused (increases on death)
+; Unit Base + 2 ushort is index number (divide by 4 or >> 2 if reading this as a ushort)
+; When read as a dword this forms the individual ID value which permanently identifies this specific unit. This value is used throughout the game, particularity in selection/control group structures.
+; Unit Base + 0 (dword) >> 18 this value to get the index number.
+
+; Compare this dword directly with the non bit shifted values in the control group to 
 ; see if it is the same unit i.e. the unit which was originally control grouped
 ; and not a new one which currently exists at the same unit index
+
+; Note Im going to refer to this value as fingerPrint - it is really the units
+; individual ID, but i already have aUnitID, unitID and unit.ID etc littered everywhere. (which all refer to unit type)
+
 getUnitFingerPrint(unitIndex)
 {
 	return readmemory(B_uStructure + S_uStructure * unitIndex, GameIdentifier)
@@ -2170,7 +2183,9 @@ numGetSelectionSorted(ByRef aSelection, ReverseOrder := False)
 		, sIndices .= "," unitIndex
 		, hallucinationOrder := !((filter := getUnitTargetFilter(unitIndex)) & aUnitTargetFilter.Hallucination) ; hallucinations come first so they get key 0 real units get key 1
 		if aLocalPlayer["Slot"] != getUnitOwner(unitIndex)
-			nonLocalUnitSelected := True										
+			nonLocalUnitSelected := True
+		else if !visibleUnit && !(filter & aUnitTargetFilter.Hidden)	; e.g. worker entering refinery does not change selection panel - but marines into a bunker or medivac does
+			visibleUnit := True											; so I don't think i need to remove the hidden units from selection (as marines wont be in the selection buffer) but the workers will be
 
 		if !isObject(aStorage[priority, subGroupAlias])
 		  	aStorage[priority, subGroupAlias] := [], aStorage[priority, subGroupAlias, 0] := [], aStorage[priority, subGroupAlias, 1] := []
@@ -2181,7 +2196,7 @@ numGetSelectionSorted(ByRef aSelection, ReverseOrder := False)
 		; as they appear in the unit panel ie top left to bottom right 	
 	}
 
-	aSelection.IsGroupable := (aSelection.Count && !nonLocalUnitSelected)
+	aSelection.IsGroupable := (aSelection.Count && !nonLocalUnitSelected && visibleUnit)
 	; This will convert the data into a simple indexed object
 	; The index value will be 1 more than the unit portrait location
 	, aSelection.IndicesString := substr(sIndices, 2) ; trim first "," 

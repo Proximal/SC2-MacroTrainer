@@ -1,5 +1,6 @@
 ﻿;-----------------------
 ;	For updates:
+; ** check the multi inject option for this update
 ;	Change version number in exe and config file
 ;	Upload the changelog, file version  and new exe files to the ftp server
 ; 	check dont have debugging hotkeys and clipboards at end of script
@@ -2258,17 +2259,33 @@ pre_startup:
 if FileExist(config_file) ; the file exists lets read the ini settings
 {
 	readConfigFile()
-	if ( ProgramVersion > read_version ) ; its an update and the file exists - better backup the users settings
+	if (ProgramVersion > read_version) ; its an update and the file exists - better backup the users settings
 	{
-		program.Info.IsUpdating := 1
+		if !A_IsCompiled
+		{
+			msgbox, 
+			( Ltrim Off
+			    MacroTrainer is running as a script (non-compiled) and there is a program version mismatch.
+			   
+			    Check the "ProgramVersion" value in the script and the "version" key in the config file. 
+
+			    Macro Trainer will now exit
+			)
+			ExitApp
+			return
+		}
+
+		if read_version < 3.10 ; multi-injects was accidentally disabled over a year ago. Lots of people will have it enabled as its checked in the included config
+			CanQueenMultiInject := 0 ; disable this option for safety in case it does cause issues. It will get written in iniwrite
+		program.Info.IsUpdating := 1 ; used in iniWrite
 		FileCreateDir, %old_backup_DIR%
 		FileCopy, %config_file%, %old_backup_DIR%\v%read_version%_%config_file%, 1 ;ie 1 = overwrite
 		Filemove, Macro Trainer V%read_version%.exe, %old_backup_DIR%\Macro Trainer V%read_version%.exe, 1 ;ie 1 = overwrite		
 		FileInstall, MT_Config.ini, %config_file%, 1 ; 1 overwrites
 		Gosub, ini_settings_write ;to write back users old settings
-		Gosub, pre_startup ; Read the ini settings again - this updates the 'read version' and also helps with Control group 'ERROR' variable 
-		;IniRead, read_version, %config_file%, Version, version, 1	;this is a safety net - and used to prevent keeping user alert lists in update pre 2.6 & Auto control group 'ERROR'
-		;msgbox It seems that this is the first time that you have ran this version.`n`nYour old %config_file% & Macro Trainer have been backed up to `"\%old_backup_DIR%`". A new config file has been installed which contains your previous personalised settings`n`nPress OK to continue.
+		;Gosub, pre_startup ; Read the ini settings again - this updates the 'read version' and also helps with Control group 'ERROR' variable 
+		program.Info.IsUpdating := 0
+		readConfigFile()
 		If newVersionFirstRunGUI(ProgramVersion, old_backup_DIR) = "Options"
 			gosub options_menu
 	}
@@ -3067,7 +3084,7 @@ try
 				Gui, Add, Edit, Number Right xp+160 yp w45 vTT2_MI_QueenDistance
 						Gui, Add, UpDown,  Range1-100000 vMI_QueenDistance, %MI_QueenDistance%	
 
-			Gui, Add, Checkbox, xs+10 y+15 vCanQueenMultiInject checked%CanQueenMultiInject%, Queen Can Inject Multiple Hatcheries 
+			Gui, Add, Checkbox, xs+10 y+15 vCanQueenMultiInject checked%CanQueenMultiInject%, Queen Can Inject Multiple Hatcheries* 
 			Gui, Add, Checkbox, xs+10 y+10 vInjectConserveQueenEnergy checked%InjectConserveQueenEnergy%, Conserve Queen Energy
 			
 
@@ -4665,7 +4682,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		auto_inject_time_TT := TT_auto_inject_time_TT :=  "This is in 'SC2' Seconds."
 		#cast_inject_key_TT := cast_inject_key_TT := "When pressed the program will inject all of your hatcheries.`n`nThis Hotkey is ONLY active while playing as zerg!"
 		Auto_inject_sleep_TT := "Lower this to make the inject round faster, BUT this will make it more obvious that it is being automated!"
-		CanQueenMultiInject_TT := "During minimap injects (and auto-Injects) a SINGLE queen may attempt to inject multiple hatcheries providing:`nShe is the only nearby queen and she has enough energy.`n`nThis may increase the chance of having queens go walkabouts - but I have never observed this. "
+		CanQueenMultiInject_TT := "During minimap injects (and auto-Injects) a SINGLE queen may attempt to (shift-queue) inject multiple hatcheries providing:`nShe is the only nearby queen and she has enough energy.`n`nThis may increase the chance of having queens go walkabouts - but I have never observed this. "
 		InjectConserveQueenEnergy_TT := "Hatches which already have 19 larvae will not be injected, thereby saving queen energy.`n"
 									. "This setting is ignored by the 'Backspace' method.`n`n"
 									 . "Note: In SC a hatch can have a maximum of 19 larvae, that is, further injects will not yield additional larvae."
@@ -4767,7 +4784,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		TT_IdleWorkerOverlayThreshold_TT := IdleWorkerOverlayThreshold_TT := "The idle worker overlay is only visible when your idle count is greater than or equal to this minimum value."
 
 		DrawUnitOverlay_TT := "Displays an overlay similar to the 'observer panel', listing the current and in-production unit counts.`n`nUse the 'unit panel filter' to selectively remove/display units.`n`nNote: To disable the match overlay uncheck both 'Show Upgrades' and 'Show Unit Count/Production'."
-		DrawUnitUpgrades_TT := "Displays the current enemy upgrades.""`n`nNote: To disable the match overlay uncheck both 'Show Upgrades' and 'Show Unit Count/Production'."
+		DrawUnitUpgrades_TT := "Displays the current enemy upgrades.`n`nNote: To disable the match overlay uncheck both 'Show Upgrades' and 'Show Unit Count/Production'."
 		
 		UnitPanelFilterButton_TT := "Allows units to be selectively removed from the overlay."
 
@@ -4838,7 +4855,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 								. "`n`nYou must ensure the corresponding ""Invoke Group Keys"" (under SC2 Keys on the left) match your SC2 hotkey setup."			
 		F_InjectOff_Key_TT := #F_InjectOff_Key_TT := "During a match this hotkey will toggle (either disable or enable) automatic injects."
 
-		SplitUnitPanel_TT := "When enabled the overlay will display units on separate a line to structures."
+		SplitUnitPanel_TT := "When enabled the overlay will display units on a separate line to structures."
 
 		UnitPanelAlignNewUnits_TT := "
 						( LTrim
@@ -8101,11 +8118,16 @@ getZergProduction(EggUnitIndex)
 isSelectionGroupable(ByRef oSelection)
 {	GLOBAl aLocalPlayer
 	if !numGetUnitSelectionObject(oSelection) 	; No units selected
-		return 0
+		return False
+	visibleUnit := False
 	for index, object in oSelection.units 	; non-self unit selected, other wise will continually
-		if (object.owner != aLocalPlayer.slot) ; click middle screen not alloying you to type
-			return 0
-	return 1
+	{
+		if (object.owner != aLocalPlayer.slot)
+			return False
+		if !visibleUnit && !(getUnitTargetFilter(object.UnitIndex) & aUnitTargetFilter.Hidden)	; e.g. worker entering refinery does not change selection panel - but marines into a bunker or medivac does
+			visibleUnit := True	
+	}
+	return visibleUnit
 }
 
 selectGroup(group, preSleep := -1, postSleep := 2)
@@ -8681,21 +8703,20 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 				local QueenMultiInjects := []
 				For Index, Queen in oSelection.Queens
 				{
-					local MaxInjects := Floor(Queen.Energery / 25)
-					local CurrentQueenInjectCount := 0
 					For Index, CurrentHatch in MissedHatcheries 
 					{
-						if (isQueenNearHatch(Queen, CurrentHatch, MI_QueenDistance) && isInControlGroup(MI_Queen_Group, Queen.unit) && Queen.Energy >= 25)
+						if (ForceInject && injectedHatches >= FInjectHatchMaxHatches)
+							break, 2							
+						if isQueenNearHatch(Queen, CurrentHatch, MI_QueenDistance) && Queen.Energy >= 25
 						{
 							if !isobject(QueenMultiInjects[Queen.unit])
 								QueenMultiInjects[Queen.unit] := []
 							QueenMultiInjects[Queen.unit].insert(CurrentHatch)
 							Queen.Energy -= 25
-							CurrentQueenInjectCount++
-							if (CurrentQueenInjectCount >= MaxInjects)
-								break
+							injectedHatches++
 						}
-
+						if Queen.Energy < 25
+							break
 					}
 				}
 
@@ -8715,7 +8736,7 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 						If HumanMouse
 							MouseMoveHumanSC2("x" click_x "y" click_y "t" rand(HumanMouseTimeLo, HumanMouseTimeHi))
 					;	MTclick(click_x, click_y, "Left", "+")
-
+						input.psend("+{click " click_x ", " click_y "}")
 						if sleepTime
 							sleep % ceil(sleepTime * rand(1, Inject_SleepVariance))
 
@@ -8729,10 +8750,7 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 
 							;input.pSend(MI_Queen_Group)
 							;dSleep(8) 
-						}
-						injectedHatches++
-						if (injectedHatches >= FInjectHatchMaxHatches && ForceInject)
-							break, 2					
+						}				
 					}
 				}					
 			}
@@ -12911,93 +12929,5 @@ getPortraitsFromIndexes(aIndexLookUp, byRef oSelection := "", isReversed := Fals
 	return aPortraits
 }
 
-/*
-f1::
-u := getSelectedUnitIndex()
-
-loop 
-{
-	tooltip % "|" getunittargetfilter(u) & aUnitTargetFilter.hidden
-		. "`n" getUnitPositionZ(u)
-	sleep 200
-}
-return 
-
-/*
-
-address := B_uStructure + S_uStructure * getSelectedUnitIndex()
-timesUsed := readmemory(address, GameIdentifier, 2) ; +0 Increases when the unit dies
-indexNumber := readmemory(address + 2, GameIdentifier, 2) ; +2
-dword := readmemory(address, GameIdentifier, 4) ; dword
-
-msgbox % clipboard := indexNumber
-. "`n"  timesUsed
-. "`n`n" dword
-. "`n" getSelectedUnitIndex()
-return 
-
-f2::
-address := B_uStructure + S_uStructure * getSelectedUnitIndex()
-WriteMemory(address, GameIdentifier, 65535, "Ushort")  
-return 
 
 
-f1::
-tooltip, % isInSelection(2) "`n" getSelectedUnitIndex()
-return 
-msgbox % IsInControlGroup(1, getSelectedUnitIndex())
-return 
-
-/*
-f1::
-unit := getSelectedUnitIndex()
-gameTime := getTimeFull()
-unitTimeAlive := getUnitTimer(unit)
-msgbox % gameTime
-. "`n" getTimeAtUnitConstruction(unit)
-. "`n"  gameTime - unitTimeAlive
-
-return 
-
-; the result gets smaller with chrono boost 
-f2::
-unit := getSelectedUnitIndex()
-s := A_TickCount
-while (A_TickCount - s <= 2000)
-{
-	if (r := getTimeAtUnitConstruction(unit)) != 0 
-		msgbox  % r
-}
-soundplay *-1
-return 
-
-
-/*
-
-a := 10  saved
-b := 12  current from getTimeAtUnitConstruction
-
-b - a > 1 = b created afterwards
-
-a := 10 
-b := 8 (should be 10)
-
-b - a 
-8 - 10 = -2 
-
-
-
-
-
-
-
-
-
-
-
-/*
-
-
-f1:: 
-msgbox % getSelectedUnitIndex()
-return 
