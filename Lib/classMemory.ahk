@@ -1,4 +1,7 @@
 ﻿/*
+
+    12/12/14 - version 1.7
+        - Added an 'endAddress' parameter to processPatternScan.
     10/11/14 - version 1.6
         - Wild card bytes in the pattern scan functions can now be denoted by any non-numeric value e.g. "?", "wild" or "" (null)
     17/10/14 - version 1.5
@@ -268,7 +271,7 @@ class _ClassMemory
 
     version()
     {
-        return 1.6
+        return 1.7
     }   
 
     findPID(program, windowMatchMode := "3")
@@ -846,6 +849,7 @@ class _ClassMemory
 
     ; Method:               addressPatternScan(startAddress, sizeOfRegionBytes, aAOBPattern*)
     ;                       Scans a specified memory region for an array of bytes pattern.
+    ;                       The memory entire area specified must be readable for this method to work.
     ; Parameters:
     ;   startAddress        The memory address from which to begin the search.
     ;   sizeOfRegionBytes   The numbers of bytes to scan in the memory region.
@@ -866,9 +870,10 @@ class _ClassMemory
    
     ; Method:       processPatternScan(aAOBPattern*)
     ;               Scan the memory space of the current process for an array of bytes pattern. 
-    ;               Only scans up to address 0x7FFFFFFF (maximum useful area for a 32 bit process)   
     ; Parameters:
     ;   startAddress -      The memory address from which to begin the search.
+    ;   endAddress -        The memory address at which the search ends. Defaults to 0x7FFFFFFF i.e. the maximum useful area for a 32 bit process
+    ;                       Note: The entire pattern must be occur inside this range for a match to be found. The range is inclusive.
     ;   aAOBPattern* -      A variadic list of byte values i.e. the array of bytes to find.
     ;                       Wild card bytes should be indicated by passing a non-numeric value eg "?".
     ; Return Values:
@@ -878,14 +883,14 @@ class _ClassMemory
     ;   -2                  Failed to read a memory region.
     ;   -10                 The aAOBPattern* is invalid. (No bytes were passed)
 
-    processPatternScan(startAddress := 0, aAOBPattern*)
+    processPatternScan(startAddress := 0, endAddress := 0x7FFFFFFF, aAOBPattern*)
     {
         address := startAddress
         MEM_COMMIT := 0x1000, MEM_MAPPED := 0x40000, MEM_PRIVATE := 0x20000
         PAGE_NOACCESS := 0x01, PAGE_GUARD := 0x100
         if !patternSize := this.getNeedleFromAOBPattern(patternMask, AOBBuffer, aAOBPattern*)
             return -10  
-        while address <= 0x7FFFFFFF ; > 0x7FFFFFFF - definitely reached the end of the useful area (at least for a 32 target process)
+        while address <= endAddress ; > 0x7FFFFFFF - definitely reached the end of the useful area (at least for a 32 target process)
         {
             if !this.VirtualQueryEx(address, aInfo)
                 return -1
@@ -894,7 +899,13 @@ class _ClassMemory
             ;&& (aInfo.Type = MEM_MAPPED || aInfo.Type = MEM_PRIVATE) ;Might as well read Image sections as well
             && aInfo.RegionSize >= patternSize
             && (result := this.PatternScan(address, aInfo.RegionSize, patternMask, AOBBuffer))
-                return result > 0 ? result : -2
+            {
+                if result < 0 
+                    return -2
+                else if (result + patternSize - 1 <= endAddress)
+                    return result
+                else return 0
+            }
             address += aInfo.RegionSize
         }
         return 0

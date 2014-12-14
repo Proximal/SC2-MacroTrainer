@@ -432,7 +432,7 @@ class autoBuildGameGUI
 	; As this greatly increases CPU usage and makes clicking the overlay less responsive
 	; Check if the mouse if on a non-highlighted icon
 	; This greatly increases the reliability of the mouse hover when it leaves the screen
-	; Though be still have issues on slow systems
+	; Though may still have issues on slow systems
 	hoverCheck(x, y)
 	{
 		for i, item in this.Items

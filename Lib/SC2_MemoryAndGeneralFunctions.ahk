@@ -3713,23 +3713,7 @@ doUnitDetection(unit, type, owner, unitUsedCount, mode = "")
 										, "Type": PrevWarning.Type := type
 										, "Owner":  PrevWarning.Owner := owner})
 		
-				PrevWarning.speech := alert_array[GameType, A_Index, "Name"]
-				
-				if !A_IsCompiled
-				{
-					soundplay *-1
-					string := formatSeconds(time)  
-					. "`n=========="
-					. "`nType: " aUnitName[type]
-					. "`nCreated At: " formatSeconds(createdAtTime) 
-					. "`nOwner: " owner
-					. "`nIndex Used: "  unitUsedCount
-					. "`nWarning Index: " A_Index
-					. "`n`n"
-					log(string)
-
-				}
-				
+				PrevWarning.speech := alert_array[GameType, A_Index, "Name"]			
 				tSpeak(alert_array[GameType, A_Index, "Name"])
 				if !alert_array[GameType, A_Index, "Repeat"]	; =0 these below setup a list like above, but contins the type - to prevent rewarning
 					Alerted_Buildings[owner, A_Index] := True

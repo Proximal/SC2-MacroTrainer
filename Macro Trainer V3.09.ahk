@@ -12930,4 +12930,3 @@ getPortraitsFromIndexes(aIndexLookUp, byRef oSelection := "", isReversed := Fals
 }
 
 
-
