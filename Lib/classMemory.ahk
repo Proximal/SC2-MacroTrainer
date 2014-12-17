@@ -1,5 +1,6 @@
 ﻿/*
-
+    17/12/14 - version 1.8
+        - Fixed a 'bitness' bug in _MEMORY_BASIC_INFORMATION 
     12/12/14 - version 1.7
         - Added an 'endAddress' parameter to processPatternScan.
     10/11/14 - version 1.6
@@ -70,16 +71,23 @@
 
     Process handles are automatically closed when the script exits/restarts or when you free the object.
 
-    Notes:
+    **Notes:
         This was initially written for 32 bit target processes, however the various read/write functions
         should now completely support pointers in 64 bit target applications. The only caveat is that the AHK exe must also be 64 bit.  
         If AHK is 32 bit and the target application is 64 bit you can still read, write, and use pointers, so long as the addresses
         can fit inside a 4 byte pointer. The pointer pBaseAddress parameter in ReadProcessMemory()/WriteProcessMemory() is the limiting factor here.
         If AHK is 32 bit pBaseAddress will be a 4 byte pointer. This limits the maximum address which can be passed to the 32 bit range.
 
-        If the process has admin privileges, then the AHK script will also require admin privileges. 
+        The various pattern scan functions are intended to be used on 32 bit target applications, however: 
+            - A 32 bit AHK script can perform pattern scans on a 32 bit target application.
+            - A 32 bit AHK script may be able to perform pattern scans on a 64 bit process, providing the addresses fall within the 32 bit range.             
+            - A 64 bit AHK script should be able to perform pattern scans on a 32 bit target application without issue. 
+            - A 64 bit AHK script should be able to perform pattern scans on a 64 bit target application, however issues may arise at very high memory addresses as AHK does not support UInt64.
+
+        If the target process has admin privileges, then the AHK script will also require admin privileges. 
 
         AHK doesn't support unsigned 64bit ints, you can however read them as Int64 and interpret negative values as large numbers.       
+  
 
     Commonly used methods:
         read()
@@ -962,7 +970,7 @@ class _ClassMemory
     {
 
         if (aInfo.__Class != "_ClassMemory._MEMORY_BASIC_INFORMATION")
-            aInfo := new this._MEMORY_BASIC_INFORMATION(this.IsTarget64bit)
+            aInfo := new this._MEMORY_BASIC_INFORMATION()
         return aInfo.SizeOfStructure = DLLCall("VirtualQueryEx" 
                                                 , "Ptr", this.hProcess
                                                 , "Ptr", address
@@ -1089,12 +1097,22 @@ class _ClassMemory
         return
     }
 
+    ; This link indicates that the _MEMORY_BASIC_INFORMATION32/64 should be based on the target process
+    ; http://stackoverflow.com/questions/20068219/readprocessmemory-on-a-64-bit-proces-always-returns-error-299 
+    ; The msdn documentation is unclear, and suggests that a debugger can pass either structure - perhaps there is some other step involved.
+    ; My tests seem to indicate that you must pass _MEMORY_BASIC_INFORMATION i.e. structure is relative to the AHK script bitness.
+    ; Another post on the net also agrees with my results. 
+
+    ; Notes: 
+    ; A 64 bit AHK script can call this on a target 64 bit process. Issues may arise at very high memory addresses as AHK does not support UInt64.
+    ; A 64 bit AHK can call this on a 32 bit target and it should work. 
+    ; A 32 bit AHk script can call this on a 64 bit target and it should work providing the addresses fall inside the 32 bit range.
+
     class _MEMORY_BASIC_INFORMATION
     {
-        __new(IsTarget64bit := False)
+        __new()
         {   
-            this.IsTarget64bit := IsTarget64bit
-            if !this.pStructure := DllCall("GlobalAlloc", "UInt", 0, "UInt", this.SizeOfStructure := this.IsTarget64bit ? 48 : 28, "Ptr")
+            if !this.pStructure := DllCall("GlobalAlloc", "UInt", 0, "UInt", this.SizeOfStructure := A_PtrSize = 8 ? 48 : 28, "Ptr")
                 return ""
             return this
         }
@@ -1102,31 +1120,28 @@ class _ClassMemory
         {
             DllCall("GlobalFree", "Ptr", this.pStructure)
         }
+        ; For 64bit the int64 should really be unsigned. But AHK doesn't support these
+        ; so this won't work correctly for higher memory address areas
         __get(key)
         {
-            static a32bit := {  "BaseAddress": {"Offset": 0, "Type": "UInt"}
-                             ,   "AllocationBase": {"Offset": 4, "Type": "UInt"}
-                             ,   "AllocationProtect": {"Offset": 8, "Type": "UInt"}
-                             ,   "RegionSize": {"Offset": 12, "Type": "UInt"}
-                             ,   "State": {"Offset": 16, "Type": "UInt"}
-                             ,   "Protect": {"Offset": 20, "Type": "UInt"}
-                             ,   "Type": {"Offset": 24, "Type": "UInt"} }
-                ; For 64bit the int64 should really be unsigned. But AHK doesn't support these
-                ; so this won't work correctly for higher memory address areas
-                ; Also as I suspected the module bitness should be based on the target app - not the AHK exe
-                ; http://stackoverflow.com/questions/20068219/readprocessmemory-on-a-64-bit-proces-always-returns-error-299 
-                , a64bit := {   "BaseAddress": {"Offset": 0, "Type": "Int64"}
-                            ,    "AllocationBase": {"Offset": 8, "Type": "Int64"}
-                            ,    "AllocationProtect": {"Offset": 16, "Type": "UInt"}
-                            ,    "RegionSize": {"Offset": 24, "Type": "Int64"}
-                            ,    "State": {"Offset": 32, "Type": "UInt"}
-                            ,    "Protect": {"Offset": 36, "Type": "UInt"}
-                            ,    "Type": {"Offset": 40, "Type": "UInt"} }
+            static aLookUp := A_PtrSize = 8 
+                                ?   {   "BaseAddress": {"Offset": 0, "Type": "Int64"}
+                                    ,    "AllocationBase": {"Offset": 8, "Type": "Int64"}
+                                    ,    "AllocationProtect": {"Offset": 16, "Type": "UInt"}
+                                    ,    "RegionSize": {"Offset": 24, "Type": "Int64"}
+                                    ,    "State": {"Offset": 32, "Type": "UInt"}
+                                    ,    "Protect": {"Offset": 36, "Type": "UInt"}
+                                    ,    "Type": {"Offset": 40, "Type": "UInt"} }
+                                :   {  "BaseAddress": {"Offset": 0, "Type": "UInt"}
+                                    ,   "AllocationBase": {"Offset": 4, "Type": "UInt"}
+                                    ,   "AllocationProtect": {"Offset": 8, "Type": "UInt"}
+                                    ,   "RegionSize": {"Offset": 12, "Type": "UInt"}
+                                    ,   "State": {"Offset": 16, "Type": "UInt"}
+                                    ,   "Protect": {"Offset": 20, "Type": "UInt"}
+                                    ,   "Type": {"Offset": 24, "Type": "UInt"} }
 
-            if !this.IsTarget64bit && a32bit.HasKey(key)
-                return numget(this.pStructure+0, a32bit[key].Offset, a32bit[key].Type)
-            else if this.IsTarget64bit && a64bit.HasKey(key)
-                return numget(this.pStructure+0, a64bit[key].Offset, a64bit[key].Type)            
+            if aLookUp.HasKey(key)
+                return numget(this.pStructure+0, aLookUp[key].Offset, aLookUp[key].Type)        
         }
         Ptr()
         {
