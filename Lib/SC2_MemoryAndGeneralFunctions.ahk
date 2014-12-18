@@ -1314,6 +1314,18 @@ getReplayFolder()
 	Return ReadMemory_Str(B_ReplayFolder, GameIdentifier) 
 }
 
+; Includes the final backslash
+; D:\My Computer\My Documents\StarCraft II\Replays\  --- > D:\My Computer\My Documents\StarCraft II\    (In map editor game)
+; D:\My Computer\My Documents\StarCraft II\Accounts\56088844\6-S2-1-49888\Replays\ --> D:\My Computer\My Documents\StarCraft II\Accounts\56088844\
+getAccountFolder()
+{ 	
+	replayFolder := getReplayFolder()
+	if RegExMatch(replayFolder, ".*\\Accounts\\[0-9]*\\", folder) 
+		return InStr(FileExist(folder), "D") ? folder : ""
+	else return RegExMatch(replayFolder, ".*\\StarCraft II\\", folder) && InStr(FileExist(folder), "D") ? folder : "" ; MapEditor - Root SC folder
+}
+
+
 getChatText()
 { 	Global
 	Local ChatAddress := pointer(GameIdentifier, P_ChatInput, O1_ChatInput, O2_ChatInput

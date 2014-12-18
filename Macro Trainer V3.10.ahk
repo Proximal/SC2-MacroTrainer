@@ -160,7 +160,7 @@ MT_CurrentInstance := [] ; Used to store random info about the current run
 program := []
 program.info := {"IsUpdating": 0} ; program.Info.IsUpdating := 0 ;has to stay here as first instance of creating infor object
 
-ProgramVersion := 3.09
+ProgramVersion := 3.10
 
 l_GameType := "1v1,2v2,3v3,4v4,FFA"
 l_Races := "Terran,Protoss,Zerg"
@@ -7558,7 +7558,7 @@ autoWorkerProductionCheck()
 
 	time := getTime()
 	; Prevent queuing during small lag events
-	; Note that the hooks may still be installed removed, as lastMadeWorkerTime is only set when a worker is actually made.
+	; Note that the hooks may still be installed & removed, as lastMadeWorkerTime is only set when a worker is actually made.
 	if (Abs(time - lastMadeWorkerTime) < 1) 
 		return
 	; This will change the random percent every 12 seconds - otherwise
@@ -9835,23 +9835,6 @@ debugData()
 	obviously for grid layout commands (command card) 00-14 corresond to the keyboard letters
 
 */
-; Includes the final backslash
-; D:\My Computer\My Documents\StarCraft II\Replays\  --- > D:\My Computer\My Documents\StarCraft II\    (In map editor game)
-; D:\My Computer\My Documents\StarCraft II\Accounts\56088844\6-S2-1-49888\Replays\ --> D:\My Computer\My Documents\StarCraft II\Accounts\56088844\
-getAccountFolder()
-{ 	
-	replayFolder := getReplayFolder()
-	if !p := InStr(replayFolder, "Accounts\", False, -1) ; MapEditor - Root SC folder
-	{
-		if !p := InStr(replayFolder, "StarCraft II\", False, -1)
-			return ""
-		folder := SubStr(replayFolder, 1, p+12) 
-	}
-	else folder := SubStr(replayFolder, 1, p+17) 
-	return InStr(FileExist(folder), "D") ? folder : ""
-}
-
-
 
 
 msgboxList(items*)
@@ -9860,9 +9843,6 @@ msgboxList(items*)
 		s .= item "`n"
 	msgbox % substr(s, 1, -1)
 }
-
-
-
 
 
 
@@ -11453,7 +11433,7 @@ unloadAllTransports(hotkeySuffix)
 }
 
 
-
+/*
 ; Global Stim
 
 #If, !A_IsCompiled && WinActive(GameIdentifier) && isPlaying && aLocalPlayer.Race = "Terran" && !isMenuOpen()
@@ -11471,7 +11451,7 @@ if (tabsToSend := tabPos - aSelection.HighlightedGroup) < 0
 else send {tab %tabsToSend%}t+{tab %tabsToSend%}
 return
 #if
-
+*/
 
 AutoBuildGUIkeyPress:
 if (AutoBuildGUIkeyMode = "KeyDown")
@@ -12672,11 +12652,9 @@ DebugSCHotkeys:
 DebugSCHotkeys()
 return 
 
-
 g_SmartGeyserControlGroup:
 SmartGeyserControlGroup(hoveredGeyserUnitIndex)
 return 
-
 
 ; Does not find harvesters which are on the return run i.e. moving away from the refinery, carrying the gas back to the town hall
 getSelectedHarvestersMiningGas(byRef oSelection := "")
@@ -12928,6 +12906,5 @@ getPortraitsFromIndexes(aIndexLookUp, byRef oSelection := "", isReversed := Fals
 		reverseArray(aPortraits)
 	return aPortraits
 }
-
 
 

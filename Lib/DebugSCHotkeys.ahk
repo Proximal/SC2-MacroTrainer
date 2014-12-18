@@ -1,7 +1,8 @@
 DebugSCHotkeys()
 {
+	static log ; to dump to clipboard
+
 	Gui, DebugSCHotkeys:New  ; destroy previous windows with same name
-	
 	process, exist, %GameExe%
 	If !errorlevel
 		log := "Error: SC is not running!`n`nThe listed hotkeys are the standard default SC keys."
@@ -23,10 +24,11 @@ DebugSCHotkeys()
 		if (errorLog != "")
 			log .= "`nErrors have occured:" errorLog
 	} 
-	
+
 	Gui, Add, Edit, w570 r16 hwndHwndEdit readonly, %log%
 
 	Gui, Add, ListView, Grid -LV0x10 NoSortHdr +resize w570 r28, Name|Hotkey
+	Gui, Add, Button, Default g__DebugSCHotkeysClipboardDump, Dump To Clipboard
 
 	for name, hotkey in SC2Keys.getAllKeys()
 		LV_Add("", name, hotkey)
@@ -40,4 +42,8 @@ DebugSCHotkeys()
 	DebugSCHotkeysGuiEscape:
 	Gui Destroy
 	return 
+
+	__DebugSCHotkeysClipboardDump:
+	clipboard := log "`n`n" ColumnJustify(Table_FromListview())
+	return
 }
