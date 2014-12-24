@@ -857,7 +857,8 @@ class _ClassMemory
 
     ; Method:               addressPatternScan(startAddress, sizeOfRegionBytes, aAOBPattern*)
     ;                       Scans a specified memory region for an array of bytes pattern.
-    ;                       The memory entire area specified must be readable for this method to work.
+    ;                       The memory entire area specified must be readable for this method to work,
+    ;                       i.e. you must ensure the area is readable before calling this method.
     ; Parameters:
     ;   startAddress        The memory address from which to begin the search.
     ;   sizeOfRegionBytes   The numbers of bytes to scan in the memory region.
