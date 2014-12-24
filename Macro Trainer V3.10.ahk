@@ -9095,7 +9095,7 @@ quickSelect(aDeselect)
 	global Sc2SelectArmy_Key, aAGHotkeys, Escape
 	static getUnitPercentHPReference := Func("getUnitPercentHP"), getUnitPercentShieldReference := Func("getUnitPercentShield")
 
-	if !getArmyUnitCount()
+	if aDeselect.BaseSelection = "Army" && !getArmyUnitCount()
 		return 
 	while (GetKeyState("Lbutton", "P") || GetKeyState("Rbutton", "P"))
 	{
@@ -11433,7 +11433,7 @@ unloadAllTransports(hotkeySuffix)
 }
 
 
-/*
+
 ; Global Stim
 
 #If, !A_IsCompiled && WinActive(GameIdentifier) && isPlaying && aLocalPlayer.Race = "Terran" && !isMenuOpen()
@@ -11451,7 +11451,7 @@ if (tabsToSend := tabPos - aSelection.HighlightedGroup) < 0
 else send {tab %tabsToSend%}t+{tab %tabsToSend%}
 return
 #if
-*/
+
 
 AutoBuildGUIkeyPress:
 if (AutoBuildGUIkeyMode = "KeyDown")
