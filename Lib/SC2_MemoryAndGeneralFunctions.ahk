@@ -167,9 +167,9 @@ loadMemoryAddresses(base, version := "")
 		; These versions have matching offsets
 		; !version in case the findVersion function stuffs up and returns 0/blank, thereby just assume match with latest offsets
 		; Also worker threads do not pass the client verison
-		if (version = "2.1.7.33148" || !version) 
-			versionMatch := "2.1.7.33148"		
-		else if version in 2.1.5.32392,2.1.4.32283,2.1.6.32540
+		if (version = "2.1.8.33553" || !version) 
+			versionMatch := "2.1.8.33553"		
+		else if version in 2.1.5.32392,2.1.4.32283,2.1.6.32540,2.1.7.33148
 			 versionMatch := version
 		else versionMatch := false
 		;	[Memory Addresses]
@@ -2109,7 +2109,7 @@ numGetControlGroupObject(Byref oControlGroup, Group)
 		unit := fingerPrint >> 18
 
 		;if (!isUnitDead(unit) && isUnitLocallyOwned(unit))
-		if getUnitFingerPrint(unit) = fingerPrint && isUnitLocallyOwned(unit)
+		if getUnitFingerPrint(unit) = fingerPrint && isUnitLocallyOwned(unit) && !(getunittargetfilter(Unit) & aUnitTargetFilter.hidden)
 		{
 			oControlGroup.units.insert({ "UnitIndex": unit
 										, "Type": Type := getUnitType(unit)
@@ -4538,6 +4538,7 @@ readConfigFile()
 	IniRead, unitPanelDrawStructureProgress, %config_file%, %section%, unitPanelDrawStructureProgress, 1
 	IniRead, unitPanelDrawUnitProgress, %config_file%, %section%, unitPanelDrawUnitProgress, 1
 	IniRead, unitPanelDrawUpgradeProgress, %config_file%, %section%, unitPanelDrawUpgradeProgress, 1
+	IniRead, unitPanelDrawLocalPlayer, %config_file%, %section%, unitPanelDrawLocalPlayer, 0
 ;	IniRead, OverlayBackgrounds, %config_file%, %section%, OverlayBackgrounds, 0
 	OverlayBackgrounds := False ; should remove this from 
 	IniRead, MiniMapRefresh, %config_file%, %section%, MiniMapRefresh, 300

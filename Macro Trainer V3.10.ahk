@@ -292,8 +292,9 @@ if (!versionMatch && clientVersion && A_IsCompiled) ; clientVersion check if tru
 	{
 		IniWrite, %clientVersion%, %config_file%, clientVersionWarning, clientVersionWarning
 		msgbox, % 48 + 4096, Version Mismatch, % "Current Client Version: " clientVersion
-			. "`n`nMacro Trainer does not support this SC version and will most likely function incorrectly or not all."
+			. "`n`nMacro Trainer does not support this SC version and may function incorrectly."
 			. "`n`nTry playing a game against an AI to see if it works. (Use a standard ladder map)"
+			. "`nAlternatively, from the options menu click Settings --> Pattern Scan. If all the cells are green then the program will probably work."
 			. "`n`nAn update will be released shortly."
 			, 20 ; timeout 
 	}
@@ -2803,6 +2804,7 @@ ini_settings_write:
 	Iniwrite, %unitPanelDrawStructureProgress%, %config_file%, %section%, unitPanelDrawStructureProgress
 	Iniwrite, %unitPanelDrawUnitProgress%, %config_file%, %section%, unitPanelDrawUnitProgress
 	Iniwrite, %unitPanelDrawUpgradeProgress%, %config_file%, %section%, unitPanelDrawUpgradeProgress
+	Iniwrite, %unitPanelDrawLocalPlayer%, %config_file%, %section%, unitPanelDrawLocalPlayer
 ;	Iniwrite, %OverlayBackgrounds%, %config_file%, %section%, OverlayBackgrounds	
 	Iniwrite, %MiniMapRefresh%, %config_file%, %section%, MiniMapRefresh	
 	Iniwrite, %OverlayRefresh%, %config_file%, %section%, OverlayRefresh	
@@ -4503,7 +4505,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 
 	Gui, Tab, Overlays
 			;Gui, add, text, y+20 X%XTabX%, Display Overlays:
-			Gui, Add, GroupBox, y+15 x+20 w195 h260 section, Display Overlays:
+			Gui, Add, GroupBox, y+15 x+20 w195 h270 section, Display Overlays:
 				Gui, Add, Checkbox, xp+10 yp+20 vDrawIncomeOverlay Checked%DrawIncomeOverlay%, Income
 					Gui, Add, Checkbox, xp+95 yp vDrawLocalPlayerIncome Checked%drawLocalPlayerIncome%, Include Self
 				Gui, Add, Checkbox, xs+10 y+13 vDrawResourcesOverlay Checked%DrawResourcesOverlay%, Resources
@@ -4528,7 +4530,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 				Gui, Add, DropDownList, % "x+5 yp-3 w40 vlocalUpgradesItemsPerRow Choose" (localUpgradesItemsPerRow != "" ? localUpgradesItemsPerRow + 1 : 1), 0|1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16
 
 
-				Gui, Add, GroupBox, ys XS+220 w170 h260, Match Overlay:
+				Gui, Add, GroupBox, ys XS+220 w170 h270, Match Overlay:
 				Gui, Add, Checkbox, xp+10 yp+20 vDrawUnitUpgrades Checked%DrawUnitUpgrades%, Show Upgrades
 				Gui, Add, Checkbox, xp y+13 vDrawUnitOverlay Checked%DrawUnitOverlay%, Show Unit Count/Production
 				Gui, Add, Checkbox, xp y+13 vSplitUnitPanel ggToggleAlignUnitGUI Checked%SplitUnitPanel% , Split Units/Buildings
@@ -4536,12 +4538,13 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 				Gui, Add, Checkbox, xp y+13 vUnitPanelDrawStructureProgress Checked%unitPanelDrawStructureProgress%, Show Structure Progress 
 				Gui, Add, Checkbox, xp y+13 vUnitPanelDrawUnitProgress Checked%unitPanelDrawUnitProgress%, Show Unit Progress 
 				Gui, Add, Checkbox, xp y+13 vUnitPanelDrawUpgradeProgress Checked%unitPanelDrawUpgradeProgress%, Show Upgrade Progress 
+				Gui, Add, Checkbox, xp y+13 vunitPanelDrawLocalPlayer Checked%unitPanelDrawLocalPlayer%, Include Self 
 
 				;Gui, Add, Button, center xp+15 y+10 w100 h30 vUnitPanelFilterButton Gg_GUICustomUnitPanel, Unit Filter
-				Gui, Add, Button, center xp y+27 w70 h30 vUnitPanelFilterButton Gg_GUICustomUnitPanel, Unit Filter
+				Gui, Add, Button, center xp y+15 w70 h30 vUnitPanelFilterButton Gg_GUICustomUnitPanel, Unit Filter
 				Gui, Add, Button, center x+10 yp w70 h30 vUnitPanelGuideButton GgUnitPanelGuide, Guide
 
-			Gui, Add, GroupBox, XS ys+270 w195 h55 section, Player Identifier:	
+			Gui, Add, GroupBox, XS ys+280 w195 h55 section, Player Identifier:	
 			;	Gui, Add, Text, yp+25 xp+10 w80, Player Identifier:
 				if OverlayIdent in 0,1,2,3
 					droplist3_var := OverlayIdent + 1
@@ -7587,18 +7590,19 @@ autoWorkerProductionCheck()
 						break
 					}
 				}
-
-				oBasesToldToBuildWorkers.insert({unitIndex: object.unitIndex, type: object.type})
-				if !isWorkerInProduction(object.unitIndex) ; also accounts for if morphing/flying 
+				if (townHallStatus := isWorkerInProduction(object.unitIndex)) <= 0 ; also accounts for if morphing/flying 
 				{
 					; this will prevent a recently converted orbital which is not near a geyser from making a working for 20 seconds
 					; giving time to lift it off and land it at the correct position
-					if (!nearGeyser && object.type = aUnitID["CommandCenter"] && aUnitID["OrbitalCommand"] = isCommandCenterMorphing(object.unitIndex))
+					if (!nearGeyser && townHallStatus = -1 && aUnitID["OrbitalCommand"] = isCommandCenterMorphing(object.unitIndex))
 						MT_CurrentGame.TerranCCUnderConstructionList[object.unitIndex] := time
 
 					; This is used to prevent a worker being made at a CC which has been completed or obital which has just finished morphing 
 					; for less than 20 in game seconds or a just landed CC for 10 seconds
 				
+					; 31/12/14 - Actually I don't think this is required for CCs (it is for completed orbitals), as CCs have the lowest build priority
+					; if OC,PF, and CC are selected the queue goes PF->OC->CC
+					; But it is also required when you have multiple CC
 					if (MT_CurrentGame.TerranCCUnderConstructionList.HasKey(object.unitIndex) && (time - MT_CurrentGame.TerranCCUnderConstructionList[object.unitIndex]) <= 20)
 					|| (MT_CurrentGame.TerranCCJustLandedList.HasKey(object.unitIndex) && (time - MT_CurrentGame.TerranCCJustLandedList[object.unitIndex]) <= 10)
 					{
@@ -7611,7 +7615,7 @@ autoWorkerProductionCheck()
 				else 
 				{
 					if (object.type = aUnitID["PlanetaryFortress"])
-						progress :=  getBuildStatsPF(object.unitIndex, QueueSize)
+						progress := getBuildStatsPF(object.unitIndex, QueueSize)
 					else
 						 progress := getBuildStats(object.unitIndex, QueueSize) ; returns build percentage
 					 if (QueueSize = 1)
@@ -7627,7 +7631,7 @@ autoWorkerProductionCheck()
 
 				}
 				TotalCompletedBasesInCtrlGroup++
-				L_ActualBasesIndexesInBaseCtrlGroup .= "," object.unitIndex
+				;L_ActualBasesIndexesInBaseCtrlGroup .= "," object.unitIndex
 			}
 			else if (aLocalPlayer.race = "Terran")
 				MT_CurrentGame.TerranCCUnderConstructionList[object.unitIndex] := time
@@ -7635,8 +7639,8 @@ autoWorkerProductionCheck()
 		else if ( object.type = aUnitID["CommandCenterFlying"] || object.type = aUnitID["OrbitalCommandFlying"] )
 		{
 			Basecount++ 	; so it will (account for flying base) and keep making workers at other bases if already at max worker/base	
-			; This is so a recently landed CC wont make a worker for 10 in game seconds - so can convert to obrital
-			if  (object.type = aUnitID["CommandCenterFlying"])
+			; This is so a recently landed CC wont make a worker for 10 in game seconds - so can convert to orbital
+			if (object.type = aUnitID["CommandCenterFlying"])
 			{
 				if !IsObject(MT_CurrentGame.TerranCCJustLandedList) ; because MT_CurrentGame gets cleared each game
 					MT_CurrentGame.TerranCCJustLandedList := []
@@ -7804,37 +7808,21 @@ autoWorkerProductionCheck()
 
 		critical, 1000
 		setLowLevelInputHooks(True)
-		dsleep(30)
+		;dsleep(20)
+		dsleep(10)
 
 		; I should change this so pReleaseKeys isn't called until absolutely necessary
 		; that way wont get a double press when build aborts 
 		input.pReleaseKeys(True)
 		input.pSend("{shift up}{ctrl up}") ; testing if this reduces control bug (or if its a timing issue latery)
-		dSleep(40) ; increase safety ensure selection buffer fully updated
+		;dSleep(40) ; increase safety ensure selection buffer fully updated
+		dSleep(25) ; give it a reasonable amount of time for it to at least begin updating
 
 		HighlightedGroup := getSelectionHighlightedGroup()
 		selectionPage := getUnitSelectionPage()
 
-		If numGetSelectionSorted(oSelection) ; = 0 as nothing is selected so cant restore this/control group it
+		If numGetSelectionSorted(oSelection) && oSelection.IsGroupable ; = 0 as nothing is selected so cant restore this/control group it
 		{ 
-			if !oSelection.IsGroupable
-			{
-				;msgbox % oSelection.IndicesString
-				Input.revertKeyState()
-				setLowLevelInputHooks(False)
-				return		
-			}
-			selctionUnitIndices := oSelection.IndicesString
-
-			loop, parse, selctionUnitIndices, `,
-			{
-				if A_LoopField not in %L_BaseCtrlGroupIndexes%	 ; so if a selected unit isnt in the base control group			
-				{
-					BaseControlGroupNotSelected := True
-					break 
-				}
-			}
-
 			; This function is mainly for the auto-control group. So when a user clicks on a finished CC
 			; it will get auto-grouped, but wont immediately make an SCV (which would prevent converting
 			; it into an orbital), the user has 4 real seconds from clicking it to convert it
@@ -7865,69 +7853,45 @@ autoWorkerProductionCheck()
 					Input.revertKeyState()
 					setLowLevelInputHooks(False)
 					critical, off
-					;Thread, NoTimers, false 
-					;Thread, Priority, -2147483648
 					SetTimer, g_autoWorkerProductionCheck, Off
 					settimer, resumeAutoWorker, -4500
-					;sleep 4500
 					return
 				}
-
 			}
 
-			; so even if the just the bases out of the base control group are selected (as other structures can be grouped with it)
-			; it wont send the base control group button as its not required
-			; Another scenario if there are 3 bases in ctrl group, and 1 is flying, if the user has the  two landed bases selected
-			; it still wont send the base control group, as its not required
-			; cant do a if L_ActualBasesIndexesInBaseCtrlGroup < makeWorkerCount - as you could end up with
-			; an already queued base getting sent workers while the non-selected idle base remains idle 
-			if !BaseControlGroupNotSelected
+
+			bufferSize := selectionFromGroup(predictedSelectionBuffer, mainControlGroup) 
+			BaseControlGroupNotSelected := !compareSelections(predictedSelectionBuffer, bufferSize, 0) ; 0 so runs once 
+			if !BaseControlGroupNotSelected ; so the townhall group is selected
 			{
-				loop, parse, selctionUnitIndices, `,
-					if A_LoopField in %L_ActualBasesIndexesInBaseCtrlGroup%
-						SelectedBasesCount++
-				if (SelectedBasesCount < TotalCompletedBasesInCtrlGroup)
-					BaseControlGroupNotSelected := True				
+				dsleep(20) ; so a total of 45 ms since pReleaseKeys was called -should be enough to at least allow the selection buffer to update
+				; during most of the game 
+				; we can afford to sleep a little longer here, as this will only occur when the control group and selection buffers match
+				; lets sleep a little longer and re-check the control group - 
+				bufferSize := selectionFromGroup(predictedSelectionBuffer, mainControlGroup) 
+				BaseControlGroupNotSelected := !compareSelections(predictedSelectionBuffer, bufferSize, 0) ; 0 so runs once 
 			}
 
-			; one thing to remember about these (L_SelectionIndexes != L_BaseCtrlGroupIndexes) 
-			; if a unit in the base group gets killed
-			; then these can never be Equal until the user re-issues the base control group
-			; so this may control group the units even when these bases are selected
-			; better to be safe than sorry!
-			; thats why im doing it slightly different now
-			; actually its still possible for them to match - if the dead structures UnitID is reused for a new unit (but unlikely user would have 
-			; this selected along with the other buildings)
-
-			if (BaseControlGroupNotSelected || removeRecentlyCompletedCC || AutoWorkerAlwaysGroup) ; hence if the 'main base' control group is already selected, it wont bother control grouping them (and later restoring them)
+			if (AutoWorkerAlwaysGroup || BaseControlGroupNotSelected || removeRecentlyCompletedCC)  
 			{
-				if !AutoWorkerAlwaysGroup
-				{
-					numGetControlGroupObject(oControlstorage, controlstorageGroup) 	; this checks if the currently selected units match those
-					for index, object in oControlstorage.units 							; already stored in the ctrl group
-					{	
-						L_ControlstorageIndexes .= "," object.unitIndex 				; if they do, it wont bother sending the store control group command
-						if !isUnitLocallyOwned(object.unitIndex) 			; as unit may have died and its unitIndex is reused
-						{
-							setControlGroup := True
-							break
-						}
-					}
-				}
-
-				if (AutoWorkerAlwaysGroup || setControlGroup || oSelection.IndicesString != subStr(L_ControlstorageIndexes, 2))  
-				{
-					setControlGroup := True
-					input.pSend(aAGHotkeys.set[controlstorageGroup])
-					stopWatchCtrlID := stopwatch()	
-				}
-				input.pSend("{click 0 0}" aAGHotkeys.Invoke[mainControlGroup]) ; safer to always send base ctrl group
-				dSleep(10) ; wont have that many units grouped with the buildings so 10ms should be plenty. 
+				setControlGroup := True
+				input.pSend(aAGHotkeys.set[controlstorageGroup])
+				stopWatchCtrlID := stopwatch()
+			}
+			if BaseControlGroupNotSelected
+			{
+				input.psend(aAGHotkeys.Invoke[mainControlGroup]) ; safer to always send base ctrl group
+				compareSelections(predictedSelectionBuffer, bufferSize, 35) 
+				dsleep(5)
 				numGetSelectionSorted(oSelection)
 			}
+
 			; Some times recently completed CCs aren't removed. 
 			; Perhaps not giving enough time for selection window to fully load so the
 			; deselect clicks are being ignored
+			; 
+
+			; This is only required for recently converted orbitals which are out of position
 			if removeRecentlyCompletedCC
 			{
 				aDeselect := []
@@ -7939,11 +7903,13 @@ autoWorkerProductionCheck()
 							aDeselect.insert(unit.unitPortrait)
 					}
 				}
-				dSleep(10)
+				if BaseControlGroupNotSelected
+					dSleep(10)
+				; else has already slept for longer than this
 				reverseArray(aDeselect)
 				clickUnitPortraits(aDeselect)
-				dSleep(5)
-		;		dsleep(2) ; not sure if a sleep here is required
+				dsleep(15)
+				numGetSelectionSorted(oSelection)
 			}
 
 			; These terran mains are in order as they
@@ -7955,53 +7921,31 @@ autoWorkerProductionCheck()
 			else if oSelection.TabPositions.HasKey(aUnitId.CommandCenter)
 				tabPosition := oSelection.TabPositions[aUnitId.CommandCenter]
 			else if oSelection.TabPositions.HasKey(aUnitId.PlanetaryFortress)
-				tabPosition := oSelection.TabPositions[aUnitId.PlanetaryFortress]			
+				tabPosition := oSelection.TabPositions[aUnitId.PlanetaryFortress]
+			else tabPosition := ""	; This should never occur
 
-			if BaseControlGroupNotSelected
-				sendSequence .= sRepeat(NextSubgroupKey, tabPosition)
-			else 
+			if (tabPosition != "")
 			{
-				if (oSelection.HighlightedId != aUnitId.Nexus
-					&& oSelection.HighlightedId != aUnitId.OrbitalCommand
-					&& oSelection.HighlightedId != aUnitId.CommandCenter
-					&& oSelection.HighlightedId != aUnitId.PlanetaryFortress)
+				if BaseControlGroupNotSelected
+					sendSequence .= sRepeat(NextSubgroupKey, tabPosition)
+				else if (oSelection.HighlightedId != aUnitId.Nexus
+				&& oSelection.HighlightedId != aUnitId.OrbitalCommand
+				&& oSelection.HighlightedId != aUnitId.CommandCenter
+				&& oSelection.HighlightedId != aUnitId.PlanetaryFortress)
 					sendSequence .= sRepeat(NextSubgroupKey, tabPositionChanged := oSelection["Types"]  - HighlightedGroup + tabPosition)
+
+				; other function gets spammed when user incorrectly adds a unit to the main control group 
+				; (as it will take subgroup 0) and for terran tell that unit to 'stop' when sends s
+				sendSequence .= sRepeat(makeWorkerKey, MaxWokersTobeMade)
+
+				input.pSend(sendSequence), sendSequence := ""
 			}
-			; other function gets spammed when user incorrectly adds a unit to the main control group 
-			; (as it will take subgroup 0) and for terran tell that unit to 'stop' when sends s
-			sendSequence .= sRepeat(makeWorkerKey, MaxWokersTobeMade)
 
-			; i tried checking the selection buffer for non.structure units and this worked well for 4 days, then all of a sudden it started giving false errors
-			; This is probably due to insufficient sleep time to update the selection buffer (3ms)
-			; i cant be bothered looking into it
-			; so now im just checking if macro has ran too many times (as if worker is will/attempted  it will sleep for 800ms)
-			; this isnt perfect or fool proof, but it should work well enough, and quickly enough to prevent interrupting the user
-			; for longer than 4 or 5 seconds if they stuff up their base control group
-
-			; this slow checking allows the user to have as many bases as they want e.g. 7,8, 9 or more which could cause this function to run
-			; and make a worker 5 times in a row without any risk of falsely activating the the control group error routine
-			
-			; should need this anymore
-			;if (UninterruptedWorkersMade > 6) ; after 4 days this started giving an error, so now i have added an additional sleep time 
-			;{
-			;	dSleep(5)
-			;	numGetUnitSelectionObject(oSelection) 	; can't use numgetControlGroup - as when nexus dies and is replaced with a local owned unit it will cause a warning
-			;	for index, object in oSelection.units
-			;		if !isUnitAStructure(object.unitIndex)	; as units will have higher priority and appear in group 0/top left control card - and this isnt compatible with this macro
-			;			BaseCtrlGroupError := 1					; as the macro will tell that unit e.g. probe to 'make a worker' and cause it to bug out
-			;}
-			input.pSend(sendSequence), sendSequence := ""
-
-			if (AutoWorkerAlwaysGroup || BaseControlGroupNotSelected || removeRecentlyCompletedCC)
+			if setControlGroup
 			{
-			;	dSleep(5)
-				if setControlGroup
-				{
-					elapsedTimeGrouping := stopwatch(stopWatchCtrlID)	
-					if (elapsedTimeGrouping < 20)
-						dSleep(ceil(20 - elapsedTimeGrouping))
-				}
-				else dsleep(15)
+				elapsedTimeGrouping := stopwatch(stopWatchCtrlID)	
+				if (elapsedTimeGrouping < 20)
+					dSleep(ceil(20 - elapsedTimeGrouping))
 				restoreSelection(controlstorageGroup, selectionPage, HighlightedGroup)			
 			}
 			else if tabPositionChanged ; eg the ebay or floating CC is selected is the selected tab in the already selected base control group
@@ -8012,27 +7956,14 @@ autoWorkerProductionCheck()
 		setLowLevelInputHooks(False)
 		critical, off
 		Thread, NoTimers, false 
-	;	BaseCtrlGroupError := 0
-	;	if BaseCtrlGroupError ; as non-structure units will have higher priority and appear in group 0/top left control card - and this isnt compatible with this macro
-	;	{	; as the macro will tell that unit e.g. probe to 'make a worker' and cause it to bug out	
-	;		tSpeak("Error in Base Control Group. Auto Worker")
-	;		gosub g_UserToggleAutoWorkerState ; this will say 'off' Hence Will speak Auto worker Off	
-	;		UninterruptedWorkersMade := 0 ; reset the count so when user fixes group it will work
-	;		return 
-	;	}
 
 		if WorkerMade
 		{
-	;		UninterruptedWorkersMade++ ; keep track of how many workers are made in a row
 			SetTimer, g_autoWorkerProductionCheck, Off
-			SetTimer, resumeAutoWorker, -800
-			lastMadeWorkerTime := time
-			;Thread, Priority, -2147483648
-			;sleep, 800 	; this will prevent the timer running again otherwise sc2 slower to update 'isin production' 
-		}		 	; so will send another build event and queueing more workers
-					; 400 worked find for stable connection, but on Kr sever needed more. 800 seems to work well
+			SetTimer, resumeAutoWorker, -800 ; this will prevent the timer running again otherwise sc2 slower to update 'isin production' 
+			lastMadeWorkerTime := time ; so will send another build event and queueing more workers ; 400 worked find for stable connection, but on Kr sever needed more. 800 seems to work well
+		}		 					
 	}
-	;else UninterruptedWorkersMade := 0
 	return
 }
 
@@ -12347,7 +12278,7 @@ class autoBuild
 		dsleep(10)
 		input.pReleaseKeys(True)
 		input.pSend("{shift up}{ctrl up}") ; extra safety. 
-		dSleep(5)	
+		;dSleep(5)	
 		storageGroup := automationStorageGroup(aLocalPlayer.Race)
 		this.storeSelection(storageGroup, HighlightedGroup, selectionPage)
 		
@@ -12358,7 +12289,7 @@ class autoBuild
 			if item.group != prevGroup
 			{
 				if (prevGroup = "") ; click to ensure camera doesn't jump. Not required when changing grounds.
-					input.psend("{click 0 0}")
+					input.psend("{click 0 0}") ; Doesnt actually work!!! (works in one specific case i.e. transport unload)
 				; A sleep may be required here to prevent the invoked structures from receiving the previously sent buildString 
 				this.invokeGroup(item.group, oSelection, currentTab)
 				if (prevGroup = "") ; Hasn't been set yet so this is first build event.
@@ -12385,8 +12316,8 @@ class autoBuild
 	invokeGroup(group, byRef oSelection, byRef currentTab)
 	{
 		currentTab := 0
-		input.psend(SC2Keys.key("ControlGroupRecall" group))
-		dSleep(35)
+		invokeControlGroup(group, 35)
+		;dSleep(35) ; 35
 		numGetSelectionSorted(oSelection)
 		return
 	}
@@ -12908,3 +12839,123 @@ getPortraitsFromIndexes(aIndexLookUp, byRef oSelection := "", isReversed := Fals
 }
 
 
+
+/*
+	f1::
+keywait, F1 
+byteSize := selectionFromGroup(myBuffer, 7)
+input.psend("7")
+timer := stopwatch()
+r := compareSelections(myBuffer, byteSize)
+msgbox % stopwatch(timer) "`n" r
+return 
+
+*/
+/*
+
+f1::
+input.psend("^3")
+byteSize := selectionFromGroup(myBuffer, 3)
+msgbox % compareSelections(myBuffer, byteSize)
+return 
+*/
+
+/*
+keywait, F1 
+;'10m 2maruder 1 seige 1 thor 2v 2m
+s := ""
+s .= "^35"
+s .= sRepeat("a", 10)
+s .= "{tab}"
+s .= "st"
+s .= "{tab}"
+s .= "vdvd"
+s .= "3"
+input.pSend(s)
+return 
+*/
+
+; fills predictedSelection with the same byte values as what the control group will do when it is invoked
+; can then use a byte comparison to determine when the selection buffer is fully updated.
+
+selectionFromGroup(byRef predictedSelection, group)
+{
+	count := 0
+	bufferCount := numgetControlGroupMemory(controlBuffer, group)
+	VarSetCapacity(predictedSelection, bufferCount * 4)
+	loop, % bufferCount
+	{
+		unitIndex := (fingerPrint := NumGet(controlBuffer, (A_Index - 1) * S_scStructure, "UInt")) >> 18
+		if getUnitFingerPrint(unitIndex) = fingerPrint && !(getUnitTargetFilter(unitIndex) & aUnitTargetFilter.Hidden)
+			NumPut(fingerPrint, predictedSelection, 4 * count++, "UInt")
+	}
+	return count * 4 ; size of filled buffer	
+}
+
+; A timeout could be caused by a unit dying in the control group while the selection buffer is updating
+; This could be fixed by calling selectionFromGroup() during the loop, but this seems wasteful 
+; and the timeout should provide enough time 99% of the time for it to work fine
+compareSelections(byRef predictedSelection, size, timeOut := 60)
+{
+	if timeOut <= 0
+		loopCount := 1
+	else loopCount := timeOut + 15
+	count := size / 4
+	timer := stopwatch()
+	loop
+	{
+		if (count = selectionCount := getSelectionCount())
+		{
+			ReadRawMemory(B_SelectionStructure + O_scUnitIndex, GameIdentifier, MemDump, selectionCount * S_scStructure)
+			if DllCall("ntdll\RtlCompareMemory", "Ptr", &predictedSelection, "Ptr", &MemDump, "Ptr", size) = size
+				return True, stopwatch(timer)
+		}
+		dsleep(1)
+	} until stopwatch(timer, False) >= timeOut || A_Index >= loopCount
+	return false, stopwatch(timer)
+}
+
+invokeControlGroup(group, timeout := 35)
+{
+	input.psend(SC2Keys.key("ControlGroupRecall" group))
+	bufferSize := selectionFromGroup(predictedSelectionBuffer, group) ; creates a byte buffer from the control group buffer i.e. it removed hidden/dead units
+	compareSelections(predictedSelectionBuffer, bufferSize, timeout) ; a loop which compares the selection buffer to the predicted (selection) from the control group buffer with a timeout
+	dsleep(5)
+	return	
+}
+
+; These two functions can be used to determine when the  grouping command has finished updating the control group buffer
+; not sure what happens if a unit dies just as the grouping command is issued.
+selectionToGroup(byRef predictedGroup)
+{
+	selectionCount := getSelectionCount()
+	ReadRawMemory(B_SelectionStructure, GameIdentifier, predictedGroup, selectionCount * S_scStructure + O_scUnitIndex)
+	return selectionCount * 4
+}
+compareGroupToBuffer(byRef predictedGroup, size, group)
+{
+	count := size / 4
+	timer := stopwatch()
+	loop
+	{
+		bufferCount := numgetControlGroupMemory(controlBuffer, group)		
+		if (count = bufferCount && DllCall("ntdll\RtlCompareMemory", "Ptr", &controlBuffer, "Ptr", &controlBuffer, "Ptr", size) = size)
+				return True, stopwatch(timer)
+		dsleep(1)
+	} until stopwatch(timer, False) >= 60 || A_Index >= 80
+	return false, stopwatch(timer)	
+}
+/*
+f2::
+keywait, F2 
+mySize := selectionToGroup(myBuffer)
+input.psend("^5")
+timer := stopwatch()
+compareGroupToBuffer(myBuffer, mySize, 5)
+msgbox % stopwatch(timer)
+return 
+*/
+
+f1::
+input.pSend("{Tab}ss")
+return 
