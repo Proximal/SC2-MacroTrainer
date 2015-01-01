@@ -7609,7 +7609,7 @@ autoWorkerProductionCheck()
 						removeRecentlyCompletedCC := True 
 						aRecentlyCompletedCC.insert(object.unitIndex)
 					}	
-					else 
+					else if townHallStatus = 0
 						idleBases++
 				}
 				else 
@@ -7772,14 +7772,6 @@ autoWorkerProductionCheck()
 
 	if (MaxWokersTobeMade >= 1) && (idleBases || almostComplete || (halfcomplete && !nearHalfComplete)  ) ; i have >= 1 in case i stuffed the math and end up with a negative number or a fraction
 	{
-	;	While (isUserPerformingActionIgnoringCamera()
-	;		|| getkeystate("Shift") || getkeystate("Ctrl") || getkeystate("Alt")
-	;		|| getkeystate("Shift", "P") || getkeystate("Ctrl", "P") || getkeystate("Alt", "P")
-	;		|| getkeystate("LWin") || getkeystate("RWin")
-	;		|| getkeystate("Enter") ; required so chat box doesnt get repoened when user presses enter to close the chat box
-	;		||  MT_InputIdleTime() < 50
-	;		|| getPlayerCurrentAPM() > AutoWorkerAPMProtection) ; probably dont need this anymore
-
 		While ( isUserBusyBuilding() || isCastingReticleActive() 
 		|| GetKeyState("LButton", "P") || GetKeyState("RButton", "P")
 		|| getkeystate("Enter", "P") 
@@ -7801,19 +7793,19 @@ autoWorkerProductionCheck()
 		if (!isSelectionGroupable(oSelection) || isGamePaused() || isMenuOpen() || !MaxWokersTobeMade) ; MaxWokersTobeMade could be 0 after the loop above
 			return
 		Thread, NoTimers, true
-		;input.hookBlock(True, True)
-		;upsequence := Input.releaseKeys()
-		;critical, 1000
-		;input.hookBlock(False, False)
-
 		critical, 1000
 		setLowLevelInputHooks(True)
 		;dsleep(20)
 		dsleep(10)
 
+
+		; The reason the camera jumps with current code is due to user currently pressing the town hall ctrl group 
+		; e.g. 4, pReleases it, then presses it down again - it effectively creates this 4s4
+
+
 		; I should change this so pReleaseKeys isn't called until absolutely necessary
 		; that way wont get a double press when build aborts 
-		input.pReleaseKeys(True)
+		releasedKeys := input.pReleaseKeys(True)
 		input.pSend("{shift up}{ctrl up}") ; testing if this reduces control bug (or if its a timing issue latery)
 		;dSleep(40) ; increase safety ensure selection buffer fully updated
 		dSleep(25) ; give it a reasonable amount of time for it to at least begin updating
@@ -7859,18 +7851,22 @@ autoWorkerProductionCheck()
 				}
 			}
 
-
-			bufferSize := selectionFromGroup(predictedSelectionBuffer, mainControlGroup) 
-			BaseControlGroupNotSelected := !compareSelections(predictedSelectionBuffer, bufferSize, 0) ; 0 so runs once 
-			if !BaseControlGroupNotSelected ; so the townhall group is selected
+			if (releasedKeys = "")
 			{
-				dsleep(20) ; so a total of 45 ms since pReleaseKeys was called -should be enough to at least allow the selection buffer to update
-				; during most of the game 
-				; we can afford to sleep a little longer here, as this will only occur when the control group and selection buffers match
-				; lets sleep a little longer and re-check the control group - 
-				bufferSize := selectionFromGroup(predictedSelectionBuffer, mainControlGroup) 
+				bufferSize := selectionBufferFromGroup(predictedSelectionBuffer, mainControlGroup) 
 				BaseControlGroupNotSelected := !compareSelections(predictedSelectionBuffer, bufferSize, 0) ; 0 so runs once 
+				if !BaseControlGroupNotSelected ; so the townhall group is selected
+				{
+					dsleep(20) ; so a total of 45 ms since pReleaseKeys was called -should be enough to at least allow the selection buffer to update / begin updating
+					; during most of the game 
+					; we can afford to sleep a little longer here, as this will only occur when the control group and selection buffers match
+					; lets sleep a little longer and re-check the control group - 
+					bufferSize := selectionBufferFromGroup(predictedSelectionBuffer, mainControlGroup) 
+					BaseControlGroupNotSelected := !compareSelections(predictedSelectionBuffer, bufferSize, 0) ; 0 so runs once 
+				}
 			}
+			else BaseControlGroupNotSelected := True ; Force it to use the temp ctrl group
+			; This will prevent the camera jumping when the user currently has the town hall ctrl group key depressed 
 
 			if (AutoWorkerAlwaysGroup || BaseControlGroupNotSelected || removeRecentlyCompletedCC)  
 			{
@@ -7880,9 +7876,9 @@ autoWorkerProductionCheck()
 			}
 			if BaseControlGroupNotSelected
 			{
-				input.psend(aAGHotkeys.Invoke[mainControlGroup]) ; safer to always send base ctrl group
+				input.psend("{click 0 0}" aAGHotkeys.Invoke[mainControlGroup]) ; need to click in case townhall group was just pressed (to prevent camera jump)
 				compareSelections(predictedSelectionBuffer, bufferSize, 35) 
-				dsleep(5)
+				dsleep(10)
 				numGetSelectionSorted(oSelection)
 			}
 
@@ -12289,7 +12285,7 @@ class autoBuild
 			if item.group != prevGroup
 			{
 				if (prevGroup = "") ; click to ensure camera doesn't jump. Not required when changing grounds.
-					input.psend("{click 0 0}") ; Doesnt actually work!!! (works in one specific case i.e. transport unload)
+					input.psend("{click 0 0}") 
 				; A sleep may be required here to prevent the invoked structures from receiving the previously sent buildString 
 				this.invokeGroup(item.group, oSelection, currentTab)
 				if (prevGroup = "") ; Hasn't been set yet so this is first build event.
@@ -12734,7 +12730,7 @@ SmartGeyserControlGroup(geyserStructureIndex)
 
 	; An SCV who is queued to enter a geyser but was told to return cargo does not have the refinery in the queued commands (just the townhall)
 	; Also when returning cargo, this SCV is not counted in refinery's worker count		
-
+	;log(harvestersToKeep)
 	numGetSelectionSorted(oSelection, True)
 	if oSelection.Count > 1	&& oSelection.TabPositions.HasKey(harvesterID) && geyserHarvesterCount < 3
 	&& (harvestersToKeep < oSelection.TabSizes[harvesterID] || oSelection.Count != oSelection.TabSizes[harvesterID]) ; Not enough harvesters selected to be require filtering or there are non-workers selected so leave them selected after removing the workers 
@@ -12843,7 +12839,7 @@ getPortraitsFromIndexes(aIndexLookUp, byRef oSelection := "", isReversed := Fals
 /*
 	f1::
 keywait, F1 
-byteSize := selectionFromGroup(myBuffer, 7)
+byteSize := selectionBufferFromGroup(myBuffer, 7)
 input.psend("7")
 timer := stopwatch()
 r := compareSelections(myBuffer, byteSize)
@@ -12855,7 +12851,7 @@ return
 
 f1::
 input.psend("^3")
-byteSize := selectionFromGroup(myBuffer, 3)
+byteSize := selectionBufferFromGroup(myBuffer, 3)
 msgbox % compareSelections(myBuffer, byteSize)
 return 
 */
@@ -12878,7 +12874,7 @@ return
 ; fills predictedSelection with the same byte values as what the control group will do when it is invoked
 ; can then use a byte comparison to determine when the selection buffer is fully updated.
 
-selectionFromGroup(byRef predictedSelection, group)
+selectionBufferFromGroup(byRef predictedSelection, group)
 {
 	count := 0
 	bufferCount := numgetControlGroupMemory(controlBuffer, group)
@@ -12893,8 +12889,10 @@ selectionFromGroup(byRef predictedSelection, group)
 }
 
 ; A timeout could be caused by a unit dying in the control group while the selection buffer is updating
-; This could be fixed by calling selectionFromGroup() during the loop, but this seems wasteful 
+; This could be fixed by calling selectionBufferFromGroup() during the loop, but this seems wasteful 
 ; and the timeout should provide enough time 99% of the time for it to work fine
+
+; The other issue is the selection buffer could be lagging and still match, but is actually about to change to something else
 compareSelections(byRef predictedSelection, size, timeOut := 60)
 {
 	if timeOut <= 0
@@ -12908,19 +12906,20 @@ compareSelections(byRef predictedSelection, size, timeOut := 60)
 		{
 			ReadRawMemory(B_SelectionStructure + O_scUnitIndex, GameIdentifier, MemDump, selectionCount * S_scStructure)
 			if DllCall("ntdll\RtlCompareMemory", "Ptr", &predictedSelection, "Ptr", &MemDump, "Ptr", size) = size
-				return True, stopwatch(timer)
+				return A_Index, stopwatch(timer)
 		}
 		dsleep(1)
 	} until stopwatch(timer, False) >= timeOut || A_Index >= loopCount
 	return false, stopwatch(timer)
 }
 
+
 invokeControlGroup(group, timeout := 35)
 {
 	input.psend(SC2Keys.key("ControlGroupRecall" group))
-	bufferSize := selectionFromGroup(predictedSelectionBuffer, group) ; creates a byte buffer from the control group buffer i.e. it removed hidden/dead units
-	compareSelections(predictedSelectionBuffer, bufferSize, timeout) ; a loop which compares the selection buffer to the predicted (selection) from the control group buffer with a timeout
-	dsleep(5)
+	bufferSize := selectionBufferFromGroup(predictedSelectionBuffer, group) ; creates a byte buffer from the control group buffer i.e. it removed hidden/dead units
+	if compareSelections(predictedSelectionBuffer, bufferSize, timeout) ; a loop which compares the selection buffer to the predicted (selection) from the control group buffer with a timeout
+		dsleep(15)
 	return	
 }
 
@@ -12946,16 +12945,29 @@ compareGroupToBuffer(byRef predictedGroup, size, group)
 	return false, stopwatch(timer)	
 }
 /*
-f2::
-keywait, F2 
-mySize := selectionToGroup(myBuffer)
-input.psend("^5")
-timer := stopwatch()
-compareGroupToBuffer(myBuffer, mySize, 5)
-msgbox % stopwatch(timer)
-return 
-*/
+;f2::
+;keywait, F2 
 
+dsleep(25)
+mySize := selectionBufferFromGroup(myBuffer, 4)
+;input.psend("4")
+timer := stopwatch()
+r := compareSelections(myBuffer, mySize, 300)
+msgbox % stopwatch(timer) "`n" r
+return 
 f1::
 input.pSend("{Tab}ss")
 return 
+
+*/
+
+
+/*
+f1::
+input.psend("4{click 0, 0}4")
+return 
+
+f2::
+settimer, g_autoWorkerProductionCheck, 50
+return 
+*/
