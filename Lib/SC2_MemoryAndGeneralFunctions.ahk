@@ -3288,12 +3288,13 @@ getPlayers(byref aPlayer, byref aLocalPlayer, byref aEnemyAndLocalPlayer := "")
 	; can get weird things if 16 (but filtering them for nonplayers)
 	Loop, 16	
 	{
-		if getPlayerName(A_Index) = "" ;empty slot custom games?
-		|| IsInList(getPlayerType(A_Index), "None", "Neutral", "Hostile", "Referee", "Spectator")
+		slot := A_Index - 1
+		if getPlayerName(slot) = "" ;empty slot custom games?
+		|| IsInList(getPlayerType(slot), "None", "Neutral", "Hostile", "Referee", "Spectator")
 			Continue
-		aPlayer.insert(A_Index, new c_Player(A_Index) )  ; insert at player index so can call using player slot number as the key (slot number = key) 
-		If (A_Index = getLocalPlayerNumber())
-			aLocalPlayer := new c_Player(A_Index)
+		aPlayer.insert(slot, new c_Player(slot) )  ; insert at player index so can call using player slot number as the key (slot number = key) 
+		If (slot = getLocalPlayerNumber())
+			aLocalPlayer := new c_Player(slot)
 	}
 	for slotNumber, player in aPlayer
 	{

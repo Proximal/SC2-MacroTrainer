@@ -395,9 +395,9 @@ DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Dr
 	, Options := " cFFFFFFFF r4 s" 17*UserScale
 	if (BackgroundIncomeOverlay && prevWindowWidth)
 	{
-		Gdip_FillRoundedRectangle(G, a_pBrushes.transBackground, 0, 0, prevWindowWidth * 1.05, prevWindowHeight * 1.05, 10)
-		, DestXOffset := DestX := prevWindowWidth * .05
-		, DestYOffset := DestY := prevWindowHeight * .05
+		Gdip_FillRoundedRectangle(G, a_pBrushes.transBackground, 0, 0, backgroundWidth := prevWindowWidth * 1.03, backgroundHeight := prevWindowHeight * 1.03, 5)
+		, DestXOffset := DestX := prevWindowWidth * .03
+		, DestYOffset := DestY := prevWindowHeight * .03
 	}
 
 	For index, player in aEnemyAndLocalPlayer
@@ -431,7 +431,7 @@ DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Dr
 				pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"RaceFlatColour", aPlayer[slot_number, "Colour"]]
 				, SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
 				, Width *= UserScale *.5, Height *= UserScale *.5	
-				, Gdip_DrawImage(G, pBitmap, 12*UserScale, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
+				, Gdip_DrawImage(G, pBitmap, DestXOffset, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
 				, pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Mineral", 0]
 				, SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
 				, Width *= UserScale *.5, Height *= UserScale *.5		
@@ -473,7 +473,7 @@ DrawIncomeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,Dr
 	else if (WindowHeight > A_ScreenHeight)
 		WindowHeight := A_ScreenHeight - A_ScreenHeight * 0.06
 
-	if (BackgroundIncomeOverlay && (prevPlayerIdentifier != PlayerIdentifier || Abs(prevWindowWidth - WindowWidth) > 5 || Abs(prevWindowHeight != WindowHeight) > 5)) ; this ensure the background covers the drawn stuff even when size changes
+	if (BackgroundIncomeOverlay && (prevPlayerIdentifier != PlayerIdentifier || Abs(prevWindowWidth - WindowWidth) > 5 || Abs(prevWindowHeight - WindowHeight) > 5)) ; this ensure the background covers the drawn stuff even when size changes
 		recurse := true
 	prevWindowWidth := WindowWidth, prevWindowHeight := WindowHeight, prevPlayerIdentifier := PlayerIdentifier
 
@@ -503,9 +503,9 @@ DrawAPMOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, modeAPM_EPM=0, bac
 	, 	Options := " cFFFFFFFF Right r4 s" 20*UserScale
 	if (BackgroundAPMOverlay && prevWindowWidth)
 	{
-		Gdip_FillRoundedRectangle(G, a_pBrushes.transBackground, 0, 0, prevWindowWidth * 1.05, prevWindowHeight * 1.05, 10)
-		, DestXOffset := DestX := prevWindowWidth * .05  ; this should really be 0.025 - but this looks nice
-		, DestYOffset := DestY := prevWindowHeight * .05
+		Gdip_FillRoundedRectangle(G, a_pBrushes.transBackground, 0, 0, prevWindowWidth * 1.03, prevWindowHeight * 1.03, 5)
+		, DestXOffset := DestX := prevWindowWidth * .03  ; this should really be 0.015 - but this looks nice
+		, DestYOffset := DestY := prevWindowHeight * .03
 	}
 	For index, player in aEnemyAndLocalPlayer
 	{
@@ -569,7 +569,7 @@ DrawAPMOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, modeAPM_EPM=0, bac
 	else if (WindowHeight > A_ScreenHeight)
 		WindowHeight := A_ScreenHeight - A_ScreenHeight * 0.06
 
-	if (BackgroundAPMOverlay && (prevPlayerIdentifier != PlayerIdentifier || Abs(prevWindowWidth - WindowWidth) > 5 || Abs(prevWindowHeight != WindowHeight) > 5)) ; this ensure the background covers the drawn stuff even when size changes
+	if (BackgroundAPMOverlay && (prevPlayerIdentifier != PlayerIdentifier || Abs(prevWindowWidth - WindowWidth) > 5 || Abs(prevWindowHeight - WindowHeight) > 5)) ; this ensure the background covers the drawn stuff even when size changes
 		recurse := true
 	prevWindowWidth := WindowWidth, prevWindowHeight := WindowHeight, prevPlayerIdentifier := PlayerIdentifier
 
@@ -596,12 +596,12 @@ DrawResourcesOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0
 	, Gdip_SetInterpolationMode(G, 2)
 
 	i := DestX := DestY := DestXOffset := DestYOffset := 0
-	, Options := " Right cFFFFFFFF r4 s" 17*UserScale
+	, Options := " Left cFFFFFFFF r4 s" 17*UserScale
 	if (BackgroundResourcesOverlay && prevWindowWidth)
 	{
-		Gdip_FillRoundedRectangle(G, a_pBrushes.transBackground, 0, 0, prevWindowWidth * 1.05, prevWindowHeight * 1.05, 10)
-		, DestXOffset := DestX := prevWindowWidth * .05
-		, DestYOffset := DestY := prevWindowHeight * .05
+		Gdip_FillRoundedRectangle(G, a_pBrushes.transBackground, 0, 0, prevWindowWidth * 1.03, prevWindowHeight * 1.03, 5)
+		, DestXOffset := DestX := prevWindowWidth * .03
+		, DestYOffset := DestY := prevWindowHeight * .03
 	}
 
 	; Users have requested that their own local player appear in some overlays
@@ -638,7 +638,7 @@ DrawResourcesOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0
 				pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"RaceFlatColour", aPlayer[slot_number, "Colour"]]
 				, SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
 				, Width *= UserScale *.5, Height *= UserScale *.5	
-				, Gdip_DrawImage(G, pBitmap, 12*UserScale, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
+				, Gdip_DrawImage(G, pBitmap, DestXOffset, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
 				, pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Mineral", 0]
 				, SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
 				, Width *= UserScale *.5, Height *= UserScale *.5		
@@ -651,19 +651,19 @@ DrawResourcesOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0
 				, Width *= UserScale *.5, Height *= UserScale *.5	
 			}
 			Gdip_DrawImage(G, pBitmap, DestX, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)	
-			, Gdip_TextToGraphics(G, getPlayerMinerals(slot_number), "x"(DestX+Width+5*UserScale) "y"(DestY+(Height//4)) Options  " w" 45*UserScale , Font)				
+			, Gdip_TextToGraphics(G, getPlayerMinerals(slot_number), "x"(DestX+Width+5*UserScale) "y"(DestY+(Height//4)) Options  " w" 55*UserScale , Font)				
 			,pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Gas", 0]
 			, SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
 			, Width *= UserScale *.5, Height *= UserScale *.5
-			, Gdip_DrawImage(G, pBitmap, DestX + (85*UserScale), DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)	
-			, Gdip_TextToGraphics(G, getPlayerGas(slot_number), "x"(DestX+(80*UserScale)+Width+5*UserScale) "y"(DestY+(Height//4)) Options  " w" 45*UserScale, Font)				
+			, Gdip_DrawImage(G, pBitmap, DestX + (95*UserScale), DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)	
+			, Gdip_TextToGraphics(G, getPlayerGas(slot_number), "x"(DestX+(95*UserScale)+Width+5*UserScale) "y"(DestY+(Height//4)) Options  " w" 55*UserScale, Font)				
 			, pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Supply", 0]
 			, SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
 			, Width *= UserScale *.5, Height *= UserScale *.5
-			, Gdip_DrawImage(G, pBitmap, DestX + (2*85*UserScale), DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
-			, TextData := Gdip_TextToGraphics(G, getPlayerSupply(slot_number)"/"getPlayerSupplyCap(slot_number), "x"(DestX+(2*83*UserScale)+Width+3*UserScale) "y"(DestY+(Height//4)) Options " w" 70*UserScale, Font)				
+			, Gdip_DrawImage(G, pBitmap, DestX + (2*95*UserScale), DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
+			, TextData := Gdip_TextToGraphics(G, getPlayerSupply(slot_number)"/"getPlayerSupplyCap(slot_number), "x"(DestX+(2*95*UserScale)+Width+3*UserScale) "y"(DestY+(Height//4)) Options " w" 70*UserScale, Font)				
 			StringSplit, TextSize, TextData, |			
-			if (WindowWidth < CurrentWidth := DestX+(2*85*UserScale)+Width+5*UserScale + 70*UserScale ) ;+ TextSize3)
+			if (WindowWidth < CurrentWidth := DestX+(2*95*UserScale)+Width+5*UserScale + 70*UserScale ) ;+ TextSize3)
 				WindowWidth := CurrentWidth	
 			Height += 5*userscale	;needed to stop the edge of race pic overlap'n due to Supply pic -prot then zerg
 			, DestY := ++i*height + DestYOffset
@@ -680,7 +680,7 @@ DrawResourcesOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0
 	else if (WindowHeight * 1.05 > A_ScreenHeight)
 		WindowHeight := A_ScreenHeight * 0.94
 
-	if (BackgroundResourcesOverlay && (prevPlayerIdentifier != PlayerIdentifier || Abs(prevWindowWidth - WindowWidth) > 5 || Abs(prevWindowHeight != WindowHeight) > 5)) ; this ensure the background covers the drawn stuff even when size changes
+	if (BackgroundResourcesOverlay && (prevPlayerIdentifier != PlayerIdentifier || Abs(prevWindowWidth - WindowWidth) > 5 || Abs(prevWindowHeight - WindowHeight) > 5)) ; this ensure the background covers the drawn stuff even when size changes
 		recurse := true
 
 	prevWindowWidth := WindowWidth, prevWindowHeight := WindowHeight, prevPlayerIdentifier := PlayerIdentifier
@@ -713,9 +713,9 @@ DrawArmySizeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,
 	; This method is much faster than drawing pBitmap into the graphics of a bacground or using clip.
 	if (BackgroundArmySizeOverlay && prevWindowWidth)
 	{
-		Gdip_FillRoundedRectangle(G, a_pBrushes.transBackground, 0, 0, prevWindowWidth * 1.05, prevWindowHeight * 1.05, 10)
-		, DestX := DestXOffset := prevWindowWidth * .05
-		, DestYOffset := DestY := prevWindowHeight * .05
+		Gdip_FillRoundedRectangle(G, a_pBrushes.transBackground, 0, 0, prevWindowWidth * 1.03, prevWindowHeight * 1.03, 5)
+		, DestX := DestXOffset := prevWindowWidth * .03
+		, DestYOffset := DestY := prevWindowHeight * .03
 	}
 
 	For index, player in aEnemyAndLocalPlayer
@@ -752,7 +752,7 @@ DrawArmySizeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,
 				pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"RaceFlatColour", aPlayer[slot_number, "Colour"]]
 				, SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
 				, Width *= UserScale *.5, Height *= UserScale *.5	
-				, Gdip_DrawImage(G, pBitmap, 12*UserScale, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
+				, Gdip_DrawImage(G, pBitmap, DestXOffset, DestY, Width, Height, 0, 0, SourceWidth, SourceHeight)
 				;Gdip_DisposeImage(pBitmap)
 				, pBitmap := a_pBitmap[aPlayer[slot_number, "Race"],"Mineral", 0]
 				, SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap)
@@ -804,7 +804,7 @@ DrawArmySizeOverlay(ByRef Redraw, UserScale=1, PlayerIdentifier=0, Background=0,
 	else if (WindowHeight > A_ScreenHeight)
 		WindowHeight := A_ScreenHeight - A_ScreenHeight * 0.06
 	
-	if (BackgroundArmySizeOverlay && (prevPlayerIdentifier != PlayerIdentifier || Abs(prevWindowWidth - WindowWidth) > 5 || Abs(prevWindowHeight != WindowHeight) > 5)) ; this ensure the background covers the drawn stuff even when size changes
+	if (BackgroundArmySizeOverlay && (prevPlayerIdentifier != PlayerIdentifier || Abs(prevWindowWidth - WindowWidth) > 5 || Abs(prevWindowHeight - WindowHeight) > 5)) ; this ensure the background covers the drawn stuff even when size changes
 		recurse := true
 	prevWindowWidth := WindowWidth, prevWindowHeight := WindowHeight, prevPlayerIdentifier := PlayerIdentifier
 	
