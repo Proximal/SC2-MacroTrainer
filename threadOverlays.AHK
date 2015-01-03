@@ -1620,6 +1620,13 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 		{
 			;destUpgradesY := DestY  + Height * 1.1 * (rowMultiplier - 1)
 
+			; This line fixes a minor spacing bug when only upgrades are enabled and the player identifier is set to player name
+			if !SourceHeight
+				Height := Gdip_GetImageHeight(a_pBitmap[aUnitID.SCV]) * UserScale *.5
+
+			; *** Minor bug
+			; The y spacing will be a few pixels off if only upgrades are drawn (or no units drawn on that line)
+			; This is due to the below code taking into account structure and unit progress, haven't actually been drawn
 			offset := (SplitUnitPanel ? 2 : 1) * ((unitPanelDrawUnitProgress || unitPanelDrawStructureProgress) ? 5 : 0) * userscale
 			, destUpgradesY := structureY  + Height * 1.1 * (rowMultiplier - 1) + offset
 			, UpgradeX := firstColumnX

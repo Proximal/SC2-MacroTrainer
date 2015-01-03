@@ -4375,9 +4375,9 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 			Gui, Add, Button, X360 y%HomeButtonLocationY% gHomepage w150, Homepage
 
 
-			Gui, Add, Picture, x170 y320 h90 w90 gP_Protoss_Joke vProtossPic, %A_Temp%\Protoss90.png
-			Gui, Add, Picture, x+50 yp-20 h128 w128 gP_Terran_Joke vTerranPic , %A_Temp%\Terran90.png
-			Gui, Add, Picture, x+50  yp+20 h90 w90 gP_zerg_Joke vZergPic, %A_Temp%\Zerg90.png
+			Gui, Add, Picture, x170 y320 h90 w90, %A_Temp%\Protoss90.png
+			Gui, Add, Picture, x+50 yp-20 h128 w128, %A_Temp%\Terran90.png
+			Gui, Add, Picture, x+50  yp+20 h90 w90, %A_Temp%\Zerg90.png
 
 	Gui, Tab, Emergency	
 		Gui, Font, S14 CDefault bold UNDERLINE, Verdana
@@ -4677,9 +4677,6 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 
 	if !ZergPic_TT
 	{
-		ZergPic_TT := "The OP race"
-		TerranPic_TT := "The artist formerly known as being OP"
-		ProtossPic_TT := "The slightly less OP race"
 		auto_inject_alert_TT := "This alert will sound X seconds after your last one-button inject, prompting you to inject again."
 		W_inject_ding_on_TT := "Note: Due to an inconsistency with the programming language, some systems may not hear the 'windows ding'."
 		auto_inject_time_TT := TT_auto_inject_time_TT :=  "This is in 'SC2' Seconds."
@@ -5983,16 +5980,6 @@ g_GuiSetupAutoMine:
 		GuiControl, Hide%state%, %A_LoopField%
 return
 
-
-P_Protoss_Joke:	
-	tSpeak("Broh Toss")
-	return
-P_Terran_Joke:	
-	tSpeak("Terran")
-	return
-P_zerg_Joke:
-	tSpeak("For the swarm!")
-	return	
 
 B_HelpFile:
 	run % url.HelpFile
