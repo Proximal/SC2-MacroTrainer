@@ -160,7 +160,7 @@ MT_CurrentInstance := [] ; Used to store random info about the current run
 program := []
 program.info := {"IsUpdating": 0} ; program.Info.IsUpdating := 0 ;has to stay here as first instance of creating infor object
 
-ProgramVersion := 3.10
+ProgramVersion := 3.11
 
 l_GameType := "1v1,2v2,3v3,4v4,FFA"
 l_Races := "Terran,Protoss,Zerg"
@@ -4875,7 +4875,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		unitPanelDrawStructureProgress_TT := "Displays a progress bar below any structure under construction."
 		unitPanelDrawUnitProgress_TT := "Displays a progress bar below any unit in production."
 		unitPanelDrawUpgradeProgress_TT := "Displays a progress bar below the current upgrades."
-
+		unitPanelDrawLocalPlayer_TT := "Includes the local player in the match panel."
 		OverlayIdent_TT := "Changes or disables the method of identifying players in the overlays.`n`nThe 'cycle identifier' hotkey allows you to change this setting during a match."
 
 		Playback_Alert_Key_TT := #Playback_Alert_Key_TT := "Repeats the previous alert"
@@ -11347,7 +11347,7 @@ unloadAllTransports(hotkeySuffix)
 }
 
 
-
+/*
 ; Global Stim
 
 #If, !A_IsCompiled && WinActive(GameIdentifier) && isPlaying && aLocalPlayer.Race = "Terran" && !isMenuOpen()
@@ -11365,6 +11365,7 @@ if (tabsToSend := tabPos - aSelection.HighlightedGroup) < 0
 else send {tab %tabsToSend%}t+{tab %tabsToSend%}
 return
 #if
+*/
 
 
 AutoBuildGUIkeyPress:
@@ -12822,42 +12823,6 @@ getPortraitsFromIndexes(aIndexLookUp, byRef oSelection := "", isReversed := Fals
 }
 
 
-
-/*
-	f1::
-keywait, F1 
-byteSize := selectionBufferFromGroup(myBuffer, 7)
-input.psend("7")
-timer := stopwatch()
-r := compareSelections(myBuffer, byteSize)
-msgbox % stopwatch(timer) "`n" r
-return 
-
-*/
-/*
-
-f1::
-input.psend("^3")
-byteSize := selectionBufferFromGroup(myBuffer, 3)
-msgbox % compareSelections(myBuffer, byteSize)
-return 
-*/
-
-/*
-keywait, F1 
-;'10m 2maruder 1 seige 1 thor 2v 2m
-s := ""
-s .= "^35"
-s .= sRepeat("a", 10)
-s .= "{tab}"
-s .= "st"
-s .= "{tab}"
-s .= "vdvd"
-s .= "3"
-input.pSend(s)
-return 
-*/
-
 ; fills predictedSelection with the same byte values as what the control group will do when it is invoked
 ; can then use a byte comparison to determine when the selection buffer is fully updated.
 
@@ -12931,33 +12896,6 @@ compareGroupToBuffer(byRef predictedGroup, size, group)
 	} until stopwatch(timer, False) >= 60 || A_Index >= 80
 	return false, stopwatch(timer)	
 }
-/*
-;f2::
-;keywait, F2 
-
-dsleep(25)
-mySize := selectionBufferFromGroup(myBuffer, 4)
-;input.psend("4")
-timer := stopwatch()
-r := compareSelections(myBuffer, mySize, 300)
-msgbox % stopwatch(timer) "`n" r
-return 
-f1::
-input.pSend("{Tab}ss")
-return 
-
-*/
-
-
-/*
-f1::
-input.psend("4{click 0, 0}4")
-return 
-
-f2::
-settimer, g_autoWorkerProductionCheck, 50
-return 
-*/
 
 
 
