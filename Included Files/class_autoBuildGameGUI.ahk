@@ -205,7 +205,7 @@ class autoBuildGameGUI
 	{
 		VarSetCapacity(v, 16, 0)
 		NumPut(16, v, 0, "UInt") 			; cbSize
-		NumPut(0x00000003, v, 4, "UInt") 	; dwFlags (TME_LEAVE)
+		NumPut(0x00000002, v, 4, "UInt") 	; dwFlags (TME_LEAVE)
 		NumPut(this.hwnd, v, 8, "UInt") 	; HWND
 		NumPut(0, v, 12, "UInt") 			; dwHoverTime (ignored)	
 		return this.isTracking := DllCall("TrackMouseEvent", "Ptr", &v) ; Non-zero on success

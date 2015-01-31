@@ -271,20 +271,22 @@ If !errorlevel
 else MT_CurrentInstance.SCWasRunning := True
 Process, wait, %GameExe%	
 	
-	; 	waits for starcraft to exist
-	; 	give time for SC2 to fully launch. This may be required on slower or stressed computers
-	;	to give time for the  window to fully launch and activate to allow the
-	; 	WinGet("EXStyle") style checks to work properly
-	;  	Placed here, as it will also give extra time before trying to get 
-	;	base address (though it shouldn't be required for this)
+; 	waits for starcraft to exist
+; 	give time for SC2 to fully launch. This may be required on slower or stressed computers
+;	to give time for the  window to fully launch and activate to allow the
+; 	WinGet("EXStyle") style checks to work properly
+;  	Placed here, as it will also give extra time before trying to get 
+;	base address (though it shouldn't be required for this)
 
 if !MT_CurrentInstance.SCWasRunning
 	sleep 2000 
+WinWait, %GameIdentifier%
 while (!(B_SC2Process := getProcessBaseAddress(GameIdentifier)) || B_SC2Process < 0)		;using just the window title could cause problems if a folder had the same name e.g. sc2 folder
 	sleep 400				; required to prevent memory read error - Handle closed: error 		
 SC2hWnd := WinExist(GameIdentifier)
 OnMessage(DllCall("RegisterWindowMessage", Str,"SHELLHOOK" ), "ShellMessage")
 versionMatch := loadMemoryAddresses(B_SC2Process, clientVersion := getProcessFileVersion(GameExe))
+settimer, timer_exit, 500, -100 ; Put this here so if user closes and Reopens SC while a version mismatch is displayed the RPM() won't fail
 if (!versionMatch && clientVersion && A_IsCompiled) ; clientVersion check if true - if function fails (shouldn't) it will be 0/blank
 {
 	IniRead, clientVersionWarning, %config_file%, clientVersionWarning, clientVersionWarning, 1 
@@ -303,7 +305,6 @@ if (!versionMatch && clientVersion && A_IsCompiled) ; clientVersion check if tru
 ; but i tried doing this once before and it caused issues because i forgot to update some address 
 ; names in the functions.... so i cant be bothered taking the risk
 settimer, clock, 250
-settimer, timer_exit, 4000, -100
 ; now using a shell monitor to keep destroy overlays
 ;SetTimer, OverlayKeepOnTop, 2000, -2000	;better here, as since WOL 2.0.4 having it in the "clock" section isn't reliable 	
 
@@ -495,7 +496,6 @@ g_reload:
 ; reading the state of the keys from SC will do nothing as SC resets its internal keystate when
 ; it loses window focus
 ; Also hopefully all the changes in v3.00 will make stuck keys a thing of the past - they're extremely rare anyway atm. 
-;releaseAllModifiers() 
 releaseLogicallyStuckKeys(True) 
 IniWrite, Icon, %config_file%, Misc Info, RestartMethod
 g_Restart:
@@ -1984,9 +1984,8 @@ return
 ;------------                                            
 
 timer_Exit:
-process, exist, %GameExe%
-if !errorlevel 		
-	ExitApp 
+if !WinExist(GameIdentifier) ; This is much faster (0.05 ms vs 0.75 ms) than calling proccess, exist
+	ExitApp
 return
 
 ShutdownProcedure:
@@ -8109,53 +8108,6 @@ getPlayerFreeSupply(player="")
 	else return 0 ; as a negative value counts as true and would prevent using this in 'if freesupply() do' scenario
 }
 
-; Note: When SC2 loses window focus it resets its resets/zeroes its internal keystates
-ReleaseAllModifiers() 
-{ 	
-	Global GameExe
-	KeyDelay := A_KeyDelay
-	MouseDelay := A_MouseDelay
-	SetKeyDelay 10
-	SetMouseDelay 10
-	process, exist, %GameExe%
-	SCExist := Errorlevel ; is exists error level = PID
-
-	list = Control|Shift|Alt|LButton|RButton|MButton|Lwin|Rwin 
-	Loop Parse, list, | ;could just not bother with the getkeystate check and send UP button regardless
-	{ 
-		; Better to have this if, otherwise if the emergency restart key has the windows modifiers the windows task
-		; bar will pop up every press
-
-		if (!GetKeyState(A_LoopField, "P") 
-			&& ( GetKeyState(A_LoopField) ||  (SCExist && getSCModState(A_LoopField) )) ) 	;fix sticky key problem
-			sendEvent {Blind}{%A_LoopField% up}       ; {Blind} is added. Just send every key
-	} 
-	SetKeyDelay %KeyDelay%
-	SetMouseDelay %MouseDelay%     
-} 
-
-RestoreModifierPhysicalState()
-{
-	KeyDelay := A_KeyDelay
-	MouseDelay := A_MouseDelay
-	SetKeyDelay 10
-	SetMouseDelay 10	
-	list = LControl|RControl|LShift|RShift|LAlt
-	Loop Parse, list, |
-	{
-		if (GetKeyState(A_LoopField) != GetKeyState(A_LoopField, "P")) ;if logical and physical state do not match
-		 {
-			if (GetKeyState(A_LoopField, "P")) ;send an event to restore the physical key state
-				send {Blind}{%A_LoopField% down}
-			else
-				send {Blind}{%A_LoopField% up} ;trying blind here to see if it works
-		 }
-	 }
-	SetKeyDelay %KeyDelay%
-	SetMouseDelay %MouseDelay%   
-}
-
-
 getSelectionType(units*) 
 {
 	if !units.MaxIndex() ;no units passed to function
@@ -11347,7 +11299,7 @@ unloadAllTransports(hotkeySuffix)
 }
 
 
-/*
+
 ; Global Stim
 
 #If, !A_IsCompiled && WinActive(GameIdentifier) && isPlaying && aLocalPlayer.Race = "Terran" && !isMenuOpen()
@@ -11365,7 +11317,7 @@ if (tabsToSend := tabPos - aSelection.HighlightedGroup) < 0
 else send {tab %tabsToSend%}t+{tab %tabsToSend%}
 return
 #if
-*/
+
 
 
 AutoBuildGUIkeyPress:
@@ -12898,5 +12850,51 @@ compareGroupToBuffer(byRef predictedGroup, size, group)
 }
 
 
+/*
+
+f2:: 
+MouseGetPos, x, y
+x2 := A_ScreenWidth+10
+y2 := A_ScreenHeight+10
+input.psend(4)
+;input.psend("{click d " 0 " " 0 "}")
+;sleep 1000
+input.psend("{click d " x2 " " y2 "}")
+;sleep 1000
+input.psend("{Escape}")
+;sleep 1000
+;soundplay *-1
+input.psend("{click u -15 -15}")
+input.psend(4)
+return 
 
 
+f1:: 
+MouseGetPos, x, y
+x2 := x+2000, y2 := y+2000
+sendInput, {click Down %x% %y%}
+sleep 2000
+MouseMove, x2, Y2
+sleep 2000
+sendInput, {Escape}
+sleep 2000
+soundplay *-1
+sendInput, {click Up %x% %y%}
+sleep 2000
+return 
+
+
+
+
+/*
+LeftMouseDown(point1)
+LeftMouseDown(point2)
+KeyDown(Escape)
+KeyUp(Escape)
+LeftMouseUp(point1)
+
+
+
+
+
+*/ 

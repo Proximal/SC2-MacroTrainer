@@ -5430,3 +5430,10 @@ sigConverter(sig, mask, storeInClip := True)
 		r .= (A_LoopField != "?" ? aSig[A_Index] : """?""") ", "
 	return storeInClip ? clipboard := substr(r, 1, -2) : substr(r, 1, -2) 
 }
+
+; Pointer to town halls (completed and landed) ["SC2.exe"+03FC53E4]+0
+; an array of town hall unit indexes (just search for the town halls unit indexes as an AOB)
+; The town hall camera uses a static variable to cycle through them (zero based)
+; (Theres another array of indexes but these dont change when lifting orbitals (maybe when theyre killed))
+; This can be used to determine where the camera will jump to when backspace is sent
+; 
