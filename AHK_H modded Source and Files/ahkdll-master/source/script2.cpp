@@ -12758,6 +12758,7 @@ VarSizeType BIV_TimeIdlePhysical(LPTSTR aBuf, LPTSTR aVarName)
 #endif
 }
 
+// MT_Stuff**
 VarSizeType BIV_mtTimeIdle(LPTSTR aBuf, LPTSTR aVarName)
 {
 	if (!(g_KeybdHook || g_MouseHook))

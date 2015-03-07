@@ -1740,7 +1740,8 @@ public:
 		if (!_tcsicmp(aBuf, _T("MouseMoveOff"))) return TOGGLE_MOUSEMOVEOFF;
 		return TOGGLE_INVALID;
 	}
-
+	
+	// MT_Stuff**
 	static ToggleValueType ConvertMTBlockInput(LPTSTR aBuf)
 	{
 		if (!aBuf || !*aBuf) return NEUTRAL;  // For backward compatibility, blank is not considered INVALID.
@@ -2989,7 +2990,7 @@ VarSizeType BIV_TimeIdlePhysical(LPTSTR aBuf, LPTSTR aVarName);
 VarSizeType BIV_IPAddress(LPTSTR aBuf, LPTSTR aVarName);
 VarSizeType BIV_IsAdmin(LPTSTR aBuf, LPTSTR aVarName);
 VarSizeType BIV_PtrSize(LPTSTR aBuf, LPTSTR aVarName);
-
+// MT_Stuff**
 VarSizeType BIV_mtIsInputBlocked(LPTSTR aBuf, LPTSTR aVarName);
 VarSizeType BIV_mtTimeIdle(LPTSTR aBuf, LPTSTR aVarName);
 

@@ -302,7 +302,7 @@ Bits	Meaning
 30		The previous key state. The value is always 1 for a WM_KEYUP message.
 31		The transition state. The value is always 1 for a WM_KEYUP message.
 		
-I should look into testing if setting the repeat count accurately does anything
+I should look into testing if setting the repeat count actually does anything
 */
 
 	pSend(Sequence := "", blind := True)

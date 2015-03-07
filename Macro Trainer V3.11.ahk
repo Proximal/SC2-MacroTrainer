@@ -123,7 +123,8 @@ Else
 {
 	Menu Tray, Icon, Included Files\Used_Icons\Starcraft-2.ico
 
-	global debugGame := False
+	global debugGame := False 
+	debugShutdown := True
 	hotkey, ^+!F12, g_GiveLocalPlayerResources
 	hotkey, *>!F12, g_testKeydowns ; Just for testing will remove soon
 }
@@ -858,6 +859,7 @@ mt_pause_resume:
 		aThreads.Overlays.ahkPause.0
 		tSpeak("Resumed")
 	}
+	keywait, % gethotkeySuffix(warning_toggle_key), T2
 return
 
 ;------------
@@ -1622,10 +1624,12 @@ SetTimer, find_races_timer, off
 find_races:
 if time	;leave this in, so if they press the hotkey while outside of game, wont get gibberish
 {
-	If (A_ThisLabel = "find_races")
-		aThreads.MiniMap.ahkassign.TimeReadRacesSet := time
-		;TimeReadRacesSet := time
 	tSpeak(GetEnemyRaces())
+	If (A_ThisLabel = "find_races")
+	{
+		aThreads.MiniMap.ahkassign.TimeReadRacesSet := time	
+		keywait, % gethotkeySuffix(read_races_key), T2
+	}
 }
 return
 
@@ -1856,6 +1860,7 @@ worker_count:
 	IF 	( !time ) ; ie = 0 
 	{
 		tSpeak("The game has not started")
+		keywait, % gethotkeySuffix(worker_origin), T2
 		return
 	}
 	If ( worker_origin = worker_count_enemy_key "")
@@ -1863,6 +1868,7 @@ worker_count:
 		if ( GameType <> "1v1" )
 		{
 			tSpeak("Enemy worker count is only available in 1v1")
+			keywait, % gethotkeySuffix(worker_origin), T2
 			return
 		}	
 		For slot_number in aPlayer
@@ -1883,6 +1889,7 @@ worker_count:
 	if ( "Fail" = newcount := getPlayerWorkerCount(playernumber))
 	{
 		tSpeak("Try Again in a few seconds")
+		keywait, % gethotkeySuffix(worker_origin), T2
 		return
 	}
 	Else If ( player_race = "Terran" )
@@ -1893,6 +1900,7 @@ worker_count:
 		tSpeak(newcount "Drones")
 	Else 
 		tSpeak(newcount "Workers")
+	keywait, % gethotkeySuffix(worker_origin), T2
 return	
 
 ; used to monitor the activation/min of the sc2 window
@@ -1989,6 +1997,7 @@ if !WinExist(GameIdentifier) ; This is much faster (0.05 ms vs 0.75 ms) than cal
 return
 
 ShutdownProcedure:
+debugShutdown ? log("`n`n==================`n" A_hour ":" A_Min ":" A_Sec "`nPerforming Shutdown Procedure") : ""
 	;changeScriptMainWinTitle(A_ScriptFullPath " - AutoHotkey v" A_AhkVersion)
 	if FileExist(config_file) ; needed if exits due to dll/other-files not being installed
 		Iniwrite, % round(GetProgramWaveVolume()), %config_file%, Volume, program	
@@ -1998,7 +2007,7 @@ ShutdownProcedure:
 	ReadRawMemory()
 	ReadMemory_Str()
 	
-	
+debugShutdown ? log("Closing speech thread") : ""
 	;aThreads.miniMap.ahkLabel.ShutdownProcedure
 
 	; ahkTerminate is causing issues - I've probably done something wrong
@@ -2009,11 +2018,13 @@ ShutdownProcedure:
 		aThreads.Speech.ahkLabel.clearSAPI
 		aThreads.Speech.ahkTerminate() 
 	}
+debugShutdown ? log("Closing minimap thread") : ""
 	if aThreads.miniMap.ahkReady() 	
 		aThreads.miniMap.ahkTerminate() 
+debugShutdown ? log("Closing overlay thread") : ""
 	if aThreads.Overlays.ahkReady() 	
 		aThreads.Overlays.ahkTerminate() 	
-
+debugShutdown ? log("Deleting bitmaps") : ""
 	deletepBitMaps(a_pBitmap)
 	;deletePens(a_pPens)
 	;deleteBrushArray(a_pBrushes)
@@ -2021,7 +2032,9 @@ ShutdownProcedure:
 	; Should only be called once from either thread
 	; GDI_Unload crash was probably due to calling this function, then having another thread try 
 	; to access the GDI library to draw
-	; so close GDIP after closing minimapThread	
+	; so close GDIP after closing minimapThread
+
+debugShutdown ? log("Shutting down gdip") : ""
 	if pToken
 		Gdip_Shutdown(pToken) 
 	; I thought placing this here after most of the shutdown stuff would
@@ -2030,6 +2043,7 @@ ShutdownProcedure:
 		try RunAsAdmin()
 	else if restartTrainer
 		try  Run *RunAs "%A_ScriptFullPath%"
+debugShutdown ?	log("exiting.`n`n`n") : ""
 	ExitApp
 Return
 
@@ -9918,6 +9932,7 @@ groupMinerals(minerals)
 			}
 		averagedMinerals.insert( {x: unit.x, y: unit.y, z: unit.z} )
 		minerals.remove(unitIndex, "")
+		goto groupMinerals_groupMineralsStart
 	}
 	return averagedMinerals
 }
@@ -12894,7 +12909,7 @@ KeyUp(Escape)
 LeftMouseUp(point1)
 
 
-
-
-
 */ 
+
+
+

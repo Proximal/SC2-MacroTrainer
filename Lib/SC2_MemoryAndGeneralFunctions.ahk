@@ -855,6 +855,11 @@ getPlayerArmySupply(player="")
 		player := aLocalPlayer["Slot"]	
 	Return ReadMemory(B_pStructure + O_pArmySupply + player * S_pStructure, GameIdentifier) / 4096
 }
+
+; Note this won't always agree with the replay active forces size.
+; For example with zerg the active forces counts a completed observer as 150 minerals (100 = overlord, 50 = observer morph)
+; but this address only counts it as 50 i.e. the cost of the observer morph
+
 getPlayerArmySizeMinerals(player="")
 { 	global
 	If (player = "")
@@ -3722,9 +3727,10 @@ doUnitDetection(unit, type, owner, unitUsedCount, mode = "")
 				PrevWarning := []							
 				aMiniMapWarning.insert({ "Unit": PrevWarning.unitIndex := unit 
 										, "Time": Time
-										, "UnitTimer": PrevWarning.UnitTimer := getUnitTimer(unit) 
+										, "FingerPrint": PrevWarning.fingerPrint := getUnitFingerPrint(unit)
 										, "Type": PrevWarning.Type := type
-										, "Owner":  PrevWarning.Owner := owner})
+										, "Owner": PrevWarning.Owner := owner
+										, "WarningType": "unitDetection"})
 		
 				PrevWarning.speech := alert_array[GameType, A_Index, "Name"]			
 				tSpeak(alert_array[GameType, A_Index, "Name"])
@@ -4055,18 +4061,14 @@ announcePreviousUnitWarning()
 	global
 	If PrevWarning
 	{
-		if (getUnitTimer(PrevWarning.unitIndex) < PrevWarning.UnitTimer
-		|| getUnitOwner(PrevWarning.unitIndex) != PrevWarning.Owner
-		|| getUnitType(PrevWarning.unitIndex) != PrevWarning.Type)
-		{
+		if getUnitFingerPrint(PrevWarning.unitIndex) != PrevWarning.FingerPrint
 			tSpeak(PrevWarning.speech " is dead.")
-		}
 		else 
 		{
 			tSpeak(PrevWarning.speech)
-			aMiniMapWarning.insert({ "Unit": PrevWarning.unitIndex
+			aMiniMapWarning.insert({ "Unit": PrevWarning.unitIndex ; note difference,in key  unit/unitIndex 
 							, "Time":  getTime()
-							, "UnitTimer": PrevWarning.UnitTimer
+							, "FingerPrint": PrevWarning.FingerPrint
 							, "Type": PrevWarning.Type 
 							, "Owner":  PrevWarning.Owner})
 		}

@@ -269,37 +269,31 @@ DrawMiniMap()
 	}
 	if DrawAlerts
 	{
-		While (A_index <= aMiniMapWarning.MaxIndex())
+		aRemoveItems := []
+		for fingerprint, warning in aMiniMapWarning
 		{	
 			; this will remove warnings when they time out or if the unit had died 
 			; or been cancelled and replaced with another one 
-
-			unit := aMiniMapWarning[A_index, "Unit"]
-			owner := getUnitOwner(aMiniMapWarning[A_index,"Unit"])	
-
-			If (Time - aMiniMapWarning[A_index, "Time"] >= 20 ;display for 20 seconds
-			|| getUnitTimer(unit) < aMiniMapWarning[A_index, "UnitTimer"]
-			|| owner != aMiniMapWarning[A_index, "Owner"]
-			|| getUnitType(unit) != aMiniMapWarning[A_index, "Type"])
+			If (Time - warning.Time >= 20 ;display for 20 seconds
+			|| getUnitFingerPrint(warning.Unit) != warning.FingerPrint)
 			{	
-				aMiniMapWarning.Remove(A_index, "")
+				aRemoveItems.Insert(fingerprint)
 				continue
-			}
-			
-			If (aPlayer[owner, "Team"] <> aLocalPlayer["Team"])
+			}	
+			If aPlayer[warning.Owner, "Team"] != aLocalPlayer["Team"]
 			{
-				If (arePlayerColoursEnabled() AND aPlayer[Owner, "Colour"] = "Green")
+				If arePlayerColoursEnabled() && aPlayer[Owner, "Colour"] = "Green"
 					pBitmap := a_pBitmap["PurpleX16"] 
 				Else pBitmap := a_pBitmap["GreenX16"]
 			}
-			Else 
-				pBitmap := a_pBitmap["RedX16"]
-			getUnitMinimapPos(aMiniMapWarning[A_index,"Unit"], X, Y)
+			Else pBitmap := a_pBitmap["RedX16"]
+			getUnitMinimapPos(warning.Unit, X, Y)
 
 			Width := Gdip_GetImageWidth(pBitmap), Height := Gdip_GetImageHeight(pBitmap)	
-		;	Gdip_DrawImage(G, pBitmap, (X - Width/2), (Y - Height/2), Width, Height, 0, 0, Width, Height)	
 			Gdip_DrawImage(G, pBitmap, (X - Width/2), (Y - Height/2), Width, Height, 0, 0, Width, Height)	
 		} 
+		for i, key in aRemoveItems
+			aMiniMapWarning.Remove(key, "")
 	}
 	if DrawPlayerCameras
 		Gdip_SetSmoothingMode(G, 4), drawPlayerCameras(G) ; Can't really see a diference between HighQuality and AntiAlias
@@ -586,21 +580,13 @@ loop, % DumpUnitMemory(UBMemDump)
 				gateway_count ++	
 				if warpgate_warning_set
 				{
-					isinlist := 0
-					For index in aGatewayWarnings
-					{
-						if aGatewayWarnings[index,"Unit"] = u_iteration
-						{	
-							isinlist := 1
-							Break
-						}		
-					}
-					if !isinlist
-						aGatewayWarnings.insert({ "Unit": u_iteration  
-												, "Time": Time
-												, "UnitTimer": getUnitTimer(u_iteration)
-												, "Type": unit_type
-												, "Owner":  unit_owner})
+					if !aGatewayWarnings.HasKey(fingerPrint := getUnitFingerPrint(u_iteration))
+						aGatewayWarnings[fingerPrint] := { "Unit": u_iteration
+														, "FingerPrint": fingerPrint  
+														, "Time": Time
+														, "Type": unit_type
+														, "Owner":  unit_owner
+														, "WarningType": "gateway"}
 				} 
 			}
 			Else if (unit_type = aUnitID["WarpGate"] && !isWarpGateTechComplete) ; as unit_type must = warpgate_id
@@ -615,7 +601,9 @@ loop, % DumpUnitMemory(UBMemDump)
 			|| unit_type =  aUnitID["PlanetaryFortress"] || unit_type =  aUnitID["OrbitalCommand"])
 				a_BaseListTmp.insert(u_iteration)
 			else if (unit_type = geyserStructure)
-				aGeyserStructuresTmp.insert(u_iteration)
+			{		
+				aGeyserStructuresTmp[fingerPrint := getUnitFingerPrint(u_iteration)] := {"fingerPrint": fingerPrint, "unitIndex": u_iteration}
+			}
 			
 
 			;if !isobject(aTmpCompleteStructures[unit_type])
@@ -637,8 +625,9 @@ a_BaseList := a_BaseListTmp,  aGeyserStructures := aGeyserStructuresTmp
 
 thread, NoTimers, true
 Lock(localUnitDataCriSec)
-for k in aLocalUnitData
-	aLocalUnitData.remove(k, "")
+;for k in aLocalUnitData
+;	aLocalUnitData.remove(k, "") ; will skip keys!
+aLocalUnitData.Remove(aLocalUnitData.MinIndex(), aLocalUnitData.MaxIndex())
 
 /*	
 for type, obj in aTmpCompleteStructures
@@ -676,18 +665,16 @@ warpgate_warn:
 	if  (!isWarpGateTechComplete)
 		return
 	if gateway_count  ; this remove warning x on the minmap once they start converting to warpgates - so don't have to wait for the alert 'x' to naturally time out in the minimap section
-		for index, object in aGatewayWarnings
-			if (getUnitType(object.unit) != aUnitID["Gateway"] || isUnitDead(object.unit) || !isUnitLocallyOwned(object.unit) ) ;doing this in case unit dies or becomes other players gateway as this list onyl gets cleared when gateway count = 0
-			|| isGatewayConvertingToWarpGate(object.unit) || !isUnitPowered(object.unit)
-			{
-				for minimapIndex, minimapObject in aMiniMapWarning
-					if (minimapObject.unit = object.unit)
-					{
-						aMiniMapWarning.remove(minimapIndex, "") 
-						break
-					}
-				aGatewayWarnings.remove(index, "") ; "" so deleting doesnt stuff up for loop		
-			}
+	{	
+		for index, object in aGatewayWarnings, aRemoveGateways := []
+		{
+			if aMiniMapWarning.HasKey(object.FingerPrint)
+			&& (getUnitType(object.unit) != aUnitID["Gateway"] || object.FingerPrint != getUnitFingerPrint(object.unit) || isGatewayConvertingToWarpGate(object.unit) || !isUnitPowered(object.unit)) ;doing this in case unit dies or becomes other players gateway as this list onyl gets cleared when gateway count = 0
+				aMiniMapWarning.Remove(object.FingerPrint, ""),	aRemoveGateways.Insert(object.FingerPrint)
+		}
+		for i, FingerPrint in aRemoveGateways
+			aGatewayWarnings.remove(FingerPrint, "") 
+	}
 
 	if (gateway_count AND !warpgate_warning_set)
 	{
@@ -699,12 +686,12 @@ warpgate_warn:
 		warpgate_warn_count := 0
 		warpgate_warning_set := 0
 
-		for index, object in aGatewayWarnings
-			for minimapIndex, minimapObject in aMiniMapWarning
-				if (minimapObject.unit = object.unit)
-					aMiniMapWarning.remove(minimapIndex, "")        ;lets clear the list of old gateway warnings. This gets rid of the x as soon as the gateway becomes a warpgate
+		for index, object in aGatewayWarnings 
+		{
+			if aMiniMapWarning.HasKey(object.FingerPrint)
+				aMiniMapWarning.Remove(object.FingerPrint, "")  ;lets clear the list of old gateway warnings. This gets rid of the x as soon as the gateway becomes a warpgate
+		}  
 		aGatewayWarnings := []
-
 	}
 	else if ( warpgate_warn_count <= sec_warpgate && time > warpgateGiveWarningAt) 
 	{
@@ -713,14 +700,13 @@ warpgate_warn:
 		time := getTime()
 		for index, object in aGatewayWarnings
 		{
-			object.time := time ; so this will display an x even with long  follow up delay
-			aMiniMapWarning.insert(object)
+			if aMiniMapWarning.HasKey(object.FingerPrint)
+				aMiniMapWarning[object.FingerPrint, "time"] := time
+			else object.time := time, aMiniMapWarning[object.FingerPrint] := object ; so this will display an x even with long  follow up delay
 		}
-
 		if aGatewayWarnings.maxindex()
 			tSpeak(w_warpgate)	
 	}
-
 return
 
 ;--------------------------------------------
@@ -853,59 +839,70 @@ geyserOversaturationCheck:
 geyserOversaturationWarning(aGeyserStructures, WarningsGeyserOverSaturationMaxWorkers, WarningsGeyserOverSaturationMaxTime, WarningsGeyserOverSaturationFollowUpCount, WarningsGeyserOverSaturationFollowUpDelay, WarningsGeyserOverSaturationSpokenWarning)
 return 
 
-geyserOversaturationWarning(aGeyserStructures, maxWorkers, maxTime, maxWarnings, folloupWarningDelay, warning)
+geyserOversaturationWarning(aGeyserStructures, maxWorkers, maxTime, maxWarnings, folloupWarningDelay, spokenWarning)
 {
 	global aMiniMapWarning
 	static aWarnings := []
-	time := getTime()
-	If (aLocalPlayer["Race"] = "Terran")
-		geyserStructure := aUnitID["Refinery"]
-	Else If (aLocalPlayer["Race"] = "Protoss")
-		geyserStructure := aUnitID["Assimilator"]
-	else If (aLocalPlayer["Race"] = "Zerg")
-		geyserStructure := aUnitID["Extractor"]
-	; Remove old warnings from previous game or if geyser no longer exists
-	for unit in aWarnings
+
+	; Remove old warnings from previous game or if geysers no longer exists. Don't return, as still need to clear minimap
+	if !aGeyserStructures
+		aWarnings := []
+	else 
 	{
-		if !aGeyserStructures
-			aWarnings.Remove(unit, "")		
-	}
-	for i, unit in aGeyserStructures
-	{
-		if getUnitType(unit) = geyserStructure && !(getUnitTargetFilter(unit) & (aUnitTargetFilter.UnderConstruction | aUnitTargetFilter.Dead))
+		time := getTime()
+		If (aLocalPlayer["Race"] = "Terran")
+			geyserStructure := aUnitID["Refinery"]
+		Else If (aLocalPlayer["Race"] = "Protoss")
+			geyserStructure := aUnitID["Assimilator"]
+		else If (aLocalPlayer["Race"] = "Zerg")
+			geyserStructure := aUnitID["Extractor"]
+
+		for fingerPrint in aWarnings, aRemove := [] ; if geyser dies and is remade remove any old warnings
 		{
-			if getResourceWorkerCount(unit, aLocalPlayer["Slot"]) >= maxWorkers
+			if !aGeyserStructures.Haskey(fingerPrint)
+				aRemove.insert(fingerPrint)
+		}
+		for i, fingerPrint in aRemove
+			aWarnings.Remove(fingerPrint, "")
+
+		for i, geyser in aGeyserStructures
+		{
+			if getUnitFingerPrint(geyser.unitIndex) = geyser.fingerPrint && !(getUnitTargetFilter(geyser.unitIndex) & aUnitTargetFilter.UnderConstruction)
 			{
-				if !aWarnings.HasKey(unit)
-					aWarnings[unit, "start"] := time
-				else 
+				if getResourceWorkerCount(geyser.unitIndex, aLocalPlayer["Slot"]) >= maxWorkers
 				{
-					if (!aWarnings[unit].HasKey("startFollowUp") && time - aWarnings[unit, "start"] >= maxTime)
-					|| (aWarnings[unit].HasKey("startFollowUp") && time >= aWarnings[unit, "startFollowUp"] + folloupWarningDelay && aWarnings[unit, "startFollowUpCount"] <= maxWarnings)
+					if !aWarnings.HasKey(geyser.fingerPrint)
+						aWarnings[geyser.fingerPrint, "start"] := time
+					else 
 					{
-						aWarnings[unit, "startFollowUp"] := Time
-						, aWarnings[unit, "startFollowUpCount"] := round(aWarnings[unit, "startFollowUpCount"]) + 1
-						, aMiniMapWarning.insert({ "Unit": unit
-												, "Time":  time
-												, "UnitTimer": getUnitTimer(unit)
-												, "Type": geyserStructure
-												, "Owner":  aLocalPlayer["Slot"]})
-						, announceWarning := True
+						if (!aWarnings[geyser.fingerPrint].HasKey("startFollowUp") && time - aWarnings[geyser.fingerPrint, "start"] >= maxTime)
+						|| (aWarnings[geyser.fingerPrint].HasKey("startFollowUp") && time >= aWarnings[geyser.fingerPrint, "startFollowUp"] + folloupWarningDelay && aWarnings[geyser.fingerPrint, "startFollowUpCount"] <= maxWarnings)
+						{
+							aWarnings[geyser.fingerPrint, "startFollowUp"] := Time
+							, aWarnings[geyser.fingerPrint, "startFollowUpCount"] := round(aWarnings[geyser.fingerPrint, "startFollowUpCount"]) + 1
+							, aMiniMapWarning.insert({ "Unit": geyser.unitIndex
+													, "FingerPrint": geyser.fingerPrint
+													, "Time":  time
+													, "Type": geyserStructure
+													, "Owner":  aLocalPlayer["Slot"]
+													, "WarningType": "geyser"})
+							, announceWarning := True
+						}
 					}
 				}
+				else if aWarnings.HasKey(geyser.fingerPrint)
+					aWarnings.Remove(geyser.fingerPrint, "")
 			}
-			else if aWarnings.HasKey(unit)
-				aWarnings.Remove(unit, "")
 		}
 	}
 	; Remove any old warnings i.e. worker count lowered so they instantly disappear from the screen
-	for minimapIndex, object in aMiniMapWarning
+	for minimapIndex, warning in aMiniMapWarning
 	{
-		if object.Type = geyserStructure && object.Owner = aLocalPlayer["Slot"] && !aWarnings.HasKey(object.Unit) ; check if still geyser and unitIndex hasn't been reused for another warning type
-			aMiniMapWarning.remove(minimapIndex, "") 
+		if warning.WarningType = "geyser" && !aWarnings.HasKey(warning.FingerPrint)
+			aMiniMapWarning.remove(minimapIndex, "") 	
 	}
 	if announceWarning
-		tSpeak(warning)
+		tSpeak(spokenWarning)
 	return
 }
 

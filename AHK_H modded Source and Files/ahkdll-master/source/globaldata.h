@@ -220,7 +220,7 @@ extern ToggleValueType g_BlockInputMode;
 extern bool g_BlockInput;  // Whether input blocking is currently enabled.
 extern bool g_BlockMouseMove; // Whether physical mouse movement is currently blocked via the mouse hook.
 
-// MT global 
+// MT_Stuff**
 extern bool g_mtIsInputBlocked;
 extern DWORD g_mtTimeIdle;
 

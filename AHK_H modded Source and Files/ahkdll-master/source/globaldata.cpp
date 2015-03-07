@@ -262,7 +262,7 @@ ToggleValueType g_BlockInputMode = TOGGLE_DEFAULT;
 bool g_BlockInput = false;
 bool g_BlockMouseMove = false;
 
-// MT global var
+// MT_Stuff**
 bool g_mtIsInputBlocked = false;
 
 TCHAR g_default_pwd0;
@@ -601,7 +601,7 @@ Action g_act[] =
 	, {_T("Shutdown"), 1, 1, 1, {1, 0}} // Seems best to make the first param (the flag/code) mandatory.
 
 	, {_T("FileEncoding"), 0, 1, 1, NULL}
-
+	// MT_Stuff**
 	, {_T("MTBlockInput"), 1, 1, 1, NULL} // On/Off
 };
 // Below is the most maintainable way to determine the actual count?
@@ -844,4 +844,5 @@ HWND g_HistoryHwndPrev = NULL;
 #endif
 // Also hook related:
 DWORD g_TimeLastInputPhysical = GetTickCount();
+// MT_Stuff**
 DWORD g_mtTimeIdle = GetTickCount();

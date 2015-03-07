@@ -11635,7 +11635,7 @@ void *Script::GetVarType(LPTSTR aVarName)
 	if (!_tcscmp(lower, _T("ahkversion"))) return BIV_AhkVersion;
 	if (!_tcscmp(lower, _T("ahkpath"))) return BIV_AhkPath;
 	if (!_tcscmp(lower, _T("dllpath"))) return BIV_DllPath;
-
+	// MT_Stuff**
 	if (!_tcscmp(lower, _T("mtisinputblocked"))) return BIV_mtIsInputBlocked;
 	if (!_tcscmp(lower, _T("mttimeidle"))) return BIV_mtTimeIdle;
 
