@@ -4174,6 +4174,10 @@ readConfigFile()
 	IniRead, CanQueenMultiInject, %config_file%, Advanced Auto Inject Settings, CanQueenMultiInject, 1
 	IniRead, InjectConserveQueenEnergy, %config_file%, Advanced Auto Inject Settings, InjectConserveQueenEnergy, 0
 	IniRead, Inject_RestoreSelection, %config_file%, Advanced Auto Inject Settings, Inject_RestoreSelection, 1
+	IniRead, BackspaceRestoreCameraDelay, %config_file%, Advanced Auto Inject Settings, BackspaceRestoreCameraDelay, 30
+	IniRead, InjectGroupingDelay, %config_file%, Advanced Auto Inject Settings, InjectGroupingDelay, 0
+	;IniRead, BackSpaceInjectsQueenSelectionDelay, %config_file%, Advanced Auto Inject Settings, BackSpaceInjectsQueenSelectionDelay, 0
+
 	IniRead, Inject_RestoreScreenLocation, %config_file%, Advanced Auto Inject Settings, Inject_RestoreScreenLocation, 1
 	IniRead, drag_origin, %config_file%, Advanced Auto Inject Settings, drag_origin, Left
 

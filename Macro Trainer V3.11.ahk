@@ -2493,6 +2493,10 @@ ini_settings_write:
 	IniWrite, %CanQueenMultiInject%, %config_file%, Advanced Auto Inject Settings, CanQueenMultiInject
 	IniWrite, %InjectConserveQueenEnergy%, %config_file%, Advanced Auto Inject Settings, InjectConserveQueenEnergy
 	IniWrite, %Inject_RestoreSelection%, %config_file%, Advanced Auto Inject Settings, Inject_RestoreSelection
+	IniWrite, %BackspaceRestoreCameraDelay%, %config_file%, Advanced Auto Inject Settings, BackspaceRestoreCameraDelay
+	IniWrite, %InjectGroupingDelay%, %config_file%, Advanced Auto Inject Settings, InjectGroupingDelay
+	;IniWrite, %BackSpaceInjectsQueenSelectionDelay%, %config_file%, Advanced Auto Inject Settings, BackSpaceInjectsQueenSelectionDelay
+
 	IniWrite, %Inject_RestoreScreenLocation%, %config_file%, Advanced Auto Inject Settings, Inject_RestoreScreenLocation
 	IniWrite, %drag_origin%, %config_file%, Advanced Auto Inject Settings, drag_origin
 
@@ -3001,7 +3005,7 @@ IfWinExist
 ; so if they quadruple click the icon AHK wont give a thread exit error due to duplicate 
 ; gui variables because their computer was to slow to load the gui window the first time
 
-try 
+;try 
 {
 	Gui, Options:New
 	gui, font, norm s9	;here so if windows user has +/- font size this standardises it. But need to do other menus one day
@@ -3032,7 +3036,7 @@ try
 	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% ys x165 vInjects_TAB, Info||Basic|Auto|Settings|Alerts
 	GuiControlGet, MenuTab, Pos, Injects_TAB
 	Gui, Tab,  Basic
-		Gui, Add, GroupBox, y+15 w200 h230 section vOriginTab, One Button Inject
+		Gui, Add, GroupBox, y+15 w200 h300 section vOriginTab, One Button Inject
 				GuiControlGet, OriginTab, Pos
 			Gui, Add, Text,xp+10 yp+25, Method:		
 					If (auto_inject = 0 OR auto_inject = "Disabled")
@@ -3050,7 +3054,10 @@ try
 			GuiControlGet, XTab, Pos, SillyGUIControlIdentVariable ;XTabX = x loc
 			Gui, Add, Edit, Readonly yp-2 xs+85 center w65 R1 vcast_inject_key gedit_hotkey, %cast_inject_key%
 			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#cast_inject_key,  Edit ;have to use a trick eg '#' as cant write directly to above edit var, or it will activate its own label!
-			
+		
+			Gui, Add, Checkbox, xs+10 y+15 vInject_RestoreSelection checked%Inject_RestoreSelection% gInjectGUIToggleRestoreSelection, Restore Unit Selection 					
+			Gui, Add, Checkbox, xs+10 y+10 vInject_RestoreScreenLocation checked%Inject_RestoreScreenLocation% gInjectGUIToggleRestoreScreen, Restore Screen Location			
+
 			Gui, Add, Text, xs+10 y+20, Sleep time (ms):`n(Lower is faster)
 			Gui, Add, Edit, Number Right xs+145 yp-2 w45 vEdit_pos_var 
 				Gui, Add, UpDown,  Range0-100000 vAuto_inject_sleep, %auto_inject_sleep%
@@ -3059,14 +3066,25 @@ try
 			Gui, Add, Edit, Number Right xs+145 yp-2 w45 vEdit_Inject_SleepVariance
 				Gui, Add, UpDown,  Range0-100000 vInject_SleepVariance, % (Inject_SleepVariance - 1) * 100  
 
-			Gui, Add, Checkbox, xs+10 y+12 vInject_RestoreSelection checked%Inject_RestoreSelection%, Restore Unit Selection 					
-			Gui, Add, Checkbox, xs+10 y+10 vInject_RestoreScreenLocation checked%Inject_RestoreScreenLocation%, Restore Screen Location
 			
-		Gui, Add, GroupBox, xs ys+250 w400 h70, Notes:
+			Gui, Add, Text, % "xs+10 yp+25 disabled" !Inject_RestoreScreenLocation " vBackspaceTextRestoreCameraDelay", Restore Camera Delay (ms):
+			Gui, Add, Edit, % "Number Right xs+145 yp-2 w45 disabled" !Inject_RestoreScreenLocation " vBackspaceEditRestoreCameraDelay"
+				Gui, Add, UpDown,  % "Range20-5000 disabled" !Inject_RestoreScreenLocation  " vBackspaceRestoreCameraDelay", %BackspaceRestoreCameraDelay%
+
+			Gui, Add, Text, % "xs+10 yp+35 disabled" !Inject_RestoreSelection " vInjectTextGroupingDelay", Grouping Delay (ms):
+			Gui, Add, Edit, % "Number Right xs+145 yp-2 w45 disabled" !Inject_RestoreSelection " vInjectEditGroupingDelay" 
+				Gui, Add, UpDown,  % "Range0-5000 disabled" !Inject_RestoreSelection " vInjectGroupingDelay", %InjectGroupingDelay%				
+
+			;Gui, Add, Text, xs+10 yp+35 hidden%hide% vBackSpaceInjectsTextQueenSelectionDelay, Queen Selection Delay (ms):
+			;Gui, Add, Edit, Number Right xs+145 yp-2 w45 hidden%hide% vBackSpaceInjectsQueenSelectionDelay 
+			;	Gui, Add, UpDown,  Range0-5000 hidden%hide% vBackSpaceInjectsQueenSelectionDelay, %BackSpaceInjectsQueenSelectionDelay%	
+
+		Gui, Add, GroupBox, xs ys+320 w400 h70, Notes:
 			Gui, Add, Text,yp+57 xp+10 yp+25 w380, This is a semi-automated function. Each time the hotkey is pressed your hatches will be injected.
 
 		hide := !instr(auto_inject, "Backspace")
 		Gui, Add, GroupBox, w200 h230 ys xs+210 section hidden%hide% vBackspaceGroupBoxID, Backspace Settings
+
 			Gui, Add, Text, xs+10 yp+25 hidden%hide% vBackspaceTextCameraStoreID, Create Camera: %A_space% %A_space% (Location Storge)
 				Gui, Add, Edit, Readonly y+10 xs+60 w90 R1 center vBI_create_camera_pos_x hidden%hide%, %BI_create_camera_pos_x%
 					Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#BI_create_camera_pos_x hidden%hide%,  Edit
@@ -4714,6 +4732,9 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 									. "`nPlease set this to a camera hotkey which you don't actually use."
 									. "`n`nThis is used by both backspace inject methods."
 
+		BackspaceEditRestoreCameraDelay_TT := BackspaceRestoreCameraDelay_TT := "This defines the delay between the last hatchery inject and restoring the camera position (which is then followed by restoring the unit selection).`nIncreasing this value will make the automation more subtle.`n`nNote: The 'Restore screen location' setting must be enabled."
+		InjectEditGroupingDelay_TT := InjectGroupingDelay_TT := "This defines two delays.`n1) Between grouping the current unit selection and selecting queens.`n2)Between the last inject and restoring the previous unit selection.`nNote: A value of 0 will work fine."
+
 
 		BI_camera_pos_x_TT := #BI_camera_pos_x_TT :=  "The hotkey used to invoke the above saved camera location."
 													. "`n`nThis is used by both backspace inject methods."
@@ -4968,7 +4989,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 
 		WorkerSplitType_TT := "Defines how many workers are rallied to each mineral patch."
 
-		Auto_inject_sleep_TT := Edit_pos_var_TT := "Sets the amount of time that the program sleeps for during each automation cycle for the 'one button inject' method.`nThis has a large effect on the speed, and hence how 'human' the automation appears'.`n`n"
+		Auto_inject_sleep_TT := Edit_pos_var_TT := "Sets the amount of time that the program sleeps for during each automation cycle for the 'one button inject' method.`nThis has a large effect on the speed, and hence how 'human' the automation appears.`n`n"
 				. "The lowest reliable values will vary for users, but for myself the minimap method can be used with a sleep time of 0 ms.`n"
 				. "The backspace methods require at least 8 ms."
 
@@ -5270,14 +5291,33 @@ return
 
 
 BasicInjectToggleOptionsGUI:
-GuiControlGet, selectedItem,, %A_GuiControl%
+GuiControlGet, selectedinjectMethod,, %A_GuiControl%
 for i, controlID in ["BackspaceGroupBoxID", "BackspaceDragTextID", "Drag_origin", "BackspaceTextCameraStoreID", "BI_create_camera_pos_x", "#BI_create_camera_pos_x", "BackspaceTextCameraGotoID", "BI_camera_pos_x", "#BI_camera_pos_x"]
 {
-	if 	(controlID = "BackspaceDragTextID" || controlID = "Drag_origin") ; This should only be shown for the true backspace method
-		GuiControl, % "hide" (selectedItem != "Backspace"), %controlID%
-	else GuiControl, % "hide" !instr(selectedItem, "Backspace" ), %controlID%
+	if controlID in BackspaceDragTextID,Drag_origin ; This should only be shown for the true backspace method
+		GuiControl, % "hide" (selectedinjectMethod != "Backspace"), %controlID%
+	else GuiControl, % "hide" !instr(selectedinjectMethod, "Backspace"), %controlID%
 }
+GuiControl, % "enable" (instr(selectedinjectMethod, "Disabled") || instr(selectedinjectMethod, "Backspace")), Inject_RestoreScreenLocation ; for some reason this expression needs brackets.......
+GuiControlGet, enabled,, Inject_RestoreScreenLocation
+for i, controlID in ["BackspaceTextRestoreCameraDelay", "BackspaceEditRestoreCameraDelay", "BackspaceRestoreCameraDelay"]
+	GuiControl,  % "enable" (instr(selectedinjectMethod, "Disabled") || (enabled && instr(selectedinjectMethod, "Backspace"))), %controlID% ; need the surrounding brackets so second part is evaluated
 return 
+
+InjectGUIToggleRestoreSelection:
+GuiControlGet, enable,, %A_GuiControl%
+GuiControl, enabled%enable%, InjectTextGroupingDelay
+GuiControl, enabled%enable%, InjectEditGroupingDelay
+GuiControl, enabled%enable%, InjectGroupingDelay
+return 
+
+InjectGUIToggleRestoreScreen:
+GuiControlGet, enable,, %A_GuiControl%
+GuiControl, enabled%enable%, BackspaceTextRestoreCameraDelay
+GuiControl, enabled%enable%, BackspaceEditRestoreCameraDelay
+GuiControl, enabled%enable%, BackspaceRestoreCameraDelay
+return 
+
 
 AutoBuildOptionsMenuHotkeyModeCheck:
 GuiControlGet, g1,, AutoBuildGUIkeyMode
@@ -8503,6 +8543,10 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 		{
 			if (ForceInject || Inject_RestoreSelection)
 				input.pSend(aAGHotkeys.set[Inject_control_group]), stopWatchCtrlID := stopwatch()
+
+			if !ForceInject && Inject_RestoreSelection && InjectGroupingDelay > 0
+				sleep % ceil(InjectGroupingDelay * rand(1, Inject_SleepVariance))
+
 			input.pSend(aAGHotkeys.Invoke[MI_Queen_Group])
 			dsleep(20)
 
@@ -8654,7 +8698,11 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 		If QueenCount := getGroupedQueensWhichCanInject(oSelection)  ; this wont fetch burrowed queens!! so dont have to do a check below - as burrowed queens can make cameramove when clicking their hatch
 		{
 			if Inject_RestoreSelection
+			{
 				input.pSend(aAGHotkeys.set[Inject_control_group]), stopWatchCtrlID := stopwatch()
+				if (InjectGroupingDelay > 0)
+					sleep % ceil(InjectGroupingDelay * rand(1, Inject_SleepVariance))
+			}
 			if Inject_RestoreScreenLocation
 				input.pSend(BI_create_camera_pos_x)
 			input.pSend(aAGHotkeys.Invoke[MI_Queen_Group])
@@ -8683,7 +8731,7 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 			}
 			if Inject_RestoreScreenLocation
 			{
-				sleep % ceil( (sleepTime/1.5) * rand(1, Inject_SleepVariance)) ; so this will actually mean the inject will sleep longer than user specified, but make it look a bit more real
+				sleep % ceil( BackspaceRestoreCameraDelay* rand(1, Inject_SleepVariance)) ; so this will actually mean the inject will sleep longer than user specified, but make it look a bit more real
 				input.pSend(BI_camera_pos_x) 										
 			}
 		}
@@ -8740,7 +8788,7 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 		}	
 		if Inject_RestoreScreenLocation
 		{
-			sleep % ceil( (sleepTime/2) * rand(1, Inject_SleepVariance))	; so this will actually mean the inject will sleep longer than user specified, but make it look a bit more real
+			sleep % ceil( BackspaceRestoreCameraDelay * rand(1, Inject_SleepVariance))	; so this will actually mean the inject will sleep longer than user specified, but make it look a bit more real
 			input.pSend(BI_camera_pos_x)										
 		}
 	}
@@ -8749,6 +8797,8 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 		elapsedTimeGrouping := stopwatch(stopWatchCtrlID)	
 		if (elapsedTimeGrouping < 20)
 			dSleep(ceil(20 - elapsedTimeGrouping))
+		if !ForceInject && InjectGroupingDelay > 0
+				sleep % ceil(InjectGroupingDelay * rand(1, Inject_SleepVariance))
 		restoreSelection(Inject_control_group, selectionPage, HighlightedGroup)
 	}
 	return
@@ -10817,8 +10867,8 @@ launchOverlayThread()
 			FileInstall, threadOverlaysFull.ahk, Ignore	
 		if A_IsCompiled
 			overlayScript := LoadScriptString("threadOverlaysFull.ahk")
-		else FileRead, overlayScript, threadOverlays.ahk			
-		aThreads.Overlays.ahktextdll(overlayScript)
+		else FileRead, overlayScript, threadOverlays.ahk	
+		aThreads.Overlays.ahktextdll(overlayScript) ; takes 30-40 ms to become ready()
 	}
 	Return 
 }
