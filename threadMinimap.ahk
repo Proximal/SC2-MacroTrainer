@@ -32,6 +32,7 @@ GLOBAL GameWindowTitle := "StarCraft II"
 GLOBAL GameIdentifier := "ahk_exe SC2.exe"
 GLOBAL config_file := "MT_Config.ini"
 GameExe := "SC2.exe"
+GLOBAL aCurrentGameTemp := []
 
 #Include <Gdip> 
 #Include <SC2_MemoryAndGeneralFunctions> 
@@ -105,7 +106,8 @@ gameChange(UserSavedAppliedSettings := False)
 		; aStringTable and aUnitModel are super global declared in memory and general functions
 		aUnitModel := [] 		
 		aStringTable := []
-		aMiniMapWarning := [], a_BaseList := [], aGatewayWarnings := []
+		aMiniMapWarning := [], a_BaseList := [], aGatewayWarnings := [], aCompleteStructures := []
+		aCurrentGameTemp := []
 		if WinActive(GameIdentifier)
 			ReDrawMiniMap := ReDrawIncome := ReDrawResources := ReDrawArmySize := ReDrawWorker := RedrawUnit := ReDrawIdleWorkers := ReDrawLocalPlayerColour := 1
 		getPlayers(aPlayer, aLocalPlayer)
@@ -139,6 +141,8 @@ gameChange(UserSavedAppliedSettings := False)
 		settimer, supply, % supplyon ? 200 : "off", -5
 		settimer, gClock, 1000, -4
 		settimer, geyserOversaturationCheck, % WarningsGeyserOverSaturationEnable ? 250 : "Off"
+		if !A_IsCompiled
+			settimer, townHallRallyCheck, 250
 
 	}
 	else 
@@ -147,6 +151,7 @@ gameChange(UserSavedAppliedSettings := False)
 		SetTimer, unit_bank_read, off
 		SetTimer, workerTerranProtossCheck, off
 		SetTimer, geyserOversaturationCheck, off
+		settimer, townHallRallyCheck, Off
 		SetTimer, supply, off
 		SetTimer, gClock, off
 		DestroyOverlays()
@@ -270,7 +275,7 @@ DrawMiniMap()
 	if DrawAlerts
 	{
 		aRemoveItems := []
-		for fingerprint, warning in aMiniMapWarning
+		for fingerprint, warning in aMiniMapWarning ; care not somethings insert rather than set key to fingerprint. Should Change this - so that warnings have value indicating if the key is a fingerprint (allows easier removal than a loop) - but need to think if about multiple warnings with same fingerprint
 		{	
 			; this will remove warnings when they time out or if the unit had died 
 			; or been cancelled and replaced with another one 
@@ -356,8 +361,7 @@ getEnemyUnitsMiniMap(byref aUnitsToDraw)
 	       		getUnitQueuedCommands(A_Index - 1, QueuedCommands)
           	if customFlag
            		aUnitsToDraw.Custom.insert({"X": x, "Y": y, "Colour": Colour, "Radius": Radius, unit: A_index -1, "queuedCommands": QueuedCommands})  
-           	else
-           		aUnitsToDraw.Normal.insert({"X": x, "Y": y, "Colour": Colour, "Radius": Radius, unit: A_index -1, "queuedCommands": QueuedCommands})  
+           	else aUnitsToDraw.Normal.insert({"X": x, "Y": y, "Colour": Colour, "Radius": Radius, unit: A_index -1, "queuedCommands": QueuedCommands})  
      }
   }
   Return
@@ -597,6 +601,7 @@ loop, % DumpUnitMemory(UBMemDump)
 		}
 		else if !(Filter & aUnitTargetFilter.UnderConstruction)
 		{
+			fingerPrint := getUnitFingerPrint(u_iteration)
 			if (unit_type = aUnitID["Nexus"] || unit_type = aUnitID["CommandCenter"] 
 			|| unit_type =  aUnitID["PlanetaryFortress"] || unit_type =  aUnitID["OrbitalCommand"])
 				a_BaseListTmp.insert(u_iteration)
@@ -609,9 +614,7 @@ loop, % DumpUnitMemory(UBMemDump)
 			;if !isobject(aTmpCompleteStructures[unit_type])
 			;	aTmpCompleteStructures[unit_type] := []
 			;aTmpCompleteStructures[unit_type, u_iteration] := True
-			aTmpCompleteStructures[unit_type] .=  (aTmpCompleteStructures[unit_type] != "" ? "|" : "") u_iteration 
-
-
+			aTmpCompleteStructures[unit_type] .=  (aTmpCompleteStructures[unit_type] != "" ? "|" : "") u_iteration "\" fingerPrint
 		}
 	}
 	else if (doUnitDetectionOnThisRun && alert_array[GameType, "IDLookUp"].HasKey(unit_type)) ; these units are enemies and have an entry in the alertWarnings
@@ -622,6 +625,7 @@ if warpgate_warn_on
 SupplyInProduction := SupplyInProductionCount
 ZergWorkerInProduction := ZergWorkerInProductionCount
 a_BaseList := a_BaseListTmp,  aGeyserStructures := aGeyserStructuresTmp
+aCompleteStructures := aTmpCompleteStructures
 
 thread, NoTimers, true
 Lock(localUnitDataCriSec)
@@ -918,3 +922,105 @@ geyserOversaturationWarning(aGeyserStructures, maxWorkers, maxTime, maxWarnings,
 					}
 				aGatewayWarnings.remove(index, "") ; "" so deleting doesnt stuff up for loop		
 			}
+
+*/
+
+townHallRallyCheck:
+; Return if game is paused/ window not active
+TownHallRally()
+return 
+
+; aTmpCompleteStructures[unit_type] .=  (aTmpCompleteStructures[unit_type] != "" ? "|" : "") u_iteration "\" fingerPrint
+
+; This data can be up to 1.5 seconds old. Hence why warning marker isn't removed immediately on CC/orbital lift
+; So remember that a CC could in fact be a lifted orbital
+getLocalCompletedTownHalls(byRef aTownHalls := "")
+{
+	global aCompleteStructures
+	aTownHalls := []
+	aHallTypes := []
+	if aLocalPlayer.Race = "Protoss"
+		aHallTypes.insert(aUnitID.Nexus)
+	else if aLocalPlayer.Race = "Terran"
+		aHallTypes.insert(1, aUnitID.CommandCenter, aUnitID.CommandCenterFlying, aUnitID.OrbitalCommand, aUnitID.OrbitalCommandFlying)
+	else if aLocalPlayer.Race = "Zerg"
+		aHallTypes.insert(1, aUnitID.Hatchery, aUnitID.Lair, aUnitID.Hive)
+	else return 0
+	count := 0
+	for i, type in aHallTypes
+	{
+		if aCompleteStructures.HasKey(type)
+		{
+			for i, indexesAndFingerPrints in strsplit(aCompleteStructures[type], "|")
+			{
+				unit := strsplit(indexesAndFingerPrints, "\")  ; u_iteration "\" fingerPrint
+				, index := unit.1, fingerPrint := unit.2
+				if getUnitFingerPrint(unit.1) = unit.2
+				{
+					aTownHalls[unit.2] := {	"type": type
+										,	"unitIndex": index
+										, 	"fingerPrint": fingerPrint}
+					count++
+				}
+			}
+		}
+	}
+	return count 
+}
+
+TownHallRally(spokenWarning := "Rally")
+{
+	global aMiniMapWarning
+	time := getTime()
+	if !isObject(aCurrentGameTemp.WarnedHalls)
+		aCurrentGameTemp.WarnedHalls := []
+	getLocalCompletedTownHalls(aTownHalls) = 0
+
+	isLocalPlayerZerg := aLocalPlayer.Race = "Zerg"
+
+	for fingerPrint, unit in aTownHalls
+	{
+		unitIndex := unit.UnitIndex 
+		if aLocalPlayer.Race = "Terran"
+			unit.type := getUnitType(unit.UnitIndex) ; This will update the type if a CC/orbital has lifted resulting in the warning being immediately removed
+		if unit.type = aUnitID.CommandCenterFlying || unit.type = aUnitID.OrbitalCommandFlying
+			hasRallyPoint := True ; flag to remove warnings for these (reset them for when they land) and prevent warning 
+		else hasRallyPoint := getStructureRallyPoints(unitIndex,, isLocalPlayerZerg)
+
+		if !hasRallyPoint
+		{
+			if !aCurrentGameTemp.WarnedHalls.HasKey(fingerPrint) && (isLocalPlayerZerg || (!isLocalPlayerZerg && getStructureProductionInfo(unitIndex, getUnitType(unitIndex), aProduction,, True) && aProduction.1.progress > 0.5))
+			{
+				aCurrentGameTemp.WarnedHalls[fingerPrint] := unitIndex
+				aMiniMapWarning.insert({ "Unit": unitIndex
+										, "FingerPrint": fingerPrint
+										, "Time":  time
+										, "Owner":  aLocalPlayer["Slot"]
+										, "WarningType": "TownHallRally"})	
+				announceWarning := True
+			}
+		}
+		else if aCurrentGameTemp.WarnedHalls.HasKey(fingerPrint) ; This will remove warnings when a rally point has been set. *** the speed of this update for lifted CCs/orbitals depends on the update frequence of the unit bank read - so can be delays by 1.5 seconds
+		{
+			aCurrentGameTemp.WarnedHalls.Remove(fingerPrint, "")
+			removeMatchingWarning("TownHallRally", fingerPrint)
+		}
+	}
+	if announceWarning
+		tSpeak(spokenWarning)	
+	return
+}
+
+removeMatchingWarning(warningType, fingerPrint)
+{
+	global aMiniMapWarning
+	for i, warning in aMiniMapWarning
+	{
+		if warning.WarningType = warningType && warning.fingerPrint = fingerPrint
+		{
+			aMiniMapWarning.Remove(i, "")
+			return True
+		}
+	}
+	return false	
+}

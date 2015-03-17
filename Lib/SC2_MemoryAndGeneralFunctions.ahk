@@ -1937,23 +1937,33 @@ findAbilityTypePointer(pAbilities, unitType, abilityString)
 
 
 /*	cAbilityRallyStruct
-	Rally Stucture Size := 0x1C 
+	Rally Stucture Size := 0x1C (0x20 If you include the rally count)
 	+0x0 = rally count - (max 4)
-	Following Repeats for each rally (data only gets chagned when a new rally point >= current one is made)
+	Following Repeats for each rally (data only gets changed when a new rally point >= current one is made)
 	; eg 4 rally points, then set to rally on self structure, then none are changed 
 	; rally count = 0 when self rallied
-		+0x04 = rallied unit ID reference? (as in the unit which the building is rallied to)
-		+0x08 = rally/unit reference (changes depending on what is rallied to/type)
+		+0x04 = unit Finger print (>> 18 to get unit index)
+				**** This will be 0 If you don't currently have map vision of it e.g. a hatch which is under construction and doesnt yet provide vision to the rallied mineral patch
+		+0x08 = Unit Model pointer
 		+0xc = x1 
 		+0x10 = y1
 		+0x14 = z1
+		+0x18 = something which changes depending on what is rallied to
+		+0x1C = something which changes depending on what is rallied to
 	
-	Werdly a lifted CC (or spawning floating CC in the map editor) still has the
+	Weirdly a lifted CC (or spawning floating CC in the map editor) still has the
 	rally ability present (its rally count is zero though) even though it lacks this 
 	ability in map/unit editor data
+
+	For zerg town halls the above rally structure is used by normal units
+	The hatchery mineral/gas rally structure begins at 
+	cAbilityRallyStruct +0x74 - immediately at the end of the above rally structure
+	i.e. 4 * 1C (4 * rally points) + 4 bytes for the rally count.
+
 */
 
-getStructureRallyPoints(unitIndex, byRef aRallyPoints := "")
+; zergTownHallResourceRally - When true returns the rally structure for resources i.e. drones, instead of other units
+getStructureRallyPoints(unitIndex, byRef aRallyPoints := "", zergTownHallResourceRally := False)
 {
 	static O_IndexParentTypes := 0x18, cAbilRally := 0x1a
 
@@ -1967,21 +1977,24 @@ getStructureRallyPoints(unitIndex, byRef aRallyPoints := "")
 	{
 		pCAbillityStruct := readmemory(pAbilities + O_IndexParentTypes + 4 * cAbilRallyIndex, GameIdentifier)
 		bRallyStruct := readmemory(pCAbillityStruct + 0x34, GameIdentifier)
-		if (rallyCount := readMemory(bRallyStruct, GameIdentifier))
+		
+		ReadRawMemory(bRallyStruct + (zergTownHallResourceRally ? 0x74 : 0), GameIdentifier, rallyDump, 0x4 + 0x1C * 4) ; max rally count. Dump entire area - save a mem read
+		if rallyCount := NumGet(rallyDump, 0, "Int")
 		{	
-			ReadRawMemory(bRallyStruct, GameIdentifier, rallyDump, 0x14 + 0x1C * rallyCount)
+			;ReadRawMemory(bRallyStruct, GameIdentifier, rallyDump, 0x14 + 0x1C * rallyCount)
 			while (A_Index <= rallyCount)
 			{
-				aRallyPoints.insert({ "x": numget(rallyDump, (A_Index-1) * 0x1C + 0xC, "Int") / 4096
-							  		, "y": numget(rallyDump, (A_Index-1) * 0x1C + 0x10, "Int") / 4096
-							  		, "z": numget(rallyDump, (A_Index-1) * 0x1C + 0x14, "Int") / 4096 })	
+				aRallyPoints.insert({ "fingerPrint": fingerPrint := numget(rallyDump, (A_Index-1) * 0x1C + 0x04, "UInt")
+									, "unitIndex": fingerPrint >> 18
+									, "unitModelPointer": numget(rallyDump, (A_Index-1) * 0x1C + 0x08, "UInt")
+									, "x": numget(rallyDump, (A_Index-1) * 0x1C + 0xC, "Int") / 4096
+							  		, "y": numget(rallyDump, (A_Index-1) * 0x1C + 0x10, "Int") / 4096 })	
 			}
 		}
 		return rallyCount ; self rallied = 0
 	}
 	return -1 ; not rallyable
 }
-
 
 getPercentageUnitCompleted(B_QueuedUnitInfo)
 {	GLOBAL GameIdentifier
@@ -2501,6 +2514,11 @@ numgetUnitOwner(ByRef Memory, Unit)
 numgetUnitModelPointer(ByRef Memory, Unit)
 { global 
   return numget(Memory, Unit * S_uStructure + O_uModelPointer, "Int")  
+}
+
+getUnitModelPointer(Unit)
+{ global 
+  return ReadMemory(B_uStructure + Unit * S_uStructure + O_uModelPointer, GameIdentifier)
 }
 
  getGroupedQueensWhichCanInject(ByRef aControlGroup,  CheckMoveState := 0)
@@ -4176,7 +4194,6 @@ readConfigFile()
 	IniRead, Inject_RestoreSelection, %config_file%, Advanced Auto Inject Settings, Inject_RestoreSelection, 1
 	IniRead, BackspaceRestoreCameraDelay, %config_file%, Advanced Auto Inject Settings, BackspaceRestoreCameraDelay, 30
 	IniRead, InjectGroupingDelay, %config_file%, Advanced Auto Inject Settings, InjectGroupingDelay, 0
-	;IniRead, BackSpaceInjectsQueenSelectionDelay, %config_file%, Advanced Auto Inject Settings, BackSpaceInjectsQueenSelectionDelay, 0
 
 	IniRead, Inject_RestoreScreenLocation, %config_file%, Advanced Auto Inject Settings, Inject_RestoreScreenLocation, 1
 	IniRead, drag_origin, %config_file%, Advanced Auto Inject Settings, drag_origin, Left
@@ -5118,6 +5135,8 @@ getTownHallLarvaCount(unit)
 		return 0
 	; This structure also contains the addresses of the larva
 	; At +0x68 is a pointer to an array which stores the unit indexes for the spawned larva (indexes must be >> 18)
+	; If the larva is morphed to an egg, then these may point to the egg, but will be replaced when a new larva spawns
+	; so is not useful in finding unit production associated with a hatch
 	return ReadMemory(p + 0x5C, GameIdentifier)
 }
 
@@ -5437,9 +5456,30 @@ sigConverter(sig, mask, storeInClip := True)
 	return storeInClip ? clipboard := substr(r, 1, -2) : substr(r, 1, -2) 
 }
 
-; Pointer to town halls (completed and landed) ["SC2.exe"+03FC53E4]+0
-; an array of town hall unit indexes (just search for the town halls unit indexes as an AOB)
+; Pointer to a an array of town halls (completed and landed) in dynamic memory ["SC2.exe"+03FC53E4]+0
+; an array of town hall unit indexes (just search for the town halls finger prints as an AOB) (note: The static arrays are actually the control group which you are storing them in)
+; This will only contain town halls which are accessible via the backspace camera
 ; The town hall camera uses a static variable to cycle through them (zero based)
-; (Theres another array of indexes but these dont change when lifting orbitals (maybe when theyre killed))
-; This can be used to determine where the camera will jump to when backspace is sent
-; 
+; Note: The camera will still jump to a town hall which is actively lifting. It is removed from the 
+; structure when it completes the lift action.
+
+
+; **** These addresses are not zeroed after a game
+; and the values remain until a new townHall overwrites the old one
+; Since unit Index reuse count (ie part which forms the finger print) is zeroed at the start of a game
+; you cannot check if fingerprints match and if unit is still alive (unless you also do a unit type/player race check)
+; as its possible for the finger print to match i.e. same unit Index and same index reuse count (eg 0)
+; Only safe way is to use getPlayerBaseCameraCount()
+; Wrong!!! cant use getPlayerBaseCameraCount() as it seems when lifted the structure doesn't completely realign
+; so the lifted cc is still included - probably the same for dead ones. 
+/*
+getCameraTownHalls(byRef aTownHalls := "")
+{
+	aTownHalls := []
+	if baseCount := getPlayerBaseCameraCount()
+		ReadRawMemory(ReadMemory(*x***x*, GameIdentifier), GameIdentifier, buffer, 4 * baseCount) ; no one is every going to have more than 100
+	loop, % baseCount
+		fingerPrint := NumGet(buffer, (A_Index-1) * 4, "UInt"), aTownHalls[fingerPrint] :=  fingerPrint >> 18
+	return round(baseCount)
+}
+*/

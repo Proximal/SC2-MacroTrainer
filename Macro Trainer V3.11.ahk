@@ -2495,7 +2495,6 @@ ini_settings_write:
 	IniWrite, %Inject_RestoreSelection%, %config_file%, Advanced Auto Inject Settings, Inject_RestoreSelection
 	IniWrite, %BackspaceRestoreCameraDelay%, %config_file%, Advanced Auto Inject Settings, BackspaceRestoreCameraDelay
 	IniWrite, %InjectGroupingDelay%, %config_file%, Advanced Auto Inject Settings, InjectGroupingDelay
-	;IniWrite, %BackSpaceInjectsQueenSelectionDelay%, %config_file%, Advanced Auto Inject Settings, BackSpaceInjectsQueenSelectionDelay
 
 	IniWrite, %Inject_RestoreScreenLocation%, %config_file%, Advanced Auto Inject Settings, Inject_RestoreScreenLocation
 	IniWrite, %drag_origin%, %config_file%, Advanced Auto Inject Settings, drag_origin
@@ -4708,7 +4707,6 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		W_inject_ding_on_TT := "Note: Due to an inconsistency with the programming language, some systems may not hear the 'windows ding'."
 		auto_inject_time_TT := TT_auto_inject_time_TT :=  "This is in 'SC2' Seconds."
 		#cast_inject_key_TT := cast_inject_key_TT := "When pressed the program will inject all of your hatcheries.`n`nThis Hotkey is ONLY active while playing as zerg!"
-		Auto_inject_sleep_TT := "Lower this to make the inject round faster, BUT this will make it more obvious that it is being automated!"
 		CanQueenMultiInject_TT := "During minimap injects (and auto-Injects) a SINGLE queen may attempt to (shift-queue) inject multiple hatcheries providing:`nShe is the only nearby queen and she has enough energy.`n`nThis may increase the chance of having queens go walkabouts - but I have never observed this. "
 		InjectConserveQueenEnergy_TT := "Hatches which already have 19 larvae will not be injected, thereby saving queen energy.`n"
 									. "This setting is ignored by the 'Backspace' method.`n`n"
@@ -4981,7 +4979,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 
 		WorkerSplitType_TT := "Defines how many workers are rallied to each mineral patch."
 
-		Auto_inject_sleep_TT := Edit_pos_var_TT := "Sets the delay between each hatchery inject for the 'one button inject' method.`nThis has a large effect on the speed, and hence how 'human' the automation appears.`n`n"
+		Auto_inject_sleep_TT := editGUIInjectDelay_TT := "Sets the delay between each hatchery inject for the 'one button inject' method.`nThis has a large effect on the speed, and hence how 'human' the automation appears.`n`n"
 				. "The lowest reliable values will vary for users, but the minimap method should work fine with a delay of 0 ms.`n"
 				. "The backspace methods require a minimum of 10-20 ms."
 	
@@ -8759,7 +8757,11 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 		;	so the subsequent left click on the hatch will actually select the hatch (as the spell wasn't cast)
 		;	this was what part of the reason queens were sometimes being cancelled
 		if Inject_RestoreSelection
+		{
 			input.pSend(aAGHotkeys.set[Inject_control_group]), stopWatchCtrlID := stopwatch()
+			if (InjectGroupingDelay > 0)
+				sleep % ceil(InjectGroupingDelay * rand(1, Inject_SleepVariance))
+		}
 
 		HatchIndex := getBuildingList(aUnitID["Hatchery"], aUnitID["Lair"], aUnitID["Hive"])
 		if Inject_RestoreScreenLocation
@@ -11172,7 +11174,7 @@ releaseLogicallyStuckKeys(force := false)
 }
 GetAsyncKeyState(key)
 {
-    return 0x8000 & DllCall("GetAsyncKeyState", "UInt", getkeyVk(key), "Short") ? 1 : 0
+    return 0x8000 & DllCall("GetAsyncKeyState", "UInt", getkeyVk(key), "Short") ;? 1 : 0
 }
 
 /*
@@ -12230,13 +12232,17 @@ class autoBuild
 	{
 		if this.localUnits.HasKey(type)
 		{
-			indexes := this.localUnits[type]
-			loop, parse, indexes, |
+			indexesAndFingerPrints := this.localUnits[type]
+			loop, parse, indexesAndFingerPrints, |
 			{ 	; This is a bit overkill. The other thread updates this info ever 1.5 seconds or so
 				; and it's not a big deal if it's outdated.... but we are just checking a couple of units so might as well do it
-				if getUnitType(A_LoopField) = type 
-				&& getUnitOwner(A_LoopField) = aLocalPlayer.slot 
-				&& !(getunittargetfilter(A_LoopField) & (aUnitTargetFilter.Dead | aUnitTargetFilter.UnderConstruction))	
+
+				;if getUnitType(A_LoopField) = type 
+				;&& getUnitOwner(A_LoopField) = aLocalPlayer.slot 
+				;&& !(getunittargetfilter(A_LoopField) & (aUnitTargetFilter.Dead | aUnitTargetFilter.UnderConstruction))	
+				;	return true
+				unit := strsplit(A_LoopField, "\") ; u_iteration "\" fingerPrint
+				if getUnitFingerPrint(unit.1) = unit.2
 					return true
 			}
 		}
@@ -12977,4 +12983,37 @@ LeftMouseUp(point1)
 */ 
 
 
+/*
+*f1::
 
+fn := A_TickCount + 10000
+MTBlockInput, On
+
+;input.releaseKeys()
+while A_TickCount < fn 
+{
+	if A_index = 1
+	{
+		sendinput {blind}abc
+	}
+	
+	dsleep(50)
+}
+soundplay *-1
+send {blind}a
+
+MTBlockInput, Off
+return
+
+$f2::
+soundplay *-1
+settimer, timerkeytest, 30
+return 
+
+timerkeytest:
+ToolTip, % GetAsyncKeyState("LShift") "`n" getkeystate("Lshift") "`n" getkeystate("Lshift", "P") "`n`n======= " A_Index 
+. GetAsyncKeyState("Shift") "`n" getkeystate("shift") "`n" getkeystate("shift", "P")
+return
+
+
+*/
