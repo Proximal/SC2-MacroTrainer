@@ -4254,6 +4254,13 @@ readConfigFile()
 	IniRead, WarningsGeyserOverSaturationFollowUpDelay, %config_file%, %section%, WarningsGeyserOverSaturationFollowUpDelay, 25
 	IniRead, WarningsGeyserOverSaturationSpokenWarning, %config_file%, %section%, WarningsGeyserOverSaturationSpokenWarning, Geyser Saturation
 
+	;[TownHallRally]
+	section := "TownHallRally"
+	IniRead, TownHallRallyEnableTerran, %config_file%, %section%, TownHallRallyEnableTerran, 0
+	IniRead, TownHallRallyEnableProtoss, %config_file%, %section%, TownHallRallyEnableProtoss, 0
+	IniRead, TownHallRallyEnableZerg, %config_file%, %section%, TownHallRallyEnableZerg, 0
+	IniRead, TownHallRallySpokenWarning, %config_file%, %section%, TownHallRallySpokenWarning, Rally
+
 	;[Additional Warning Count]-----set number of warnings to make
 	IniRead, sec_supply, %config_file%, Additional Warning Count, supply, 1
 	IniRead, sec_mineral, %config_file%, Additional Warning Count, minerals, 1

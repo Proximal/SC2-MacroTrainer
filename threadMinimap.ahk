@@ -989,7 +989,7 @@ TownHallRally(spokenWarning := "Rally")
 
 		if !hasRallyPoint
 		{
-			if !aCurrentGameTemp.WarnedHalls.HasKey(fingerPrint) && (isLocalPlayerZerg || (!isLocalPlayerZerg && getStructureProductionInfo(unitIndex, getUnitType(unitIndex), aProduction,, True) && aProduction.1.progress > 0.5))
+			if !aCurrentGameTemp.WarnedHalls.HasKey(fingerPrint) && (isLocalPlayerZerg || (!isLocalPlayerZerg && getStructureProductionInfo(unitIndex, getUnitType(unitIndex), aProduction,, True) && aProduction.1.progress > 0.6 && aProduction.1.Item != "MothershipCore"))
 			{
 				aCurrentGameTemp.WarnedHalls[fingerPrint] := unitIndex
 				aMiniMapWarning.insert({ "Unit": unitIndex

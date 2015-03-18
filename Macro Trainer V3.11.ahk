@@ -2551,6 +2551,13 @@ ini_settings_write:
 	IniWrite, %WarningsGeyserOverSaturationFollowUpDelay%, %config_file%, %section%, WarningsGeyserOverSaturationFollowUpDelay	
 	IniWrite, %WarningsGeyserOverSaturationSpokenWarning%, %config_file%, %section%, WarningsGeyserOverSaturationSpokenWarning	
 
+	;[TownHallRally]
+	section := "TownHallRally"
+	IniWrite, %TownHallRallyEnableTerran%, %config_file%, %section%, TownHallRallyEnableTerran
+	IniWrite, %TownHallRallyEnableProtoss%, %config_file%, %section%, TownHallRallyEnableProtoss
+	IniWrite, %TownHallRallyEnableZerg%, %config_file%, %section%, TownHallRallyEnableZerg
+	IniWrite, %TownHallRallySpokenWarning%, %config_file%, %section%, TownHallRallySpokenWarning
+
 	;[Additional Warning Count]-----set number of warnings to make
 	IniWrite, %sec_supply%, %config_file%, Additional Warning Count, supply
 	IniWrite, %sec_mineral%, %config_file%, Additional Warning Count, minerals
@@ -3272,7 +3279,7 @@ IfWinExist
 					Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#AGInvokeGroup%group%,  Edit
 			}
 
-	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vWarnings_TAB, Supply||Macro|Workers|Warpgates|Detection List
+	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vWarnings_TAB, Supply||Macro|Rally|Workers|Warpgates|Detection List
 	Gui, Tab, Supply	
 	; Gui, Add, GroupBox, w420 h335, Supply				
 		Gui, Add, Checkbox, X%XTabX% y+30 Vsupplyon checked%supplyon%, Enable Alert
@@ -3414,6 +3421,16 @@ IfWinExist
 			Gui, Add, Text, xs+10 y+5 w125, Spoken Warning:
 				Gui, Add, Edit, w165 R1 VWarningsGeyserOverSaturationSpokenWarning center, %WarningsGeyserOverSaturationSpokenWarning%
 
+	Gui, Tab, Rally 
+		Gui, Add, GroupBox, x+50 y+30 w330 h140 section, Enable Town Hall Rally
+		Gui, Add, Checkbox, xp+15 yp+25 vTownHallRallyEnableTerran checked%TownHallRallyEnableTerran%, Terran 
+		Gui, Add, Checkbox, xp y+15 vTownHallRallyEnableProtoss checked%TownHallRallyEnableProtoss%, Protoss
+		Gui, Add, Checkbox, xp y+15 vTownHallRallyEnableZerg checked%TownHallRallyEnableZerg%, Zerg
+		Gui, Add, Text, xp y+15, Warning:
+			Gui, Add, Edit, x+35 yp-2 w155 R1 VTownHallRallySpokenWarning center, %TownHallRallySpokenWarning%
+
+		Gui, Add, GroupBox, xs ys+170 w330 h165, About 
+		Gui, Add, Text, xp+15 yp+25 w310, This provides both a verbal and minimap warning when the rally point of a town hall (nexi, hatcheries, command centres etc) has not been set.`n`nFor terran and protoss the warning is issued when a worker is more than 60`% complete, whereas with zerg the warning occurs immediately for a completed town hall.`n`nTo enable this visual minimap feature check the 'Display Alerts' checkbox listed under MiniMap/Overlays --> MiniMap --> General.
 
 	Gui, Tab, Workers
 		;Gui, Add, GroupBox, y+20 x%macro_R_TopGroupX% w185 h205, Worker Production	
@@ -13017,3 +13034,10 @@ return
 
 
 */
+/*
+f1::
+u := getSelectedUnitIndex()
+getStructureProductionInfo(u, getUnitType(u), a)
+objtree(a)
+clipboard := a.1.item 
+return 
