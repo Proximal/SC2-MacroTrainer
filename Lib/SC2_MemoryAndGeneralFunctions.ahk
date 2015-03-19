@@ -4196,6 +4196,7 @@ readConfigFile()
 	IniRead, InjectGroupingDelay, %config_file%, Advanced Auto Inject Settings, InjectGroupingDelay, 0
 
 	IniRead, Inject_RestoreScreenLocation, %config_file%, Advanced Auto Inject Settings, Inject_RestoreScreenLocation, 1
+	IniRead, Inject_SoundOnCompletion, %config_file%, Advanced Auto Inject Settings, Inject_SoundOnCompletion, 0
 	IniRead, drag_origin, %config_file%, Advanced Auto Inject Settings, drag_origin, Left
 
 	;[Read Opponents Spawn-Races]
@@ -4547,13 +4548,16 @@ readConfigFile()
 	IniRead, EnableToggleUnitPanelOverlayHotkey, %config_file%, %section%, EnableToggleUnitPanelOverlayHotkey, 1
 	IniRead, EnableCycleIdentifierHotkey, %config_file%, %section%, EnableCycleIdentifierHotkey, 1
 	IniRead, EnableAdjustOverlaysHotkey, %config_file%, %section%, EnableAdjustOverlaysHotkey, 1
+	IniRead, EnableMultiOverlayToggleHotkey, %config_file%, %section%, EnableMultiOverlayToggleHotkey, 0
+	IniRead, MultiOverlayToggleKey, %config_file%, %section%, MultiOverlayToggleKey, <#O
 
 ;	IniRead, DrawWorkerOverlay, %config_file%, %section%, DrawWorkerOverlay, 1
 ;	IniRead, DrawIdleWorkersOverlay, %config_file%, %section%, DrawIdleWorkersOverlay, 1
 
 	IniRead, ToggleAPMOverlayKey, %config_file%, %section%, ToggleAPMOverlayKey, <#A
 	IniRead, ToggleUnitOverlayKey, %config_file%, %section%, ToggleUnitOverlayKey, <#U
-	IniRead, ToggleIdleWorkersOverlayKey, %config_file%, %section%, ToggleIdleWorkersOverlayKey, <#L
+; This has been removed
+;	IniRead, ToggleIdleWorkersOverlayKey, %config_file%, %section%, ToggleIdleWorkersOverlayKey, <#L
 	IniRead, ToggleMinimapOverlayKey, %config_file%, %section%, ToggleMinimapOverlayKey, <#H
 	IniRead, ToggleIncomeOverlayKey, %config_file%, %section%, ToggleIncomeOverlayKey, <#I
 	IniRead, ToggleResourcesOverlayKey, %config_file%, %section%, ToggleResourcesOverlayKey, <#R
@@ -4565,7 +4569,8 @@ readConfigFile()
 	IniRead, OverlayIdent, %config_file%, %section%, OverlayIdent, 2
 	IniRead, SplitUnitPanel, %config_file%, %section%, SplitUnitPanel, 1
 	IniRead, unitPanelAlignNewUnits, %config_file%, %section%, unitPanelAlignNewUnits, 1
-	IniRead, DrawUnitUpgrades, %config_file%, %section%, DrawUnitUpgrades, 1
+	;IniRead, DrawUnitUpgrades, %config_file%, %section%, DrawUnitUpgrades, 1
+	IniRead, UnitOverlayMode, %config_file%, %section%, UnitOverlayMode, Units + Upgrades
 	IniRead, unitPanelDrawStructureProgress, %config_file%, %section%, unitPanelDrawStructureProgress, 1
 	IniRead, unitPanelDrawUnitProgress, %config_file%, %section%, unitPanelDrawUnitProgress, 1
 	IniRead, unitPanelDrawUpgradeProgress, %config_file%, %section%, unitPanelDrawUpgradeProgress, 1
@@ -4591,8 +4596,10 @@ readConfigFile()
 	IniRead, overlayMinimapTransparency, %config_file%, %section%, overlayMinimapTransparency, 255
 	IniRead, overlayMacroTownHallTransparency, %config_file%, %section%, overlayMacroTownHallTransparency, 255
 	IniRead, overlayLocalUpgradesTransparency, %config_file%, %section%, overlayLocalUpgradesTransparency, 255
+	IniRead, localUpgradesOverlayMode, %config_file%, %section%, localUpgradesOverlayMode, Time Remaining
 	IniRead, localUpgradesItemsPerRow, %config_file%, %section%, localUpgradesItemsPerRow, 6
 	IniRead, IdleWorkerOverlayThreshold, %config_file%, %section%, IdleWorkerOverlayThreshold, 1
+	IniRead, multiOverlayToggleBitField, %config_file%, %section%, multiOverlayToggleBitField, 0
 	
 	IniRead, TransparentBackgroundColour, %config_file%, %section%, TransparentBackgroundColour, 0x78000000
 	IniRead, BackgroundIncomeOverlay, %config_file%, %section%, BackgroundIncomeOverlay, 0

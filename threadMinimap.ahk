@@ -122,28 +122,31 @@ gameChange(UserSavedAppliedSettings := False)
 		;If (DrawMiniMap || DrawAlerts || DrawSpawningRaces || DrawPlayerCameras || warpgate_warn_on
 		;|| alert_array[GameType, "Enabled"])
 		SetTimer, MiniMap_Timer, %MiniMapRefresh%, -7
-
 		; Resume warning is written inside the doUnitDetection when called via Save
 		if ((ResumeWarnings || UserSavedAppliedSettings) && alert_array[GameType, "Enabled"])  
 			doUnitDetection(0, 0, 0, 0, "Resume")
 		Else
 			doUnitDetection(0, 0, 0, 0, "Reset") ; clear the variables within the function			
-		if (warpgate_warn_on && aLocalPlayer["Race"] = "Protoss") || supplyon || alert_array[GameType, "Enabled"]
-		|| ( (aLocalPlayer["Race"] = "Terran" && WarningsWorkerTerranEnable) || (aLocalPlayer["Race"] = "Protoss" && WarningsWorkerProtossEnable) || (aLocalPlayer["Race"] = "Zerg" && WarningsWorkerProtossEnable))
-		|| geyserOversaturationCheck	
-			settimer, unit_bank_read, 1500, -6   ; unitdetecion performed every second run. ; 2500 worked well %UnitDetectionTimer_ms% ; previous was 4000
-		else settimer, unit_bank_read, off
+		;if (warpgate_warn_on && aLocalPlayer["Race"] = "Protoss") || supplyon || alert_array[GameType, "Enabled"]
+		;|| ( (aLocalPlayer["Race"] = "Terran" && WarningsWorkerTerranEnable) || (aLocalPlayer["Race"] = "Protoss" && WarningsWorkerProtossEnable) || (aLocalPlayer["Race"] = "Zerg" && WarningsWorkerProtossEnable))
+		;|| geyserOversaturationCheck	
+		;|| ((aLocalPlayer["Race"] = "Terran" && TownHallRallyEnableTerran) || (aLocalPlayer["Race"] = "Protoss" && TownHallRallyEnableProtoss) || (aLocalPlayer["Race"] = "Zerg" && TownHallRallyEnableZerg))
+		;	settimer, unit_bank_read, 1500, -6   ; unitdetecion performed every second run. ; 2500 worked well %UnitDetectionTimer_ms% ; previous was 4000
+		;else settimer, unit_bank_read, off
+		
+		; **** Disable this check, as we need to update the thread shared aLocalUnitData object which is required for auto build!!****
+		settimer, unit_bank_read, 1500, -6   ; unit detection performed every second run. ; 2500 worked well %UnitDetectionTimer_ms% ; previous was 4000
 
 		if (aLocalPlayer["Race"] = "Terran" && WarningsWorkerTerranEnable) || (aLocalPlayer["Race"] = "Protoss" && WarningsWorkerProtossEnable) 
 			settimer, workerTerranProtossCheck, 1000, -5
 		else settimer, workerTerranProtossCheck, off
+		if (aLocalPlayer["Race"] = "Terran" && TownHallRallyEnableTerran) || (aLocalPlayer["Race"] = "Protoss" && TownHallRallyEnableProtoss) || (aLocalPlayer["Race"] = "Zerg" && TownHallRallyEnableZerg)
+			settimer, townHallRallyCheck, 250
+		else settimer, townHallRallyCheck, off
 		;settimer, worker, % workeron ? 1000 : "off", -5
 		settimer, supply, % supplyon ? 200 : "off", -5
 		settimer, gClock, 1000, -4
 		settimer, geyserOversaturationCheck, % WarningsGeyserOverSaturationEnable ? 250 : "Off"
-		if !A_IsCompiled
-			settimer, townHallRallyCheck, 250
-
 	}
 	else 
 	{
@@ -275,7 +278,7 @@ DrawMiniMap()
 	if DrawAlerts
 	{
 		aRemoveItems := []
-		for fingerprint, warning in aMiniMapWarning ; care not somethings insert rather than set key to fingerprint. Should Change this - so that warnings have value indicating if the key is a fingerprint (allows easier removal than a loop) - but need to think if about multiple warnings with same fingerprint
+		for i, warning in aMiniMapWarning ; care not somethings insert rather than set key to fingerprint. Should Change this - so that warnings have value indicating if the key is a fingerprint (allows easier removal than a loop) - but need to think if about multiple warnings with same fingerprint
 		{	
 			; this will remove warnings when they time out or if the unit had died 
 			; or been cancelled and replaced with another one 
@@ -527,12 +530,15 @@ unit_bank_read:
 
 ; Unit detection function is relatively slow, so only do it on every second routine call
 ; this allows this routine to be called faster to keep the other info up-to-date more quickly
-unit_bank_readCallCount++
-doUnitDetectionOnThisRun := Mod(unit_bank_readCallCount, 2) * (alert_array[GameType, "Enabled"] = 1)
+;unit_bank_readCallCount++
+;doUnitDetectionOnThisRun := unit_bank_readCallCount := Mod(unit_bank_readCallCount, 2) * (alert_array[GameType, "Enabled"] = 1)
+doUnitDetectionOnThisRun := alert_array[GameType, "Enabled"] && !doUnitDetectionOnThisRun
 ; If nothing is on or if only unitdetection is on but it is to be skipped on this pass, just return
-if !(warpgate_warn_on && aLocalPlayer["Race"] = "Protoss") && !WarningsGeyserOverSaturationEnable && !supplyon && !workeron && !doUnitDetectionOnThisRun
-&& !(WarningsWorkerZergEnable && aLocalPlayer["Race"] = "Zerg")
-	return
+; **** Disable this check, as we need to update the thread shared aLocalUnitData object which is required for auto build!!****
+;if !(warpgate_warn_on && aLocalPlayer["Race"] = "Protoss") && !WarningsGeyserOverSaturationEnable && !supplyon && !workeron && !doUnitDetectionOnThisRun
+;&& !(WarningsWorkerZergEnable && aLocalPlayer["Race"] = "Zerg")
+;&& !((aLocalPlayer["Race"] = "Terran" && TownHallRallyEnableTerran) || (aLocalPlayer["Race"] = "Protoss" && TownHallRallyEnableProtoss) || (aLocalPlayer["Race"] = "Zerg" && TownHallRallyEnableZerg))
+;	return
 
 SupplyInProductionCount := gateway_count := warpgate_count := ZergWorkerInProductionCount := 0
 If (aLocalPlayer["Race"] = "Terran")
@@ -927,7 +933,7 @@ geyserOversaturationWarning(aGeyserStructures, maxWorkers, maxTime, maxWarnings,
 
 townHallRallyCheck:
 ; Return if game is paused/ window not active
-TownHallRally()
+TownHallRally(TownHallRallySpokenWarning)
 return 
 
 ; aTmpCompleteStructures[unit_type] .=  (aTmpCompleteStructures[unit_type] != "" ? "|" : "") u_iteration "\" fingerPrint
@@ -974,6 +980,8 @@ TownHallRally(spokenWarning := "Rally")
 	time := getTime()
 	if !isObject(aCurrentGameTemp.WarnedHalls)
 		aCurrentGameTemp.WarnedHalls := []
+	if time < 5
+		return 
 	getLocalCompletedTownHalls(aTownHalls) = 0
 
 	isLocalPlayerZerg := aLocalPlayer.Race = "Zerg"

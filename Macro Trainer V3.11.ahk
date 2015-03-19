@@ -814,21 +814,16 @@ Return
 
 
 Overlay_Toggle:
-	If (A_ThisHotkey = ToggleMinimapOverlayKey "")
+	;If (A_ThisHotkey = ToggleMinimapOverlayKey "" && EnableToggleMiniMapHotkey) ; user could have some hotkeys and one disabled
+	;{
+	;	; Disable the minimap, but still draws detected units/non-converted gates
+	;	aThreads.MiniMap.ahkPostFunction("toggleMinimap")
+	;	return	
+	;}
+	;else 
 	{
-		; Disable the minimap, but still draws detected units/non-converted gates
-		aThreads.MiniMap.ahkPostFunction("toggleMinimap")
-		return	
-	}
-	else 
-	{
-		if !aThreads.Overlays.ahkReady()
-		{
-			launchOverlayThread()
-			while !aThreads.Overlays.ahkReady()
-				sleep 10
-		}
 		aThreads.Overlays.ahkFunction("overlayToggle", A_ThisHotkey) ; easiest to wait for function to finish and then update any changed vars
+		DrawMiniMap := aThreads.Minimap.ahkgetvar.DrawMiniMap
 		DrawIncomeOverlay := aThreads.Overlays.ahkgetvar.DrawIncomeOverlay
 		DrawResourcesOverlay := aThreads.Overlays.ahkgetvar.DrawResourcesOverlay
 		DrawArmySizeOverlay := aThreads.Overlays.ahkgetvar.DrawArmySizeOverlay
@@ -1500,7 +1495,9 @@ cast_inject:
 	;input.hookBlock()
 	MTBlockInput, Off
 	Thread, NoTimers, false
-	inject_set := getTime()  
+	inject_set := getTime()
+	if Inject_SoundOnCompletion
+		SoundPlay, %A_Temp%\Windows Ding.wav 
 	if auto_inject_alert
 		settimer, auto_inject, 250
 	If GetKeyState(gethotkeySuffix(cast_inject_key), "P")   ; The line below should now be fixed due to changes in hook/AHK source code.
@@ -2497,6 +2494,7 @@ ini_settings_write:
 	IniWrite, %InjectGroupingDelay%, %config_file%, Advanced Auto Inject Settings, InjectGroupingDelay
 
 	IniWrite, %Inject_RestoreScreenLocation%, %config_file%, Advanced Auto Inject Settings, Inject_RestoreScreenLocation
+	IniWrite, %Inject_SoundOnCompletion%, %config_file%, Advanced Auto Inject Settings, Inject_SoundOnCompletion
 	IniWrite, %drag_origin%, %config_file%, Advanced Auto Inject Settings, drag_origin
 
 	;[Read Opponents Spawn-Races]
@@ -2805,6 +2803,8 @@ ini_settings_write:
 	Iniwrite, %EnableToggleUnitPanelOverlayHotkey%, %config_file%, %section%, EnableToggleUnitPanelOverlayHotkey	
 	Iniwrite, %EnableCycleIdentifierHotkey%, %config_file%, %section%, EnableCycleIdentifierHotkey	
 	Iniwrite, %EnableAdjustOverlaysHotkey%, %config_file%, %section%, EnableAdjustOverlaysHotkey	
+	Iniwrite, %EnableMultiOverlayToggleHotkey%, %config_file%, %section%, EnableMultiOverlayToggleHotkey	
+	Iniwrite, %MultiOverlayToggleKey%, %config_file%, %section%, MultiOverlayToggleKey	
 
 	Iniwrite, %ToggleMinimapOverlayKey%, %config_file%, %section%, ToggleMinimapOverlayKey	
 	Iniwrite, %AdjustOverlayKey%, %config_file%, %section%, AdjustOverlayKey	
@@ -2823,7 +2823,8 @@ ini_settings_write:
 	Iniwrite, %OverlayIdent%, %config_file%, %section%, OverlayIdent	
 	Iniwrite, %SplitUnitPanel%, %config_file%, %section%, SplitUnitPanel	
 	Iniwrite, %unitPanelAlignNewUnits%, %config_file%, %section%, unitPanelAlignNewUnits	
-	Iniwrite, %DrawUnitUpgrades%, %config_file%, %section%, DrawUnitUpgrades
+;	Iniwrite, %DrawUnitUpgrades%, %config_file%, %section%, DrawUnitUpgrades ; Replaced with single option
+	Iniwrite, %UnitOverlayMode%, %config_file%, %section%, UnitOverlayMode ; Replaced with single option
 	Iniwrite, %unitPanelDrawStructureProgress%, %config_file%, %section%, unitPanelDrawStructureProgress
 	Iniwrite, %unitPanelDrawUnitProgress%, %config_file%, %section%, unitPanelDrawUnitProgress
 	Iniwrite, %unitPanelDrawUpgradeProgress%, %config_file%, %section%, unitPanelDrawUpgradeProgress
@@ -2836,9 +2837,10 @@ ini_settings_write:
 	Iniwrite, %drawLocalPlayerResources%, %config_file%, %section%, drawLocalPlayerResources
 	Iniwrite, %drawLocalPlayerIncome%, %config_file%, %section%, drawLocalPlayerIncome
 	Iniwrite, %drawLocalPlayerArmy%, %config_file%, %section%, drawLocalPlayerArmy
+	Iniwrite, %localUpgradesOverlayMode%, %config_file%, %section%, localUpgradesOverlayMode
 	Iniwrite, %localUpgradesItemsPerRow%, %config_file%, %section%, localUpgradesItemsPerRow
 	Iniwrite, %IdleWorkerOverlayThreshold%, %config_file%, %section%, IdleWorkerOverlayThreshold
-
+	Iniwrite, %multiOverlayToggleBitField%, %config_file%, %section%, multiOverlayToggleBitField
 
 	; convert from 0-100 to 0-255
 	loopList := "overlayIncomeTransparency,overlayMatchTransparency,overlayResourceTransparency,overlayArmyTransparency,overlayAPMTransparency"
@@ -3042,7 +3044,7 @@ IfWinExist
 	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% ys x165 vInjects_TAB, Info||Basic|Auto|Settings|Alerts
 	GuiControlGet, MenuTab, Pos, Injects_TAB
 	Gui, Tab,  Basic
-		Gui, Add, GroupBox, y+15 w200 h295 section vOriginTab, One Button Inject
+		Gui, Add, GroupBox, y+15 w200 h305 section vOriginTab, One Button Inject
 				GuiControlGet, OriginTab, Pos
 			Gui, Add, Text,xp+10 yp+25, Method:		
 					If (auto_inject = 0 OR auto_inject = "Disabled")
@@ -3056,28 +3058,28 @@ IfWinExist
 					tmp_xvar := OriginTabx + 10
 
 
-			Gui, Add, Text, xs+10 yp+45 vSillyGUIControlIdentVariable, Inject Hotkey:
+			Gui, Add, Text, xs+10 yp+45 vSillyGUIControlIdentVariable, Inject hotkey:
 			GuiControlGet, XTab, Pos, SillyGUIControlIdentVariable ;XTabX = x loc
 			Gui, Add, Edit, Readonly yp-2 xs+85 center w65 R1 vcast_inject_key gedit_hotkey, %cast_inject_key%
 			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#cast_inject_key,  Edit ;have to use a trick eg '#' as cant write directly to above edit var, or it will activate its own label!
 		
-			Gui, Add, Checkbox, xs+10 y+15 vInject_RestoreSelection checked%Inject_RestoreSelection% gInjectGUIToggleRestoreSelection, Restore Unit Selection 					
-			Gui, Add, Checkbox, xs+10 y+10 vInject_RestoreScreenLocation checked%Inject_RestoreScreenLocation% gInjectGUIToggleRestoreScreen, Restore Screen Location			
-
+			Gui, Add, Checkbox, xs+10 y+15 vInject_RestoreSelection checked%Inject_RestoreSelection% gInjectGUIToggleRestoreSelection, Restore unit selection 					
+			Gui, Add, Checkbox, xs+10 y+10 vInject_RestoreScreenLocation checked%Inject_RestoreScreenLocation% gInjectGUIToggleRestoreScreen, Restore screen location			
+			Gui, Add, Checkbox, xs+10 y+10 vInject_SoundOnCompletion checked%Inject_SoundOnCompletion%, Beep on completion 			
 			
-			Gui, Add, Text, xs+10 y+20 vInjectSleepVarianceGUIText, Sleep Variance `%:
+			Gui, Add, Text, xs+10 y+15 vInjectSleepVarianceGUIText, Sleep variance `%:
 			Gui, Add, Edit, Number Right xs+145 yp-2 w45 vEdit_Inject_SleepVariance
 				Gui, Add, UpDown,  Range0-100000 vInject_SleepVariance, % (Inject_SleepVariance - 1) * 100  			
 
-			Gui, Add, Text, xs+10 yp+35 vInjectDelayGUIText, Inject Delay (ms):
+			Gui, Add, Text, xs+10 yp+35 vInjectDelayGUIText, Inject delay (ms):
 			Gui, Add, Edit, Number Right xs+145 yp-2 w45 veditGUIInjectDelay
 				Gui, Add, UpDown,  Range0-100000 vAuto_inject_sleep, %auto_inject_sleep%
 
-			Gui, Add, Text, % "xs+10 yp+35 disabled" !Inject_RestoreSelection " vInjectTextGroupingDelay", Grouping Delay (ms):
+			Gui, Add, Text, % "xs+10 yp+35 disabled" !Inject_RestoreSelection " vInjectTextGroupingDelay", Grouping delay (ms):
 			Gui, Add, Edit, % "Number Right xs+145 yp-2 w45 disabled" !Inject_RestoreSelection " vInjectEditGroupingDelay" 
 				Gui, Add, UpDown,  % "Range0-5000 disabled" !Inject_RestoreSelection " vInjectGroupingDelay", %InjectGroupingDelay%	
 			
-			Gui, Add, Text, % "xs+10 yp+35 disabled" !Inject_RestoreScreenLocation " vBackspaceTextRestoreCameraDelay", Restore Camera Delay (ms):
+			Gui, Add, Text, % "xs+10 yp+35 disabled" !Inject_RestoreScreenLocation " vBackspaceTextRestoreCameraDelay", Restore camera delay (ms):
 			Gui, Add, Edit, % "Number Right xs+145 yp-2 w45 disabled" !Inject_RestoreScreenLocation " vBackspaceEditRestoreCameraDelay"
 				Gui, Add, UpDown,  % "Range20-5000 disabled" !Inject_RestoreScreenLocation  " vBackspaceRestoreCameraDelay", %BackspaceRestoreCameraDelay%
 
@@ -3085,13 +3087,13 @@ IfWinExist
 			Gui, Add, Text,yp+57 xp+10 yp+25 w380, This is a semi-automated function. Each time the hotkey is pressed your hatches will be injected.
 
 		hide := !instr(auto_inject, "Backspace")
-		Gui, Add, GroupBox, w200 h295 ys xs+210 section hidden%hide% vBackspaceGroupBoxID, Backspace Settings
+		Gui, Add, GroupBox, w200 h305 ys xs+210 section hidden%hide% vBackspaceGroupBoxID, Backspace Settings
 
-			Gui, Add, Text, xs+10 yp+25 hidden%hide% vBackspaceTextCameraStoreID, Create Camera: %A_space% %A_space% (Location Storge)
+			Gui, Add, Text, xs+10 yp+25 hidden%hide% vBackspaceTextCameraStoreID, Create camera: %A_space% %A_space% (location storge)
 				Gui, Add, Edit, Readonly y+10 xs+60 w90 R1 center vBI_create_camera_pos_x hidden%hide%, %BI_create_camera_pos_x%
 					Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#BI_create_camera_pos_x hidden%hide%,  Edit
 
-			Gui, Add, Text, xs+10 yp+40 hidden%hide% vBackspaceTextCameraGotoID, Camera Position: %A_space% %A_space% (Goto Location)
+			Gui, Add, Text, xs+10 yp+40 hidden%hide% vBackspaceTextCameraGotoID, Camera position: %A_space% %A_space% (Recall location)
 				Gui, Add, Edit, Readonly y+10 xs+60 w90 R1 center vBI_camera_pos_x hidden%hide%, %BI_camera_pos_x%
 					Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#BI_camera_pos_x hidden%hide%,  Edit
 			Gui, Add, Text, % "xs+10 yp+40 vBackspaceDragTextID hidden" (auto_inject != "Backspace"), Drag Origin:
@@ -3435,9 +3437,12 @@ IfWinExist
 	Gui, Tab, Workers
 		;Gui, Add, GroupBox, y+20 x%macro_R_TopGroupX% w185 h205, Worker Production	
 
+		; Need a variable for the terran button so as to align the below groupbox
+		; ** need a variable for the other two, so that the guicontrolget command will work correctly - otherwise it will return the value
+		; of a control with the text 'protoss' or 'zerg'
 		Gui, Add, Button, x+90 y+30 w65 h25 vMacroWarningsWorkerTerranButtonGUI gGUIMacroWarningsWorkerDisplayRace, Terran
-		Gui, Add, Button, x+20 w65 h25 gGUIMacroWarningsWorkerDisplayRace, Protoss
-		Gui, Add, Button, x+20 w65 h25 gGUIMacroWarningsWorkerDisplayRace, Zerg
+		Gui, Add, Button, x+20 w65 h25 vMacroWarningsWorkerProtossButtonGUI gGUIMacroWarningsWorkerDisplayRace, Protoss
+		Gui, Add, Button, x+20 w65 h25 vMacroWarningsWorkerZergButtonGUI gGUIMacroWarningsWorkerDisplayRace, Zerg
 		
 		GuiControlGet, MacroWarningsWorkerTerranButtonGUI, Pos
 		for k, race in ["Terran", "Protoss", "Zerg"]
@@ -4548,7 +4553,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 
 	Gui, Tab, Overlays
 			;Gui, add, text, y+20 X%XTabX%, Display Overlays:
-			Gui, Add, GroupBox, y+15 x+20 w195 h270 section, Display Overlays:
+			Gui, Add, GroupBox, y+15 x+20 w195 h280 section, Display Overlays:
 				Gui, Add, Checkbox, xp+10 yp+20 vDrawIncomeOverlay Checked%DrawIncomeOverlay%, Income
 					Gui, Add, Checkbox, xp+95 yp vDrawLocalPlayerIncome Checked%drawLocalPlayerIncome%, Include Self
 				Gui, Add, Checkbox, xs+10 y+13 vDrawResourcesOverlay Checked%DrawResourcesOverlay%, Resources
@@ -4565,18 +4570,23 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 				Gui, Add, Checkbox, xs+10 y+7 vDrawWorkerOverlay Checked%DrawWorkerOverlay%, Local Harvester Count
 				Gui, Add, Checkbox, xp y+13 vDrawLocalPlayerColourOverlay Checked%DrawLocalPlayerColourOverlay%, Local Player Colour
 				Gui, Add, Checkbox, xp y+13 vDrawMacroTownHallOverlay Checked%DrawMacroTownHallOverlay%, Town Hall Macro
-				Gui, Add, Checkbox, xp y+13 vDrawLocalUpgradesOverlay Checked%DrawLocalUpgradesOverlay% Check3, Local Upgrades
+				Gui, Add, Checkbox, xp y+13 vDrawLocalUpgradesOverlay Checked%DrawLocalUpgradesOverlay%, Local Upgrades
 			
 			;	Gui, Add, Edit, Number Right x+25 yp-2 w50 vTT_localUpgradesItemsPerRow
 			;		Gui, Add, UpDown,  Range0-100 vlocalUpgradesItemsPerRow, %localUpgradesItemsPerRow%	
 				Gui, Add, Text, x+10 yp, Size:
 				Gui, Add, DropDownList, % "x+5 yp-3 w40 vlocalUpgradesItemsPerRow Choose" (localUpgradesItemsPerRow != "" ? localUpgradesItemsPerRow + 1 : 1), 0|1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16
+				Gui, Add, Text, xs+45 yp+28, Mode:
+				Gui, Add, DropDownList, x+10 yp-2 vlocalUpgradesOverlayMode w100, Time Remaining|Percent bar
+				GuiControl, ChooseString, localUpgradesOverlayMode, %localUpgradesOverlayMode%
 
-
-				Gui, Add, GroupBox, ys XS+220 w170 h270, Match Overlay:
-				Gui, Add, Checkbox, xp+10 yp+20 vDrawUnitUpgrades Checked%DrawUnitUpgrades%, Show Upgrades
-				Gui, Add, Checkbox, xp y+13 vDrawUnitOverlay Checked%DrawUnitOverlay%, Show Unit Count/Production
-				Gui, Add, Checkbox, xp y+13 vSplitUnitPanel ggToggleAlignUnitGUI Checked%SplitUnitPanel% , Split Units/Buildings
+				Gui, Add, GroupBox, ys XS+220 w170 h280, Match Overlay:
+				Gui, Add, Checkbox, xp+10 yp+20 vDrawUnitOverlay Checked%DrawUnitOverlay%, Enable
+				Gui, Add, DropDownList, xp yp+25 vUnitOverlayMode, Units + Upgrades|Units|Upgrades
+				GuiControl, ChooseString, UnitOverlayMode, %UnitOverlayMode%
+				;Gui, Add, Checkbox, xp+10 yp+20 vDrawUnitUpgrades Checked%DrawUnitUpgrades%, Show Upgrades
+				;Gui, Add, Checkbox, xp y+13 vDrawUnitOverlay Checked%DrawUnitOverlay%, Show Unit Count/Production
+				Gui, Add, Checkbox, xp y+13 vSplitUnitPanel ggToggleAlignUnitGUI Checked%SplitUnitPanel%, Split Units/Buildings
 				Gui, Add, Checkbox, % "xp y+13 vUnitPanelAlignNewUnits Checked" unitPanelAlignNewUnits " disabled" !SplitUnitPanel, Align New units
 				Gui, Add, Checkbox, xp y+13 vUnitPanelDrawStructureProgress Checked%unitPanelDrawStructureProgress%, Show Structure Progress 
 				Gui, Add, Checkbox, xp y+13 vUnitPanelDrawUnitProgress Checked%unitPanelDrawUnitProgress%, Show Unit Progress 
@@ -4587,7 +4597,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 				Gui, Add, Button, center xp y+15 w70 h30 vUnitPanelFilterButton Gg_GUICustomUnitPanel, Unit Filter
 				Gui, Add, Button, center x+10 yp w70 h30 vUnitPanelGuideButton GgUnitPanelGuide, Guide
 
-			Gui, Add, GroupBox, XS ys+280 w195 h55 section, Player Identifier:	
+			Gui, Add, GroupBox, XS ys+290 w195 h55 section, Player Identifier:	
 			;	Gui, Add, Text, yp+25 xp+10 w80, Player Identifier:
 				if OverlayIdent in 0,1,2,3
 					droplist3_var := OverlayIdent + 1
@@ -4639,7 +4649,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 			Gui, Add, Checkbox, xp y+10 vBackgroundMacroAutoBuildOverlay Checked%BackgroundMacroAutoBuildOverlay%, Auto Build
 
 	Gui, Tab, Hotkeys 
-		Gui, add, GroupBox, x+20 y+15 w285 h320, Overlay Hotkeys
+		Gui, add, GroupBox, x+20 y+15 w340 h355, Overlay Hotkeys
 			;Gui, Add, Text, section xp+15 yp+25, Temp. Hide MiniMap:
 			Gui, Add, Checkbox, section xp+15 yp+25 vEnableHideMiniMapHotkey checked%EnableHideMiniMapHotkey%, Temp. Hide MiniMap:
 			Gui, Add, Edit, Readonly yp-2 xp+130 center w85 R1 vTempHideMiniMapKey gedit_hotkey, %TempHideMiniMapKey%
@@ -4666,14 +4676,19 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#ToggleArmySizeOverlayKey, Edit 		
 
 			;Gui, Add, Text, xs yp+35, Toggle Workers:
-			Gui, Add, Checkbox, section xs yp+35 vEnableToggleWorkerOverlayHotkey checked%EnableToggleWorkerOverlayHotkey%, Toggle Resources:
+			Gui, Add, Checkbox, section xs yp+35 vEnableToggleWorkerOverlayHotkey checked%EnableToggleWorkerOverlayHotkey%, Worker Count:
 			Gui, Add, Edit, Readonly yp-2 xp+130 center w85 R1 vToggleWorkerOverlayKey gedit_hotkey, %ToggleWorkerOverlayKey%
 			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#ToggleWorkerOverlayKey, Edit 		
 
 			;Gui, Add, Text, xs yp+35, Toggle Unit Panel:
 			Gui, Add, Checkbox, section xs yp+35 vEnableToggleUnitPanelOverlayHotkey checked%EnableToggleUnitPanelOverlayHotkey%, Toggle Unit Panel:
 			Gui, Add, Edit, Readonly yp-2 xp+130 center w85 R1 vToggleUnitOverlayKey gedit_hotkey, %ToggleUnitOverlayKey%
-			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#ToggleUnitOverlayKey, Edit 		
+			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#ToggleUnitOverlayKey, Edit 	
+
+			Gui, Add, Checkbox, section xs yp+35 vEnableMultiOverlayToggleHotkey checked%EnableMultiOverlayToggleHotkey%, Multi-Overlay Toggle:
+			Gui, Add, Edit, Readonly yp-2 xp+130 center w85 R1 vMultiOverlayToggleKey gedit_hotkey, %MultiOverlayToggleKey%
+			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#MultiOverlayToggleKey, Edit 
+			Gui, Add, Button, yp x+10 gmultiOverlayToggleGUI, Options 
 
 			;Gui, Add, Text, xs yp+35, Cycle Overlays:
 			;Gui, Add, Edit, Readonly yp-2 xp+120 center w85 R1 vCycleOverlayKey gedit_hotkey, %CycleOverlayKey%
@@ -5276,7 +5291,6 @@ gToggleAlignUnitGUI:
 GuiControlGet, state,, SplitUnitPanel
 GUIControl, Enable%state%, unitPanelAlignNewUnits
 return 
-
 
 GUIMacroWarningsWorkerDisplayRace:
 GuiControlGet, RaceGUI,, %A_GuiControl%
@@ -7455,10 +7469,18 @@ GUISelectionList(Title = "", textField := "Select Unit Type(s):", list := "Error
 	GUI, Add2AG:Show, w160 h380, %Title%
 	Gui, Add2AG:+OwnerOptions
 	Gui, Options:+Disabled
- 	;return ;cant use return here, otherwise script will continue running immeditely after the functionc call
+ 	;return ;cant use return here, otherwise script will continue running immediately after the function call
 	;pause	
 	WinWaitClose, ahk_id %GuiHWND%
-						; ****also note, the function will jump to bclose but aftwards will continue from here linearly down
+						; ****also note, the function will jump to bclose but afterwards will continue from here linearly down
+	if !close ; close doesn't need to be static, as B_closeAdd2AG/Add2AGGUIEscape creates this variable in the already running function
+	{
+		if multiSelectionDelimiter
+			StringReplace, F_drop_Name, F_drop_Name, |, %multiSelectionDelimiter%, All
+		Return F_drop_Name
+	}
+	return 
+
 	B_ADDAdd2AG:				;hence have to check whether to return any value
 	Gui, Options:-Disabled
 	Gui, Options:Show		;required to keep from minimising
@@ -7466,13 +7488,6 @@ GUISelectionList(Title = "", textField := "Select Unit Type(s):", list := "Error
 	Gui Add2AG:Destroy
 	;GuiControlGet, Edit_Unit_name,, F_drop_Name
 	;pause off
-
-	if !close
-	{
-		if multiSelectionDelimiter
-			StringReplace, F_drop_Name, F_drop_Name, |, %multiSelectionDelimiter%, All
-		Return F_drop_Name
-	}
 	Return 
 
 	B_closeAdd2AG:
@@ -8335,6 +8350,8 @@ CreateHotkeys()
 		if EnableToggleUnitPanelOverlayHotkey
 			hotkey, %ToggleUnitOverlayKey%, Overlay_Toggle, on
 		; hotkey, %CycleOverlayKey%, Overlay_Toggle, on
+		if EnableMultiOverlayToggleHotkey
+			hotkey, %MultiOverlayToggleKey%, Overlay_Toggle, on		
 
 		if race_reading 
 			hotkey, %read_races_key%, find_races, on
@@ -8469,6 +8486,7 @@ disableAllHotkeys()
 		try hotkey, %ToggleArmySizeOverlayKey%, off			
 		try hotkey, %ToggleWorkerOverlayKey%, off	
 		try hotkey, %ToggleUnitOverlayKey%, off						
+		try hotkey, %MultiOverlayToggleKey%, off						
 		; try hotkey, %CycleOverlayKey%, off		
 		Try	hotkey, %read_races_key%, off
 		try	hotkey, %inject_start_key%, off
@@ -10902,7 +10920,7 @@ launchOverlayThread()
 		if A_IsCompiled
 			overlayScript := LoadScriptString("threadOverlaysFull.ahk")
 		else FileRead, overlayScript, threadOverlays.ahk	
-		aThreads.Overlays.ahktextdll(overlayScript) ; takes 30-40 ms to become ready()
+		aThreads.Overlays.ahktextdll(GlobalVarsScript("aThreads", 0, aThreads) overlayScript) ; takes 30-40 ms to become ready()
 	}
 	Return 
 }
@@ -12995,49 +13013,71 @@ LeftMouseDown(point2)
 KeyDown(Escape)
 KeyUp(Escape)
 LeftMouseUp(point1)
-
-
 */ 
 
 
-/*
-*f1::
 
-fn := A_TickCount + 10000
-MTBlockInput, On
 
-;input.releaseKeys()
-while A_TickCount < fn 
+
+multiOverlayToggleGUI:
+GUI, multiOverlayToggle:+LastFoundExist
+IfWinExist 
 {
-	if A_index = 1
-	{
-		sendinput {blind}abc
-	}
-	
-	dsleep(50)
+    WinActivate
+    Return                                  
 }
-soundplay *-1
-send {blind}a
+bitfield := multiOverlayToggleBitField
+Gui, multiOverlayToggle:New
+Gui, add, GroupBox, x20 y+20 w270 h140 section, Overlays 
+Gui, Add, Checkbox, % "xp+15 yp+25 vMultiOverlayToggleMinimap  checked" bitfield & 1, Minimap 
+Gui, Add, Checkbox,% "xp y+5 vMultiOverlayToggleIncome checked" bitfield & 2, Income 
+Gui, Add, Checkbox,% "xp y+5 vMultiOverlayToggleResources checked" bitfield & 4, Resources 
+Gui, Add, Checkbox,% "xp y+5 vMultiOverlayToggleArmySize checked" bitfield & 8, Army Size 
+Gui, Add, Checkbox,% "xp y+5 vMultiOverlayToggleAPM checked" bitfield & 16, APM
+Gui, Add, Checkbox,% "xp y+5 vMultiOverlayToggleIdleWorkers checked" bitfield & 32, Idle workers
+Gui, Add, Checkbox, % "xp+135 ys+25 vMultiOverlayToggleHarvesterCount checked" bitfield & 64, Harvester count 
+Gui, Add, Checkbox,% "xp y+5 vMultiOverlayToggleUnitPanel checked" bitfield & 128, Unit panel
+Gui, Add, Checkbox,% "xp y+5 vMultiOverlayTogglePlayerColour checked" bitfield & 256, Player colour
+Gui, Add, Checkbox,% "xp y+5 vMultiOverlayToggleTownHallMacro checked" bitfield & 512, Town hall macro 
+Gui, Add, Checkbox,% "xp y+5 vMultiOverlayToggleLocalUpgrades checked" bitfield & 1024, Local upgrades  
 
-MTBlockInput, Off
-return
-
-$f2::
-soundplay *-1
-settimer, timerkeytest, 30
+Gui, add, GroupBox, x20 ys+160 w270 h65 section, About 
+Gui, Add, text, xp+15 yp+25 w240, This hotkey allows multiple overlays to be toggled on/off.
+Gui, add, button, xs ys+85 w45 h35 gMultiOverlayToggleGUISUbmit, Save
+Gui, add, button, x+50 yp w45 h35 gMultiOverlayToggleGUIClose, Cancel
+GUI, +AlwaysOnTop +ToolWindow
+Gui, show, w400 h400, Toggle Overlays
+Gui, +OwnerOptions
+Gui, Options:+Disabled   
 return 
 
-timerkeytest:
-ToolTip, % GetAsyncKeyState("LShift") "`n" getkeystate("Lshift") "`n" getkeystate("Lshift", "P") "`n`n======= " A_Index 
-. GetAsyncKeyState("Shift") "`n" getkeystate("shift") "`n" getkeystate("shift", "P")
-return
-
-
-*/
-/*
-f1::
-u := getSelectedUnitIndex()
-getStructureProductionInfo(u, getUnitType(u), a)
-objtree(a)
-clipboard := a.1.item 
+MultiOverlayToggleGUISUbmit:
+MultiOverlayToggleGUISUbmit()
 return 
+
+MultiOverlayToggleGUISUbmit() ; Save a couple of global variables
+{
+	Local result, bitValue, variable
+	Gui, submit
+	Gui, Options:-Disabled
+	Gui, Options:Show
+	GUI, Destroy
+	result := 0, bitValue := 1
+	for i, variable in ["Minimap", "Income", "Resources", "ArmySize", "APM", "IdleWorkers", "HarvesterCount", "UnitPanel", "PlayerColour", "TownHallMacro", "LocalUpgrades"]
+	{
+	    variable := "MultiOverlayToggle" variable
+	    if (%variable%)
+	        result |= bitValue
+	    bitValue *= 2
+	}
+	multiOverlayToggleBitField := result
+	Iniwrite, %multiOverlayToggleBitField%, %config_file%, Overlays, multiOverlayToggleBitField
+	return 
+}
+
+MultiOverlayToggleGUIEscape:
+MultiOverlayToggleGUIClose:
+Gui, Options:-Disabled
+GUI, Destroy
+return 
+
