@@ -6,6 +6,7 @@ SetBatchLines, -1 ; This is the default for AHK_H, but any other value eg 30 cau
 ListLines, Off
 OnExit, ShutdownProcedure 
 scriptWinTitle := changeScriptMainWinTitle()
+global aThreads
 
 l_GameType := "1v1,2v2,3v3,4v4,FFA"
 l_Races := "Terran,Protoss,Zerg"
@@ -116,7 +117,7 @@ Return
 unitPanelOverlayTimer:
 If (WinActive(GameIdentifier) || Dragoverlay)
 {
-	If (DrawUnitOverlay || DrawUnitUpgrades)
+	If (DrawUnitOverlay)
 	{
 		; 854 unit count (2v2 all 4 players being drawn)
 		; 10 ms for getEnemyUnitCount+FilterUnits 
@@ -220,9 +221,9 @@ overlayToggle(hotkey)
 	{
 		; if more than one overlays on. Turn then all off. Then cycle
 		; DrawIncomeOverlay, DrawResourcesOverlay, DrawArmySizeOverlay, DrawAPMOverlay, DrawUnitOverlay, All
-		If ((ActiveOverlays := DrawIncomeOverlay + DrawResourcesOverlay + DrawArmySizeOverlay + DrawAPMOverlay + ((DrawUnitOverlay || DrawUnitUpgrades) ? 1 : 0)) > 1)
+		If ((ActiveOverlays := DrawIncomeOverlay + DrawResourcesOverlay + DrawArmySizeOverlay + DrawAPMOverlay + (DrawUnitOverlay ? 1 : 0)) > 1)
 		{
-			DrawResourcesOverlay := DrawArmySizeOverlay := DrawAPMOverlay := DrawIncomeOverlay := DrawUnitOverlay := DrawUnitUpgrades := 0
+			DrawResourcesOverlay := DrawArmySizeOverlay := DrawAPMOverlay := DrawIncomeOverlay := DrawUnitOverlay := 0
 			DrawResourcesOverlay(-1), DrawArmySizeOverlay(-1), DrawAPMOverlay(-1), DrawIncomeOverlay(-1), DrawUnitOverlay(-1)
 		}
 		Else If (ActiveOverlays = 0)
@@ -236,53 +237,137 @@ overlayToggle(hotkey)
 			Else If DrawArmySizeOverlay
 				DrawAPMOverlay := !DrawResourcesOverlay := DrawArmySizeOverlay :=  0, DrawArmySizeOverlay(-1)
 			Else If DrawAPMOverlay
-				DrawUnitUpgrades := DrawUnitOverlay := !DrawAPMOverlay :=  0, DrawAPMOverlay(-1)
-			Else If (DrawUnitOverlay || DrawUnitUpgrades) 	; turn them all on
+				DrawUnitOverlay := !DrawAPMOverlay :=  0, DrawAPMOverlay(-1)
+			Else If (DrawUnitOverlay) 	; turn them all on
 				DrawResourcesOverlay := DrawArmySizeOverlay := DrawAPMOverlay := DrawIncomeOverlay := 1 	
 		}
 		SetTimer, gosubAllOverlays, -5 
-	}	
-	Else If (hotkey = ToggleIncomeOverlayKey "")
+	}
+	; Have this hotkey at the top as it is exclusive (i.e. dont want to retoggle if hotkey matches another overlay toggle)
+	if (EnableMultiOverlayToggleHotkey && hotkey = MultiOverlayToggleKey "")
+	{
+		multiOverlayToggle()	; sets the refresh timer itself	
+		return
+	}
+
+	if (EnableToggleMiniMapHotkey && hotkey = ToggleMinimapOverlayKey)
+	{
+		; Disable the minimap, but still draws detected units/non-converted gates
+		aThreads.MiniMap.ahkPostFunction("toggleMinimap")		
+	}
+
+	If (EnableToggleIncomeOverlayHotkey && hotkey = ToggleIncomeOverlayKey "")
 	{
 		If (!DrawIncomeOverlay := !DrawIncomeOverlay)
 			DrawIncomeOverlay(-1)	
 	}
-	Else If (hotkey = ToggleResourcesOverlayKey "")
+	If (EnableToggleResourcesOverlayHotkey && hotkey = ToggleResourcesOverlayKey "")
 	{
 		If (!DrawResourcesOverlay := !DrawResourcesOverlay)
 			DrawResourcesOverlay(-1)
 	}
-	Else If (hotkey = ToggleArmySizeOverlayKey "")
+	If (EnableToggleArmySizeOverlayHotkey && hotkey = ToggleArmySizeOverlayKey "")
 	{
 		If (!DrawArmySizeOverlay := !DrawArmySizeOverlay)
 			DrawArmySizeOverlay(-1)	
 	}
-	Else If (hotkey = ToggleWorkerOverlayKey "")
+	If (EnableToggleWorkerOverlayHotkey && hotkey = ToggleWorkerOverlayKey "")
 	{
 		If (!DrawWorkerOverlay := !DrawWorkerOverlay)
 			DrawWorkerOverlay(-1)
-	}	
-	Else If (hotkey = ToggleIdleWorkersOverlayKey "")
+	}
+; 	Removed. Doesnt have a hotkeyEnabled variable either		
+;	Else If (hotkey = ToggleIdleWorkersOverlayKey "")
+;	{
+;		If (!DrawIdleWorkersOverlay := !DrawIdleWorkersOverlay)
+;			DrawIdleWorkersOverlay(-1)
+;	}	
+	; units 
+	; units + upgrades
+	; upgrades
+	; off
+	If (EnableToggleUnitPanelOverlayHotkey && hotkey = ToggleUnitOverlayKey "")
 	{
-		If (!DrawIdleWorkersOverlay := !DrawIdleWorkersOverlay)
-			DrawIdleWorkersOverlay(-1)
-	}	
-	Else If (hotkey = ToggleUnitOverlayKey "")
-	{
-		if (!DrawUnitOverlay && !DrawUnitUpgrades)	
-			DrawUnitOverlay := True	
-		else if (DrawUnitOverlay && !DrawUnitUpgrades)
-			DrawUnitUpgrades := True
-		else if (DrawUnitOverlay && DrawUnitUpgrades)
-			DrawUnitOverlay := False, DrawUnitUpgrades := True		
-		else if (!DrawUnitOverlay && DrawUnitUpgrades)
-			DrawUnitUpgrades := False
-		If (!DrawUnitOverlay && !DrawUnitUpgrades)
+		if !DrawUnitOverlay	
+			DrawUnitOverlay := True, UnitOverlayMode := "Units"
+		else if (UnitOverlayMode = "Units")
+			UnitOverlayMode := "Units + Upgrades"
+		else if (UnitOverlayMode = "Units + Upgrades")
+			UnitOverlayMode := "Upgrades" 
+		else ; if (UnitOverlayMode = "Upgrades")
+			DrawUnitOverlay := False 
+		if !DrawUnitOverlay
 			DrawUnitOverlay(-1)
 	}
+
 	SetTimer, gosubAllOverlays, -5 ;this makes the change take effect immediately. 
 	Return
 }
+
+multiOverlayToggle()
+{
+	local bitMinimap := 1
+	local bitIncome := 2
+	local bitResources := 4
+	local bitArmySize := 8
+	local bitAPM := 16
+	local bitIdleWorkers := 32
+	local bitHarvesterCount := 64
+	local bitUnitPanel := 128
+	local bitPlayerColour := 256
+	local bitTownHallMacro := 512
+	local bitTownLocalUpgrades := 1024
+	local bitfield := multiOverlayToggleBitField
+	local TurnOnOverlays := True
+	; check if all are off
+	if (bitMinimap & bitfield && aThreads.Minimap.ahkgetvar.DrawMiniMap)
+		TurnOnOverlays := False, aThreads.MiniMap.ahkPostFunction("toggleMinimap")
+	if (bitIncome & bitfield && DrawIncomeOverlay)
+		TurnOnOverlays := DrawIncomeOverlay := False , DrawIncomeOverlay(-1)
+	if (bitResources & bitfield && DrawResourcesOverlay)
+		TurnOnOverlays := DrawResourcesOverlay := False, DrawResourcesOverlay(-1) 
+	if (bitArmySize & bitfield && DrawArmySizeOverlay)
+		TurnOnOverlays := DrawArmySizeOverlay := False, DrawArmySizeOverlay(-1)		
+	if (bitAPM & bitfield && DrawAPMOverlay)
+		TurnOnOverlays := DrawAPMOverlay := False, DrawAPMOverlay(-1)
+	if (bitIdleWorkers & bitfield && DrawIdleWorkersOverlay)
+		TurnOnOverlays := DrawIdleWorkersOverlay := False, DrawIdleWorkersOverlay(-1)
+	if (bitHarvesterCount & bitfield && DrawWorkerOverlay)
+		TurnOnOverlays := DrawWorkerOverlay := False, DrawWorkerOverlay(-1)
+	if (bitUnitPanel & bitfield && DrawUnitOverlay)
+		TurnOnOverlays := DrawUnitOverlay := False, DrawUnitOverlay(-1)
+	if (bitTownHallMacro & bitfield && DrawMacroTownHallOverlay)
+		TurnOnOverlays := DrawMacroTownHallOverlay := False, DrawMacroTownHallOverlay(-1)	
+	if (bitTownLocalUpgrades & bitfield && DrawLocalUpgradesOverlay)
+		TurnOnOverlays := DrawLocalUpgradesOverlay := False, DrawLocalUpgradesOverlay(-1)	
+	
+	if TurnOnOverlays
+	{
+		if (bitMinimap & bitfield && !aThreads.Minimap.ahkgetvar.DrawMiniMap)
+			aThreads.MiniMap.ahkPostFunction("toggleMinimap")	
+		if (bitIncome & bitfield && !DrawIncomeOverlay)
+			DrawIncomeOverlay := True 
+		if (bitResources & bitfield && !DrawResourcesOverlay)
+			DrawResourcesOverlay := True 
+		if (bitArmySize & bitfield && !DrawArmySizeOverlay)
+			DrawArmySizeOverlay := True	
+		if (bitAPM & bitfield && !DrawAPMOverlay)
+			DrawAPMOverlay := True 
+		if (bitIdleWorkers & bitfield && !DrawIdleWorkersOverlay)
+			DrawIdleWorkersOverlay := True
+		if (bitHarvesterCount & bitfield && !DrawWorkerOverlay)	
+			DrawWorkerOverlay := True
+		if (bitUnitPanel & bitfield && !DrawUnitOverlay)
+			DrawUnitOverlay := True
+		if (bitTownHallMacro & bitfield && !DrawMacroTownHallOverlay)
+			DrawMacroTownHallOverlay := True
+		if (bitTownLocalUpgrades & bitfield && !DrawLocalUpgradesOverlay)
+			DrawLocalUpgradesOverlay := True	
+	}
+	SetTimer, gosubAllOverlays, -5
+	return
+}
+
 toggleIdentifier()
 {
 	global 
@@ -1360,7 +1445,7 @@ FilterUnits(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aUnitPanelUni
 DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 {
 	GLOBAL aEnemyUnits, aEnemyUnitConstruction, a_pBitmap, aPlayer, aLocalPlayer, aHexColours, GameIdentifier, config_file, UnitOverlayX, UnitOverlayY 
-		, aUnitInfo, SplitUnitPanel, aEnemyCurrentUpgrades, DrawUnitOverlay, DrawUnitUpgrades, aMiscUnitPanelInfo, aUnitID, overlayMatchTransparency
+		, aUnitInfo, SplitUnitPanel, aEnemyCurrentUpgrades, UnitOverlayMode, aMiscUnitPanelInfo, aUnitID, overlayMatchTransparency
 		, unitPanelDrawStructureProgress, unitPanelDrawUnitProgress, unitPanelDrawUpgradeProgress, unitPanelAlignNewUnits 
 		, unitPanelDrawLocalPlayer
 	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0
@@ -1385,9 +1470,10 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 	, Gdip_SetSmoothingMode(G, 4)
 	, Gdip_SetInterpolationMode(G, 2)	; fast and draws (almost?) same quality as mode 7 HighQualityBicubic. Refer to benchmark picture for data
 
-
-	Height := DestY := 0
-	, rowMultiplier := (DrawUnitOverlay ? (SplitUnitPanel ? 2 : 1) : 0) + (DrawUnitUpgrades ? 1 : 0)
+	drawUnits := (UnitOverlayMode = "Units + Upgrades" || UnitOverlayMode = "Units")
+	, drawUpgrades := (UnitOverlayMode = "Units + Upgrades" || UnitOverlayMode = "Upgrades")
+	, Height := DestY := 0
+	, rowMultiplier := (drawUnits ? (SplitUnitPanel ? 2 : 1) : 0) + (drawUpgrades ? 1 : 0)
 
 	;for slot_number, priorityObject in aEnemyUnits ; slotnumber = owner and slotnumber is an object
 	For index, player in aEnemyAndLocalPlayer
@@ -1433,7 +1519,7 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 		; destY is height of each players first panel row. And takes account showing upgrades and progress bars
 		structureY := DestY
 
-		if DrawUnitOverlay
+		if drawUnits
 		{
 			for priority, object in priorityObject
 			{
@@ -1616,7 +1702,7 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 			else if (DestX > WindowWidth)
 				WindowWidth := DestX
 		}
-		if DrawUnitUpgrades
+		if drawUpgrades
 		{
 			;destUpgradesY := DestY  + Height * 1.1 * (rowMultiplier - 1)
 
@@ -1948,11 +2034,11 @@ getLocalUpgrades(byRef aUpgrades, percentMode)
 DrawLocalUpgradesOverlay(ByRef Redraw, UserScale = 1, Drag = 0)
 {
 	global localUpgradesItemsPerRow, LocalUpgradesOverlayX, LocalUpgradesOverlayY, overlayLocalUpgradesTransparency
-	 		, DrawLocalUpgradesOverlay
+	 		, localUpgradesOverlayMode
 	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0, upgradesExistPrevious := 0
 		, grayScaleMatrix := "0.299|0.299|0.299|0|0|0.587|0.587|0.587|0|0|0.114|0.114|0.114|0|0|0|0|0|1|0|0|0|0|0|1"
 
-	percentMode := (DrawLocalUpgradesOverlay = 1) ; DrawLocalUpgradesOverlay = -1 seconds remaining mode, 1 = percent complete
+	percentMode := (localUpgradesOverlayMode = "Percent bar")
 	
 	if !modifyOverlay("LocalUpgradesOverlay", Redraw, overlayCreated, Drag, DragPrevious, LocalUpgradesOverlayX, LocalUpgradesOverlayY, 400, 400, hwnd1)
 		return
