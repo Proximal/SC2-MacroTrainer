@@ -75,7 +75,7 @@ class autoBuildGameGUI
 	{
 		global autoBuildOverlayX, autoBuildOverlayY, AutoBuildEnableInteractGUIHotkey, AutoBuildGUIkeyMode 
 		this.endGameDestroy()
-		Gui, autoBuildGUI: -Caption Hwndhwnd +E0x8080000 +LastFound +ToolWindow +AlwaysOnTop
+		Gui, autoBuildGUI: -Caption Hwndhwnd +E0x8080000 +LastFound +ToolWindow +AlwaysOnTop -DPIScale
 		if (AutoBuildEnableInteractGUIHotkey && AutoBuildGUIkeyMode = "Toggle")
 			this.interact(False)
 		else this.interact(True)

@@ -38,7 +38,7 @@ CREATEPROCESS_MANIFEST_RESOURCE_ID RT_MANIFEST             "AutoHotkey.exe.manif
 1            TYPELIB                 "temp\\x64\\ReleaseDll\\AutoHotkey.tlb"
 #else
 #ifdef _UNICODE
-1            TYPELIB                 "temp\\Win32\\ReleaseDll\\AutoHotkey.tlb"
+1            TYPELIB                "MDtemp\\Win32\\ReleaseDll\\AutoHotkey.tlb" //previous "temp\\Win32\\ReleaseDll\\AutoHotkey.tl"
 #else
 1            TYPELIB                 "temp\\Win32\\ReleaseDll(mbcs)\\AutoHotkey.tlb"
 #endif

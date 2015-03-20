@@ -3453,13 +3453,13 @@ DestroyOverlays()
 	Try Gui, ArmySizeOverlay: Destroy
 	Try Gui, WorkerOverlay: Destroy			
 	Try Gui, idleWorkersOverlay: Destroy			
-	Try Gui, LocalPlayerColourOverlay: Destroy			
+	;Try Gui, LocalPlayerColourOverlay: Destroy			
 	Try Gui, UnitOverlay: Destroy	
 	Try Gui, MacroTownHall: Destroy	
 	Try Gui, LocalUpgradesOverlay: Destroy	
 	
 	; as these arent in the minimap thread, if that call it, it will jump out
-	local lOverlayFunctions := "DrawAPMOverlay,DrawIncomeOverlay,DrawUnitOverlay,DrawResourcesOverlay"
+	local lOverlayFunctions := "DrawAPMOverlay,DrawIncomeOverlay,DrawUnitOverlay,DrawResourcesOverlay,DrawLocalPlayerColourOverlay"
 				. ",DrawArmySizeOverlay,DrawWorkerOverlay,DrawIdleWorkersOverlay,DrawMacroTownHallOverlay"
 				. ",DrawLocalUpgradesOverlay"
 	loop, parse, lOverlayFunctions, `,
@@ -5268,7 +5268,8 @@ modifyOverlay(overlay, byRef Redraw, byRef overlayCreated, byRef Drag, byRef Dra
 	If (!overlayCreated)
 	{
 		; Create a layered window ;E0x20 click thru (+E0x80000 : must be used for UpdateLayeredWindow to work!) that is always on top (+AlwaysOnTop), has no taskbar entry or caption
-		Gui, %overlay%: -Caption Hwndhwnd1 +E0x20 +E0x80000 +LastFound  +ToolWindow +AlwaysOnTop
+		; Disable DPI scaling, as this can result in overlays not showing when the calling updatelayeredwindow() without W/h values as wingetPos returns values larger than those used in createDIBSection()
+		Gui, %overlay%: -Caption Hwndhwnd1 +E0x20 +E0x80000 +LastFound  +ToolWindow +AlwaysOnTop -DPIScale
 		Gui, %overlay%: Show, NA X%x% Y%y% W%w% H%h%, % aOverlayTitles[overlay]
 		OnMessage(0x201, "OverlayMove_LButtonDown")
 		OnMessage(0x20A, "OverlayResize_WM_MOUSEWHEEL")

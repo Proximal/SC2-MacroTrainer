@@ -357,7 +357,7 @@ If WinGet("EXStyle", GameIdentifier) = SC2WindowEXStyles.FullScreen
 && (DrawMiniMap || DrawAlerts || DrawSpawningRaces
 || DrawIncomeOverlay || DrawResourcesOverlay || DrawArmySizeOverlay
 || DrawWorkerOverlay || DrawIdleWorkersOverlay || DrawLocalPlayerColourOverlay
-|| DrawUnitOverlay || DrawUnitUpgrades || DrawAPMOverlay || DrawMacroTownHallOverlay || DrawLocalUpgradesOverlay)
+|| DrawUnitOverlay || DrawAPMOverlay || DrawMacroTownHallOverlay || DrawLocalUpgradesOverlay)
 && !MT_Restart && A_IsCompiled ; so not restarted via hotkey or icon 
 {
 	ChangeButtonNames.set("SC2 Is NOT in 'windowed Fullscreen' mode!", "Disable", "Continue") 
@@ -373,7 +373,7 @@ If WinGet("EXStyle", GameIdentifier) = SC2WindowEXStyles.FullScreen
 	{
 		DrawMiniMap := DrawAlerts := DrawSpawningRaces := DrawIncomeOverlay := DrawResourcesOverlay
 		:= DrawArmySizeOverlay := DrawWorkerOverlay := DrawIdleWorkersOverlay 
-		:= DrawLocalPlayerColourOverlay := DrawUnitOverlay := DrawUnitUpgrades 
+		:= DrawLocalPlayerColourOverlay := DrawUnitOverlay 
 		:= DrawAPMOverlay := DrawMacroTownHallOverlay := DrawLocalUpgradesOverlay := 0
 		gosub, ini_settings_write
 	}
@@ -440,7 +440,12 @@ paintPictureControl(Handle, Colour, RoundCorner := 0, ControlW := "", ControlH :
 	; GuiControlGet will only work for the current GUI thread. Could add a another variable for
 	; this if required
 	If (ControlW = "" OR ControlH = "")
+	{
 		GuiControlGet, Control, Pos, %Handle%
+		; Assume Controls are DPISCale enabled and account for this. (all of my controls are).
+		; Otherwise at higher DPIs the pictures end up non-scaled, consequently theyre smaller than the surrounding controls
+		ControlW *= A_ScreenDPI/96, ControlH *= A_ScreenDPI/96 
+	}
 
 	pBitmap  := Gdip_CreateBitmap(ControlW, ControlH)
 	G := Gdip_GraphicsFromImage(pBitmap)
@@ -814,200 +819,195 @@ Return
 
 
 Overlay_Toggle:
-	;If (A_ThisHotkey = ToggleMinimapOverlayKey "" && EnableToggleMiniMapHotkey) ; user could have some hotkeys and one disabled
-	;{
-	;	; Disable the minimap, but still draws detected units/non-converted gates
-	;	aThreads.MiniMap.ahkPostFunction("toggleMinimap")
-	;	return	
-	;}
-	;else 
-	{
-		aThreads.Overlays.ahkFunction("overlayToggle", A_ThisHotkey) ; easiest to wait for function to finish and then update any changed vars
-		DrawMiniMap := aThreads.Minimap.ahkgetvar.DrawMiniMap
-		DrawIncomeOverlay := aThreads.Overlays.ahkgetvar.DrawIncomeOverlay
-		DrawResourcesOverlay := aThreads.Overlays.ahkgetvar.DrawResourcesOverlay
-		DrawArmySizeOverlay := aThreads.Overlays.ahkgetvar.DrawArmySizeOverlay
-		DrawAPMOverlay := aThreads.Overlays.ahkgetvar.DrawAPMOverlay
-		DrawUnitOverlay := aThreads.Overlays.ahkgetvar.DrawUnitOverlay
-		DrawUnitUpgrades := aThreads.Overlays.ahkgetvar.DrawUnitUpgrades
-	}
+aThreads.Overlays.ahkFunction("overlayToggle", A_ThisHotkey) ; easiest to wait for function to finish and then update any changed vars
+DrawMiniMap := aThreads.Minimap.ahkgetvar.DrawMiniMap
+DrawIncomeOverlay := aThreads.Overlays.ahkgetvar.DrawIncomeOverlay
+DrawResourcesOverlay := aThreads.Overlays.ahkgetvar.DrawResourcesOverlay
+DrawArmySizeOverlay := aThreads.Overlays.ahkgetvar.DrawArmySizeOverlay
+DrawAPMOverlay := aThreads.Overlays.ahkgetvar.DrawAPMOverlay
+DrawIdleWorkersOverlay := aThreads.Overlays.ahkgetvar.DrawIdleWorkersOverlay
+DrawWorkerOverlay := aThreads.Overlays.ahkgetvar.DrawWorkerOverlay
+DrawUnitOverlay := aThreads.Overlays.ahkgetvar.DrawUnitOverlay
+DrawLocalPlayerColourOverlay := aThreads.Overlays.ahkgetvar.DrawLocalPlayerColourOverlay
+DrawMacroTownHallOverlay := aThreads.Overlays.ahkgetvar.DrawMacroTownHallOverlay
+DrawLocalUpgradesOverlay := aThreads.Overlays.ahkgetvar.DrawLocalUpgradesOverlay
 return 
 
 
 mt_pause_resume:
-	if (mt_Paused := !mt_Paused)
-	{
-		isInMatch := False ; with this clock = 0 when not in game 
-		timeroff("clock", "money", "gas", "scvidle", "supply", "worker", "inject", "Auto_Group", "AutoGroupIdle", "g_autoWorkerProductionCheck", "cast_ForceInject", "auto_inject", "find_races_timer", "advancedInjectTimerFunctionLabel")
-		inject_timer := 0	;ie so know inject timer is off
-		Try DestroyOverlays()
-		aThreads.MiniMap.ahkPause.1
-		aThreads.Overlays.ahkPause.1
-		aThreads.MiniMap.ahkPostFunction("DestroyOverlays")
-		aThreads.Overlays.ahkPostFunction("DestroyOverlays")
-		tSpeak("Paused")
-	}	
-	Else
-	{
-		settimer, clock, 100
-		aThreads.MiniMap.ahkPause.0
-		aThreads.Overlays.ahkPause.0
-		tSpeak("Resumed")
-	}
-	keywait, % gethotkeySuffix(warning_toggle_key), T2
+if (mt_Paused := !mt_Paused)
+{
+	isInMatch := False ; with this clock = 0 when not in game 
+	timeroff("clock", "money", "gas", "scvidle", "supply", "worker", "inject", "Auto_Group", "AutoGroupIdle", "g_autoWorkerProductionCheck", "cast_ForceInject", "auto_inject", "find_races_timer", "advancedInjectTimerFunctionLabel")
+	inject_timer := 0	;ie so know inject timer is off
+	Try DestroyOverlays()
+	aThreads.MiniMap.ahkPause.1
+	aThreads.Overlays.ahkPause.1
+	aThreads.MiniMap.ahkPostFunction("DestroyOverlays")
+	aThreads.Overlays.ahkPostFunction("DestroyOverlays")
+	tSpeak("Paused")
+}	
+Else
+{
+	settimer, clock, 100
+	aThreads.MiniMap.ahkPause.0
+	aThreads.Overlays.ahkPause.0
+	tSpeak("Resumed")
+}
+keywait, % gethotkeySuffix(warning_toggle_key), T2
 return
 
 ;------------
 ;	clock
 ;------------
 clock:
-	time := GetTime()
-	; Cant jus't check getLocalPlayerNumber() != 16 as it loads too early and lots of memory stuff isn't correct 
-	if (!time && isInMatch) || (UpdateTimers) ; time=0 outside game
-	{	
-		isInMatch := False ; with this clock = 0 when not in game (while in game at 0s clock = 44)	
-		timeroff("money", "gas", "scvidle", "supply", "worker", "inject", "Auto_Group", "AutoGroupIdle", "g_autoWorkerProductionCheck", "cast_ForceInject", "auto_inject", "find_races_timer", "advancedInjectTimerFunctionLabel")
-		; Don't call these thread functions if just updating settings. 
-		; They will be called below. When everything is turned back on.
-		; Resetting the unit detections here probably increased the chances of the warning not
-		; being resume from the saved version (though this should really happen anyway)
-		; I realise it would be a cleaner solution to call the function and pass some 'isUpdating' param
-		; but I don't feel like modifying anything and this works fine. Also have to consider
-		; when the program restarts during a match.
-		if !UpdateTimers ; Game has ended
-		{
-			if aThreads.MiniMap.ahkReady()
-			{
-				aThreads.MiniMap.ahkassign.TimeReadRacesSet := 0
-				aThreads.MiniMap.ahkFunction("gameChange")
-			}
-			if aThreads.Overlays.ahkReady()
-				aThreads.Overlays.ahkFunction("gameChange")
-		}	
-
-		; There is an issue due to shell hook trying to restore the overlay
-		; And this function being called in resposne to options GUI settings save/apply
-		; If the GUI was visible when leaving SC it will no longer be visible.
-		; Not sure of the best/reliable method to prevent this - but its a small issue, and it seems safer - as have to consider 
-		; The setBuildObj call which will run in the below else part
-		; If user alt tabs back in fast enough (before this function runs) they will see the overlay before it deleted
-		autoBuildGameGUI.endGameDestroyOverlay() 
-
-		inject_timer := TimeReadRacesSet := UpdateTimers := PrevWarning := WinNotActiveAtStart := ResumeWarnings := 0 ;ie so know inject timer is off
-		isPlaying := EnableAutoWorkerTerran := EnableAutoWorkerProtoss := False ; otherwise if they don't have start enabled they may need to press the hotkey twice to activate
-		getAllKeys.aCurrentHotkeys := "" ; Clear the object so next game start the class will retreive the keys again. Safer than solely relying on timer and file modify time
-		
-		setLowLevelInputHooks(False) ; Shouldn't be required anymore but I'm just gonna leave it anyway
-	}
-	; > 1,536d or 0600h -> 0.375 ; mischa's reaper bot used this as minimum time. A couple of people reported issues (e.g. auto-worker) - perhaps i wasnt't waiting long enough for game to finish loading
-	; since i round to nearest single decimal place, use 0.4
-	Else if (time > 0.4 && !isInMatch) && (getLocalPlayerNumber() != 16 || debugGame) ; Local slot = 16 while in lobby/replay - this will stop replay announcements
+time := GetTime()
+; Cant jus't check getLocalPlayerNumber() != 16 as it loads too early and lots of memory stuff isn't correct 
+if (!time && isInMatch) || (UpdateTimers) ; time=0 outside game
+{	
+	isInMatch := False ; with this clock = 0 when not in game (while in game at 0s clock = 44)	
+	timeroff("money", "gas", "scvidle", "supply", "worker", "inject", "Auto_Group", "AutoGroupIdle", "g_autoWorkerProductionCheck", "cast_ForceInject", "auto_inject", "find_races_timer", "advancedInjectTimerFunctionLabel")
+	; Don't call these thread functions if just updating settings. 
+	; They will be called below. When everything is turned back on.
+	; Resetting the unit detections here probably increased the chances of the warning not
+	; being resume from the saved version (though this should really happen anyway)
+	; I realise it would be a cleaner solution to call the function and pass some 'isUpdating' param
+	; but I don't feel like modifying anything and this works fine. Also have to consider
+	; when the program restarts during a match.
+	if !UpdateTimers ; Game has ended
 	{
-		isInMatch := true
-		AW_MaxWorkersReached := TmpDisableAutoWorker := 0
-		aResourceLocations := []
-		global aStringTable := []
-		global aXelnagas := [] ; global cant come after command expressions
-		global MT_CurrentGame := []	; This is a variable which from now on will store
-								; Info about the current game for other functions 
-								; An easy way to have the info cleared each match
-		Global aUnitModel := []
-		global aPlayer, aLocalPlayer
-		global aEnemyAndLocalPlayer
-		global minimap	
-
-		getPlayers(aPlayer, aLocalPlayer, aEnemyAndLocalPlayer)
-		GameType := GetGameType(aPlayer)
-		If IsInList(aLocalPlayer.Type, "Referee", "Spectator")
-			return
-
-		isPlaying := True
-		; No longer required but leaving it for now
-		setLowLevelInputHooks(False) ; try to remove them first, as can get here from just saving/applying settings in options GUI
-
-		; Just load the minimap and overlay threads unconditionally
-		; If they're not used they will not use any CPU once loaded.
-		; And saves having to worry about loading/closing them
-		; When toggling overlays etc
-		if !aThreads.MiniMap.ahkReady()
-			launchMiniMapThread()
-		else
-			aThreads.MiniMap.ahkFunction("gameChange", UserSavedAppliedSettings) ; setting change is for unit detection, to reload saved already warned units
-		sleep, -1
-		if !aThreads.Overlays.ahkReady()
-			launchOverlayThread()
-		else aThreads.Overlays.ahkFunction("gameChange")	
-		sleep, -1
-
-		SetMiniMap(minimap) ; Used for clicking - not just drawing
-		; If I was using the minerals for anything, then if this was called again due to just settings being changed/restart (minerals would have been used up)
-		aResourceLocations := getMapInfoMineralsAndGeysers() 
-		if WinActive(GameIdentifier)
-			ReDrawAPM := ReDrawMiniMap := ReDrawIncome := ReDrawResources := ReDrawArmySize := ReDrawWorker := RedrawUnit := ReDrawIdleWorkers := ReDrawLocalPlayerColour := 1
-		if (MaxWindowOnStart && time < 5 && !WinActive(GameIdentifier)) 
-		{	
-			WinActivate, %GameIdentifier%
-			MouseMove A_ScreenWidth/2, A_ScreenHeight/2
-			WinNotActiveAtStart := 1
+		if aThreads.MiniMap.ahkReady()
+		{
+			aThreads.MiniMap.ahkassign.TimeReadRacesSet := 0
+			aThreads.MiniMap.ahkFunction("gameChange")
 		}
-		setupMiniMapUnitLists(aMiniMapUnits)
-		l_ActiveDeselectArmy := setupSelectArmyUnits(l_DeselectArmy, aUnitID)
-		;ShortRace := substr(LongRace := aLocalPlayer["Race"], 1, 4) ;because i changed the local race var from prot to protoss i.e. short to long - MIGHT NO be needed  now
-		setupAutoGroup(aLocalPlayer["Race"], A_AutoGroup, aUnitID, A_UnitGroupSettings)
-		findXelnagas(aXelnagas)	
+		if aThreads.Overlays.ahkReady()
+			aThreads.Overlays.ahkFunction("gameChange")
+	}	
 
-		SC2Keys.getAllKeys()
-		disableAllHotkeys()
-		CreateHotkeys()	
-		if !A_IsCompiled
-		{
-			Hotkey, If, WinActive(GameIdentifier) && isPlaying
-			hotkey, >!g, g_GLHF
-			Hotkey, If
-		}				
+	; There is an issue due to shell hook trying to restore the overlay
+	; And this function being called in resposne to options GUI settings save/apply
+	; If the GUI was visible when leaving SC it will no longer be visible.
+	; Not sure of the best/reliable method to prevent this - but its a small issue, and it seems safer - as have to consider 
+	; The setBuildObj call which will run in the below else part
+	; If user alt tabs back in fast enough (before this function runs) they will see the overlay before it deleted
+	autoBuildGameGUI.endGameDestroyOverlay() 
 
-		If (F_Inject_Enable && aLocalPlayer["Race"] = "Zerg")
-		{
-			zergGetHatcheriesToInject(oHatcheries)
-			settimer, cast_ForceInject, %FInjectHatchFrequency%	
-		}
+	inject_timer := TimeReadRacesSet := UpdateTimers := PrevWarning := WinNotActiveAtStart := ResumeWarnings := 0 ;ie so know inject timer is off
+	isPlaying := EnableAutoWorkerTerran := EnableAutoWorkerProtoss := False ; otherwise if they don't have start enabled they may need to press the hotkey twice to activate
+	getAllKeys.aCurrentHotkeys := "" ; Clear the object so next game start the class will retreive the keys again. Safer than solely relying on timer and file modify time
+	
+	setLowLevelInputHooks(False) ; Shouldn't be required anymore but I'm just gonna leave it anyway
+}
+; > 1,536d or 0600h -> 0.375 ; mischa's reaper bot used this as minimum time. A couple of people reported issues (e.g. auto-worker) - perhaps i wasnt't waiting long enough for game to finish loading
+; since i round to nearest single decimal place, use 0.4
+Else if (time > 0.4 && !isInMatch) && (getLocalPlayerNumber() != 16 || debugGame) ; Local slot = 16 while in lobby/replay - this will stop replay announcements
+{
+	isInMatch := true
+	AW_MaxWorkersReached := TmpDisableAutoWorker := 0
+	aResourceLocations := []
+	global aStringTable := []
+	global aXelnagas := [] ; global cant come after command expressions
+	global MT_CurrentGame := []	; This is a variable which from now on will store
+							; Info about the current game for other functions 
+							; An easy way to have the info cleared each match
+	Global aUnitModel := []
+	global aPlayer, aLocalPlayer
+	global aEnemyAndLocalPlayer
+	global minimap	
 
-		if mineralon
-			settimer, money, 500, -5
-		if gas_on
-			settimer, gas, 1000, -5
-		if idleon		;this is the idle worker
-			settimer, scvidle, 500, -5	; the idle scv final pointer address changes every game
-		if idle_enable	;this is the idle AFK
-			settimer, user_idle, 1000, -5
+	getPlayers(aPlayer, aLocalPlayer, aEnemyAndLocalPlayer)
+	GameType := GetGameType(aPlayer)
+	If IsInList(aLocalPlayer.Type, "Referee", "Spectator")
+		return
 
-		autoBuild.setBuildObj()
-		;LocalPlayerRace := aLocalPlayer["Race"] ; another messy lazy variable but used in a few spots
-		;if (EnableAutoWorker%LocalPlayerRace%Start && (aLocalPlayer["Race"] = "Terran" || aLocalPlayer["Race"] = "Protoss") )
-		if (EnableAutoWorkerTerranStart && aLocalPlayer["Race"] = "Terran")
-		|| (EnableAutoWorkerProtossStart && aLocalPlayer["Race"] = "Protoss")
-		{
-			if aLocalPlayer["Race"] = "Terran" 
-				EnableAutoWorkerTerran := True
-			else EnableAutoWorkerProtoss := True			
-			SetTimer, g_autoWorkerProductionCheck, 200
+	isPlaying := True
+	; No longer required but leaving it for now
+	setLowLevelInputHooks(False) ; try to remove them first, as can get here from just saving/applying settings in options GUI
 
-			;EnableAutoWorker%LocalPlayerRace% := True
-		}
-		;if ( Auto_Read_Races AND race_reading ) && !((ResumeWarnings || UserSavedAppliedSettings) && time > 12)
-		if (Auto_Read_Races && !ResumeWarnings && !UserSavedAppliedSettings && time <= 12)
-			SetTimer, find_races_timer, 1000, -20
+	; Just load the minimap and overlay threads unconditionally
+	; If they're not used they will not use any CPU once loaded.
+	; And saves having to worry about loading/closing them
+	; When toggling overlays etc
+	if !aThreads.MiniMap.ahkReady()
+		launchMiniMapThread()
+	else
+		aThreads.MiniMap.ahkFunction("gameChange", UserSavedAppliedSettings) ; setting change is for unit detection, to reload saved already warned units
+	sleep, -1
+	if !aThreads.Overlays.ahkReady()
+		launchOverlayThread()
+	else aThreads.Overlays.ahkFunction("gameChange")	
+	sleep, -1
 
-		If A_UnitGroupSettings["AutoGroup", aLocalPlayer["Race"], "Enabled"]
-		{
-			settimer, Auto_Group, %AutoGroupTimer% 						; set to 30 ms via config ini default
-																		; WITH Normal 1 priority so it should run once every 30 ms
-			settimer, AutoGroupIdle, %AutoGroupTimerIdle%, -9999 		; default ini value 5 ms - Lowest priority so will only run when script is idle! And wont interrupt any other timer
-																		; and so wont prevent the minimap or overlay being drawn
-																		; note may delay some timers from launching for a fraction of a ms while its in thread, no timers interupt mode (but it takes less than 1 ms to run anyway)
-		} 																; Hence with these two timers running autogroup will occur at least once every 30 ms, but generally much more frequently
-		UserSavedAppliedSettings := 0
+	SetMiniMap(minimap) ; Used for clicking - not just drawing
+	; If I was using the minerals for anything, then if this was called again due to just settings being changed/restart (minerals would have been used up)
+	aResourceLocations := getMapInfoMineralsAndGeysers() 
+	if WinActive(GameIdentifier)
+		ReDrawAPM := ReDrawMiniMap := ReDrawIncome := ReDrawResources := ReDrawArmySize := ReDrawWorker := RedrawUnit := ReDrawIdleWorkers := ReDrawLocalPlayerColour := 1
+	if (MaxWindowOnStart && time < 5 && !WinActive(GameIdentifier)) 
+	{	
+		WinActivate, %GameIdentifier%
+		MouseMove A_ScreenWidth/2, A_ScreenHeight/2
+		WinNotActiveAtStart := 1
 	}
+	setupMiniMapUnitLists(aMiniMapUnits)
+	l_ActiveDeselectArmy := setupSelectArmyUnits(l_DeselectArmy, aUnitID)
+	;ShortRace := substr(LongRace := aLocalPlayer["Race"], 1, 4) ;because i changed the local race var from prot to protoss i.e. short to long - MIGHT NO be needed  now
+	setupAutoGroup(aLocalPlayer["Race"], A_AutoGroup, aUnitID, A_UnitGroupSettings)
+	findXelnagas(aXelnagas)	
+
+	SC2Keys.getAllKeys()
+	disableAllHotkeys()
+	CreateHotkeys()	
+	if !A_IsCompiled
+	{
+		Hotkey, If, WinActive(GameIdentifier) && isPlaying
+		hotkey, >!g, g_GLHF
+		Hotkey, If
+	}				
+
+	If (F_Inject_Enable && aLocalPlayer["Race"] = "Zerg")
+	{
+		zergGetHatcheriesToInject(oHatcheries)
+		settimer, cast_ForceInject, %FInjectHatchFrequency%	
+	}
+
+	if mineralon
+		settimer, money, 500, -5
+	if gas_on
+		settimer, gas, 1000, -5
+	if idleon		;this is the idle worker
+		settimer, scvidle, 500, -5	; the idle scv final pointer address changes every game
+	if idle_enable	;this is the idle AFK
+		settimer, user_idle, 1000, -5
+
+	autoBuild.setBuildObj()
+	;LocalPlayerRace := aLocalPlayer["Race"] ; another messy lazy variable but used in a few spots
+	;if (EnableAutoWorker%LocalPlayerRace%Start && (aLocalPlayer["Race"] = "Terran" || aLocalPlayer["Race"] = "Protoss") )
+	if (EnableAutoWorkerTerranStart && aLocalPlayer["Race"] = "Terran")
+	|| (EnableAutoWorkerProtossStart && aLocalPlayer["Race"] = "Protoss")
+	{
+		if aLocalPlayer["Race"] = "Terran" 
+			EnableAutoWorkerTerran := True
+		else EnableAutoWorkerProtoss := True			
+		SetTimer, g_autoWorkerProductionCheck, 200
+
+		;EnableAutoWorker%LocalPlayerRace% := True
+	}
+	;if ( Auto_Read_Races AND race_reading ) && !((ResumeWarnings || UserSavedAppliedSettings) && time > 12)
+	if (Auto_Read_Races && !ResumeWarnings && !UserSavedAppliedSettings && time <= 12)
+		SetTimer, find_races_timer, 1000, -20
+
+	If A_UnitGroupSettings["AutoGroup", aLocalPlayer["Race"], "Enabled"]
+	{
+		settimer, Auto_Group, %AutoGroupTimer% 						; set to 30 ms via config ini default
+																	; WITH Normal 1 priority so it should run once every 30 ms
+		settimer, AutoGroupIdle, %AutoGroupTimerIdle%, -9999 		; default ini value 5 ms - Lowest priority so will only run when script is idle! And wont interrupt any other timer
+																	; and so wont prevent the minimap or overlay being drawn
+																	; note may delay some timers from launching for a fraction of a ms while its in thread, no timers interupt mode (but it takes less than 1 ms to run anyway)
+	} 																; Hence with these two timers running autogroup will occur at least once every 30 ms, but generally much more frequently
+	UserSavedAppliedSettings := 0
+}
 return
 
 setupSelectArmyUnits(l_input, aUnitID)
@@ -2823,8 +2823,7 @@ ini_settings_write:
 	Iniwrite, %OverlayIdent%, %config_file%, %section%, OverlayIdent	
 	Iniwrite, %SplitUnitPanel%, %config_file%, %section%, SplitUnitPanel	
 	Iniwrite, %unitPanelAlignNewUnits%, %config_file%, %section%, unitPanelAlignNewUnits	
-;	Iniwrite, %DrawUnitUpgrades%, %config_file%, %section%, DrawUnitUpgrades ; Replaced with single option
-	Iniwrite, %UnitOverlayMode%, %config_file%, %section%, UnitOverlayMode ; Replaced with single option
+	Iniwrite, %UnitOverlayMode%, %config_file%, %section%, UnitOverlayMode 
 	Iniwrite, %unitPanelDrawStructureProgress%, %config_file%, %section%, unitPanelDrawStructureProgress
 	Iniwrite, %unitPanelDrawUnitProgress%, %config_file%, %section%, unitPanelDrawUnitProgress
 	Iniwrite, %unitPanelDrawUpgradeProgress%, %config_file%, %section%, unitPanelDrawUpgradeProgress
@@ -4577,15 +4576,13 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 				Gui, Add, Text, x+10 yp, Size:
 				Gui, Add, DropDownList, % "x+5 yp-3 w40 vlocalUpgradesItemsPerRow Choose" (localUpgradesItemsPerRow != "" ? localUpgradesItemsPerRow + 1 : 1), 0|1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16
 				Gui, Add, Text, xs+45 yp+28, Mode:
-				Gui, Add, DropDownList, x+10 yp-2 vlocalUpgradesOverlayMode w100, Time Remaining|Percent bar
+				Gui, Add, DropDownList, x+10 yp-2 vlocalUpgradesOverlayMode w100, Time Remaining|Progress bar
 				GuiControl, ChooseString, localUpgradesOverlayMode, %localUpgradesOverlayMode%
 
 				Gui, Add, GroupBox, ys XS+220 w170 h280, Match Overlay:
 				Gui, Add, Checkbox, xp+10 yp+20 vDrawUnitOverlay Checked%DrawUnitOverlay%, Enable
 				Gui, Add, DropDownList, xp yp+25 vUnitOverlayMode, Units + Upgrades|Units|Upgrades
 				GuiControl, ChooseString, UnitOverlayMode, %UnitOverlayMode%
-				;Gui, Add, Checkbox, xp+10 yp+20 vDrawUnitUpgrades Checked%DrawUnitUpgrades%, Show Upgrades
-				;Gui, Add, Checkbox, xp y+13 vDrawUnitOverlay Checked%DrawUnitOverlay%, Show Unit Count/Production
 				Gui, Add, Checkbox, xp y+13 vSplitUnitPanel ggToggleAlignUnitGUI Checked%SplitUnitPanel%, Split Units/Buildings
 				Gui, Add, Checkbox, % "xp y+13 vUnitPanelAlignNewUnits Checked" unitPanelAlignNewUnits " disabled" !SplitUnitPanel, Align New units
 				Gui, Add, Checkbox, xp y+13 vUnitPanelDrawStructureProgress Checked%unitPanelDrawStructureProgress%, Show Structure Progress 
@@ -4839,9 +4836,8 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		DrawIdleWorkersOverlay_TT := "A worker icon with the current idle worker count is displayed when the idle count is greater than or equal to the minimum value.`n`nThe size and position can be changed easily so that it grabs your attention."
 		TT_IdleWorkerOverlayThreshold_TT := IdleWorkerOverlayThreshold_TT := "The idle worker overlay is only visible when your idle count is greater than or equal to this minimum value."
 
-		DrawUnitOverlay_TT := "Displays an overlay similar to the 'observer panel', listing the current and in-production unit counts.`n`nUse the 'unit panel filter' to selectively remove/display units.`n`nNote: To disable the match overlay uncheck both 'Show Upgrades' and 'Show Unit Count/Production'."
-		DrawUnitUpgrades_TT := "Displays the current enemy upgrades.`n`nNote: To disable the match overlay uncheck both 'Show Upgrades' and 'Show Unit Count/Production'."
-		
+		DrawUnitOverlay_TT := "Displays an overlay similar to the 'observer panel', listing the current and in-production unit counts.`n`nUse the 'unit panel filter' to selectively remove/display units."
+		UnitOverlayMode_TT := "Determines if units, upgrades, or both units and upgrades are displayed."
 		UnitPanelFilterButton_TT := "Allows units to be selectively removed from the overlay."
 
 		ToggleAutoWorkerState_Key_TT := #ToggleAutoWorkerState_Key_TT := "Toggles (enables/disables) this function for the CURRENT match.`n`nWill only work during a match"
@@ -5119,11 +5115,12 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 									. "`n`nWith regards to Terran and Protoss the scan/chrono count includes a decimal fraction indicating how close the next scan/chrono is to being available."
 									. "`nMorphing orbitals are accounted for in this decimal fraction and the time until next scan."
 									. "`n`nNote: Non-control-grouped town halls and flying orbitals are not included."										
-		DrawLocalUpgradesOverlay_TT := "Displays your current upgrade items and their chrono state (if Protoss)."
+		DrawLocalUpgradesOverlay_TT := "Displays your current upgrade items and their chrono and powered state (if Protoss)."
 									. "`nThis includes morphing hatches, lairs, spires, and command centres."
-									. "`n`nUnchecked = Off"
-									. "`nChecked = Progress bar (percent complete)"
-									. "`nGreyed  = Time remaining"
+									. "`n`nThere are two display modes:"
+									. "`n1) Time remaining."
+									. "`n2) Progress bar. (Percent complete.)"
+		localUpgradesOverlayMode_TT := "Sets the display mode for the local upgrades overlay.`n`n1) Time remaining.`n2) Progress bar. (Percent complete.)"
 
 		APMOverlayMode_TT := "Sets the drawing mode for the APM overlay."
 							. "`n`n Unchecked = Enemies"
@@ -5144,7 +5141,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		SelectArmyDeselectLoadedTransport_TT := "Removes loaded medivacs and warp prisms"
 		SelectArmyDeselectQueuedDrops_TT := "Removes transports which have a drop command queued`n`nDoesn't include tranports which have begun unloading."
 
-	EasyUnloadHotkey_TT := #EasyUnloadHotkey_TT := "This hotkey performs two functions depending on if it is double tapped or held down."
+		EasyUnloadHotkey_TT := #EasyUnloadHotkey_TT := "This hotkey performs two functions depending on if it is double tapped or held down."
 													. "`n`nFunction 1) Double tap this key to select any loaded transports visible on the screen."
 													. "`n`nFunction 2) Hold this button and wave the mouse over the loaded transports to begin unloading them."		
 													. "`n`nClick the 'About' button below for more information."
@@ -6512,6 +6509,68 @@ edit_hotkey:
 			GUIControl,, %hotkey_name%, %hotkey_var%
 	}
 return
+
+multiOverlayToggleGUI:
+GUI, multiOverlayToggle:+LastFoundExist
+IfWinExist 
+{
+    WinActivate
+    Return                                  
+}
+bitfield := multiOverlayToggleBitField
+Gui, multiOverlayToggle:New
+Gui, add, GroupBox, x10 y+10 w270 h140 section, Overlays 
+Gui, Add, Checkbox, % "xp+15 yp+25 vMultiOverlayToggleMinimap  checked" bitfield & 1, Minimap 
+Gui, Add, Checkbox,% "xp y+5 vMultiOverlayToggleIncome checked" bitfield & 2, Income 
+Gui, Add, Checkbox,% "xp y+5 vMultiOverlayToggleResources checked" bitfield & 4, Resources 
+Gui, Add, Checkbox,% "xp y+5 vMultiOverlayToggleArmySize checked" bitfield & 8, Army Size 
+Gui, Add, Checkbox,% "xp y+5 vMultiOverlayToggleAPM checked" bitfield & 16, APM
+Gui, Add, Checkbox,% "xp y+5 vMultiOverlayToggleIdleWorkers checked" bitfield & 32, Idle workers
+Gui, Add, Checkbox, % "xp+135 ys+25 vMultiOverlayToggleHarvesterCount checked" bitfield & 64, Harvester count 
+Gui, Add, Checkbox,% "xp y+5 vMultiOverlayToggleUnitPanel checked" bitfield & 128, Unit panel
+Gui, Add, Checkbox,% "xp y+5 vMultiOverlayTogglePlayerColour checked" bitfield & 256, Player colour
+Gui, Add, Checkbox,% "xp y+5 vMultiOverlayToggleTownHallMacro checked" bitfield & 512, Town hall macro 
+Gui, Add, Checkbox,% "xp y+5 vMultiOverlayToggleLocalUpgrades checked" bitfield & 1024, Local upgrades  
+
+Gui, add, GroupBox, xs ys+160 w270 h65 section, About 
+Gui, Add, text, xp+15 yp+25 w240, This hotkey allows multiple overlays to be toggled on/off.
+Gui, add, button, xs ys+85 w54 h25 gMultiOverlayToggleGUISUbmit, Save
+Gui, add, button, x+15 yp w54 h25 gMultiOverlayToggleGUIClose, Cancel
+GUI, +AlwaysOnTop +ToolWindow
+Gui, show,, Toggle Overlays
+Gui, +OwnerOptions
+Gui, Options:+Disabled   
+return 
+
+MultiOverlayToggleGUISUbmit:
+MultiOverlayToggleGUISUbmit()
+return 
+
+MultiOverlayToggleGUISUbmit() ; Save a couple of global variables
+{
+	Local result, bitValue, variable
+	Gui, submit
+	Gui, Options:-Disabled
+	Gui, Options:Show
+	GUI, Destroy
+	result := 0, bitValue := 1
+	for i, variable in ["Minimap", "Income", "Resources", "ArmySize", "APM", "IdleWorkers", "HarvesterCount", "UnitPanel", "PlayerColour", "TownHallMacro", "LocalUpgrades"]
+	{
+	    variable := "MultiOverlayToggle" variable
+	    if (%variable%)
+	        result |= bitValue
+	    bitValue *= 2
+	}
+	multiOverlayToggleBitField := result
+	Iniwrite, %multiOverlayToggleBitField%, %config_file%, Overlays, multiOverlayToggleBitField
+	return 
+}
+
+MultiOverlayToggleGUIEscape:
+MultiOverlayToggleGUIClose:
+Gui, Options:-Disabled
+GUI, Destroy
+return 
 
 
 Alert_List_Editor:
@@ -11435,8 +11494,6 @@ else send {tab %tabsToSend%}t+{tab %tabsToSend%}
 return
 #if
 
-
-
 AutoBuildGUIkeyPress:
 if (AutoBuildGUIkeyMode = "KeyDown")
 {
@@ -13014,70 +13071,3 @@ KeyDown(Escape)
 KeyUp(Escape)
 LeftMouseUp(point1)
 */ 
-
-
-
-
-
-multiOverlayToggleGUI:
-GUI, multiOverlayToggle:+LastFoundExist
-IfWinExist 
-{
-    WinActivate
-    Return                                  
-}
-bitfield := multiOverlayToggleBitField
-Gui, multiOverlayToggle:New
-Gui, add, GroupBox, x20 y+20 w270 h140 section, Overlays 
-Gui, Add, Checkbox, % "xp+15 yp+25 vMultiOverlayToggleMinimap  checked" bitfield & 1, Minimap 
-Gui, Add, Checkbox,% "xp y+5 vMultiOverlayToggleIncome checked" bitfield & 2, Income 
-Gui, Add, Checkbox,% "xp y+5 vMultiOverlayToggleResources checked" bitfield & 4, Resources 
-Gui, Add, Checkbox,% "xp y+5 vMultiOverlayToggleArmySize checked" bitfield & 8, Army Size 
-Gui, Add, Checkbox,% "xp y+5 vMultiOverlayToggleAPM checked" bitfield & 16, APM
-Gui, Add, Checkbox,% "xp y+5 vMultiOverlayToggleIdleWorkers checked" bitfield & 32, Idle workers
-Gui, Add, Checkbox, % "xp+135 ys+25 vMultiOverlayToggleHarvesterCount checked" bitfield & 64, Harvester count 
-Gui, Add, Checkbox,% "xp y+5 vMultiOverlayToggleUnitPanel checked" bitfield & 128, Unit panel
-Gui, Add, Checkbox,% "xp y+5 vMultiOverlayTogglePlayerColour checked" bitfield & 256, Player colour
-Gui, Add, Checkbox,% "xp y+5 vMultiOverlayToggleTownHallMacro checked" bitfield & 512, Town hall macro 
-Gui, Add, Checkbox,% "xp y+5 vMultiOverlayToggleLocalUpgrades checked" bitfield & 1024, Local upgrades  
-
-Gui, add, GroupBox, x20 ys+160 w270 h65 section, About 
-Gui, Add, text, xp+15 yp+25 w240, This hotkey allows multiple overlays to be toggled on/off.
-Gui, add, button, xs ys+85 w45 h35 gMultiOverlayToggleGUISUbmit, Save
-Gui, add, button, x+50 yp w45 h35 gMultiOverlayToggleGUIClose, Cancel
-GUI, +AlwaysOnTop +ToolWindow
-Gui, show, w400 h400, Toggle Overlays
-Gui, +OwnerOptions
-Gui, Options:+Disabled   
-return 
-
-MultiOverlayToggleGUISUbmit:
-MultiOverlayToggleGUISUbmit()
-return 
-
-MultiOverlayToggleGUISUbmit() ; Save a couple of global variables
-{
-	Local result, bitValue, variable
-	Gui, submit
-	Gui, Options:-Disabled
-	Gui, Options:Show
-	GUI, Destroy
-	result := 0, bitValue := 1
-	for i, variable in ["Minimap", "Income", "Resources", "ArmySize", "APM", "IdleWorkers", "HarvesterCount", "UnitPanel", "PlayerColour", "TownHallMacro", "LocalUpgrades"]
-	{
-	    variable := "MultiOverlayToggle" variable
-	    if (%variable%)
-	        result |= bitValue
-	    bitValue *= 2
-	}
-	multiOverlayToggleBitField := result
-	Iniwrite, %multiOverlayToggleBitField%, %config_file%, Overlays, multiOverlayToggleBitField
-	return 
-}
-
-MultiOverlayToggleGUIEscape:
-MultiOverlayToggleGUIClose:
-Gui, Options:-Disabled
-GUI, Destroy
-return 
-

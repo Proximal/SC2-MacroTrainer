@@ -207,7 +207,7 @@ DrawMiniMap()
 			overlayTitle := getRandomString_Az09(10, 20)		
 		; Set the width and height we want as our drawing area, to draw everything in. This will be the dimensions of our bitmap
 		; Create a layered window ;E0x20 click thru (+E0x80000 : must be used for UpdateLayeredWindow to work!) that is always on top (+AlwaysOnTop), has no taskbar entry or caption		
-		Gui, MiniMapOverlay: -Caption Hwndhwnd1 +E0x20 +E0x80000 +LastFound +ToolWindow +AlwaysOnTop
+		Gui, MiniMapOverlay: -Caption Hwndhwnd1 +E0x20 +E0x80000 +LastFound +ToolWindow +AlwaysOnTop ; Dont need to specify -DPIScale here as calling CreateDIBSection() and updatelayered window with constant values
 		Gui, MiniMapOverlay: Show, NA, %overlayTitle%
 	}
 	; Create a gdi bitmap with width and height of what we are going to draw into it. This is the entire drawing area for everything

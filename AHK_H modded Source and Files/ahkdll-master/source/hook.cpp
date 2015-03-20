@@ -527,7 +527,7 @@ LRESULT LowLevelCommon(const HHOOK aHook, int aCode, WPARAM wParam, LPARAM lPara
 	pKeyHistoryCurr->event_type = is_ignored ? 'i' : (is_artificial ? 'a' : ' '); // v1.0.42.04: 'a' was added, but 'i' takes precedence over 'a'.
 
 
-	//MT stuff
+	// MT_Stuff**
 	if (!is_artificial && wParam != WM_MOUSEMOVE)
 	{
 		g_mtTimeIdle = GetTickCount(); //g_TimeLastInputPhysical;

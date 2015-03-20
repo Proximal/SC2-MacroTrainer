@@ -79,7 +79,7 @@ UpdateLayeredWindow(hwnd, hdc, x="", y="", w="", h="", Alpha=255)
 	if ((x != "") && (y != ""))
 		VarSetCapacity(pt, 8), NumPut(x, pt, 0, "UInt"), NumPut(y, pt, 4, "UInt")
 
-	if (w = "") ||(h = "")
+	if (w = "") || (h = "")
 		WinGetPos,,, w, h, ahk_id %hwnd%
    
 	return DllCall("UpdateLayeredWindow"

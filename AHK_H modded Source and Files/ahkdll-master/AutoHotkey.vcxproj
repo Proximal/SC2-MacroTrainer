@@ -743,6 +743,7 @@
       <ComponentFileName Condition="'$(Configuration)|$(Platform)'=='ReleaseDllMini(mbcs)|Win32'" />
       <ComponentFileName Condition="'$(Configuration)|$(Platform)'=='ReleaseDllMini|Win32'" />
       <ComponentFileName Condition="'$(Configuration)|$(Platform)'=='ReleaseDll|Win32'" />
+      <EnableDPIAwareness Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</EnableDPIAwareness>
     </Manifest>
     <ResourceCompile>
       <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">_DEBUG;_UNICODE;UNICODE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -996,6 +997,9 @@
     <ResourceCompile>
       <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='ReleaseDllMini|Win32'">_UNICODE;UNICODE;_USRDLL;MINIDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ResourceCompile>
+    <Manifest>
+      <EnableDPIAwareness Condition="'$(Configuration)|$(Platform)'=='Self-contained|Win32'">true</EnableDPIAwareness>
+    </Manifest>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)'=='ReleaseDll' OR '$(Configuration)'=='ReleaseDll(mbcs)'">
     <Link>
@@ -1014,6 +1018,7 @@
     <Manifest>
       <OutputManifestFile Condition="'$(Configuration)|$(Platform)'=='ReleaseDll|Win32'">
       </OutputManifestFile>
+      <EnableDPIAwareness Condition="'$(Configuration)|$(Platform)'=='ReleaseDll|Win32'">true</EnableDPIAwareness>
     </Manifest>
     <ResourceCompile>
       <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='ReleaseDll|Win32'">_USRDLL;_UNICODE;UNICODE;%(PreprocessorDefinitions)</PreprocessorDefinitions>

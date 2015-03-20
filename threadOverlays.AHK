@@ -94,7 +94,7 @@ If (WinActive(GameIdentifier) || Dragoverlay) ;really only needed to resize/scal
 	If (DrawIdleWorkersOverlay && time)
 		DrawIdleWorkersOverlay(ReDrawIdleWorkers, IdleWorkersOverlayScale, dragOverlay)
 	if (DrawLocalPlayerColourOverlay && time && (GameType != "1v1" && GameType != "FFA"))   ;easier just to redraw it each time as otherwise have to change internal for when dragging
-		DrawLocalPlayerColour(ReDrawLocalPlayerColour, LocalPlayerColourOverlayScale, DragOverlay)	
+		DrawLocalPlayerColourOverlay(ReDrawLocalPlayerColour, LocalPlayerColourOverlayScale, DragOverlay)	
 	If (DrawMacroTownHallOverlay && time)
 		DrawMacroTownHallOverlay(RedrawMacroTownHall, MacroTownHallOverlayScale, DragOverlay)
 }
@@ -253,7 +253,8 @@ overlayToggle(hotkey)
 	if (EnableToggleMiniMapHotkey && hotkey = ToggleMinimapOverlayKey)
 	{
 		; Disable the minimap, but still draws detected units/non-converted gates
-		aThreads.MiniMap.ahkPostFunction("toggleMinimap")		
+		aThreads.MiniMap.ahkFunction("toggleMinimap")	; safer not to post here, as main thread will update its copy of the variable when this function returns	
+		DrawMiniMap := aThreads.Minimap.ahkgetvar.DrawMiniMap
 	}
 
 	If (EnableToggleIncomeOverlayHotkey && hotkey = ToggleIncomeOverlayKey "")
@@ -321,7 +322,7 @@ multiOverlayToggle()
 	local TurnOnOverlays := True
 	; check if all are off
 	if (bitMinimap & bitfield && aThreads.Minimap.ahkgetvar.DrawMiniMap)
-		TurnOnOverlays := False, aThreads.MiniMap.ahkPostFunction("toggleMinimap")
+		TurnOnOverlays := False, aThreads.MiniMap.ahkFunction("toggleMinimap"), DrawMiniMap := aThreads.Minimap.ahkgetvar.DrawMiniMap ; ; safer not to post here, as main thread will update its copy of the variable when this function returns	
 	if (bitIncome & bitfield && DrawIncomeOverlay)
 		TurnOnOverlays := DrawIncomeOverlay := False , DrawIncomeOverlay(-1)
 	if (bitResources & bitfield && DrawResourcesOverlay)
@@ -335,7 +336,9 @@ multiOverlayToggle()
 	if (bitHarvesterCount & bitfield && DrawWorkerOverlay)
 		TurnOnOverlays := DrawWorkerOverlay := False, DrawWorkerOverlay(-1)
 	if (bitUnitPanel & bitfield && DrawUnitOverlay)
-		TurnOnOverlays := DrawUnitOverlay := False, DrawUnitOverlay(-1)
+		TurnOnOverlays := DrawUnitOverlay := False, DrawUnitOverlay(-1)	
+	if (bitPlayerColour & bitfield && DrawLocalPlayerColourOverlay)
+		TurnOnOverlays := DrawLocalPlayerColourOverlay := False, DrawLocalPlayerColourOverlay(-1)
 	if (bitTownHallMacro & bitfield && DrawMacroTownHallOverlay)
 		TurnOnOverlays := DrawMacroTownHallOverlay := False, DrawMacroTownHallOverlay(-1)	
 	if (bitTownLocalUpgrades & bitfield && DrawLocalUpgradesOverlay)
@@ -344,7 +347,7 @@ multiOverlayToggle()
 	if TurnOnOverlays
 	{
 		if (bitMinimap & bitfield && !aThreads.Minimap.ahkgetvar.DrawMiniMap)
-			aThreads.MiniMap.ahkPostFunction("toggleMinimap")	
+			aThreads.MiniMap.ahkFunction("toggleMinimap"), DrawMiniMap := aThreads.Minimap.ahkgetvar.DrawMiniMap ; safer not to post here, as main thread will update its copy of the variable when this function returns		
 		if (bitIncome & bitfield && !DrawIncomeOverlay)
 			DrawIncomeOverlay := True 
 		if (bitResources & bitfield && !DrawResourcesOverlay)
@@ -359,6 +362,8 @@ multiOverlayToggle()
 			DrawWorkerOverlay := True
 		if (bitUnitPanel & bitfield && !DrawUnitOverlay)
 			DrawUnitOverlay := True
+		if (bitPlayerColour & bitfield && !DrawLocalPlayerColourOverlay)
+			DrawLocalPlayerColourOverlay := True	
 		if (bitTownHallMacro & bitfield && !DrawMacroTownHallOverlay)
 			DrawMacroTownHallOverlay := True
 		if (bitTownLocalUpgrades & bitfield && !DrawLocalUpgradesOverlay)
@@ -933,7 +938,7 @@ DrawWorkerOverlay(ByRef Redraw, UserScale=1,Drag=0)
 
 
 ; Function takes 0.151217 ms
-DrawLocalPlayerColour(ByRef Redraw, UserScale=1,Drag=0)
+DrawLocalPlayerColourOverlay(ByRef Redraw, UserScale=1,Drag=0)
 {	global aLocalPlayer, GameIdentifier, config_file, LocalPlayerColourOverlayX, LocalPlayerColourOverlayY, a_pBitmap, aHexColours, overlayLocalColourTransparency
 	static overlayCreated, hwnd1, DragPrevious := 0,  PreviousPlayerColours := 0 			
 
@@ -941,13 +946,15 @@ DrawLocalPlayerColour(ByRef Redraw, UserScale=1,Drag=0)
 
 	; this just toggles the colour circle when the player changes the Player COlour state. A bit messy but im lazy
 	; But it should be faster than calling winExist() to check if the GUI window still exists
-	if (!playerColours && PreviousPlayerColours) 
-		Redraw := 1, PreviousPlayerColours := 0
-	else if (playerColours && !PreviousPlayerColours)
-		Redraw := -1
-	else if playerColours
-		return
-
+	if (redraw != -1)
+	{
+		if (!playerColours && PreviousPlayerColours) 
+			Redraw := 1, PreviousPlayerColours := 0
+		else if (playerColours && !PreviousPlayerColours)
+			Redraw := -1
+		else if playerColours
+			return
+	}
 	if !modifyOverlay("LocalPlayerColourOverlay", Redraw, overlayCreated, Drag, DragPrevious, LocalPlayerColourOverlayX, LocalPlayerColourOverlayY, 200, 200, hwnd1)
 		return
 	hbm := CreateDIBSection(200, 200)
@@ -2038,7 +2045,7 @@ DrawLocalUpgradesOverlay(ByRef Redraw, UserScale = 1, Drag = 0)
 	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0, upgradesExistPrevious := 0
 		, grayScaleMatrix := "0.299|0.299|0.299|0|0|0.587|0.587|0.587|0|0|0.114|0.114|0.114|0|0|0|0|0|1|0|0|0|0|0|1"
 
-	percentMode := (localUpgradesOverlayMode = "Percent bar")
+	percentMode := (localUpgradesOverlayMode = "Progress bar")
 	
 	if !modifyOverlay("LocalUpgradesOverlay", Redraw, overlayCreated, Drag, DragPrevious, LocalUpgradesOverlayX, LocalUpgradesOverlayY, 400, 400, hwnd1)
 		return
@@ -2166,7 +2173,7 @@ drawUIPositions(destroy := False, overlayExist := False)
 	else If (!overlayCreated)
 	{
 		; Create a layered window ;E0x20 click thru (+E0x80000 : must be used for UpdateLayeredWindow to work!) that is always on top (+AlwaysOnTop), has no taskbar entry or caption
-		Gui, UIPositions: -Caption Hwndhwnd1 +E0x20 +E0x80000 +LastFound  +ToolWindow +AlwaysOnTop
+		Gui, UIPositions: -Caption Hwndhwnd1 +E0x20 +E0x80000 +LastFound  +ToolWindow +AlwaysOnTop -DPIScale
 		Gui, UIPositions: Show, % "NA X0 Y0 W" A_ScreenWidth " h" A_ScreenHeight, % getRandomString_Az09(10, 20)
 		overlayCreated := True
 		; The overlay is automatically destroyed when the macro Trainer options GUI closes
