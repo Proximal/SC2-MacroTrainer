@@ -395,7 +395,7 @@ I should look into testing if setting the repeat count actually does anything
 						skip := True ; as already inserted a mouse click event
 					}
 						; This RegExMatch takes ~0.02ms (after its first cached)
-					else if RegExMatch(key, "iS)(?<key>[^\s]+)\s*(?<event>\b(?:up|u|down|d)\b)?\s*(?<count>(?:0x[a-f0-9]+\b)|\d+\b)?", send)
+					else if RegExMatch(key, "iS)(?<key>[^\s]+)\s*(?<event>\b(?:up|u|down|d)\b)?\s*(?<count>(?:-?0x[a-f0-9]+\b)|-?\d+\b)?", send)
 					&& getkeyVK(sendKey) ; if key is valid
 					{
 						instr(sendKey, "alt") 
@@ -405,7 +405,7 @@ I should look into testing if setting the repeat count actually does anything
 						if instr(sendEvent, "d") || instr(sendEvent, "u")
 						{
 							message := instr(sendEvent, "d") ? downMessage : upMessage
-							loop, % sendCount ? sendCount : 1
+							loop, % sendCount != "" ? sendCount : 1
 							{						
 								aSend.insert({	  "message": message		 
 												, "sc": GetKeySC(sendKey)
@@ -414,7 +414,7 @@ I should look into testing if setting the repeat count actually does anything
 						}
 						else ; its a complete press down + up
 						{
-							loop, % sendCount ? sendCount*2 : 2
+							loop, % sendCount != "" ? sendCount*2 : 2
 							{
 								aSend.insert({	  "message": mod(A_index, 2) ? downMessage : upMessage
 												, "sc": GetKeySC(sendKey)

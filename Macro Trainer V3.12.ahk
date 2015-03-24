@@ -161,7 +161,7 @@ MT_CurrentInstance := [] ; Used to store random info about the current run
 program := []
 program.info := {"IsUpdating": 0} ; program.Info.IsUpdating := 0 ;has to stay here as first instance of creating infor object
 
-ProgramVersion := 3.11
+ProgramVersion := 3.12
 
 l_GameType := "1v1,2v2,3v3,4v4,FFA"
 l_Races := "Terran,Protoss,Zerg"
@@ -4408,6 +4408,8 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		Gui, Add, text, xp y+10, Storage Ctrl Group:
 	 	Gui, Add, DropDownList,  % "x+15 yp-2 w45 Center vSmartGeyserCtrlGroup Choose" (smartGeyserCtrlGroup = 0 ? 10 : smartGeyserCtrlGroup), 1|2|3|4|5|6|7|8|9||0
 	 	Gui, Add, text, xs+10 y+15 w305, Right clicking a group of workers towards a refinery, assimilator, or extractor will only send the correct amount of workers to harvest gas.
+	 	Gui, Add, text, xs+10 y+35 w305, *This is not currently 100`% reliable.
+	 	
 	 	gosub SmartGeyserOptionsMenuEnableCheck
 
 	Gui, Add, Tab2, w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vHome_TAB, Home||Emergency
@@ -11475,7 +11477,7 @@ unloadAllTransports(hotkeySuffix)
 }
 
 
-
+/*
 ; Global Stim
 
 #If, !A_IsCompiled && WinActive(GameIdentifier) && isPlaying && aLocalPlayer.Race = "Terran" && !isMenuOpen()
@@ -11493,6 +11495,7 @@ if (tabsToSend := tabPos - aSelection.HighlightedGroup) < 0
 else send {tab %tabsToSend%}t+{tab %tabsToSend%}
 return
 #if
+*/
 
 AutoBuildGUIkeyPress:
 if (AutoBuildGUIkeyMode = "KeyDown")
@@ -12774,8 +12777,10 @@ getHarvestersMiningGas(geyserStructureIndex, byref aFoundIndexes, byRef underCon
 				|| (aLocalPlayer.Slot = numgetUnitOwner(MemDump, command.targetIndex) ; this part checks if harvester is on the return trip from the geyser in question.
 					&& aTownHallLookup[aLocalPlayer.Race].hasKey(numgetUnitModelType(numgetUnitModelPointer(MemDump, command.targetIndex))) ; Target is a townhall i.e. harvester mining minerals or gas and is returning to town hall
 					&& isUnitNearUnit(aGeyserStructurePos, aTownHallPos := numGetUnitPositionXYZ(MemDump, command.targetIndex), 9) ; so town hall is next to refinery
-					&& isPointNearLineSegmentWithZcheck(aGeyserStructurePos, aTownHallPos, numGetUnitPositionXYZ(MemDump, unit), .9))) ; harvester is within 1 map unit of the straight line connecting the refinery to the townhall (this wont work if there is an obstruction and the worker has to move path around it)
-			{ 																														; 1 is too big and a unit returning minerals from a patch adjacent to the refinery will count (when its at the CC end of the line)
+					&& isPointNearLineSegmentWithZcheck(aGeyserStructurePos, aTownHallPos, numGetUnitPositionXYZ(MemDump, unit), .5))) ; harvester is within .9 map unit of the straight line connecting the refinery to the townhall (this wont work if there is an obstruction and the worker has to move path around it)
+			{ 																														; 1 (and .9) is too big and a unit returning minerals from a patch adjacent to the refinery will count (when its at the CC end of the line)
+																																	; This is the main reason for getting 2 instead of 3 sent to a geyser. A mineral mining harvester is 'accidentally' considered to be mining gas. I think its better to lower this value (which could result in selected mining harvester being sent to to their own geyser resulting in under saturation)
+																																	; as this is less likely and will not occur if the player doesnt initially select these gas mining workers - whereas which higher values it can cause issues when selecting mineral mining workers.
 				; I could do a maxIndex() check on the commands - if harvester has another queued command after this then add it to the ignore list
 				; e.g. so if you accidentally select a worker which is queued to build a structure after it mines a patch it will be deselected and not sent to geyser
 				; But then this would create issues if the user intends for it to go to the geyser
@@ -12814,6 +12819,21 @@ GeyserStructureHoverCheck(byRef hoveredGeyserUnitIndex)
 ; I need a method to determine if a worker is already harvesting (or queued to harvest from a geyser)
 ; Checking the queuedCommands targetUnitIndex will reveal if it going into (or inside a geyser)
 ; But this doesnt help when it is returning the harvested gas to the townhall
+
+/*
+Multiple bugs. Some easy to understand bugs are due to incorrectly finding workers which are mining gas (on return trip from geyser/or very near to this line)
+But there is at least one hard one.
+select minimum 4 mining workers put them to a gas (use an empty geyser to reduce reduce influence of the other bugs)
+harvestersToKeep 3 (correct)
+2 go to gas 
+2 left on minerals, but only 1 of these is selected
+the non selected one is still in the temp control group with all others (it has been deselected instead of the other mining worker)
+aSentToGeyser contains the remaining selected mineral worker - but its still mining minerals! 
+getPortraitsFromIndexes() returns an incorrect deselection array - perhaps insufficient time for set group to finish or for invoke group to update selection
+
+I thought it may be due to the total 40 ms sleep (+ 10 for return cargo) allowing a worker to enter the geyser - but this shouldn't alter the already displayed selection panel!
+and I don't invoke the control group until the very end after the workers haver already been sent to the geyser.
+*/
 
 SmartGeyserControlGroup(geyserStructureIndex)
 {
@@ -13070,4 +13090,12 @@ LeftMouseDown(point2)
 KeyDown(Escape)
 KeyUp(Escape)
 LeftMouseUp(point1)
+http://www.mpgh.net/forum/showthread.php?t=661551
+http://www.unknowncheats.me/forum/direct3d/76105-world-screen.html
+http://www.flipcode.com/archives/Plotting_A_3D_Point_On_A_2D_Screen.shtml
+http://stackoverflow.com/questions/8633034/basic-render-3d-perspective-projection-onto-2d-screen-with-camera-without-openg
 */ 
+
+
+
+
