@@ -391,7 +391,7 @@ return
 #include %A_ScriptDir%\Included Files\Class_ChangeButtonNames.AHk
 ; Contains labels/routines for the chrono boost section of the GUI
 #include <classMemory>
-#Include, Included Files\Class_SCPatternScan.ahk
+#Include, Included Files\_ClassSCPatternScan.ahk
 #Include, Included Files\chronoGUIMainScript.ahk
 #include <Class_SC2Keys>
 
@@ -13095,7 +13095,6 @@ http://www.unknowncheats.me/forum/direct3d/76105-world-screen.html
 http://www.flipcode.com/archives/Plotting_A_3D_Point_On_A_2D_Screen.shtml
 http://stackoverflow.com/questions/8633034/basic-render-3d-perspective-projection-onto-2d-screen-with-camera-without-openg
 */ 
-
 
 
 

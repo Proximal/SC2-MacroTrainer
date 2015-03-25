@@ -61,6 +61,11 @@ class _ClassSCPatternScan
 	{
 		if (address := this.mem.modulePatternScan("",  0x66, 0x83, 0x3D, "?", "?", "?", "?", 0x00, 0x74, 0x15, 0x0F, 0xB7, 0x05)) > 0
 			return this.mem.Read(address + 3)
+	}	
+	B_CtrlGroupStructure(byRef S_CtrlGroup := "")
+	{
+		if (address := this.mem.modulePatternScan("",  0x53, 0xB9, "?", "?", "?", "?", 0xE8, "?", "?", "?", "?", 0xEB, "?", 0x0F, 0xB6, 0xC3, 0x8B, 0xC8, 0x69, 0xC0, "?", "?", "?", "?")) > 0
+			return this.mem.Read(address + 2), S_CtrlGroup := this.mem.Read(address + 20)
 	}
 	S_CtrlGroup()
 	{
@@ -102,6 +107,34 @@ class _ClassSCPatternScan
 		if (address := this.mem.modulePatternScan("", 0x0F, 0x84, "?", "?", "?", "?", 0xA1, "?", "?", "?", "?", 0x53, 0x56, 0x8B, 0xB0)) > 0
 			return this.mem.Read(address + 7)
 	}
+	B_IsGamePaused()
+	{
+		if (address := this.mem.modulePatternScan("", 0x8B, 0x75, 0x08, 0xA2, "?", "?", "?", "?", 0x8B, 0x8F, "?", "?", "?", "?", 0x56)) > 0
+			return this.mem.Read(address + 4)				
+	}	
+	B_FramesPerSecond()
+	{
+		if (address := this.mem.modulePatternScan("", 0xA3, "?", "?", "?", "?", 0x0F, 0x84, "?", "?", "?", "?", 0x03, 0xC6, 0xD1, 0xE8, 0x8B, 0xC8)) > 0
+			return this.mem.Read(address + 1)				
+	}		
+	B_Gamespeed()
+	{
+		if (address := this.mem.modulePatternScan("", 0x51, 0x8B, 0xCF, 0xFF, 0xD2, 0x8B, 0x0D, "?", "?", "?", "?", 0x8B, 0x01)) > 0
+		{	
+			address := this.mem.Read(address + 7)	
+			base := this.mem.Read(address)	
+
+			; This next pattern is for the function which actually changes the game speed. It's passed a couple of parameters game speed as well
+			; as the base address (the value base above) - it then adds an offset to the base and writes the game speed
+			; This is a shitty signature, as there was another identical function (but had a different offset value) so no way to tell them apart.
+			; This signature takes a couple of lines from the next listed function (and all the 'return 3'/CCs between them), so could easily break!!!!!
+			if (address := this.mem.modulePatternScan("", 0x55, 0x8B, 0xEC, 0x8B, 0x45, 0x08, 0x89, 0x81, "?", "?", "?", "?", 0x5D, 0xC2, 0x04, 0x00, 0x8B, 0x81, "?", "?", "?", "?", 0xC3, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0x55, 0x8B, 0xEC)) > 0
+			{
+				offset := this.mem.Read(address + 8)
+				return 	base + offset
+			}			
+		}			
+	}	
 	B_InputStructure()
 	{
 		if (address := this.mem.modulePatternScan("", 0x33, 0xC9, 0x89, 0x48, 0x18, 0x8B, 0x15, "?", "?", "?", "?")) > 0
@@ -121,7 +154,7 @@ class _ClassSCPatternScan
 	listView()
 	{
 		Gui, SCPatternScan:New  ; destroy previous windows with same name
-		Gui, Add, ListView, Grid -LV0x10 NoSortHdr hwndHLV +resize w450 r28, Name|Address|Offset|Loaded Offset
+		Gui, Add, ListView, Grid -LV0x10 NoSortHdr hwndHLV +resize w450 r34, Name|Address|Offset|Loaded Offset
 		LV_Colors.OnMessage()
 		LV_Colors.Attach(HLV, True, True, False) ; Im not sure if you need to call detach(). The author of the class makes no mention of it.
 		for i, params in this.scanAndCombine()
@@ -157,14 +190,15 @@ class _ClassSCPatternScan
 	{
 		setformat, IntegerFast, H ;This isn't called from autoExec so don't bother changing it back
 		obj := OrderedArray()
-		methods :=	"B_Timer|B_Timer|P_SelectionPage|B_LocalPlayerSlot|P_IdleWorker|P_ChatFocus|P_MenuFocus|B_SelectionStructure|S_CtrlGroup|B_TeamColours|B_MapStruct|B_camLeft|P_IsBuildCardDisplayed"
-				. 	"|B_CameraDragScroll|B_CameraMovingViaMouseAtScreenEdge|B_InputStructure|B_HorizontalResolution|B_localArmyUnitCount"
+		methods :=	"B_Timer|B_Timer|P_SelectionPage|B_LocalPlayerSlot|P_IdleWorker|P_ChatFocus|P_MenuFocus|B_SelectionStructure|B_TeamColours|B_MapStruct|B_camLeft|P_IsBuildCardDisplayed"
+				. 	"|B_CameraDragScroll|B_CameraMovingViaMouseAtScreenEdge|B_IsGamePaused|B_FramesPerSecond|B_Gamespeed|B_InputStructure|B_HorizontalResolution|B_localArmyUnitCount"
 		loop, parse, methods, |
 			obj[A_LoopField] := this[A_LoopField]()
 		obj["B_pStructure Copy"] := this.B_pStructureNuke(structureSize), obj["S_pStructure Copy"] := structureSize
 		obj["B_pStructure"] := this.B_pStructure(structureSize), obj["S_pStructure"] := structureSize
 		obj["B_uHighestIndex"] := this.B_uHighestIndex(structureSize), obj["S_uStructure Copy"] := structureSize
 		obj["B_uStructure"] := this.B_uStructure(structureSize), obj["S_uStructure"] := structureSize
+		obj["B_CtrlGroupStructure"] := this.B_CtrlGroupStructure(structureSize), obj["S_CtrlGroup"] := structureSize
 		obj["P_IsUserPerformingAction"] := this.P_IsUserPerformingAction(unitUnderCursor), obj["B_UnitCursor"] := unitUnderCursor		
 		array := []
 		for k, v in obj
