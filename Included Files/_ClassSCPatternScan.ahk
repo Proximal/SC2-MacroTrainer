@@ -116,7 +116,8 @@ class _ClassSCPatternScan
 	{
 		if (address := this.mem.modulePatternScan("", 0xA3, "?", "?", "?", "?", 0x0F, 0x84, "?", "?", "?", "?", 0x03, 0xC6, 0xD1, 0xE8, 0x8B, 0xC8)) > 0
 			return this.mem.Read(address + 1)				
-	}		
+	}	
+	; B_Gamespeed is wrong!
 	B_Gamespeed()
 	{
 		if (address := this.mem.modulePatternScan("", 0x51, 0x8B, 0xCF, 0xFF, 0xD2, 0x8B, 0x0D, "?", "?", "?", "?", 0x8B, 0x01)) > 0
@@ -191,7 +192,7 @@ class _ClassSCPatternScan
 		setformat, IntegerFast, H ;This isn't called from autoExec so don't bother changing it back
 		obj := OrderedArray()
 		methods :=	"B_Timer|B_Timer|P_SelectionPage|B_LocalPlayerSlot|P_IdleWorker|P_ChatFocus|P_MenuFocus|B_SelectionStructure|B_TeamColours|B_MapStruct|B_camLeft|P_IsBuildCardDisplayed"
-				. 	"|B_CameraDragScroll|B_CameraMovingViaMouseAtScreenEdge|B_IsGamePaused|B_FramesPerSecond|B_Gamespeed|B_InputStructure|B_HorizontalResolution|B_localArmyUnitCount"
+				. 	"|B_CameraDragScroll|B_CameraMovingViaMouseAtScreenEdge|B_IsGamePaused|B_FramesPerSecond|B_InputStructure|B_HorizontalResolution|B_localArmyUnitCount"
 		loop, parse, methods, |
 			obj[A_LoopField] := this[A_LoopField]()
 		obj["B_pStructure Copy"] := this.B_pStructureNuke(structureSize), obj["S_pStructure Copy"] := structureSize

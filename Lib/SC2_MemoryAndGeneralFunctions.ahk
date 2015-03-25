@@ -426,7 +426,7 @@ loadMemoryAddresses(base, version := "")
 
 		; example: D:\My Computer\My Documents\StarCraft II\Accounts\56025555\6-S2-1-34555\Replays\
 		; this works for En, Fr, and Kr languages 
-		 B_ReplayFolder :=  base + 0x4FA9A68 
+		 B_ReplayFolder :=  base + 0x4FB6668
 
 		; Horizontal resolution ; 4 bytes
 		; vertical resolution ; The next 4 bytes immediately after the Horizontal resolution 
