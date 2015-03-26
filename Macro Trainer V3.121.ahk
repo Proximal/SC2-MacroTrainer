@@ -11477,7 +11477,7 @@ unloadAllTransports(hotkeySuffix)
 }
 
 
-/*
+
 ; Global Stim
 
 #If, !A_IsCompiled && WinActive(GameIdentifier) && isPlaying && aLocalPlayer.Race = "Terran" && !isMenuOpen()
@@ -11495,7 +11495,7 @@ if (tabsToSend := tabPos - aSelection.HighlightedGroup) < 0
 else send {tab %tabsToSend%}t+{tab %tabsToSend%}
 return
 #if
-*/
+
 
 AutoBuildGUIkeyPress:
 if (AutoBuildGUIkeyMode = "KeyDown")
@@ -13096,5 +13096,13 @@ http://www.flipcode.com/archives/Plotting_A_3D_Point_On_A_2D_Screen.shtml
 http://stackoverflow.com/questions/8633034/basic-render-3d-perspective-projection-onto-2d-screen-with-camera-without-openg
 */ 
 
+
+
+/*
+A1 ?? ?? ?? ?? 85 C0 74 0A 8B 10 51 8B C8 8B 42 14 FF D0 C3
+
+89 4F 18 F7 D0 33 86 ?? ?? ?? ?? 8B C8 C1 E9 10 8B D0
+
+*/
 
 

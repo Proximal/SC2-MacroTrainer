@@ -5462,7 +5462,7 @@ getMiniMapPingIconPos(byref xPos, byref yPos)
 }
 
 ; Converts the olldbg plugin scanner output to a string compatible with my scanner
-sigConverter(sig, mask, storeInClip := True)
+sigConverterOlly(sig, mask, storeInClip := True)
 {
 	sig := trim(sig, A_Space A_Tab "\") ; "sig starts with \"
 	mask := trim(mask, A_Space A_Tab)
@@ -5471,6 +5471,15 @@ sigConverter(sig, mask, storeInClip := True)
 	loop, parse, mask
 		r .= (A_LoopField != "?" ? aSig[A_Index] : """?""") ", "
 	return storeInClip ? clipboard := substr(r, 1, -2) : substr(r, 1, -2) 
+}
+
+; Sig must be in standard CE hex format i.e. without '0x' prefix and spaces to delimit bytes
+; e.g. 89 4F 18 F7 D0 33 86 ?? ?? ?? ?? 8B C8 C1 E9 10 8B D0
+SigConverterCE(sig := "", storeInClip := True)
+{
+	for i, v in strsplit(trim(sig, A_Space A_Tab), A_Space)
+		r .= (RegExMatch(v, "i)^[0-9a-f]+") ? "0x" v : """?""") ", "
+	return storeInClip ? clipboard := RTrim(r, ", ") : RTrim(r, ", ")
 }
 
 ; Pointer to a an array of town halls (completed and landed) in dynamic memory ["SC2.exe"+03FC53E4]+0
