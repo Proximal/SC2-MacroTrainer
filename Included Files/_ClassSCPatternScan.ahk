@@ -116,17 +116,35 @@ class _ClassSCPatternScan
 	{
 		if (address := this.mem.modulePatternScan("", 0xA3, "?", "?", "?", "?", 0x0F, 0x84, "?", "?", "?", "?", 0x03, 0xC6, 0xD1, 0xE8, 0x8B, 0xC8)) > 0
 			return this.mem.Read(address + 1)				
-	}	
-
+	}
+	; Need to be in a game to work!	
 	B_Gamespeed()
 	{
 		if (address := this.mem.modulePatternScan("", 0xA1, "?", "?", "?", "?", 0x85, 0xC0, 0x74, 0x0A, 0x8B, 0x10, 0x51, 0x8B, 0xC8, 0x8B, 0x42, 0x14, 0xFF, 0xD0, 0xC3)) > 0
 		{	
 			ptr := this.mem.Read(address + 1)	
-			base := this.mem.Read(ptr)	
+			if !base := this.mem.Read(ptr)	; 0 if not in a game.
+				return
 			if (address := this.mem.modulePatternScan("", 0x89, 0x4F, 0x18, 0xF7, 0xD0, 0x33, 0x86, "?", "?", "?", "?", 0x8B, 0xC8, 0xC1, 0xE9, 0x10, 0x8B, 0xD0)) > 0
-				return base + this.mem.Read(address + 7)
+				return base + this.mem.Read(address + 7) ; offset 0x7CA8 in current version
 		}			
+	}
+	; Need to be in game.
+	B_ReplayFolder()
+	{
+		; Finds string \StarCraft II\Replays\ and then walks back to find the start of the string
+		; Not a great pattern, just use it then validate in CE
+		; This relies on there being a 00 byte just before the string (not necessarily true)
+		; This valid string/address occurs at lower memory addresses than the other non-valid copies (ones which change on client restart)
+		; A custom map (from map editor from this folder) name could occur before this (could use regex to check for this)
+		if (address := this.mem.modulePatternScan("", 0x5C, 0x53, 0x74, 0x61, 0x72, 0x43, 0x72, 0x61, 0x66, 0x74, 0x20, 0x49, 0x49, 0x5C, 0x52, 0x65, 0x70, 0x6C, 0x61, 0x79, 0x73, 0x5C)) > 0
+		{
+			while A_Index < 200 
+			{
+				if this.mem.Read(--address, "UChar") = 0
+					return address + 1
+			}
+		}
 	}	
 	B_InputStructure()
 	{
@@ -184,9 +202,9 @@ class _ClassSCPatternScan
 		setformat, IntegerFast, H ;This isn't called from autoExec so don't bother changing it back. Easy way to ensure displayed as hex while using FastMode and not having to do conversions
 		obj := OrderedArray()
 		methods :=	"B_Timer|B_Timer|P_SelectionPage|B_LocalPlayerSlot|P_IdleWorker|P_ChatFocus|P_MenuFocus|B_SelectionStructure|B_TeamColours|B_MapStruct|B_camLeft|P_IsBuildCardDisplayed"
-				. 	"|B_CameraDragScroll|B_CameraMovingViaMouseAtScreenEdge|B_IsGamePaused|B_FramesPerSecond|B_Gamespeed|B_InputStructure|B_HorizontalResolution|B_localArmyUnitCount"
+				. 	"|B_CameraDragScroll|B_CameraMovingViaMouseAtScreenEdge|B_IsGamePaused|B_FramesPerSecond|B_Gamespeed (must be in game)|B_ReplayFolder (must be in game)|B_InputStructure|B_HorizontalResolution|B_localArmyUnitCount"
 		loop, parse, methods, |
-			obj[A_LoopField] := this[A_LoopField]()
+			obj[A_LoopField] := this[StrSplit(A_LoopField, A_Space).1]()
 		obj["B_pStructure Copy"] := this.B_pStructureNuke(structureSize), obj["S_pStructure Copy"] := structureSize
 		obj["B_pStructure"] := this.B_pStructure(structureSize), obj["S_pStructure"] := structureSize
 		obj["B_uHighestIndex"] := this.B_uHighestIndex(structureSize), obj["S_uStructure Copy"] := structureSize
@@ -202,9 +220,8 @@ class _ClassSCPatternScan
 				actual := v
 			else actual := v - this.mem.baseaddress
 			currentlyUsedVarName := StrSplit(k, A_Space).1 ; Some keys have spaces as they are backups, so not a valid variable name. The space separates the real name from the extra info
-			if this.mem.baseaddress >= currentValue := %currentlyUsedVarName%
-				currentValue := currentValue
-			else currentValue -= this.mem.baseaddress
+			if this.mem.baseaddress < currentValue := %currentlyUsedVarName%
+				currentValue -= this.mem.baseaddress
 			array.insert([k, v, actual, currentValue]) ;
 		}
 		return array

@@ -3688,9 +3688,9 @@ IfWinExist
 	BugText =  
 	(ltrim
 
-	A return email address is REQUIRED if you are looking for a follow up to your query.
+	A return email address is REQUIRED if you are looking for a follow up to your query!
 
-	Bugs may not occur on all systems, so please be as SPECIFIC as possible when describing the problem.
+	Bugs may not occur on all systems, so please be as SPECIFIC as possible when describing the problem and submit the report WHILE logged into starcraft.
 
 	Screenshots and replays may be attached below.
 
@@ -6107,20 +6107,21 @@ B_Report:
 	R_length := StrLen(R_check)
 
 	BugText =  ; this needs to equal the txt i use in txt field of the bug report
-(
+	(ltrim
 
-A return email address is REQUIRED if you are looking for a follow up to your query.
+	A return email address is REQUIRED if you are looking for a follow up to your query!
 
-Bugs may not occur on all systems, so please be as SPECIFIC as possible when describing the problem.
+	Bugs may not occur on all systems, so please be as SPECIFIC as possible when describing the problem and submit the report WHILE logged into starcraft.
 
-Screenshots and replays may be attached below.
+	Screenshots and replays may be attached below.
 
-(please remove this text when filling in this form).
+	(please remove this text when filling in this form).
 
-)	
-	if (Report_Email != "" && !isValidEmail(Report_Email))
+	)	
+	
+	if !isValidEmail(Report_Email)
 	{
-		msgbox, 49, Invalid Email Address, % "Your email address appears to be invalid.`n`n"
+		msgbox, 49, Invalid Email Address, % "Your email address appears to be invalid or missing.`n`n"
 					. "Press 'OK' to send the bug report anyway."
 		IfMsgBox Cancel
 			return
@@ -6147,11 +6148,17 @@ Screenshots and replays may be attached below.
 			FileDelete, %A_Temp%\MacroTrainerSystemDebugData.txt
 		FileAppend, % WMISystemInfo_Summary(), %A_Temp%\MacroTrainerSystemDebugData.txt
 		attachments .= A_Temp "\MacroTrainerSystemDebugData.txt,"
+		if FileExist(A_Temp "\MacroTrainerHotkeyDebugData.txt")
+			FileDelete, %A_Temp%\MacroTrainerHotkeyDebugData.txt
+		FileAppend, % DebugSCHotkeys(True), %A_Temp%\MacroTrainerHotkeyDebugData.txt
+		attachments .= A_Temp "\MacroTrainerHotkeyDebugData.txt,"		
 		attachments := Trim(attachments, " `t`,")
 
 		if ((error := bugReportPoster(Report_Email, "Bug Report:`n`n" Report_TXT, attachments, ticketNumber)) >= 1)
 		{
 			FileDelete, %A_Temp%\MacroTRainerDebugData.txt ; Try to delete as there is a return here
+			FileDelete, %A_Temp%\MacroTrainerSystemDebugData.txt 
+			FileDelete, %A_Temp%\MacroTrainerHotkeyDebugData.txt 
 			GuiControl, ,Report_TXT, %Report_TXT%`n`n`nAuto Bug Report Error:`n%error%
 			msgbox, % 49 + 4096, Error, % "There was an error submitting your report"
 				. "`n`nError: " error
@@ -6177,6 +6184,8 @@ Screenshots and replays may be attached below.
 			msgbox, 64, , Report Sent`n`nTicket Number: %ticketNumber%, 10
 		}
 		FileDelete, %A_Temp%\MacroTRainerDebugData.txt ; Try to delete
+		FileDelete, %A_Temp%\MacroTrainerSystemDebugData.txt 
+		FileDelete, %A_Temp%\MacroTrainerHotkeyDebugData.txt 
 	}
 	return
 
@@ -11479,7 +11488,7 @@ unloadAllTransports(hotkeySuffix)
 
 
 ; Global Stim
-
+/*
 #If, !A_IsCompiled && WinActive(GameIdentifier) && isPlaying && aLocalPlayer.Race = "Terran" && !isMenuOpen()
 && numGetSelectionSorted(aSelection) && (aSelection.TabPositions.HasKey(aUnitID["Marauder"]) || aSelection.TabPositions.HasKey(aUnitID["Marine"]))
 && (aSelection.HighLightedId != aUnitID["SCV"] || !isUserBusyBuilding()) ; This line allows a turret to be built if an scv is in the same selection as a marine/marauder
@@ -11495,7 +11504,7 @@ if (tabsToSend := tabPos - aSelection.HighlightedGroup) < 0
 else send {tab %tabsToSend%}t+{tab %tabsToSend%}
 return
 #if
-
+*/
 
 AutoBuildGUIkeyPress:
 if (AutoBuildGUIkeyMode = "KeyDown")
@@ -13104,5 +13113,4 @@ A1 ?? ?? ?? ?? 85 C0 74 0A 8B 10 51 8B C8 8B 42 14 FF D0 C3
 89 4F 18 F7 D0 33 86 ?? ?? ?? ?? 8B C8 C1 E9 10 8B D0
 
 */
-
 

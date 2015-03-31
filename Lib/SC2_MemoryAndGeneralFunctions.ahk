@@ -2008,6 +2008,16 @@ getPercentageUnitCompleted(B_QueuedUnitInfo)
 	return round( (TotalTime - RemainingTime) / TotalTime, 2) ;return .47 (ie 47%)
 }
 
+; Production struct
+; TypeID = 0x44 (specific to the building type)
+; supply = 0x64
+; TotalTime = 0x68
+; RemainingTime  0x6C
+; Minerals =  0x74
+; Gas = 0x78
+; StructureUnitIndex 0x5E (needs to be shifted)
+
+
 ; returns seconds round to 2 decimal points
 ; returns 0/false if hasnt started
 getTimeUntilUnitCompleted(B_QueuedUnitInfo)
@@ -2848,7 +2858,7 @@ SetMiniMap(byref minimap)
 	; minimap is a super global (though here it is a local)
 	minimap := []
 
-	AspectRatio := getScreenAspectRatio()	
+	AspectRatio := getClientAspectRatio(Xclient, Yclient, Wclient, Hclient)
 	; Border refers to the SC minimap UI coordinates
 	If (AspectRatio = "16:10")
 	{
@@ -2874,10 +2884,10 @@ SetMiniMap(byref minimap)
 	Else ;16:9 Else if (AspectRatio = "16:9")
 	{
 		; 23/08/14 Borderleft changed from 28 to 29
-		minimap.BorderLeft := ((enlarged ? 8 : 29)/1920) * A_ScreenWidth
-		minimap.BorderRight := ((enlarged ? 323 : 289)/1920) * A_ScreenWidth
-		minimap.BorderTop  := ((enlarged ? 757 : 808)/1080) * A_ScreenHeight
-		minimap.BorderBottom := ((enlarged ? 1072 : 1066)/1080) * A_ScreenHeight
+		minimap.BorderLeft := ((enlarged ? 8 : 29)/1920) * Wclient
+		minimap.BorderRight := ((enlarged ? 323 : 289)/1920) * Wclient
+		minimap.BorderTop  := ((enlarged ? 757 : 808)/1080) * Hclient
+		minimap.BorderBottom := ((enlarged ? 1072 : 1066)/1080) * Hclient
 	}
 	;minimap.MapLeft := getmapleft()
 	;minimap.MapRight := getmapright()	
@@ -4797,6 +4807,7 @@ isTransportUnloading(unit)
 		+ 0x6C	- Current armour Upgrade
 		+ 0xA0  - Total Shields /4096 (there are two of these next to each other)
 		+ 0xE0 	- Shield Upgrades
+		+ 		- Max energy
 	
 */
 
@@ -5336,7 +5347,8 @@ StarcraftInstallPath()
 ClickUnitPortrait(SelectionIndex=0, byref X=0, byref Y=0, byref Xpage=0, byref Ypage=0, ClickPageTab = 0) ;SelectionIndex begins at 0 topleft unit
 {
 	static AspectRatio, Xu0, Yu0, Size, Xpage1, Ypage1, Ypage6, YpageDistance
-	if (AspectRatio != newAspectRatio := getScreenAspectRatio())
+	; Should check width/height as possible for those to change but still be same aspect ratio
+	if (AspectRatio != newAspectRatio := getClientAspectRatio(Xclient, Yclient, Wclient, Hclient))
 	{
 		AspectRatio := newAspectRatio
 		If (AspectRatio = "16:10")
@@ -5357,11 +5369,13 @@ ClickUnitPortrait(SelectionIndex=0, byref X=0, byref Y=0, byref Xpage=0, byref Y
 			Size := (51.14/1280)*A_ScreenWidth
 			Xpage1 := (350/1280)*A_ScreenWidth, Ypage1 := (800/960)*A_ScreenHeight, Ypage6 := (928/960)*A_ScreenHeight
 		}
-		Else if (AspectRatio = "16:9")
+		; If the screen resolution is > game, the game will still probably be running in this aspect ratio (as it will look the best)
+		; It will just not take up the entire screen (assume positioned top left 0,0)
+		Else ;if (AspectRatio = "16:9") 
 		{
-			Xu0 := (692/1920)*A_ScreenWidth, Yu0 := (916/1080)*A_ScreenHeight
-			Size := (57/1920)*A_ScreenWidth	;its square
-			Xpage1 := (638/1920)*A_ScreenWidth, Ypage1 := (901/1080)*A_ScreenHeight, Ypage6 := (1044/1080)*A_ScreenHeight
+			Xu0 := (692/1920)*Wclient, Yu0 := (916/1080)*Hclient
+			Size := (57/1920)*Wclient	;its square
+			Xpage1 := (638/1920)*Wclient, Ypage1 := (901/1080)*Hclient, Ypage6 := (1044/1080)*Hclient
 
 		}
 		YpageDistance := (Ypage6 - Ypage1)/5		;because there are 6 pages - 6-1
@@ -5406,7 +5420,7 @@ clickCommandCard(position, byRef x, byRef y)
 {
 	static AspectRatio, X0, y0, Size, width, height
 
-	if (AspectRatio != newAspectRatio := getScreenAspectRatio())
+	if (AspectRatio != newAspectRatio := getClientAspectRatio(Xclient, Yclient, Wclient, Hclient))
 	{
 		AspectRatio := newAspectRatio
 		If (AspectRatio = "16:10")
@@ -5424,10 +5438,12 @@ clickCommandCard(position, byRef x, byRef y)
 			X0 := (944/1280)*A_ScreenWidth, y0 := (815/960)*A_ScreenHeight
 			width := (61/1280)*A_ScreenWidth, height := (61/960)*A_ScreenHeight	
 		}
-		Else if (AspectRatio = "16:9")
+		; If the screen resolution is > game, the game will still probably be running in this aspect ratio (as it will look the best)
+		; It will just not take up the entire screen (assume positioned top left 0,0)		
+		Else ;if (AspectRatio = "16:9")
 		{
-			X0 := (1542/1920)*A_ScreenWidth, y0 := (916/1080)*A_ScreenHeight
-			width := (68/1920)*A_ScreenWidth, height := (69/1080)*A_ScreenHeight	
+			X0 := (1542/1920)*Wclient, y0 := (916/1080)*Hclient
+			width := (68/1920)*Wclient, height := (69/1080)*Hclient	
 		}
 	}
 	row := floor(position/5)
@@ -5443,7 +5459,7 @@ getMiniMapPingIconPos(byref xPos, byref yPos)
 {
 	static AspectRatio, x, y, supported := True
 
-	if (AspectRatio != newAspectRatio := getScreenAspectRatio())
+	if (AspectRatio != newAspectRatio := getClientAspectRatio(Xclient, Yclient, Wclient, Hclient))
 	{
 		AspectRatio := newAspectRatio
 		If (AspectRatio = "16:10")
@@ -5452,13 +5468,41 @@ getMiniMapPingIconPos(byref xPos, byref yPos)
 			x := (292/1280)*A_ScreenWidth, y := (823/1024)*A_ScreenHeight
 		Else If (AspectRatio = "4:3")	
 			x := (291/1280)*A_ScreenWidth, y := (759/960)*A_ScreenHeight
-		Else if (AspectRatio = "16:9")
-			x := (328/1920)*A_ScreenWidth, y := (854/1080)*A_ScreenHeight
-		else supported := false 
+		; If the screen resolution is > game, the game will still probably be running in this aspect ratio (as it will look the best)
+		; It will just not take up the entire screen (assume positioned top left 0,0)
+		Else ;if (AspectRatio = "16:9")
+			x := (328/1920)*Wclient, y := (854/1080)*Hclient
+		;else supported := false 
 	}
 	if supported
 		return true, xPos := x, yPos := y
 	else return false, xPos := yPos := "" 
+}
+
+getClientAspectRatio(byRef x := "", byRef y := "", byRef w := "", byRef h := "")
+{ 	
+	static lastTick := 0, AspectRatio, pX, pY, pW, pH
+
+	; winGetPos only takes ~ 0.047 ms, however it could be called many times in quick succession
+	; via click unit portrait
+	if (A_TickCount - lastTick < 1000)
+		return AspectRatio, x := pX, y := pY, w := pW, h := pH	
+	WinGetPos, x, y, w, h, %GameIdentifier%
+	if (w = "") ; client window doesn't exist
+		w := A_ScreenWidth, h := A_ScreenHeight, x := y := 0
+	lastTick := A_TickCount
+	;ROUND as this should group 1366x768 (1.7786458333) in with 16:9
+	AspectRatio := Round(w / h, 2)
+	if ( AspectRatio = Round(1680/1050, 2)) 	; 1.6
+		AspectRatio := "16:10"
+	else if (AspectRatio = Round(1920/1080, 2)) ; 1.78s
+		AspectRatio := "16:9"
+	else if (AspectRatio = Round(1280/1024, 2)) ; 1.25
+		AspectRatio := "5:4"
+	else if (AspectRatio = Round(1600/1200, 2)) ; 1.33
+		AspectRatio := "4:3"
+
+	return AspectRatio, pX := x, pY := y, pW := w, pH := h
 }
 
 ; Converts the olldbg plugin scanner output to a string compatible with my scanner
