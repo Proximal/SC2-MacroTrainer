@@ -150,6 +150,7 @@ class SC2Keys
 			trainImmortal						|i 					|i					|i 					|CommandButton02				|Commands 				|Immortal/RoboticsFacility
 			trainColossus						|c 					|l					|v 					|CommandButton03				|Commands 				|Colossus/RoboticsFacility
 			trainQueen							|q 					|u					|e 					|CommandButton01				|Commands 				|Queen 		; SC only allows same key for hatch/lair/hive
+			UpgradeToWarpGate					|g 					|g					|g 					|CommandButton10				|Commands 				|UpgradeToWarpGate/Gateway 		
 		)"
 
 		if suffix not in Standard,_NRS,_SC1,_GLS,_GRS
@@ -170,6 +171,14 @@ class SC2Keys
 		; Add all new hotkey section SC hotkeys here (excluding grid keys)
 		obj.SubgroupNext := "Tab"
 		obj.SubgroupPrev := "Shift+Tab"
+		obj.ArmySelect := "F2"
+		obj.TownCamera := "Backspace"
+		obj.PauseGame := "Pause"
+		obj.SelectionCancelDrag := "Escape"
+		; This hoktey doesn't seem to exist in the hotkey editor, so I assume it must always be escape 
+		; although there are other hotkeys (TargetCancel) which cancels the targetting mode
+		obj.GlobalTargetCancel := "Escape" 
+
 		loop, 10 ; Set default control group keys
 		{
 			group := A_Index - 1
@@ -181,7 +190,7 @@ class SC2Keys
 		{
 			for k, value in obj 
 			{
-				IniRead, hotkey, %file%,  Hotkeys, %k%, %value%
+				IniRead, hotkey, %file%, Hotkeys, %k%, %value%
 				obj[k] := hotkey
 			}
 		}

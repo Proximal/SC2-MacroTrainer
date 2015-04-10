@@ -1843,7 +1843,7 @@ user_idle:
 		if ( pause_check = getTime())
 			return	; the game is already paused		
 		send, +{enter}%chat_text%{enter} 
-		Send, %pause_game%
+		Send, % SC2Keys.key("Pause") ; %pause_game%
 	}
 	Else If ( time > UserIdle_HiLimit )
 		settimer, user_idle, off	
@@ -2392,10 +2392,10 @@ ini_settings_write:
 
 
 	;[Starcraft Settings & Keys]
-	IniWrite, %pause_game%, %config_file%, Starcraft Settings & Keys, pause_game
-	IniWrite, %base_camera%, %config_file%, Starcraft Settings & Keys, base_camera
-	IniWrite, %NextSubgroupKey%, %config_file%, Starcraft Settings & Keys, NextSubgroupKey
-	IniWrite, %escape%, %config_file%, Starcraft Settings & Keys, escape
+	;IniWrite, %pause_game%, %config_file%, Starcraft Settings & Keys, pause_game
+	;IniWrite, %base_camera%, %config_file%, Starcraft Settings & Keys, base_camera
+	;IniWrite, %NextSubgroupKey%, %config_file%, Starcraft Settings & Keys, NextSubgroupKey
+	;IniWrite, %escape%, %config_file%, Starcraft Settings & Keys, escape
 	
 	; [MiniMap Inject]
 	section := "MiniMap Inject"
@@ -2662,7 +2662,7 @@ ini_settings_write:
 	;[Misc Automation]
 	section := "Misc Automation"
 	IniWrite, %SelectArmyEnable%, %config_file%, %section%, SelectArmyEnable
-	IniWrite, %Sc2SelectArmy_Key%, %config_file%, %section%, Sc2SelectArmy_Key
+	;IniWrite, %Sc2SelectArmy_Key%, %config_file%, %section%, Sc2SelectArmy_Key
 	IniWrite, %castSelectArmy_key%, %config_file%, %section%, castSelectArmy_key
 	IniWrite, %SleepSelectArmy%, %config_file%, %section%, SleepSelectArmy
 	IniWrite, %ModifierBeepSelectArmy%, %config_file%, %section%, ModifierBeepSelectArmy
@@ -6118,7 +6118,7 @@ B_Report:
 	(please remove this text when filling in this form).
 
 	)	
-	
+
 	if !isValidEmail(Report_Email)
 	{
 		msgbox, 49, Invalid Email Address, % "Your email address appears to be invalid or missing.`n`n"
@@ -7927,6 +7927,8 @@ autoWorkerProductionCheck()
 
 	if (MaxWokersTobeMade >= 1) && (idleBases || almostComplete || (halfcomplete && !nearHalfComplete)  ) ; i have >= 1 in case i stuffed the math and end up with a negative number or a fraction
 	{
+		if !isSelectionGroupable(oSelection) || isGamePaused() || isMenuOpen()
+			return 		
 		While ( isUserBusyBuilding() || isCastingReticleActive() 
 		|| GetKeyState("LButton", "P") || GetKeyState("RButton", "P")
 		|| getkeystate("Enter", "P") 
@@ -8078,12 +8080,12 @@ autoWorkerProductionCheck()
 			if (tabPosition != "")
 			{
 				if BaseControlGroupNotSelected
-					sendSequence .= sRepeat(NextSubgroupKey, tabPosition)
+					sendSequence .= sRepeat(SC2Keys.key("SubgroupNext"), tabPosition)
 				else if (oSelection.HighlightedId != aUnitId.Nexus
 				&& oSelection.HighlightedId != aUnitId.OrbitalCommand
 				&& oSelection.HighlightedId != aUnitId.CommandCenter
 				&& oSelection.HighlightedId != aUnitId.PlanetaryFortress)
-					sendSequence .= sRepeat(NextSubgroupKey, tabPositionChanged := oSelection["Types"]  - HighlightedGroup + tabPosition)
+					sendSequence .= sRepeat(SC2Keys.key("SubgroupNext"), tabPositionChanged := oSelection["Types"]  - HighlightedGroup + tabPosition)
 
 				; other function gets spammed when user incorrectly adds a unit to the main control group 
 				; (as it will take subgroup 0) and for terran tell that unit to 'stop' when sends s
@@ -8100,7 +8102,7 @@ autoWorkerProductionCheck()
 				restoreSelection(controlstorageGroup, selectionPage, HighlightedGroup)			
 			}
 			else if tabPositionChanged ; eg the ebay or floating CC is selected is the selected tab in the already selected base control group
-				input.pSend(sRepeat(NextSubgroupKey, oSelection["Types"]  - tabPosition + HighlightedGroup ))	
+				input.pSend(sRepeat(SC2Keys.key("SubgroupNext"), oSelection["Types"]  - tabPosition + HighlightedGroup ))	
 			WorkerMade := True
 		}
 		Input.revertKeyState()
@@ -8877,10 +8879,10 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 			Dx1 := 25, Dy1 := 25, Dx2 := A_ScreenWidth-40, Dy2 := A_ScreenHeight-240
 		loop, % getPlayerBaseCameraCount()	
 		{
-			input.pSend(base_camera)
+			input.pSend(SC2Keys.key("TownCamera"))
 			sleep % ceil( (sleepTime/2) * rand(1, Inject_SleepVariance))	;need a sleep somerwhere around here to prevent walkabouts...sc2 not registerings box drag?
 			if isCastingReticleActive() ; i.e. cast larva
-				input.pSend(Escape) ; (deselects queen larva) (useful on an already injected hatch) this is actually a variable
+				input.pSend(SC2Keys.key("GlobalTargetCancel")) ; (deselects queen larva) (useful on an already injected hatch) this is actually a variable
 			If (drag_origin = "Right" OR drag_origin = "R") And HumanMouse ;so left origin - not case sensitive
 				Dx1 := A_ScreenWidth-15-rand(0,(360/1920)*A_ScreenWidth), Dy1 := 45+rand(5,(200/1080)*A_ScreenHeight), Dx2 := 40+rand((-5/1920)*A_ScreenWidth,(300/1920)*A_ScreenWidth), Dy2 := A_ScreenHeight-240-rand((-5/1080)*A_ScreenHeight,(140/1080)*A_ScreenHeight)
 			Else If (drag_origin = "Left" OR drag_origin = "L") AND HumanMouse ;left origin
@@ -8958,7 +8960,7 @@ restoreSelection(controlGroup, selectionPage, highlightedTab)
 	dsleep(15) ; This might not be long enough in big battles/large control group
 	if (highlightedTab && highlightedTab < getSelectionTypeCount())	; highlightedTab is zero based - TypeCount is 1 based hence < not <=
 	{
-		input.pSend(sRepeat(NextSubgroupKey, highlightedTab))
+		input.pSend(sRepeat(SC2Keys.key("SubgroupNext"), highlightedTab))
 		; Although unlikely due to speed of automation, it is possible for a unit to die and for there to be 1 less
 		; sub group now present, hence if trying to access the previously highest (and now now non existent) subgroup 
 		; this could stall here. Perhaps have a look for a max subgroup pos
@@ -9065,7 +9067,7 @@ selectArmy()
 	if (GetKeyState("Lbutton", "P") || GetKeyState("Rbutton", "P"))
 		dSleep(30) 		; dSleep(15)
 	if isCastingReticleActive() 	; so can deselect units if attacking reticle was present
-		input.pSend(Escape) 		; is a dsleep() >= 15 is performed after select army key is pressed this is not required - 12isnt enough
+		input.pSend(SC2Keys.key("GlobalTargetCancel")) 		; is a dsleep() >= 15 is performed after select army key is pressed this is not required - 12isnt enough
 									; as SC will have enough time to get rid of the selection reticle itself
 	
 	; If i use the box drag method, then I will need to also remove workers and any allied units (left/shared control)
@@ -9076,7 +9078,7 @@ selectArmy()
 	}
 	else if (getArmyUnitCount() != getSelectionCount())
 	{
-		input.pSend(Sc2SelectArmy_Key)
+		input.pSend(SC2Keys.key("ArmySelect"))
 		timerArmyID := stopwatch()
 		; waits for selection count to match army count 
 		; times out after 50 ms - small static sleep afterwards
@@ -9087,7 +9089,7 @@ selectArmy()
 	} 
 	else 
 	{
-		input.pSend(Sc2SelectArmy_Key)
+		input.pSend(SC2Keys.key("ArmySelect"))
 		dSleep(40) 
 	}
 
@@ -9204,7 +9206,7 @@ quickSelect(aDeselect)
 		goto __quickSelectFunctionRemoveHooksExit
 
 	if isCastingReticleActive() 	; so can deselect units if attacking/drop/rally reticle was present
-		input.pSend(Escape) 		; in ideal conditions a dsleep() >= 15 is performed after select army key is pressed this is not required - 12isnt enough
+		input.pSend(SC2Keys.key("GlobalTargetCancel")) 		; in ideal conditions a dsleep() >= 15 is performed after select army key is pressed this is not required - 12isnt enough
 									; as SC will have enough time to get rid of the selection reticle itself
 	if aDeselect.BaseSelection != "Current Selection"
 	{
@@ -9240,7 +9242,7 @@ quickSelect(aDeselect)
 		{					
 			if (getArmyUnitCount() != getSelectionCount())
 			{
-				input.pSend(Sc2SelectArmy_Key)
+				input.pSend(SC2Keys.key("ArmySelect"))
 				timerQuickID := stopwatch()
 				; waits for selection count to match army count 
 				; times out after 50 ms - small static sleep afterwards
@@ -9252,7 +9254,7 @@ quickSelect(aDeselect)
 			} 
 			else  
 			{
-				input.pSend(Sc2SelectArmy_Key)
+				input.pSend(SC2Keys.key("ArmySelect"))
 				dSleep(40) 
 			}
 		}
@@ -10053,7 +10055,7 @@ SplitUnits(SplitctrlgroupStorage_key)
 	input.pSend(aAGHotkeys.Invoke[SplitctrlgroupStorage_key])
 	dsleep(15)
 	if HighlightedGroup
-		input.pSend(sRepeat(NextSubgroupKey, HighlightedGroup))
+		input.pSend(sRepeat(SC2Keys.key("SubgroupNext"), HighlightedGroup))
 	return
 }
 
@@ -10217,7 +10219,7 @@ castEasyUnload(hotkey)
 
 	input.pReleaseKeys()
 	if isCastingReticleActive() 	
-		input.pSend(Escape) 	
+		input.pSend(SC2Keys.key("GlobalTargetCancel")) 	
 	lClickedUnits := ""
 	aDroppTick := []
 	while GetKeyState(hotkey, "P")
@@ -11104,7 +11106,7 @@ removeDamagedUnit()
 	if lowHP.MaxIndex()
 	{
 		if isCastingReticleActive() 	; so can deselect units if attacking reticle was present
-			input.pSend(Escape) 		; is a dsleep() >= 15 is performed after select army key is pressed this is not required - 12isnt enough
+			input.pSend(SC2Keys.key("GlobalTargetCancel")) 		; is a dsleep() >= 15 is performed after select army key is pressed this is not required - 12isnt enough
 										; as SC will have enough time to get rid of the selection reticle itself		
 		timerGrouping := stopwatch()
 		input.pSend(aAGHotkeys.set[RemoveDamagedUnitsCtrlGroup])
@@ -11126,7 +11128,7 @@ removeDamagedUnit()
 		{
 			clickCommandCard(10, x, y)
 			; left click the spell, left click to cast, right click to cause stalkers to move the remainder of the distance and for the rest of the units to move
-			input.pSend(sRepeat(NextSubgroupKey, aSelected.TabPositions[aUnitId.Stalker]) "{click " x ", " y "}{Click}{Click Right}")
+			input.pSend(sRepeat(SC2Keys.key("SubgroupNext"), aSelected.TabPositions[aUnitId.Stalker]) "{click " x ", " y "}{Click}{Click Right}")
 		}
 		else input.pSend("{Click Right}")
 
@@ -11438,7 +11440,7 @@ unloadAllTransports(hotkeySuffix)
 	; and triggering the function again
 
 	if aSelection.Count = 1 && getCargoCount(aSelection.Units.1.UnitIndex, isUnloading) && !isUnloading
-		input.pSend(unloadAllCargoString escape) ; send Escape as we should try to remove the casting reticle invoked my pressing the hotkey ability
+		input.pSend(unloadAllCargoString SC2Keys.key("GlobalTargetCancel")) ; send Escape as we should try to remove the casting reticle invoked my pressing the hotkey ability
 	else if aSelection.Count > 1
 	{
 		input.pSend(escape)
@@ -11488,7 +11490,7 @@ unloadAllTransports(hotkeySuffix)
 
 
 ; Global Stim
-/*
+
 #If, !A_IsCompiled && WinActive(GameIdentifier) && isPlaying && aLocalPlayer.Race = "Terran" && !isMenuOpen()
 && numGetSelectionSorted(aSelection) && (aSelection.TabPositions.HasKey(aUnitID["Marauder"]) || aSelection.TabPositions.HasKey(aUnitID["Marine"]))
 && (aSelection.HighLightedId != aUnitID["SCV"] || !isUserBusyBuilding()) ; This line allows a turret to be built if an scv is in the same selection as a marine/marauder
@@ -11504,7 +11506,7 @@ if (tabsToSend := tabPos - aSelection.HighlightedGroup) < 0
 else send {tab %tabsToSend%}t+{tab %tabsToSend%}
 return
 #if
-*/
+
 
 AutoBuildGUIkeyPress:
 if (AutoBuildGUIkeyMode = "KeyDown")
@@ -13113,4 +13115,84 @@ A1 ?? ?? ?? ?? 85 C0 74 0A 8B 10 51 8B C8 8B 42 14 FF D0 C3
 89 4F 18 F7 D0 33 86 ?? ?? ?? ?? 8B C8 C1 E9 10 8B D0
 
 */
+
+
+convertWarpGates:
+if !aThreads.Minimap.ahkgetvar.isWarpGateTechComplete
+	return 
+convertWarpGates(6)
+return
+
+convertWarpGates(gatewayGroup)
+{
+	tempControlGroup := 3
+	for i, fingerPrint in controlGroupFingerPrints(gatewayGroup)
+	{
+		if getUnitFingerPrint(unitIndex := fingerPrint >> 18) != fingerPrint
+			continue 
+		if getUnitType(unitIndex) = aUnitID.Gateway && !isUnderConstruction(unitIndex) && !isGatewayConvertingToWarpGate(unitIndex) && isUnitPowered(unitIndex)
+			gatewayCount++			
+	}
+	; So a gateway needs converting
+	if !gatewayCount || waitForUser()
+		return 
+	Thread, NoTimers, true
+	critical, 1000	
+	setLowLevelInputHooks(True)
+	dsleep(10)
+	releasedKeys := input.pReleaseKeys(True)
+	input.pSend("{shift up}{ctrl up}") 
+	dSleep(25)
+
+	selectionPage := getUnitSelectionPage()	
+	If numGetSelectionSorted(oSelection) && oSelection.IsGroupable
+	{
+		soundplay *-1
+		tabPosition := oSelection.TabPositions[aUnitId.Gateway]
+		sendSequence := SC2Keys.key("ControlGroupAssign" tempControlGroup)
+		sendSequence .= SC2Keys.key("ControlGroupRecall" gatewayGroup)
+		input.pSend(sendSequence)
+		; Need some time for selection to update so that you can tab to the gateways (otherwise SC ignores the sent keys)
+		; it works with 5 in local game. So 30 should be plenty.
+		; Note this has nothing to do with the HasKey(aUnitId.Gateway) check
+		dsleep(30) 
+		numGetSelectionSorted(oSelection)
+		if oSelection.TabPositions.HasKey(aUnitId.Gateway)
+		{
+			sendSequence := sRepeat(SC2Keys.key("SubgroupNext"), tabPositionChanged := oSelection["Types"]  - oSelection.HighlightedGroup + tabPosition)
+			sendSequence .= sRepeat(SC2Keys.key("UpgradeToWarpGate/Gateway"), gatewayCount)
+			input.pSend(sendSequence)
+		}
+		restoreSelection(tempControlGroup, selectionPage, oSelection.HighlightedGroup)		
+	}
+	Input.revertKeyState()
+	setLowLevelInputHooks(False)
+	critical, off
+	Thread, NoTimers, false 
+	return 
+}
+
+
+waitForUser()
+{
+	global AutoWorkerAPMProtection
+	if !isSelectionGroupable(oSelection) || isGamePaused() || isMenuOpen()
+		return 1		
+	While ( isUserBusyBuilding() || isCastingReticleActive() 
+	|| GetKeyState("LButton", "P") || GetKeyState("RButton", "P")
+	|| getkeystate("Enter", "P") 
+	|| getkeystate("Tab", "P") 
+	|| getPlayerCurrentAPM() > AutoWorkerAPMProtection
+	||  A_mtTimeIdle < 50)
+	{
+		if (A_index > 36)
+			return 1 ; (actually could be 480 ms - sleep 1 usually = 20ms)
+		Thread, Priority, -2147483648	
+		sleep 1
+		Thread, Priority, 0	
+	}
+	if !isSelectionGroupable(oSelection) || isGamePaused() || isMenuOpen()
+		return 1		
+	return 0
+}
 

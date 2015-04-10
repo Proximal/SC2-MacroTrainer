@@ -551,6 +551,16 @@ IsInControlGroup(group, unitIndex)
 	Return 0	
 }
 
+controlGroupFingerPrints(Group)
+{
+	obj := []
+	count := getControlGroupCount(Group)
+	ReadRawMemory(B_CtrlGroupStructure + S_CtrlGroup * group, GameIdentifier, Memory,  O_scUnitIndex + count * S_scStructure)	
+	loop, % count 
+		obj.insert(NumGet(Memory, O_scUnitIndex + (A_Index - 1) * S_scStructure, "UInt"))
+	return obj
+}
+
 getControlGroupPortraitCount(group)
 {
 	count := 0
