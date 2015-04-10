@@ -4511,13 +4511,13 @@ readConfigFile()
 	IniRead, RemoveDamagedUnitsShieldLevel, %config_file%, %section%, RemoveDamagedUnitsShieldLevel, 15
 	RemoveDamagedUnitsShieldLevel := round(RemoveDamagedUnitsShieldLevel / 100, 3)
 
-	IniRead, EasyUnloadTerranEnable, %config_file%, %section%, EasyUnloadTerranEnable, 0
-	IniRead, EasyUnloadProtossEnable, %config_file%, %section%, EasyUnloadProtossEnable, 0
-	IniRead, EasyUnloadZergEnable, %config_file%, %section%, EasyUnloadZergEnable, 0
+	IniRead, SelectTransportsTerranEnable, %config_file%, %section%, SelectTransportsTerranEnable, 0
+	IniRead, SelectTransportsProtossEnable, %config_file%, %section%, SelectTransportsProtossEnable, 0
+	IniRead, SelectTransportsZergEnable, %config_file%, %section%, SelectTransportsZergEnable, 0
 	IniRead, EasyUnloadAllTerranEnable, %config_file%, %section%, EasyUnloadAllTerranEnable, 0
 	IniRead, EasyUnloadAllProtossEnable, %config_file%, %section%, EasyUnloadAllProtossEnable, 0
 	IniRead, EasyUnloadAllZergEnable, %config_file%, %section%, EasyUnloadAllZergEnable, 0
-	IniRead, EasyUnloadHotkey, %config_file%, %section%, EasyUnloadHotkey, F5
+	IniRead, SelectTransportsHotkey, %config_file%, %section%, SelectTransportsHotkey, F5
 	IniRead, EasyUnloadQueuedHotkey, %config_file%, %section%, EasyUnloadQueuedHotkey, +F5
 	IniRead, EasyUnload_T_Key, %config_file%, %section%, EasyUnload_T_Key, d
 	IniRead, EasyUnload_P_Key, %config_file%, %section%, EasyUnload_P_Key, d

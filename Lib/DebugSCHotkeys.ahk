@@ -30,11 +30,11 @@ DebugSCHotkeys(noGUI := False)
 
 	Gui, Add, Edit, w570 r18 hwndHwndEdit readonly, %log%
 
-	Gui, Add, ListView, Grid -LV0x10 NoSortHdr +resize w570 r28, Name|Hotkey
+	Gui, Add, ListView, Grid -LV0x10 NoSortHdr +resize w570 r28, Name|Sent Keys|MT Hotkeys
 	Gui, Add, Button, Default g__DebugSCHotkeysClipboardDump, Dump To Clipboard
 
 	for name, hotkey in SC2Keys.getAllKeys()
-		LV_Add("", name, hotkey)
+		LV_Add("", name, hotkey, SC2Keys.AHKHotkey(name))
 	loop, % LV_GetCount("Column")
 		LV_ModifyCol(A_Index, "AutoHdr") ; resize contents+header
 	if noGUI

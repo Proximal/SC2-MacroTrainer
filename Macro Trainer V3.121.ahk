@@ -895,7 +895,7 @@ if (!time && isInMatch) || (UpdateTimers) ; time=0 outside game
 
 	inject_timer := TimeReadRacesSet := UpdateTimers := PrevWarning := WinNotActiveAtStart := ResumeWarnings := 0 ;ie so know inject timer is off
 	isPlaying := EnableAutoWorkerTerran := EnableAutoWorkerProtoss := False ; otherwise if they don't have start enabled they may need to press the hotkey twice to activate
-	getAllKeys.aCurrentHotkeys := "" ; Clear the object so next game start the class will retreive the keys again. Safer than solely relying on timer and file modify time
+	getAllKeys.aSendKeys := "" ; Clear the object so next game start the class will retrieve the keys again. Safer than solely relying on timer and file modify time
 	
 	setLowLevelInputHooks(False) ; Shouldn't be required anymore but I'm just gonna leave it anyway
 }
@@ -1127,7 +1127,7 @@ Cast_ChronoStructure(aStructuresToChrono, selectionMode := False)
 	HighlightedGroup := getSelectionHighlightedGroup()
 	selectionPage := getUnitSelectionPage()
 	max_chronod := nexus_chrono_count - CG_chrono_remainder
-	input.pSend((CG_control_group != "Off" ? aAGHotkeys.set[CG_control_group] : "") aAGHotkeys.Invoke[CG_nexus_Ctrlgroup_key])
+	input.pSend((CG_control_group != "Off" ? SC2Keys.key("ControlGroupAssign" AutomationProtossCtrlGroup) : "") SC2Keys.key("ControlGroupRecall" CG_nexus_Ctrlgroup_key))
 	timerID := stopwatch()
 	sleep, 30 	; Can use real sleep here as not a silent automation
 	for  index, object in oStructureToChrono
@@ -1147,7 +1147,7 @@ Cast_ChronoStructure(aStructuresToChrono, selectionMode := False)
 	if (elapsedTimeGrouping < 20)
 		sleep, % ceil(20 - elapsedTimeGrouping)	
 	if (CG_control_group != "Off")
-		restoreSelection(CG_control_group, selectionPage, HighlightedGroup)
+		restoreSelection(AutomationProtossCtrlGroup, selectionPage, HighlightedGroup)
 	Return 
 }
 
@@ -1219,7 +1219,7 @@ AutoGroup(byref A_AutoGroup)
 
 		if (CurrentlySelected = PostDelaySelected)
 		{
-			input.pSend(aAGHotkeys.Add[controlGroup])
+			input.pSend(SC2Keys.key("ControlGroupAppend" controlGroup))
 			settimer, AutoGroupIdle, Off
 			settimer, Auto_Group, Off
 			SetTimer, resumeAutoGroup, -85
@@ -1379,7 +1379,7 @@ Return
 LimitGroup(byref UnitList, Hotkey)
 { 
 	global aAGHotkeys, AGRestrictBufferDelay
-	; CtrlList := "" ;if unit type not in listt add to it - give count of list type
+	; CtrlList := "" ;if unit type not in list add to it - give count of list type
 	critical 1000
 	setLowLevelInputHooks(True)
 	for group, addhotkey in aAGHotkeys.Add
@@ -1948,32 +1948,6 @@ ShellMessage(wParam, lParam)
 ; This will temporarily disable the minimap, but still draw detected units/non-converted gates
 g_HideMiniMap:
 aThreads.MiniMap.ahkPostFunction("temporarilyHideMinimap")
-return
-
-gEasyUnloadDescription:
-msgbox,, Easy Unload/Select,
-		(LTrim 
-		This page has two separate hotkeys which perform three different tasks.
-
-		Unload All:
-		If enabled, when you double tap the SC2 unload all key (default is 'd') and transports containing units are the highlighted subgroup, then all of the transports will begin unloading. 
-
-		====================================================
-
-		Easy Select/Cursor Unload:
-		If enabled, then the 'Easy Select/Cursor Unload' hotkey will perform one of two functions depending on if it is double tapped or held down.
-		
-		1) When double tapped this hotkey will select all loaded transports visible on the screen.
-		(Ensure the mouse is not hovering above a transport, otherwise it may begin unloading)
-
-		2) When the hotkey is held down the unloading mode will be invoked. Simply wave the mouse cursor over the loaded transports to begin unloading them.
-		
-		Note: This mouse cursor unloading method is less reliable than the 'Unload All' method, particularly  when the transports are stacked or the mouse is moved very fast.
-		)
-return 
-
-gYoutubeEasyUnload:
-run http://youtu.be/D11tsrjPUTU
 return
 
 Homepage:
@@ -2697,13 +2671,13 @@ ini_settings_write:
 	RemoveDamagedUnitsHealthLevel := round(RemoveDamagedUnitsHealthLevel / 100, 3)
 	RemoveDamagedUnitsShieldLevel := round(RemoveDamagedUnitsShieldLevel / 100, 3)
 
-	IniWrite, %EasyUnloadTerranEnable%, %config_file%, %section%, EasyUnloadTerranEnable
-	IniWrite, %EasyUnloadProtossEnable%, %config_file%, %section%, EasyUnloadProtossEnable
-	IniWrite, %EasyUnloadZergEnable%, %config_file%, %section%, EasyUnloadZergEnable
+	IniWrite, %SelectTransportsTerranEnable%, %config_file%, %section%, SelectTransportsTerranEnable
+	IniWrite, %SelectTransportsProtossEnable%, %config_file%, %section%, SelectTransportsProtossEnable
+	IniWrite, %SelectTransportsZergEnable%, %config_file%, %section%, SelectTransportsZergEnable
 	IniWrite, %EasyUnloadAllTerranEnable%, %config_file%, %section%, EasyUnloadAllTerranEnable
 	IniWrite, %EasyUnloadAllProtossEnable%, %config_file%, %section%, EasyUnloadAllProtossEnable
 	IniWrite, %EasyUnloadAllZergEnable%, %config_file%, %section%, EasyUnloadAllZergEnable
-	IniWrite, %EasyUnloadHotkey%, %config_file%, %section%, EasyUnloadHotkey
+	IniWrite, %SelectTransportsHotkey%, %config_file%, %section%, SelectTransportsHotkey
 	IniWrite, %EasyUnloadQueuedHotkey%, %config_file%, %section%, EasyUnloadQueuedHotkey
 	IniWrite, %EasyUnload_T_Key%, %config_file%, %section%, EasyUnload_T_Key
 	IniWrite, %EasyUnload_P_Key%, %config_file%, %section%, EasyUnload_P_Key
@@ -3043,7 +3017,7 @@ IfWinExist
 	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% ys x165 vInjects_TAB, Info||Basic|Auto|Settings|Alerts
 	GuiControlGet, MenuTab, Pos, Injects_TAB
 	Gui, Tab,  Basic
-		Gui, Add, GroupBox, y+15 w200 h305 section vOriginTab, One Button Inject
+		Gui, Add, GroupBox, y+15 w200 h335 section vOriginTab, One Button Inject
 				GuiControlGet, OriginTab, Pos
 			Gui, Add, Text,xp+10 yp+25, Method:		
 					If (auto_inject = 0 OR auto_inject = "Disabled")
@@ -3081,36 +3055,18 @@ IfWinExist
 			Gui, Add, Text, % "xs+10 yp+35 disabled" !Inject_RestoreScreenLocation " vBackspaceTextRestoreCameraDelay", Restore camera delay (ms):
 			Gui, Add, Edit, % "Number Right xs+145 yp-2 w45 disabled" !Inject_RestoreScreenLocation " vBackspaceEditRestoreCameraDelay"
 				Gui, Add, UpDown,  % "Range20-5000 disabled" !Inject_RestoreScreenLocation  " vBackspaceRestoreCameraDelay", %BackspaceRestoreCameraDelay%
-
-		Gui, Add, GroupBox, xs ys+315 w400 h70, Notes:
-			Gui, Add, Text,yp+57 xp+10 yp+25 w380, This is a semi-automated function. Each time the hotkey is pressed your hatches will be injected.
-
-		hide := !instr(auto_inject, "Backspace")
-		Gui, Add, GroupBox, w200 h305 ys xs+210 section hidden%hide% vBackspaceGroupBoxID, Backspace Settings
-
-			Gui, Add, Text, xs+10 yp+25 hidden%hide% vBackspaceTextCameraStoreID, Create camera: %A_space% %A_space% (location storge)
-				Gui, Add, Edit, Readonly y+10 xs+60 w90 R1 center vBI_create_camera_pos_x hidden%hide%, %BI_create_camera_pos_x%
-					Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#BI_create_camera_pos_x hidden%hide%,  Edit
-
-			Gui, Add, Text, xs+10 yp+40 hidden%hide% vBackspaceTextCameraGotoID, Camera position: %A_space% %A_space% (Recall location)
-				Gui, Add, Edit, Readonly y+10 xs+60 w90 R1 center vBI_camera_pos_x hidden%hide%, %BI_camera_pos_x%
-					Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#BI_camera_pos_x hidden%hide%,  Edit
-			Gui, Add, Text, % "xs+10 yp+40 vBackspaceDragTextID hidden" (auto_inject != "Backspace"), Drag Origin:
+			Gui, Add, Text, % "xs+10 yp+35 vBackspaceDragTextID disabled" (auto_inject != "Backspace"), Drag Origin:
 			; Drag origin should be only be unhidden for true backspace method
-			Gui, Add, DropDownList, % "x+60 yp-2 w50 vDrag_origin Choose" (Drag_origin = "Right" ? 2 : 1) " hidden" (auto_inject != "Backspace"), Left|Right
+			Gui, Add, DropDownList, % "x+74 yp-2 w50 vDrag_origin Choose" (Drag_origin = "Right" ? 2 : 1) " disabled" (auto_inject != "Backspace"), Left|Right
 
+		Gui, Add, GroupBox, xs ys+345 w400 h70, Notes:
+			Gui, Add, Text,yp+57 xp+10 yp+25 w380, This is a semi-automated function. Each time the hotkey is pressed your hatches will be injected.	
+			gosub, BasicInjectToggleOptionsGUIInitialCheck ; disables some controls if required
 
 	Gui, Tab,  Settings
 
-		Gui, Add, GroupBox, Y+15 w225 h270 section, Common Settings
-			Gui, Add, Text, xs+10 yp+25, Spawn Larvae Key:
-			Gui, Add, Edit, Readonly yp-2 xs+110 w65 R1 center vInject_spawn_larva, %Inject_spawn_larva%
-				Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#Inject_spawn_larva,  Edit
-
-			Gui, Add, Text, xs+10 y+15, Control Group Storage:
-			Gui, Add, DropDownList,  % "xp+160 yp-2 w45 center vInject_control_group gGUIControlGroupCheckInjects Choose" (Inject_control_group = 0 ? 10 : Inject_control_group), 1|2|3|4|5|6||7|8|9|0
-
-			Gui, Add, Text, xs+10 y+15, Queen Control Group:
+		Gui, Add, GroupBox, Y+15 w225 h215 section, Common Settings
+			Gui, Add, Text, xs+10 ys+25, Queen Control Group:
 			; i have a dropdown menu now so user has to put a number, cant use another key as I use this to check the control groups
 				Gui, Add, DropDownList,  % "xp+160 w45 center vMI_Queen_Group gGUIControlGroupCheckInjects Choose" (MI_Queen_Group = 0 ? 10 : MI_Queen_Group), 1|2|3|4|5|6|7||8|9|0
 			;	Gui, Add, Edit, Readonly y+10 xs+60 w90 center vMI_Queen_Group, %MI_Queen_Group%
@@ -3708,21 +3664,19 @@ IfWinExist
 
 	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vChronoBoost_TAB, Settings||Items
 	Gui, Tab, Settings	
-		Gui, Add, GroupBox, w190 h160 x+15 y+25 section, SC2 Keys && Control Groups			
-			Gui, Add, Text, xp+10 yp+25 , Storage Ctrl Group:
-			Gui, Add, DropDownList,  % "xs+125 yp w45 center gGUIControGroupCheckChrono vCG_control_group Choose" (CG_control_group = 0 ? 10 : (CG_control_group = "Off" ? 11 : CG_control_group)), 1|2|3|4|5|6|7||8|9|0|Off
-				
-			;	Gui, Add, Edit, Readonly xp+25 y+10  w100  center vCG_control_group , %CG_control_group%
-			;		Gui, Add, Button, yp-2 x+5 gEdit_SendHotkey v#CG_control_group,  Edit				
-			Gui, Add, Text, xs+10 yp+35, Nexus Ctrl Group:
-			Gui, Add, DropDownList, % "xs+125 yp w45 center gGUIControGroupCheckChrono vCG_nexus_Ctrlgroup_key Choose" (CG_nexus_Ctrlgroup_key = 0 ? 10 : CG_nexus_Ctrlgroup_key), 1|2|3|4||5|6|7|8|9|0
-			;	Gui, Add, Edit, Readonly xp+25 y+10  w100  center vCG_nexus_Ctrlgroup_key , %CG_nexus_Ctrlgroup_key%
-			;		Gui, Add, Button, yp-2 x+5 gEdit_SendHotkey v#CG_nexus_Ctrlgroup_key,  Edit		
-			Gui, Add, Text, xs+10 yp+35 ,Chrono Boost Key:
-				Gui, Add, Edit, Readonly xp+25 y+10  w100 R1 center vchrono_key , %chrono_key%
-					Gui, Add, Button, yp-2 x+5 gEdit_SendHotkey v#chrono_key,  Edit	
+		Gui, Add, GroupBox, w190 h140 x+15 y+25 section, Settings		
+			Gui, Add, Text, xs+10 yp+25, Nexus Ctrl Group:
+			Gui, Add, DropDownList, % "xs+130 yp w45 center gGUIControGroupCheckChrono vCG_nexus_Ctrlgroup_key Choose" (CG_nexus_Ctrlgroup_key = 0 ? 10 : CG_nexus_Ctrlgroup_key), 1|2|3|4||5|6|7|8|9|0
+		
+			Gui, Add, Text, xs+10 yp+35, Sleep time (ms):
+			Gui, Add, Edit, Number Right xp+120 yp-2 w45 vTT_ChronoBoostSleep 
+				Gui, Add, UpDown,  Range0-1000 vChronoBoostSleep, %ChronoBoostSleep%						
+			Gui, Add, Text, xs+10 yp+35, Chrono Remainder:`n    (1 = 25 mana)
+			Gui, Add, Edit, Number Right xp+120 yp-2 w45 vTT_CG_chrono_remainder 
+				Gui, Add, UpDown,  Range0-1000 vCG_chrono_remainder, %CG_chrono_remainder%		
 
-		Gui, Add, GroupBox, xs ys+180 w190 w400 h220, About
+
+		Gui, Add, GroupBox, xs ys+160 w190 w400 h220, About
 			Gui, Add, Text, xp+10 yp+25 w380, % "This is a semi-automatic function. It allows you to create a group of structures which will be chronoed "
 											. "when the assigned hotkey is pressed.`n`n"
 											. "Structures are chronoed according to their listed order in the group (higher structures come first).`n`n"
@@ -3730,15 +3684,6 @@ IfWinExist
 											. "When structures have an equal queue size, they will be chronoed in order of progress (lowest first). "
 											. "Structures which are idle (or not on cooldown), already chronoed, or have no additional queued units and a progress of 95% or greater will not be chronoed."
 											. "`n`nGateways which are being converted to warpgates will be chronoed before gateways which have a unit in production."
-
-		Gui, Add, GroupBox, ys xs+210  w190 h160 section, Misc. Settings				
-			Gui, Add, Text, xp+10 yp+25, Sleep time (ms):
-			Gui, Add, Edit, Number Right xp+120 yp-2 w45 vTT_ChronoBoostSleep 
-				Gui, Add, UpDown,  Range0-1000 vChronoBoostSleep, %ChronoBoostSleep%						
-			Gui, Add, Text, xs+10 yp+35, Chrono Remainder:`n    (1 = 25 mana)
-			Gui, Add, Edit, Number Right xp+120 yp-2 w45 vTT_CG_chrono_remainder 
-				Gui, Add, UpDown,  Range0-1000 vCG_chrono_remainder, %CG_chrono_remainder%		
-
 
 
 	Gui, Tab, Items
@@ -3991,45 +3936,30 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vAutoWorker_TAB, Auto||Info
 	;Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vAutoWorker_TAB, Auto||Info		
 	Gui, Tab, Auto
-		Gui, Add, GroupBox, x+25 Y+10 w370 h85 section, General 
-		Gui, Add, Text, xp+10 yp+20, Toggle State:
+		Gui, Add, GroupBox, x+25 Y+10 w370 h115 section, General 
+		Gui, Add, Text, xs+15 yp+20, Toggle State:
 
 			Gui, Add, Edit, Readonly yp-2 x+10 center w65 R1 vToggleAutoWorkerState_Key gedit_hotkey, %ToggleAutoWorkerState_Key%
 		Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#ToggleAutoWorkerState_Key,  Edit ;have to use a trick eg '#' as cant write directly to above edit var, or it will activate its own label!
 
-		Gui, Add, Text, xs+10 y+15 w85, APM Delay:
-			Gui, Add, Edit, Number Right x+4 yp-2 w50 vTT_AutoWorkerAPMProtection
-					Gui, Add, UpDown,  Range0-100000 vAutoWorkerAPMProtection, %AutoWorkerAPMProtection%		
 
 	;	Gui, Add, Text, xs+220 yp+25 w85, Queue While Supply Blocked:			
-		Gui, Add, Checkbox, xs+205 ys+20 vAutoWorkerQueueSupplyBlock Checked%AutoWorkerQueueSupplyBlock%, Queue while supply blocked
+		Gui, Add, Checkbox, xs+15 yp+35 vAutoWorkerQueueSupplyBlock Checked%AutoWorkerQueueSupplyBlock%, Queue while supply blocked
 		Gui, Add, Checkbox, xp yp+20 vAutoWorkerAlwaysGroup Checked%AutoWorkerAlwaysGroup%, Always group selection **  
 		Gui, Add, Checkbox, xp yp+20 vAutoWorkerWarnMaxWorkers Checked%AutoWorkerWarnMaxWorkers%, Max worker warning
 
 		thisXTabX := XTabX + 12
-		Gui, Add, GroupBox, xs ys+98 w370 h150 section, Terran 
-			Gui, Add, Checkbox, xp+10 yp+25 vEnableAutoWorkerTerranStart Checked%EnableAutoWorkerTerranStart%, Enable on match start
+		Gui, Add, GroupBox, xs ys+135 w370 h105 section, Terran 
+			Gui, Add, Checkbox, xs+15 yp+25 vEnableAutoWorkerTerranStart Checked%EnableAutoWorkerTerranStart%, Enable on match start
 
-			Gui, Add, Text, X%thisXTabX% y+15 w100, Base Ctrl Group:
+			Gui, Add, Text, xs+15 y+15 w100, Base Ctrl Group:
 				if (Base_Control_Group_T_Key = 0)
 					droplist_var := 10
 				else 
 					droplist_var := Base_Control_Group_T_Key  	; i have a dropdown menu now so user has to put a number, cant use another key as I use this to check the control groups
-				Gui, Add, DropDownList,  xs+130 yp w45 center gGUIControlGroupCheckAutoWorkerTerran vBase_Control_Group_T_Key Choose%droplist_var%, 1|2|3|4|5|6|7|8|9|0
+				Gui, Add, DropDownList,  xs+110 yp w45 center gGUIControlGroupCheckAutoWorkerTerran vBase_Control_Group_T_Key Choose%droplist_var%, 1|2|3|4|5|6|7|8|9|0
 
-			Gui, Add, Text, X%thisXTabX% yp+35 w100, Storage Ctrl Group:
-				if (AutoWorkerStorage_T_Key = 0)
-					droplist_var := 10
-				else 
-					droplist_var := AutoWorkerStorage_T_Key  	; i have a dropdown menu now so user has to put a number, cant use another key as I use this to check the control groups
-				Gui, Add, DropDownList,  xs+130 yp w45 center gGUIControlGroupCheckAutoWorkerTerran vAutoWorkerStorage_T_Key Choose%droplist_var%, 1|2|3|4|5|6|7|8|9|0
-
-
-			Gui, Add, Text, X%thisXTabX% yp+35 w100, Make SCV Key:
-			Gui, Add, Edit, Readonly yp-2 x+2 w65 R1 center vAutoWorkerMakeWorker_T_Key, %AutoWorkerMakeWorker_T_Key%
-				Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#AutoWorkerMakeWorker_T_Key,  Edit
-
-			Gui, Add, Text, xs+240 ys+55, Max SCVs:
+			Gui, Add, Text, xs+240 ys+25, Max SCVs:
 				Gui, Add, Edit, Number Right x+15 yp-2 w45 vTT_AutoWorkerMaxWorkerTerran
 						Gui, Add, UpDown,  Range1-100000 vAutoWorkerMaxWorkerTerran, %AutoWorkerMaxWorkerTerran%		
 
@@ -4038,28 +3968,17 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 						Gui, Add, UpDown,  Range1-100000 vAutoWorkerMaxWorkerPerBaseTerran, %AutoWorkerMaxWorkerPerBaseTerran%	
 
 
-		Gui, Add, GroupBox, xs ys+165 w370 h150 section, Protoss 
-			Gui, Add, Checkbox, xp+10 yp+25 vEnableAutoWorkerProtossStart Checked%EnableAutoWorkerProtossStart%, Enable on match start
+		Gui, Add, GroupBox, xs ys+125 w370 h105 section, Protoss 
+			Gui, Add, Checkbox, xs+15 yp+25 vEnableAutoWorkerProtossStart Checked%EnableAutoWorkerProtossStart%, Enable on match start
 
-			Gui, Add, Text, X%thisXTabX% y+15 w100, Base Ctrl Group:
+			Gui, Add, Text, xs+15 y+15 w100, Base Ctrl Group:
 				if (Base_Control_Group_P_Key = 0)
 					droplist_var := 10
 				else 
 					droplist_var := Base_Control_Group_P_Key  	; i have a dropdown menu now so user has to put a number, cant use another key as I use this to check the control groups
-				Gui, Add, DropDownList, xs+130 yp w45 center gGUIControlGroupCheckAutoWorkerProtoss vBase_Control_Group_P_Key Choose%droplist_var%, 1|2|3|4|5|6|7|8|9|0
+				Gui, Add, DropDownList, xs+110 yp w45 center gGUIControlGroupCheckAutoWorkerProtoss vBase_Control_Group_P_Key Choose%droplist_var%, 1|2|3|4|5|6|7|8|9|0
 
-			Gui, Add, Text, X%thisXTabX% yp+35 w100, Storage Ctrl Group:
-				if (AutoWorkerStorage_P_Key = 0)
-					droplist_var := 10
-				else 
-					droplist_var := AutoWorkerStorage_P_Key  	; i have a dropdown menu now so user has to put a number, cant use another key as I use this to check the control groups
-				Gui, Add, DropDownList,  xs+130 yp w45 center gGUIControlGroupCheckAutoWorkerProtoss vAutoWorkerStorage_P_Key Choose%droplist_var%, 1|2|3|4|5|6|7|8|9|0	
-
-			Gui, Add, Text, X%thisXTabX% yp+35 w100, Make Probe Key:
-			Gui, Add, Edit, Readonly yp-2 x+2 w65 R1 center vAutoWorkerMakeWorker_P_Key, %AutoWorkerMakeWorker_P_Key%
-				Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#AutoWorkerMakeWorker_P_Key,  Edit
-
-			Gui, Add, Text, xs+240 ys+55, Max Probes:
+			Gui, Add, Text, xs+240 ys+25, Max Probes:
 				Gui, Add, Edit, Number Right x+15 yp-2 w45 vTT_AutoWorkerMaxWorkerProtoss
 						Gui, Add, UpDown,  Range1-100000 vAutoWorkerMaxWorkerProtoss, %AutoWorkerMaxWorkerProtoss%		
 
@@ -4232,8 +4151,6 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		Gui, Add, Text, section yp+35, Hotkey:
 		Gui, Add, Edit, Readonly yp-2 xs+85 center w65 R1 vcastSplitUnit_key gedit_hotkey, %castSplitUnit_key%
 		Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#castSplitUnit_key,  Edit
-		Gui, Add, Text, Xs yp+35 w70, Ctrl Group Storage:
-		Gui, Add, DropDownList,  % "xs+85 yp w45 Center vSplitctrlgroupStorage_key Choose" (SplitctrlgroupStorage_key = 0 ? 10 : SplitctrlgroupStorage_key), 1|2|3|4|5|6|7|8|9||0
 
 		Gui, Add, Text, Xs yp+100 w360, This can be used to spread your workers when being attack by hellbats/hellions.`n`nWhen 30`% of the selected units are worksers, the units will be spread over a much larger area
 		Gui, Add, Text, Xs yp+80 w360, Note: When spreading army/attacking units this is designed to spread your units BEFORE the engagement - Dont use it while being attacked!`n`n****This is in a very beta stage and will be improved later***
@@ -4245,13 +4162,12 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 			Gui, Add, Edit, Readonly yp-2 xs+105 center w65 R1 vcastRemoveUnit_key gedit_hotkey, %castRemoveUnit_key%
 			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#castRemoveUnit_key,  Edit
 			Gui, Add, Text, Xs+15 yp+45 w360, This removes the first unit (top left of selection card) from the selected units.`n`nThis is useful for 'cloning' workers to geisers or sending 1 ling towards a group of banelings etc.
-		Gui, add, GroupBox, xs ys+195 w405 h190, Remove Damaged Units
+		
+		Gui, add, GroupBox, xs ys+185 w405 h220, Remove Damaged Units
 			Gui, Add, Checkbox, yp+25 xs+15 vRemoveDamagedUnitsEnable Checked%RemoveDamagedUnitsEnable%, Enable	
 			Gui, Add, Text, xp yp+25, Hotkey:
 			Gui, Add, Edit, Readonly yp-2 xs+64 center w65 R1 vcastRemoveDamagedUnits_key gedit_hotkey, %castRemoveDamagedUnits_key%
 			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#castRemoveDamagedUnits_key,  Edit	
-			Gui, Add, Text, xs+15 yp+35, Storage Group:
-			Gui, Add, DropDownList,  % "xs+125 yp w45 Center vRemoveDamagedUnitsCtrlGroup Choose" (RemoveDamagedUnitsCtrlGroup = 0 ? 10 : RemoveDamagedUnitsCtrlGroup), 1|2|3|4|5|6|7|8|9||0
 
 			Gui, Add, Text, xs+15 yp+35, Shield Level `%:
 			Gui, Add, Edit, Number Right xs+125 yp-2 w45 vEdit_RemoveDamagedUnitsShieldLevel
@@ -4261,152 +4177,38 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 			Gui, Add, Edit, Number Right xs+125 yp-2 w45 vEdit_RemoveDamagedUnitsHealthLevel
 				Gui, Add, UpDown,  Range1-99 vRemoveDamagedUnitsHealthLevel, % Round(RemoveDamagedUnitsHealthLevel * 100) 
 
-			Gui, Add, Text, X380 y284 w195, Units with health/shields lower than the specified values will be removed from selection and moved to the current mouse cursor position each time the hotkey is pressed. Stalkers will be blinked.`n`nThis is very helpful when microing small numbers of units!
+			;Gui, Add, Text, X380 y264 w195, Units with health/shields lower than the specified values will be removed from selection and moved to the current mouse cursor position each time the hotkey is pressed. Stalkers will be blinked.`n`nThis is very helpful when microing small numbers of units!
+			Gui, Add, Text, Xs+15 yp+35 w375, Units with health/shields lower than the specified values will be removed from selection and moved to the current mouse cursor position each time the hotkey is pressed. Stalkers will be blinked.`n`nThis is very helpful when microing small numbers of units!
 	
 	Gui, Tab, Easy Select/Unload
-		Gui, Add, GroupBox, x+65 y+15 w95 h50 w205 section, Enable Easy Select/Cursor Unload 
-			Gui, Add, Checkbox, xp+10 yp+25 vEasyUnloadTerranEnable Checked%EasyUnloadTerranEnable%, Terran	
-			Gui, Add, Checkbox, x+10 yp vEasyUnloadProtossEnable Checked%EasyUnloadProtossEnable%, Protoss	
-			Gui, Add, Checkbox, x+10 yp vEasyUnloadZergEnable Checked%EasyUnloadZergEnable%, Zerg
-	
-		Gui, Add, GroupBox, xs+230 ys w100 h110, Storage Ctrl Group
-		;Gui, Add, Text, xs+10 yp+35, Storage Ctrl Group:
-			if (EasyUnloadStorageKey = 0)
-				droplist_var := 10
-			else 
-				droplist_var := EasyUnloadStorageKey  	; i have a dropdown menu now so user has to put a number, cant use another key as I use this to check the control groups
-			Gui, Add, DropDownList,  xp+20 yp+50 w45 center vEasyUnloadStorageKey Choose%droplist_var%, 1|2|3|4|5|6|7|8|9|0
+		Gui, Add, GroupBox, y+15 w95 h90 w205 section, Enable Select Loaded Transports
+			Gui, Add, Checkbox, xp+10 yp+25 vSelectTransportsTerranEnable Checked%SelectTransportsTerranEnable%, Terran	
+			Gui, Add, Checkbox, x+10 yp vSelectTransportsProtossEnable Checked%SelectTransportsProtossEnable%, Protoss	
+			Gui, Add, Checkbox, x+10 yp vSelectTransportsZergEnable Checked%SelectTransportsZergEnable%, Zerg
+			Gui, Add, Text, xs+10 yp+30 w85, Hotkey:
+				Gui, Add, Edit, Readonly yp-2 xs+75 center w65 R1 vSelectTransportsHotkey gedit_hotkey, %SelectTransportsHotkey%
+				Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#SelectTransportsHotkey,  Edit 		
 
-
-		Gui, Add, GroupBox, xs ys+60 w95 h50 w205, Enable Unload All
+		Gui, Add, GroupBox, xs ys+110 w95 h50 w205, Enable Unload Transports
 			Gui, Add, Checkbox, xp+10 yp+25 vEasyUnloadAllTerranEnable Checked%EasyUnloadAllTerranEnable%, Terran	
 			Gui, Add, Checkbox, x+10 yp vEasyUnloadAllProtossEnable Checked%EasyUnloadAllProtossEnable%, Protoss	
 			Gui, Add, Checkbox, x+10 yp vEasyUnloadAllZergEnable Checked%EasyUnloadAllZergEnable%, Zerg
-			
-
-
-		Gui, Add, GroupBox, xs y+25 w205 h55, Easy Select/Cursor Unload  Hotkey
-			Gui, Add, Text, Xp+10 yp+25 w85, Hotkey:
-				Gui, Add, Edit, Readonly yp-2 xs+85 center w65 R1 vEasyUnloadHotkey gedit_hotkey, %EasyUnloadHotkey%
-				Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#EasyUnloadHotkey,  Edit 	
-
-	;		Gui, Add, Text, Xs+10 yp+35 w85, Queued:
-	;			Gui, Add, Edit, Readonly yp-2 xs+85 center w65 vEasyUnloadQueuedHotkey gedit_hotkey, %EasyUnloadQueuedHotkey%
-	;			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#EasyUnloadQueuedHotkey,  Edit 			
 		
-		Gui, Add, GroupBox, xs y+25 w205 h120, SC2 Unload All Key / Unload All Hotkey
-			Gui, Add, Text, Xp+10 yp+25 w85, Terran:
-			Gui, Add, Edit, Readonly yp-2 xs+85 w65 R1 center vEasyUnload_T_Key, %EasyUnload_T_Key%
-				Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#EasyUnload_T_Key,  Edit
-			
-			Gui, Add, Text, Xs+10 yp+35 w85, Protoss:
-			Gui, Add, Edit, Readonly yp-2 xs+85 w65 R1 center vEasyUnload_P_Key, %EasyUnload_P_Key%
-				Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#EasyUnload_P_Key,  Edit
-			
-			Gui, Add, Text, Xs+10 yp+35 w85, Zerg:
-			Gui, Add, Edit, Readonly yp-2 xs+85 w65 R1 center vEasyUnload_Z_Key, %EasyUnload_Z_Key%
-				Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#EasyUnload_Z_Key,  Edit
-		Gui, Add, GroupBox, xs y+25 w205 h60, How-To Guide
-			Gui, Font, s11     
-			Gui, Add, Button, xp+30 yp+25 w50 h25 ggYoutubeEasyUnload, Video
-			Gui, Add, Button, x+45 yp w50 h25 ggEasyUnloadDescription, About
-			Gui, Font,
-
-/*
-	Gui, Add, Tab2, w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vAutoMine_TAB, Settings||Hotkeys|
-	Gui, Tab, Settings	
-		Gui, Add, GroupBox, y+20 w195 h300 section, Settings
-			Gui, Add, Checkbox, xp+10 yp+30 vAuto_mine checked%auto_mine%, Enable
-			Gui, Add, Checkbox, yp+25 vAuto_mineMakeWorker checked%Auto_mineMakeWorker%, Make Worker
-			Gui, Add, Checkbox, yp+25 vAuto_Mine_Set_CtrlGroup checked%Auto_Mine_Set_CtrlGroup%, Set Base Ctrl Group
-
-			Gui, Add, Text,y+20 w85, Split Type: 
-			if WorkerSplitType
-				droplist3_var := substr(WorkerSplitType, 0, 1)
-			else droplist3_var := 1
-			Gui, Add, DropDownList, x+35 yp-2 w45 vWorkerSplitType Choose%droplist3_var%, 6x1|3x2||2x3	
-
-			Gui, Add, Text, X%XTabX% y+20 w65, Method:
-			droplist3_var := AutoMineMethod = "MiniMap" ? 2 : 1		
-			Gui, Add, DropDownList, x+35 yp-2 w65 gg_GuiSetupAutoMine vAutoMineMethod Choose%droplist3_var%, Normal||MiniMap	
-
-			Gui, Add, Text, X%XTabX% y+20 w85, Sleep (ms):castSplitUnit_key
-			Gui, Add, Edit, Number Right x+35 yp-2 w45 vAuto_Mine_Sleep2
-				Gui, Add, UpDown, Range1-100000 vTT_Auto_Mine_Sleep2, %Auto_Mine_Sleep2%		
-
-			Gui, Add, Text, X%XTabX% y+20 w85, Input Delay (ms):
-				Gui, Add, Edit, Number Right X+35 yp-2 w45 vTT_AM_KeyDelay
-					Gui, Add, UpDown,  Range0-10 vAM_KeyDelay, %AM_KeyDelay%			
-
-			Gui, Add, Text,X%XTabX% y+20 w85, Start Mining at (s): 
-			Gui, Add, Edit, Number Right x+35 yp-2 w45 vStart_Mine_Time
-				Gui, Add, UpDown, Range0-100000, %Start_Mine_Time%	
-			Gui, Font, s10
-			Gui, Add, Text,Xs y+40 , Note: The "Normal" method will only function at 1920 x 1080 resolution.
-			Gui, Font,
-			XMenu := 390
-			Gui, Add, GroupBox, ys x%XMenu% w195 h300 vAMGUI1, MiniMap Settings
-			Gui, Font, underline
-			Gui, Add, Text, xp+10 yp+20 vAMGUI2, Pixel Colour
-			Gui, Font
-			XMenu += 30
-			Gui, Add, Text, x%XMenu% y+15 w55 vAMGUI3, Alpha:
-				Gui, Add, Edit, Number Right x+35 yp-2 w45 vAM_MiniMap_PixelColourAlpha, %AM_MiniMap_PixelColourAlpha%
-			Gui, Add, Text, x%XMenu% y+15 w55 vAMGUI4, Red:
-				Gui, Add, Edit, Number Right x+35 yp-2 w45 vAM_MiniMap_PixelColourRed, %AM_MiniMap_PixelColourRed%
-			Gui, Add, Text, x%XMenu% y+15 w55 vAMGUI5, Green:
-				Gui, Add, Edit, Number Right x+35 yp-2 w45 vAM_MiniMap_PixelColourGreen, %AM_MiniMap_PixelColourGreen%
-			Gui, Add, Text, x%XMenu% y+15 w55 vAMGUI6, Blue:
-				Gui, Add, Edit, Number Right x+35 yp-2 w45 vAM_MinsiMap_PixelColourBlue, %AM_MinsiMap_PixelColourBlue%
-
-			Gui, Add, Button, x%XMenu% y+15 w60 h23 gg_GuiSetupResetPixelColour v#ResetPixelColour,  Reset	
-			Gui, Add, Button, x+30 yp  w60 h23 gg_FindTestPixelColourMsgbox v#FindPixelColour,  Find	
-
-			XMenu -= 20
-			Gui, Add, Text,  x%XMenu% y+20 w85 vAMGUI7, Variance:
-				Gui, Add, Edit, Number Right x+35 yp-2 w45 vAM_MiniMap_PixelVariance
-				Gui, Add, UpDown, Range0-100 vTT_AM_MiniMap_PixelVariance, %AM_MiniMap_PixelVariance%	
-			Gui, Add, Button, xp-60 y+15 w60 h23 gg_PixelColourFinderHelpFile vAMGUI8,  About	
-			gosub, g_GuiSetupAutoMine	;hide/show the minimap items
-
-
-
-	Gui, Tab, Hotkeys	
-	Gui, Add, GroupBox, xs y+20 w235 h210 section, SC2 HotKeys
-			Gui, Add, Text, X%XTabX% yp+25  w80 , Idle Worker:
-			Gui, Add, Edit, Readonly yp-2 x+10 w80  center vIdle_Worker_Key , %Idle_Worker_Key%
-					Gui, Add, Button, yp-2 x+10 w30 h23 gEdit_SendHotkey v#Idle_Worker_Key,  Edit			
-			Gui, Add, Text, X%XTabX% yp+30  w80, Gather Minerals:
-			Gui, Add, Edit, Readonly yp-2 x+10 w80  center vGather_Minerals_key , %Gather_Minerals_key%
-					Gui, Add, Button, yp-2 x+10 w30 h23 gEdit_SendHotkey v#Gather_Minerals_key,  Edit		
-			Gui, Add, Text, X%XTabX% yp+30 w80 , Base Ctrl Group:
-			Gui, Add, Edit, Readonly yp-2 x+10 w80  center vBase_Control_Group_Key , %Base_Control_Group_Key%
-					Gui, Add, Button, yp-2 x+10 w30 h23 gEdit_SendHotkey v#Base_Control_Group_Key,  Edit	
-			Gui, Add, Text, X%XTabX% yp+30  w80, Make SCV:
-			Gui, Add, Edit, Readonly yp-2 x+10 w80  center vMake_Worker_T_Key , %Make_Worker_T_Key%
-					Gui, Add, Button, yp-2 x+10 w30 h23 gEdit_SendHotkey v#Make_Worker_T_Key,  Edit			
-			Gui, Add, Text, X%XTabX% yp+30  w80, Make Probe:
-			Gui, Add, Edit, Readonly yp-2 x+10 w80  center vMake_Worker_P_Key , %Make_Worker_P_Key%
-					Gui, Add, Button, yp-2 x+10 w30 h23 gEdit_SendHotkey v#Make_Worker_P_Key,  Edit						
-			Gui, Add, Text, X%XTabX% yp+30  w80, Select Larvae:
-			Gui, Add, Edit, Readonly yp-2 x+10 w80  center vMake_Worker_Z1_Key , %Make_Worker_Z1_Key%
-					Gui, Add, Button, yp-2 x+10 w30 h23 gEdit_SendHotkey v#Make_Worker_Z1_Key,  Edit							
-			Gui, Add, Text, X%XTabX% yp+30  w80, Make Drone:
-			Gui, Add, Edit, Readonly yp-2 x+10 w80  center vMake_Worker_Z2_Key , %Make_Worker_Z2_Key%
-					Gui, Add, Button, yp-2 x+10 w30 h23 gEdit_SendHotkey v#Make_Worker_Z2_Key,  Edit	
-			Gui, Font, s11
-			Gui, Add, Text, X%XTabX% yp+60, Note:
-			Gui, Add, Text, xp+40  w340, Ensure the correct ('backspace') base camera key is set in the "SC2 Keys Section" (below Auto Mine - on the left).
-			Gui, Font, s10
-			Gui, Font,
-	*/
+		Gui, Add, GroupBox, xs y+25 w390 h180, Notes
+			Gui, Add, Text, xs+10 yp+25, Select Loaded Transports:
+			Gui, Add, Text, xp+25 y+10 w335, Selects loaded transports (medivacs, warp prisms, or overlords) which are visible on screen.
+			Gui, Add, Text, xs+10 y+20, Unload Transports:
+			Gui, Add, Text, xp+25 y+10 w335, 
+			(LTrim
+				Double tapping the SC2 'Unload All' hotkey (default is 'd') will result in the selected transports unloading their cargo. 
+				
+				Note: The transports must be the active (highlighted) subgroup.
+			)
 
 	Gui, Tab, Smart Geyser
-		Gui, add, GroupBox, y+10 w325 h155 section, Settings
+		Gui, add, GroupBox, y+10 w325 h135 section, Settings
 		Gui, Add, Checkbox, xp+10 yp+25 vSmartGeyserEnable checked%smartGeyserEnable% gSmartGeyserOptionsMenuEnableCheck, Enable Smart Geyser 
 		Gui, Add, Checkbox, xp y+10 vSmartGeyserReturnCargo checked%smartGeyserReturnCargo%, Return Cargo
-		Gui, Add, text, xp y+10, Storage Ctrl Group:
-	 	Gui, Add, DropDownList,  % "x+15 yp-2 w45 Center vSmartGeyserCtrlGroup Choose" (smartGeyserCtrlGroup = 0 ? 10 : smartGeyserCtrlGroup), 1|2|3|4|5|6|7|8|9||0
 	 	Gui, Add, text, xs+10 y+15 w305, Right clicking a group of workers towards a refinery, assimilator, or extractor will only send the correct amount of workers to harvest gas.
 	 	Gui, Add, text, xs+10 y+35 w305, *This is not currently 100`% reliable.
 	 	
@@ -5143,7 +4945,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		SelectArmyDeselectLoadedTransport_TT := "Removes loaded medivacs and warp prisms"
 		SelectArmyDeselectQueuedDrops_TT := "Removes transports which have a drop command queued`n`nDoesn't include tranports which have begun unloading."
 
-		EasyUnloadHotkey_TT := #EasyUnloadHotkey_TT := "This hotkey performs two functions depending on if it is double tapped or held down."
+		SelectTransportsHotkey_TT := #SelectTransportsHotkey_TT := "This hotkey performs two functions depending on if it is double tapped or held down."
 													. "`n`nFunction 1) Double tap this key to select any loaded transports visible on the screen."
 													. "`n`nFunction 2) Hold this button and wave the mouse over the loaded transports to begin unloading them."		
 													. "`n`nClick the 'About' button below for more information."
@@ -5315,26 +5117,27 @@ for i, race in ["Terran", "Protoss", "Zerg"]
 }
 return 
 
-
+BasicInjectToggleOptionsGUIInitialCheck: ; Just disables stuff if injects are disabled
 BasicInjectToggleOptionsGUI:
-GuiControlGet, selectedinjectMethod,, %A_GuiControl%
+GuiControlGet, selectedinjectMethod,, % A_ThisLabel = "BasicInjectToggleOptionsGUIInitialCheck" ? "Auto_inject" : A_GuiControl
 if (selectedinjectMethod = "Disabled")
 {
-	for i, controlID in ["BackspaceGroupBoxID", "BackspaceDragTextID", "Drag_origin", "BackspaceTextCameraStoreID", "BI_create_camera_pos_x", "#BI_create_camera_pos_x", "BackspaceTextCameraGotoID", "BI_camera_pos_x", "#BI_camera_pos_x"]
-		GuiControl, hide1, %controlID%
-	for i, controlID in ["Inject_RestoreSelection", "Inject_RestoreScreenLocation", "BackspaceTextRestoreCameraDelay", "BackspaceEditRestoreCameraDelay", "BackspaceRestoreCameraDelay", "InjectTextGroupingDelay", "InjectEditGroupingDelay", "InjectGroupingDelay", "InjectSleepVarianceGUIText", "Edit_Inject_SleepVariance", "Inject_SleepVariance", "InjectDelayGUIText", "editGUIInjectDelay", "auto_inject_sleep", "SillyGUIControlIdentVariable", "cast_inject_key", "#cast_inject_key"]
+	;for i, controlID in ["BackspaceDragTextID", "Drag_origin"]
+	;	GuiControl, hide1, %controlID%
+	for i, controlID in ["Inject_RestoreSelection", "Inject_RestoreScreenLocation", "Inject_SoundOnCompletion", "BackspaceTextRestoreCameraDelay", "BackspaceEditRestoreCameraDelay", "BackspaceRestoreCameraDelay", "InjectTextGroupingDelay", "InjectEditGroupingDelay", "InjectGroupingDelay", "InjectSleepVarianceGUIText", "Edit_Inject_SleepVariance", "Inject_SleepVariance", "InjectDelayGUIText", "editGUIInjectDelay", "auto_inject_sleep", "SillyGUIControlIdentVariable", "cast_inject_key", "#cast_inject_key", "BackspaceDragTextID", "Drag_origin"]
 		GuiControl, disable1, %controlID%
 }
 else 
 {
-	for i, controlID in ["InjectSleepVarianceGUIText", "Edit_Inject_SleepVariance", "Inject_SleepVariance", "InjectDelayGUIText", "editGUIInjectDelay", "auto_inject_sleep", "SillyGUIControlIdentVariable", "cast_inject_key", "#cast_inject_key"]
+	for i, controlID in ["InjectSleepVarianceGUIText", "Edit_Inject_SleepVariance", "Inject_SoundOnCompletion", "Inject_SleepVariance", "InjectDelayGUIText", "editGUIInjectDelay", "auto_inject_sleep", "SillyGUIControlIdentVariable", "cast_inject_key", "#cast_inject_key"]
 		GuiControl, enable1, %controlID%	
 
-	for i, controlID in ["BackspaceGroupBoxID", "BackspaceDragTextID", "Drag_origin", "BackspaceTextCameraStoreID", "BI_create_camera_pos_x", "#BI_create_camera_pos_x", "BackspaceTextCameraGotoID", "BI_camera_pos_x", "#BI_camera_pos_x"]
+	for i, controlID in ["BackspaceDragTextID", "Drag_origin"]
 	{
-		if controlID in BackspaceDragTextID,Drag_origin ; This should only be shown for the true backspace method
-			GuiControl, % "hide" (selectedinjectMethod != "Backspace"), %controlID%
-		else GuiControl, % "hide" !instr(selectedinjectMethod, "Backspace"), %controlID%
+		; Removed controls now due to Reading in game hotkeys
+		;if controlID in BackspaceDragTextID,Drag_origin ; This should only be shown for the true backspace method
+			GuiControl, % "disable" (selectedinjectMethod != "Backspace"), %controlID%
+		;else GuiControl, % "hide" !instr(selectedinjectMethod, "Backspace"), %controlID%
 	}
 	GuiControl, % "enable" instr(selectedinjectMethod, "Backspace"), Inject_RestoreScreenLocation ; for some reason this expression needs brackets.......
 	GuiControlGet, enabled,, Inject_RestoreScreenLocation
@@ -7660,14 +7463,14 @@ autoWorkerProductionCheck()
 	, AutoWorkerMaxWorkerProtoss, AutoWorkerMaxWorkerPerBaseProtoss, AW_MaxWorkersReached
 	, aResourceLocations, aButtons, EventKeyDelay
 	, AutoWorkerAPMProtection, AutoWorkerQueueSupplyBlock, AutoWorkerAlwaysGroup, AutoWorkerWarnMaxWorkers, MT_CurrentGame, aUnitTargetFilter
-	, EnableAutoWorkerTerran, EnableAutoWorkerProtoss
+	, EnableAutoWorkerTerran, EnableAutoWorkerProtoss, AutomationTerranCtrlGroup, AutomationProtossCtrlGroup
 	
 	static TickCountRandomSet := 0, randPercent,  UninterruptedWorkersMade, waitForOribtal := 0, lastMadeWorkerTime := -50
 
 	if (aLocalPlayer["Race"] = "Terran") 
 	{
 		mainControlGroup := Base_Control_Group_T_Key
-		controlstorageGroup := AutoWorkerStorage_T_Key
+		controlstorageGroup := AutomationTerranCtrlGroup
 		makeWorkerKey := AutoWorkerMakeWorker_T_Key
 		maxWorkers := AutoWorkerMaxWorkerTerran
 		maxWorkersPerBase := AutoWorkerMaxWorkerPerBaseTerran
@@ -7675,7 +7478,7 @@ autoWorkerProductionCheck()
 	else if (aLocalPlayer["Race"] = "Protoss") 
 	{
 		mainControlGroup := Base_Control_Group_P_Key
-		controlstorageGroup := AutoWorkerStorage_P_Key
+		controlstorageGroup := AutomationProtossCtrlGroup
 		makeWorkerKey := AutoWorkerMakeWorker_P_Key
 		maxWorkers := AutoWorkerMaxWorkerProtoss
 		maxWorkersPerBase := AutoWorkerMaxWorkerPerBaseProtoss
@@ -8028,12 +7831,12 @@ autoWorkerProductionCheck()
 			if (AutoWorkerAlwaysGroup || BaseControlGroupNotSelected || removeRecentlyCompletedCC)  
 			{
 				setControlGroup := True
-				input.pSend(aAGHotkeys.set[controlstorageGroup])
+				input.pSend(SC2Keys.key("ControlGroupAssign" controlstorageGroup))
 				stopWatchCtrlID := stopwatch()
 			}
 			if BaseControlGroupNotSelected
 			{
-				input.psend("{click 0 0}" aAGHotkeys.Invoke[mainControlGroup]) ; need to click in case townhall group was just pressed (to prevent camera jump)
+				input.psend("{click 0 0}" SC2Keys.key("ControlGroupRecall" mainControlGroup)) ; need to click in case townhall group was just pressed (to prevent camera jump)
 				compareSelections(predictedSelectionBuffer, bufferSize, 35) 
 				dsleep(10)
 				numGetSelectionSorted(oSelection)
@@ -8453,20 +8256,18 @@ CreateHotkeys()
 			hotkey,  ~^+%InjectTimerAdvancedLarvaKey%, g_InjectTimerAdvanced, on
 			hotkey,  ~%InjectTimerAdvancedLarvaKey%, g_InjectTimerAdvanced, on
 		}		
-		if (aLocalPlayer["Race"] = "Terran" && EasyUnloadTerranEnable)
-		|| (aLocalPlayer["Race"] = "Protoss" && EasyUnloadProtossEnable)
+		if (aLocalPlayer["Race"] = "Terran" && SelectTransportsTerranEnable)
+		|| (aLocalPlayer["Race"] = "Protoss" && SelectTransportsProtossEnable)
 		|| (aLocalPlayer["Race"] = "Zerg" && EasyUnloadZergEnable)
-			hotkey, %EasyUnloadHotkey%, gEasyUnload, on
+			hotkey, %SelectTransportsHotkey%, gCastSelectLoadedTransport, on
 
 		; Converting a send key to a hotkey so need to remove '{' and '}' if present e.g. {F1}
 		; sc ability hotkeys can only be 1 key
 		if (aLocalPlayer["Race"] = "Terran" && EasyUnloadAllTerranEnable)
-			hotkey, % "~" (SubStr(EasyUnload_T_Key, 1 , 1) != "{" ? EasyUnload_T_Key : SubStr(EasyUnload_T_Key, 2, StrLen(EasyUnload_T_Key)-2)), UnloadAllTransports, on
-		else if (aLocalPlayer["Race"] = "Protoss" && EasyUnloadAllProtossEnable)
-			hotkey, % "~" (SubStr(EasyUnload_P_Key, 1 , 1) != "{" ? EasyUnload_P_Key : SubStr(EasyUnload_P_Key, 2, StrLen(EasyUnload_P_Key)-2)), UnloadAllTransports, on
-		else if (aLocalPlayer["Race"] = "Zerg" && EasyUnloadAllZergEnable)
-			hotkey, % "~" (SubStr(EasyUnload_Z_Key, 1 , 1) != "{" ? EasyUnload_Z_Key : SubStr(EasyUnload_Z_Key, 2, StrLen(EasyUnload_Z_Key)-2)), UnloadAllTransports, on
-		
+		|| (aLocalPlayer["Race"] = "Protoss" && EasyUnloadAllProtossEnable)
+		|| (aLocalPlayer["Race"] = "Zerg" && EasyUnloadAllZergEnable)
+			hotkey, % "~" SC2Keys.AHKHotkey("TransportUnloadAll"), UnloadAllTransports, on
+
 		if SelectArmyEnable
 			hotkey, %castSelectArmy_key%, g_SelectArmy, on  ; buffer to make double tap better remove 50ms delay
 		if SplitUnitsEnable
@@ -8573,10 +8374,8 @@ disableAllHotkeys()
 		try hotkey,  ~+%InjectTimerAdvancedLarvaKey%, off
 		try hotkey, ~^+%InjectTimerAdvancedLarvaKey%, off
 		try hotkey,  ~%InjectTimerAdvancedLarvaKey%, off
-		try hotkey, %EasyUnloadHotkey%, off
-		try hotkey, % "~" (SubStr(EasyUnload_T_Key, 1 , 1) != "{" ? EasyUnload_T_Key : SubStr(EasyUnload_T_Key, 2, StrLen(EasyUnload_T_Key)-2)), off
-		try hotkey, % "~" (SubStr(EasyUnload_P_Key, 1 , 1) != "{" ? EasyUnload_P_Key : SubStr(EasyUnload_P_Key, 2, StrLen(EasyUnload_P_Key)-2)), off
-		try hotkey, % "~" (SubStr(EasyUnload_Z_Key, 1 , 1) != "{" ? EasyUnload_Z_Key : SubStr(EasyUnload_Z_Key, 2, StrLen(EasyUnload_Z_Key)-2)), off
+		try hotkey, %SelectTransportsHotkey%, off
+		try hotkey, % "~" SC2Keys.AHKHotkey("TransportUnloadAll"), off
 		try hotkey, %castSelectArmy_key%, off
 		try hotkey, %castSplitUnit_key%, off
 		try hotkey, %castRemoveUnit_key%, off
@@ -8662,12 +8461,12 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 		If (Local QueenCount := getGroupedQueensWhichCanInject(oSelection, ForceInject)) ; this wont fetch burrowed queens!! so dont have to do a check below - as burrowed queens can make cameramove when clicking their hatch
 		{
 			if (ForceInject || Inject_RestoreSelection)
-				input.pSend(aAGHotkeys.set[Inject_control_group]), stopWatchCtrlID := stopwatch()
+				input.pSend(SC2Keys.key("ControlGroupAssign" AutomationZergCtrlGroup)), stopWatchCtrlID := stopwatch()
 
 			if !ForceInject && Inject_RestoreSelection && InjectGroupingDelay > 0
 				sleep % ceil(InjectGroupingDelay * rand(1, Inject_SleepVariance))
 
-			input.pSend(aAGHotkeys.Invoke[MI_Queen_Group])
+			input.pSend(SC2Keys.key("ControlGroupRecall" MI_Queen_Group))
 			dsleep(20)
 
 			if ForceInject
@@ -8720,7 +8519,7 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 					if (isQueenNearHatch(Queen, CurrentHatch, MI_QueenDistance) && Queen.Energy >= 25) ; previously queen type here (unit id/tpye) doesnt seem to work! weird
 					{
 						FoundQueen := CurrentHatch.NearbyQueen := Queen.HasInjected := 1 																		
-						input.pSend(Inject_spawn_larva)
+						input.pSend(SC2Keys.key("QueenSpawnLarva"))
 						click_x := CurrentHatch.MiniMapX, click_y := CurrentHatch.MiniMapY
 						If HumanMouse
 							MouseMoveHumanSC2("x" click_x "y" click_y "t" rand(HumanMouseTimeLo, HumanMouseTimeHi))
@@ -8775,7 +8574,7 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 								dSleep(1) 
 							dSleep(2) 
 						}
-						input.pSend(Inject_spawn_larva) ;always need to send this, otherwise might left click minimap for somereason
+						input.pSend(SC2Keys.key("QueenSpawnLarva")) ;always need to send this, otherwise might left click minimap for somereason
 						click_x := CurrentHatch.MiniMapX, click_y := CurrentHatch.MiniMapY
 						If HumanMouse
 							MouseMoveHumanSC2("x" click_x "y" click_y "t" rand(HumanMouseTimeLo, HumanMouseTimeHi))
@@ -8819,13 +8618,13 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 		{
 			if Inject_RestoreSelection
 			{
-				input.pSend(aAGHotkeys.set[Inject_control_group]), stopWatchCtrlID := stopwatch()
+				input.pSend(SC2Keys.key("ControlGroupAssign" AutomationZergCtrlGroup)), stopWatchCtrlID := stopwatch()
 				if (InjectGroupingDelay > 0)
 					sleep % ceil(InjectGroupingDelay * rand(1, Inject_SleepVariance))
 			}
 			if Inject_RestoreScreenLocation
 				input.pSend(BI_create_camera_pos_x)
-			input.pSend(aAGHotkeys.Invoke[MI_Queen_Group])
+			input.pSend(SC2Keys.key("ControlGroupRecall" MI_Queen_Group))
 			For Index, CurrentHatch in oHatcheries
 			{
 				if sleepTime
@@ -8841,7 +8640,7 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 					if isQueenNearHatch(Queen, CurrentHatch, MI_QueenDistance)
 					{
 						CurrentHatch.NearbyQueen := 1 																		
-						input.pSend(Inject_spawn_larva)
+						input.pSend(SC2Keys.key("QueenSpawnLarva"))
 						Input.pClick(CurrentHatch.MiniMapX, CurrentHatch.MiniMapY)
 						oSelection.Queens.Remove(Index) ; this queen wont inject again
 						Break
@@ -8865,7 +8664,7 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 		;	this was what part of the reason queens were sometimes being cancelled
 		if Inject_RestoreSelection
 		{
-			input.pSend(aAGHotkeys.set[Inject_control_group]), stopWatchCtrlID := stopwatch()
+			input.pSend(SC2Keys.key("ControlGroupAssign" AutomationZergCtrlGroup)), stopWatchCtrlID := stopwatch()
 			if (InjectGroupingDelay > 0)
 				sleep % ceil(InjectGroupingDelay * rand(1, Inject_SleepVariance))
 		}
@@ -8899,7 +8698,7 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 			sleep % ceil( (sleepTime/2) * rand(1, Inject_SleepVariance))
 			if (QueenIndex := filterSlectionTypeByEnergy(25, aUnitID["Queen"]))
 			{																	
-				input.pSend(Inject_spawn_larva)							;have to think about macro hatch though
+				input.pSend(SC2Keys.key("QueenSpawnLarva"))							;have to think about macro hatch though
 				click_x := A_ScreenWidth/2 , click_y := A_ScreenHeight/2		;due to not using Shift - must have 2 queens if on same screen
 																				;as will inject only 1 (as it will go to 1 hatch, then get the order to go the other before injecting the 1s)
 				If HumanMouse
@@ -8923,7 +8722,7 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 			dSleep(ceil(20 - elapsedTimeGrouping))
 		if !ForceInject && InjectGroupingDelay > 0
 				sleep % ceil(InjectGroupingDelay * rand(1, Inject_SleepVariance))
-		restoreSelection(Inject_control_group, selectionPage, HighlightedGroup)
+		restoreSelection(AutomationZergCtrlGroup, selectionPage, HighlightedGroup)
 	}
 	return
 }
@@ -8956,7 +8755,7 @@ restoreSelection(controlGroup, selectionPage, highlightedTab)
 { 
 	global NextSubgroupKey
 
-	input.pSend(aAGHotkeys.Invoke[controlGroup])
+	input.pSend(SC2Keys.key("ControlGroupRecall" controlGroup))
 	dsleep(15) ; This might not be long enough in big battles/large control group
 	if (highlightedTab && highlightedTab < getSelectionTypeCount())	; highlightedTab is zero based - TypeCount is 1 based hence < not <=
 	{
@@ -9021,7 +8820,7 @@ g_SplitUnits:
 	setLowLevelInputHooks(True)
 	dSleep(20)
 	input.pReleaseKeys()
-	SplitUnits(SplitctrlgroupStorage_key)
+	SplitUnits()
 	setLowLevelInputHooks(False)
 return
 
@@ -9101,7 +8900,7 @@ selectArmy()
 	clickSelectionPage(1)
 	dSleep(15)
 	if (Sc2SelectArmyCtrlGroup != "Off")
-		input.pSend(aAGHotkeys.set[Sc2SelectArmyCtrlGroup])
+		input.pSend(SC2Keys.key("ControlGroupAssign" Sc2SelectArmyCtrlGroup))
 	dSleep(15)
 	if (timerArmyID && stopwatch(timerArmyID) > 35) ; remove the timer and if took long time to select units sleep for longer
 		dSleep(15) 									; as every now and again all units can get grouped with previous button press
@@ -9225,7 +9024,7 @@ quickSelect(aDeselect)
 				goto __quickSelectFunctionRemoveHooksExit
 			if getSelectionCount() != portraitCount
 			{
-				input.pSend(aAGHotkeys.Invoke[controlGroup]) 
+				input.pSend(SC2Keys.key("ControlGroupRecall" controlGroup)) 
 				timerQuickID := stopwatch()
 				while getSelectionCount() != portraitCount && stopwatch(timerQuickID, False) < 60 && A_Index < 80
 					dsleep(1)
@@ -9234,7 +9033,7 @@ quickSelect(aDeselect)
 			}
 			else 
 			{
-				input.pSend(aAGHotkeys.Invoke[controlGroup]) 
+				input.pSend(SC2Keys.key("ControlGroupRecall" controlGroup)) 
 				dSleep(40) 	
 			}
 		}
@@ -9351,9 +9150,9 @@ quickSelect(aDeselect)
 		clickSelectionPage(1)	; unconditionally click page 1. If only one unit is left selected, this will cause the unit info (move/attack speed) box to briefly appear
 	}
 	if aDeselect.CreateControlGroup
-		input.pSend(aAGHotkeys.Set[aDeselect.StoreSelection])
+		input.pSend(SC2Keys.key("ControlGroupAssign" aDeselect.StoreSelection))
 	else if aDeselect.AddToControlGroup
-		input.pSend(aAGHotkeys.Add[aDeselect.StoreSelection])
+		input.pSend(SC2Keys.key("ControlGroupAppend" aDeselect.StoreSelection))
 	dsleep(15)
 
 	__quickSelectFunctionRemoveHooksExit:	
@@ -9937,14 +9736,26 @@ Suffix=_SC1 = Classic
 	bL 13 733
 	BR 	1894 756
 */
+getLocalRaceStorageGroup()
+{
+	global AutomationTerranCtrlGroup, AutomationProtossCtrlGroup, AutomationZergCtrlGroup
 
-SplitUnits(SplitctrlgroupStorage_key)
+	if aLocalPlayer.Race = "Terran"
+		return AutomationTerranCtrlGroup
+	else if aLocalPlayer.Race = "Protoss"
+		return AutomationProtossCtrlGroup	
+	else ;if aLocalPlayer.Race = "Zerg"
+		return AutomationZergCtrlGroup
+}
+
+SplitUnits()
 { 	GLOBAL aLocalPlayer, aUnitID, NextSubgroupKey
 
 ;	sleep, % SleepSplitUnits
-	
+
+	TempGroup := getLocalRaceStorageGroup()
 	HighlightedGroup := getSelectionHighlightedGroup()
-	input.pSend(aAGHotkeys.set[SplitctrlgroupStorage_key])
+	input.pSend(SC2Keys.key("ControlGroupAssign" TempGroup))
 	timerID := stopwatch()
 
 	aSelectedUnits := []
@@ -10052,7 +9863,7 @@ SplitUnits(SplitctrlgroupStorage_key)
 	if (elapsedTimeGrouping < 20)
 		dSleep(ceil(20 - elapsedTimeGrouping))
 
-	input.pSend(aAGHotkeys.Invoke[SplitctrlgroupStorage_key])
+	input.pSend(SC2Keys.key("ControlGroupRecall" TempGroup))
 	dsleep(15)
 	if HighlightedGroup
 		input.pSend(sRepeat(SC2Keys.key("SubgroupNext"), HighlightedGroup))
@@ -10129,7 +9940,7 @@ g_CheckForScriptToGetGameInfo:
 ;runRemoteScript()
 return
 
-; gEasyUnloadQueued is disabled! Until i sort out a better way to ensure modifiers are not left stuck down.
+
 
 ; Update: the below issue was caused by my NKRO keyboard - when NKRO disabled keys were sent correctly
 
@@ -10168,126 +9979,13 @@ gethotkeySuffix(hotkey, byRef containsPrefix := "", byRef containsWildCard := ""
 	return FinalKey
 }
 
-gEasyUnloadQueued: ; This label has been disabled
-gEasyUnload:
+
+gCastSelectLoadedTransport:
 thread, NoTimers, true
-castEasyUnload(A_ThisHotkey)
+castSelectLoadedTransport()
 return
 
-; If user double taps the immediate unload hotkey, all locally owned loaded transports
-; will be selected
 
-
-castEasyUnload(hotkey)
-{	
-	global EasyUnload_T_Key, EasyUnload_P_Key, EasyUnload_Z_Key, EasyUnloadStorageKey, Escape
-	static tickCount := 0
-
-	if aLocalPlayer.Race = "Terran"
-		unloadAll_Key := EasyUnload_T_Key
-	else if aLocalPlayer.Race = "Protoss"
-		unloadAll_Key := EasyUnload_P_Key	
-	else if aLocalPlayer.Race = "Zerg"
-		unloadAll_Key := EasyUnload_Z_Key
-	else return
-
-	; In case the user has modifiers in the hotkey
-	; Ahk doesn't seem to be blocking these from interfering with SC2
-	; should really send these with Input, but that will cause issues
-	; and when the user releases the keys, windows outside of sc2 should register this as im not blocking input
-	; or using critical 
-
-	hotkey := gethotkeySuffix(hotkey)
-	if (A_TickCount - tickCount < 250)
-	{
-		tickCount := A_TickCount
-		castEasySelectLoadedTransport()		
-		return
-	}
-	sleepTick := tickCount := A_TickCount
-	loop
-	{
-		if !GetKeyState(hotkey, "P")
-			return 
-		sleep 5
-	} until (A_TickCount - sleepTick >= 50) ; key press duration
-	
-	setGroup := aAGHotkeys.set[EasyUnloadStorageKey]
-	addGroup := aAGHotkeys.Add[EasyUnloadStorageKey]
-	invokeGroup := aAGHotkeys.Invoke[EasyUnloadStorageKey]
-	ctrlGroup := EasyUnloadStorageKey
-
-	input.pReleaseKeys()
-	if isCastingReticleActive() 	
-		input.pSend(SC2Keys.key("GlobalTargetCancel")) 	
-	lClickedUnits := ""
-	aDroppTick := []
-	while GetKeyState(hotkey, "P")
-	{
-		If ((unitIndex := getCursorUnit()) >= 0)
-		{
-			if (isUnitLocallyOwned(unitIndex)  
-			&& ((type := getUnitType(unitIndex)) = aUnitId.Medivac
-			|| type = aUnitID.WarpPrism || type = aUnitID.WarpPrismPhasing || type = aUnitID.overlord))
-			{
-				hasCargo := getCargoCount(unitIndex, isUnloading)
-				if (hasCargo && !isUnloading)
-				{
-					; it takes a while before the isUnloading changes in real games on bnet
-					; ie command delay. So check tick count so dont spam it
-					; with 250ms on NA server from Aus i still get two beeps (which is ok) - dont want to take too long
-					; in case SC ignored the first command e.g. the click missed the medivac
-					if !setCtrlGroup
-						input.pSend("{click}" setGroup unloadAll_Key "{click}", False)
-					else
-						 input.pSend("{click}" addGroup unloadAll_Key "{click}", False)
-					setCtrlGroup := True
-					
-					if unitIndex not in %lClickedUnits%
-					{
-						lClickedUnits .= unitIndex ","
-						soundplay, %A_Temp%\gentleBeep.wav
-					}
-				}
-				else if !isInControlGroup(ctrlGroup, unitIndex)
-				{
-					if !setCtrlGroup
-						input.pSend("{click}" setGroup, False)
-					else input.pSend("{click}" addGroup, False)
-					setCtrlGroup := True
-					if unitIndex not in %lClickedUnits%
-					{
-						lClickedUnits .= unitIndex ","
-						soundplay, %A_Temp%\gentleBeep.wav
-					}
-				}
-				else 
-				{
-					if !setCtrlGroup
-						soundplay, %A_Temp%\gentleBeep.wav
-					; play sound to indicate that function has activated i.e. if hotkey let go transports will be selected
-					; e.g. they let go of the hotkey, then pressed it again and waved it over one of the already processed transports
-					; in other words user is waving mouse over medivacs which are empty or have begun unloading and are in the ctrl group
-					setCtrlGroup := True 	
-					
-				}	
-			}
-		}
-		; Ive noticed sometimes in games the sound will get toggled with this function - couldn't reproduce it in a replay
-		; The modifiers don't seem to get stuck though
-		; perhaps need game/system lag.
-		; could consider disabling the blind option for pSend in this function.
-		sleep 5 ; if 0 or -1, game will lag then hundreds of clicks will appear in screen
-	}
-	if setCtrlGroup
-		input.pSend(invokeGroup, False)
-	; to restore the modifier keys if the user is still holding them down
-	; e.g. is they want to shift click somewhere without first releasing the shift key
-	; disabled to prevent stuck modifers in in certain situations 
-;	if upSequence
-;		Input.psend(getModifierDownSequenceFromKeyboard())
-	return
-}
 
 getModifierUpSequenceFromString(hotkey)
 {
@@ -10321,7 +10019,7 @@ getModifierDownSequenceFromKeyboard()
 }
 
 
-castEasySelectLoadedTransport()
+castSelectLoadedTransport()
 {	
 	critical, 1000
 	setLowLevelInputHooks(True)
@@ -11080,6 +10778,7 @@ removeDamagedUnit()
 
 	if !getSelectionCount()
 		return
+	tempGroup := getLocalRaceStorageGroup()
 	while (GetKeyState("Lbutton", "P") || GetKeyState("Rbutton", "P")) ; This does an important thing in select army function
 	{ 																; but here just so APM doesn't skyrocket if user holds right click and function hotkey
 		sleep 1
@@ -11109,7 +10808,7 @@ removeDamagedUnit()
 			input.pSend(SC2Keys.key("GlobalTargetCancel")) 		; is a dsleep() >= 15 is performed after select army key is pressed this is not required - 12isnt enough
 										; as SC will have enough time to get rid of the selection reticle itself		
 		timerGrouping := stopwatch()
-		input.pSend(aAGHotkeys.set[RemoveDamagedUnitsCtrlGroup])
+		input.pSend(SC2Keys.key("ControlGroupAssign" tempGroup))
 		reverseArray(highHP)
 		clickUnitPortraits(highHP) 	; remove high HP units
 
@@ -11132,7 +10831,7 @@ removeDamagedUnit()
 		}
 		else input.pSend("{Click Right}")
 
-		input.pSend(aAGHotkeys.Invoke[RemoveDamagedUnitsCtrlGroup]) 	; restore initial selection
+		input.pSend(SC2Keys.key("ControlGroupRecall" tempGroup)) 	; restore initial selection
 		; If a unit dies then this could stall for ~50ms. Not a big issue.
 		; But this is certainly a possibility. When deselecting 13 units
 		; (of all types) from 135 it will take 110-120 ms to get here.
@@ -11427,6 +11126,7 @@ unloadAllTransports(hotkeySuffix)
 	else if aLocalPlayer.Race = "Zerg" && (!aSelection.TabPositions.HasKey(aUnitID.overlord) || aSelection.TabPositions[aUnitID.overlord] != aSelection.HighlightedGroup)
 		return
 
+	tempGroup := getLocalRaceStorageGroup()
 	HighlightedTab := aSelection.HighlightedGroup
 	loop, 8
 		getCargoPos(A_Index - 1, xPos, yPos), unloadAllCargoString .= "{click " xPos ", " yPos "}"
@@ -11443,15 +11143,15 @@ unloadAllTransports(hotkeySuffix)
 		input.pSend(unloadAllCargoString SC2Keys.key("GlobalTargetCancel")) ; send Escape as we should try to remove the casting reticle invoked my pressing the hotkey ability
 	else if aSelection.Count > 1
 	{
-		input.pSend(escape)
+		input.pSend(SC2Keys.key("GlobalTargetCancel"))
 		aUnloaded := []
-		input.pSend(aAGHotkeys.Set[EasyUnloadStorageKey])
+		input.pSend(SC2Keys.key("ControlGroupAssign" tempGroup))
 		slectionCount := aSelection.Count
 		loop, 40
 		{
 			if A_index > 1
 			{
-				input.pSend("{click 0 0}" aAGHotkeys.Invoke[EasyUnloadStorageKey]) ; clicking screen prevents camera focus when invoking the control group multiple times
+				input.pSend("{click 0 0}" SC2Keys.key("ControlGroupRecall" tempGroup)) ; clicking screen prevents camera focus when invoking the control group multiple times
 				while getselectionCount() != slectionCount && A_Index <= 40
 					dsleep(1)
 				dsleep(10)
@@ -11478,7 +11178,7 @@ unloadAllTransports(hotkeySuffix)
 				aUnloaded[unit.UnitIndex] := True ; Assign for non medivac units too (so they wont have to do the function calls the next time around)
 			}
 		}
-		input.pSend("{click 0 0}" aAGHotkeys.Invoke[EasyUnloadStorageKey])
+		input.pSend("{click 0 0}" SC2Keys.key("ControlGroupRecall" tempGroup))
 	}
 	setLowLevelInputHooks(False)
 	critical, off
@@ -12858,10 +12558,12 @@ SmartGeyserControlGroup(geyserStructureIndex)
 		input.pClick(,, "Right")
 		return
 	}
-	aIgnoredHarvesters := [],	aSentToGeyser := []
+
+	tempGroup := getLocalRaceStorageGroup()
+	, aIgnoredHarvesters := [],	aSentToGeyser := []
 	, harvesterID := localHarvesterID()
-	, setGroup := aAGHotkeys.set[smartGeyserCtrlGroup]
-	, InvokeGroup := aAGHotkeys.Invoke[smartGeyserCtrlGroup]
+	, setGroup := SC2Keys.key("ControlGroupAssign" tempGroup)
+	, InvokeGroup := SC2Keys.key("ControlGroupRecall" tempGroup)
 
 	; This just checks the selected units for mining
 	;aHarvestingGas := getSelectedHarvestersMiningGas(oSelection) ; oSelection is reversed

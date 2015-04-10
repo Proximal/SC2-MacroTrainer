@@ -18,7 +18,7 @@
 
 
 	Default=[nothing] (that would be the Normal Left Side)
-	Suffix=_NRS = Normal Right Side (for lefties)
+	Suffix=_NRS = Normal Right Side (standard for lefties)
 	Suffix=_GLS = Grid Left Side
 	Suffix=_GRS = Grid Right Side (for lefties)
 	Suffix=_SC1 = Classic
@@ -41,23 +41,37 @@
 
 */
 
+; aSendKeys stores the keys which can be sent to SC to invoke abilities
+; aAHKHotkeys stores AHK compatible hotkeys which can be used to create hotkeys for abilities e.g. when the user presses the select army hotkey
+
 class SC2Keys
 {
-	static aCurrentHotkeys, debug := []
-	getAllKeys() ; stores the keys as well for individual key lookup
+	static aSendKeys, aAHKHotkeys, debug := []
+	; stores the keys as well for individual key lookup
+	; and sets the AHK hotkey object too
+	getAllKeys() 
 	{
 		this.getHotkeyProfile(file, suffix)
 		if (suffix = "_GLS" || suffix = "_GRS")
 			obj := this.readProfileGrid(file, suffix)
-		else obj := this.readProfileNonGrid(file, suffix)	
-		return this.aCurrentHotkeys := obj
+		else obj := this.readProfileNonGrid(file, suffix)
+		this.aAHKHotkeys := []
+		for hotkeyReference, sentKey in this.aSendKeys := obj	
+			this.aAHKHotkeys[hotkeyReference] := this.convertSendKeysToAHKHotkey(sentKey)
+		return this.aSendKeys
 	}
 	key(hotkeyReference)
 	{
-		if !isobject(this.aCurrentHotkeys) ; haven't set the keys yet
+		if !isobject(this.aSendKeys) ; haven't set the keys yet
 			this.getAllKeys()
-		return this.aCurrentHotkeys[hotkeyReference]
+		return this.aSendKeys[hotkeyReference]
 	}
+	AHKHotkey(hotkeyReference)
+	{
+		if !isobject(this.aSendKeys) ; haven't set the keys yet
+			this.getAllKeys()
+		return this.aAHKHotkeys[hotkeyReference]
+	}	
 	getHotkeyProfile(byRef file := "", byRef suffix := "")
 	{
 		file := suffix := ""
@@ -113,44 +127,49 @@ class SC2Keys
 			SC2Keys.getAllKeys()
 		return
 	}
-
+	; sc ability hotkeys can only be 1 key
 	getDefaultKeys(suffix)
 	{
 		; Section and key columns are not used by grid layout!
-		; column 1 isnt used either currently
 		static keys := "
-		( LTrim c 					;			Standard 			_NRS 				_SC1 				grid							section 				key & myLookupReference
-			returnCargo 						|c 					|c					|c 					|CommandButton06				|Commands 				|ReturnCargo
-			trainMarine 						|a 					|m					|m 					|CommandButton00				|Commands 				|Marine/Barracks
-			trainReaper 						|r 					|p					|e 					|CommandButton01				|Commands 				|Reaper/Barracks
-			trainMarauder			 			|d					|u					|f					|CommandButton02				|Commands 				|Marauder/Barracks
-			trainGhost 							|g  				|g					|g 					|CommandButton03				|Commands 				|Ghost/Barracks
-			trainHellion 						|e 					|h					|v 					|CommandButton00				|Commands 				|Hellion/Factory
-			trainWidowMine 						|d 					|u					|d 					|CommandButton01				|Commands 				|WidowMine/Factory
-			trainSiegeTank 						|s 					|i					|t 					|CommandButton02				|Commands 				|SiegeTank/Factory
-			trainHellionTank 					|r 					|p					|h	 				|CommandButton03				|Commands 				|HellionTank/Factory
-			trainThor 							|t 					|d					|g 					|CommandButton04				|Commands 				|Thor/Factory
-			trainVikingFighter 					|v	 				|k					|w 					|CommandButton00				|Commands 				|VikingFighter/Starport
-			trainMedivac 						|d 					|m					|d 					|CommandButton01				|Commands 				|Medivac/Starport
-			trainRaven 							|r 					|v					|v 					|CommandButton02				|Commands 				|Raven/Starport
-			trainBanshee 						|e 					|n					|e 					|CommandButton03				|Commands 				|Banshee/Starport
-			trainBattlecruiser  				|b 					|b					|b 					|CommandButton04				|Commands 				|Battlecruiser/Starport
-			trainZealot  						|z 					|o					|z 					|CommandButton00				|Commands 				|Zealot 				; Gateway units lack the /structure
-			trainSentry  						|e 					|n					|e 					|CommandButton01				|Commands 				|Sentry 				; SC has a menu for both gateway & warpgate
-			trainStalker  						|s 					|l					|d 					|CommandButton02				|Commands 				|Stalker 				; But it doesn't seem like you can change them individually
-			trainHighTemplar					|t 					|h					|t 					|CommandButton05				|Commands 				|HighTemplar
-			trainDarkTemplar					|d 					|k					|k 					|CommandButton06				|Commands 				|DarkTemplar
-			trainPhoenix						|x 					|p					|e 					|CommandButton00				|Commands 				|Phoenix/Stargate
-			trainOracle 						|e 					|b					|l 					|CommandButton01				|Commands 				|Oracle/Stargate
-			trainVoidRay 						|v 					|d					|o 					|CommandButton02				|Commands 				|VoidRay/Stargate
-			trainTempest 						|t 					|u					|t 					|CommandButton03				|Commands 				|Tempest/Stargate
-			trainCarrier						|c 					|i					|c 					|CommandButton04				|Commands 				|Carrier/Stargate
-			trainObserver						|b 					|o					|o 					|CommandButton00				|Commands 				|Observer/RoboticsFacility
-			trainWarpPrism						|a 					|p					|s 					|CommandButton01				|Commands 				|WarpPrism/RoboticsFacility
-			trainImmortal						|i 					|i					|i 					|CommandButton02				|Commands 				|Immortal/RoboticsFacility
-			trainColossus						|c 					|l					|v 					|CommandButton03				|Commands 				|Colossus/RoboticsFacility
-			trainQueen							|q 					|u					|e 					|CommandButton01				|Commands 				|Queen 		; SC only allows same key for hatch/lair/hive
-			UpgradeToWarpGate					|g 					|g					|g 					|CommandButton10				|Commands 				|UpgradeToWarpGate/Gateway 		
+		( LTrim c 					
+			;myLookupReference					Standard 			_NRS 				_SC1 				grid							section 				key
+			ReturnCargo 						|c 					|c					|c 					|CommandButton06				|Commands 				|ReturnCargo
+			Marine/Barracks						|a 					|m					|m 					|CommandButton00				|Commands 				|Marine/Barracks
+			Reaper/Barracks						|r 					|p					|e 					|CommandButton01				|Commands 				|Reaper/Barracks
+			Marauder/Barracks		 			|d					|u					|f					|CommandButton02				|Commands 				|Marauder/Barracks
+			Ghost/Barracks						|g  				|g					|g 					|CommandButton03				|Commands 				|Ghost/Barracks
+			Hellion/Factory						|e 					|h					|v 					|CommandButton00				|Commands 				|Hellion/Factory
+			WidowMine/Factory					|d 					|u					|d 					|CommandButton01				|Commands 				|WidowMine/Factory
+			SiegeTank/Factory					|s 					|i					|t 					|CommandButton02				|Commands 				|SiegeTank/Factory
+			HellionTank/Factory					|r 					|p					|h	 				|CommandButton03				|Commands 				|HellionTank/Factory
+			Thor/Factory						|t 					|d					|g 					|CommandButton04				|Commands 				|Thor/Factory
+			VikingFighter/Starport				|v	 				|k					|w 					|CommandButton00				|Commands 				|VikingFighter/Starport
+			Medivac/Starport					|d 					|m					|d 					|CommandButton01				|Commands 				|Medivac/Starport
+			Raven/Starport						|r 					|v					|v 					|CommandButton02				|Commands 				|Raven/Starport
+			Banshee/Starport					|e 					|n					|e 					|CommandButton03				|Commands 				|Banshee/Starport
+			Battlecruiser/Starport 				|b 					|b					|b 					|CommandButton04				|Commands 				|Battlecruiser/Starport
+			Zealot		  						|z 					|o					|z 					|CommandButton00				|Commands 				|Zealot 				; Gateway units lack the /structure
+			Sentry 		  						|e 					|n					|e 					|CommandButton01				|Commands 				|Sentry 				; SC has a menu for both gateway & warpgate
+			Stalker 	  						|s 					|l					|d 					|CommandButton02				|Commands 				|Stalker 				; But it doesn't seem like you can change them individually
+			HighTemplar 						|t 					|h					|t 					|CommandButton05				|Commands 				|HighTemplar
+			DarkTemplar 						|d 					|k					|k 					|CommandButton06				|Commands 				|DarkTemplar
+			Phoenix/Stargate					|x 					|p					|e 					|CommandButton00				|Commands 				|Phoenix/Stargate
+			Oracle/Stargate						|e 					|b					|l 					|CommandButton01				|Commands 				|Oracle/Stargate
+			VoidRay/Stargate					|v 					|d					|o 					|CommandButton02				|Commands 				|VoidRay/Stargate
+			Tempest/Stargate					|t 					|u					|t 					|CommandButton03				|Commands 				|Tempest/Stargate
+			Carrier/Stargate					|c 					|i					|c 					|CommandButton04				|Commands 				|Carrier/Stargate
+			Observer/RoboticsFacility			|b 					|o					|o 					|CommandButton00				|Commands 				|Observer/RoboticsFacility
+			WarpPrism/RoboticsFacility			|a 					|p					|s 					|CommandButton01				|Commands 				|WarpPrism/RoboticsFacility
+			Immortal/RoboticsFacility			|i 					|i					|i 					|CommandButton02				|Commands 				|Immortal/RoboticsFacility
+			Colossus/RoboticsFacility			|c 					|l					|v 					|CommandButton03				|Commands 				|Colossus/RoboticsFacility
+			Queen 								|q 					|u					|e 					|CommandButton01				|Commands 				|Queen 		; SC only allows same key for hatch/lair/hive
+			UpgradeToWarpGate/Gateway 			|g 					|g					|g 					|CommandButton10				|Commands 				|UpgradeToWarpGate/Gateway 		
+			; The key 'BunkerUnloadAll' is shared between bunkers, medivacs, warp prisms, and overlords.
+			; **Note  the command button is 13 for medivacs, warp prisms, and overlords but 14 for bunkers! 
+			; This would cause issues with grid layouts if I ever did anything with bunkers, would need a separate lookup reference for bunkers (with the correct command button)
+			TransportUnloadAll					|d 					|d					|u 					|CommandButton13				|Commands 				|BunkerUnloadAll		
+			QueenSpawnLarva						|v 					|l					|v 					|CommandButton11				|Commands 				|MorphMorphalisk/Queen		
 		)"
 
 		if suffix not in Standard,_NRS,_SC1,_GLS,_GRS
@@ -160,42 +179,70 @@ class SC2Keys
 		loop, parse, keys, `n, %A_Tab%
 		{
 			a := StrSplit(A_LoopField, "|", A_Tab A_Space)
-			obj.insert(a.7, {"hotkey": a[arrayPos], "section": a[6], "key": a[7]})
+			obj.insert(a.1, {"hotkey": a[arrayPos], "section": a[6], "inikey": a[7]})
 		}
 		return obj
 	}
 
 	readProfileHotkeysSection(file)
 	{
-		obj := []
 		; Add all new hotkey section SC hotkeys here (excluding grid keys)
-		obj.SubgroupNext := "Tab"
-		obj.SubgroupPrev := "Shift+Tab"
-		obj.ArmySelect := "F2"
-		obj.TownCamera := "Backspace"
-		obj.PauseGame := "Pause"
-		obj.SelectionCancelDrag := "Escape"
-		; This hoktey doesn't seem to exist in the hotkey editor, so I assume it must always be escape 
-		; although there are other hotkeys (TargetCancel) which cancels the targetting mode
-		obj.GlobalTargetCancel := "Escape" 
-
+		keys := "
+		( LTrim c 					
+			;myLookupReference 				Default 					iniKey
+			SubgroupNext 					|Tab 						|SubgroupNext
+			SubgroupPrev 					|Shift+Tab 					|SubgroupPrev
+			ArmySelect 	 					|F2 	 					|ArmySelect
+			TownCamera 	 					|Backspace 					|TownCamera
+			PauseGame 	 					|Pause 						|PauseGame
+			SelectionCancelDrag 			|Escape						|SelectionCancelDrag
+			CameraSave1 					|Control+F5 				|CameraSave0
+			CameraSave2 					|Control+F6 				|CameraSave1
+			CameraSave3 					|Control+F7 				|CameraSave2
+			CameraSave4 					|Control+F8 				|CameraSave3
+			CameraSave5 					|Control+Shift+F5 			|CameraSave4
+			CameraSave6 					|Control+Shift+F6 			|CameraSave5
+			CameraSave7 					|Control+Shift+F7 			|CameraSave6
+			CameraSave8 					|Control+Shift+F8 			|CameraSave7
+			CameraView1 					|F5 			 			|CameraView0
+			CameraView2 					|F6 			 			|CameraView1
+			CameraView3 					|F7 			 			|CameraView2
+			CameraView4 					|F8 			 			|CameraView3
+			CameraView5 					|Shift+F5		 			|CameraView4
+			CameraView6 					|Shift+F6		 			|CameraView5
+			CameraView7 					|Shift+F7		 			|CameraView6
+			CameraView8 					|Shift+F8		 			|CameraView7
+		)"
 		loop, 10 ; Set default control group keys
 		{
 			group := A_Index - 1
-			obj["ControlGroupRecall" group] := group
-			obj["ControlGroupAppend" group] := "Shift+" group
-			obj["ControlGroupAssign" group] := "Control+" group		
-		}
-		if FileExist(file) ; This isn't required due to inireads default value, but theres little point if the file doesn't exist
+			keys .= "`n" "ControlGroupRecall" group 	"|" group 				"|" "ControlGroupRecall" group
+				. 	"`n" "ControlGroupAppend" group 	"|" "Shift+" group 		"|" "ControlGroupAppend" group
+				. 	"`n" "ControlGroupAssign" group 	"|" "Control+" group 	"|" "ControlGroupAssign" group
+		}		
+
+		aLookUp := []
+		loop, parse, keys, `n, %A_Tab%
 		{
-			for k, value in obj 
-			{
-				IniRead, hotkey, %file%, Hotkeys, %k%, %value%
-				obj[k] := hotkey
-			}
+			a := StrSplit(A_LoopField, "|", A_Tab A_Space)
+			aLookUp.insert(a.1, {"MyReference": a.1,  "hotkey": a[2], "inikey": a[3]})
 		}
-		for k, hotkey in obj
-			obj[k] := this.convertHotkey(hotkey)
+
+		obj := []
+		fileExists := FileExist(file) ; This isn't required due to inireads default value, but theres little point if the file doesn't exist
+		for myReference, item in aLookUp 
+		{
+			if fileExists
+			{
+				IniRead, hotkey, %file%, Hotkeys, % item.inikey, % item.hotkey
+				obj[myReference] := this.convertHotkey(hotkey)
+			}
+			else obj[myReference] := this.convertHotkey(item.hotkey)
+		}
+		; This hotkey doesn't seem to exist in the hotkey editor, so I assume it must always be escape 
+		; although there are other hotkeys (TargetCancel) which cancels the targeting mode
+		obj.GlobalTargetCancel := "Escape" 
+
 		return obj
 	}
 	
@@ -206,7 +253,7 @@ class SC2Keys
 		{
 			for k, item in obj 
 			{
-				IniRead, hotkey, %file%, % item.section, % item.key, % item.hotkey
+				IniRead, hotkey, %file%, % item.section, % item.inikey, % item.hotkey
 				obj[k].hotkey := hotkey
 			}
 		}
@@ -242,7 +289,16 @@ class SC2Keys
 		}
 		return nObj
 	}
-	; Wrote this over a year ago, but lets roll with it
+	; I forgot to include a way to map SC hotkeys to AHK hotkeys (not sent keys).
+	; It's easiest just to convert the AHK send key string back to a hotkey and store it in another object rather than playing around with the way this class already works
+	convertSendKeysToAHKHotkey(sendString)
+	{
+		RegExMatch(sendString, "i)\{(.+)}", suffix) ; gets the suffix if it's inside brackets
+		hotkey := RegExReplace(sendString, "i)\{.+}") suffix1 ; gets the hotkey prefix if it has one. Leaves the suffix if its not inside brackets
+		return hotkey
+	}
+
+	; Wrote this a few years ago, but lets roll with it
 	; I really need to spend some time checking that it covers all cases correctly
 	convertHotkey(String)
 	{
