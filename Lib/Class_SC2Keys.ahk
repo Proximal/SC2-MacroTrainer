@@ -124,17 +124,45 @@ class SC2Keys
 			settimer, _SC2KeysFileModificationCheck, Off 
 		FileGetTime, modifiedTime, % SC2Keys.debug.variablesFilePath
 		if SC2Keys.debug.VariablesModifiedTime != modifiedTime
+		{
+			; Some hotkeys rely on the SC hotkey layout, so we must disable them before 
+			; updating the SC2 hotkeys
+			disableAllHotkeys()
 			SC2Keys.getAllKeys()
+			CreateHotkeys()
+		}
 		return
 	}
 	; sc ability hotkeys can only be 1 key
 	getDefaultKeys(suffix)
 	{
-		; Section and key columns are not used by grid layout!
+		; Section and key columns are not used by grid layout! (except for the Cancel hotkey)***
+		; The Cancel hotkey is quite interesting and unique.  All default layouts use Escape as a primary or secondary hotkey
+		; Standard = Escape
+		; _SC1 = Escape 
+		; _NRS = F12,Escape 
+		; _GLS  b,Escape
+		; _GRS /,f12,Escape - 3 hotkeys!
+		; It gets more interesting with gridlayouts 
+		; The default grid layouts hotkeys are as stated above, however the in game hotkey menu only displays the primary hotkey, but the tooltip on the cancel button UI
+		; displays all of them.
+		; if you add a secondary hotkey to CommandButton14, or change the primary hotkey then escape no longer works or displayed in the tooltip!!!!!
+		; All cancel command cards occur on CommandButton14, except for infestors who are using neural parasite.
+		; There seems to be a SC hotkey/bug when the infestor casts neural parasite. With the _GLS grid layout pressing b causes the burrow icon to flash (if it's been researched) 
+		; but the infestor ignores this, if burrow isn't researched the 'b' does nothing - in either case pressing b does not cancel the neural parasite - however pressing escape does.
+		; After pressing escape, if the infestor was queued to burrow (from pressing 'b') it will burrow automatically.
+		; Which is important as a couple of units have the command button located at 13 rather than position 14. This also makes sense from a playing perspective
+		; If however you assign one or more custom hotkeys to CommandButton14 this does not effect that cancel hotkey (as its at CommandButton13), if you change CommandButton13
+		; then that will alter the hotkeys.
+		; In summary, if a user has change gridlayout keys for CommandButton13 then escape will not cancel the action (target reticle isn't present so should cause issues for me)
+		; however if user changes one or both of CommandButton14 hotkeys then escape will not work to cancel targeting reticles
 		static keys := "
 		( LTrim c 					
-			;myLookupReference					Standard 			_NRS 				_SC1 				grid							section 				key
+			;myLookupReference					|Standard 			|_NRS 				|_SC1 				|grid							|section 				|key
+			;									| all layouts share the escape key
+			Cancel 								|Escape				|Escape				|Escape				|Cancel 						|Commands 				|Cancel
 			ReturnCargo 						|c 					|c					|c 					|CommandButton06				|Commands 				|ReturnCargo
+			SCV 								|s 					|j					|s 					|CommandButton00				|Commands 				|SCV		
 			Marine/Barracks						|a 					|m					|m 					|CommandButton00				|Commands 				|Marine/Barracks
 			Reaper/Barracks						|r 					|p					|e 					|CommandButton01				|Commands 				|Reaper/Barracks
 			Marauder/Barracks		 			|d					|u					|f					|CommandButton02				|Commands 				|Marauder/Barracks
@@ -149,6 +177,7 @@ class SC2Keys
 			Raven/Starport						|r 					|v					|v 					|CommandButton02				|Commands 				|Raven/Starport
 			Banshee/Starport					|e 					|n					|e 					|CommandButton03				|Commands 				|Banshee/Starport
 			Battlecruiser/Starport 				|b 					|b					|b 					|CommandButton04				|Commands 				|Battlecruiser/Starport
+			Probe/Nexus 						|e 					|p 					|p 					|CommandButton00				|Commands 				|Probe/Nexus
 			Zealot		  						|z 					|o					|z 					|CommandButton00				|Commands 				|Zealot 				; Gateway units lack the /structure
 			Sentry 		  						|e 					|n					|e 					|CommandButton01				|Commands 				|Sentry 				; SC has a menu for both gateway & warpgate
 			Stalker 	  						|s 					|l					|d 					|CommandButton02				|Commands 				|Stalker 				; But it doesn't seem like you can change them individually
@@ -170,6 +199,7 @@ class SC2Keys
 			; This would cause issues with grid layouts if I ever did anything with bunkers, would need a separate lookup reference for bunkers (with the correct command button)
 			TransportUnloadAll					|d 					|d					|u 					|CommandButton13				|Commands 				|BunkerUnloadAll		
 			QueenSpawnLarva						|v 					|l					|v 					|CommandButton11				|Commands 				|MorphMorphalisk/Queen		
+			TimeWarp/Nexus						|c 					|n					|c 					|CommandButton10				|Commands 				|TimeWarp/Nexus			
 		)"
 
 		if suffix not in Standard,_NRS,_SC1,_GLS,_GRS
@@ -179,57 +209,76 @@ class SC2Keys
 		loop, parse, keys, `n, %A_Tab%
 		{
 			a := StrSplit(A_LoopField, "|", A_Tab A_Space)
-			obj.insert(a.1, {"hotkey": a[arrayPos], "section": a[6], "inikey": a[7]})
+			obj.insert(a.1, {"MyReference": a.1, "hotkey": a[arrayPos], "section": a[6], "inikey": a[7]})
 		}
 		return obj
 	}
 
-	readProfileHotkeysSection(file)
+	readProfileHotkeysSection(file, suffix)
 	{
 		; Add all new hotkey section SC hotkeys here (excluding grid keys)
+		; It seems Standard and _GLS are the same._SC1/classic seems to for these hotkeys but that wasn't necessarily the case with command hotkeys.
+		; _NRS and _GRS seem to match too. 
 		keys := "
 		( LTrim c 					
-			;myLookupReference 				Default 					iniKey
-			SubgroupNext 					|Tab 						|SubgroupNext
-			SubgroupPrev 					|Shift+Tab 					|SubgroupPrev
-			ArmySelect 	 					|F2 	 					|ArmySelect
-			TownCamera 	 					|Backspace 					|TownCamera
-			PauseGame 	 					|Pause 						|PauseGame
-			SelectionCancelDrag 			|Escape						|SelectionCancelDrag
-			CameraSave1 					|Control+F5 				|CameraSave0
-			CameraSave2 					|Control+F6 				|CameraSave1
-			CameraSave3 					|Control+F7 				|CameraSave2
-			CameraSave4 					|Control+F8 				|CameraSave3
-			CameraSave5 					|Control+Shift+F5 			|CameraSave4
-			CameraSave6 					|Control+Shift+F6 			|CameraSave5
-			CameraSave7 					|Control+Shift+F7 			|CameraSave6
-			CameraSave8 					|Control+Shift+F8 			|CameraSave7
-			CameraView1 					|F5 			 			|CameraView0
-			CameraView2 					|F6 			 			|CameraView1
-			CameraView3 					|F7 			 			|CameraView2
-			CameraView4 					|F8 			 			|CameraView3
-			CameraView5 					|Shift+F5		 			|CameraView4
-			CameraView6 					|Shift+F6		 			|CameraView5
-			CameraView7 					|Shift+F7		 			|CameraView6
-			CameraView8 					|Shift+F8		 			|CameraView7
+			;myLookupReference				|Standard 					|_NRS  						|_SC1 					|_GLS (Grid)			|_GRS (Grid For Lefties)		|key
+			SubgroupNext 					|Tab 						|\							|Tab					|Tab					|\									|SubgroupNext
+			SubgroupPrev 					|Shift+Tab 					|Shift+\					|Shift+Tab				|Shift+Tab 				|Shift+\							|SubgroupPrev
+			ArmySelect 	 					|F2 	 					|F5							|F2 					|F2 					|F5									|ArmySelect
+			; SelectionCancelDrag has two default keys for _NRS F12,Escape! 
+			SelectionCancelDrag 			|Escape						|F12						|Escape					|Escape					|F12								|SelectionCancelDrag								
+			TownCamera 	 					|Backspace 					|]							|Backspace 				|Backspace				|]									|TownCamera
+			PauseGame 	 					|Pause 						|Pause						|Pause 					|Pause 					|Pause								|PauseGame
+			CameraSave1 					|Control+F5 				|Control+F8 				|Control+F5 			|Control+F5 			|Control+F8 						|CameraSave0
+			CameraSave2 					|Control+F6 				|Control+F9 				|Control+F6 			|Control+F6 			|Control+F9 						|CameraSave1
+			CameraSave3 					|Control+F7 				|Control+F10				|Control+F7				|Control+F7 			|Control+F10						|CameraSave2
+			CameraSave4 					|Control+F8 				|Control+F11				|Control+F8				|Control+F8 			|Control+F11						|CameraSave3
+			CameraSave5 					|Control+Shift+F5 			|Control+Shift+F8 			|Control+Shift+F5 		|Control+Shift+F5		|Control+Shift+F8 					|CameraSave4
+			CameraSave6 					|Control+Shift+F6 			|Control+Shift+F9 			|Control+Shift+F6		|Control+Shift+F6		|Control+Shift+F9 					|CameraSave5
+			CameraSave7 					|Control+Shift+F7 			|Control+Shift+F10 			|Control+Shift+F7 		|Control+Shift+F7		|Control+Shift+F10					|CameraSave6
+			CameraSave8 					|Control+Shift+F8 			|Control+Shift+F11			|Control+Shift+F8		|Control+Shift+F8		|Control+Shift+F11					|CameraSave7
+			CameraView1 					|F5 						|F8	 						|F5						|F5 					|F8	 								|CameraView0
+			CameraView2 					|F6 			 			|F9							|F6 					|F6 			 		|F9									|CameraView1
+			CameraView3 					|F7 			 			|F10						|F7						|F7 			 		|F10								|CameraView2
+			CameraView4 					|F8 			 			|F11						|F8 					|F8 			 		|F11								|CameraView3
+			CameraView5 					|Shift+F5		 			|Shift+F8					|Shift+F5				|Shift+F5		 		|Shift+F8							|CameraView4
+			CameraView6 					|Shift+F6		 			|Shift+F9					|Shift+F6				|Shift+F6		 		|Shift+F9							|CameraView5
+			CameraView7 					|Shift+F7		 			|Shift+F10					|Shift+F7				|Shift+F7		 		|Shift+F10							|CameraView6
+			CameraView8 					|Shift+F8		 			|Shift+F11					|Shift+F8				|Shift+F8		 		|Shift+F11							|CameraView7																																			
 		)"
-		loop, 10 ; Set default control group keys
-		{
-			group := A_Index - 1
-			keys .= "`n" "ControlGroupRecall" group 	"|" group 				"|" "ControlGroupRecall" group
-				. 	"`n" "ControlGroupAppend" group 	"|" "Shift+" group 		"|" "ControlGroupAppend" group
-				. 	"`n" "ControlGroupAssign" group 	"|" "Control+" group 	"|" "ControlGroupAssign" group
-		}		
 
 		aLookUp := []
+		arrayPos := suffix = "_NRS" ? 3 : suffix = "_SC1" ? 4 : suffix = "_GLS" ? 5 : suffix = "_GRS" ? 6 : 2
 		loop, parse, keys, `n, %A_Tab%
 		{
 			a := StrSplit(A_LoopField, "|", A_Tab A_Space)
-			aLookUp.insert(a.1, {"MyReference": a.1,  "hotkey": a[2], "inikey": a[3]})
+			aLookUp.insert(a.1, {"MyReference": a.1,  "hotkey": a[arrayPos], "inikey": a[7]})
 		}
 
+		; Add the control group hotkeys
+		if (suffix = "_NRS" || suffix = "_GRS")
+			aControlGroupSuffix := [3, 4, 5, 6, 7, 8, 9, 0, "-", "="]
+		else ; Standard and _GLS (grid for lefties) are the same
+			aControlGroupSuffix := [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]
+		loop, 10
+		{
+			group := Mod(A_Index, 10) ; Group 10 has the inikey number 0
+			MyReference := iniKey := "ControlGroupAssign" group
+			defaultKey := "Control+" aControlGroupSuffix[A_index]
+			aLookUp.insert(MyReference, {"MyReference": MyReference,  "hotkey": defaultKey, "inikey": iniKey})
+			
+			MyReference := iniKey := "ControlGroupRecall" group
+			defaultKey := aControlGroupSuffix[A_index]
+			aLookUp.insert(MyReference, {"MyReference": MyReference,  "hotkey": defaultKey, "inikey": iniKey})	
+			
+			MyReference := iniKey := "ControlGroupAppend" group
+			defaultKey := "Shift+" aControlGroupSuffix[A_index]
+			aLookUp.insert(MyReference, {"MyReference": MyReference,  "hotkey": defaultKey, "inikey": iniKey})						
+		}
+
+
 		obj := []
-		fileExists := FileExist(file) ; This isn't required due to inireads default value, but theres little point if the file doesn't exist
+		fileExists := FileExist(file) ; This isn't required due to inireads default value, but there's little point if the file doesn't exist
 		for myReference, item in aLookUp 
 		{
 			if fileExists
@@ -239,10 +288,6 @@ class SC2Keys
 			}
 			else obj[myReference] := this.convertHotkey(item.hotkey)
 		}
-		; This hotkey doesn't seem to exist in the hotkey editor, so I assume it must always be escape 
-		; although there are other hotkeys (TargetCancel) which cancels the targeting mode
-		obj.GlobalTargetCancel := "Escape" 
-
 		return obj
 	}
 	
@@ -261,11 +306,10 @@ class SC2Keys
 	 ; Should most likely use a unitID or unitName lookup 
 		for k, item in obj
 			obj[k] := this.convertHotkey(item.hotkey)
-		return this.combineSimpleObjects(obj, this.readProfileHotkeysSection(file))
+		return this.combineSimpleObjects(obj, this.readProfileHotkeysSection(file, suffix))
 	}
 	readProfileGrid(file, suffix)
 	{
-		
 		obj := this.getDefaultKeys(suffix)
 		keys := suffix = "_GRS" ? "uiop[jkl;'nm,./" : "qwertasdfgzxcvp"
 		aLookup := []
@@ -274,9 +318,14 @@ class SC2Keys
 			IniRead, key, %file%, Hotkeys, % "CommandButton" (id := (A_Index-1 < 10 ? "0" : "") A_Index-1), %A_LoopField%
 			aLookup["CommandButton" id] := key	
 		}
+
+		; This ensures we use escape to cast cancel, unless user has changed one or more hotkeys for CommandButton14
+		; Refer to other hotkey section for more details
+		IniRead, key, %file%, Hotkeys, CommandButton14, Escape
+		aLookup["Cancel"] := key ; The obj.Cancel.hotkey  = Cancel so it works below
 		for i, item in obj 
 			obj[i] := this.convertHotkey(aLookup[item.hotkey])
-		return this.combineSimpleObjects(obj, this.readProfileHotkeysSection(file))					
+		return this.combineSimpleObjects(obj, this.readProfileHotkeysSection(file, suffix))					
 	}
 	; No multiLevel objects!
 	combineSimpleObjects(objects*)

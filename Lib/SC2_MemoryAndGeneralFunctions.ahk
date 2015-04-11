@@ -4478,6 +4478,9 @@ readConfigFile()
 	IniRead, AutomationTerranCtrlGroup, %config_file%, %section%, AutomationTerranCtrlGroup, 9
 	IniRead, AutomationProtossCtrlGroup, %config_file%, %section%, AutomationProtossCtrlGroup, 9
 	IniRead, AutomationZergCtrlGroup, %config_file%, %section%, AutomationZergCtrlGroup, 9
+	IniRead, AutomationTerranCameraGroup, %config_file%, %section%, AutomationTerranCameraGroup, 4
+	IniRead, AutomationProtossCameraGroup, %config_file%, %section%, AutomationProtossCameraGroup, 4
+	IniRead, AutomationZergCameraGroup, %config_file%, %section%, AutomationZergCameraGroup, 4
 
 	;[Misc Automation]
 	section := "Misc Automation"

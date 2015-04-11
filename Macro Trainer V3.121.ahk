@@ -956,7 +956,7 @@ Else if (time > 0.4 && !isInMatch) && (getLocalPlayerNumber() != 16 || debugGame
 	setupAutoGroup(aLocalPlayer["Race"], A_AutoGroup, aUnitID, A_UnitGroupSettings)
 	findXelnagas(aXelnagas)	
 
-	SC2Keys.getAllKeys()
+	SC2Keys.getAllKeys() ; Do this before creating hotkeys. As some hotkeys need this information.
 	disableAllHotkeys()
 	CreateHotkeys()	
 	if !A_IsCompiled
@@ -1136,7 +1136,7 @@ Cast_ChronoStructure(aStructuresToChrono, selectionMode := False)
 			Break
 		sleep, %ChronoBoostSleep%
 		getUnitMinimapPos(object.unit, click_x, click_y)
-		input.pSend(chrono_key)
+		input.pSend(SC2Keys.key("TimeWarp/Nexu"))
 		If HumanMouse
 			MouseMoveHumanSC2("x" click_x "y" click_y "t" rand(HumanMouseTimeLo, HumanMouseTimeHi))
 		Input.pClick(click_x, click_y)
@@ -2631,6 +2631,9 @@ ini_settings_write:
 	IniWrite, %AutomationTerranCtrlGroup%, %config_file%, %section%, AutomationTerranCtrlGroup
 	IniWrite, %AutomationProtossCtrlGroup%, %config_file%, %section%, AutomationProtossCtrlGroup
 	IniWrite, %AutomationZergCtrlGroup%, %config_file%, %section%, AutomationZergCtrlGroup
+	IniWrite, %AutomationTerranCameraGroup%, %config_file%, %section%, AutomationTerranCameraGroup
+	IniWrite, %AutomationProtossCameraGroup%, %config_file%, %section%, AutomationProtossCameraGroup
+	IniWrite, %AutomationZergCameraGroup%, %config_file%, %section%, AutomationZergCameraGroup
 
 
 	;[Misc Automation]
@@ -2991,8 +2994,8 @@ IfWinExist
 	Gui, Options:New
 	gui, font, norm s9	;here so if windows user has +/- font size this standardises it. But need to do other menus one day
 	;Gui, +ToolWindow  +E0x40000 ; E0x40000 gives it a icon on taskbar (+ToolWindow doesn't have an icon)
-	options_menu := "home32.png|map32.png|Inject32.png|Group32.png|QuickGroup32.png|Worker32.png|autoBuild32.png|reticule32.png|Robot32.png|key.png|warning32.ico|miscB32.png|bug32.png|settings.ico"
-	optionsMenuTitles := "Home|MiniMap/Overlays|Injects|Auto Grouping|Quick Select|Auto Worker|Auto Build|Chrono Boost|Misc Automation|SC2 Keys|Warnings|Misc Abilities|Bug Report|Settings"
+	options_menu := "home32.png|map32.png|warning32.ico|key.png|Inject32.png|Group32.png|QuickGroup32.png|Worker32.png|autoBuild32.png|reticule32.png|Robot32.png|miscB32.png|bug32.png|settings.ico"
+	optionsMenuTitles := "Home|MiniMap/Overlays|Warnings|Automation Setup|Injects|Auto Grouping|Quick Select|Auto Worker|Auto Build|Chrono Boost|Misc Automation|Misc Abilities|Bug Report|Settings"
 
 	Gosub, g_CreateUnitListsAndObjects ; used for some menu items, and for the custom unit filter gui
 
@@ -3147,18 +3150,18 @@ IfWinExist
 				Gui, Add, UpDown, Range1-100000 vauto_inject_time, %auto_inject_time% ;these belong to the above edit	
 			Gui, Add, Text, xs+10 y+10 w400,  This will sound x (in game) seconds after your last one-button inject.
 
-		Gui, Add, GroupBox,  w417 h105  xs ys+90 section, Advanced Inject Timer
+		Gui, Add, GroupBox,  w417 h75  xs ys+90 section, Advanced Inject Timer
 			Gui, Add, Checkbox, xp+10 yp+20 vInjectTimerAdvancedEnable checked%InjectTimerAdvancedEnable%, Enable
-				
-			Gui, Add, Text, xs+10 yp+25 w95, Spawn Larvae Key:	
-				Gui, Add, Edit, Readonly yp-2 x+15 w90 center R1 vInjectTimerAdvancedLarvaKey, %InjectTimerAdvancedLarvaKey%
-				Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#InjectTimerAdvancedLarvaKey,  Edit
-					Gui, Add, Text, x+28 yp+4, Alert After (s): 
+			
+		;	Gui, Add, Text, xs+10 yp+25 w95, Spawn Larvae Key:	
+		;		Gui, Add, Edit, Readonly yp-2 x+15 w90 center R1 vInjectTimerAdvancedLarvaKey, %InjectTimerAdvancedLarvaKey%
+		;		Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#InjectTimerAdvancedLarvaKey,  Edit
+					Gui, Add, Text, x456 yp, Alert After (s): 
 					Gui, Add, Edit, Number Right x+25 yp-2 w45 
 						Gui, Add, UpDown, Range1-100000 vInjectTimerAdvancedTime, %InjectTimerAdvancedTime%
-			Gui, Add, Text, xs+10 y+15 w400,  This will sound x (in game) seconds after your last inject.
+			Gui, Add, Text, xs+10 y+10 w400,  This will sound x (in game) seconds after your last inject.	
 
-		Gui, Add, GroupBox,  w417 h140 xs ys+120 section, Manual Inject Timer	;h185
+		Gui, Add, GroupBox,  w417 h140 xs ys+90 section, Manual Inject Timer	;h185
 				Gui, Add, Checkbox, xp+10 yp+20 vmanual_inject_timer checked%manual_inject_timer%, Enable
 				Gui, Add, Text, xs+10 yp+25 w90, Start/Stop Hotkey:
 				Gui, Add, Edit, Readonly yp-2 x+20 w90 R1 vinject_start_key center gedit_hotkey, %inject_start_key%
@@ -3172,6 +3175,31 @@ IfWinExist
 				Gui, Add, Text, xs+10 y+15 w400,  This is a very basic timer. It simply sounds every x seconds.
 
 
+	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vAutoMationSetup_TAB, Settings
+	Gui, Tab, Settings
+		Gui, add, GroupBox, w125 h115 section, Control Group Storage 
+		Gui, Add, Text, xs+10 yp+25, Terran:
+		Gui, Add, DropDownList,  % "xp+60 yp-2 w45 center vAutomationTerranCtrlGroup Choose" (AutomationTerranCtrlGroup = 0 ? 10 : AutomationTerranCtrlGroup), 1|2|3|4||5|6|7|8|9|0
+		Gui, Add, Text, xs+10 yp+30, Protoss:
+		Gui, Add, DropDownList,  % "xp+60 yp-2 w45 center vAutomationProtossCtrlGroup Choose" (AutomationProtossCtrlGroup = 0 ? 10 : AutomationProtossCtrlGroup), 1|2|3|4||5|6|7|8|9|0
+		Gui, Add, Text, xs+10 yp+30, Zerg:
+		Gui, Add, DropDownList,  % "xp+60 yp-2 w45 center vAutomationZergCtrlGroup Choose" (AutomationZergCtrlGroup = 0 ? 10 : AutomationZergCtrlGroup), 1|2|3|4||5|6|7|8|9|0
+
+		Gui, add, GroupBox, xs+135 ys w125 h115 section, Camera Group Storage 
+		Gui, Add, Text, xs+10 yp+25, Terran:
+		Gui, Add, DropDownList,  % "xp+60 yp-2 w45 center disabled1 vAutomationTerranCameraGroup Choose" (AutomationTerranCameraGroup = 0 ? 10 : AutomationTerranCameraGroup), 1|2|3|4||5|6|7|8|9|0
+		Gui, Add, Text, xs+10 yp+30, Protoss:
+		Gui, Add, DropDownList,  % "xp+60 yp-2 w45 center disabled1 vAutomationProtossCameraGroup Choose" (AutomationProtossCameraGroup = 0 ? 10 : AutomationProtossCameraGroup), 1|2|3|4||5|6|7|8|9|0
+		Gui, Add, Text, xs+10 yp+30, Zerg:
+		Gui, Add, DropDownList,  % "xp+60 yp-2 w45 center vAutomationZergCameraGroup Choose" (AutomationZergCameraGroup = 0 ? 10 : AutomationZergCameraGroup), 1|2|3|4||5|6|7|8|9|0
+
+		Gui, add, GroupBox, xs+135 ys w125 h60, APM Delay 
+			Gui, Add, Edit, Number Right xp+30 yp+25 w50 vTT_automationAPMThreshold
+				Gui, Add, UpDown,  Range0-100000 vAutomationAPMThreshold, %automationAPMThreshold%	
+
+
+
+/*
 	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vKeys_TAB, SC2 Keys|Set/Add Group|Invoke Group
 		Gui, Add, GroupBox, w280 h185, Common Keys:
 			Gui, Add, Text, xs+10 yp+30 w90, Pause Game: 
@@ -3235,6 +3263,8 @@ IfWinExist
 				Gui, Add, Edit, Readonly yp-2 x+15 w65 R1 center vAGInvokeGroup%group%, % AGInvokeGroup%group%
 					Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#AGInvokeGroup%group%,  Edit
 			}
+
+*/
 
 	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vWarnings_TAB, Supply||Macro|Rally|Workers|Warpgates|Detection List
 	Gui, Tab, Supply	
@@ -4059,19 +4089,6 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 			Gui, Add, Edit, Number Right xp+50 yp-2 w50 vTT_autoBuildMinFreeSupply
 					Gui, Add, UpDown,  Range0-20 vAutoBuildMinFreeSupply, %autoBuildMinFreeSupply%	
 		Gui, Add, Text, xs+10 y+15 w380, This helps to ensure you have enough resources to build depots/pylons and to start upgrades. 
-
-		Gui, add, GroupBox, xs+140 ys+115 w125 h60, APM Delay 
-		;Gui, Add, Text, xs section y+25 w85, APM Delay:
-			Gui, Add, Edit, Number Right xp+30 yp+25 w50 vTT_automationAPMThreshold
-					Gui, Add, UpDown,  Range0-100000 vAutomationAPMThreshold, %automationAPMThreshold%	
-
-		Gui, add, GroupBox, xs ys+115 w125 h100, Control Group Storage 
-		Gui, Add, Text, xp+10 yp+25 section, Terran:
-		Gui, Add, DropDownList,  % "xp+60 yp-2 w45 center vAutomationTerranCtrlGroup Choose" (AutomationTerranCtrlGroup = 0 ? 10 : AutomationTerranCtrlGroup), 1|2|3|4||5|6|7|8|9|0
-		Gui, Add, Text, xs, Protoss:
-		Gui, Add, DropDownList,  % "xp+60 yp-2 w45 center vAutomationProtossCtrlGroup Choose" (AutomationProtossCtrlGroup = 0 ? 10 : AutomationProtossCtrlGroup), 1|2|3|4||5|6|7|8|9|0
-		Gui, Add, Text, xs, Zerg:
-		Gui, Add, DropDownList,  % "xp+60 yp-2 w45 center vAutomationZergCtrlGroup Choose" (AutomationZergCtrlGroup = 0 ? 10 : AutomationZergCtrlGroup), 1|2|3|4||5|6|7|8|9|0
 
 	Gui, Tab, GUI
 		
@@ -6009,7 +6026,7 @@ OptionsTree:
 					,	"Auto Build": "AutoBuild_TAB"
 					,	"Chrono Boost": "ChronoBoost_TAB"
 					,	"Misc Automation": "MiscAutomation_TAB"
-					,	"SC2 Keys": "Keys_TAB"
+					,	"Automation Setup": "AutomationSetup_TAB"
 					,	"Warnings": "Warnings_TAB"
 					, 	"Misc Abilities": "Misc_TAB"
 					,	"Bug Report": "Bug_TAB"
@@ -7464,14 +7481,16 @@ autoWorkerProductionCheck()
 	, aResourceLocations, aButtons, EventKeyDelay
 	, AutoWorkerAPMProtection, AutoWorkerQueueSupplyBlock, AutoWorkerAlwaysGroup, AutoWorkerWarnMaxWorkers, MT_CurrentGame, aUnitTargetFilter
 	, EnableAutoWorkerTerran, EnableAutoWorkerProtoss, AutomationTerranCtrlGroup, AutomationProtossCtrlGroup
-	
+	, automationAPMThreshold
+
 	static TickCountRandomSet := 0, randPercent,  UninterruptedWorkersMade, waitForOribtal := 0, lastMadeWorkerTime := -50
 
 	if (aLocalPlayer["Race"] = "Terran") 
 	{
 		mainControlGroup := Base_Control_Group_T_Key
 		controlstorageGroup := AutomationTerranCtrlGroup
-		makeWorkerKey := AutoWorkerMakeWorker_T_Key
+		; makeWorkerKey := AutoWorkerMakeWorker_T_Key
+		makeWorkerKey := SC2Keys.key("SCV")
 		maxWorkers := AutoWorkerMaxWorkerTerran
 		maxWorkersPerBase := AutoWorkerMaxWorkerPerBaseTerran
 	}
@@ -7479,7 +7498,8 @@ autoWorkerProductionCheck()
 	{
 		mainControlGroup := Base_Control_Group_P_Key
 		controlstorageGroup := AutomationProtossCtrlGroup
-		makeWorkerKey := AutoWorkerMakeWorker_P_Key
+		;makeWorkerKey := AutoWorkerMakeWorker_P_Key
+		makeWorkerKey := SC2Keys.key("Probe/Nexus")
 		maxWorkers := AutoWorkerMaxWorkerProtoss
 		maxWorkersPerBase := AutoWorkerMaxWorkerPerBaseProtoss
 	}
@@ -7736,7 +7756,7 @@ autoWorkerProductionCheck()
 		|| GetKeyState("LButton", "P") || GetKeyState("RButton", "P")
 		|| getkeystate("Enter", "P") 
 		|| getkeystate("Tab", "P") 
-		|| getPlayerCurrentAPM() > AutoWorkerAPMProtection
+		|| getPlayerCurrentAPM() > automationAPMThreshold ;AutoWorkerAPMProtection
 		||  A_mtTimeIdle < 50)
 		{
 			if (A_index > 36)
@@ -8240,7 +8260,7 @@ CreateHotkeys()
 	; could also do if, % "EasyUnload%LocalPlayerRac%"
 	;Hotkey, If, WinActive(GameIdentifier) && !isMenuOpen() && EasyUnload`%LocalPlayerRace`%Enable && time
 
-	autoBuild.createHotkeys(aLocalPlayer.race) ; **This function has a "Hotkey, If"!! But it falls into the below firing condition
+	;autoBuild.createHotkeys(aLocalPlayer.race) ; **This function has a "Hotkey, If"!! But it falls into the below firing condition
 	Hotkey, If, WinActive(GameIdentifier) && isPlaying && !isMenuOpen()
 		if AutoBuildEnableGUIHotkey
 			hotkey, %AutoBuildGUIkey%, AutoBuildGUIkeyPress, on
@@ -8251,10 +8271,10 @@ CreateHotkeys()
 
 		if (InjectTimerAdvancedEnable && aLocalPlayer["Race"] = "Zerg")
 		{	
-			hotkey,  ~^%InjectTimerAdvancedLarvaKey%, g_InjectTimerAdvanced, on
-			hotkey,  ~+%InjectTimerAdvancedLarvaKey%, g_InjectTimerAdvanced, on
-			hotkey,  ~^+%InjectTimerAdvancedLarvaKey%, g_InjectTimerAdvanced, on
-			hotkey,  ~%InjectTimerAdvancedLarvaKey%, g_InjectTimerAdvanced, on
+			hotkey, % "~^" SC2Keys.key("QueenSpawnLarva"), g_InjectTimerAdvanced, on
+			hotkey, % "~+" SC2Keys.key("QueenSpawnLarva"), g_InjectTimerAdvanced, on
+			hotkey, % "~^+" SC2Keys.key("QueenSpawnLarva"), g_InjectTimerAdvanced, on
+			hotkey, % "~" SC2Keys.key("QueenSpawnLarva"), g_InjectTimerAdvanced, on
 		}		
 		if (aLocalPlayer["Race"] = "Terran" && SelectTransportsTerranEnable)
 		|| (aLocalPlayer["Race"] = "Protoss" && SelectTransportsProtossEnable)
@@ -8289,8 +8309,8 @@ CreateHotkeys()
 			if A_UnitGroupSettings["LimitGroup", aLocalPlayer["Race"], group, "Enabled"] 
 			{
 				
-				try hotkey, % aAGHotkeys.Add[group], g_LimitGrouping, on
-				try hotkey, % aAGHotkeys.Set[group], g_LimitGrouping, on
+				try hotkey, % SC2Keys.key("ControlGroupAppend" group), g_LimitGrouping, on
+				try hotkey, % SC2Keys.key("ControlGroupAssign" group), g_LimitGrouping, on
 				;hotkey, ^+%i%, g_LimitGrouping, on
 			}
 		}
@@ -8370,10 +8390,10 @@ disableAllHotkeys()
 		try hotkey, %AutoBuildGUIkey%, off
 		try hotkey, %AutoBuildInteractGUIKey%, off
 		try hotkey, %AutoBuildPauseAllkey%, off
-		try hotkey,  ~^%InjectTimerAdvancedLarvaKey%, off
-		try hotkey,  ~+%InjectTimerAdvancedLarvaKey%, off
-		try hotkey, ~^+%InjectTimerAdvancedLarvaKey%, off
-		try hotkey,  ~%InjectTimerAdvancedLarvaKey%, off
+		try hotkey, % "~^" SC2Keys.key("QueenSpawnLarva"), off
+		try hotkey, % "~+" SC2Keys.key("QueenSpawnLarva"), off
+		try hotkey, % "~^+" SC2Keys.key("QueenSpawnLarva"), off
+		try hotkey, % "~" SC2Keys.key("QueenSpawnLarva"), off
 		try hotkey, %SelectTransportsHotkey%, off
 		try hotkey, % "~" SC2Keys.AHKHotkey("TransportUnloadAll"), off
 		try hotkey, %castSelectArmy_key%, off
@@ -8384,8 +8404,8 @@ disableAllHotkeys()
 			try hotkey, % object.hotkey, off
 		while (10 > group := A_index - 1)
 		{
-			try hotkey, % aAGHotkeys.Add[group], off
-			try hotkey, % aAGHotkeys.Set[group], off
+			try hotkey, % SC2Keys.key("ControlGroupAppend" group), off
+			try hotkey, % SC2Keys.key("ControlGroupAssign" group), off
 		}
 		loop, parse, l_races, `,
 		{
@@ -8433,6 +8453,8 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 			, HatchIndex, Dx1, Dy1, Dx2, Dy2, QueenIndex
 			, stopWatchCtrlID, Xpage, Ypage, x, y
 
+	local setCameraHotkey := SC2Keys.key("CameraSave" AutomationZergCameraGroup)
+	local restoreCameraHotkey := SC2Keys.key("CameraView" AutomationZergCameraGroup)
 	LOCAL HighlightedGroup := getSelectionHighlightedGroup()
 	LOCAL selectionPage := getUnitSelectionPage()
 
@@ -8623,7 +8645,7 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 					sleep % ceil(InjectGroupingDelay * rand(1, Inject_SleepVariance))
 			}
 			if Inject_RestoreScreenLocation
-				input.pSend(BI_create_camera_pos_x)
+				input.pSend(setCameraHotkey)
 			input.pSend(SC2Keys.key("ControlGroupRecall" MI_Queen_Group))
 			For Index, CurrentHatch in oHatcheries
 			{
@@ -8650,8 +8672,8 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 			}
 			if Inject_RestoreScreenLocation
 			{
-				sleep % ceil( BackspaceRestoreCameraDelay* rand(1, Inject_SleepVariance)) ; so this will actually mean the inject will sleep longer than user specified, but make it look a bit more real
-				input.pSend(BI_camera_pos_x) 										
+				sleep % ceil(BackspaceRestoreCameraDelay* rand(1, Inject_SleepVariance)) ; so this will actually mean the inject will sleep longer than user specified, but make it look a bit more real
+				input.pSend(restoreCameraHotkey) 										
 			}
 		}
 		else return ; no queens
@@ -8671,7 +8693,7 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 
 		HatchIndex := getBuildingList(aUnitID["Hatchery"], aUnitID["Lair"], aUnitID["Hive"])
 		if Inject_RestoreScreenLocation
-			input.pSend(BI_create_camera_pos_x)
+			input.pSend(setCameraHotkey)
 		If (drag_origin = "Right" OR drag_origin = "R") And !HumanMouse ;so left origin - not case sensitive
 			Dx1 := A_ScreenWidth-25, Dy1 := 45, Dx2 := 35, Dy2 := A_ScreenHeight-240	
 		Else ;left origin
@@ -8681,7 +8703,7 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 			input.pSend(SC2Keys.key("TownCamera"))
 			sleep % ceil( (sleepTime/2) * rand(1, Inject_SleepVariance))	;need a sleep somerwhere around here to prevent walkabouts...sc2 not registerings box drag?
 			if isCastingReticleActive() ; i.e. cast larva
-				input.pSend(SC2Keys.key("GlobalTargetCancel")) ; (deselects queen larva) (useful on an already injected hatch) this is actually a variable
+				input.pSend(SC2Keys.key("Cancel")) ; (deselects queen larva) (useful on an already injected hatch) 
 			If (drag_origin = "Right" OR drag_origin = "R") And HumanMouse ;so left origin - not case sensitive
 				Dx1 := A_ScreenWidth-15-rand(0,(360/1920)*A_ScreenWidth), Dy1 := 45+rand(5,(200/1080)*A_ScreenHeight), Dx2 := 40+rand((-5/1920)*A_ScreenWidth,(300/1920)*A_ScreenWidth), Dy2 := A_ScreenHeight-240-rand((-5/1080)*A_ScreenHeight,(140/1080)*A_ScreenHeight)
 			Else If (drag_origin = "Left" OR drag_origin = "L") AND HumanMouse ;left origin
@@ -8712,7 +8734,7 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 		if Inject_RestoreScreenLocation
 		{
 			sleep % ceil( BackspaceRestoreCameraDelay * rand(1, Inject_SleepVariance))	; so this will actually mean the inject will sleep longer than user specified, but make it look a bit more real
-			input.pSend(BI_camera_pos_x)										
+			input.pSend(restoreCameraHotkey)										
 		}
 	}
 	if (ForceInject || Inject_RestoreSelection)
@@ -8866,7 +8888,7 @@ selectArmy()
 	if (GetKeyState("Lbutton", "P") || GetKeyState("Rbutton", "P"))
 		dSleep(30) 		; dSleep(15)
 	if isCastingReticleActive() 	; so can deselect units if attacking reticle was present
-		input.pSend(SC2Keys.key("GlobalTargetCancel")) 		; is a dsleep() >= 15 is performed after select army key is pressed this is not required - 12isnt enough
+		input.pSend(SC2Keys.key("Cancel")) 		; is a dsleep() >= 15 is performed after select army key is pressed this is not required - 12isnt enough
 									; as SC will have enough time to get rid of the selection reticle itself
 	
 	; If i use the box drag method, then I will need to also remove workers and any allied units (left/shared control)
@@ -9005,7 +9027,7 @@ quickSelect(aDeselect)
 		goto __quickSelectFunctionRemoveHooksExit
 
 	if isCastingReticleActive() 	; so can deselect units if attacking/drop/rally reticle was present
-		input.pSend(SC2Keys.key("GlobalTargetCancel")) 		; in ideal conditions a dsleep() >= 15 is performed after select army key is pressed this is not required - 12isnt enough
+		input.pSend(SC2Keys.key("Cancel")) 		; in ideal conditions a dsleep() >= 15 is performed after select army key is pressed this is not required - 12isnt enough
 									; as SC will have enough time to get rid of the selection reticle itself
 	if aDeselect.BaseSelection != "Current Selection"
 	{
@@ -10805,7 +10827,7 @@ removeDamagedUnit()
 	if lowHP.MaxIndex()
 	{
 		if isCastingReticleActive() 	; so can deselect units if attacking reticle was present
-			input.pSend(SC2Keys.key("GlobalTargetCancel")) 		; is a dsleep() >= 15 is performed after select army key is pressed this is not required - 12isnt enough
+			input.pSend(SC2Keys.key("Cancel")) 		; is a dsleep() >= 15 is performed after select army key is pressed this is not required - 12isnt enough
 										; as SC will have enough time to get rid of the selection reticle itself		
 		timerGrouping := stopwatch()
 		input.pSend(SC2Keys.key("ControlGroupAssign" tempGroup))
@@ -11095,7 +11117,7 @@ UnloadAllTransports:
 ; without UnloadAllTransportsFlagActive, once the user presses the hotkey twice, each press after that would
 ; also activate the function. This flag ensures that the function requires two key presses within 250ms to activate each time
 ; This helps reduce reactivating the function accidentally and increasing the recorded apm more than what is required
-if (A_PriorHotkey = A_ThisHotkey && A_TimeSincePriorHotkey <= 250 && UnloadAllTransportsFlagActive)
+if (A_PriorHotkey = A_ThisHotkey "" && A_TimeSincePriorHotkey <= 250 && UnloadAllTransportsFlagActive)
 {
 	unloadAllTransports(gethotkeySuffix(A_ThisHotkey))
 	UnloadAllTransportsFlagActive := False
@@ -11140,10 +11162,10 @@ unloadAllTransports(hotkeySuffix)
 	; and triggering the function again
 
 	if aSelection.Count = 1 && getCargoCount(aSelection.Units.1.UnitIndex, isUnloading) && !isUnloading
-		input.pSend(unloadAllCargoString SC2Keys.key("GlobalTargetCancel")) ; send Escape as we should try to remove the casting reticle invoked my pressing the hotkey ability
+		input.pSend(unloadAllCargoString SC2Keys.key("Cancel")) ; send Escape as we should try to remove the casting reticle invoked my pressing the hotkey ability
 	else if aSelection.Count > 1
 	{
-		input.pSend(SC2Keys.key("GlobalTargetCancel"))
+		input.pSend(SC2Keys.key("Cancel"))
 		aUnloaded := []
 		input.pSend(SC2Keys.key("ControlGroupAssign" tempGroup))
 		slectionCount := aSelection.Count
