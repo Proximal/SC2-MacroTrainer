@@ -1560,7 +1560,7 @@ cast_ForceInject:
 					While getkeystate("Enter", "P") || GetKeyState("LButton", "P") || GetKeyState("RButton", "P")
 					|| getkeystate("Tab", "P") 
 					|| isUserBusyBuilding() || isCastingReticleActive() 
-					|| getPlayerCurrentAPM() > FInjectAPMProtection
+					|| getPlayerCurrentAPM() > automationAPMThreshold ;FInjectAPMProtection
 					||  A_mtTimeIdle < 70
 					{
 						if (A_TickCount - startInjectWait > 1000)
@@ -4675,7 +4675,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 				. "`nstill send the control group key for your bases."
 				. "`n`nThis helps make the automation a little more subtle, especially in the early game. But it may not work correctly for everyone."
 				. "`nIf it fails, you will end up with your base control group selected rather than your previous units."
-				. "`n`nNote: Prior to v2.986 'disabled' was the default nature."
+				. "`n`nNote: Prior to v2.986 'disabled' was the default setting."
 		
 		AutoWorkerWarnMaxWorkers_TT := "A spoken warning is issued when the maximum worker count has been reached.`nWarning: ""Maxed Workers"""
 
@@ -5972,6 +5972,14 @@ B_Report:
 			FileDelete, %A_Temp%\MacroTrainerHotkeyDebugData.txt
 		FileAppend, % DebugSCHotkeys(True), %A_Temp%\MacroTrainerHotkeyDebugData.txt
 		attachments .= A_Temp "\MacroTrainerHotkeyDebugData.txt,"		
+		; Try to include the active custom hotkey profile if it exists - DebugSCHotkeys() sets the SC2Keys above
+		if WinExist(GameIdentifier) 
+		{
+			if FileExist(SC2Keys.debug.variablesFilePath)
+				attachments .= SC2Keys.debug.variablesFilePath ","	
+			if FileExist(SC2Keys.debug.hotkeyProfile)
+				attachments .= SC2Keys.debug.hotkeyProfile ","	
+		}
 		attachments := Trim(attachments, " `t`,")
 
 		if ((error := bugReportPoster(Report_Email, "Bug Report:`n`n" Report_TXT, attachments, ticketNumber)) >= 1)
@@ -8271,10 +8279,10 @@ CreateHotkeys()
 
 		if (InjectTimerAdvancedEnable && aLocalPlayer["Race"] = "Zerg")
 		{	
-			hotkey, % "~^" SC2Keys.key("QueenSpawnLarva"), g_InjectTimerAdvanced, on
-			hotkey, % "~+" SC2Keys.key("QueenSpawnLarva"), g_InjectTimerAdvanced, on
-			hotkey, % "~^+" SC2Keys.key("QueenSpawnLarva"), g_InjectTimerAdvanced, on
-			hotkey, % "~" SC2Keys.key("QueenSpawnLarva"), g_InjectTimerAdvanced, on
+			try hotkey, % "~^" SC2Keys.AHKHotkey("QueenSpawnLarva"), g_InjectTimerAdvanced, on
+			try hotkey, % "~+" SC2Keys.AHKHotkey("QueenSpawnLarva"), g_InjectTimerAdvanced, on
+			try hotkey, % "~^+" SC2Keys.AHKHotkey("QueenSpawnLarva"), g_InjectTimerAdvanced, on
+			try hotkey, % "~" SC2Keys.AHKHotkey("QueenSpawnLarva"), g_InjectTimerAdvanced, on
 		}		
 		if (aLocalPlayer["Race"] = "Terran" && SelectTransportsTerranEnable)
 		|| (aLocalPlayer["Race"] = "Protoss" && SelectTransportsProtossEnable)
@@ -8286,7 +8294,7 @@ CreateHotkeys()
 		if (aLocalPlayer["Race"] = "Terran" && EasyUnloadAllTerranEnable)
 		|| (aLocalPlayer["Race"] = "Protoss" && EasyUnloadAllProtossEnable)
 		|| (aLocalPlayer["Race"] = "Zerg" && EasyUnloadAllZergEnable)
-			hotkey, % "~" SC2Keys.AHKHotkey("TransportUnloadAll"), UnloadAllTransports, on
+			try hotkey, % "~" SC2Keys.AHKHotkey("TransportUnloadAll"), UnloadAllTransports, on
 
 		if SelectArmyEnable
 			hotkey, %castSelectArmy_key%, g_SelectArmy, on  ; buffer to make double tap better remove 50ms delay
@@ -8309,8 +8317,8 @@ CreateHotkeys()
 			if A_UnitGroupSettings["LimitGroup", aLocalPlayer["Race"], group, "Enabled"] 
 			{
 				
-				try hotkey, % SC2Keys.key("ControlGroupAppend" group), g_LimitGrouping, on
-				try hotkey, % SC2Keys.key("ControlGroupAssign" group), g_LimitGrouping, on
+				try hotkey, % SC2Keys.AHKHotkey("ControlGroupAppend" group), g_LimitGrouping, on
+				try hotkey, % SC2Keys.AHKHotkey("ControlGroupAssign" group), g_LimitGrouping, on
 				;hotkey, ^+%i%, g_LimitGrouping, on
 			}
 		}
@@ -8324,7 +8332,8 @@ CreateHotkeys()
 					try hotkey, % object.hotkey, g_QuickSelect, on
 			}
 		}
-		hotkey, *~Esc, g_temporarilyDisableAutoProduction, on	; cant use !ischatopen() - as esc will close chat before memory reads value so wont see chat was open
+
+		try hotkey, % "*~" SC2Keys.AHKHotkey("Cancel"), g_temporarilyDisableAutoProduction, on	; cant use !ischatopen() - as esc will close chat before memory reads value so wont see chat was open
 
 	Hotkey, If, WinActive(GameIdentifier) && isPlaying && !isChatOpen() 	
 		if (aLocalPlayer["Race"] = "Zerg") && (auto_inject <> "Disabled")
@@ -8390,10 +8399,10 @@ disableAllHotkeys()
 		try hotkey, %AutoBuildGUIkey%, off
 		try hotkey, %AutoBuildInteractGUIKey%, off
 		try hotkey, %AutoBuildPauseAllkey%, off
-		try hotkey, % "~^" SC2Keys.key("QueenSpawnLarva"), off
-		try hotkey, % "~+" SC2Keys.key("QueenSpawnLarva"), off
-		try hotkey, % "~^+" SC2Keys.key("QueenSpawnLarva"), off
-		try hotkey, % "~" SC2Keys.key("QueenSpawnLarva"), off
+		try hotkey, % "~^" SC2Keys.AHKHotkey("QueenSpawnLarva"), off
+		try hotkey, % "~+" SC2Keys.AHKHotkey("QueenSpawnLarva"), off
+		try hotkey, % "~^+" SC2Keys.AHKHotkey("QueenSpawnLarva"), off
+		try hotkey, % "~" SC2Keys.AHKHotkey("QueenSpawnLarva"), off
 		try hotkey, %SelectTransportsHotkey%, off
 		try hotkey, % "~" SC2Keys.AHKHotkey("TransportUnloadAll"), off
 		try hotkey, %castSelectArmy_key%, off
@@ -8402,17 +8411,18 @@ disableAllHotkeys()
 		try hotkey, %castRemoveDamagedUnits_key%, off
 		for i, object in aAutoChrono["Items"]
 			try hotkey, % object.hotkey, off
-		while (10 > group := A_index - 1)
+		loop, 10
 		{
-			try hotkey, % SC2Keys.key("ControlGroupAppend" group), off
-			try hotkey, % SC2Keys.key("ControlGroupAssign" group), off
+			try hotkey, % SC2Keys.AHKHotkey("ControlGroupAppend"  A_index - 1), off
+			try hotkey, % SC2Keys.AHKHotkey("ControlGroupAssign"  A_index - 1), off
 		}
-		loop, parse, l_races, `,
+		for i, race in ["Terran,Protoss,Zerg"]
 		{
-			race := A_LoopField
 			for i, object in aQuickSelect[race]
 				try hotkey, % object.hotkey, off
 		}
+		try hotkey, % "*~" SC2Keys.AHKHotkey("Cancel"), off
+
 	Hotkey, If, WinActive(GameIdentifier) && isPlaying && !isChatOpen()		
 		try hotkey, %cast_inject_key%, off
 		try hotkey, %F_InjectOff_Key%, off
@@ -9993,7 +10003,6 @@ return
 gethotkeySuffix(hotkey, byRef containsPrefix := "", byRef containsWildCard := "")
 {
 	containsPrefix := RegExMatch(hotkey, "\^|\+|\!|\&")
-
 	; so it's already a wild card hotkey
 	containsWildCard := instr(hotkey, "*")
 	if (p := instr(FinalKey := RegExReplace(hotkey,"[\*\~\$\#\+\!\^\<\>]"), "&"))
@@ -12920,3 +12929,13 @@ waitForUser()
 	return 0
 }
 
+f1::
+objtree(sc2keys.aNonInterruptibleKeys)
+return 
+
+/*
+add to automation checks 
+next/previous subgroup suffix 
+chat suffix 
+jump to last alert suffix 
+pause suffix 

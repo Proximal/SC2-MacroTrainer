@@ -269,6 +269,7 @@ InstallSC2Files()
 
 	FileInstall, Included Files\Used_Icons\Upgrades\Terran\UpgradeBuildingArmorLevel1.png, %A_Temp%\UnitPanelMacroTrainer\UpgradeBuildingArmorLevel1.png, 1
 
+	FileInstall, Included Files\Used_Icons\Upgrades\Zerg\EvolveFlyingLocusts.png, %A_Temp%\UnitPanelMacroTrainer\EvolveFlyingLocusts.png, 1
 	FileInstall, Included Files\Used_Icons\Upgrades\Zerg\ResearchLocustLifetimeIncrease.png, %A_Temp%\UnitPanelMacroTrainer\ResearchLocustLifetimeIncrease.png, 1
 	FileInstall, Included Files\Used_Icons\Upgrades\Zerg\ResearchBurrow.png, %A_Temp%\UnitPanelMacroTrainer\ResearchBurrow.png, 1
 	FileInstall, Included Files\Used_Icons\Upgrades\Zerg\ResearchNeuralParasite.png, %A_Temp%\UnitPanelMacroTrainer\ResearchNeuralParasite.png, 1

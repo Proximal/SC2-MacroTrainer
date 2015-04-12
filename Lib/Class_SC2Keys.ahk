@@ -46,11 +46,13 @@
 
 class SC2Keys
 {
-	static aSendKeys, aAHKHotkeys, debug := []
-	; stores the keys as well for individual key lookup
-	; and sets the AHK hotkey object too
+	static aSendKeys, aAHKHotkeys, aStarCraftHotkeys := [], debug := [], aNonInterruptibleKeys
+	; stores the keys for individual key lookup (aSendKeys)
+	; sets the aAHKHotkeys object
+	; sets aStarCraftHotkeys object
 	getAllKeys() 
 	{
+		this.aStarCraftHotkeys := [] ; set via the below functions
 		this.getHotkeyProfile(file, suffix)
 		if (suffix = "_GLS" || suffix = "_GRS")
 			obj := this.readProfileGrid(file, suffix)
@@ -58,20 +60,31 @@ class SC2Keys
 		this.aAHKHotkeys := []
 		for hotkeyReference, sentKey in this.aSendKeys := obj	
 			this.aAHKHotkeys[hotkeyReference] := this.convertSendKeysToAHKHotkey(sentKey)
+		this.aNonInterruptibleKeys := this.getNonInterruptibleKeys()
 		return this.aSendKeys
 	}
+	; Returns an AHK compatible string which can be used with the send command
 	key(hotkeyReference)
 	{
 		if !isobject(this.aSendKeys) ; haven't set the keys yet
 			this.getAllKeys()
 		return this.aSendKeys[hotkeyReference]
 	}
+	; Returns a string which can be used to create AHK hotkeys to monitor 
+	; user input e.g. determine when an ability/action has been used
 	AHKHotkey(hotkeyReference)
 	{
 		if !isobject(this.aSendKeys) ; haven't set the keys yet
 			this.getAllKeys()
 		return this.aAHKHotkeys[hotkeyReference]
-	}	
+	}
+	; Returns the hotkey in the same format as the game - i.e. for debugging/readability
+	starCraftHotkey(hotkeyReference)	
+	{
+		if !isobject(this.aSendKeys) ; haven't set the keys yet
+			this.getAllKeys()
+		return this.aStarCraftHotkeys[hotkeyReference]		
+	}
 	getHotkeyProfile(byRef file := "", byRef suffix := "")
 	{
 		file := suffix := ""
@@ -81,7 +94,7 @@ class SC2Keys
 		{
 			if instr(A_LoopReadLine, "hotkeyprofile=")
 				hotkeyProfile := SubStr(A_LoopReadLine, 15)
-		} until hotkeyProfile
+		} until hotkeyProfile != ""
 		file := accountFolder "Hotkeys\" hotkeyProfile ".SC2Hotkeys"
 
 		if hotkeyProfile in 0_Default,1_NameRightSide,2_GridLeftSide,3_GridRightSide,4_Classic
@@ -102,7 +115,7 @@ class SC2Keys
 		if !suffix
 			IniRead, suffix, %file%, Settings, Suffix, Standard		
 
-		; used by the debugging GUI
+		; used by the debugging GUI and bug reporter
 		this.debug.accountFolder := accountFolder
 		this.debug.variablesFilePath := variablesFilePath
 		this.debug.hotkeyProfile := file
@@ -122,14 +135,17 @@ class SC2Keys
 		_SC2KeysFileModificationCheck:
 		if !getTime()
 			settimer, _SC2KeysFileModificationCheck, Off 
-		FileGetTime, modifiedTime, % SC2Keys.debug.variablesFilePath
-		if SC2Keys.debug.VariablesModifiedTime != modifiedTime
+		else 
 		{
-			; Some hotkeys rely on the SC hotkey layout, so we must disable them before 
-			; updating the SC2 hotkeys
-			disableAllHotkeys()
-			SC2Keys.getAllKeys()
-			CreateHotkeys()
+			FileGetTime, modifiedTime, % SC2Keys.debug.variablesFilePath
+			if SC2Keys.debug.VariablesModifiedTime != modifiedTime
+			{
+				; Some hotkeys rely on the SC hotkey layout, so we must disable them before 
+				; updating the SC2 hotkeys
+				disableAllHotkeys()
+				SC2Keys.getAllKeys()
+				CreateHotkeys()
+			}
 		}
 		return
 	}
@@ -222,29 +238,31 @@ class SC2Keys
 		keys := "
 		( LTrim c 					
 			;myLookupReference				|Standard 					|_NRS  						|_SC1 					|_GLS (Grid)			|_GRS (Grid For Lefties)		|key
-			SubgroupNext 					|Tab 						|\							|Tab					|Tab					|\									|SubgroupNext
-			SubgroupPrev 					|Shift+Tab 					|Shift+\					|Shift+Tab				|Shift+Tab 				|Shift+\							|SubgroupPrev
-			ArmySelect 	 					|F2 	 					|F5							|F2 					|F2 					|F5									|ArmySelect
+			ChatDefault 					|Enter,Slash				|Tab,Slash					|Enter,Slash			|Enter,Slash			|Tab 							|ChatDefault
+			SubgroupNext 					|Tab 						|BackSlash					|Tab					|Tab					|BackSlash						|SubgroupNext
+			SubgroupPrev 					|Shift+Tab 					|Shift+BackSlash			|Shift+Tab				|Shift+Tab 				|Shift+BackSlash				|SubgroupPrev
+			ArmySelect 	 					|F2 	 					|F5							|F2 					|F2 					|F5								|ArmySelect
 			; SelectionCancelDrag has two default keys for _NRS F12,Escape! 
-			SelectionCancelDrag 			|Escape						|F12						|Escape					|Escape					|F12								|SelectionCancelDrag								
-			TownCamera 	 					|Backspace 					|]							|Backspace 				|Backspace				|]									|TownCamera
-			PauseGame 	 					|Pause 						|Pause						|Pause 					|Pause 					|Pause								|PauseGame
-			CameraSave1 					|Control+F5 				|Control+F8 				|Control+F5 			|Control+F5 			|Control+F8 						|CameraSave0
-			CameraSave2 					|Control+F6 				|Control+F9 				|Control+F6 			|Control+F6 			|Control+F9 						|CameraSave1
-			CameraSave3 					|Control+F7 				|Control+F10				|Control+F7				|Control+F7 			|Control+F10						|CameraSave2
-			CameraSave4 					|Control+F8 				|Control+F11				|Control+F8				|Control+F8 			|Control+F11						|CameraSave3
-			CameraSave5 					|Control+Shift+F5 			|Control+Shift+F8 			|Control+Shift+F5 		|Control+Shift+F5		|Control+Shift+F8 					|CameraSave4
-			CameraSave6 					|Control+Shift+F6 			|Control+Shift+F9 			|Control+Shift+F6		|Control+Shift+F6		|Control+Shift+F9 					|CameraSave5
-			CameraSave7 					|Control+Shift+F7 			|Control+Shift+F10 			|Control+Shift+F7 		|Control+Shift+F7		|Control+Shift+F10					|CameraSave6
-			CameraSave8 					|Control+Shift+F8 			|Control+Shift+F11			|Control+Shift+F8		|Control+Shift+F8		|Control+Shift+F11					|CameraSave7
-			CameraView1 					|F5 						|F8	 						|F5						|F5 					|F8	 								|CameraView0
-			CameraView2 					|F6 			 			|F9							|F6 					|F6 			 		|F9									|CameraView1
-			CameraView3 					|F7 			 			|F10						|F7						|F7 			 		|F10								|CameraView2
-			CameraView4 					|F8 			 			|F11						|F8 					|F8 			 		|F11								|CameraView3
-			CameraView5 					|Shift+F5		 			|Shift+F8					|Shift+F5				|Shift+F5		 		|Shift+F8							|CameraView4
-			CameraView6 					|Shift+F6		 			|Shift+F9					|Shift+F6				|Shift+F6		 		|Shift+F9							|CameraView5
-			CameraView7 					|Shift+F7		 			|Shift+F10					|Shift+F7				|Shift+F7		 		|Shift+F10							|CameraView6
-			CameraView8 					|Shift+F8		 			|Shift+F11					|Shift+F8				|Shift+F8		 		|Shift+F11							|CameraView7																																			
+			SelectionCancelDrag 			|Escape						|F12						|Escape					|Escape					|F12							|SelectionCancelDrag								
+			TownCamera 	 					|Backspace 					|BracketClose				|Backspace 				|Backspace				|BracketClose					|TownCamera
+			AlertRecall	 					|Space 						|Space 						|Space  				|Space 					|Space 							|AlertRecall
+			PauseGame 	 					|Pause 						|Pause						|Pause 					|Pause 					|Pause							|PauseGame
+			CameraSave1 					|Control+F5 				|Control+F8 				|Control+F5 			|Control+F5 			|Control+F8 					|CameraSave0
+			CameraSave2 					|Control+F6 				|Control+F9 				|Control+F6 			|Control+F6 			|Control+F9 					|CameraSave1
+			CameraSave3 					|Control+F7 				|Control+F10				|Control+F7				|Control+F7 			|Control+F10					|CameraSave2
+			CameraSave4 					|Control+F8 				|Control+F11				|Control+F8				|Control+F8 			|Control+F11					|CameraSave3
+			CameraSave5 					|Control+Shift+F5 			|Control+Shift+F8 			|Control+Shift+F5 		|Control+Shift+F5		|Control+Shift+F8 				|CameraSave4
+			CameraSave6 					|Control+Shift+F6 			|Control+Shift+F9 			|Control+Shift+F6		|Control+Shift+F6		|Control+Shift+F9 				|CameraSave5
+			CameraSave7 					|Control+Shift+F7 			|Control+Shift+F10 			|Control+Shift+F7 		|Control+Shift+F7		|Control+Shift+F10				|CameraSave6
+			CameraSave8 					|Control+Shift+F8 			|Control+Shift+F11			|Control+Shift+F8		|Control+Shift+F8		|Control+Shift+F11				|CameraSave7
+			CameraView1 					|F5 						|F8	 						|F5						|F5 					|F8	 							|CameraView0
+			CameraView2 					|F6 			 			|F9							|F6 					|F6 			 		|F9								|CameraView1
+			CameraView3 					|F7 			 			|F10						|F7						|F7 			 		|F10							|CameraView2
+			CameraView4 					|F8 			 			|F11						|F8 					|F8 			 		|F11							|CameraView3
+			CameraView5 					|Shift+F5		 			|Shift+F8					|Shift+F5				|Shift+F5		 		|Shift+F8						|CameraView4
+			CameraView6 					|Shift+F6		 			|Shift+F9					|Shift+F6				|Shift+F6		 		|Shift+F9						|CameraView5
+			CameraView7 					|Shift+F7		 			|Shift+F10					|Shift+F7				|Shift+F7		 		|Shift+F10						|CameraView6
+			CameraView8 					|Shift+F8		 			|Shift+F11					|Shift+F8				|Shift+F8		 		|Shift+F11						|CameraView7																																			
 		)"
 
 		aLookUp := []
@@ -285,8 +303,13 @@ class SC2Keys
 			{
 				IniRead, hotkey, %file%, Hotkeys, % item.inikey, % item.hotkey
 				obj[myReference] := this.convertHotkey(hotkey)
+				this.aStarCraftHotkeys[myReference] := hotkey
 			}
-			else obj[myReference] := this.convertHotkey(item.hotkey)
+			else 
+			{
+				obj[myReference] := this.convertHotkey(item.hotkey)
+				this.aStarCraftHotkeys[myReference] := item.hotkey
+			}
 		}
 		return obj
 	}
@@ -305,7 +328,10 @@ class SC2Keys
 	 ; I need to think carefully about how this obj is constructed. But can always improve it after writing the auto production functions
 	 ; Should most likely use a unitID or unitName lookup 
 		for k, item in obj
+		{
+			this.aStarCraftHotkeys[k] := item.hotkey
 			obj[k] := this.convertHotkey(item.hotkey)
+		}
 		return this.combineSimpleObjects(obj, this.readProfileHotkeysSection(file, suffix))
 	}
 	readProfileGrid(file, suffix)
@@ -324,7 +350,10 @@ class SC2Keys
 		IniRead, key, %file%, Hotkeys, CommandButton14, Escape
 		aLookup["Cancel"] := key ; The obj.Cancel.hotkey  = Cancel so it works below
 		for i, item in obj 
+		{
+			this.aStarCraftHotkeys[i] := aLookup[item.hotkey]
 			obj[i] := this.convertHotkey(aLookup[item.hotkey])
+		}
 		return this.combineSimpleObjects(obj, this.readProfileHotkeysSection(file, suffix))					
 	}
 	; No multiLevel objects!
@@ -347,9 +376,40 @@ class SC2Keys
 		return hotkey
 	}
 
+	getNonInterruptibleKeys()
+	{
+		aSuffixes := []
+		for i, reference in ["ChatDefault", "SubgroupNext", "SubgroupPrev", "TownCamera", "AlertRecall", "PauseGame"]
+		{
+			primary := this.convertHotkey(this.starCraftHotkey(reference), secondary := "")
+			if (primary != "")
+				suffsixList .= gethotkeySuffix(this.convertSendKeysToAHKHotkey(primary)) "|"
+			if (secondary != "")
+				suffsixList .= gethotkeySuffix(this.convertSendKeysToAHKHotkey(secondary)) "|"
+		}
+		suffsixList .= RTrim(suffsixList, "|")
+		sort, suffsixList, D| U ; Remove duplicate suffixes
+		loop, parse, suffsixList, |
+		{
+			if getKeyName(A_LoopField) != "" ; prevents inserting nulls and invalid keys (though this shouldn't occur)
+				aSuffixes.insert(A_LoopField)
+		}
+		return aSuffixes
+	}
+
+	checkNonInterruptibleKeys()
+	{
+		for i, key in this.aNonInterruptibleKeys
+		{
+			if GetKeyState(key, "P")
+				return True
+		}
+		return False
+	}
+
 	; Wrote this a few years ago, but lets roll with it
 	; I really need to spend some time checking that it covers all cases correctly
-	convertHotkey(String)
+	convertHotkey(SCHotkey, byRef secondaryHotkey := "")
 	{
 							;	"SC2Key": "AhkKey"
 		static aTranslate := {	"PageUp": "PgUp"
@@ -381,53 +441,60 @@ class SC2Keys
 		; NumpadDel maps to real delete key, same for NumpadIns, Home, End and num-UP,Down,Left,Right, and Num-PageUp/Down and enter
 		; {NumpadClear} (num5 with numlock off) doesnt map to anything
 		; nothing can be mapped to windows keys or app keys
+		secondaryHotkey := "" ; ensure it's blanked in case the variable already contains data
+		; when two hotkeys are present "hotkey,alternateHokey" - note SC stores literal , keys as comma so this is safe 
+		loop, parse, SCHotkey, `,
+		{
+			String := A_LoopField
+			if (string = "") ; could break sd there will be no second key if the first one is blank
+				continue
+			; Easier to use string replace here and have the modifiers separate and outside of the
+			; aTranslate associative array. As AHK Associative arrays are indexed alphabetically (not in order in which keys were added)
+			; so this would result in modifier strings being incorrectly converted
+			; SC2 Hotkeys are done in this Order Control+Alt+Shift+Keyname
+			StringReplace, String, String, Control+, ^, All ;use modifier+ so if user actually has something bound to it wont cause issue
+			StringReplace, String, String, Alt+, !, All 
+			StringReplace, String, String, Shift+, +, All 	;this will also act to remove SC2's joining '+'
 
-	; when two hotkeys are present "hotkey,alternateHokey" - note SC stores literal , keys as comma so this is safe 
-	if p := instr(String, ",")
-		String := SubStr(String, 1, p-1)
+			; string replace accounts for differences between AHK send Syntax and SC2 hotkey storage
 
-	; Easier to use string replace here and have the modifiers separate and outside of the
-	; aTranslate associative array. As AHK Associative arrays are indexed alphabetically (not in order in which keys were added)
-	; so this would result in modifier strings being incorrectly converted
-	; SC2 Hotkeys are done in this Order Control+Alt+Shift+Keyname
-	StringReplace, String, String, Control+, ^, All ;use modifier+ so if user actually has something bound to it wont cause issue
-	StringReplace, String, String, Alt+, !, All 
-	StringReplace, String, String, Shift+, +, All 	;this will also act to remove SC2's joining '+'
+			for SC2Key, AhkKey in aTranslate
+				StringReplace, String, String, %SC2Key%, %AhkKey%, All 
 
+			; I don't think this is required as you can't bind those characters
+			; At least, they're not written to the hotkey file like that
+			;if String in !,#,+,^,{,} ; string must be 1 character length to match
+			;	return "{" String "}"
 
-		; string replace accounts for differences between AHK send Syntax and SC2 hotkey storage
-
-		for SC2Key, AhkKey in aTranslate
-			StringReplace, String, String, %SC2Key%, %AhkKey%, All 
-
-		; I don't think this is required as you can't bind those characters
-		; At least, they're not written to the hotkey file like that
-		;if String in !,#,+,^,{,} ; string must be 1 character length to match
-		;	return "{" String "}"
-
-		aModifiers := ["+", "^", "!"]
-		;lets remove the modifiers so can see command length
-		for index, modifier in 	aModifiers
-			if inStr(string, modifier)
+			aModifiers := ["+", "^", "!"]
+			;lets remove the modifiers so can see command length
+			for index, modifier in aModifiers
 			{
-				StringReplace, String, String, %modifier%,, All
-				StringModifiers .= modifier
+				if inStr(string, modifier)
+				{
+					StringReplace, String, String, %modifier%,, All
+					StringModifiers .= modifier
+				}
 			}
+			; lets correct for any difference in the command names
+			; CapsLock ScrollLock NumLock
+			; cant bind anything to windows key or appskey in game
 
-		; lets correct for any difference in the command names
-		; CapsLock ScrollLock NumLock
-		; cant bind anything to windows key or appskey in game
+			if (StrLen(string) > 1)
+				string := StringModifiers "{" string "}" ; as AHK commands > 1 are enclosed in brackets
+			else string := StringModifiers string
 
-		if (StrLen(string) > 1)
-			string := StringModifiers "{" string "}" ; as AHK commands > 1 are enclosed in brackets
-		else string := StringModifiers string
+			if (string = "+=") 		; AHK cant send this correctly != and +- work fine
+				string := "+{=}" 	; +!= works fine too as does !+= and ^+=
 
-		if (string = "+=") 		; AHK cant send this correctly != and +- work fine
-			string := "+{=}" 	; +!= works fine too as does !+= and ^+=
+			; lower-case, if want to use with AHKs sendinput a 'H' is equivalent to '+H'
+			StringLower, string, string
+			if A_Index = 1
+				primaryHotkey := string
+			else secondaryHotkey := string
 
-		; lower-case, if want to use with AHKs sendinput a 'H' is equivalent to '+H'
-		StringLower, string, string
-		return string
+		}
+		return primaryHotkey
 	}
 
 }

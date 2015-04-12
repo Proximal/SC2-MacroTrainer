@@ -11,7 +11,7 @@ DebugSCHotkeys(noGUI := False)
 	else 
 	{
 		SC2Keys.getHotkeyProfile()
-		log := "Note: '?' characters represent replaced account numbers which maintains privacy.`n`n"
+		log := "Note: '?' characters represent replaced account numbers, this maintains privacy.`n`n"
 		log .= "Account Folder:`n`n`t"
 		if InStr(FileExist(SC2Keys.debug.accountFolder), "D")
 			log .= RegExReplace(SC2Keys.debug.accountFolder, "\d{4}\\", "????\") 
@@ -30,11 +30,11 @@ DebugSCHotkeys(noGUI := False)
 
 	Gui, Add, Edit, w570 r18 hwndHwndEdit readonly, %log%
 
-	Gui, Add, ListView, Grid -LV0x10 NoSortHdr +resize w570 r28, Name|Sent Keys|MT Hotkeys
+	Gui, Add, ListView, Grid -LV0x10 NoSortHdr +resize w570 r28, Name|Sent Keys|MT Hotkeys|SC Syntax
 	Gui, Add, Button, Default g__DebugSCHotkeysClipboardDump, Dump To Clipboard
 
 	for name, hotkey in SC2Keys.getAllKeys()
-		LV_Add("", name, hotkey, SC2Keys.AHKHotkey(name))
+		LV_Add("", name, hotkey, SC2Keys.AHKHotkey(name), SC2Keys.StarCraftHotkey(name))
 	loop, % LV_GetCount("Column")
 		LV_ModifyCol(A_Index, "AutoHdr") ; resize contents+header
 	if noGUI
