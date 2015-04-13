@@ -5,9 +5,14 @@ DebugSCHotkeys(noGUI := False)
 	static log ; to dump to clipboard
 
 	Gui, DebugSCHotkeys:New  ; destroy previous windows with same name
+	
+	SC2Keys.getAllKeys() ; Ensure that aNonInterruptibleKeys are set
+	for i, keyName in SC2Keys.aNonInterruptibleKeys
+		NonInterruptibleKeys .= keyName ", "
+	NonInterruptibleKeys := RTrim(NonInterruptibleKeys, ", ")
 	process, exist, %GameExe%
 	If !errorlevel
-		log := "Error: SC is not running!`n`nThe listed hotkeys are the standard default SC keys."
+		log := "Error: SC is not running!`n`nThe listed hotkeys are the standard default SC keys.`n`n:Uninterruptible  Keys: " NonInterruptibleKeys
 	else 
 	{
 		SC2Keys.getHotkeyProfile()
@@ -24,17 +29,18 @@ DebugSCHotkeys(noGUI := False)
 		
 		log .= "`n`nProfile:`n`n`t" RegExReplace(SC2Keys.debug.hotkeyProfile, "\d{4}\\", "????\") 
 			.  "`n`nSuffix:`n`n`t" SC2Keys.debug.hotkeySuffix "`n"
+			. "`n`nUninterruptible Keys: " NonInterruptibleKeys
 		if (errorLog != "")
 			log .= "`nErrors have occured:" errorLog
 	} 
 
-	Gui, Add, Edit, w570 r18 hwndHwndEdit readonly, %log%
+	Gui, Add, Edit, w570 r20 hwndHwndEdit readonly, %log%
 
 	Gui, Add, ListView, Grid -LV0x10 NoSortHdr +resize w570 r28, Name|Sent Keys|MT Hotkeys|SC Syntax
 	Gui, Add, Button, Default g__DebugSCHotkeysClipboardDump, Dump To Clipboard
 
-	for name, hotkey in SC2Keys.getAllKeys()
-		LV_Add("", name, hotkey, SC2Keys.AHKHotkey(name), SC2Keys.StarCraftHotkey(name))
+	for i, name in SC2Keys.getReferences()
+		LV_Add("", name, SC2Keys.key(name), SC2Keys.AHKHotkey(name), SC2Keys.StarCraftHotkey(name))
 	loop, % LV_GetCount("Column")
 		LV_ModifyCol(A_Index, "AutoHdr") ; resize contents+header
 	if noGUI

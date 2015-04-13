@@ -1557,8 +1557,8 @@ cast_ForceInject:
 				;	|| MT_InputIdleTime() < 50  ;probably best to leave this in, as every now and then the next command wont be shift modified
 				;	|| getPlayerCurrentAPM() > FInjectAPMProtection
 				
-					While getkeystate("Enter", "P") || GetKeyState("LButton", "P") || GetKeyState("RButton", "P")
-					|| getkeystate("Tab", "P") 
+					While GetKeyState("LButton", "P") || GetKeyState("RButton", "P")
+					|| SC2Keys.checkNonInterruptibleKeys()
 					|| isUserBusyBuilding() || isCastingReticleActive() 
 					|| getPlayerCurrentAPM() > automationAPMThreshold ;FInjectAPMProtection
 					||  A_mtTimeIdle < 70
@@ -1752,11 +1752,15 @@ advancedInjectTimer()
 	numGetSelectionSorted(aSelection)
 	if (aSelection.IsGroupable && aSelection.HighlightedId = aUnitID.Queen)
 	{
+		TargetChooseKey := SC2Keys.hotkeySuffix("TargetChoose")
+		targetCancelKey := SC2Keys.hotkeySuffix("TargetCancel")
+		CancelKey := SC2Keys.hotkeySuffix("Cancel")
+
 		prevSelections := aSelection.IndicesString
 		loopTick := A_Tickcount
 		loop 
 		{
-			if getkeystate("Lbutton", "P")
+			if getkeystate(TargetChooseKey)  ;getkeystate("Lbutton", "P")
 			{
 				; possible for the user to not click on the hatch miss or click menu/friends/options (which would arrive here) or , then to hit esc or rbutton to cancel 
 				; but this loop will then either time out or catch the next inject, so it doesn't really matter.
@@ -1787,7 +1791,7 @@ advancedInjectTimer()
 						return
 				}
 			}
-			else if (getkeystate("Esc") || getkeystate("RButton"))
+			else if getkeystate(CancelKey) || getkeystate(targetCancelKey)  ; getkeystate("Esc") || getkeystate("RButton")
 				return 
 			else if (A_Tickcount - loopTick > 3000)
 			{
@@ -7762,8 +7766,7 @@ autoWorkerProductionCheck()
 			return 		
 		While ( isUserBusyBuilding() || isCastingReticleActive() 
 		|| GetKeyState("LButton", "P") || GetKeyState("RButton", "P")
-		|| getkeystate("Enter", "P") 
-		|| getkeystate("Tab", "P") 
+		|| SC2Keys.checkNonInterruptibleKeys()
 		|| getPlayerCurrentAPM() > automationAPMThreshold ;AutoWorkerAPMProtection
 		||  A_mtTimeIdle < 50)
 		{
@@ -12048,7 +12051,7 @@ class autoBuild
 			return False
 		While isUserBusyBuilding() || isCastingReticleActive() 
 		|| GetKeyState("LButton", "P") || GetKeyState("RButton", "P")
-		|| getkeystate("Enter", "P") 
+		|| SC2Keys.checkNonInterruptibleKeys()
 		|| getkeystate("Tab", "P") 
 		|| getPlayerCurrentAPM() > automationAPMThreshold
 		;||  A_mtTimeIdle < 50
@@ -12913,10 +12916,9 @@ waitForUser()
 		return 1		
 	While ( isUserBusyBuilding() || isCastingReticleActive() 
 	|| GetKeyState("LButton", "P") || GetKeyState("RButton", "P")
-	|| getkeystate("Enter", "P") 
-	|| getkeystate("Tab", "P") 
+	|| SC2Keys.checkNonInterruptibleKeys()
 	|| getPlayerCurrentAPM() > AutoWorkerAPMProtection
-	||  A_mtTimeIdle < 50)
+	|| A_mtTimeIdle < 50)
 	{
 		if (A_index > 36)
 			return 1 ; (actually could be 480 ms - sleep 1 usually = 20ms)
@@ -12929,9 +12931,7 @@ waitForUser()
 	return 0
 }
 
-f1::
-objtree(sc2keys.aNonInterruptibleKeys)
-return 
+
 
 /*
 add to automation checks 

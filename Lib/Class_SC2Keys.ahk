@@ -46,13 +46,16 @@
 
 class SC2Keys
 {
-	static aSendKeys, aAHKHotkeys, aStarCraftHotkeys := [], debug := [], aNonInterruptibleKeys
+	static aSendKeys, aAHKHotkeys, aNonInterruptibleKeys, aHotkeySuffix := [], aStarCraftHotkeys := [], debug := [], aKeyReferences := []
+	; Do not change any of the above object definitions! i.e. which ones are initialised to objects.
 	; stores the keys for individual key lookup (aSendKeys)
 	; sets the aAHKHotkeys object
 	; sets aStarCraftHotkeys object
+	; sets the references
 	getAllKeys() 
 	{
 		this.aStarCraftHotkeys := [] ; set via the below functions
+		this.aHotkeySuffix := [] ; clear it so that it may be repopulated on new calls
 		this.getHotkeyProfile(file, suffix)
 		if (suffix = "_GLS" || suffix = "_GRS")
 			obj := this.readProfileGrid(file, suffix)
@@ -61,7 +64,20 @@ class SC2Keys
 		for hotkeyReference, sentKey in this.aSendKeys := obj	
 			this.aAHKHotkeys[hotkeyReference] := this.convertSendKeysToAHKHotkey(sentKey)
 		this.aNonInterruptibleKeys := this.getNonInterruptibleKeys()
+		if !this.aKeyReferences.MaxIndex() ; haven't set the keys yet - these never change
+		{
+			for reference in this.aSendKeys 	
+				this.aKeyReferences.Insert(reference)
+		}
 		return this.aSendKeys
+	}
+	; Returns an array containing all the hotkey references/IDs 
+	getReferences()
+	{
+		; Could do an object check on aSendKeys, but sometimes that is blanked manually and since the references never change there is no need to call getAllKeys
+		if !this.aKeyReferences.MaxIndex() 
+			this.getAllKeys()
+		return this.aKeyReferences	
 	}
 	; Returns an AHK compatible string which can be used with the send command
 	key(hotkeyReference)
@@ -69,6 +85,15 @@ class SC2Keys
 		if !isobject(this.aSendKeys) ; haven't set the keys yet
 			this.getAllKeys()
 		return this.aSendKeys[hotkeyReference]
+	}
+
+	; To be used with getkeystate
+	; Note Command card hotkeys are always 1 key/button, so this will always return the same as AHKHotkey()
+	hotkeySuffix(hotkeyReference)
+	{
+		if !this.aHotkeySuffix.HasKey(hotkeyReference) ; aHotkeySuffix is cleared when getKeys is called
+			this.aHotkeySuffix[hotkeyReference] := gethotkeySuffix(this.AHKHotkey(hotkeyReference))
+		return this.aHotkeySuffix[hotkeyReference]
 	}
 	; Returns a string which can be used to create AHK hotkeys to monitor 
 	; user input e.g. determine when an ability/action has been used
@@ -78,13 +103,23 @@ class SC2Keys
 			this.getAllKeys()
 		return this.aAHKHotkeys[hotkeyReference]
 	}
-	; Returns the hotkey in the same format as the game - i.e. for debugging/readability
+	; Returns the hotkey in the same format as the game (if secondary exists it is comma delimited) - i.e. for debugging/readability
 	starCraftHotkey(hotkeyReference)	
 	{
 		if !isobject(this.aSendKeys) ; haven't set the keys yet
 			this.getAllKeys()
 		return this.aStarCraftHotkeys[hotkeyReference]		
 	}
+	checkNonInterruptibleKeys()
+	{
+		for i, key in this.aNonInterruptibleKeys
+		{
+			if GetKeyState(key, "P") ; In theory this should be logical state - but I use physical everywhere in code. P is safer
+				return True 
+		}
+		return False
+	}
+
 	getHotkeyProfile(byRef file := "", byRef suffix := "")
 	{
 		file := suffix := ""
@@ -140,8 +175,7 @@ class SC2Keys
 			FileGetTime, modifiedTime, % SC2Keys.debug.variablesFilePath
 			if SC2Keys.debug.VariablesModifiedTime != modifiedTime
 			{
-				; Some hotkeys rely on the SC hotkey layout, so we must disable them before 
-				; updating the SC2 hotkeys
+				; Some hotkeys rely on the SC hotkey layout, so we must disable them before updating the SC2 hotkeys
 				disableAllHotkeys()
 				SC2Keys.getAllKeys()
 				CreateHotkeys()
@@ -149,8 +183,8 @@ class SC2Keys
 		}
 		return
 	}
-	; sc ability hotkeys can only be 1 key
-	getDefaultKeys(suffix)
+	; sc ability/command-card hotkeys can only be 1 key
+	getDefaultCommandKeys(suffix)
 	{
 		; Section and key columns are not used by grid layout! (except for the Cancel hotkey)***
 		; The Cancel hotkey is quite interesting and unique.  All default layouts use Escape as a primary or secondary hotkey
@@ -238,6 +272,8 @@ class SC2Keys
 		keys := "
 		( LTrim c 					
 			;myLookupReference				|Standard 					|_NRS  						|_SC1 					|_GLS (Grid)			|_GRS (Grid For Lefties)		|key
+			TargetCancel 					|RightMouseButton			|RightMouseButton			|RightMouseButton		|RightMouseButton		|RightMouseButton 				|TargetCancel
+			TargetChoose 					|LeftMouseButton			|LeftMouseButton			|LeftMouseButton		|LeftMouseButton		|LeftMouseButton 				|TargetChoose
 			ChatDefault 					|Enter,Slash				|Tab,Slash					|Enter,Slash			|Enter,Slash			|Tab 							|ChatDefault
 			SubgroupNext 					|Tab 						|BackSlash					|Tab					|Tab					|BackSlash						|SubgroupNext
 			SubgroupPrev 					|Shift+Tab 					|Shift+BackSlash			|Shift+Tab				|Shift+Tab 				|Shift+BackSlash				|SubgroupPrev
@@ -316,7 +352,7 @@ class SC2Keys
 	
 	readProfileNonGrid(file, suffix)
 	{
-		obj := this.getDefaultKeys(suffix)
+		obj := this.getDefaultCommandKeys(suffix)
 		if FileExist(file) ; This isn't required due to inireads default value, but theres little point if the file doesn't exist
 		{
 			for k, item in obj 
@@ -336,7 +372,7 @@ class SC2Keys
 	}
 	readProfileGrid(file, suffix)
 	{
-		obj := this.getDefaultKeys(suffix)
+		obj := this.getDefaultCommandKeys(suffix)
 		keys := suffix = "_GRS" ? "uiop[jkl;'nm,./" : "qwertasdfgzxcvp"
 		aLookup := []
 		loop, parse, keys
@@ -395,16 +431,6 @@ class SC2Keys
 				aSuffixes.insert(A_LoopField)
 		}
 		return aSuffixes
-	}
-
-	checkNonInterruptibleKeys()
-	{
-		for i, key in this.aNonInterruptibleKeys
-		{
-			if GetKeyState(key, "P")
-				return True
-		}
-		return False
 	}
 
 	; Wrote this a few years ago, but lets roll with it
