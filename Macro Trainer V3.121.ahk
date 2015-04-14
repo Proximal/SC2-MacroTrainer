@@ -6145,17 +6145,23 @@ g_MTChageIcon:
 FileSelectFile, NewIconFile, S3, , Select an icon file, *.ico ; only *.ico will work with reshacker
 if (errorlevel || !NewIconFile || !A_IsCompiled) ; is set to 1 if the user dismissed the dialog without selecting a file (such as by pressing the Cancel button).
 	return
+SplitPath, NewIconFile,,, extension
+if (extension != "ico")
+{
+	msgbox Only .ico files are supported.
+	return
+}
 ;GUIControl,, MTCustomIcon, %NewIconFile% 
 ;GUIControl,, MTIconPreview, %NewIconFile%  ;update the little pic ; width height omitted, so pic scaled to fit control
 Iniwrite, %NewIconFile%, %config_file%, Misc Settings, MTCustomIcon
-ResourHackIcons(NewIconFile)  ;this function quits and reloads the script
+IconChanger(NewIconFile)  ;this function quits and reloads the script
 return 
 g_MTChageIconDefault:
 ;GUIControl,, MTCustomIcon, %A_Space% ;blank it
 if !MTCustomIcon ; don't do anything already using the standard Icon
 	return 
 Iniwrite, %A_Space%, %config_file%, Misc Settings, MTCustomIcon ; use this to check if display my tool tip lol
-ResourHackIcons(A_Temp "\Starcraft-2.ico") ;this function quits and reloads the script
+IconChanger(A_Temp "\Starcraft-2-32x32.ico") ;this function quits and reloads the script
 return
 
 Test_VOL:

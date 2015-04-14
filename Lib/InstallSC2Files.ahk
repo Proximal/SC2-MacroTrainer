@@ -17,6 +17,8 @@ InstallSC2Files()
 	FileCreateDir, %A_Temp%\MacroTrainerFiles\GUI
 	FileCreateDir, %A_Temp%\MacroTrainerFiles\OverlaysMisc
 
+	FileInstall, Starcraft-2-32x32.ico, %A_Temp%\Starcraft-2-32x32.ico,1
+	
 	FileInstall, Included Files\GUI\Add Plus Green.ico, %A_Temp%\MacroTrainerFiles\GUI\Add Plus Green.ico, 1 
 	FileInstall, Included Files\GUI\Remove Minus Red.ico, %A_Temp%\MacroTrainerFiles\GUI\Remove Minus Red.ico, 1 
 	FileInstall, Included Files\GUI\Down Arrow Blue.ico, %A_Temp%\MacroTrainerFiles\GUI\Down Arrow Blue.ico, 1 
