@@ -482,9 +482,10 @@ setLowLevelInputHooks(false)
 releaseLogicallyStuckKeys(True) 		
 settimer, EmergencyInputCountReset, -5000
 EmergencyInputCount++		 
-If (EmergencyInputCount = 1)
-	CreateHotkeys()
-else If (EmergencyInputCount >= 3)
+; I don't see the point of this. Also, with current setup would need to disable hotkeys first for extra safety
+;If (EmergencyInputCount = 1)
+;	CreateHotkeys()
+If (EmergencyInputCount >= 3)
 {
 	IniWrite, Hotkey, %config_file%, Misc Info, RestartMethod ; could have achieved this using running the new program with a parameter then checking %1%
 	SoundPlay, %A_Temp%\Windows Ding.wav
@@ -8258,8 +8259,9 @@ CreateHotkeys()
 
 	Hotkey, If, WinActive(GameIdentifier)
 		if EnableToggleMacroTrainerHotkey
-			hotkey, %warning_toggle_key%, mt_pause_resume, on		
-		hotkey, *~LButton, g_LbuttonDown, on
+			hotkey, %warning_toggle_key%, mt_pause_resume, on	
+		for i, hotkey in SC2Keys.AHKHotkeyObj("Selection")	
+			try hotkey, % "*~" hotkey, g_LbuttonDown, on
 
 	Hotkey, If, WinActive(GameIdentifier) && isPlaying && (!isMenuOpen() || isChatOpen()) 
 		if EnablePingMiniMapHotkey
@@ -8319,7 +8321,7 @@ CreateHotkeys()
 
 		if (InjectTimerAdvancedEnable && aLocalPlayer["Race"] = "Zerg")
 		{	
-			for i, hotkey in SC2Keys.AHKHotkeyObj("TransportUnloadAll")
+			for i, hotkey in SC2Keys.AHKHotkeyObj("QueenSpawnLarva")
 			{
 				try hotkey, % "~^" hotkey, g_InjectTimerAdvanced, on
 				try hotkey, % "~+" hotkey, g_InjectTimerAdvanced, on
@@ -8329,7 +8331,7 @@ CreateHotkeys()
 		}		
 		if (aLocalPlayer["Race"] = "Terran" && SelectTransportsTerranEnable)
 		|| (aLocalPlayer["Race"] = "Protoss" && SelectTransportsProtossEnable)
-		|| (aLocalPlayer["Race"] = "Zerg" && EasyUnloadZergEnable)
+		|| (aLocalPlayer["Race"] = "Zerg" && SelectTransportsZergEnable)
 			hotkey, %SelectTransportsHotkey%, gCastSelectLoadedTransport, on
 
 		; Converting a send key to a hotkey so need to remove '{' and '}' if present e.g. {F1}
@@ -8337,8 +8339,10 @@ CreateHotkeys()
 		if (aLocalPlayer["Race"] = "Terran" && EasyUnloadAllTerranEnable)
 		|| (aLocalPlayer["Race"] = "Protoss" && EasyUnloadAllProtossEnable)
 		|| (aLocalPlayer["Race"] = "Zerg" && EasyUnloadAllZergEnable)
-		for i, hotkey in SC2Keys.AHKHotkeyObj("TransportUnloadAll")
-			try hotkey, ~%hotkey%, UnloadAllTransports, on
+		{
+			for i, hotkey in SC2Keys.AHKHotkeyObj("TransportUnloadAll")
+				try hotkey, ~%hotkey%, UnloadAllTransports, on
+		}
 
 		if SelectArmyEnable
 			hotkey, %castSelectArmy_key%, g_SelectArmy, on  ; buffer to make double tap better remove 50ms delay
@@ -8389,8 +8393,11 @@ CreateHotkeys()
 			hotkey, %ToggleAutoWorkerState_Key%, g_UserToggleAutoWorkerState, on	
 
 	Hotkey, If, isPlaying && WinActive(GameIdentifier) && !isCastingReticleActive() && GeyserStructureHoverCheck(hoveredGeyserUnitIndex)
-	if SmartGeyserEnable
-		hotkey, RButton, g_SmartGeyserControlGroup, on	
+		if SmartGeyserEnable
+		{
+			for i, hotkey in SC2Keys.AHKHotkeyObj("SmartCommand")
+				try hotkey, %hotkey%, g_SmartGeyserControlGroup, on	
+		}
 
 	Hotkey, If
 	; Note : I have the emergency hotkey here if the user decides to set another hotkey to <#Space, so it cant get changed
@@ -8412,6 +8419,9 @@ disableAllHotkeys()
 	Hotkey, If, WinActive(GameIdentifier)						
 		try hotkey, %warning_toggle_key%, off			; 	deactivate the hotkeys
 														; 	so they can be updated with their new keys
+	for i, hotkey in SC2Keys.AHKHotkeyObj("Selection")	
+		try hotkey, % "*~" hotkey, off
+
 	Hotkey, If, WinActive(GameIdentifier) && isPlaying && (!isMenuOpen() || isChatOpen()) 
 		try Hotkey, %ping_key%, off	 
 												; Anything with a try command has an 'if setting is on' section in the
@@ -8481,7 +8491,8 @@ disableAllHotkeys()
 		try hotkey, %ToggleAutoWorkerState_Key%, off	
 	
 	Hotkey, If, isPlaying && WinActive(GameIdentifier) && !isCastingReticleActive() && GeyserStructureHoverCheck(hoveredGeyserUnitIndex)
-		try hotkey, RButton, off
+		for i, hotkey in SC2Keys.AHKHotkeyObj("SmartCommand")	
+			try hotkey, %hotkey%, off
 
 	Hotkey, If
 	; Recreate this key in case user has another fcuntion bound to it and it was turned off above.

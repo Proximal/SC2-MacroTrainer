@@ -201,7 +201,7 @@ class _ClassSCPatternScan
 		setformat, IntegerFast, H ;This isn't called from autoExec so don't bother changing it back. Easy way to ensure displayed as hex while using FastMode and not having to do conversions
 		obj := OrderedArray()
 		methods :=	"B_Timer|B_Timer|P_SelectionPage|B_LocalPlayerSlot|P_IdleWorker|P_ChatFocus|P_MenuFocus|B_SelectionStructure|B_TeamColours|B_MapStruct|B_camLeft|P_IsBuildCardDisplayed"
-				. 	"|B_CameraDragScroll|B_CameraMovingViaMouseAtScreenEdge|B_IsGamePaused|B_FramesPerSecond|B_Gamespeed (must be in game)|B_ReplayFolder (must be in game)|B_InputStructure|B_HorizontalResolution|B_localArmyUnitCount"
+				. 	"|B_CameraDragScroll|B_CameraMovingViaMouseAtScreenEdge|B_IsGamePaused|B_FramesPerSecond|B_Gamespeed (must be in game)|B_ReplayFolder|B_InputStructure|B_HorizontalResolution|B_localArmyUnitCount"
 		loop, parse, methods, |
 			obj[A_LoopField] := this[StrSplit(A_LoopField, A_Space).1]()
 		obj["B_pStructure Copy"] := this.B_pStructureNuke(structureSize), obj["S_pStructure Copy"] := structureSize

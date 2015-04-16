@@ -207,6 +207,7 @@ class SC2Keys
 		}
 		return
 	}
+
 	; sc ability/command-card hotkeys can only be 1 key
 	getDefaultCommandKeys(suffix)
 	{
@@ -289,6 +290,7 @@ class SC2Keys
 		return obj
 	}
 
+	; It seems like the selection panel only supports left click.  No hotkey seems to change it.
 	readProfileHotkeysSection(file, suffix)
 	{
 		; Add all new hotkey section SC hotkeys here (excluding grid keys)
@@ -297,6 +299,8 @@ class SC2Keys
 		keys := "
 		( LTrim c 					
 			;myLookupReference				|Standard 					|_NRS  						|_SC1 					|_GLS (Grid)			|_GRS (Grid For Lefties)		|key
+			Selection 						|LeftMouseButton			|LeftMouseButton			|LeftMouseButton		|LeftMouseButton		|LeftMouseButton 				|Selection			
+			SmartCommand 					|RightMouseButton			|RightMouseButton			|RightMouseButton		|RightMouseButton		|RightMouseButton 				|SmartCommand ; Right click e.g. to move units or send to geyser
 			TargetCancel 					|RightMouseButton			|RightMouseButton			|RightMouseButton		|RightMouseButton		|RightMouseButton 				|TargetCancel
 			TargetChoose 					|LeftMouseButton			|LeftMouseButton			|LeftMouseButton		|LeftMouseButton		|LeftMouseButton 				|TargetChoose
 			ChatDefault 					|Enter,Slash				|Tab,Slash					|Enter,Slash			|Enter,Slash			|Tab 							|ChatDefault
