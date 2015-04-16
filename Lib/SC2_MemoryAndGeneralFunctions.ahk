@@ -4529,6 +4529,9 @@ readConfigFile()
 	IniRead, smartGeyserEnable, %config_file%, %section%, smartGeyserEnable, 0
 	IniRead, smartGeyserCtrlGroup, %config_file%, %section%, smartGeyserCtrlGroup, 9
 	IniRead, smartGeyserReturnCargo, %config_file%, %section%, smartGeyserReturnCargo, 0
+	
+	IniRead, ConvertGatewaysEnable, %config_file%, %section%, ConvertGatewaysEnable, 0
+	IniRead, ConvertGatewayCtrlGroup, %config_file%, %section%, ConvertGatewayCtrlGroup, 5
 
 	;[Alert Location]
 	IniRead, Playback_Alert_Key, %config_file%, Alert Location, Playback_Alert_Key, <#F7

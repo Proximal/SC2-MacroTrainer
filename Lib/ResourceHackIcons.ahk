@@ -5,9 +5,7 @@
 ; http://www.autohotkey.com/board/topic/78200-ahk-l-compiled-exebin-icon-changer-v11-updated/
 
 
-
-
-ResourHackIcons(dotIcoFile)
+ResourceHackIcons(dotIcoFile)
 {
 	if !A_IsCompiled
 		return

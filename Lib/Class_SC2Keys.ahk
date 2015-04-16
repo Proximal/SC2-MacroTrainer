@@ -61,48 +61,72 @@ class SC2Keys
 			obj := this.readProfileGrid(file, suffix)
 		else obj := this.readProfileNonGrid(file, suffix)
 		this.aAHKHotkeys := []
-		for hotkeyReference, sentKey in this.aSendKeys := obj	
-			this.aAHKHotkeys[hotkeyReference] := this.convertSendKeysToAHKHotkey(sentKey)
-		this.aNonInterruptibleKeys := this.getNonInterruptibleKeys()
-		if !this.aKeyReferences.MaxIndex() ; haven't set the keys yet - these never change
-		{
-			for reference in this.aSendKeys 	
-				this.aKeyReferences.Insert(reference)
+		for hotkeyReference, sentKeyArray in this.aSendKeys := obj
+		{	
+			if sentKeyArray.HasKey(2) ; Primary + secondary
+				this.aAHKHotkeys[hotkeyReference] := [this.convertSendKeysToAHKHotkey(sentKeyArray.1), this.convertSendKeysToAHKHotkey(sentKeyArray.2)]
+			else this.aAHKHotkeys[hotkeyReference] := [this.convertSendKeysToAHKHotkey(sentKeyArray.1)]
 		}
+		this.aNonInterruptibleKeys := this.getNonInterruptibleKeys()
+		; Always set the refernces as due to this shitty poorly planned class, if user adds a secondary hotkey it needs to be added to the references
+		for reference in this.aSendKeys 	
+			this.aKeyReferences.Insert(reference)
+
 		return this.aSendKeys
 	}
 	; Returns an array containing all the hotkey references/IDs 
 	getReferences()
 	{
-		; Could do an object check on aSendKeys, but sometimes that is blanked manually and since the references never change there is no need to call getAllKeys
-		if !this.aKeyReferences.MaxIndex() 
+		if !isobject(this.aSendKeys) ; haven't set the keys yet
 			this.getAllKeys()
 		return this.aKeyReferences	
 	}
 	; Returns an AHK compatible string which can be used with the send command
-	key(hotkeyReference)
+	key(hotkeyReference, secondaryKey := False)
 	{
 		if !isobject(this.aSendKeys) ; haven't set the keys yet
 			this.getAllKeys()
-		return this.aSendKeys[hotkeyReference]
+		return this.aSendKeys[hotkeyReference, secondaryKey ? 2 : 1]
 	}
 
 	; To be used with getkeystate
 	; Note Command card hotkeys are always 1 key/button, so this will always return the same as AHKHotkey()
-	hotkeySuffix(hotkeyReference)
+	hotkeySuffix(hotkeyReference, secondaryKey := False)
 	{
 		if !this.aHotkeySuffix.HasKey(hotkeyReference) ; aHotkeySuffix is cleared when getKeys is called
-			this.aHotkeySuffix[hotkeyReference] := gethotkeySuffix(this.AHKHotkey(hotkeyReference))
-		return this.aHotkeySuffix[hotkeyReference]
+		{
+			primary := gethotkeySuffix(this.AHKHotkey(hotkeyReference))
+			secondary := gethotkeySuffix(this.AHKHotkey(hotkeyReference, True))
+			if (secondary != "")
+				this.aHotkeySuffix[hotkeyReference] := [primary, secondary]
+			else this.aHotkeySuffix[hotkeyReference] := [primary]	
+		}
+		return this.aHotkeySuffix[hotkeyReference, secondaryKey ? 2 : 1]
 	}
 	; Returns a string which can be used to create AHK hotkeys to monitor 
 	; user input e.g. determine when an ability/action has been used
-	AHKHotkey(hotkeyReference)
+	AHKHotkey(hotkeyReference, secondaryKey := False)
 	{
 		if !isobject(this.aSendKeys) ; haven't set the keys yet
 			this.getAllKeys()
-		return this.aAHKHotkeys[hotkeyReference]
+		return this.aAHKHotkeys[hotkeyReference, secondaryKey ? 2 : 1]
 	}
+	; Returns an obj containing primary and scondary AHK hotkeys if they actually exist
+	; i.e. don't need to do a if != "" check on the returned values
+	AHKHotkeyObj(hotkeyReference)
+	{
+		if !isobject(this.aSendKeys) ; haven't set the keys yet
+			this.getAllKeys()
+		obj := []
+		primary := this.aAHKHotkeys[hotkeyReference, 1]
+		secondary := this.aAHKHotkeys[hotkeyReference, 2]
+		if (primary != "")
+			obj.insert(primary)		
+		if (secondary != "")
+			obj.insert(secondary)
+		return obj
+	}
+
 	; Returns the hotkey in the same format as the game (if secondary exists it is comma delimited) - i.e. for debugging/readability
 	starCraftHotkey(hotkeyReference)	
 	{
@@ -210,6 +234,7 @@ class SC2Keys
 		( LTrim c 					
 			;myLookupReference					|Standard 			|_NRS 				|_SC1 				|grid							|section 				|key
 			;									| all layouts share the escape key
+			Attack 								|A 					|K 					|A 					|CommandButton04				|Commands 				|Attack
 			Cancel 								|Escape				|Escape				|Escape				|Cancel 						|Commands 				|Cancel
 			ReturnCargo 						|c 					|c					|c 					|CommandButton06				|Commands 				|ReturnCargo
 			SCV 								|s 					|j					|s 					|CommandButton00				|Commands 				|SCV		
@@ -333,19 +358,19 @@ class SC2Keys
 
 		obj := []
 		fileExists := FileExist(file) ; This isn't required due to inireads default value, but there's little point if the file doesn't exist
-		for myReference, item in aLookUp 
+		for k, item in aLookUp 
 		{
 			if fileExists
 			{
 				IniRead, hotkey, %file%, Hotkeys, % item.inikey, % item.hotkey
-				obj[myReference] := this.convertHotkey(hotkey)
-				this.aStarCraftHotkeys[myReference] := hotkey
+				item.hotkey := hotkey
 			}
-			else 
-			{
-				obj[myReference] := this.convertHotkey(item.hotkey)
-				this.aStarCraftHotkeys[myReference] := item.hotkey
-			}
+			this.aStarCraftHotkeys[k] := item.hotkey
+			primaryHotkey := this.convertHotkey(item.hotkey, secondaryHotkey)
+			if (secondaryHotkey != "")
+				obj[k] := [primaryHotkey, secondaryHotkey] 				
+			else obj[k] := [primaryHotkey]
+			
 		}
 		return obj
 	}
@@ -366,7 +391,10 @@ class SC2Keys
 		for k, item in obj
 		{
 			this.aStarCraftHotkeys[k] := item.hotkey
-			obj[k] := this.convertHotkey(item.hotkey)
+			primaryHotkey := this.convertHotkey(item.hotkey, secondaryHotkey)
+			if (secondaryHotkey != "")
+				obj[k] := [primaryHotkey, secondaryHotkey] 
+			else obj[k] := [primaryHotkey]
 		}
 		return this.combineSimpleObjects(obj, this.readProfileHotkeysSection(file, suffix))
 	}
@@ -385,10 +413,13 @@ class SC2Keys
 		; Refer to other hotkey section for more details
 		IniRead, key, %file%, Hotkeys, CommandButton14, Escape
 		aLookup["Cancel"] := key ; The obj.Cancel.hotkey  = Cancel so it works below
-		for i, item in obj 
+		for k, item in obj 
 		{
-			this.aStarCraftHotkeys[i] := aLookup[item.hotkey]
-			obj[i] := this.convertHotkey(aLookup[item.hotkey])
+			this.aStarCraftHotkeys[k] := aLookup[item.hotkey]
+			primaryHotkey := this.convertHotkey(aLookup[item.hotkey], secondaryHotkey)
+			if (secondaryHotkey != "")
+				obj[k] := [primaryHotkey, secondaryHotkey] 
+			else obj[k] := [primaryHotkey] 
 		}
 		return this.combineSimpleObjects(obj, this.readProfileHotkeysSection(file, suffix))					
 	}
@@ -474,6 +505,7 @@ class SC2Keys
 			String := A_LoopField
 			if (string = "") ; could break sd there will be no second key if the first one is blank
 				continue
+			StringModifiers := "" ; reset for second hotkey
 			; Easier to use string replace here and have the modifiers separate and outside of the
 			; aTranslate associative array. As AHK Associative arrays are indexed alphabetically (not in order in which keys were added)
 			; so this would result in modifier strings being incorrectly converted
@@ -505,8 +537,7 @@ class SC2Keys
 			; lets correct for any difference in the command names
 			; CapsLock ScrollLock NumLock
 			; cant bind anything to windows key or appskey in game
-
-			if (StrLen(string) > 1)
+			if StrLen(string) > 1 
 				string := StringModifiers "{" string "}" ; as AHK commands > 1 are enclosed in brackets
 			else string := StringModifiers string
 

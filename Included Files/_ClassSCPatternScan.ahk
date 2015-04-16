@@ -129,15 +129,14 @@ class _ClassSCPatternScan
 				return base + this.mem.Read(address + 7) ; offset 0x7CA8 in current version
 		}			
 	}
-	; Need to be in game.
 	B_ReplayFolder()
 	{
-		; Finds string \StarCraft II\Replays\ and then walks back to find the start of the string
+		; Finds string \Replays\ (with null terminator) and then walks back to find the start of the string
 		; Not a great pattern, just use it then validate in CE
 		; This relies on there being a 00 byte just before the string (not necessarily true)
 		; This valid string/address occurs at lower memory addresses than the other non-valid copies (ones which change on client restart)
 		; A custom map (from map editor from this folder) name could occur before this (could use regex to check for this)
-		if (address := this.mem.modulePatternScan("", 0x5C, 0x53, 0x74, 0x61, 0x72, 0x43, 0x72, 0x61, 0x66, 0x74, 0x20, 0x49, 0x49, 0x5C, 0x52, 0x65, 0x70, 0x6C, 0x61, 0x79, 0x73, 0x5C)) > 0
+		if (address := this.mem.modulePatternScan("", 0x5C, 0x52, 0x65, 0x70, 0x6C, 0x61, 0x79, 0x73, 0x5C, 0x00)) > 0
 		{
 			while A_Index < 200 
 			{

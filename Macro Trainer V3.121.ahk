@@ -838,7 +838,7 @@ mt_pause_resume:
 if (mt_Paused := !mt_Paused)
 {
 	isInMatch := False ; with this clock = 0 when not in game 
-	timeroff("clock", "money", "gas", "scvidle", "supply", "worker", "inject", "Auto_Group", "AutoGroupIdle", "g_autoWorkerProductionCheck", "cast_ForceInject", "auto_inject", "find_races_timer", "advancedInjectTimerFunctionLabel")
+	timeroff("clock", "money", "gas", "scvidle", "supply", "worker", "inject", "Auto_Group", "convertWarpGates", "AutoGroupIdle", "g_autoWorkerProductionCheck", "cast_ForceInject", "auto_inject", "find_races_timer", "advancedInjectTimerFunctionLabel")
 	inject_timer := 0	;ie so know inject timer is off
 	Try DestroyOverlays()
 	aThreads.MiniMap.ahkPause.1
@@ -866,7 +866,7 @@ time := GetTime()
 if (!time && isInMatch) || (UpdateTimers) ; time=0 outside game
 {	
 	isInMatch := False ; with this clock = 0 when not in game (while in game at 0s clock = 44)	
-	timeroff("money", "gas", "scvidle", "supply", "worker", "inject", "Auto_Group", "AutoGroupIdle", "g_autoWorkerProductionCheck", "cast_ForceInject", "auto_inject", "find_races_timer", "advancedInjectTimerFunctionLabel")
+	timeroff("money", "gas", "scvidle", "supply", "worker", "inject", "Auto_Group", "AutoGroupIdle", "convertWarpGates", "g_autoWorkerProductionCheck", "cast_ForceInject", "auto_inject", "find_races_timer", "advancedInjectTimerFunctionLabel")
 	; Don't call these thread functions if just updating settings. 
 	; They will be called below. When everything is turned back on.
 	; Resetting the unit detections here probably increased the chances of the warning not
@@ -1006,6 +1006,8 @@ Else if (time > 0.4 && !isInMatch) && (getLocalPlayerNumber() != 16 || debugGame
 																	; and so wont prevent the minimap or overlay being drawn
 																	; note may delay some timers from launching for a fraction of a ms while its in thread, no timers interupt mode (but it takes less than 1 ms to run anyway)
 	} 																; Hence with these two timers running autogroup will occur at least once every 30 ms, but generally much more frequently
+	if ConvertGatewaysEnable
+		settimer, convertWarpGates, 250
 	UserSavedAppliedSettings := 0
 }
 return
@@ -1046,7 +1048,7 @@ return
 ; lower chrono order is chronoed first
 Cast_ChronoStructure(aStructuresToChrono, selectionMode := False)
 {	GLOBAL aUnitID, CG_control_group, chrono_key, CG_nexus_Ctrlgroup_key, CG_chrono_remainder, ChronoBoostSleep
-	, HumanMouse, HumanMouseTimeLo, HumanMouseTimeHi, NextSubgroupKey
+	, HumanMouse, HumanMouseTimeLo, HumanMouseTimeHi, NextSubgroupKey, AutomationProtossCtrlGroup
 
 	oStructureToChrono := [], a_gatewaysConvertingToWarpGates := [], a_WarpgatesOnCoolDown := []
 
@@ -1136,7 +1138,7 @@ Cast_ChronoStructure(aStructuresToChrono, selectionMode := False)
 			Break
 		sleep, %ChronoBoostSleep%
 		getUnitMinimapPos(object.unit, click_x, click_y)
-		input.pSend(SC2Keys.key("TimeWarp/Nexu"))
+		input.pSend(SC2Keys.key("TimeWarp/Nexus"))
 		If HumanMouse
 			MouseMoveHumanSC2("x" click_x "y" click_y "t" rand(HumanMouseTimeLo, HumanMouseTimeHi))
 		Input.pClick(click_x, click_y)
@@ -1382,27 +1384,28 @@ LimitGroup(byref UnitList, Hotkey)
 	; CtrlList := "" ;if unit type not in list add to it - give count of list type
 	critical 1000
 	setLowLevelInputHooks(True)
-	for group, addhotkey in aAGHotkeys.Add
+
+	_LimitGroupOuterLoop:
+	for i, command in ["ControlGroupAppend", "ControlGroupAssign"]
 	{
-		if (Hotkey = addhotkey "")
+		loop, 10 
 		{
-			found := True 
-			break 
-		}	
-	}
-	if !found 
-	{
-		for group, addhotkey in aAGHotkeys.Set
-		{
-			if (Hotkey = addhotkey "")
+			group := A_Index - 1
+			for i, commandHotkey in SC2Keys.AHKHotkeyObj(command group)
 			{
-				found := True 
-				break 
-			}	
+				if (Hotkey = commandHotkey "")
+				{
+					foundGroup := group
+					; Im not sure if sending the passed hotkey could cause problems. 
+					; I can't think of any exceptions which would. Double escape/grave (``) hotkeys seems to work
+					;sendString := SC2Keys.key(command group, i > 1 ? True : False)
+					break, _LimitGroupOuterLoop
+				}			
+			}
 		}
 	}
 
-	if found 
+	if (foundGroup != "") 
 	{
 		dsleep(AGRestrictBufferDelay)
 		If (ID_List := UnitList[group]) ; ie not blank
@@ -1511,6 +1514,8 @@ cast_ForceInject:
 		settimer, cast_ForceInject, off	
 		return 
 	}
+	if !WinActive(GameIdentifier) || !time
+		return
 	;For Index, CurrentHatch in oHatcheries
 	;	if (CurrentHatch.NearbyQueen && !isHatchInjected(CurrentHatch.Unit)) ;probably should check if hatch is alive and still a hatch...
 
@@ -2695,6 +2700,9 @@ ini_settings_write:
 	IniWrite, %smartGeyserCtrlGroup%, %config_file%, %section%, smartGeyserCtrlGroup
 	IniWrite, %smartGeyserReturnCargo%, %config_file%, %section%, smartGeyserReturnCargo
 
+	IniWrite, %ConvertGatewaysEnable%, %config_file%, %section%, ConvertGatewaysEnable
+	IniWrite, %ConvertGatewayCtrlGroup%, %config_file%, %section%, ConvertGatewayCtrlGroup
+
 	;[Misc Hotkey]
 	IniWrite, %EnableWorkerCountSpeechHotkey%, %config_file%, Misc Hotkey, EnableWorkerCountSpeechHotkey
 	IniWrite, %worker_count_local_key%, %config_file%, Misc Hotkey, worker_count_key
@@ -2993,7 +3001,7 @@ IfWinExist
 ; so if they quadruple click the icon AHK wont give a thread exit error due to duplicate 
 ; gui variables because their computer was to slow to load the gui window the first time
 
-;try 
+try 
 {
 	Gui, Options:New
 	gui, font, norm s9	;here so if windows user has +/- font size this standardises it. But need to do other menus one day
@@ -3188,6 +3196,9 @@ IfWinExist
 		Gui, Add, DropDownList,  % "xp+60 yp-2 w45 center vAutomationProtossCtrlGroup Choose" (AutomationProtossCtrlGroup = 0 ? 10 : AutomationProtossCtrlGroup), 1|2|3|4||5|6|7|8|9|0
 		Gui, Add, Text, xs+10 yp+30, Zerg:
 		Gui, Add, DropDownList,  % "xp+60 yp-2 w45 center vAutomationZergCtrlGroup Choose" (AutomationZergCtrlGroup = 0 ? 10 : AutomationZergCtrlGroup), 1|2|3|4||5|6|7|8|9|0
+
+		Gui, add, GroupBox, w393 h60 xs ys+140, Notes
+			gui, add, text, xp+15 yp+25 w363, Ensure the above settings are appropriately set before using any automation.
 
 		Gui, add, GroupBox, xs+135 ys w125 h115 section, Camera Group Storage 
 		Gui, Add, Text, xs+10 yp+25, Terran:
@@ -3832,18 +3843,18 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		Gui, Font, s9 norm	
 
 	Gui, Tab, Info2
-		Gui, Font, s10
-		Gui, Font, s10 BOLD
-		Gui, add, text, x+25 y+12 w380, SC Key Setup
-		Gui, Font, s10 norm
-		Gui, add, text, xp y+15 w380,
-		(LTrim
-		When using Auto-Grouping you must ensure the corresponding group keys listed in "Set Control Group keys" match your SC2 hotkey setup. (under SC2 Keys on the left)
+		; Gui, Font, s10
+		; Gui, Font, s10 BOLD
+		; Gui, add, text, x+25 y+12 w380, SC Key Setup
+		; Gui, Font, s10 norm
+		; Gui, add, text, xp y+15 w380,
+		; (LTrim
+		; When using Auto-Grouping you must ensure the corresponding group keys listed in "Set Control Group keys" match your SC2 hotkey setup. (under SC2 Keys on the left)
 
-		Restrict unit grouping uses both "Add To Control Group Keys" and "Set Control Group keys". 
-		)
+		; Restrict unit grouping uses both "Add To Control Group Keys" and "Set Control Group keys". 
+		; )
 		Gui, Font, s10 BOLD
-		Gui, add, text, xp y+12 w380, Reliability
+		Gui, add, text, x+25 y+12 w380, Reliability  ;Gui, add, text, xp y+12 w380, Reliability
 		Gui, Font, s10 norm
 		Gui, add, text, xp y+20 w380, 
 		(LTrim 
@@ -3957,10 +3968,10 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 
 			Structures are automatically removed, however non-army units (workers, queens, mules, overlords etc) are not. If the starting selection is set to anything other than 'Army' and you are not specifying the unit types to keep, you should consider enabling the 'Remove these types' option and specifying these non-army units there.
 		)
-		Gui, Font, s10 BOLD
-		Gui, add, text, xp y+25 cRed, Note:
-		Gui, Font, s9 norm
-		Gui, add, text, xp+10 y+10 w360, You will need to ensure the keys found under 'SC2 keys' (on the left) match your SC2 hotkey.
+		;Gui, Font, s10 BOLD
+		;Gui, add, text, xp y+25 cRed, Note:
+		;Gui, Font, s9 norm
+		; Gui, add, text, xp+10 y+10 w360, You will need to ensure the keys found under 'SC2 keys' (on the left) match your SC2 hotkey.
 
 		;Gui, Font, s9
 	;	Gui, add, text, xp y+15 w380, Test 
@@ -4132,7 +4143,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		Gui, Add, Edit, Readonly yp-2 xp+130 center w85 R1 vAutoBuildPauseAllkey gedit_hotkey +disabled, %AutoBuildPauseAllkey%
 		Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#AutoBuildPauseAllkey +disabled, Edit
 
-	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vMiscAutomation_TAB, Select Army||Spread|Remove Units|Easy Select/Unload|Smart Geyser
+	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vMiscAutomation_TAB, Select Army||Spread|Remove Units|Easy Select/Unload|Smart Geyser|Convert Gateways
 	Gui, Tab, Select Army
 		Gui, add, GroupBox, y+15 w405 h130 section, Select Army
 		Gui, Add, Checkbox, Xs+15 yp+25 vSelectArmyEnable Checked%SelectArmyEnable% , Enable Select Army Function		
@@ -4161,11 +4172,11 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		Gui, Add, Edit, yp-2 x+10 w300 center r1 vl_DeselectArmy, %l_DeselectArmy%
 		Gui, Add, Button, yp-2 x+10 gEdit_AG v#l_DeselectArmy,  Edit
 
-		Gui, Font, s10 BOLD
-		Gui, add, text, xs+15 y+30 cRed, Note:
-		Gui, Font, s10 norm
-		Gui, add, text, xs+15 y+10 w380, You will need to ensure the 'Select Army' key found under 'SC2 keys'->'Common' (on the left) matches your SC2 hotkey.
-		Gui, Font, s9		
+		; Gui, Font, s10 BOLD
+		; Gui, add, text, xs+15 y+30 cRed, Note:
+		; Gui, Font, s10 norm
+		; Gui, add, text, xs+15 y+10 w380, You will need to ensure the 'Select Army' key found under 'SC2 keys'->'Common' (on the left) matches your SC2 hotkey.
+		; Gui, Font, s9		
 
 	Gui, Tab, Spread
 		Gui, Add, Checkbox, y+25 x+25 vSplitUnitsEnable Checked%SplitUnitsEnable% , Enable Spread Unit Function	
@@ -4177,14 +4188,14 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		Gui, Add, Text, Xs yp+80 w360, Note: When spreading army/attacking units this is designed to spread your units BEFORE the engagement - Dont use it while being attacked!`n`n****This is in a very beta stage and will be improved later***
 
 	Gui, Tab, Remove Units
-		Gui, add, GroupBox, y+15 w405 h165 section, Remove Single Unit
+		Gui, add, GroupBox, y+10 w405 h165 section, Remove Single Unit
 			Gui, Add, Checkbox, yp+25 xs+15 vRemoveUnitEnable Checked%RemoveUnitEnable%, Enable	
 			Gui, Add, Text, xp yp+25, Hotkey:
 			Gui, Add, Edit, Readonly yp-2 xs+105 center w65 R1 vcastRemoveUnit_key gedit_hotkey, %castRemoveUnit_key%
 			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#castRemoveUnit_key,  Edit
 			Gui, Add, Text, Xs+15 yp+45 w360, This removes the first unit (top left of selection card) from the selected units.`n`nThis is useful for 'cloning' workers to geisers or sending 1 ling towards a group of banelings etc.
 		
-		Gui, add, GroupBox, xs ys+185 w405 h220, Remove Damaged Units
+		Gui, add, GroupBox, xs ys+180 w405 h220, Remove Damaged Units
 			Gui, Add, Checkbox, yp+25 xs+15 vRemoveDamagedUnitsEnable Checked%RemoveDamagedUnitsEnable%, Enable	
 			Gui, Add, Text, xp yp+25, Hotkey:
 			Gui, Add, Edit, Readonly yp-2 xs+64 center w65 R1 vcastRemoveDamagedUnits_key gedit_hotkey, %castRemoveDamagedUnits_key%
@@ -4234,6 +4245,16 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 	 	Gui, Add, text, xs+10 y+35 w305, *This is not currently 100`% reliable.
 	 	
 	 	gosub SmartGeyserOptionsMenuEnableCheck
+
+	Gui, Tab, Convert Gateways
+		Gui, Add, Checkbox, xp+10 y+25 section vConvertGatewaysEnable checked%ConvertGatewaysEnable%, Enable
+		Gui, Add, Text, xs yp+25, Gateway Control Group:
+		Gui, Add, DropDownList,  % "x+30 yp-2 w45 center vConvertGatewayCtrlGroup Choose" (ConvertGatewayCtrlGroup = 0 ? 10 : ConvertGatewayCtrlGroup), 1|2|3|4|5||6|7|8|9|0
+		Gui, Font, s10 BOLD
+		Gui, add, text, xs ys+60 cRED, Note:
+		Gui, Font, s9 norm
+		Gui, add, text, xp+50 yp w340, The automation becomes active AFTER you manually convert your first gateway into a warpgate.`nThis will only convert gateways which are already in the above control group.
+
 
 	Gui, Add, Tab2, w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vHome_TAB, Home||Emergency
 	Gui, Tab, Home
@@ -4684,7 +4705,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		AutoWorkerWarnMaxWorkers_TT := "A spoken warning is issued when the maximum worker count has been reached.`nWarning: ""Maxed Workers"""
 
 		automationAPMThreshold_TT := TT_automationAPMThreshold_TT := TT_AutoWorkerAPMProtection_TT := AutoWorkerAPMProtection_TT
-		:= TT_FInjectAPMProtection_TT := FInjectAPMProtection_TT := "Automations will be delayed while your instantaneous APM is greater than this value.`n"
+		:= TT_FInjectAPMProtection_TT := FInjectAPMProtection_TT := "Background automations will be delayed while your instantaneous APM is greater than this value.`n"
 				. "`nThis can be used to make the automations a little more subtle."
 				. "`n`nAlthough this shouldn't occur, if you are experiencing misgroupings or altered rally points lowering this value may help."
 
@@ -4694,7 +4715,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 																	. "`n`nYou must ensure the corresponding ""Set Control Group keys"" and ""Invoke Group Keys"" (under SC2 Keys on the left) match your SC2 hotkey setup."
 		#Base_Control_Group_T_Key_TT := Base_Control_Group_T_Key_TT 
 		:= Base_Control_Group_P_Key_TT := #Base_Control_Group_P_Key_TT := "The control group which contains your command centres/orbitals/planetary-fortresses/nexi."
-																	. "`n`nYou must ensure the corresponding ""Invoke Group Keys"" (under SC2 Keys on the left) match your SC2 hotkey setup."
+																	;. "`n`nYou must ensure the corresponding ""Invoke Group Keys"" (under SC2 Keys on the left) match your SC2 hotkey setup."
 
 		AutoWorkerMakeWorker_T_Key_TT := #AutoWorkerMakeWorker_T_Key_TT := "The keyboard hotkey used to build an SCV.`nUsually 'S'."
 		AutoWorkerMakeWorker_P_Key_TT := #AutoWorkerMakeWorker_P_Key_TT := "The keyboard hotkey used to build a probe.`nUsually 'E'."
@@ -4729,7 +4750,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 
 		MI_Queen_Group_TT := #MI_Queen_Group_TT := "The queens in this control are used to inject hatcheries."
 								. "`n`nHence you must add your injecting queens to this control group!"
-								. "`n`nYou must ensure the corresponding ""Invoke Group Keys"" (under SC2 Keys on the left) match your SC2 hotkey setup."			
+								; . "`n`nYou must ensure the corresponding ""Invoke Group Keys"" (under SC2 Keys on the left) match your SC2 hotkey setup."			
 		F_InjectOff_Key_TT := #F_InjectOff_Key_TT := "During a match this hotkey will toggle (either disable or enable) automatic injects."
 
 		SplitUnitPanel_TT := "When enabled the overlay will display units on a separate line to structures."
@@ -4821,14 +4842,14 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 				. "`n`nNote: Use a control group which you DO NOT use in game."
 				. "`n`nYou must ensure the corresponding ""Set Control Group keys"" and ""Invoke Group Keys"" (under SC2 Keys on the left) match your SC2 hotkey setup."
 
-		CG_control_group_TT := #CG_control_group_TT := "This refers to the control group used to store the current unit selection."
-				. "`nThis allows the selected units to be restored after performing the automation."
-				. "`n`n If ""Off"" is selected, the current unit selection will not be saved or restored."
-				. "`n`nNote: Use a control group which you DO NOT use in game."
-				. "`n`nYou must ensure the corresponding ""Set Control Group keys"" and ""Invoke Group Keys"" (under SC2 Keys on the left) match your SC2 hotkey setup."
+	;	CG_control_group_TT := #CG_control_group_TT := "This refers to the control group used to store the current unit selection."
+	;			. "`nThis allows the selected units to be restored after performing the automation."
+	;			. "`n`n If ""Off"" is selected, the current unit selection will not be saved or restored."
+	;			. "`n`nNote: Use a control group which you DO NOT use in game."
+	;			. "`n`nYou must ensure the corresponding ""Set Control Group keys"" and ""Invoke Group Keys"" (under SC2 Keys on the left) match your SC2 hotkey setup."
 
 		CG_nexus_Ctrlgroup_key_TT := "The control group which contains your nexuses."
-				. "`n`nYou must ensure the corresponding ""Invoke Group Keys"" (under SC2 Keys on the left) match your SC2 hotkey setup."
+			;	. "`n`nYou must ensure the corresponding ""Invoke Group Keys"" (under SC2 Keys on the left) match your SC2 hotkey setup."
 
 		WorkerSplitType_TT := "Defines how many workers are rallied to each mineral patch."
 
@@ -4845,6 +4866,10 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		AutomationTerranCtrlGroup_TT := AutomationProtossCtrlGroup_TT := AutomationZergCtrlGroup_TT := "This refers to the control group used to store the current unit selection."
 				. "`nThis allows the selected units to be restored after performing the automation."
 				. "`n`nNote: Use a control group which you DO NOT use in game." 	
+
+AutomationTerranCameraGroup_TT := AutomationProtossCameraGroup_TT := AutomationZergCameraGroup_TT := "This refers to the camera group used to store the current screen location."
+				. "`nThis allows the screen position to be restored after performing automations."
+				. "`n`nNote: Use a group which you DO NOT use in game." 	
 
 		AM_MiniMap_PixelColourAlpha_TT := AM_MiniMap_PixelColourRed_TT := AM_MiniMap_PixelColourGreen_TT := AM_MinsiMap_PixelColourBlue_TT := "The ARGB pixel colour of the mini map mineral field."
 		#ResetPixelColour_TT := "Resets the pixel colour and variance to their default settings."
@@ -5029,7 +5054,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		RemoveDamagedUnitsCtrlGroup_TT := SplitctrlgroupStorage_key_TT := #SplitctrlgroupStorage_key_TT := "This refers to the control group used to store the current unit selection."
 				. "`nThis allows the selected units to be restored after performing the automation."
 				. "`n`nNote: Use a control group which you DO NOT use in game."
-				. "`n`nYou must ensure the corresponding ""Set Control Group keys"" and ""Invoke Group Keys"" (under SC2 Keys on the left) match your SC2 hotkey setup."
+				; . "`n`nYou must ensure the corresponding ""Set Control Group keys"" and ""Invoke Group Keys"" (under SC2 Keys on the left) match your SC2 hotkey setup."
 
 		TT_DeselectSleepTime_TT :=  DeselectSleepTime_TT := "Time between deselecting units from the unit panel.`nThis is used by the split and select army, and deselect unit functions"
 
@@ -5040,13 +5065,14 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 
 		#Sc2SelectArmyCtrlGroup_TT := Sc2SelectArmyCtrlGroup_TT := "The control Group (key) in which to store the army.`nE.G. 1,2,3-0"
 															. "`n`nSelect 'Off' to disable grouping."
-															. "`n`nYou must ensure the corresponding ""Set Control Group keys"" match your SC2 hotkey setup."
+															; . "`n`nYou must ensure the corresponding ""Set Control Group keys"" match your SC2 hotkey setup."
 
 		l_DeselectArmy_TT := #l_DeselectArmy_TT := "These unit types will be deselected."
 		
-		EasyUnloadStorageKey_TT := "The selected/unloaded transports will be stored in this control group."		
-							. "`n`nYou must ensure the corresponding ""Set Control Group keys"", ""Add to Control Group Keys"",`nand ""Invoke Group Keys"" (under SC2 Keys on the left) match your SC2 hotkey setup."									
+		;EasyUnloadStorageKey_TT := "The selected/unloaded transports will be stored in this control group."		
+		;					. "`n`nYou must ensure the corresponding ""Set Control Group keys"", ""Add to Control Group Keys"",`nand ""Invoke Group Keys"" (under SC2 Keys on the left) match your SC2 hotkey setup."									
 
+		ConvertGatewayCtrlGroup_TT := "The control group which contains your gateways."
 		F_Inject_ModifierBeep_TT := "If the modifier keys (Shift, Ctrl, or Alt) or Windows Keys are held down when an Inject is attempted, a beep will heard.`nRegardless of this setting, the inject round will not begin until after these keys have been released."
 		BlockingStandard_TT := BlockingFunctional_TT := BlockingNumpad_TT := BlockingMouseKeys_TT := BlockingMultimedia_TT := BlockingMultimedia_TT := BlockingModifier_TT := "During certain automations these keys will be buffered or blocked to prevent interruption to the automation and your game play."
 		SC2AdvancedEnlargedMinimap_TT := "This option alters the size and position of the minimap."
@@ -5084,6 +5110,11 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 	OnMessage(0x200, "mainThreadMessageHandler")
 	Gosub, G_GuiSetupDrawMiniMapDisable ; Disable controls based on current drawing settings
 	GuI, Options:Show, w615 h505, V%ProgramVersion% Settings
+}
+catch, e
+{
+	if !A_IsCompiled
+		msgbox %  e.what "`n" e.file "`n" e.line "`n" e.extra
 }
 Return
 
@@ -5205,7 +5236,7 @@ return
 SmartGeyserOptionsMenuEnableCheck:
 GuiControlGet, g1,, SmartGeyserEnable
 GuiControl, Enable%g1%, SmartGeyserReturnCargo
-GuiControl, Enable%g1%, SmartGeyserCtrlGroup
+;GuiControl, Enable%g1%, SmartGeyserCtrlGroup
 return 
 
 
@@ -8288,10 +8319,13 @@ CreateHotkeys()
 
 		if (InjectTimerAdvancedEnable && aLocalPlayer["Race"] = "Zerg")
 		{	
-			try hotkey, % "~^" SC2Keys.AHKHotkey("QueenSpawnLarva"), g_InjectTimerAdvanced, on
-			try hotkey, % "~+" SC2Keys.AHKHotkey("QueenSpawnLarva"), g_InjectTimerAdvanced, on
-			try hotkey, % "~^+" SC2Keys.AHKHotkey("QueenSpawnLarva"), g_InjectTimerAdvanced, on
-			try hotkey, % "~" SC2Keys.AHKHotkey("QueenSpawnLarva"), g_InjectTimerAdvanced, on
+			for i, hotkey in SC2Keys.AHKHotkeyObj("TransportUnloadAll")
+			{
+				try hotkey, % "~^" hotkey, g_InjectTimerAdvanced, on
+				try hotkey, % "~+" hotkey, g_InjectTimerAdvanced, on
+				try hotkey, % "~^+" hotkey, g_InjectTimerAdvanced, on
+				try hotkey, % "~" hotkey, g_InjectTimerAdvanced, on
+			}
 		}		
 		if (aLocalPlayer["Race"] = "Terran" && SelectTransportsTerranEnable)
 		|| (aLocalPlayer["Race"] = "Protoss" && SelectTransportsProtossEnable)
@@ -8303,7 +8337,8 @@ CreateHotkeys()
 		if (aLocalPlayer["Race"] = "Terran" && EasyUnloadAllTerranEnable)
 		|| (aLocalPlayer["Race"] = "Protoss" && EasyUnloadAllProtossEnable)
 		|| (aLocalPlayer["Race"] = "Zerg" && EasyUnloadAllZergEnable)
-			try hotkey, % "~" SC2Keys.AHKHotkey("TransportUnloadAll"), UnloadAllTransports, on
+		for i, hotkey in SC2Keys.AHKHotkeyObj("TransportUnloadAll")
+			try hotkey, ~%hotkey%, UnloadAllTransports, on
 
 		if SelectArmyEnable
 			hotkey, %castSelectArmy_key%, g_SelectArmy, on  ; buffer to make double tap better remove 50ms delay
@@ -8325,9 +8360,10 @@ CreateHotkeys()
 		{
 			if A_UnitGroupSettings["LimitGroup", aLocalPlayer["Race"], group, "Enabled"] 
 			{
-				
-				try hotkey, % SC2Keys.AHKHotkey("ControlGroupAppend" group), g_LimitGrouping, on
-				try hotkey, % SC2Keys.AHKHotkey("ControlGroupAssign" group), g_LimitGrouping, on
+				for i, hotkey in SC2Keys.AHKHotkeyObj("ControlGroupAppend" group)
+					try hotkey, %hotkey%, g_LimitGrouping, on
+				for i, hotkey in SC2Keys.AHKHotkeyObj("ControlGroupAssign" group)	
+					try hotkey, %hotkey%, g_LimitGrouping, on
 				;hotkey, ^+%i%, g_LimitGrouping, on
 			}
 		}
@@ -8341,8 +8377,8 @@ CreateHotkeys()
 					try hotkey, % object.hotkey, g_QuickSelect, on
 			}
 		}
-
-		try hotkey, % "*~" SC2Keys.AHKHotkey("Cancel"), g_temporarilyDisableAutoProduction, on	; cant use !ischatopen() - as esc will close chat before memory reads value so wont see chat was open
+		for i, hotkey in SC2Keys.AHKHotkeyObj("Cancel")
+			try hotkey, % "*~" hotkey, g_temporarilyDisableAutoProduction, on	; cant use !ischatopen() - as esc will close chat before memory reads value so wont see chat was open
 
 	Hotkey, If, WinActive(GameIdentifier) && isPlaying && !isChatOpen() 	
 		if (aLocalPlayer["Race"] = "Zerg") && (auto_inject <> "Disabled")
@@ -8408,12 +8444,16 @@ disableAllHotkeys()
 		try hotkey, %AutoBuildGUIkey%, off
 		try hotkey, %AutoBuildInteractGUIKey%, off
 		try hotkey, %AutoBuildPauseAllkey%, off
-		try hotkey, % "~^" SC2Keys.AHKHotkey("QueenSpawnLarva"), off
-		try hotkey, % "~+" SC2Keys.AHKHotkey("QueenSpawnLarva"), off
-		try hotkey, % "~^+" SC2Keys.AHKHotkey("QueenSpawnLarva"), off
-		try hotkey, % "~" SC2Keys.AHKHotkey("QueenSpawnLarva"), off
+		for i, hotkey in SC2Keys.AHKHotkeyObj("QueenSpawnLarva")
+		{
+			try hotkey, % "~^" hotkey, off
+			try hotkey, % "~+" hotkey, off
+			try hotkey, % "~^+" hotkey, off
+			try hotkey, % "~" hotkey, off
+		}
 		try hotkey, %SelectTransportsHotkey%, off
-		try hotkey, % "~" SC2Keys.AHKHotkey("TransportUnloadAll"), off
+		for i, hotkey in SC2Keys.AHKHotkeyObj("TransportUnloadAll")
+			try hotkey, % "~" hotkey, off
 		try hotkey, %castSelectArmy_key%, off
 		try hotkey, %castSplitUnit_key%, off
 		try hotkey, %castRemoveUnit_key%, off
@@ -8422,15 +8462,18 @@ disableAllHotkeys()
 			try hotkey, % object.hotkey, off
 		loop, 10
 		{
-			try hotkey, % SC2Keys.AHKHotkey("ControlGroupAppend"  A_index - 1), off
-			try hotkey, % SC2Keys.AHKHotkey("ControlGroupAssign"  A_index - 1), off
+			for i, hotkey in SC2Keys.AHKHotkeyObj("ControlGroupAppend"  A_index - 1)
+				try hotkey, %hotkey%, off
+			for i, hotkey in SC2Keys.AHKHotkeyObj("ControlGroupAssign"  A_index - 1)
+				try hotkey, %hotkey%, off
 		}
 		for i, race in ["Terran,Protoss,Zerg"]
 		{
 			for i, object in aQuickSelect[race]
 				try hotkey, % object.hotkey, off
 		}
-		try hotkey, % "*~" SC2Keys.AHKHotkey("Cancel"), off
+		for i, hotkey in SC2Keys.AHKHotkeyObj("Cancel")
+			try hotkey, % "*~" hotkey, off
 
 	Hotkey, If, WinActive(GameIdentifier) && isPlaying && !isChatOpen()		
 		try hotkey, %cast_inject_key%, off
@@ -9867,6 +9910,7 @@ SplitUnits()
 ;			. "`n" xMax "," yMax
 
 	botLeft := topRight := 0
+	attackKey := SC2Keys.key("Attack")
 	loop, % selectionCount
 	{
 
@@ -9891,7 +9935,7 @@ SplitUnits()
 		tmpObject := []
 		tmpObject.insert(aSelectedUnits[1].unit)
 		if Attack 
-			input.pSend("a{Click " x " " y "}")
+			input.pSend(attackKey "{Click " x " " y "}")
 		else 
 			input.pClick(x, y, "Right")	
 		DeselectUnitsFromPanel(tmpObject, 1)		;might not have enough time to update the selections?
@@ -12860,19 +12904,26 @@ A1 ?? ?? ?? ?? 85 C0 74 0A 8B 10 51 8B C8 8B 42 14 FF D0 C3
 
 
 convertWarpGates:
-if !aThreads.Minimap.ahkgetvar.isWarpGateTechComplete
-	return 
-convertWarpGates(6)
+if WinActive(GameIdentifier) && time && aThreads.Minimap.ahkgetvar.isWarpGateTechComplete
+	convertWarpGates()
 return
 
-convertWarpGates(gatewayGroup)
+convertWarpGates()
 {
-	tempControlGroup := 3
+	global AutomationProtossCtrlGroup, ConvertGatewayCtrlGroup
+	static lastConversion := -50
+
+	time := getTime()
+	if (Abs(time - lastConversion) < 2) 
+		return
+	gatewayGroup := ConvertGatewayCtrlGroup
+	tempControlGroup := AutomationProtossCtrlGroup
+
 	for i, fingerPrint in controlGroupFingerPrints(gatewayGroup)
 	{
 		if getUnitFingerPrint(unitIndex := fingerPrint >> 18) != fingerPrint
 			continue 
-		if getUnitType(unitIndex) = aUnitID.Gateway && !isUnderConstruction(unitIndex) && !isGatewayConvertingToWarpGate(unitIndex) && isUnitPowered(unitIndex)
+		if getUnitType(unitIndex) = aUnitID.Gateway && !isUnderConstruction(unitIndex) && isUnitPowered(unitIndex) && !isGatewayConvertingToWarpGate(unitIndex) 
 			gatewayCount++			
 	}
 	; So a gateway needs converting
@@ -12889,8 +12940,7 @@ convertWarpGates(gatewayGroup)
 	selectionPage := getUnitSelectionPage()	
 	If numGetSelectionSorted(oSelection) && oSelection.IsGroupable
 	{
-		soundplay *-1
-		tabPosition := oSelection.TabPositions[aUnitId.Gateway]
+		
 		sendSequence := SC2Keys.key("ControlGroupAssign" tempControlGroup)
 		sendSequence .= SC2Keys.key("ControlGroupRecall" gatewayGroup)
 		input.pSend(sendSequence)
@@ -12899,6 +12949,7 @@ convertWarpGates(gatewayGroup)
 		; Note this has nothing to do with the HasKey(aUnitId.Gateway) check
 		dsleep(30) 
 		numGetSelectionSorted(oSelection)
+		tabPosition := oSelection.TabPositions[aUnitId.Gateway]
 		if oSelection.TabPositions.HasKey(aUnitId.Gateway)
 		{
 			sendSequence := sRepeat(SC2Keys.key("SubgroupNext"), tabPositionChanged := oSelection["Types"]  - oSelection.HighlightedGroup + tabPosition)
@@ -12911,6 +12962,7 @@ convertWarpGates(gatewayGroup)
 	setLowLevelInputHooks(False)
 	critical, off
 	Thread, NoTimers, false 
+	lastConversion := time
 	return 
 }
 
@@ -12932,7 +12984,7 @@ waitForUser()
 		sleep 1
 		Thread, Priority, 0	
 	}
-	if !isSelectionGroupable(oSelection) || isGamePaused() || isMenuOpen()
+	if isGamePaused() || isMenuOpen() || !isSelectionGroupable(oSelection)
 		return 1		
 	return 0
 }
@@ -12945,3 +12997,5 @@ next/previous subgroup suffix
 chat suffix 
 jump to last alert suffix 
 pause suffix 
+*/
+
