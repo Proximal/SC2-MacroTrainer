@@ -3084,7 +3084,8 @@ try
 		Gui, Add, GroupBox, Y+15 w225 h215 section, Common Settings
 			Gui, Add, Text, xs+10 ys+25, Queen Control Group:
 			; i have a dropdown menu now so user has to put a number, cant use another key as I use this to check the control groups
-				Gui, Add, DropDownList,  % "xp+160 w45 center vMI_Queen_Group gGUIControlGroupCheckInjects Choose" (MI_Queen_Group = 0 ? 10 : MI_Queen_Group), 1|2|3|4|5|6|7||8|9|0
+				Gui, Add, DropDownList,  % "xp+160 w45 center vMI_Queen_Group Choose" (MI_Queen_Group = 0 ? 10 : MI_Queen_Group), 1|2|3|4|5|6|7||8|9|0
+				;Gui, Add, DropDownList,  % "xp+160 w45 center vMI_Queen_Group gGUIControlGroupCheckInjects Choose" (MI_Queen_Group = 0 ? 10 : MI_Queen_Group), 1|2|3|4|5|6|7||8|9|0
 			;	Gui, Add, Edit, Readonly y+10 xs+60 w90 center vMI_Queen_Group, %MI_Queen_Group%
 			;		Gui, Add, Button, yp-2 x+10 gEdit_SendHotkey v#MI_Queen_Group,  Edit			
 
@@ -3712,7 +3713,8 @@ try
 	Gui, Tab, Settings	
 		Gui, Add, GroupBox, w190 h140 x+15 y+25 section, Settings		
 			Gui, Add, Text, xs+10 yp+25, Nexus Ctrl Group:
-			Gui, Add, DropDownList, % "xs+130 yp w45 center gGUIControGroupCheckChrono vCG_nexus_Ctrlgroup_key Choose" (CG_nexus_Ctrlgroup_key = 0 ? 10 : CG_nexus_Ctrlgroup_key), 1|2|3|4||5|6|7|8|9|0
+			Gui, Add, DropDownList, % "xs+130 yp w45 center vCG_nexus_Ctrlgroup_key Choose" (CG_nexus_Ctrlgroup_key = 0 ? 10 : CG_nexus_Ctrlgroup_key), 1|2|3|4||5|6|7|8|9|0
+			;Gui, Add, DropDownList, % "xs+130 yp w45 center gGUIControGroupCheckChrono vCG_nexus_Ctrlgroup_key Choose" (CG_nexus_Ctrlgroup_key = 0 ? 10 : CG_nexus_Ctrlgroup_key), 1|2|3|4||5|6|7|8|9|0
 		
 			Gui, Add, Text, xs+10 yp+35, Sleep time (ms):
 			Gui, Add, Edit, Number Right xp+120 yp-2 w45 vTT_ChronoBoostSleep 
@@ -4003,7 +4005,8 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 					droplist_var := 10
 				else 
 					droplist_var := Base_Control_Group_T_Key  	; i have a dropdown menu now so user has to put a number, cant use another key as I use this to check the control groups
-				Gui, Add, DropDownList,  xs+110 yp w45 center gGUIControlGroupCheckAutoWorkerTerran vBase_Control_Group_T_Key Choose%droplist_var%, 1|2|3|4|5|6|7|8|9|0
+				Gui, Add, DropDownList,  xs+110 yp w45 center vBase_Control_Group_T_Key Choose%droplist_var%, 1|2|3|4|5|6|7|8|9|0
+				;Gui, Add, DropDownList,  xs+110 yp w45 center gGUIControlGroupCheckAutoWorkerTerran vBase_Control_Group_T_Key Choose%droplist_var%, 1|2|3|4|5|6|7|8|9|0
 
 			Gui, Add, Text, xs+240 ys+25, Max SCVs:
 				Gui, Add, Edit, Number Right x+15 yp-2 w45 vTT_AutoWorkerMaxWorkerTerran
@@ -4022,7 +4025,8 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 					droplist_var := 10
 				else 
 					droplist_var := Base_Control_Group_P_Key  	; i have a dropdown menu now so user has to put a number, cant use another key as I use this to check the control groups
-				Gui, Add, DropDownList, xs+110 yp w45 center gGUIControlGroupCheckAutoWorkerProtoss vBase_Control_Group_P_Key Choose%droplist_var%, 1|2|3|4|5|6|7|8|9|0
+				Gui, Add, DropDownList, xs+110 yp w45 center vBase_Control_Group_P_Key Choose%droplist_var%, 1|2|3|4|5|6|7|8|9|0
+				;Gui, Add, DropDownList, xs+110 yp w45 center gGUIControlGroupCheckAutoWorkerProtoss vBase_Control_Group_P_Key Choose%droplist_var%, 1|2|3|4|5|6|7|8|9|0
 
 			Gui, Add, Text, xs+240 ys+25, Max Probes:
 				Gui, Add, Edit, Number Right x+15 yp-2 w45 vTT_AutoWorkerMaxWorkerProtoss
@@ -4580,7 +4584,7 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 	if !ZergPic_TT
 	{
 		auto_inject_alert_TT := "This alert will sound X seconds after your last one-button inject, prompting you to inject again."
-		W_inject_ding_on_TT := "Note: Due to an inconsistency with the programming language, some systems may not hear the 'windows ding'."
+		;W_inject_ding_on_TT := "Note: Due to an inconsistency with the programming language, some systems may not hear the 'windows ding'."
 		auto_inject_time_TT := TT_auto_inject_time_TT :=  "This is in 'SC2' Seconds."
 		#cast_inject_key_TT := cast_inject_key_TT := "When pressed the program will inject all of your hatcheries.`n`nThis Hotkey is ONLY active while playing as zerg!"
 		CanQueenMultiInject_TT := "During minimap injects (and auto-Injects) a SINGLE queen may attempt to (shift-queue) inject multiple hatcheries providing:`nShe is the only nearby queen and she has enough energy.`n`nThis may increase the chance of having queens go walkabouts - but I have never observed this. "
