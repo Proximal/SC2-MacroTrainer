@@ -161,7 +161,7 @@ MT_CurrentInstance := [] ; Used to store random info about the current run
 program := []
 program.info := {"IsUpdating": 0} ; program.Info.IsUpdating := 0 ;has to stay here as first instance of creating infor object
 
-ProgramVersion := 3.121
+ProgramVersion := getMacroTrainerVersion()
 
 l_GameType := "1v1,2v2,3v3,4v4,FFA"
 l_Races := "Terran,Protoss,Zerg"
@@ -1397,23 +1397,23 @@ LimitGroup(byref UnitList, Hotkey)
 				if (Hotkey = commandHotkey "")
 				{
 					foundGroup := group
-					; Im not sure if sending the passed hotkey could cause problems. 
-					; I can't think of any exceptions which would. Double escape/grave (``) hotkeys seems to work
-					;sendString := SC2Keys.key(command group, i > 1 ? True : False)
+					; can't just send the hotkey. e.g. sending ^F1 hotkey 
+					; Could make an #if hotkey instead! But then couldn't use the AGRestrictBufferDelay - although it's probably not really required for a user pressed key
+					groupingCommand := SC2Keys.key(command group, i > 1 ? True : False)
 					break, _LimitGroupOuterLoop
 				}			
 			}
 		}
 	}
 
-	if (foundGroup != "") 
+	if (foundGroup != "") ; It should always find a the group unless the hotkeys/keylist has stuffed up
 	{
 		dsleep(AGRestrictBufferDelay)
 		If (ID_List := UnitList[group]) ; ie not blank
 		{
 			loop, % getSelectionCount()		;loop thru the units in the selection buffer
 			{
-				type := getUnitType(getSelectedUnitIndex(A_Index - 1)) 					;note no -1 (as ctrl index starts at 0)
+				type := getUnitType(getSelectedUnitIndex(A_Index - 1)) 					
 				if type NOT in %ID_List%
 				{
 					setLowLevelInputHooks(False)
@@ -1422,15 +1422,10 @@ LimitGroup(byref UnitList, Hotkey)
 			}
 		}
 	}
-	;input.hookBlock(True, True)
-	;sleep := Input.releaseKeys()
-	;critical 1000
-	;input.hookBlock(False, False)
-	;if sleep
-	;	dSleep(10) 
-	
+	else groupingCommand := prepareHotkeyForSend(Hotkey) ; this shouldnt occur, but if it does always send the hotkey
+
 	input.pReleaseKeys(True)
-	input.pSend(Hotkey)
+	input.pSend(groupingCommand)
 	Input.revertKeyState()
 	setLowLevelInputHooks(False)
 	Return
@@ -5047,7 +5042,7 @@ AutomationTerranCameraGroup_TT := AutomationProtossCameraGroup_TT := AutomationZ
 																. "`n`nNote: With regards to zerg, this option is disabled if the 'starting selection' is set to 'Army', as the army selection does not contain overlords."
 			quickSelect%A_LoopField%DeselectEmptyTransport_TT := "Refers to medivacs, warp prisms, phasing warp prisms, and overlords which do not contain units."
 																. "`n`nNote: With regards to zerg, this option is disabled if the 'starting selection' is set to 'Army', as the army selection does not contain overlords."
-			quickSelect%A_LoopField%DeselectQueuedDrops_TT := "Refers to medivacs, warp prisms, phasing warp prisms, and overlords are set/queued to perform an unload command."
+			quickSelect%A_LoopField%DeselectQueuedDrops_TT := "Refers to medivacs, warp prisms, phasing warp prisms, and overlords which are set/queued to perform an unload command."
 																. "`n`nNote: With regards to zerg, this option is disabled if the 'starting selection' is set to 'Army', as the army selection does not contain overlords."
 		
 			quickSelect%A_LoopField%DeselectLowHP_TT := "Refers to units with" (A_LoopField = "Protoss" ? " shields " : " health ") "lower than the specified (percentage) value. "
@@ -9643,7 +9638,7 @@ debugData()
 
 	DllCall("QueryPerformanceFrequency", "Int64*", Frequency), DllCall("QueryPerformanceCounter", "Int64*", CurrentTick)
 	getSystemTimerResolutions(MinTimer, MaxTimer)
-	result := "Trainer Vr: " getProgramVersion() "`n"
+	result := "Trainer Vr: " getMacroTrainerVersion() "`n"
 	. "Script & Path: " A_ScriptFullPath "`n"
 	. "Is64bitOS: " A_Is64bitOS "`n"
 	. "OSVersion: " A_OSVersion "`n"
