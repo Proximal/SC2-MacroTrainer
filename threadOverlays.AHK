@@ -1052,8 +1052,14 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 					}
 					else if (aPlayer[owner, "Race"] = "Terran") && (Type = aUnitID["OrbitalCommand"] || Type = aUnitID["OrbitalCommandFlying"])
 					{
-						if (scanCount := floor(numgetUnitEnergy(MemDump, unit)/50))
+					;	if (scanCount := floor((energy := numgetUnitEnergy(MemDump, unit))/50))
+					;		aMiscUnitPanelInfo["Scans", owner] := round(aMiscUnitPanelInfo["Scans", owner]) + scanCount 
+					
+						if (scanCount := Floor((energy := numgetUnitEnergyRaw(MemDump, unit))/50)) ; Use the raw/non-floored function. As the fractions are important when calculating time remaining to next scan
 							aMiscUnitPanelInfo["Scans", owner] := round(aMiscUnitPanelInfo["Scans", owner]) + scanCount 
+
+						if ((energy < 50 || (energy := mod(energy, 50))) && energy > aMiscUnitPanelInfo["ClosestOrbitalEnergy", owner]) 
+							aMiscUnitPanelInfo["ClosestOrbitalEnergy", owner] := energy
 					} 
 
 					if (queueSize := getStructureProductionInfo(unit, type, aQueueInfo))
@@ -1101,6 +1107,11 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 						;aEnemyUnitConstruction[Owner, Priority, MorphingType] := round(aEnemyUnitConstruction[Owner, Priority, MorphingType]) + 1 ; ? aEnemyUnitConstruction[Owner, Priority, MorphingType] + 1 : 1 
 						aEnemyUnitConstruction[Owner, Priority, MorphingType] := {"progress": (aEnemyUnitConstruction[Owner, Priority, MorphingType].progress > aProduction.progress ? aEnemyUnitConstruction[Owner, Priority, MorphingType].progress : progress)
 																					, "count": round(aEnemyUnitConstruction[Owner, Priority, MorphingType].count) + 1 }
+						if aUnitID.OrbitalCommand = MorphingType
+						{
+							if (timeRemaining := getUnitMorphTime(unit, type, False)) < aMiscUnitPanelInfo["closestOrbitalMorphTime", owner] || aMiscUnitPanelInfo["closestOrbitalMorphTime", owner] = ""
+								aMiscUnitPanelInfo["closestOrbitalMorphTime", owner] := timeRemaining, aMiscUnitPanelInfo["closestOrbitalMorphPercent", owner] := progress
+						}
 					}
 					; hatchery, lair, and hive have the same priority - 2, so just use the hatches priority as it had to already exist 
 					else if (Type = aUnitID["Hatchery"] || Type = aUnitID["Lair"] || Type = aUnitID["Spire"]) && MorphingType := isHatchLairOrSpireMorphing(unit, Type)
@@ -1592,15 +1603,24 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 						}
 					}
 					; Draws in top Left corner of picture scan count for orbitals or chrono count for protoss structures
-					if 	( (unit = aUnitID.OrbitalCommand  && (chronoScanCount := aMiscUnitPanelInfo["Scans", slot_number]))
+					if 	( (unit = aUnitID.OrbitalCommand  && (chronoScanCount := aMiscUnitPanelInfo["Scans", slot_number]))			
 					|| (unit = aUnitID.Nexus && (chronoScanCount := aMiscUnitPanelInfo["chronoBoosts", slot_number])))
 					{
 						Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, DestX, DestY + .6*Height, Width/2.5, Height/2.5, 2)
 						if (chronoScanCount >= 10)
+						;if strlen(chronoScanCount) >= 2
 							gdip_TextToGraphics(G, chronoScanCount, "x"DestX "y"(DestY + .5*Height + .3*Height/2)  " Bold Italic cFF00FFFF r4 s" 11*UserScale, Font)
 						else
 							gdip_TextToGraphics(G, chronoScanCount, "x"(DestX + .2*Width/2) "y"(DestY + .5*Height + .3*Height/2) " Bold Italic cFF00FFFF r4 s" 11*UserScale, Font)
 					}
+					; Don't place in block above as want % present when scan count is 0
+					; strlength is always 2 e.g .9
+					if aUnitID.OrbitalCommand = unit && (closestScan := convertScanCountUnitOverlay(aMiscUnitPanelInfo["ClosestOrbitalEnergy", slot_number], aMiscUnitPanelInfo["closestOrbitalMorphTime", slot_number], aMiscUnitPanelInfo["closestOrbitalMorphPercent", slot_number]))
+					{	
+						Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, DestX, DestY, Width/2.5, Height/2.5, 2)
+						gdip_TextToGraphics(G, closestScan, "x"DestX "y"(DestY + .10*Height/2)  " Bold Italic cFF00FFFF r4 s" 11*UserScale, Font)
+					}
+							
 
 					if (unitCount := aEnemyUnitConstruction[slot_number, priority, unit].count)	; so there are some of this unit being built lets draw the count on top of the completed units
 					{
@@ -1891,7 +1911,7 @@ DrawMacroTownHallOverlay(ByRef Redraw, UserScale=1, Drag=0)
 			; Red to indicate time remaining. Make text a littler smaller, as red tends to stand out
 			macroCount := formatSeconds(gameToRealSeconds(time)), textColour := " cFFFF0000 ", textSize := 15 
 		}
-		; If have a morphing orbital and  (all orbitals have full energy or the morping orbital will complete faster than the new scan)
+		; If have a morphing orbital and  (all orbitals have full energy or the morphing orbital will complete faster than the new scan)
 		; Append percent of closest complete morphing orbital
 		else if (hasMorphingOrbital 
 		&& (closestEnergy = "" || closestOrbitalMorphTime < (energyRequired - closestEnergy) / 0.5625) )
@@ -2249,5 +2269,26 @@ drawUIPositions(destroy := False, overlayExist := False)
 		drawUIPositions(True)
 	}
 	return
+}
+
+; calculates the appending decimal value to the scan scout - i.e. how close the nest scan is to being available
+; For the unit overlay panel
+; energy = ClosestOrbitalEnergy
+; MorphTime = closestOrbitalMorphTime
+; MorphPercent = closestOrbitalMorphPercent
+convertScanCountUnitOverlay(energy, MorphTime, MorphPercent)
+{
+
+	if (MorphTime != "" && MorphTime < energyTime)
+		resultMorph := floor((MorphPercent//.1))
+	if (energy != "")
+		resultEnergy := floor((energy/50)//.1)	
+	; Need to compare against each other and not just energyTime vs. morphTime. 
+	; Otherwise when a morphing CC is very low (0.03%) and energy is 0.5 % it will result 
+	; in blank being returing as 0.03% rounds to 0
+	result := resultMorph > resultEnergy ? resultMorph : resultEnergy
+	if (result = 0  || result = "") ; 0 or all full energy + none are morphing
+		return ""
+	else return "." result
 }
 

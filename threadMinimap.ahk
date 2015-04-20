@@ -607,13 +607,13 @@ loop, % DumpUnitMemory(UBMemDump)
 		}
 		else if !(Filter & aUnitTargetFilter.UnderConstruction)
 		{
-			fingerPrint := getUnitFingerPrint(u_iteration)
+			fingerPrint := numGetUnitFingerPrint(UBMemDump, u_iteration)
 			if (unit_type = aUnitID["Nexus"] || unit_type = aUnitID["CommandCenter"] 
 			|| unit_type =  aUnitID["PlanetaryFortress"] || unit_type =  aUnitID["OrbitalCommand"])
 				a_BaseListTmp.insert(u_iteration)
 			else if (unit_type = geyserStructure)
 			{		
-				aGeyserStructuresTmp[fingerPrint := getUnitFingerPrint(u_iteration)] := {"fingerPrint": fingerPrint, "unitIndex": u_iteration}
+				aGeyserStructuresTmp[fingerPrint] := {"fingerPrint": fingerPrint, "unitIndex": u_iteration}
 			}
 			
 

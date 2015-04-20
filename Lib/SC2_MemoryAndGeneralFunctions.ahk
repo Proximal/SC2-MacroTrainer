@@ -966,6 +966,10 @@ numgetUnitEnergy(ByRef unitDump, unit)
 	Return Floor(numget(unitDump, unit * S_uStructure + O_uEnergy, "Uint") / 4096)
 }
 
+numgetUnitEnergyRaw(ByRef unitDump, unit)
+{	global
+	Return numget(unitDump, unit * S_uStructure + O_uEnergy, "Uint") / 4096
+}
 ; Damage which has been delt to the unit
 ; need to substract max hp in unit to find actual health value/percentage
 getUnitHpDamage(unit)
@@ -3714,6 +3718,10 @@ numGetUnitIndexReusedCount(ByRef MemDump, Unit)
 {	
 	return numget(MemDump, Unit * S_uStructure, "UShort")
 }
+numGetUnitFingerPrint(ByRef MemDump, Unit)
+{	
+	return numget(MemDump, Unit * S_uStructure, "UInt")
+}
 
 ; The unitTimer is updated slower than the gameTick/time. This can cause a time to be out
 ; by a fraction depending on when the function is called e.g. 0.0625 instead of 0. So round it.
@@ -3734,7 +3742,6 @@ getTimeAtUnitConstruction(unit)
 ; Also it's possible a unit won't be warned if an already warned unit dies and its unit index is reused
 ; for another unit which should be warned. Should compare timeAlive value
 
-
 doUnitDetection(unit, type, owner, unitUsedCount, mode = "")
 {	
 	global config_file, alert_array, time, aMiniMapWarning, PrevWarning, GameIdentifier, aUnitID, GameType
@@ -3747,6 +3754,7 @@ doUnitDetection(unit, type, owner, unitUsedCount, mode = "")
 		loop, % alert_array[GameType, "list", "size"]
 		{ 			; the below if statement for time		
 			Alert_Index := A_Index	;the alert index number which corresponds to the ini file/config
+
 			if  ( type = aUnitID[alert_array[GameType, A_Index, "IDName"]] ) ;So if its a shrine and the player is not on ur team
 			{
 				createdAtTime := getTimeAtUnitConstruction(unit) ; This will be 0 for starting units (townhall + workers)
@@ -3763,7 +3771,9 @@ doUnitDetection(unit, type, owner, unitUsedCount, mode = "")
 				|| (!alert_array[GameType, A_Index, "Repeat"] && Alerted_Buildings[owner].HasKey(A_Index))
 				|| (Alerted_Buildings_Base[owner, A_Index].Haskey(unit) && unitUsedCount = Alerted_Buildings_Base[owner, A_Index, unit])
 					return 
-
+				
+				; using Alert_Index in Alerted_Buildings_Base ensures that a warning will work for a hatch and later for lair when it finishes morphing
+				; if just used the fingerprint this wouldnt work (unless checked unit type)
 				PrevWarning := []							
 				aMiniMapWarning.insert({ "Unit": PrevWarning.unitIndex := unit 
 										, "Time": Time
@@ -3831,7 +3841,7 @@ doUnitDetection(unit, type, owner, unitUsedCount, mode = "")
 	return
 }
 
-
+*/
 
 
 
