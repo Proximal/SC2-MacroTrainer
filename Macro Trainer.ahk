@@ -954,7 +954,6 @@ Else if (time > 0.4 && !isInMatch) && (getLocalPlayerNumber() != 16 || debugGame
 	setupMiniMapUnitLists(aMiniMapUnits)
 	l_ActiveDeselectArmy := setupSelectArmyUnits(l_DeselectArmy, aUnitID)
 	;ShortRace := substr(LongRace := aLocalPlayer["Race"], 1, 4) ;because i changed the local race var from prot to protoss i.e. short to long - MIGHT NO be needed  now
-	setupAutoGroup(aLocalPlayer["Race"], A_AutoGroup, aUnitID, A_UnitGroupSettings)
 	findXelnagas(aXelnagas)	
 
 	SC2Keys.getAllKeys() ; Do this before creating hotkeys. As some hotkeys need this information.
@@ -999,7 +998,7 @@ Else if (time > 0.4 && !isInMatch) && (getLocalPlayerNumber() != 16 || debugGame
 	if (Auto_Read_Races && !ResumeWarnings && !UserSavedAppliedSettings && time <= 12)
 		SetTimer, find_races_timer, 1000, -20
 
-	If A_UnitGroupSettings["AutoGroup", aLocalPlayer["Race"], "Enabled"]
+	If aAutoGroup[aLocalPlayer.race, "Enable"]
 	{
 		settimer, Auto_Group, %AutoGroupTimer% 						; set to 30 ms via config ini default
 																	; WITH Normal 1 priority so it should run once every 30 ms
@@ -1161,15 +1160,15 @@ return
 
 AutoGroupIdle:
 Auto_Group:
-	AutoGroup(A_AutoGroup)
-	Return
+	AutoGroup()
+Return
 
 ; 8 units / full selection card
 ; 0.25 / 1.50
 ; Old 0.14 /1.56
 
-AutoGroup(byref A_AutoGroup)
-{ 	global GameIdentifier, aButtons, AGBufferDelay, AGKeyReleaseDelay, aAGHotkeys
+AutoGroup()
+{ 	global aAutoGroup, GameIdentifier, AGBufferDelay, AGKeyReleaseDelay
 
 	; needed to ensure the function running again while it is still running
 	;  as can arrive here from AutoGroupIdle or Auto_Group
@@ -1189,7 +1188,7 @@ AutoGroup(byref A_AutoGroup)
 		type := unit.type, CurrentlySelected .= "," unit.UnitIndex
 		if !activeList
 		{
-			For Player_Ctrl_Group, ID_List in A_AutoGroup	;check the array - player_ctrl_group = key 1,2,3 etc, ID_List is the value
+			For Player_Ctrl_Group, ID_List in aAutoGroup[aLocalPlayer.race, "UnitIDs"]	;check the array - player_ctrl_group = key 1,2,3 etc, ID_List is the value
 			{
 				if type in %ID_List%
 				{
@@ -1239,7 +1238,7 @@ AutoGroup(byref A_AutoGroup)
 ; 
 
 AutoGroupNewTesting(byref A_AutoGroup)
-{ 	global GameIdentifier, aButtons, AGBufferDelay, AGKeyReleaseDelay, aAGHotkeys
+{ 	global GameIdentifier, AGBufferDelay, AGKeyReleaseDelay, aAGHotkeys
 
 	; needed to ensure the function running again while it is still running
 	;  as can arrive here from AutoGroupIdle or 
@@ -1376,12 +1375,12 @@ AutoGroupNewTesting(byref A_AutoGroup)
 }
    
 g_LimitGrouping:
-	LimitGroup(A_AutoGroup, A_ThisHotkey)
+	LimitGroup(A_ThisHotkey)
 Return
 
-LimitGroup(byref UnitList, Hotkey)
+LimitGroup(Hotkey)
 { 
-	global aAGHotkeys, AGRestrictBufferDelay
+	global aRestrictGroup, RestrictGroupingBufferDelay
 	; CtrlList := "" ;if unit type not in list add to it - give count of list type
 	critical 1000
 	setLowLevelInputHooks(True)
@@ -1398,8 +1397,9 @@ LimitGroup(byref UnitList, Hotkey)
 				{
 					foundGroup := group
 					; can't just send the hotkey. e.g. sending ^F1 hotkey 
-					; Could make an #if hotkey instead! But then couldn't use the AGRestrictBufferDelay - although it's probably not really required for a user pressed key
-					groupingCommand := SC2Keys.key(command group, i > 1 ? True : False)
+					; Could make an #if hotkey instead! But then couldn't use the RestrictGroupingBufferDelay - although it's probably not really required for a user pressed key
+					;groupingCommand := SC2Keys.key(command group, i > 1 ? True : False)
+					groupingCommand := prepareHotkeyForSend(Hotkey)
 					break, _LimitGroupOuterLoop
 				}			
 			}
@@ -1408,13 +1408,13 @@ LimitGroup(byref UnitList, Hotkey)
 
 	if (foundGroup != "") ; It should always find a the group unless the hotkeys/keylist has stuffed up
 	{
-		dsleep(AGRestrictBufferDelay)
-		If (ID_List := UnitList[group]) ; ie not blank
+		If (list := aRestrictGroup[aLocalPlayer.Race, "UnitIDsGroup" group]) != "" ; ie not blank
 		{
+			dsleep(RestrictGroupingBufferDelay)
 			loop, % getSelectionCount()		;loop thru the units in the selection buffer
 			{
 				type := getUnitType(getSelectedUnitIndex(A_Index - 1)) 					
-				if type NOT in %ID_List%
+				if type NOT in %list%
 				{
 					setLowLevelInputHooks(False)
 					Return
@@ -2403,7 +2403,7 @@ ini_settings_write:
 	IniWrite, %CG_chrono_remainder%, %config_file%, %section%, CG_chrono_remainder
 	IniWrite, %ChronoBoostSleep%, %config_file%, %section%, ChronoBoostSleep
 	iniWriteAndUpdateAutoChrono(aAutoChronoCopy, aAutoChrono)
-	
+/*	
 	;[Auto Control Group]
 	Short_Race_List := "Terr|Prot|Zerg"
 	section := "Auto Control Group"		
@@ -2457,7 +2457,11 @@ ini_settings_write:
 		IniWrite, % AGAddToGroup%group%, %config_file%, %section%, AGAddToGroup%group%
 		IniWrite, % AGSetGroup%group%, %config_file%, %section%, AGSetGroup%group%
 		IniWrite, % AGInvokeGroup%group%, %config_file%, %section%, AGInvokeGroup%group%
-	}		
+	}
+	*/
+
+	aAutoGroup := iniWriteAndUpdateAutoGrouping(Tmp_GuiControl = "save" || Tmp_GuiControl = "Apply")
+	aRestrictGroup := iniWriteAndUpdateRestrictGrouping(Tmp_GuiControl = "save" || Tmp_GuiControl = "Apply")		
 
 	;[Advanced Auto Inject Settings]
 	IniWrite, %auto_inject_sleep%, %config_file%, Advanced Auto Inject Settings, auto_inject_sleep
@@ -2753,11 +2757,6 @@ ini_settings_write:
 	
 	;[Key Blocking]
 	section := "Key Blocking"
-	IniWrite, %BlockingStandard%, %config_file%, %section%, BlockingStandard
-	IniWrite, %BlockingFunctional%, %config_file%, %section%, BlockingFunctional
-	IniWrite, %BlockingNumpad%, %config_file%, %section%, BlockingNumpad
-	IniWrite, %BlockingMouseKeys%, %config_file%, %section%, BlockingMouseKeys
-	IniWrite, %BlockingMultimedia%, %config_file%, %section%, BlockingMultimedia
 	IniWrite, %SC2AdvancedEnlargedMinimap%, %config_file%, %section%, SC2AdvancedEnlargedMinimap
 	IniWrite, %LwinDisable%, %config_file%, %section%, LwinDisable
 	IniWrite, %Key_EmergencyRestart%, %config_file%, %section%, Key_EmergencyRestart
@@ -2975,7 +2974,16 @@ loop, parse, l_Races, `,
 	ConvertListToObject(aUnitLists["UnitPanel", race], list)
 }
 return
-
+/*
+   ____        _   _                    _____ _    _ _____ 
+  / __ \      | | (_)                  / ____| |  | |_   _|
+ | |  | |_ __ | |_ _  ___  _ __  ___  | |  __| |  | | | |  
+ | |  | | '_ \| __| |/ _ \| '_ \/ __| | | |_ | |  | | | |  
+ | |__| | |_) | |_| | (_) | | | \__ \ | |__| | |__| |_| |_ 
+  \____/| .__/ \__|_|\___/|_| |_|___/  \_____|\____/|_____|
+        | |                                                
+        |_|                                                
+*/
 
 options_menu:
 /*
@@ -3002,21 +3010,20 @@ try
 	Gui, Options:New
 	gui, font, norm s9	;here so if windows user has +/- font size this standardises it. But need to do other menus one day
 	;Gui, +ToolWindow  +E0x40000 ; E0x40000 gives it a icon on taskbar (+ToolWindow doesn't have an icon)
-	options_menu := "home32.png|map32.png|warning32.ico|key.png|Inject32.png|Group32.png|QuickGroup32.png|Worker32.png|autoBuild32.png|reticule32.png|Robot32.png|miscB32.png|bug32.png|settings.ico"
-	optionsMenuTitles := "Home|MiniMap/Overlays|Warnings|Automation Setup|Injects|Auto Grouping|Quick Select|Auto Worker|Auto Build|Chrono Boost|Misc Automation|Misc Abilities|Bug Report|Settings"
 
 	Gosub, g_CreateUnitListsAndObjects ; used for some menu items, and for the custom unit filter gui
 
 	ImageListID := IL_Create(10, 5, 1)  ; Create an ImageList with initial capacity for 10 icons, grows it by 5 if need be, and 1=large icons
 	 
-	loop, parse, options_menu, | ; | = delimter
-		IL_Add(ImageListID, A_Temp "\" A_LoopField) 
+	for i, fileName in strSplit("home32.png|map32.png|warning32.ico|key.png|Inject32.png|Group32.png|RestrictGrouping32.png|QuickGroup32.png|Worker32.png|autoBuild32.png|reticule32.png|Robot32.png|miscB32.png|bug32.png|settings.ico", "|")
+		IL_Add(ImageListID, A_Temp "\" fileName)
 
-	guiMenuHeight := 460
+	;guiMenuHeight := 460
+	guiMenuHeight := 485
 
 	Gui, Add, TreeView, -Lines ReadOnly ImageList%ImageListID% h%guiMenuHeight% w150 gOptionsTree vGUIListViewIdentifyingVariableForRedraw
-	loop, parse, optionsMenuTitles, |
-		TV_Add(A_LoopField, 0, "Icon" A_Index)  
+	for i, title in strSplit("Home|MiniMap/Overlays|Warnings|Automation Setup|Injects|Auto Grouping|Restrict Grouping|Quick Select|Auto Worker|Auto Build|Chrono Boost|Misc Automation|Misc Abilities|Bug Report|Settings", "|")
+		TV_Add(title, 0, "Icon" A_Index)  
 		
 			Gui, Font, s10
 			GUIButtonPosition := guiMenuHeight + 13
@@ -3514,7 +3521,7 @@ try
 					Gui, Add, Button, yp-2 x+5 gEdit_hotkey v#Playback_Alert_Key,  Edit	
 		Gui, Font, s10
 		Gui, Add, Button, center Xs+140 ys+60 w200 h50 gAlert_List_Editor vAlert_List_Editor, Launch Alert List Editor
-		Gui, Font,
+		Gui, Font, s9
 
 	Gui, Add, GroupBox, Xs ys+130 w340 h145, About
 		Gui, Add, Text, xp+15 yp+25 w320, 
@@ -3766,51 +3773,26 @@ try
 		GUIControl, Enable%state%, NextAutoChrono
 		GUIControl,  Enable%state%, PreviousAutoChrono
 		showAutoChronoItem(aAutoChronoCopy)
-Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
+		Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 
-	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vAutoGroup_TAB, Terran|Protoss|Zerg|Delays|Info||Info2	
-	Short_Race_List := "Terr|Prot|Zerg"
-	loop, parse, Short_Race_List, |
+	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vAutoGroup_TAB, Terran||Protoss|Zerg|Delays|Info
+
+	for i, race in ["Terran", "Protoss", "Zerg"]
 	{
-		if (A_LoopField = "Terr")
-		{	Gui, Tab, Terran
-			Tmp_LongRace := "Terran"
-		}
-		Else if (A_LoopField = "Prot")
-		{	Gui, Tab, Protoss
-			Tmp_LongRace := "Protoss"
-		}
-		Else 
-		{	Gui, Tab, Zerg
-			Tmp_LongRace := "Zerg"
-		}
-		checked := A_UnitGroupSettings["AutoGroup", Tmp_LongRace, "Enabled"]
-		AGX := MenuTabX + 20, AGY := MenuTabY +50
-		Gui, Add, Checkbox, X%AGX%  Y%AGY%  vAG_Enable_%A_LoopField% checked%checked%, Enable Auto Grouping
-		checked := A_UnitGroupSettings["LimitGroup", Tmp_LongRace, "Enabled"]
-	;	Gui, Add, Checkbox, X%AGX% Y+10 v%Tmp_LongRace%_LimitGroup checked%checked%, Restrict Unit Grouping
-		Gui, Add, Text, yp X540 Center, Restrict Unit`nGrouping:
-		XLeft := XTabX - 10
+		Gui, Tab, %race%
+		Gui, Add, Checkbox, % "section X+15 Y+25 vAG_Enable_" race " checked" aAutoGroup[race, "Enable"], Enable
+		Gui, add, text, xs-5 y+25, Group
 		loop, 10
-		{		
-			if (10 = i := A_Index)	; done like this so 0 comes after 9
-				i := 0
-			Units := A_UnitGroupSettings[Tmp_LongRace, i]
-
-			Gui, add, text, y+20 X%XLeft%, Group %i%
-			Gui, Add, Edit, yp-2 x+10 w280  center r1 vAG_%Tmp_LongRace%%i%, %Units%
-		;	Gui, Add, Edit, yp-2 x+10 w280  center r1 vAG_%A_LoopField%%i%, %Units%
-		;	Gui, Add, Button, yp-2 x+10 gEdit_AG v#AG_%A_LoopField%%i%,  Edit ;old
-			Gui, Add, Button, yp-2 x+10 gEdit_AG v#AG_%Tmp_LongRace%%i%,  Edit
-			checked := A_UnitGroupSettings["LimitGroup", Tmp_LongRace, i,"Enabled"]
-			Gui, Add, Checkbox, yp+4 x+20 vLG_%Tmp_LongRace%%i% checked%checked%
+		{				
+			Gui, add, text, xs+5 y+15, % group := mod(A_Index, 10)
+			Gui, Add, Edit, yp-2 x+15 w340 center r1 vAG_%race%%group%, % aAutoGroup[race, "NamesGroup" group]
+			Gui, Add, Button, yp-2 x+10 gEdit_AG v#AG_%race%%group%,  Edit
 		}	
 	}
-
 	Gui, Tab, Info
 		Gui, Font, s10
 		Gui, Font, s10 BOLD
-		Gui, add, text, x+25 y+12 w380,Auto Unit Grouping
+		Gui, add, text, x+25 y+12 w380 section,Auto Unit Grouping
 		Gui, Font, s10 norm
 		Gui, add, text, xp y+15 w380,
 		(LTrim
@@ -3822,7 +3804,58 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		Units are added after all keys/buttons have been released.
 		)
 		Gui, Font, s10 BOLD
-		Gui, add, text, y+15 w380,Restrict Unit Grouping
+		Gui, add, text, xp y+12 cRED, Note:
+		Gui, Font, s10 norm
+		Gui, add, text, xp+50 yp w340, Auto and Restrict Unit grouping functions are not exclusive, i.e. they can be used together or alone!
+
+		Gui, Font, s10 BOLD
+		Gui, add, text, xs y+25 w380, Reliability  ;Gui, add, text, xp y+12 w380, Reliability
+		Gui, Font, s10 norm
+		Gui, add, text, xp y+20 w380, 
+		(LTrim 
+		Due to how SC works, it's impossible for an external program like MacroTrainer to perform auto-groupings with 100`% accuracy.
+
+		This function will work perfectly for some, average for others, or it may be completely unusable.
+
+		Increasing the "Key Event Delay" and the "Safety Buffer" within the delays section should help prevent misgroupings. 
+		(Read their associated tooltips for more information)
+		)
+		Gui, Font, s9 norm
+
+	Gui, Tab, Delays
+	Gui, Add, GroupBox, x+25 Y+25 w175 h120 section, Auto Grouping
+		Gui, Add, Text, xs+10 ys+35 w90, Key Event Delay (ms):
+		Gui, Add, Edit, Number Right x+20 yp-2 w45 vTT_AGKeyReleaseDelay
+		Gui, Add, UpDown,  Range50-700 vAGKeyReleaseDelay , %AGKeyReleaseDelay%
+		
+		Gui, Add, Text, xs+10 y+25 w90, Safety Buffer (ms):
+		Gui, Add, Edit, Number Right x+20 yp-2 w45 vTT_AGBufferDelay 
+		Gui, Add, UpDown,  Range40-200 vAGBufferDelay , %AGBufferDelay%
+	
+	
+	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vRestrictGroup_TAB, Terran|Protoss|Zerg|Delays|Info
+	for i, race in ["Terran", "Protoss", "Zerg"]
+	{
+		Gui, Tab, %race%
+		Gui, Add, Checkbox, % "section X+15  Y+25 vRestrictGroupEnable" race "  checked" aRestrictGroup[race, "GlobalEnable"] , Enable
+		Gui, add, text, xs-5 y+25, Group
+		loop, 10 
+		{
+			group := Mod(A_Index, 10)
+			Gui, add, text, xs+5 y+15, %group%
+			Gui, Add, Edit, yp-2 x+15 w340  center r1 vRestrictGroup%race%%group%, % aRestrictGroup[race, "NamesGroup" group]
+			Gui, Add, Button, yp-2 x+10 gEdit_AG v#RestrictGroup%race%%group%,  Edit
+		}
+	}
+	Gui, Tab, Delays
+	Gui, Add, GroupBox, x+25 Y+25 w175 h120 section, Restrict Grouping
+		Gui, Add, Text, xs+10 ys+35 w90, Safety Buffer (ms):
+		Gui, Add, Edit, Number Right x+20 yp-2 w45 vTT_RestrictGroupingBufferDelay
+		Gui, Add, UpDown,  Range40-200 vRestrictGroupingBufferDelay , %RestrictGroupingBufferDelay%
+	
+	Gui, Tab, Info
+		Gui, Font, s10 BOLD
+		Gui, add, text, x+25 y+12 w380, Restrict Unit Grouping
 		Gui, Font, s10 norm
 		Gui, add, text, y+15 w380,
 		(LTrim
@@ -3839,46 +3872,168 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 		Gui, Font, s10 norm
 		Gui, add, text, xp+50 yp w340, Auto and Restrict Unit grouping functions are not exclusive, i.e. they can be used together or alone!
 		Gui, Font, s9 norm	
+iniWriteAndUpdateRestrictGrouping(OptionsSave)
+{
+	global RestrictGroupingBufferDelay
+	aRestrictGroup := []
 
-	Gui, Tab, Info2
-		; Gui, Font, s10
-		; Gui, Font, s10 BOLD
-		; Gui, add, text, x+25 y+12 w380, SC Key Setup
-		; Gui, Font, s10 norm
-		; Gui, add, text, xp y+15 w380,
-		; (LTrim
-		; When using Auto-Grouping you must ensure the corresponding group keys listed in "Set Control Group keys" match your SC2 hotkey setup. (under SC2 Keys on the left)
+	section := "Restrict Grouping"		
+	for i, race in ["Terran", "Protoss", "Zerg"]
+	{
+		if OptionsSave ; user invoked from options menu. Not updating settings after an update 
+			aRestrictGroup[race, "GlobalEnable"] := RestrictGroupEnable%race%
+		IniWrite, % aRestrictGroup[race, "GlobalEnable"], %config_file%, %section%, RestrictGroupEnable%race%
+		loop, 10
+		{
+			group := Mod(A_Index, 10)
+			if OptionsSave
+			{
+				userInput := RestrictGroup%race%%group% ; barracks, factory
+				namesList := unitIDList := checkList := ""
+				loop, parse, userInput, `, %A_space%%A_Tab%  ; get rid of spaces which cause haskey to fail
+				{
+					name := A_LoopField
+					if !aUnitID.Haskey(name)
+						continue 
+					if name in %checkList%
+						continue 
+					namesList .= name ", "  ; leave a space for the gui
+					checkList .= name ","
+					unitIDList .= aUnitID[name]  ","
+				}
+				aRestrictGroup[race, "NamesGroup" group] := Trim(namesList, "`, `t")
+				aRestrictGroup[race, "UnitIDsGroup" group] := Trim(unitIDList, "`, `t")
+			}
+			IniWrite, % aRestrictGroup[race, "NamesGroup" group], %config_file%, %section%, RestrictGroup%race%%group%Names
+			; Only enable each group if global enable check is enabled, and the group has valid units
+			aRestrictGroup[race, "EnableGroup" group] := aRestrictGroup[race, "UnitIDsGroup" group] != "" && aRestrictGroup[race, "GlobalEnable"] 
+		}
+	}
+	IniWrite, %RestrictGroupingBufferDelay%, %config_file%, %section%, RestrictGroupingBufferDelay
+	return aRestrictGroup
+}
 
-		; Restrict unit grouping uses both "Add To Control Group Keys" and "Set Control Group keys". 
-		; )
-		Gui, Font, s10 BOLD
-		Gui, add, text, x+25 y+12 w380, Reliability  ;Gui, add, text, xp y+12 w380, Reliability
-		Gui, Font, s10 norm
-		Gui, add, text, xp y+20 w380, 
-		(LTrim 
-		Due to how SC works, it's impossible for an external program like MacroTrainer to perform auto-groupings with 100`% accuracy.
+iniReadRestrictGrouping()
+{
+	global RestrictGroupingBufferDelay
+	aRestrictGroup := [] 
 
-		This function will work perfectly for some, average for others, or it may be completely unusable.
+	section := "Restrict Grouping"		
+	for i, race in ["Terran", "Protoss", "Zerg"]
+	{
+		IniRead, EnableRace, %config_file%, %section%, RestrictGroupEnable%race%, 0
+		aRestrictGroup[race, "GlobalEnable"] := EnableRace
 
-		Increasing the "Key Event Delay" and the "Safety Buffer" within the delays section should help prevent misgroupings. 
-		(Read their associated tooltips for more information)
-		)
-		Gui, Font, s9 norm
+		loop, 10
+		{
+			group := Mod(A_Index, 10)
+			namesList := unitIDList := checkList := ""
+			IniRead, namesInput, %config_file%, %section%, RestrictGroup%race%%group%Names, %A_Space%
+			loop, parse, namesInput, `, %A_space%%A_Tab%  ; get rid of spaces which cause haskey to fail
+			{
+				name := A_LoopField
+				if !aUnitID.Haskey(name)
+					continue 
+				if name in %checkList%
+					continue 
+				namesList .= name ", "  ; leave a space for the gui
+				checkList .= name ","
+				unitIDList .= aUnitID[name]  ","
+			}
+			aRestrictGroup[race, "NamesGroup" group] :=  Trim(namesList, "`, `t")
+			aRestrictGroup[race, "UnitIDsGroup" group] := Trim(unitIDList, "`, `t")
+			aRestrictGroup[race, "EnableGroup" group] := aRestrictGroup[race, "UnitIDsGroup" group] != "" && aRestrictGroup[race, "GlobalEnable"] 
+		}
+	}
+	IniRead, RestrictGroupingBufferDelay, %config_file%, %section%, RestrictGroupingBufferDelay, 60
+	return aRestrictGroup
+}
 
-	Gui, Tab, Delays
-		Gui, Add, GroupBox, x+25 Y+25 w175 h120 section, Auto Grouping
-			Gui, Add, Text, xs+10 ys+35 w90, Key Event Delay (ms):
-			Gui, Add, Edit, Number Right x+20 yp-2 w45 vTT_AGKeyReleaseDelay
-			Gui, Add, UpDown,  Range50-700 vAGKeyReleaseDelay , %AGKeyReleaseDelay%
-			
-			Gui, Add, Text, xs+10 y+25 w90, Safety Buffer (ms):
-			Gui, Add, Edit, Number Right x+20 yp-2 w45 vTT_AGBufferDelay 
-			Gui, Add, UpDown,  Range40-200 vAGBufferDelay , %AGBufferDelay%
+iniReadAutoGrouping()
+{
+	global AGBufferDelay, AGKeyReleaseDelay
+	
+	aAutoGroup := [] ; clear it
+	section := "Auto Control Group"	
+	for i, race in ["Terran", "Protoss", "Zerg"]
+	{
+		shortRace := SubStr(race, 1, 4)
+		IniRead, EnableRace, %config_file%, %section%, AG_Enable_%shortRace%, 0
+		aAutoGroup[race, "Enable"] := EnableRace
 
-		Gui, Add, GroupBox, xs+205 ys w175 h120 section, Restrict Grouping
-			Gui, Add, Text, xs+10 ys+35 w90, Safety Buffer (ms):
-			Gui, Add, Edit, Number Right x+20 yp-2 w45 vTT_AGRestrictBufferDelay 
-			Gui, Add, UpDown,  Range40-200 vAGRestrictBufferDelay , %AGRestrictBufferDelay%
+		aAutoGroup[race, "UnitIDs"] := []
+		loop, 10
+		{
+			group := Mod(A_Index, 10)
+			namesList := unitIDList := checkList := ""
+			IniRead, namesInput, %config_file%, %section%, AG_%shortRace%%group%, %A_Space%
+			loop, parse, namesInput, `, %A_space%%A_Tab%  ; get rid of spaces which cause haskey to fail
+			{
+				name := A_LoopField
+				if !aUnitID.Haskey(name)
+					continue 
+				if name in %checkList%
+					continue 
+				namesList .= name ", "  ; leave a space for the gui
+				checkList .= name ","
+				unitIDList .= aUnitID[name]  ","
+			}
+			aAutoGroup[race, "NamesGroup" group] :=  Trim(namesList, "`, `t")
+			if (unitIDList != "")
+				aAutoGroup[race, "UnitIDs", group] := Trim(unitIDList, "`, `t")
+		}
+	}
+	IniRead, AGBufferDelay, %config_file%, %section%, AGBufferDelay, 50
+	IniRead, AGKeyReleaseDelay, %config_file%, %section%, AGKeyReleaseDelay, 60
+
+	return aAutoGroup
+}
+
+iniWriteAndUpdateAutoGrouping(OptionsSave)
+{
+	global AGBufferDelay, AGKeyReleaseDelay
+
+	aAutoGroup := []
+	section := "Auto Control Group"		
+	for i, race in ["Terran", "Protoss", "Zerg"]
+	{
+		shortRace := SubStr(race, 1, 4)
+		if OptionsSave ; user invoked from options menu. Not updating settings after an update 
+			aAutoGroup[race, "Enable"] := AG_Enable_%race%
+		IniWrite, % aAutoGroup[race, "Enable"], %config_file%, %section%, AG_Enable_%shortRace%
+		aAutoGroup[race, "UnitIDs"] := []
+		loop, 10
+		{
+			group := Mod(A_Index, 10)
+			if OptionsSave
+			{
+				userInput := AG_%race%%group% ; barracks, factory
+				namesList := unitIDList := checkList := ""
+				loop, parse, userInput, `, %A_space%%A_Tab%  ; get rid of spaces which cause haskey to fail
+				{
+					name := A_LoopField
+					if !aUnitID.Haskey(name)
+						continue 
+					if name in %checkList%
+						continue 
+					namesList .= name ", "  ; leave a space for the gui
+					checkList .= name ","
+					unitIDList .= aUnitID[name]  ","
+				}
+				aAutoGroup[race, "NamesGroup" group] := Trim(namesList, "`, `t")
+				if (unitIDList != "")
+					aAutoGroup[race, "UnitIDs", group] := Trim(unitIDList, "`, `t")
+			}
+			IniWrite, % aAutoGroup[race, "NamesGroup" group] , %config_file%, %section%, AG_%shortRace%%group%	
+		}
+	}
+	IniWrite, %AGBufferDelay%, %config_file%, %section%, AGBufferDelay
+	IniWrite, %AGKeyReleaseDelay%, %config_file%, %section%, AGKeyReleaseDelay
+
+	return aAutoGroup
+}
+
+
 			
 	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vQuickSelect_TAB, Terran||Protoss|Zerg|Info
 
@@ -4273,15 +4428,15 @@ Gui, Add, Button, x402 y430 gg_ChronoRulesURL w150, Rules/Criteria
 			Gui, Add, Picture, x+50  yp+20 h90 w90, %A_Temp%\Zerg90.png
 
 	Gui, Tab, Emergency	
-		Gui, Font, S14 CDefault bold UNDERLINE, Verdana
+		Gui, Font, S12 CDefault bold UNDERLINE, Verdana
 		Gui, Add, Text, x+20 y+20 center cRed, IMPORTANT
 		Gui, Font, s10 norm 
-		Gui, Add, Text, xp y+20 w405, This program blocks user input and simulates keystrokes.`nOn RARE occasions it is possible that you will lose keyboard and mouse input OR a key e.g. ctrl, shift, or alt becomes 'stuck' down.`n`nIn this event, use the EMERGENCY HOTKEY!`nWhen pressed it should release any 'stuck' key and restore user input.`n`nIf this fails, press the hotkey THREE times in quick succession to have the program restart.`nIf you're still having a problem, then the key is likely physically stuck down.
-		Gui, Font, S14 CDefault bold, Verdana
+		Gui, Add, Text, xp y+20 w405, This program blocks user input and simulates keystrokes.`nOn RARE occasions it is possible that you will lose keyboard and mouse input OR a key e.g. ctrl, shift, or alt becomes 'stuck' down.`n`nIn this event, use the EMERGENCY HOTKEY!`nWhen pressed it should release any 'stuck' key and restore user input.`n`nIf this fails, press the hotkey THREE times in quick succession to have the program restart.`nIf you're still having problems, then the key is likely physically stuck down.
+		Gui, Font, S12 CDefault bold, Verdana
 		Gui, Add, Text,xp+10 y+20 cRed, Windows Key && Spacebar`n        (Right)
 		Gui, Font, norm 
 		Gui, Font,
-		Gui, Add, Text, xp y+15 w405, The deult key can be changed via the 'settings' Tab on the left.
+		Gui, Add, Text, xp y+15 w405, The default key can be changed via the 'settings' Tab on the left.
 		Gui, Add, Text, xp y+20 w405, Note: The windows key must not be disabled within the SC options.`nThis program is capable of blocking the Left windows key (check settings tab).
 
 	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vMiniMap_TAB, MiniMap||MiniMap2|Overlays|Background|Hotkeys|Info
@@ -4888,9 +5043,8 @@ AutomationTerranCameraGroup_TT := AutomationProtossCameraGroup_TT := AutomationZ
 				. "`nIf incorrect groupings are occurring, you can try increasing this value."
 				. "`nValid values are: 40-200 ms"
 
-		TT_AGRestrictBufferDelay_TT := AGRestrictBufferDelay_TT := "When a 'restrict grouping' action is performed user input will be buffered for this period of time, I.E. button presses and mouse movements`nwill be delayed during this period."
+		TT_RestrictGroupingBufferDelay_TT := RestrictGroupingBufferDelay_TT := "When a 'restrict grouping' action is performed user input will be buffered for this period of time, I.E. button presses and mouse movements`nwill be delayed during this period."
 				. "`n`nThis helps ensure the currently selected units are ones which should be grouped."
-				. "`nIf incorrect groupings are occurring, you can try increasing this value."
 				. "`nValid values are: 40-200 ms"
 
 
@@ -5109,7 +5263,7 @@ AutomationTerranCameraGroup_TT := AutomationProtossCameraGroup_TT := AutomationZ
 	}
 	OnMessage(0x200, "mainThreadMessageHandler")
 	Gosub, G_GuiSetupDrawMiniMapDisable ; Disable controls based on current drawing settings
-	GuI, Options:Show, w615 h505, V%ProgramVersion% Settings
+	GuI, Options:Show, w615, V%ProgramVersion% Settings
 }
 catch, e
 {
@@ -6055,15 +6209,17 @@ B_Report:
 ;could hide everything each time, then unhide once, but that causes every so slightly more blinking on gui changes
 ; Note this is launched automatically when the GUI is first created, as the first TV item (Home) is automatically selected
 OptionsTree:
-	
-	; In case ever add another tree view ensure correct one is being accessed/manipulated
-	Gui, TreeView, GUIListViewIdentifyingVariableForRedraw
+OptionsMenuTree()
+return 
+OptionsMenuTree()
+{
 	; Key = MenuTitles: Value = Tab ID
-	if !isObject(aGUITabs)
-		aGUITabs := { 	"Home": "Home_TAB" 
+	static hiddenTab
+	static	aGUITabs := { 	"Home": "Home_TAB" 
 					,	"MiniMap/Overlays": "MiniMap_TAB"
 					,	"Injects": "Injects_TAB"
 					,	"Auto Grouping": "AutoGroup_TAB"
+					,	"Restrict Grouping": "RestrictGroup_TAB"
 					,	"Quick Select": "quickSelect_TAB"
 					,	"Auto Worker": "AutoWorker_TAB"
 					,	"Auto Build": "AutoBuild_TAB"
@@ -6075,20 +6231,21 @@ OptionsTree:
 					,	"Bug Report": "Bug_TAB"
 					,	"Settings": "Settings_TAB"}	
 
-	OptionTreeEvent := A_GuiEvent
-	OptionTreeEventInfo := A_EventInfo
-	TV_GetText(Menu_TXT, TV_GetSelection())
-	if (Menu_TXT && unhidden_menu)  ; there's a bug in AHK with the right click - have GUI on second monitor and right click, Menu_TXT will be blank
-		GUIcontrol, Hide, %unhidden_menu%
-	if aGUITabs.HasKey(Menu_TXT)
-		GUIcontrol, Show, % unhidden_menu := aGUITabs[Menu_TXT]
+	; In case ever add another tree view ensure correct one is being accessed/manipulated
+	Gui, TreeView, GUIListViewIdentifyingVariableForRedraw
+
+	TV_GetText(optionText, TV_GetSelection())
+	if (optionText && hiddenTab)  ; there's a bug in AHK with the right click - have GUI on second monitor and right click, optionText will be blank
+		GUIcontrol, Hide, %hiddenTab%
+	if aGUITabs.HasKey(optionText)
+		GUIcontrol, Show, % hiddenTab := aGUITabs[optionText]
 	else return 
 
 	WinSet, Redraw,, V%ProgramVersion% Settings 				; redrawing whole thing as i noticed very very rarely (when a twitch stream open?) the save/cancel/apply buttons disappear
 ; 	 GUIControl, MoveDraw, GUIListViewIdentifyingVariableForRedraw ; this is the same as redraw (but just for a control? - although it still seems to flicker the entire thing)
  	Return															; this prevents the problem where some of the icons would remain selected
  																	; so multiple categories would have the blue background
- 	
+} 	
  	
 ;can arrive here from the GUI +/add button, or via the GuiDropFiles: label which is activated when a user drags and drops files onto a control
 g_AddEmailAttachment:
@@ -7527,7 +7684,7 @@ autoWorkerProductionCheck()
 {	GLOBAl aUnitID, aLocalPlayer, Base_Control_Group_T_Key, AutoWorkerStorage_P_Key, AutoWorkerStorage_T_Key, Base_Control_Group_P_Key, NextSubgroupKey
 	, AutoWorkerMakeWorker_T_Key, AutoWorkerMakeWorker_P_Key, AutoWorkerMaxWorkerTerran, AutoWorkerMaxWorkerPerBaseTerran
 	, AutoWorkerMaxWorkerProtoss, AutoWorkerMaxWorkerPerBaseProtoss, AW_MaxWorkersReached
-	, aResourceLocations, aButtons, EventKeyDelay
+	, aResourceLocations, EventKeyDelay
 	, AutoWorkerAPMProtection, AutoWorkerQueueSupplyBlock, AutoWorkerAlwaysGroup, AutoWorkerWarnMaxWorkers, MT_CurrentGame, aUnitTargetFilter
 	, EnableAutoWorkerTerran, EnableAutoWorkerProtoss, AutomationTerranCtrlGroup, AutomationProtossCtrlGroup
 	, automationAPMThreshold
@@ -8194,35 +8351,6 @@ setupAutoGroupNewTesting(Race, ByRef A_AutoGroup, aUnitID, A_UnitGroupSettings)
 	Return
 }
 
-setupAutoGroup(Race, ByRef A_AutoGroup, aUnitID, A_UnitGroupSettings)
-{
-	A_AutoGroup := []
-	loop, 10
-	{	
-		ControlGroup := A_index - 1		;for control group 0			
-	;	Race := substr(Race, 1, 4)	;cos used Terr in ini
-		List := A_UnitGroupSettings[Race, ControlGroup]				
-		StringReplace, List, List, %A_Space%, , All ; Remove Spaces
-		StringReplace, List, List, |, `,, All ;replace | with ,
-		List := Rtrim(List, "`, |") ;checks the last character
-		checkList := ""
-		If (List <> "")
-		{
-			loop, parse, List, `, 
-			{
-				unitName := Trim(A_LoopField, "`n`, `t")
-				if unitName not in %checkList%
-				{
-					A_AutoGroup[ControlGroup] .= aUnitID[unitName] ","	;assign the unit ID based on name from iniFile	
-					checkList .= unitName ","
-				}
-			}
-			A_AutoGroup[ControlGroup] := RTrim(A_AutoGroup[ControlGroup], ",") 
-		}		 
-	}
-	Return
-}
-
 ;	Some commands which can come in handy for some functions (obviously have to use within the hotkey command)
 ; 	#MaxThreadsBuffer on 		- this will buffer a hotkeys own key for 1 second, hence this is more in series - subsequent threads will begin when the previous one finishes
 ;	#MaxThreadsPerHotkey 3 		- this will allow a simultaneous 'thread' of hotkeys i.e. parallel
@@ -8359,15 +8487,18 @@ CreateHotkeys()
 					try hotkey, % object.hotkey, Cast_ChronoStructure, on	
 			}
 		}
-		while (10 > group := A_index - 1)
+		if aRestrictGroup[aLocalPlayer.Race, "GlobalEnable"]
 		{
-			if A_UnitGroupSettings["LimitGroup", aLocalPlayer["Race"], group, "Enabled"] 
+			loop, 10
 			{
-				for i, hotkey in SC2Keys.AHKHotkeyObj("ControlGroupAppend" group)
-					try hotkey, %hotkey%, g_LimitGrouping, on
-				for i, hotkey in SC2Keys.AHKHotkeyObj("ControlGroupAssign" group)	
-					try hotkey, %hotkey%, g_LimitGrouping, on
-				;hotkey, ^+%i%, g_LimitGrouping, on
+				if aRestrictGroup[aLocalPlayer.Race, "EnableGroup" A_index - 1] 
+				{
+					for i, hotkey in SC2Keys.AHKHotkeyObj("ControlGroupAppend" A_index - 1)
+						try hotkey, %hotkey%, g_LimitGrouping, on
+					for i, hotkey in SC2Keys.AHKHotkeyObj("ControlGroupAssign" A_index - 1)	
+						try hotkey, %hotkey%, g_LimitGrouping, on
+					;hotkey, ^+%i%, g_LimitGrouping, on
+				}
 			}
 		}
 		; Have this after the limit grouping so quick select
@@ -10604,7 +10735,7 @@ return
 
 *f1::
  settimer, tt, 50
-BufferInputFast.createHotkeys(aButtons.List) 
+
 ;keywait, shift, D
 sleep 1000
 BufferInputFast.BlockInput()
@@ -13009,3 +13140,6 @@ jump to last alert suffix
 pause suffix 
 */
 
+f1::
+Objtree(aAutoGroup)
+return 

@@ -4299,7 +4299,7 @@ readConfigFile()
 	IniRead, sec_mineral, %config_file%, Additional Warning Count, minerals, 1
 	IniRead, sec_gas, %config_file%, Additional Warning Count, gas, 0
 	IniRead, sec_idle, %config_file%, Additional Warning Count, idle_workers, 0
-	
+	/*
 	;[Auto Control Group]
 	Short_Race_List := "Terr|Prot|Zerg", section := "Auto Control Group", A_UnitGroupSettings := []
 	Loop, Parse, l_Races, `, ;Terran ie full name
@@ -4349,7 +4349,12 @@ readConfigFile()
 		aAGHotkeys["set", group] := AGSetGroup%group%
 		aAGHotkeys["invoke", group] := AGInvokeGroup%group%
 	}		
+	*/
 
+	if IsFunc(FunctionName := "iniReadAutoGrouping") ; function only in main thread
+		aAutoGroup := %FunctionName%()	
+	if IsFunc(FunctionName := "iniReadRestrictGrouping") ; function only in main thread
+		aRestrictGroup := %FunctionName%()
 
 	;[ Volume]
 	section := "Volume"
@@ -4404,18 +4409,10 @@ readConfigFile()
 
 	;[Key Blocking]
 	section := "Key Blocking"
-	IniRead, BlockingStandard, %config_file%, %section%, BlockingStandard, 1
-	IniRead, BlockingFunctional, %config_file%, %section%, BlockingFunctional, 1
-	IniRead, BlockingNumpad, %config_file%, %section%, BlockingNumpad, 1
-	IniRead, BlockingMouseKeys, %config_file%, %section%, BlockingMouseKeys, 1
-	IniRead, BlockingMultimedia, %config_file%, %section%, BlockingMultimedia, 1
 	IniRead, SC2AdvancedEnlargedMinimap, %config_file%, %section%, SC2AdvancedEnlargedMinimap, 0
 	IniRead, LwinDisable, %config_file%, %section%, LwinDisable, 1
 	IniRead, Key_EmergencyRestart, %config_file%, %section%, Key_EmergencyRestart, <#Space
 
-	aButtons := [] 	; Note I no longer retreive modifier keys in this list as these will always be blocked using ~*prefix
-	aButtons.List := getKeyboardAndMouseButtonArray(BlockingStandard*1 + BlockingFunctional*2 + BlockingNumpad*4
-																	 + BlockingMouseKeys*8 + BlockingMultimedia*16)	;gets an object contains keys
 /*
 	;[Auto Mine]
 	section := "Auto Mine"

@@ -38,6 +38,7 @@ InstallSC2Files()
 	FileInstall, Included Files\Used_Icons\radarB32.png, %A_Temp%\radarB32.png, 1
 	FileInstall, Included Files\Used_Icons\Inject32.png, %A_Temp%\Inject32.png, 1
 	FileInstall, Included Files\Used_Icons\Group32.png, %A_Temp%\Group32.png, 1
+	FileInstall, Included Files\Used_Icons\RestrictGrouping32.png, %A_Temp%\RestrictGrouping32.png, 1
 	FileInstall, Included Files\Used_Icons\QuickGroup32.png, %A_Temp%\QuickGroup32.png, 1
 	FileInstall, Included Files\Used_Icons\autoBuild32.png, %A_Temp%\autoBuild32.png, 1
 	FileInstall, Included Files\Used_Icons\mine.png, %A_Temp%\mine.png, 1
