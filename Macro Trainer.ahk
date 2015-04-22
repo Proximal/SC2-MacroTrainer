@@ -2460,8 +2460,8 @@ ini_settings_write:
 	}
 	*/
 
-	aAutoGroup := iniWriteAndUpdateAutoGrouping(Tmp_GuiControl = "save" || Tmp_GuiControl = "Apply")
-	aRestrictGroup := iniWriteAndUpdateRestrictGrouping(Tmp_GuiControl = "save" || Tmp_GuiControl = "Apply")		
+	aAutoGroup := iniWriteAndUpdateAutoGrouping(Tmp_GuiControl = "save" || Tmp_GuiControl = "Apply", aAutoGroup)
+	aRestrictGroup := iniWriteAndUpdateRestrictGrouping(Tmp_GuiControl = "save" || Tmp_GuiControl = "Apply", aRestrictGroup)		
 
 	;[Advanced Auto Inject Settings]
 	IniWrite, %auto_inject_sleep%, %config_file%, Advanced Auto Inject Settings, auto_inject_sleep
@@ -3873,170 +3873,8 @@ try
 		Gui, add, text, xp y+12 cRED, Note:
 		Gui, Font, s10 norm
 		Gui, add, text, xp+50 yp w340, Auto and restrict unit grouping functions are not exclusive - they can be used together or alone.
-		Gui, Font, s9 norm	
-iniWriteAndUpdateRestrictGrouping(OptionsSave)
-{
-	global RestrictGroupingBufferDelay
-	aRestrictGroup := []
-
-	section := "Restrict Grouping"		
-	for i, race in ["Terran", "Protoss", "Zerg"]
-	{
-		if OptionsSave ; user invoked from options menu. Not updating settings after an update 
-			aRestrictGroup[race, "GlobalEnable"] := RestrictGroupEnable%race%
-		IniWrite, % aRestrictGroup[race, "GlobalEnable"], %config_file%, %section%, RestrictGroupEnable%race%
-		loop, 10
-		{
-			group := Mod(A_Index, 10)
-			if OptionsSave
-			{
-				userInput := RestrictGroup%race%%group% ; barracks, factory
-				namesList := unitIDList := checkList := ""
-				loop, parse, userInput, `, %A_space%%A_Tab%  ; get rid of spaces which cause haskey to fail
-				{
-					name := A_LoopField
-					if !aUnitID.Haskey(name)
-						continue 
-					if name in %checkList%
-						continue 
-					namesList .= name ", "  ; leave a space for the gui
-					checkList .= name ","
-					unitIDList .= aUnitID[name]  ","
-				}
-				aRestrictGroup[race, "NamesGroup" group] := Trim(namesList, "`, `t")
-				aRestrictGroup[race, "UnitIDsGroup" group] := Trim(unitIDList, "`, `t")
-			}
-			IniWrite, % aRestrictGroup[race, "NamesGroup" group], %config_file%, %section%, RestrictGroup%race%%group%Names
-			; Only enable each group if global enable check is enabled, and the group has valid units
-			aRestrictGroup[race, "EnableGroup" group] := aRestrictGroup[race, "UnitIDsGroup" group] != "" && aRestrictGroup[race, "GlobalEnable"] 
-		}
-	}
-	IniWrite, %RestrictGroupingBufferDelay%, %config_file%, %section%, RestrictGroupingBufferDelay
-	return aRestrictGroup
-}
-
-iniReadRestrictGrouping()
-{
-	global RestrictGroupingBufferDelay
-	aRestrictGroup := [] 
-
-	section := "Restrict Grouping"		
-	for i, race in ["Terran", "Protoss", "Zerg"]
-	{
-		IniRead, EnableRace, %config_file%, %section%, RestrictGroupEnable%race%, 0
-		aRestrictGroup[race, "GlobalEnable"] := EnableRace
-
-		loop, 10
-		{
-			group := Mod(A_Index, 10)
-			namesList := unitIDList := checkList := ""
-			IniRead, namesInput, %config_file%, %section%, RestrictGroup%race%%group%Names, %A_Space%
-			loop, parse, namesInput, `, %A_space%%A_Tab%  ; get rid of spaces which cause haskey to fail
-			{
-				name := A_LoopField
-				if !aUnitID.Haskey(name)
-					continue 
-				if name in %checkList%
-					continue 
-				namesList .= name ", "  ; leave a space for the gui
-				checkList .= name ","
-				unitIDList .= aUnitID[name]  ","
-			}
-			aRestrictGroup[race, "NamesGroup" group] :=  Trim(namesList, "`, `t")
-			aRestrictGroup[race, "UnitIDsGroup" group] := Trim(unitIDList, "`, `t")
-			aRestrictGroup[race, "EnableGroup" group] := aRestrictGroup[race, "UnitIDsGroup" group] != "" && aRestrictGroup[race, "GlobalEnable"] 
-		}
-	}
-	IniRead, RestrictGroupingBufferDelay, %config_file%, %section%, RestrictGroupingBufferDelay, 60
-	return aRestrictGroup
-}
-
-iniReadAutoGrouping()
-{
-	global AGBufferDelay, AGKeyReleaseDelay
-	
-	aAutoGroup := [] ; clear it
-	section := "Auto Control Group"	
-	for i, race in ["Terran", "Protoss", "Zerg"]
-	{
-		shortRace := SubStr(race, 1, 4)
-		IniRead, EnableRace, %config_file%, %section%, AG_Enable_%shortRace%, 0
-		aAutoGroup[race, "Enable"] := EnableRace
-
-		aAutoGroup[race, "UnitIDs"] := []
-		loop, 10
-		{
-			group := Mod(A_Index, 10)
-			namesList := unitIDList := checkList := ""
-			IniRead, namesInput, %config_file%, %section%, AG_%shortRace%%group%, %A_Space%
-			loop, parse, namesInput, `, %A_space%%A_Tab%  ; get rid of spaces which cause haskey to fail
-			{
-				name := A_LoopField
-				if !aUnitID.Haskey(name)
-					continue 
-				if name in %checkList%
-					continue 
-				namesList .= name ", "  ; leave a space for the gui
-				checkList .= name ","
-				unitIDList .= aUnitID[name]  ","
-			}
-			aAutoGroup[race, "NamesGroup" group] :=  Trim(namesList, "`, `t")
-			if (unitIDList != "")
-				aAutoGroup[race, "UnitIDs", group] := Trim(unitIDList, "`, `t")
-		}
-	}
-	IniRead, AGBufferDelay, %config_file%, %section%, AGBufferDelay, 50
-	IniRead, AGKeyReleaseDelay, %config_file%, %section%, AGKeyReleaseDelay, 60
-
-	return aAutoGroup
-}
-
-iniWriteAndUpdateAutoGrouping(OptionsSave)
-{
-	global AGBufferDelay, AGKeyReleaseDelay
-
-	aAutoGroup := []
-	section := "Auto Control Group"		
-	for i, race in ["Terran", "Protoss", "Zerg"]
-	{
-		shortRace := SubStr(race, 1, 4)
-		if OptionsSave ; user invoked from options menu. Not updating settings after an update 
-			aAutoGroup[race, "Enable"] := AG_Enable_%race%
-		IniWrite, % aAutoGroup[race, "Enable"], %config_file%, %section%, AG_Enable_%shortRace%
-		aAutoGroup[race, "UnitIDs"] := []
-		loop, 10
-		{
-			group := Mod(A_Index, 10)
-			if OptionsSave
-			{
-				userInput := AG_%race%%group% ; barracks, factory
-				namesList := unitIDList := checkList := ""
-				loop, parse, userInput, `, %A_space%%A_Tab%  ; get rid of spaces which cause haskey to fail
-				{
-					name := A_LoopField
-					if !aUnitID.Haskey(name)
-						continue 
-					if name in %checkList%
-						continue 
-					namesList .= name ", "  ; leave a space for the gui
-					checkList .= name ","
-					unitIDList .= aUnitID[name]  ","
-				}
-				aAutoGroup[race, "NamesGroup" group] := Trim(namesList, "`, `t")
-				if (unitIDList != "")
-					aAutoGroup[race, "UnitIDs", group] := Trim(unitIDList, "`, `t")
-			}
-			IniWrite, % aAutoGroup[race, "NamesGroup" group] , %config_file%, %section%, AG_%shortRace%%group%	
-		}
-	}
-	IniWrite, %AGBufferDelay%, %config_file%, %section%, AGBufferDelay
-	IniWrite, %AGKeyReleaseDelay%, %config_file%, %section%, AGKeyReleaseDelay
-
-	return aAutoGroup
-}
-
-
-			
+		Gui, Font, s9 norm
+		
 	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vQuickSelect_TAB, Terran||Protoss|Zerg|Info
 
 	loop, parse, l_Races, `,
@@ -13139,6 +12977,171 @@ waitForUser()
 	return 0
 }
 
+iniWriteAndUpdateRestrictGrouping(OptionsSave, aRestrictGroupCurrent)
+{
+	global RestrictGroupingBufferDelay
+	
+	aRestrictGroup := []
+	if !OptionsSave
+		aRestrictGroup := aRestrictGroupCurrent
 
+	section := "Restrict Grouping"		
+	for i, race in ["Terran", "Protoss", "Zerg"]
+	{
+		if OptionsSave ; user invoked from options menu. Not updating settings after an update 
+			aRestrictGroup[race, "GlobalEnable"] := RestrictGroupEnable%race%
+		IniWrite, % aRestrictGroup[race, "GlobalEnable"], %config_file%, %section%, RestrictGroupEnable%race%
+		loop, 10
+		{
+			group := Mod(A_Index, 10)
+			if OptionsSave
+			{
+				userInput := RestrictGroup%race%%group% ; barracks, factory
+				namesList := unitIDList := checkList := ""
+				loop, parse, userInput, `, %A_space%%A_Tab%  ; get rid of spaces which cause haskey to fail
+				{
+					name := A_LoopField
+					if !aUnitID.Haskey(name)
+						continue 
+					if name in %checkList%
+						continue 
+					namesList .= name ", "  ; leave a space for the gui
+					checkList .= name ","
+					unitIDList .= aUnitID[name]  ","
+				}
+				aRestrictGroup[race, "NamesGroup" group] := Trim(namesList, "`, `t")
+				aRestrictGroup[race, "UnitIDsGroup" group] := Trim(unitIDList, "`, `t")
+			}
+			IniWrite, % aRestrictGroup[race, "NamesGroup" group], %config_file%, %section%, RestrictGroup%race%%group%Names
+			; Only enable each group if global enable check is enabled, and the group has valid units
+			aRestrictGroup[race, "EnableGroup" group] := aRestrictGroup[race, "UnitIDsGroup" group] != "" && aRestrictGroup[race, "GlobalEnable"] 
+		}
+	}
+	IniWrite, %RestrictGroupingBufferDelay%, %config_file%, %section%, RestrictGroupingBufferDelay
+	return aRestrictGroup
+}
 
+iniReadRestrictGrouping()
+{
+	global RestrictGroupingBufferDelay
+	aRestrictGroup := [] 
+
+	section := "Restrict Grouping"		
+	for i, race in ["Terran", "Protoss", "Zerg"]
+	{
+		IniRead, EnableRace, %config_file%, %section%, RestrictGroupEnable%race%, 0
+		aRestrictGroup[race, "GlobalEnable"] := EnableRace
+
+		loop, 10
+		{
+			group := Mod(A_Index, 10)
+			namesList := unitIDList := checkList := ""
+			IniRead, namesInput, %config_file%, %section%, RestrictGroup%race%%group%Names, %A_Space%
+			loop, parse, namesInput, `, %A_space%%A_Tab%  ; get rid of spaces which cause haskey to fail
+			{
+				name := A_LoopField
+				if !aUnitID.Haskey(name)
+					continue 
+				if name in %checkList%
+					continue 
+				namesList .= name ", "  ; leave a space for the gui
+				checkList .= name ","
+				unitIDList .= aUnitID[name]  ","
+			}
+			aRestrictGroup[race, "NamesGroup" group] :=  Trim(namesList, "`, `t")
+			aRestrictGroup[race, "UnitIDsGroup" group] := Trim(unitIDList, "`, `t")
+			aRestrictGroup[race, "EnableGroup" group] := aRestrictGroup[race, "UnitIDsGroup" group] != "" && aRestrictGroup[race, "GlobalEnable"] 
+		}
+	}
+	IniRead, RestrictGroupingBufferDelay, %config_file%, %section%, RestrictGroupingBufferDelay, 60
+	return aRestrictGroup
+}
+
+iniReadAutoGrouping()
+{
+	global AGBufferDelay, AGKeyReleaseDelay
+	
+	aAutoGroup := [] ; clear it
+	section := "Auto Control Group"	
+	for i, race in ["Terran", "Protoss", "Zerg"]
+	{
+		shortRace := SubStr(race, 1, 4)
+		IniRead, EnableRace, %config_file%, %section%, AG_Enable_%shortRace%, 0
+		aAutoGroup[race, "Enable"] := EnableRace
+
+		aAutoGroup[race, "UnitIDs"] := []
+		loop, 10
+		{
+			group := Mod(A_Index, 10)
+			namesList := unitIDList := checkList := ""
+			IniRead, namesInput, %config_file%, %section%, AG_%shortRace%%group%, %A_Space%
+			loop, parse, namesInput, `, %A_space%%A_Tab%  ; get rid of spaces which cause haskey to fail
+			{
+				name := A_LoopField
+				if !aUnitID.Haskey(name)
+					continue 
+				if name in %checkList%
+					continue 
+				namesList .= name ", "  ; leave a space for the gui
+				checkList .= name ","
+				unitIDList .= aUnitID[name]  ","
+			}
+			aAutoGroup[race, "NamesGroup" group] := Trim(namesList, "`, `t")
+			if (unitIDList != "")
+				aAutoGroup[race, "UnitIDs", group] := Trim(unitIDList, "`, `t")
+		}
+	}
+	IniRead, AGBufferDelay, %config_file%, %section%, AGBufferDelay, 50
+	IniRead, AGKeyReleaseDelay, %config_file%, %section%, AGKeyReleaseDelay, 60
+
+	return aAutoGroup
+}
+
+iniWriteAndUpdateAutoGrouping(OptionsSave, aAutoGroupCurrent)
+{
+	global AGBufferDelay, AGKeyReleaseDelay
+
+	aAutoGroup := []
+	if !OptionsSave
+		aAutoGroup := aAutoGroupCurrent
+
+	section := "Auto Control Group"		
+	for i, race in ["Terran", "Protoss", "Zerg"]
+	{
+		shortRace := SubStr(race, 1, 4)
+		if OptionsSave ; user invoked from options menu. Not updating settings after an update 
+			aAutoGroup[race, "Enable"] := AG_Enable_%race%
+		IniWrite, % aAutoGroup[race, "Enable"], %config_file%, %section%, AG_Enable_%shortRace%
+		if OptionsSave
+			aAutoGroup[race, "UnitIDs"] := []
+		loop, 10
+		{
+			group := Mod(A_Index, 10)
+			if OptionsSave
+			{
+				userInput := AG_%race%%group% ; barracks, factory
+				namesList := unitIDList := checkList := ""
+				loop, parse, userInput, `, %A_space%%A_Tab%  ; get rid of spaces which cause haskey to fail
+				{
+					name := A_LoopField
+					if !aUnitID.Haskey(name)
+						continue 
+					if name in %checkList%
+						continue 
+					namesList .= name ", "  ; leave a space for the gui
+					checkList .= name ","
+					unitIDList .= aUnitID[name]  ","
+				}
+				aAutoGroup[race, "NamesGroup" group] := Trim(namesList, "`, `t")
+				if (unitIDList != "")
+					aAutoGroup[race, "UnitIDs", group] := Trim(unitIDList, "`, `t")
+			}
+			IniWrite, % aAutoGroup[race, "NamesGroup" group] , %config_file%, %section%, AG_%shortRace%%group%	
+		}
+	}
+	IniWrite, %AGBufferDelay%, %config_file%, %section%, AGBufferDelay
+	IniWrite, %AGKeyReleaseDelay%, %config_file%, %section%, AGKeyReleaseDelay
+
+	return aAutoGroup
+}
 
