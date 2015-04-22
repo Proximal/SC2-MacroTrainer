@@ -730,10 +730,9 @@ g_PixelColourFinderHelpFile:
 	}
 	Gui, New 
 	Gui Add, ActiveX, xm w980 h640 vWB, Shell.Explorer
-	WB.Navigate(url.PixelColour)
-	Gui, Show,, Pixel Finder - How To:
-	sleep, 1500 	; needs 50ms to prevent wb unknown comm error
+	IENavigate(WB, url.PixelColour)
 	try WB.Refresh() 	; So it updates to current changelog (not one in cache)
+	Gui, Show,, Pixel Finder - How To:
 Return
 
 g_FindTestPixelColour:
@@ -1926,6 +1925,7 @@ ShellMessage(wParam, lParam)
 			ReDrawOverlays  := True
 			autoBuildGameGUI.starcraftLostFocus()
 			aThreads.Overlays.AhkFunction("DestroyOverlays")
+			aThreads.MiniMap.AhkFunction("DestroyOverlays")
 		}
 		else if (SC2hWnd = lParam && getTime() && isInMatch)
 		{
@@ -1940,6 +1940,8 @@ ShellMessage(wParam, lParam)
 				; enable/draw variable but not the closely placed x, y variable.
 				; But better to be safe so call gosubAllOverlays which checks if the ini file has been read fully.
 
+				
+				aThreads.MiniMap.AhkLabel.MiniMap_Timer
 				aThreads.Overlays.AhkLabel.gosubAllOverlays ; does the overlayTimer and unitPanel
 				;aThreads.Overlays.AhkLabel.overlayTimer
 				;aThreads.Overlays.AhkLabel.unitPanelOverlayTimer
@@ -2098,7 +2100,8 @@ TrayUpdate:
 		Gui, Font, Norm
 	;	Gui, Add, Edit, x12 y+10 w560 h220 readonly -E0x200, % LTrim(changelog_text)
 		Gui Add, ActiveX, x12  w800 h450  vWB, Shell.Explorer
-		WB.Navigate(url.changelog)
+		IENavigate(WB, url.changelog)
+		try WB.Refresh() 
 		Gui, Font, S8 CDefault, Verdana
 		if (A_ThisLabel = "autoUpdateFound")
 		{
@@ -2110,10 +2113,7 @@ TrayUpdate:
 		Gui, Font, Bold
 		Gui, Add, Button, Default x+-225 yp w100 h30 gUpdate, &Update
 		Gui, Font, Norm
-		
 		Gui, Show,, Macro Trainer Update
-		sleep, 1500 	; needs 50ms to prevent wb unknown comm error - There's a way to do this with the comMethods - but I cbf atm.
-		try WB.Refresh() 	; So it updates to current changelog (not one in cache)
 		return				
 	}
 	Else if (A_ThisLabel = "TrayUpdate") 
@@ -2359,6 +2359,7 @@ ini_settings_write:
 	IniWrite, %FInjectHatchMaxHatches%, %config_file%, %section%, FInjectHatchMaxHatches
 	IniWrite, %FInjectAPMProtection%, %config_file%, %section%, FInjectAPMProtection
 	IniWrite, %F_InjectOff_Key%, %config_file%, %section%, F_InjectOff_Key
+	IniWrite, %EnableToggleAutoInjectHotkey%, %config_file%, %section%, EnableToggleAutoInjectHotkey
 
 	;[Idle AFK Game Pause]
 	IniWrite, %idle_enable%, %config_file%, Idle AFK Game Pause, enable
@@ -2368,7 +2369,6 @@ ini_settings_write:
 		UserIdle_HiLimit := UserIdle_LoLimit + 5
 	IniWrite, %UserIdle_HiLimit%, %config_file%, Idle AFK Game Pause, UserIdle_HiLimit
 	IniWrite, %chat_text%, %config_file%, Idle AFK Game Pause, chat_text
-
 
 	;[Starcraft Settings & Keys]
 	;IniWrite, %pause_game%, %config_file%, Starcraft Settings & Keys, pause_game
@@ -2593,6 +2593,7 @@ ini_settings_write:
 	section := "AutoWorkerProduction"	
 	IniWrite, %EnableAutoWorkerTerranStart%, %config_file%, %section%, EnableAutoWorkerTerranStart
 	IniWrite, %EnableAutoWorkerProtossStart%, %config_file%, %section%, EnableAutoWorkerProtossStart
+	IniWrite, %EnableToggleAutoWorkerHotkey%, %config_file%, %section%, EnableToggleAutoWorkerHotkey
 	IniWrite, %ToggleAutoWorkerState_Key%, %config_file%, %section%, ToggleAutoWorkerState_Key
 	IniWrite, %AutoWorkerQueueSupplyBlock%, %config_file%, %section%, AutoWorkerQueueSupplyBlock
 	IniWrite, %AutoWorkerAlwaysGroup%, %config_file%, %section%, AutoWorkerAlwaysGroup
@@ -2811,6 +2812,7 @@ ini_settings_write:
 	Iniwrite, %unitPanelDrawStructureProgress%, %config_file%, %section%, unitPanelDrawStructureProgress
 	Iniwrite, %unitPanelDrawUnitProgress%, %config_file%, %section%, unitPanelDrawUnitProgress
 	Iniwrite, %unitPanelDrawUpgradeProgress%, %config_file%, %section%, unitPanelDrawUpgradeProgress
+	Iniwrite, %unitPanelDrawScanProgress%, %config_file%, %section%, unitPanelDrawScanProgress
 	Iniwrite, %unitPanelDrawLocalPlayer%, %config_file%, %section%, unitPanelDrawLocalPlayer
 ;	Iniwrite, %OverlayBackgrounds%, %config_file%, %section%, OverlayBackgrounds	
 	Iniwrite, %MiniMapRefresh%, %config_file%, %section%, MiniMapRefresh	
@@ -3109,9 +3111,9 @@ try
 			gui, font, norm bold s10
 			Gui, Add, Text, X%OriginTabX% y+15 cFF0000, Note:
 			gui, font, norm s11
-			gui, Add, Text, w410 y+15, If a queen has inadequate energy (or is too far from her hatchery), her hatchery will not be injected. 
-			gui, Add, Text, w410 y+20, The Minimap && Backspace CtrlGroup methods require queens to be hotkeyed. In other words, hatches without a nearby HOTKEYED queen will not be injected.
-			gui, Add, Text, w410 y+20, Both Backspace methods require the camera hotkeys to be set.
+			gui, Add, Text, w410 y+15, If a queen has inadequate energy or is too far from her hatchery, her hatchery will not be injected. 
+			gui, Add, Text, w410 y+20, The Minimap && Backspace CtrlGroup methods require queens to be hotkeyed.
+			;gui, Add, Text, w410 y+20, Both Backspace methods require the camera hotkeys to be set.
 			;gui, Add, Text, w410 y+20, Auto-Injects will not occur while the modifier keys are pressed.
 			gui, font, norm s11
 			gui, font, norm bold s10
@@ -3137,8 +3139,8 @@ try
 			Gui, Add, Text, y+15 xs+10 w140, APM Delay:
 				Gui, Add, Edit, Number Right x+5 yp-2 w60 vTT_FInjectAPMProtection
 					Gui, Add, UpDown,  Range0-100000 vFInjectAPMProtection, %FInjectAPMProtection%		
-
-			Gui, Add, Text, xs+10 yp+30, Enable/Disable Hotkey:
+			
+			Gui, Add, Checkbox, xs+10 yp+30 vEnableToggleAutoInjectHotkey checked%EnableToggleAutoInjectHotkey%, Enable/Disable Hotkey:
 				Gui, Add, Edit, Readonly y+10 xp+45 w120 R1 vF_InjectOff_Key center gedit_hotkey, %F_InjectOff_Key%
 				Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#F_InjectOff_Key,  Edit				
 
@@ -3702,7 +3704,7 @@ try
 	(please remove this text when filling in this form).
 
 	)
-		Gui, Add, Edit, xp y+10 w350 h160 vReport_TXT, %BugText%
+		Gui, Add, Edit, xp y+10 w350 h180 vReport_TXT, %BugText%
 
 		GUI, Add, ListView, xp y+15 w350 H100 vEmailAttachmentListViewID, Attachments
 		LV_Add("", A_ScriptDir "\" config_file) ;includes the MT_Config.ini file ; this can not be removed by the user	
@@ -3780,7 +3782,7 @@ try
 	for i, race in ["Terran", "Protoss", "Zerg"]
 	{
 		Gui, Tab, %race%
-		Gui, Add, Checkbox, % "section X+15 Y+25 vAG_Enable_" race " checked" aAutoGroup[race, "Enable"], Enable
+		Gui, Add, Checkbox, % "section X+15 Y+25 vAG_Enable_" race " checked" round(aAutoGroup[race, "Enable"]), Enable ; round it because it could be null
 		Gui, add, text, xs-5 y+25, Group
 		loop, 10
 		{				
@@ -3806,7 +3808,7 @@ try
 		Gui, Font, s10 BOLD
 		Gui, add, text, xp y+12 cRED, Note:
 		Gui, Font, s10 norm
-		Gui, add, text, xp+50 yp w340, Auto and Restrict Unit grouping functions are not exclusive, i.e. they can be used together or alone!
+		Gui, add, text, xp+50 yp w340, Auto and restrict unit grouping functions are not exclusive - they can be used together or alone.
 
 		Gui, Font, s10 BOLD
 		Gui, add, text, xs y+25 w380, Reliability  ;Gui, add, text, xp y+12 w380, Reliability
@@ -3837,7 +3839,7 @@ try
 	for i, race in ["Terran", "Protoss", "Zerg"]
 	{
 		Gui, Tab, %race%
-		Gui, Add, Checkbox, % "section X+15  Y+25 vRestrictGroupEnable" race "  checked" aRestrictGroup[race, "GlobalEnable"] , Enable
+		Gui, Add, Checkbox, % "section X+15  Y+25 vRestrictGroupEnable" race "  checked" round(aRestrictGroup[race, "GlobalEnable"]) , Enable ; round to protect against null
 		Gui, add, text, xs-5 y+25, Group
 		loop, 10 
 		{
@@ -3848,7 +3850,7 @@ try
 		}
 	}
 	Gui, Tab, Delays
-	Gui, Add, GroupBox, x+25 Y+25 w175 h120 section, Restrict Grouping
+	Gui, Add, GroupBox, x+25 Y+25 w175 h80 section, Restrict Grouping
 		Gui, Add, Text, xs+10 ys+35 w90, Safety Buffer (ms):
 		Gui, Add, Edit, Number Right x+20 yp-2 w45 vTT_RestrictGroupingBufferDelay
 		Gui, Add, UpDown,  Range40-200 vRestrictGroupingBufferDelay , %RestrictGroupingBufferDelay%
@@ -3859,18 +3861,18 @@ try
 		Gui, Font, s10 norm
 		Gui, add, text, y+15 w380,
 		(LTrim
-		If units have been specified for a particular control group, when manually control grouping (add-to or set group), only these preselected units can be added to that control group.
+		This helps prevent units being erroneously added to a control group.	
 
-		If the selection contains a unit which doesn't belong in this group, the grouping command will be ignored.
+		If units have been specified for a particular control group, then only these units may be manually added during a game.
+	
+		If the selection contains a unit which doesn't belong in this group, then the grouping command will be ignored.
 
-		This prevents erroneously adding units to a control group.
-
-		Any unit can be added to a blank control group.
+		To allow all unit types to be grouped, simply leave the specific  group field empty.
 		)
 		Gui, Font, s10 BOLD
 		Gui, add, text, xp y+12 cRED, Note:
 		Gui, Font, s10 norm
-		Gui, add, text, xp+50 yp w340, Auto and Restrict Unit grouping functions are not exclusive, i.e. they can be used together or alone!
+		Gui, add, text, xp+50 yp w340, Auto and restrict unit grouping functions are not exclusive - they can be used together or alone.
 		Gui, Font, s9 norm	
 iniWriteAndUpdateRestrictGrouping(OptionsSave)
 {
@@ -4135,7 +4137,8 @@ iniWriteAndUpdateAutoGrouping(OptionsSave)
 	;Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vAutoWorker_TAB, Auto||Info		
 	Gui, Tab, Auto
 		Gui, Add, GroupBox, x+25 Y+10 w370 h115 section, General 
-		Gui, Add, Text, xs+15 yp+20, Toggle State:
+		;Gui, Add, Text, xs+15 yp+20, Toggle State:
+		Gui, Add, Checkbox, xs+15 yp+20 vEnableToggleAutoWorkerHotkey checked%EnableToggleAutoWorkerHotkey%, Toggle State:
 
 			Gui, Add, Edit, Readonly yp-2 x+10 center w65 R1 vToggleAutoWorkerState_Key gedit_hotkey, %ToggleAutoWorkerState_Key%
 		Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#ToggleAutoWorkerState_Key,  Edit ;have to use a trick eg '#' as cant write directly to above edit var, or it will activate its own label!
@@ -4188,22 +4191,22 @@ iniWriteAndUpdateAutoGrouping(OptionsSave)
 
 	Gui, Tab, Info
 			gui, font, norm bold s10
-			Gui, Add, Text, X%OriginTabX% y+15 cFF0000, Note:
-			gui, font, norm s11
-
-			gui, Add, Text, w400 y+15, When trying to lift a Command Centre or Orbital, or convert a Command Centre into an orbital, an SCV will likely already be queued.
-			gui, Add, Text, w400 y+15, There's no need to toggle (turn off) this function, simply  select the building/base (so that only ONE unit is selected e.g. the CC) and press the 'ESCAPE' button to cancel the queued worker.
-			gui, Add, Text, w400 y+15, This will temporarily disable the function for four seconds - providing adequate time to convert or lift the Command Centre.
-			gui, Add, Text, w400 y+15, This also works if you need to cancel a probe to make a mumma ship core.
-
-			gui, Add, Text, w400 y+20, Although you will most likely not notice this, workers will not be produced while:
-			;gui, Add, Text, w400 y+5, • The control, alt, shift, or windows keys are held down.
-			gui, Add, Text, w400 y+5, • A spell is being cast (includes attack)
-			gui, Add, Text, w400 y+5, • The construction card i.e. the basic or advanced building card is displayed.
-			gui, Add, Text, w400 y+5, • A non-self unit is selected e.g. a mineral patch or an enemy/allied unit (or no unit is selected).
-
+			Gui, Add, Text, X%OriginTabX% y+15 cFF0000, Notes:
 			gui, font, norm s10
-			gui, font, 		
+
+			gui, Add, Text, w400 y+15, 
+			( LTrim join
+				When trying to lift a Command Centre or Orbital, or convert a Command Centre into an orbital, an SCV will likely already be queued.
+				`n`nThere's no need to toggle (turn off) the function, simply select the building (so that only one unit is selected) and press the 'ESCAPE' button to cancel the queued worker.
+				This will temporarily disable the function for four seconds.
+				This also works if you need to cancel a probe to make a mumma ship core.
+
+				`n`nAlthough you will most likely not notice this, workers will not be produced while:
+				`n• A spell is being cast (includes attack)
+ 				`n• The basic or advanced construction card is displayed.
+ 				`n• Nonlocal or no units are selected.
+ 			)
+			gui, font, norm s9
 
 	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vAutoBuild_TAB, Notes||Settings|GUI|Hotkeys|	
 	
@@ -4408,7 +4411,7 @@ iniWriteAndUpdateAutoGrouping(OptionsSave)
 		Gui, Font, s10 BOLD
 		Gui, add, text, xs ys+60 cRED, Note:
 		Gui, Font, s9 norm
-		Gui, add, text, xp+50 yp w340, The automation becomes active AFTER you manually convert your first gateway into a warpgate.`nThis will only convert gateways which are already in the above control group.
+		Gui, add, text, xp+50 yp w340, The automation becomes active AFTER you manually convert your first gateway into a warpgate. This will only convert gateways which are already in the above control group.
 
 
 	Gui, Add, Tab2, w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vHome_TAB, Home||Emergency
@@ -4428,17 +4431,17 @@ iniWriteAndUpdateAutoGrouping(OptionsSave)
 			Gui, Add, Picture, x+50  yp+20 h90 w90, %A_Temp%\Zerg90.png
 
 	Gui, Tab, Emergency	
-		Gui, Font, S12 CDefault bold UNDERLINE, Verdana
+		Gui, Font, S10 CDefault bold UNDERLINE, Verdana
 		Gui, Add, Text, x+20 y+20 center cRed, IMPORTANT
 		Gui, Font, s10 norm 
-		Gui, Add, Text, xp y+20 w405, This program blocks user input and simulates keystrokes.`nOn RARE occasions it is possible that you will lose keyboard and mouse input OR a key e.g. ctrl, shift, or alt becomes 'stuck' down.`n`nIn this event, use the EMERGENCY HOTKEY!`nWhen pressed it should release any 'stuck' key and restore user input.`n`nIf this fails, press the hotkey THREE times in quick succession to have the program restart.`nIf you're still having problems, then the key is likely physically stuck down.
-		Gui, Font, S12 CDefault bold, Verdana
-		Gui, Add, Text,xp+10 y+20 cRed, Windows Key && Spacebar`n        (Right)
-		Gui, Font, norm 
-		Gui, Font,
-		Gui, Add, Text, xp y+15 w405, The default key can be changed via the 'settings' Tab on the left.
-		Gui, Add, Text, xp y+20 w405, Note: The windows key must not be disabled within the SC options.`nThis program is capable of blocking the Left windows key (check settings tab).
-
+		Gui, Add, Text, xp y+20 w405, This program blocks user input and simulates keystrokes. On RARE occasions it is possible that you will lose keyboard and mouse input OR a key becomes 'stuck' down.`n`nIn this event, use the EMERGENCY HOTKEY!`nWhen pressed it should release any 'stuck' key and restore user input.`n`nIf this fails, press the hotkey THREE times in quick succession to have the program restart. If you're still having problems, then the key is likely physically stuck down.
+		Gui, Add, Text, xp y+20, Hotkey:
+		Gui, Font, S10 CDefault bold, Verdana
+		Gui, Add, Text, xp+65 yp cRed, R.Windows Key && Spacebar`n  
+		Gui, Font, s10 norm 
+		Gui, Add, Text, xp-65 y+5 w405, This hotkey key can be changed via the 'settings' Tab on the left.
+		Gui, Add, Text, xp y+20 w405, *The hotkey will not work if the windows key is disabled within the SC options. This program is capable of blocking the windows key (check settings tab).
+		Gui, Font ; get rid of Verdana
 	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vMiniMap_TAB, MiniMap||MiniMap2|Overlays|Background|Hotkeys|Info
 
 	Gui, Tab, MiniMap
@@ -4553,7 +4556,7 @@ iniWriteAndUpdateAutoGrouping(OptionsSave)
 
 	Gui, Tab, Overlays
 			;Gui, add, text, y+20 X%XTabX%, Display Overlays:
-			Gui, Add, GroupBox, y+15 x+20 w195 h280 section, Display Overlays:
+			Gui, Add, GroupBox, y+15 x+20 w195 h300 section, Display Overlays:
 				Gui, Add, Checkbox, xp+10 yp+20 vDrawIncomeOverlay Checked%DrawIncomeOverlay%, Income
 					Gui, Add, Checkbox, xp+95 yp vDrawLocalPlayerIncome Checked%drawLocalPlayerIncome%, Include Self
 				Gui, Add, Checkbox, xs+10 y+13 vDrawResourcesOverlay Checked%DrawResourcesOverlay%, Resources
@@ -4580,7 +4583,7 @@ iniWriteAndUpdateAutoGrouping(OptionsSave)
 				Gui, Add, DropDownList, x+10 yp-2 vlocalUpgradesOverlayMode w100, Time Remaining|Progress bar
 				GuiControl, ChooseString, localUpgradesOverlayMode, %localUpgradesOverlayMode%
 
-				Gui, Add, GroupBox, ys XS+220 w170 h280, Match Overlay:
+				Gui, Add, GroupBox, ys XS+220 w170 h300, Match Overlay:
 				Gui, Add, Checkbox, xp+10 yp+20 vDrawUnitOverlay Checked%DrawUnitOverlay%, Enable
 				Gui, Add, DropDownList, xp yp+25 vUnitOverlayMode, Units + Upgrades|Units|Upgrades
 				GuiControl, ChooseString, UnitOverlayMode, %UnitOverlayMode%
@@ -4589,13 +4592,14 @@ iniWriteAndUpdateAutoGrouping(OptionsSave)
 				Gui, Add, Checkbox, xp y+13 vUnitPanelDrawStructureProgress Checked%unitPanelDrawStructureProgress%, Show Structure Progress 
 				Gui, Add, Checkbox, xp y+13 vUnitPanelDrawUnitProgress Checked%unitPanelDrawUnitProgress%, Show Unit Progress 
 				Gui, Add, Checkbox, xp y+13 vUnitPanelDrawUpgradeProgress Checked%unitPanelDrawUpgradeProgress%, Show Upgrade Progress 
+				Gui, Add, Checkbox, xp y+13 vUnitPanelDrawScanProgress Checked%unitPanelDrawScanProgress%, Show Scan Production
 				Gui, Add, Checkbox, xp y+13 vunitPanelDrawLocalPlayer Checked%unitPanelDrawLocalPlayer%, Include Self 
 
 				;Gui, Add, Button, center xp+15 y+10 w100 h30 vUnitPanelFilterButton Gg_GUICustomUnitPanel, Unit Filter
 				Gui, Add, Button, center xp y+15 w70 h30 vUnitPanelFilterButton Gg_GUICustomUnitPanel, Unit Filter
 				Gui, Add, Button, center x+10 yp w70 h30 vUnitPanelGuideButton GgUnitPanelGuide, Guide
 
-			Gui, Add, GroupBox, XS ys+290 w195 h55 section, Player Identifier:	
+			Gui, Add, GroupBox, XS ys+310 w195 h55 section, Player Identifier:	
 			;	Gui, Add, Text, yp+25 xp+10 w80, Player Identifier:
 				if OverlayIdent in 0,1,2,3
 					droplist3_var := OverlayIdent + 1
@@ -4711,13 +4715,12 @@ iniWriteAndUpdateAutoGrouping(OptionsSave)
 		Gui, Add, Text, xs+10 yp+25, Adjusting Overlays:	
 		Gui, Font, s10 norm 
 		
-	text = 
-	( ltrim
-	Hold down (and do not release) the "Adjust Overlays" Hotkey (%AdjustOverlayKey% key).
-		
-	You will hear a beep - all the overlays (excluding the minimap) are now adjustable.When you're done, release the "Adjust Overlays" Hotkey. 
-	)
-		Gui, Add, Text, xs+25 y+10 w370, %text%
+		Gui, Add, Text, xs+25 y+10 w370,
+		( ltrim
+		Hold down (and do not release) the "Adjust Overlays" Hotkey (%AdjustOverlayKey% key).
+			
+		You will hear a beep - all the overlays (excluding the minimap) are now adjustable.When you're done, release the "Adjust Overlays" Hotkey. 
+		)		
 		Gui, Font, CDefault bold, Verdana
 		Gui, Add, Text, xs+10 y+20, Moving:
 		Gui, Font, s10 norm 
@@ -4762,6 +4765,7 @@ iniWriteAndUpdateAutoGrouping(OptionsSave)
 		EnableLastAlertPlayBackHotkey_TT := EnableHideMiniMapHotkey_TT := EnableToggleMiniMapHotkey_TT := EnableToggleIncomeOverlayHotkey_TT := EnableToggleResourcesOverlayHotkey_TT
 		:= EnableToggleArmySizeOverlayHotkey_TT := EnableToggleWorkerOverlayHotkey_TT := EnableToggleUnitPanelOverlayHotkey_TT := EnableCycleIdentifierHotkey_TT 
 		:= EnableAdjustOverlaysHotkey_TT := EnableWorkerCountSpeechHotkey_TT := EnableEnemyWorkerCountSpeechHotkey_TT := EnableToggleMacroTrainerHotkey_TT := EnablePingMiniMapHotkey_TT
+		:= EnableToggleAutoWorkerHotkey_TT := EnableToggleAutoInjectHotkey_TT
 		:= "Enables/Disables the associated hotkey."											
 
 
@@ -4928,6 +4932,7 @@ iniWriteAndUpdateAutoGrouping(OptionsSave)
 		unitPanelDrawStructureProgress_TT := "Displays a progress bar below any structure under construction."
 		unitPanelDrawUnitProgress_TT := "Displays a progress bar below any unit in production."
 		unitPanelDrawUpgradeProgress_TT := "Displays a progress bar below the current upgrades."
+		unitPanelDrawScanProgress_TT := "Displays a decimal value in the top left corner of Orbital Commands. This indicates how close the next scan is to being available.`n`nThis accounts for Command Centres morphing into Orbitals."
 		unitPanelDrawLocalPlayer_TT := "Includes the local player in the match panel."
 		OverlayIdent_TT := "Changes or disables the method of identifying players in the overlays.`n`nThe 'cycle identifier' hotkey allows you to change this setting during a match."
 
@@ -5038,7 +5043,7 @@ AutomationTerranCameraGroup_TT := AutomationProtossCameraGroup_TT := AutomationZ
 				. "`nthe unit you might need to release any pressed key(s) for a fraction of a second before the grouping is attempted."
 				. "`nMoving the mouse does not interrupt/influence this."
 				. "`n`nValid values are: 50-700 ms"
-		TT_AGBufferDelay_TT := AGBufferDelay_TT := "When an auto-group action IS attempted user input will be buffered for this period of time, I.E. button presses and mouse movements`nwill be delayed during this period."
+		TT_AGBufferDelay_TT := AGBufferDelay_TT := "When an auto-group action is attempted user input will be buffered for this period of time, I.E. button presses and mouse movements`nwill be delayed during this period."
 				. "`n`nThis helps ensure the currently selected units are ones which should be grouped."
 				. "`nIf incorrect groupings are occurring, you can try increasing this value."
 				. "`nValid values are: 40-200 ms"
@@ -5267,6 +5272,9 @@ AutomationTerranCameraGroup_TT := AutomationProtossCameraGroup_TT := AutomationZ
 }
 catch, e
 {
+	; Menu activated before finished reading the config file causing one of the GUI control commands to fail.
+	; Detroy the GUI so that it can be re-shown when user double clicks it again
+	Gui, Options:Destroy
 	if !A_IsCompiled
 		msgbox %  e.what "`n" e.file "`n" e.line "`n" e.extra
 }
@@ -6085,7 +6093,6 @@ g_GuiSetupAutoMine:
 		GuiControl, Hide%state%, %A_LoopField%
 return
 
-
 B_HelpFile:
 	run % url.HelpFile
 	Return
@@ -6102,11 +6109,12 @@ B_ChangeLog:
 	}
 	Gui, New 
 	Gui Add, ActiveX, xm w980 h640 vWB, Shell.Explorer
-	WB.Navigate(url.changelog)
+	IENavigate(WB, url.changelog)
+	try WB.Refresh() 	; So it updates to current changelog (not one in cache) - Probably don't need try anymore as done before showing the GUI
 	Gui, Show,,ChangeLog Vr: %ProgramVersion%
-	sleep, 1500 	; needs 50ms to prevent wb unknown comm error
+	;sleep, 1500 	; needs 50ms to prevent wb unknown comm error
 	; try is required as if user closes gui during sleep com will give error
-	try WB.Refresh() 	; So it updates to current changelog (not one in cache)
+	; try WB.Refresh() 	; So it updates to current changelog (not one in cache)
 Return
 
 B_Report:
@@ -6130,7 +6138,7 @@ B_Report:
 
 	if !isValidEmail(Report_Email)
 	{
-		msgbox, 49, Invalid Email Address, % "Your email address appears to be invalid or missing.`n`n"
+		msgbox, 49, Invalid Email Address, % "Your email address appears to be invalid or missing.`nI highly recommend including your email address!`n`n"
 					. "Press 'OK' to send the bug report anyway."
 		IfMsgBox Cancel
 			return
@@ -6209,6 +6217,7 @@ B_Report:
 ;could hide everything each time, then unhide once, but that causes every so slightly more blinking on gui changes
 ; Note this is launched automatically when the GUI is first created, as the first TV item (Home) is automatically selected
 OptionsTree:
+critical
 OptionsMenuTree()
 return 
 OptionsMenuTree()
@@ -7531,7 +7540,7 @@ Edit_AG:	;AutoGroup and Unit include/exclude come here
 	Else IfInString, A_GuiControl, quickSelect
 		TMP_EditAG_Units .= (TMP_EditAG_Units ? "`n" : "") GUISelectionList("Select Unit",, list, "|", "`n"), delimiter := "`n"
 	Else
-		TMP_EditAG_Units .= (TMP_EditAG_Units ? ", " : "") GUISelectionList(!instr(A_GuiControl, "Army") ? "Auto Group " SubStr(A_GuiControl, 0, 1) : "Select Unit",, list, "|", ","), delimiter := "," ;retrieve the last character of name ie control number 0/1/2 etc		
+		TMP_EditAG_Units .= (TMP_EditAG_Units ? ", " : "") GUISelectionList(!instr(A_GuiControl, "Army") ? "Group " SubStr(A_GuiControl, 0, 1) : "Select Unit",, list, "|", ","), delimiter := "," ;retrieve the last character of name ie control number 0/1/2 etc		
 	
 	list := checkList := ""
 	loop, parse, TMP_EditAG_Units, %delimiter%
@@ -8517,9 +8526,9 @@ CreateHotkeys()
 	Hotkey, If, WinActive(GameIdentifier) && isPlaying && !isChatOpen() 	
 		if (aLocalPlayer["Race"] = "Zerg") && (auto_inject <> "Disabled")
 			hotkey, %cast_inject_key%, cast_inject, on	
-		if (aLocalPlayer["Race"] = "Zerg")
+		if (EnableToggleAutoInjectHotkey && aLocalPlayer["Race"] = "Zerg")
 			hotkey, %F_InjectOff_Key%, Cast_DisableInject, on	
-		if (aLocalPlayer["Race"] = "Terran" || aLocalPlayer["Race"] = "Protoss")
+		if (EnableToggleAutoWorkerHotkey) && (aLocalPlayer["Race"] = "Terran" || aLocalPlayer["Race"] = "Protoss")
 			hotkey, %ToggleAutoWorkerState_Key%, g_UserToggleAutoWorkerState, on	
 
 	Hotkey, If, isPlaying && WinActive(GameIdentifier) && !isCastingReticleActive() && GeyserStructureHoverCheck(hoveredGeyserUnitIndex)
@@ -11413,7 +11422,7 @@ unloadAllTransports(hotkeySuffix)
 }
 
 
-
+/*
 ; Global Stim
 
 #If, !A_IsCompiled && WinActive(GameIdentifier) && isPlaying && aLocalPlayer.Race = "Terran" && !isMenuOpen()
@@ -11431,7 +11440,7 @@ if (tabsToSend := tabPos - aSelection.HighlightedGroup) < 0
 else send {tab %tabsToSend%}t+{tab %tabsToSend%}
 return
 #if
-
+*/
 
 AutoBuildGUIkeyPress:
 if (AutoBuildGUIkeyMode = "KeyDown")
@@ -13132,14 +13141,4 @@ waitForUser()
 
 
 
-/*
-add to automation checks 
-next/previous subgroup suffix 
-chat suffix 
-jump to last alert suffix 
-pause suffix 
-*/
 
-f1::
-Objtree(aAutoGroup)
-return 

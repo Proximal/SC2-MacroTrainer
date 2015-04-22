@@ -109,7 +109,7 @@ gameChange(UserSavedAppliedSettings := False)
 		aMiniMapWarning := [], a_BaseList := [], aGatewayWarnings := [], aCompleteStructures := []
 		aCurrentGameTemp := []
 		if WinActive(GameIdentifier)
-			ReDrawMiniMap := ReDrawIncome := ReDrawResources := ReDrawArmySize := ReDrawWorker := RedrawUnit := ReDrawIdleWorkers := ReDrawLocalPlayerColour := 1
+			ReDrawIncome := ReDrawResources := ReDrawArmySize := ReDrawWorker := RedrawUnit := ReDrawIdleWorkers := ReDrawLocalPlayerColour := 1
 		getPlayers(aPlayer, aLocalPlayer)
 		GameType := GetGameType(aPlayer)	; used by unit detection (and used inside it)	
 		SetMiniMap(minimap)
@@ -168,8 +168,12 @@ gameChange(UserSavedAppliedSettings := False)
 MiniMap_Timer:
 	if WinActive(GameIdentifier)
 		DrawMiniMap()
-	else if !ReDrawMiniMap
-		DestroyOverlays()
+	else
+	{
+		Gui MiniMapOverlay:+LastFoundExist
+		IfWinExist
+			Try Gui, MiniMapOverlay: Destroy 
+	}
 	sleep, 10 
 	; sleep incase have v. fast refresh rates or slow computer (so CPU usage doesn't increase too much)
 	; This is a non-issue for me
@@ -191,20 +195,12 @@ Return
 DrawMiniMap()
 {	global
 	local UnitRead_i, unit, type, Owner, Radius, Filter, EndCount, colour, ResourceOverlay_i, unitcount
-	, DrawX, DrawY, Width, height, i, hbm, hdc, obm, G,  Region, pBitmap, PlayerColours, aUnitsToDraw, hwnd1, unit, x, y
-	static overlayCreated := 0, overlayTitle := ""
+	, DrawX, DrawY, Width, height, i, hbm, hdc, obm, G,  Region, pBitmap, PlayerColours, aUnitsToDraw, unit, x, y
+	static overlayTitle := getRandomString_Az09(10, 20), hwnd1
 
-	if (ReDrawMiniMap and WinActive(GameIdentifier))
+	Gui MiniMapOverlay:+LastFoundExist
+	IfWinNotExist
 	{
-		Try Gui, MiniMapOverlay: Destroy
-		overlayCreated := False
-		ReDrawMiniMap := 0
-	}
-
-	If (!overlayCreated)
-	{
-		if (overlayTitle = "")
-			overlayTitle := getRandomString_Az09(10, 20)		
 		; Set the width and height we want as our drawing area, to draw everything in. This will be the dimensions of our bitmap
 		; Create a layered window ;E0x20 click thru (+E0x80000 : must be used for UpdateLayeredWindow to work!) that is always on top (+AlwaysOnTop), has no taskbar entry or caption		
 		Gui, MiniMapOverlay: -Caption Hwndhwnd1 +E0x20 +E0x80000 +LastFound +ToolWindow +AlwaysOnTop ; Dont need to specify -DPIScale here as calling CreateDIBSection() and updatelayered window with constant values
@@ -304,14 +300,14 @@ DrawMiniMap()
 			aMiniMapWarning.Remove(key, "")
 	}
 	if DrawPlayerCameras
-		Gdip_SetSmoothingMode(G, 4), drawPlayerCameras(G) ; Can't really see a diference between HighQuality and AntiAlias
+		Gdip_SetSmoothingMode(G, 4), drawPlayerCameras(G) ; Can't really see a difference between HighQuality and AntiAlias
 	Gdip_DeleteRegion(Region)
 	, Gdip_DeleteGraphics(G)
 	, UpdateLayeredWindow(hwnd1, hdc, 0, 0, A_ScreenWidth/4, A_ScreenHeight, overlayMinimapTransparency) ;only draw on left side of the screen
 	, SelectObject(hdc, obm) ; needed else eats ram ; Select the object back into the hdc
 	, DeleteObject(hbm)   ; needed else eats ram 	; Now the bitmap may be deleted
 	, DeleteDC(hdc) ; Also the device context related to the bitmap may be deleted
-Return
+	Return
 }
 
 getEnemyUnitsMiniMap(byref aUnitsToDraw)

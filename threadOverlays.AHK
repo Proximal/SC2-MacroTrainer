@@ -173,7 +173,7 @@ gameChange()
 		; aStringTable and aUnitModel are super global declared in memory and general functions
 		aUnitModel := [], aStringTable := [], MT_CurrentGame := []
 		if WinActive(GameIdentifier)
-			ReDrawMiniMap := ReDrawIncome := ReDrawResources := ReDrawArmySize := ReDrawWorker := RedrawUnit := ReDrawIdleWorkers := ReDrawLocalPlayerColour := 1
+			ReDrawIncome := ReDrawResources := ReDrawArmySize := ReDrawWorker := RedrawUnit := ReDrawIdleWorkers := ReDrawLocalPlayerColour := 1
 		getPlayers(aPlayer, aLocalPlayer, aEnemyAndLocalPlayer)
 		GameType := GetGameType(aPlayer)	
 		getLongestPlayerNames(LongestEnemyName, LongestName) ; Enemy, Enemy or Self
@@ -936,7 +936,6 @@ DrawWorkerOverlay(ByRef Redraw, UserScale=1,Drag=0)
 }
 
 
-
 ; Function takes 0.151217 ms
 DrawLocalPlayerColourOverlay(ByRef Redraw, UserScale=1,Drag=0)
 {	global aLocalPlayer, GameIdentifier, config_file, LocalPlayerColourOverlayX, LocalPlayerColourOverlayY, a_pBitmap, aHexColours, overlayLocalColourTransparency
@@ -1465,7 +1464,7 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 	GLOBAL aEnemyUnits, aEnemyUnitConstruction, a_pBitmap, aPlayer, aLocalPlayer, aHexColours, GameIdentifier, config_file, UnitOverlayX, UnitOverlayY 
 		, aUnitInfo, SplitUnitPanel, aEnemyCurrentUpgrades, UnitOverlayMode, aMiscUnitPanelInfo, aUnitID, overlayMatchTransparency
 		, unitPanelDrawStructureProgress, unitPanelDrawUnitProgress, unitPanelDrawUpgradeProgress, unitPanelAlignNewUnits 
-		, unitPanelDrawLocalPlayer
+		, unitPanelDrawLocalPlayer, unitPanelDrawScanProgress
 	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0
 
 	if !modifyOverlay("UnitOverlay", Redraw, overlayCreated, Drag, DragPrevious, UnitOverlayX, UnitOverlayY, 400, 400, hwnd1)
@@ -1615,7 +1614,7 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 					}
 					; Don't place in block above as want % present when scan count is 0
 					; strlength is always 2 e.g .9
-					if aUnitID.OrbitalCommand = unit && (closestScan := convertScanCountUnitOverlay(aMiscUnitPanelInfo["ClosestOrbitalEnergy", slot_number], aMiscUnitPanelInfo["closestOrbitalMorphTime", slot_number], aMiscUnitPanelInfo["closestOrbitalMorphPercent", slot_number]))
+					if (unitPanelDrawScanProgress && aUnitID.OrbitalCommand = unit && (closestScan := convertScanCountUnitOverlay(aMiscUnitPanelInfo["ClosestOrbitalEnergy", slot_number], aMiscUnitPanelInfo["closestOrbitalMorphTime", slot_number], aMiscUnitPanelInfo["closestOrbitalMorphPercent", slot_number])))
 					{	
 						Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, DestX, DestY, Width/2.5, Height/2.5, 2)
 						gdip_TextToGraphics(G, closestScan, "x"DestX "y"(DestY + .10*Height/2)  " Bold Italic cFF00FFFF r4 s" 11*UserScale, Font)

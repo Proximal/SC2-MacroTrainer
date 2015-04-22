@@ -1,4 +1,4 @@
 ﻿getMacroTrainerVersion()
 {
-	return 3.121
+	return 3.13
 }

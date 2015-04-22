@@ -3461,7 +3461,7 @@ areOverlaysWaitingToRedraw()
 {
 	global
 	return (ReDrawIncome && ReDrawResources && ReDrawArmySize && ReDrawWorker 
-			&& ReDrawIdleWorkers && RedrawUnit && ReDrawLocalPlayerColour && ReDrawMiniMap
+			&& ReDrawIdleWorkers && RedrawUnit && ReDrawLocalPlayerColour
 			&& RedrawMacroTownHall && RedrawLocalUpgrades)	
 }
 
@@ -3479,7 +3479,7 @@ DestroyOverlays()
 	Try Gui, ArmySizeOverlay: Destroy
 	Try Gui, WorkerOverlay: Destroy			
 	Try Gui, idleWorkersOverlay: Destroy			
-	;Try Gui, LocalPlayerColourOverlay: Destroy			
+	Try Gui, LocalPlayerColourOverlay: Destroy			
 	Try Gui, UnitOverlay: Destroy	
 	Try Gui, MacroTownHall: Destroy	
 	Try Gui, LocalUpgradesOverlay: Destroy	
@@ -3505,7 +3505,7 @@ DestroyOverlays()
 	}
 	ReDrawOverlays := ReDrawAPM := ReDrawIncome := ReDrawResources 
 				:= ReDrawArmySize := ReDrawWorker := ReDrawIdleWorkers 
-				:= RedrawUnit := ReDrawLocalPlayerColour := ReDrawMiniMap 
+				:= RedrawUnit := ReDrawLocalPlayerColour 
 				:= RedrawMacroTownHall := RedrawLocalUpgrades := True
 	return True ; used by shell to check thread actually ran the function
 }
@@ -4173,16 +4173,14 @@ readConfigFile()
 	IniRead, FInjectHatchMaxHatches, %config_file%, %section%, FInjectHatchMaxHatches, 10
 	IniRead, FInjectAPMProtection, %config_file%, %section%, FInjectAPMProtection, 190
 	IniRead, F_InjectOff_Key, %config_file%, %section%, F_InjectOff_Key, Lwin & F5
+	IniRead, EnableToggleAutoInjectHotkey, %config_file%, %section%, EnableToggleAutoInjectHotkey, 1
 	
-	
-
 	;[Idle AFK Game Pause]
 	IniRead, idle_enable, %config_file%, Idle AFK Game Pause, enable, 0
 	IniRead, idle_time, %config_file%, Idle AFK Game Pause, idle_time, 15
 	IniRead, UserIdle_LoLimit, %config_file%, Idle AFK Game Pause, UserIdle_LoLimit, 3	;sc2 seconds
 	IniRead, UserIdle_HiLimit, %config_file%, Idle AFK Game Pause, UserIdle_HiLimit, 10	
 	IniRead, chat_text, %config_file%, Idle AFK Game Pause, chat_text, Sorry, please give me 2 minutes. Thanks :)
-
 
 	;[Starcraft Settings & Keys]
 	IniRead, name, %config_file%, Starcraft Settings & Keys, name, YourNameHere
@@ -4436,6 +4434,7 @@ readConfigFile()
 	section := "AutoWorkerProduction"	
 	IniRead, EnableAutoWorkerTerranStart, %config_file%, %section%, EnableAutoWorkerTerranStart, 0 
 	IniRead, EnableAutoWorkerProtossStart, %config_file%, %section%, EnableAutoWorkerProtossStart, 0 
+	IniRead, EnableToggleAutoWorkerHotkey, %config_file%, %section%, EnableToggleAutoWorkerHotkey, 1
 	IniRead, ToggleAutoWorkerState_Key, %config_file%, %section%, ToggleAutoWorkerState_Key, #F2
 	IniRead, AutoWorkerQueueSupplyBlock, %config_file%, %section%, AutoWorkerQueueSupplyBlock, 1
 	IniRead, AutoWorkerAlwaysGroup, %config_file%, %section%, AutoWorkerAlwaysGroup, 1
@@ -4609,6 +4608,7 @@ readConfigFile()
 	IniRead, unitPanelDrawStructureProgress, %config_file%, %section%, unitPanelDrawStructureProgress, 1
 	IniRead, unitPanelDrawUnitProgress, %config_file%, %section%, unitPanelDrawUnitProgress, 1
 	IniRead, unitPanelDrawUpgradeProgress, %config_file%, %section%, unitPanelDrawUpgradeProgress, 1
+	IniRead, unitPanelDrawScanProgress, %config_file%, %section%, unitPanelDrawScanProgress, 0
 	IniRead, unitPanelDrawLocalPlayer, %config_file%, %section%, unitPanelDrawLocalPlayer, 0
 ;	IniRead, OverlayBackgrounds, %config_file%, %section%, OverlayBackgrounds, 0
 	OverlayBackgrounds := False ; should remove this from 
@@ -5285,6 +5285,8 @@ gameToRealSeconds(gameSeconds)
 					,	Faster: .725 }
 	return  gameSeconds * aFactor[getGameSpeed()]
 }
+; It would be much simpler to use the ' Gui MiniMapOverlay:+LastFoundExist' and  'IfWinNotExist'
+; rather than tracking drawing states in a variable. But this seems to work fine and I cbf changing it.
 
 modifyOverlay(overlay, byRef Redraw, byRef overlayCreated, byRef Drag, byRef DragPrevious, byRef x, byRef y, w, h, byRef hwnd1)
 {
