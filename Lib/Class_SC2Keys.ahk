@@ -154,6 +154,8 @@ class SC2Keys
 			if instr(A_LoopReadLine, "hotkeyprofile=")
 				hotkeyProfile := SubStr(A_LoopReadLine, 15)
 		} until hotkeyProfile != ""
+		; I've had one bug report where the hotkeyProfile key was not set in this file. Don't know if they were using custom hotkeys
+		; they were Russian - but everything apparently worked. Perhaps They have never clicked save in the SC options screen?
 		file := accountFolder "Hotkeys\" hotkeyProfile ".SC2Hotkeys"
 
 		if hotkeyProfile in 0_Default,1_NameRightSide,2_GridLeftSide,3_GridRightSide,4_Classic
@@ -238,6 +240,7 @@ class SC2Keys
 			Attack 								|A 					|K 					|A 					|CommandButton04				|Commands 				|Attack
 			Cancel 								|Escape				|Escape				|Escape				|Cancel 						|Commands 				|Cancel
 			ReturnCargo 						|c 					|c					|c 					|CommandButton06				|Commands 				|ReturnCargo
+			Blink/Stalker 						|B					|B					|B 					|CommandButton10				|Commands 				|Blink/Stalker		
 			SCV 								|s 					|j					|s 					|CommandButton00				|Commands 				|SCV		
 			Marine/Barracks						|a 					|m					|m 					|CommandButton00				|Commands 				|Marine/Barracks
 			Reaper/Barracks						|r 					|p					|e 					|CommandButton01				|Commands 				|Reaper/Barracks

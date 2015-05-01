@@ -36,6 +36,7 @@ InstallSC2Files()
 	FileInstall, Included Files\ModifierDown.wav, %A_Temp%\ModifierDown.wav, 1 
 	FileInstall, Included Files\Used_Icons\home32.png, %A_Temp%\home32.png, 1
 	FileInstall, Included Files\Used_Icons\radarB32.png, %A_Temp%\radarB32.png, 1
+	FileInstall, Included Files\Used_Icons\questionMark32.png, %A_Temp%\questionMark32.png, 1
 	FileInstall, Included Files\Used_Icons\Inject32.png, %A_Temp%\Inject32.png, 1
 	FileInstall, Included Files\Used_Icons\Group32.png, %A_Temp%\Group32.png, 1
 	FileInstall, Included Files\Used_Icons\RestrictGrouping32.png, %A_Temp%\RestrictGrouping32.png, 1
@@ -133,7 +134,7 @@ InstallSC2Files()
 	FileInstall, Included Files\Used_Icons\Units\Terran\widowmine.png, %A_Temp%\UnitPanelMacroTrainer\widowmine.png, 1
 	FileInstall, Included Files\Used_Icons\Abilities\Protoss\MothershipCoreApplyPurifyAB.png,  %A_Temp%\UnitPanelMacroTrainer\MothershipCoreApplyPurifyAB.png, 1	
 	FileInstall, Included Files\Used_Icons\Buildings\Protoss\assimilator.png,  %A_Temp%\UnitPanelMacroTrainer\assimilator.png, 1
-	FileInstall, Included Files\Used_Icons\Buildings\Protoss\cyberneticscore.png,  %A_Temp%\UnitPanelMacroTrainer\cyberneticscore.png, 1
+	FileInstall, Included Files\Used_Icons\Buildings\Protoss\cyberneticscore.png, %A_Temp%\UnitPanelMacroTrainer\cyberneticscore.png, 1
 	FileInstall, Included Files\Used_Icons\Buildings\Protoss\darkshrine.png,  %A_Temp%\UnitPanelMacroTrainer\darkshrine.png, 1
 	FileInstall, Included Files\Used_Icons\Buildings\Protoss\fleetbeacon.png,  %A_Temp%\UnitPanelMacroTrainer\fleetbeacon.png, 1
 	FileInstall, Included Files\Used_Icons\Buildings\Protoss\forge.png,  %A_Temp%\UnitPanelMacroTrainer\forge.png, 1

@@ -4545,6 +4545,13 @@ readConfigFile()
 
 	alert_array := createAlertArray()
 	
+	section := "Upgrade Alerts"
+	IniRead, UpgradeAlertsEnable1v1, %config_file%, %section%, UpgradeAlertsEnable1v1, 0
+	IniRead, UpgradeAlertsEnable2v2, %config_file%, %section%, UpgradeAlertsEnable2v2, 0
+	IniRead, UpgradeAlertsEnable3v3, %config_file%, %section%, UpgradeAlertsEnable3v3, 0
+	IniRead, UpgradeAlertsEnable4v4, %config_file%, %section%, UpgradeAlertsEnable4v4, 0
+	aUpgradeAlerts := iniReadUpgradeAlerts()
+
 	;[Overlays]
 	section := "Overlays"
 	; This function will get return  the x,y coordinates for the top left, and bottom right of the 
@@ -5551,6 +5558,23 @@ SigConverterCE(sig := "", storeInClip := True)
 	return storeInClip ? clipboard := RTrim(r, ", ") : RTrim(r, ", ")
 }
 
+
+
+hasShields(unitId)
+{
+	static aUnitLookup 
+	if !isobject(aUnitLookup)
+	{
+		aUnitLookup := []
+		s := "Colossus|Mothership|Nexus|Pylon|Assimilator|Gateway|Forge|FleetBeacon|TwilightCouncil|PhotonCannon|Stargate|TemplarArchive|DarkShrine|RoboticsBay|RoboticsFacility|CyberneticsCore|Zealot|Stalker|HighTemplar|DarkTemplar|Sentry|Phoenix|Carrier|VoidRay|WarpPrism|Observer|Immortal|Probe|Interceptor|WarpGate|WarpPrismPhasing|Archon|MothershipCore|Oracle|Tempest"
+		loop, parse, s, |
+			aUnitLookup[aUnitID[A_LoopField]] := True
+	}
+	return aUnitLookup.HasKey(unitId)
+}
+
+
+
 ; Pointer to a an array of town halls (completed and landed) in dynamic memory ["SC2.exe"+03FC53E4]+0
 ; an array of town hall unit indexes (just search for the town halls finger prints as an AOB) (note: The static arrays are actually the control group which you are storing them in)
 ; This will only contain town halls which are accessible via the backspace camera
@@ -5578,3 +5602,4 @@ getCameraTownHalls(byRef aTownHalls := "")
 	return round(baseCount)
 }
 */
+

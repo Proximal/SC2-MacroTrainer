@@ -85,7 +85,7 @@ if !A_IsAdmin
 		; that the program just exited without
 		; prompting for admin rights
 		catch
-			msgbox Please Run this again with admin rights.
+			msgbox Please run this again with admin rights.
 	}
 	ExitApp
 }
@@ -2887,7 +2887,6 @@ ini_settings_write:
 	IniWrite, %HighlightHallucinations%, %config_file%, %section%, HighlightHallucinations
 	IniWrite, % dectohex(UnitHighlightHallucinationsColour), %config_file%, %section%, UnitHighlightHallucinationsColour
 
-
 	IniWrite, %DrawMiniMap%, %config_file%, %section%, DrawMiniMap
 	IniWrite, %TempHideMiniMapKey%, %config_file%, %section%, TempHideMiniMapKey
 	IniWrite, %DrawSpawningRaces%, %config_file%, %section%, DrawSpawningRaces
@@ -2895,6 +2894,12 @@ ini_settings_write:
 	IniWrite, %DrawUnitDestinations%, %config_file%, %section%, DrawUnitDestinations
 	IniWrite, %DrawPlayerCameras%, %config_file%, %section%, DrawPlayerCameras
 	IniWrite, %HostileColourAssist%, %config_file%, %section%, HostileColourAssist
+
+	section := "Upgrade Alerts"
+	IniWrite, %UpgradeAlertsEnable1v1%, %config_file%, %section%, UpgradeAlertsEnable1v1
+	IniWrite, %UpgradeAlertsEnable2v2%, %config_file%, %section%, UpgradeAlertsEnable2v2
+	IniWrite, %UpgradeAlertsEnable3v3%, %config_file%, %section%, UpgradeAlertsEnable3v3
+	IniWrite, %UpgradeAlertsEnable4v4%, %config_file%, %section%, UpgradeAlertsEnable4v4
 
 	iniWriteAndUpdateQuickSelect(aQuickSelectCopy, aQuickSelect)
 
@@ -2909,6 +2914,7 @@ ini_settings_write:
 	if (program.Info.IsUpdating && A_IsCompiled)	;as both of these have there own write routines which activate on clicking 'save' in their on guis
 	{
 		saveAlertArray(alert_array)
+		iniWriteUpgradeAlerts(aUpgradeAlerts)
 		;;;	Gosub, g_SaveCustomUnitPanelFilter      **** Can't use this, as there has been no created List View gui variables so the list view class wont work!!!!!!
 		; solution 
 		;[UnitPanelFilter]
@@ -3509,26 +3515,33 @@ try
 		loop, parse, l_GameType, `,
 			BAS_on_%A_LoopField% := alert_array[A_LoopField, "Enabled"]
 		
-		Gui, Add, GroupBox, x+45 y+60 w120 h110 section, Enable Warnings
+		Gui, Add, GroupBox, x+45 y+15 w265 h105 section, Enable Unit Warnings
 			Gui, Add, Checkbox, xp+15 yp+25 vBAS_on_1v1 checked%BAS_on_1v1%, 1v1
 			Gui, Add, Checkbox, x+15 yp vBAS_on_2v2 checked%BAS_on_2v2%, 2v2
 			Gui, Add, Checkbox, xs+15 y+15 vBAS_on_3v3 checked%BAS_on_3v3%, 3v3
 			Gui, Add, Checkbox, x+15 yp vBAS_on_4v4 checked%BAS_on_4v4%, 4v4
 			Gui, Add, Checkbox, xs+15 y+15 vBAS_on_FFA checked%BAS_on_FFA%, FFA 
-		
-		Gui, Add, GroupBox, Xs+140 ys w200 h55, Playback Last Alert
-			Gui, Add, Checkbox, xp+10 yp+25 vEnableLastAlertPlayBackHotkey checked%EnableLastAlertPlayBackHotkey%, Enable 			
-			;Gui, Add, Text, xp+10 yp+25 w40,Hotkey:
-				Gui, Add, Edit, Readonly yp-2 x+5 w80 R1 center vPlayback_Alert_Key , %Playback_Alert_Key%
-					Gui, Add, Button, yp-2 x+5 gEdit_hotkey v#Playback_Alert_Key,  Edit	
-		Gui, Font, s10
-		Gui, Add, Button, center Xs+140 ys+60 w200 h50 gAlert_List_Editor vAlert_List_Editor, Launch Alert List Editor
-		Gui, Font, s9
 
-	Gui, Add, GroupBox, Xs ys+130 w340 h145, About
+			Gui, Add, Button, center xs+140 ys+36 w100 h30 gAlert_List_Editor vAlert_List_Editor, Edit Alerts
+		
+		Gui, Add, GroupBox, Xs ys+115 w265 h80 section, Enable Upgrade Warnings
+			Gui, Add, Checkbox, xp+15 yp+25 vUpgradeAlertsEnable1v1 checked%UpgradeAlertsEnable1v1%, 1v1
+			Gui, Add, Checkbox, x+15 yp vUpgradeAlertsEnable2v2 checked%UpgradeAlertsEnable2v2%, 2v2
+			Gui, Add, Checkbox, xs+15 y+15 vUpgradeAlertsEnable3v3 checked%UpgradeAlertsEnable3v3%, 3v3
+			Gui, Add, Checkbox, x+15 yp vUpgradeAlertsEnable4v4 checked%UpgradeAlertsEnable4v4%, 4v4
+		
+		Gui, Add, Button, center xs+140 ys+36 w100 h30 gUpgradeAlertEditor,  Edit Alerts
+
+		Gui, Add, GroupBox, Xs ys+95 w265 h55 section, Playback Last Alert
+			Gui, Add, Checkbox, xp+15 yp+25 vEnableLastAlertPlayBackHotkey checked%EnableLastAlertPlayBackHotkey%, Enable 			
+			;Gui, Add, Text, xp+10 yp+25 w40,Hotkey:
+				Gui, Add, Edit, Readonly yp-2 x+9 w125 R1 center vPlayback_Alert_Key , %Playback_Alert_Key%
+					Gui, Add, Button, yp-2 x+5 gEdit_hotkey v#Playback_Alert_Key,  Edit	
+
+	Gui, Add, GroupBox, Xs ys+65 w340 h135, About
 		Gui, Add, Text, xp+15 yp+25 w320, 
 		(LTrim 
-		This function provides a verbal warning for the specified item (unit/building).
+		This function provides a verbal warning for the specified item.
 
 		It can also display a visual 'X' marker on the minimap, thereby indicating the items location.
 
@@ -6061,8 +6074,8 @@ return
 OptionsMenuTree()
 {
 	; Key = MenuTitles: Value = Tab ID
-	static hiddenTab
-	static	aGUITabs := { 	"Home": "Home_TAB" 
+	static visibleTab
+	static	aGUITabs := {"Home": "Home_TAB" 
 					,	"MiniMap/Overlays": "MiniMap_TAB"
 					,	"Injects": "Injects_TAB"
 					,	"Auto Grouping": "AutoGroup_TAB"
@@ -6080,18 +6093,16 @@ OptionsMenuTree()
 
 	; In case ever add another tree view ensure correct one is being accessed/manipulated
 	Gui, TreeView, GUIListViewIdentifyingVariableForRedraw
-
+	TV_Modify(A_EventInfo, "Select") ; This selects the item and prevents the bug which allows multiple items to be higlighted (even though one is selected)
 	TV_GetText(optionText, TV_GetSelection())
-	if (optionText && hiddenTab)  ; there's a bug in AHK with the right click - have GUI on second monitor and right click, optionText will be blank
-		GUIcontrol, Hide, %hiddenTab%
 	if aGUITabs.HasKey(optionText)
-		GUIcontrol, Show, % hiddenTab := aGUITabs[optionText]
-	else return 
-
-	WinSet, Redraw,, V%ProgramVersion% Settings 				; redrawing whole thing as i noticed very very rarely (when a twitch stream open?) the save/cancel/apply buttons disappear
-; 	 GUIControl, MoveDraw, GUIListViewIdentifyingVariableForRedraw ; this is the same as redraw (but just for a control? - although it still seems to flicker the entire thing)
- 	Return															; this prevents the problem where some of the icons would remain selected
- 																	; so multiple categories would have the blue background
+	{
+		if visibleTab 
+			GUIcontrol, Hide, %visibleTab%
+		GUIcontrol, Show, % visibleTab := aGUITabs[optionText]
+		WinSet, Redraw,, V%ProgramVersion% Settings  ; redrawing whole thing as i noticed very very rarely (when a twitch stream open?) the save/cancel/apply buttons disappear
+	}
+	return 
 } 	
  	
 ;can arrive here from the GUI +/add button, or via the GuiDropFiles: label which is activated when a user drags and drops files onto a control
@@ -6505,7 +6516,7 @@ Gui, Add, GroupBox, y+30 x%OriginTabRALX% w245 h175, Alert Submission
 	Gui, Add, Button, xp+10 yp+20 w225 section vB_Modify_Alert gB_Modify_Alert, Modify Alert
 	Gui, Add, Text,xs ys+27 w225 center, OR
 	Gui, Add, Button, xs y+5 w225 section gDelete_Alert vB_Delete_Alert Center, Delete Alert
-	gui, Add, Text, Readonly yp+5 x+15 w90 center vCurrent_Selected_Alert2, `n`n
+	;gui, Add, Text, Readonly yp+5 x+15 w90 center vCurrent_Selected_Alert2, `n`n
 	Gui, Add, Text,xs ys+27 w225 center, OR
 
 Gui, Add, GroupBox, y+5 xs-5 w235 h55 section, New Alert	
@@ -6543,7 +6554,7 @@ return
 
 Delete_Alert:
 	Gui, Submit, NoHide
-	TV_item := TV_CountP()
+	TV_item := TV_CountP() ; update this to a better method*
 	TV_GetText(GameTypeTV,TV_GetParent(TV_GetSelection()))
 	del_correction := Editalert_array[GameTypeTV, "list", "size"] - TV_item
 	alert_list_fields :=  "Name,DWB,DWA,Repeat,IDName"
@@ -6560,6 +6571,7 @@ Delete_Alert:
 
 	Editalert_array[GameTypeTV, "list", "size"] -= 1	;decrease list size by 1
 	TV_Delete(TV_GetSelection())
+	; These two lines are not required
 	GUIControl,, B_Delete_Alert, Delete Alert - %GameTypeTV% %ItemTxt% ;update tne name on button
 	GUIControl,, B_Modify_Alert, Modify Alert - %GameTypeTV% %ItemTxt%
 
@@ -6611,7 +6623,7 @@ B_Add_New_Alert:
 			Else Editalert_array[game_mode, New_Item_Pos, "Repeat"] := 0
 			Editalert_array[game_mode, New_Item_Pos, "IDName"] := drop_ID	
 
-			loop, parse, l_GameType, `, ; 1s,2s,3s,4s
+			loop, parse, l_GameType, `, ; This can be replaced
 			{		
 				if ( game_mode = A_LoopField )
 					TV_Add(Edit_Name, p%a_index%) ; TV p1 = 1v1, p2 =2v2 etc
@@ -6669,7 +6681,6 @@ B_ALert_Save:
 Return
 
 
-
 saveAlertArray(alert_array)
 {	GLOBAL
 	loop, parse, l_GameType, `, 
@@ -6677,13 +6688,17 @@ saveAlertArray(alert_array)
 		IniDelete, %config_file%, Building & Unit Alert %A_LoopField% ;clear the list - prevent problems if now have less keys than b4
 		IniWrite, % alert_array[A_LoopField, "Enabled"], %config_file%, Building & Unit Alert %A_LoopField%, enable	;alert system on/off
 		;IniWrite, % alert_array[A_LoopField, "Clipboard"], %config_file%, Building & Unit Alert %A_LoopField%, copy2clipboard
+		alert_array[A_LoopField, "IDLookUp"] := []
 		loop, % alert_array[A_LoopField, "list", "size"]  ;loop 1v1 etc units
 		{
 			IniWrite, % alert_array[A_LoopField, A_Index, "Name"], %config_file%, Building & Unit Alert %A_LoopField%, %A_Index%_name_warning
 			Iniwrite, % alert_array[A_LoopField, A_Index, "DWB"], %config_file%, Building & Unit Alert %A_LoopField%, %A_Index%_Dont_Warn_Before_Time
 			IniWrite, % alert_array[A_LoopField, A_Index, "DWA"], %config_file%, Building & Unit Alert %A_LoopField%, %A_Index%_Dont_Warn_After_Time
 			IniWrite, % alert_array[A_LoopField, A_Index, "Repeat"], %config_file%, Building & Unit Alert %A_LoopField%, %A_Index%_repeat_on_new
-			IniWrite, % alert_array[A_LoopField, A_Index, "IDName"], %config_file%, Building & Unit Alert %A_LoopField%, %A_Index%_IDName
+			IniWrite, % Temp_IDName := alert_array[A_LoopField, A_Index, "IDName"], %config_file%, Building & Unit Alert %A_LoopField%, %A_Index%_IDName
+			; This lookup has the has the id for each unit type which has an alert. 
+			; can do a simple alert_array[GameType, IDLookUp].HasKey(unitID) to check if the list has an alert for this unit type
+			alert_array[A_LoopField, "IDLookUp", aUnitID[Temp_IDName]] := True		
 		}
 	}
 	return
@@ -10863,16 +10878,20 @@ removeDamagedUnit()
 	if MouseDown
 		dSleep(15) 
 	count := numGetSelectionSorted(aSelected)
-	blinkSleep := (aLocalPlayer.Race = "Protoss" && aSelected.TabPositions.HasKey(aUnitId.Stalker))
 
 	highHP := [], lowHP := []
 	for i, unit in aSelected.units
 	{           
+		hasShields := hasShields(unit.unitId)
 		; target filter .HasShields doesn't work! But this is faster anyway
-		if (aLocalPlayer["Race"] != "Protoss" && getUnitPercentHP(unit.unitIndex) > RemoveDamagedUnitsHealthLevel) || (aLocalPlayer["Race"] = "Protoss" && getUnitPercentShield(unit.unitIndex) > RemoveDamagedUnitsShieldLevel)
+		if (!hasShields && getUnitPercentHP(unit.unitIndex) > RemoveDamagedUnitsHealthLevel) || (hasShields && getUnitPercentShield(unit.unitIndex) > RemoveDamagedUnitsShieldLevel)
 			highHP.insert(unit.unitPortrait) ; removes the high HP/sheld units
 		else 
+		{
 			lowHP.insert(unit.unitPortrait) 	
+			if !blinkSleep && unit.unitId = aUnitId.Stalker
+				blinkSleep := True
+		}
 	}
 	if lowHP.MaxIndex()
 	{
@@ -10896,11 +10915,7 @@ removeDamagedUnit()
 			dSleep(10)
 		numGetSelectionSorted(aSelected)
 		if aSelected.TabPositions.HasKey(aUnitId.Stalker)
-		{
-			clickCommandCard(10, x, y)
-			; left click the spell, left click to cast, right click to cause stalkers to move the remainder of the distance and for the rest of the units to move
-			input.pSend(sRepeat(SC2Keys.key("SubgroupNext"), aSelected.TabPositions[aUnitId.Stalker]) "{click " x ", " y "}{Click}{Click Right}")
-		}
+			input.pSend(sRepeat(SC2Keys.key("SubgroupNext"), aSelected.TabPositions[aUnitId.Stalker]) SC2Keys.key("Blink/Stalker") "{Click}{Click Right}")			
 		else input.pSend("{Click Right}")
 
 		input.pSend(SC2Keys.key("ControlGroupRecall" tempGroup)) 	; restore initial selection
@@ -11260,7 +11275,7 @@ unloadAllTransports(hotkeySuffix)
 }
 
 
-/*
+
 ; Global Stim
 
 #If, !A_IsCompiled && WinActive(GameIdentifier) && isPlaying && aLocalPlayer.Race = "Terran" && !isMenuOpen()
@@ -11278,7 +11293,7 @@ if (tabsToSend := tabPos - aSelection.HighlightedGroup) < 0
 else send {tab %tabsToSend%}t+{tab %tabsToSend%}
 return
 #if
-*/
+
 
 AutoBuildGUIkeyPress:
 if (AutoBuildGUIkeyMode = "KeyDown")
@@ -13145,3 +13160,442 @@ iniWriteAndUpdateAutoGrouping(OptionsSave, aAutoGroupCurrent)
 	return aAutoGroup
 }
 
+f1::
+UpgradeAlertEditor:
+UpgradeAlertGUI(aUpgradeAlerts)
+return 
+
+; Note need to ensure the playback last alert works correctly if no minimap alert is given
+; should also check what happens with this hotkey and other alerts e.g. geyser saturation
+UpgradeAlertGUI(aAlertsCurrent)
+{
+	static maxTimeEdit, maxTime, Controldhandle
+	static UpgradePicturehwnd, UpgradeUserTitlehwnd, modifyAlertHwnd, deleteAlertHwnd
+		, VerbalWarningHwnd, TimeoutHwnd, MinimapAlertHwnd
+		, VerbalWarning, Timeout, MinimapAlert, UpgradeUserTitle
+		, Add1v1, Add2v2, Add3v3, Add4v4	
+
+	aAlerts := aAlertsCurrent
+	if !isObject(aAlerts)
+		aAlerts := []
+	Gui, UpgradeAlertEditor:New, -MaximizeBox +hwndGUIhwnd
+	;Gui, +OwnerOptons
+	;Gui, Options:+Disabled  
+	Gui, Add, TreeView, xp+20 yp+20 gUpgradeAlertTree r20 w180
+	aTVNodes := []
+	for k, gameType in ["1v1", "2v2", "3v3", "4v4"]
+	{
+		aTVNodes[gameType] := TV_Add(gameType)
+		for i, alert in aAlerts[gameType]
+			TV_Add(truncateVerbalWarning(alert.verbalWarning), aTVNodes[gameType])
+	}
+	Gui, Add, GroupBox, x+30 ys w265 h185, Alert Parameters
+	Gui, Add, Text, xp+10 yp+20 w80 section, Verbal Warning:
+		Gui, Add, Edit, xs+110 yp w135 center hwndVerbalWarningHwnd vVerbalWarning	
+	Gui, Add, Text, xs y+10, Don't warn after (s):
+		Gui, Add, Edit, Number Right yp xs+110 w80 
+		Gui, Add, UpDown,  Range0-999999 hwndTimeoutHwnd vTimeout, 999999
+	Gui, add, checkbox, xs y+10 hwndMinimapAlertHwnd vMinimapAlert, Minimap Alert
+	;Gui, Add, Text,y+12, Repeat on New?
+	;Gui, Add, Text,xs y+16, Upgrade:
+	Gui, add, Picture, xs y+10 w33 h33 g__UpgradeAlertGUIChangeButton hwndUpgradePicturehwnd, %A_Temp%\questionMark32.png
+	Gui, add, edit, x+5 yp+10 w150 readonly center hwndUpgradeUserTitlehwnd vUpgradeUserTitle
+	Gui, add, button, x+10 yp g__UpgradeAlertGUIChangeButton, change 
+
+	Gui, Add, GroupBox, xs-10 ys+185 w265 h175, Alert Submission
+	Gui, Add, Button, xp+10 yp+20 w225 section hwndModifyAlertHwnd g__UpgradeAlertGUIModifyButton, Modify Alert
+	Gui, Add, Text,xs ys+27 w225 center, OR
+	Gui, Add, Button, xs y+5 w225 section Center hwndDeleteAlertHwnd g__UpgradeAlertGUIDeleteButton, Delete Alert
+	Gui, Add, Text,xs ys+27 w225 center, OR
+
+	Gui, Add, GroupBox, y+5 xs-5 w235 h55 section, New Alert	
+	Gui, Add, Button, xs+5 yp+20 w120 g__UpgradeAlertGUIAddButton, Add This Alert to List
+	Gui, Add, Checkbox, checked x+10 yp-5 section vAdd1v1, 1v1
+	Gui, Add, Checkbox, checked x+10 vAdd3v3, 3v3
+	Gui, Add, Checkbox, checked yp+20 vAdd4v4, 4v4
+	Gui, Add, Checkbox, checked xs yp vAdd2v2, 2v2
+	gui, add, button, xs yp+30 g__UpgradeAlertGUISaveButton, Save 
+	gui, add, button, xs yp+30 , cancel 
+
+	Gui, show 
+	WinWaitClose, AHK_ID %GUIhwnd%	
+	return 
+	__UpgradeAlertGUISaveButton:
+	iniWriteUpgradeAlerts(aUpgradeAlerts := aAlerts)
+	UpgradeAlertEditorGUIClose:
+	UpgradeAlertEditorGUIEscape:
+	Gui, Destroy
+	return
+
+	__UpgradeAlertGUIModifyButton:
+	Gui, Submit, NoHide
+	Gui +OwnDialogs
+	if (VerbalWarning = "" || Timeout = "" || MinimapAlert = "" || UpgradeUserTitle = "")
+	{
+		MsgBox, 64, Error: Blank parameters.
+		return 
+	}
+	if !selectedIndex := TV_SelectedItemPosition(selectedID := TV_GetSelection(), parentID)
+		return
+	TV_GetText(gameType, parentID)
+	if gameType not in 1v1,2v2,3v3,4v4,FFA ; should never occur
+		return 
+	displayText := truncateVerbalWarning(VerbalWarning)
+	TV_Modify(selectedID,, displayText)
+	obj := [], obj.verbalWarning := VerbalWarning, obj.DWA := Timeout, obj.minimapAlert := MinimapAlert, obj.upgradeGameTitle := upgradeDefinitions.upgradeGameTitle(UpgradeUserTitle) 
+	aAlerts[gameType, selectedIndex] := obj
+	
+	; TV_Modify(selectedID) ; selecting the item wont actually change the name/invoke the treeview click
+
+	GUIControl,, %DeleteAlertHwnd%, Delete Alert - %gameType% %displayText%
+	GUIControl,, %ModifyAlertHwnd%, Modify Alert - %gameType% %displayText%	
+	return 
+
+	__UpgradeAlertGUIDeleteButton:
+	if !selectedIndex := TV_SelectedItemPosition(selectedID := TV_GetSelection(), parentID)
+		return
+	TV_GetText(gameType, parentID)
+	if gameType not in 1v1,2v2,3v3,4v4,FFA ; should never occur
+		return
+	aAlerts[gameType].remove(selectedIndex)
+	TV_Delete(selectedID)
+	return
+
+	__UpgradeAlertGUIAddButton:
+	Gui, Submit, NoHide
+	Gui +OwnDialogs
+	conflictingAlerts := ""
+	if (VerbalWarning = "" || Timeout = "" || MinimapAlert = "" || UpgradeUserTitle = "")
+		MsgBox, 64, Error: Blank parameters.
+	else if (Add1v1 + Add2v2 + Add3v3 + Add4v4) = 0
+		MsgBox, 64, Parameter Error, You must select at least one game mode.
+	else 
+	{
+		obj := []
+		, obj.verbalWarning := VerbalWarning
+		, obj.DWA := Timeout
+		, obj.minimapAlert := MinimapAlert
+		, obj.upgradeGameTitle := upgradeDefinitions.upgradeGameTitle(UpgradeUserTitle) 
+		for i, gameType in ["1v1", "2v2", "3v3", "4v4"]
+		{
+			; Dynamic reference don't work here e.g msgbox % add%gameType%
+			if (gameType = "1v1" && Add1v1) || (gameType = "2v2" && Add2v2) || (gameType = "3v3" && Add3v3) || (gameType = "4v4" && Add4v4)  
+			{
+				flag := False
+				if !isObject(aAlerts[gameType]) ; safer as using serDes() to iniRead the obj
+					aAlerts[gameType] := []
+				else 
+				{
+					for i, alert in aAlerts[gameType]
+					{
+						if (alert.upgradeGameTitle = obj.upgradeGameTitle)
+							conflictingAlerts .= (conflictingAlerts != "" ? "`n" : "") gameType " - " alert.verbalWarning, Flag := True ; Dont truncate
+					}
+					if flag 
+						continue
+				}
+				aAlerts[gameType].insert(obj)
+				; aAlerts[gameType, "list", "size"] := aAlerts[gameType].MaxIndex() ; havenent added this to other routines
+				TV_Add(truncateVerbalWarning(VerbalWarning), aTVNodes[gameType])
+			}
+		}
+	}
+	WinSet, Redraw,, ahk_id %GUIhwnd% ;forces a redraw as the '+' expander doesnt show (until a mouseover) if the parent had no items when the gui was initially drawn
+	if (conflictingAlerts != "")
+	{
+		MsgBox, 64, Alert Conflict, 
+		(LTrim 
+			An upgrade can not be added more than once to a particular game mode.
+
+			You can either delete or modify these existing alerts:
+			%conflictingAlerts%
+		)
+	}
+	return
+
+	UpgradeAlertTree:
+	TV_GetText(selectedText, selectedID := TV_GetSelection())
+	if selectedText in 1v1,2v2,3v3,4v4,FFA
+	{
+		GUIControl,, %DeleteAlertHwnd%, Delete Alert
+		GUIControl,, %ModifyAlertHwnd%, Modify Alert
+		GUIControl, Disable, %DeleteAlertHwnd%
+		GUIControl, Disable, %ModifyAlertHwnd%	
+		GUIControl,, %VerbalWarningHwnd%
+		GUIControl,, %TimeoutHwnd%, 999999
+		GUIControl,, %MinimapAlertHwnd%, 1
+		GuiControl,, %UpgradeUserTitlehwnd%, Undefined
+		GuiControl,, %UpgradePicturehwnd%, %A_Temp%\questionMark32.png	
+	}
+	else ; an alert has been selected
+	{
+		GUIControl, Enable, %DeleteAlertHwnd%
+		GUIControl, Enable, %ModifyAlertHwnd%	
+
+		if !selectedIndex := TV_SelectedItemPosition(selectedID, parentID)
+			return
+		TV_GetText(gameType, parentID)
+		GUIControl,, %VerbalWarningHwnd%, % aAlerts[gameType, selectedIndex, "verbalWarning"]
+		GUIControl,, %TimeoutHwnd%, % aAlerts[gameType, selectedIndex, "DWA"]
+		GUIControl,, %MinimapAlertHwnd%, % round(aAlerts[gameType, selectedIndex, "minimapAlert"])
+		upgradeGameTitle := aAlerts[gameType, selectedIndex, "upgradeGameTitle"]
+		upgradeUserTitle := upgradeDefinitions.upgradeUserTitle(upgradeGameTitle)
+
+		GuiControl,, %UpgradeUserTitlehwnd%, %upgradeUserTitle%
+		if (upgradeGameTitle != "" && FileExist(A_Temp "\UnitPanelMacroTrainer\" upgradeGameTitle ".png"))
+			GuiControl,, %UpgradePicturehwnd%, % A_Temp "\UnitPanelMacroTrainer\" upgradeGameTitle ".png"
+		else GuiControl,, %UpgradePicturehwnd%, %A_Temp%\questionMark32.png
+		; otherwise long titles will cause the button text to look bad
+		; not really needed as theyre already shortened
+		selectedText := truncateVerbalWarning(selectedText)
+		GUIControl,, %DeleteAlertHwnd%, Delete Alert - %gameType% %selectedText%
+		GUIControl,, %ModifyAlertHwnd%, Modify Alert - %gameType% %selectedText%
+	}
+	return 
+
+	__UpgradeAlertGUIChangeButton:
+	GuiControlGet, currentTitle,, %UpgradeUserTitlehwnd%
+	gameTitle := alertSelectionGUI(upgradeDefinitions.upgradeGameTitle(currentTitle))
+	userTitle := upgradeDefinitions.upgradeUserTitle(gameTitle)
+	if (currentTitle != userTitle)
+	{
+		GuiControl, UpgradeAlertEditor:, %UpgradeUserTitlehwnd%, % userTitle = "" ? "Undefined" : userTitle 
+		if (gameTitle != "" && FileExist(A_Temp "\UnitPanelMacroTrainer\" gameTitle ".png"))
+			GuiControl, UpgradeAlertEditor:, %UpgradePicturehwnd%, % A_Temp "\UnitPanelMacroTrainer\" gameTitle ".png"
+		else GuiControl, UpgradeAlertEditor:, %UpgradePicturehwnd%, %A_Temp%\questionMark32.png
+	}
+	return
+}
+
+truncateVerbalWarning(s)
+{
+	return strlen(s) > 18 ? SubStr(s, 1, 18) "..." : s
+}
+
+iniWriteUpgradeAlerts(obj)
+{
+	obj.Remove("parentLookUp")
+	IniWrite, % serDes(obj), %config_file%, Upgrade Alerts, Alerts
+	for i, gameType in ["1v1", "2v2", "3v3", "4v4"]
+	{
+		for i, alert in obj[gameType]
+			obj["parentLookUp", gameType, aUnitID[upgradeDefinitions.BuildingFromUpgrade(alert.upgradeGameTitle)]]
+	}
+	return 
+}
+
+iniReadUpgradeAlerts()
+{
+	IniRead, objString, %config_file%, Upgrade Alerts, Alerts, %A_Space% ; Could replace this with a default obj string
+	if !isobject(obj := serDes(objString))
+		obj := []
+	obj.Remove("parentLookUp")
+	for i, gameType in ["1v1", "2v2", "3v3", "4v4"]
+	{
+		for i, alert in obj[gameType]
+			obj["parentLookUp", gameType, aUnitID[upgradeDefinitions.BuildingFromUpgrade(alert.upgradeGameTitle)]]
+	}	
+	return obj	
+}
+
+TV_SelectedItemPosition(selectedID, byRef parentID := "")
+{
+	currentID := TV_GetChild(parentID := TV_GetParent(selectedID)) ; get the ID of the top alert in this gamemode list
+	selectedIndex := 0 
+	loop 
+	{
+		if (currentID = selectedID)
+		{
+			selectedIndex := A_Index 
+			break
+		}
+		currentID := TV_GetNext(currentID)			
+	} until currentID = 0 ; end of list 
+	return selectedIndex
+}
+
+;f1:: alertSelectionGUI("ResearchBattlecruiserEnergyUpgrade")
+
+; currentItem is a gameTitle
+; returned value is a gameTitle
+alertSelectionGUI(currentItem := "")
+{
+	static result, aHiddenCheckBoxes
+
+	aHiddenCheckBoxes := []
+	gui, UpgradeAlertSelection:new, HwndHandleGUI OwnerUpgradeAlertEditor
+
+	gui, add, text, x+15 y+25, Select an upgrade:
+	gui, add, TreeView, xp y+15 w400 h400 hwndTVHandle checked g__alertSelectionGUITreeViewLabel AltSubmit
+ 	imageList := IL_Create(91, 5, 1) ; 91 images for upgrades + 3 race
+ 	TV_SetImageList(imageList)
+ 	for i, race in ["Terran", "Protoss", "Zerg"]
+	{
+		parent := TV_Add(race,, "Icon" IL_Add(imageList, A_Temp "\" race "90.png", 0xFFFFFF, True))
+		TV_RemoveCheckBox(TVHandle, parent), aHiddenCheckBoxes[parent] := True
+		for i, structure in upgradeDefinitions.structuresFromRace(race)
+		{
+			iconID := IL_Add(imageList, A_Temp "\UnitPanelMacroTrainer\" (instr(structure, "TechLab") ? "Techlab" : structure) ".png", 0xFFFFFF, True)
+			parentStructure := TV_Add(structure, parent, "Icon" iconID)
+			TV_RemoveCheckBox(TVHandle , parentStructure), aHiddenCheckBoxes[parentStructure] := True
+			for i, GameUpgradeTitle in upgradeDefinitions.upgradesFromBuilding(structure)
+			{
+
+				options := "Icon" IL_Add(imageList, A_Temp "\UnitPanelMacroTrainer\" GameUpgradeTitle ".png", 0xFFFFFF, True)
+				options .= (GameUpgradeTitle = currentItem && currentItem != "") ? " check select" : "" ; Select automatically expands the item
+				TV_Add(upgradeDefinitions.upgradeUserTitle(GameUpgradeTitle), parentStructure, options)
+				a[race, structure].insert(GameUpgradeTitle)
+			}
+		}
+	}
+	gui, add, button, xp y+15 g__alertSelectionGUISave, Save 
+	gui, add, button, x+35 yp g__alertSelectionGUICancel, Cancel 
+	GUI, show,, Select Upgrade
+	Gui, UpgradeAlertEditor:+Disabled
+	WinWaitClose, AHK_ID %HandleGUI%	
+	IL_Destroy(imageList)	; Need to do this to free memory.
+	return result
+  	
+  	__alertSelectionGUISave:
+  	if ItemID := TV_GetNext(0, "Checked")
+  	{
+  		TV_GetText(userTitle, ItemID)
+  		result := upgradeDefinitions.upgradeGameTitle(userTitle)
+	  	Gui, UpgradeAlertEditor:-Disabled
+	  	GUI, Destroy
+  	}
+  	else msgbox You must select an upgrade before saving.
+  	return 
+  
+  	__alertSelectionGUICancel:
+  	UpgradeAlertSelectionGUIClose:
+  	UpgradeAlertSelectionGUIEscape:
+  	result := currentItem
+  	Gui, UpgradeAlertEditor:-Disabled
+   	GUI, Destroy
+  	return  	
+  	; Only allow 1 item to be checked
+	__alertSelectionGUITreeViewLabel:
+	If (A_GuiEvent = "Normal" || A_GuiEvent = "DoubleClick")
+	{
+		Gui, TreeView, %A_GuiControl% 
+		TV_Modify(A_EventInfo, "Select")		; select the item anyway
+		if (A_GuiEvent = "DoubleClick" && !aHiddenCheckBoxes.HasKey(A_EventInfo)) ; otherwise checking the hidden boxes will reveal them
+			TV_Get(A_EventInfo, "Checked" ) ? TV_Modify(A_EventInfo, "-Check") : TV_Modify(A_EventInfo, "Check")
+		If TV_Get(A_EventInfo, "Checked" )		; Uncheck any other items
+		{
+			ItemID := 0
+			while ItemID := TV_GetNext(ItemID, "Checked")
+			{
+				if (ItemID != A_EventInfo)
+					TV_Modify(ItemID, "-Check")
+			} 
+		}		
+	}
+	return 
+}
+
+
+class upgradeDefinitions
+{
+
+	static aUpgradeUserTitle := { Terran: { StarportTechLab: {ResearchBansheeCloak: "CloakingField", ResearchMedivacEnergyUpgrade: "CaduceusReactor", ResearchDurableMaterials: "DurableMaterials", ResearchRavenEnergyUpgrade: "CorvidReactor"}
+									, FusionCore: {ResearchBattlecruiserEnergyUpgrade: "BehemothReactor", ResearchBattlecruiserSpecializations: "WeaponRefit"}
+									, GhostAcademy: {ResearchPersonalCloaking: "PersonalCloaking"} ;, ResearchGhostEnergyUpgrade: ""
+									, BarracksTechLab: {ResearchShieldWall: "CombatShield", Stimpack: "Stimpack", ResearchPunisherGrenades: "ConcussiveShells"}
+									, FactoryTechLab: {ResearchDrillClaws: "DrillingClaws", ResearchHighCapacityBarrels: "InfernalPre-Igniter"} ;, ;ResearchTransformationServos: ""
+									, Armory: { TerranVehicleAndShipPlatingLevel1: "VehicleAndShipPlatingLevel1", TerranVehicleAndShipPlatingLevel2: "VehicleAndShipPlatingLevel2", TerranVehicleAndShipPlatingLevel3: "VehicleAndShipPlatingLevel3", TerranVehicleAndShipWeaponsLevel1: "VehicleAndShipWeaponsLevel1", TerranVehicleAndShipWeaponsLevel2: "VehicleAndShipWeaponsLevel2", TerranVehicleAndShipWeaponsLevel3: "VehicleAndShipWeaponsLevel3"} ;, TerranVehicleWeaponsLevel1: "";, TerranVehicleWeaponsLevel2: "";, TerranVehicleWeaponsLevel3: "";, TerranShipWeaponsLevel1: "";, TerranShipWeaponsLevel2: "";, TerranShipWeaponsLevel3: ""
+									, EngineeringBay: {TerranInfantryArmorLevel1: "InfantryArmorLevel1", TerranInfantryArmorLevel2: "InfantryArmorLevel2", TerranInfantryArmorLevel3: "InfantryArmorLevel3", TerranInfantryWeaponsLevel1: "InfantryWeaponsLevel1", TerranInfantryWeaponsLevel2: "InfantryWeaponsLevel2", TerranInfantryWeaponsLevel3: "InfantryWeaponsLevel3", ResearchNeosteelFrame: "NeosteelFrame", ResearchHiSecAutoTracking: "Hi-SecAutoTracking", UpgradeBuildingArmorLevel1: "StructureArmor"}}						
+						, Protoss:	{ FleetBeacon: {PhoenixRangeUpgrade: "AnionPulse-Crystals", ResearchInterceptorLaunchSpeedUpgrade: "GravitonCatapult"}
+									, Forge: {ProtossGroundWeaponsLevel1: "GroundWeaponsLevel1", ProtossGroundWeaponsLevel2: "GroundWeaponsLevel2", ProtossGroundWeaponsLevel3: "GroundWeaponsLevel3", ProtossGroundArmorLevel1: "GroundArmorLevel1", ProtossGroundArmorLevel2: "GroundArmorLevel2", ProtossGroundArmorLevel3: "GroundArmorLevel3", ProtossShieldsLevel1: "ShieldsLevel1", ProtossShieldsLevel2: "ShieldsLevel2", ProtossShieldsLevel3: "ShieldsLevel3"}
+									, RoboticsBay: {ResearchExtendedThermalLance: "ExtendedThermalLance", ResearchGraviticBooster: "GraviticBoosters", ResearchGraviticDrive: "GraviticDrive"}
+									, TemplarArchive: {ResearchPsiStorm: "PsionicStorm"}
+									, CyberneticsCore: {ResearchWarpGate: "WarpGate", ProtossAirWeaponsLevel1: "AirWeaponsLevel1", ProtossAirWeaponsLevel2: "AirWeaponsLevel2", ProtossAirWeaponsLevel3: "AirWeaponsLevel3", ProtossAirArmorLevel1: "AirArmorLevel1", ProtossAirArmorLevel2: "AirArmorLevel2", ProtossAirArmorLevel3: "AirArmorLevel3"}
+									, TwilightCouncil: {ResearchCharge: "Charge", ResearchStalkerTeleport: "Blink"}}
+						, Zerg:	{BanelingNest: {EvolveCentrificalHooks: "CentrifugalHooks"}
+									, InfestationPit: {EvolveInfestorEnergyUpgrade: "PathogenGlands", ResearchNeuralParasite: "NeuralParasite", EvolveFlyingLocusts: "FlyingLocusts"} ;, ResearchLocustLifetimeIncrease: ""
+									, UltraliskCavern: {EvolveChitinousPlating: "ChitinousPlating"}
+									, RoachWarren: {EvolveGlialRegeneration: "GlialReconstitution", EvolveTunnelingClaws: "TunnelingClaws"}
+									, Hatchery: {overlordspeed: "PneumatizedCarapace", ResearchBurrow: "Burrow"}
+									, Lair: {overlordspeed: "PneumatizedCarapace", ResearchBurrow: "Burrow", EvolveVentralSacks: "VentralSacks"}									
+									, Hive: {overlordspeed: "PneumatizedCarapace", ResearchBurrow: "Burrow", EvolveVentralSacks: "VentralSacks"}
+									, HydraliskDen: {hydraliskspeed: "GroovedSpines", MuscularAugments: "MuscularAugments"}
+									, SpawningPool: {zerglingmovementspeed: "MetabolicBoost", zerglingattackspeed: "AdrenalGlands"}
+									, Spire: {zergflyerarmor1: "FlyerCarapaceLevel1", zergflyerarmor2: "FlyerCarapaceLevel2", zergflyerarmor3: "FlyerCarapaceLevel3", zergflyerattack1: "FlyerAttacksLevel1", zergflyerattack2: "FlyerAttacksLevel2", zergflyerattack3: "FlyerAttacksLevel3"}
+									, GreaterSpire: {zergflyerarmor1: "FlyerCarapaceLevel1", zergflyerarmor2: "FlyerCarapaceLevel2", zergflyerarmor3: "FlyerCarapaceLevel3", zergflyerattack1: "FlyerAttacksLevel1", zergflyerattack2: "FlyerAttacksLevel2", zergflyerattack3: "FlyerAttacksLevel3"}
+									, EvolutionChamber: {zerggroundarmor1: "GroundCarapaceLevel1", zerggroundarmor2: "GroundCarapaceLevel2", zerggroundarmor3: "GroundCarapaceLevel3", zergmeleeweapons1: "MeleeAttacksLevel1", zergmeleeweapons2: "MeleeAttacksLevel2", zergmeleeweapons3: "MeleeAttacksLevel3", zergmissileweapons1: "MissileAttacksLevel1", zergmissileweapons2: "MissileAttacksLevel2", zergmissileweapons3: "MissileAttacksLevel3" }}}
+	static _ahack := upgradeDefinitions.initialiseVars()
+
+	initialiseVars()
+	{
+		this._aUserTitles := []
+		this._aGameTitles := []
+		this._aUpgradeToStructure := []
+		this._aUpgradesFromBuilding := []
+		this._aStructuresFromRace := []
+		for race, obj in this.aUpgradeUserTitle
+		{
+			this._aStructuresFromRace[race] := []
+			for structure, upgrades in obj
+			{
+				this._aStructuresFromRace[race].insert(structure)
+				this._aUpgradesFromBuilding[structure] := []
+				for gameTitle, commonTitle in upgrades
+				{
+					this._aGameTitles[commonTitle] := gameTitle
+					this._aUserTitles[gameTitle] := commonTitle
+					this._aUpgradeToStructure[gameTitle] := structure
+					this._aUpgradesFromBuilding[structure].insert(gameTitle)
+				}
+			}
+		}
+		return		
+	}
+	upgradeGameTitle(userTitle)
+	{
+		return this._aGameTitles[userTitle]
+	}
+	upgradeUserTitle(gameTitle)
+	{
+		return this._aUserTitles[gameTitle]
+	}
+	BuildingFromUpgrade(upgrade)
+	{
+		return this._aUpgradeToStructure[upgrade]
+	}
+	; returns an array of upgrades available from a structure	
+	upgradesFromBuilding(structure)
+	{
+		return this._aUpgradesFromBuilding[structure]
+	}
+	; Returns an array of structures 
+	structuresFromRace(race)
+	{
+		return this._aStructuresFromRace[race]
+	}
+}
+
+
+getStructureNameFromUpgrade(upgradeName)
+{
+	if upgradeTitle in ResearchBansheeCloak,ResearchMedivacEnergyUpgrade,ResearchDurableMaterials,ResearchRavenEnergyUpgrade,ResearchBattlecruiserEnergyUpgrade,ResearchBattlecruiserSpecializations
+		return "StarportTechLab"
+	if upgradeTitle in ResearchBattlecruiserEnergyUpgrade,ResearchBattlecruiserSpecializations
+		return "FusionCore"
+	if upgradeTitle in ResearchPersonalCloaking
+		return "GhostAcademy"	
+	if upgradeTitle in ResearchShieldWall,Stimpack,ResearchPunisherGrenades
+		return "BarracksTechLab"	
+}
+
+; 0412092572
+/*
+Hi Dot, received you message and currently in europe will be home in three weeks. 
+communication is very difficult and sending this VIa matt. 
+Will ring you when get home but if you pay water rates we will reimburse you when you get back.
+
+Cheers. 
+
+*/
+
+f4::objtree(alert_array)
