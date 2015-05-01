@@ -13162,22 +13162,28 @@ iniWriteAndUpdateAutoGrouping(OptionsSave, aAutoGroupCurrent)
 
 f1::
 UpgradeAlertEditor:
-UpgradeAlertGUI(aUpgradeAlerts)
+UpgradeAlertGUI()
 return 
 
 ; Note need to ensure the playback last alert works correctly if no minimap alert is given
 ; should also check what happens with this hotkey and other alerts e.g. geyser saturation
-UpgradeAlertGUI(aAlertsCurrent)
+UpgradeAlertGUI()
 {
-	static maxTimeEdit, maxTime, Controldhandle
 	static UpgradePicturehwnd, UpgradeUserTitlehwnd, modifyAlertHwnd, deleteAlertHwnd
 		, VerbalWarningHwnd, TimeoutHwnd, MinimapAlertHwnd
 		, VerbalWarning, Timeout, MinimapAlert, UpgradeUserTitle
-		, Add1v1, Add2v2, Add3v3, Add4v4	
-
-	aAlerts := aAlertsCurrent
-	if !isObject(aAlerts)
-		aAlerts := []
+		, Add1v1, Add2v2, Add3v3, Add4v4
+		, aTVNodes, aAlerts	
+	global aUpgradeAlerts ; To allow the changes to be saved
+	Gui UpgradeAlertEditor:+LastFoundExist
+	IfWinExist 
+	{
+		WinActivate
+		Return 									
+	}
+	; Get a new copy of the array. If passed aUpgradeAlerts via function param then would have issues 
+	; with aUpgradeAlerts to aAlerts i.e. references. Would need to do a deep copy.
+	aAlerts := iniReadUpgradeAlerts()
 	Gui, UpgradeAlertEditor:New, -MaximizeBox +hwndGUIhwnd
 	;Gui, +OwnerOptons
 	;Gui, Options:+Disabled  
@@ -13215,11 +13221,11 @@ UpgradeAlertGUI(aAlertsCurrent)
 	Gui, Add, Checkbox, checked yp+20 vAdd4v4, 4v4
 	Gui, Add, Checkbox, checked xs yp vAdd2v2, 2v2
 	gui, add, button, xs yp+30 g__UpgradeAlertGUISaveButton, Save 
-	gui, add, button, xs yp+30 , cancel 
-
+	gui, add, button, xs yp+30 gUpgradeAlertEditorGUIClose, cancel 
 	Gui, show 
-	WinWaitClose, AHK_ID %GUIhwnd%	
+;	WinWaitClose, AHK_ID %GUIhwnd%	
 	return 
+
 	__UpgradeAlertGUISaveButton:
 	iniWriteUpgradeAlerts(aUpgradeAlerts := aAlerts)
 	UpgradeAlertEditorGUIClose:
@@ -13232,10 +13238,10 @@ UpgradeAlertGUI(aAlertsCurrent)
 	Gui +OwnDialogs
 	if (VerbalWarning = "" || Timeout = "" || MinimapAlert = "" || UpgradeUserTitle = "")
 	{
-		MsgBox, 64, Error: Blank parameters.
+		MsgBox, 64, Error, Error: Blank parameters.
 		return 
 	}
-	if !selectedIndex := TV_SelectedItemPosition(selectedID := TV_GetSelection(), parentID)
+	if !selectedIndex := TV_SelectedItemPosition(selectedID := TV_GetSelection(), parentID := TV_GetParent(selectedID))
 		return
 	TV_GetText(gameType, parentID)
 	if gameType not in 1v1,2v2,3v3,4v4,FFA ; should never occur
@@ -13252,13 +13258,25 @@ UpgradeAlertGUI(aAlertsCurrent)
 	return 
 
 	__UpgradeAlertGUIDeleteButton:
-	if !selectedIndex := TV_SelectedItemPosition(selectedID := TV_GetSelection(), parentID)
-		return
-	TV_GetText(gameType, parentID)
-	if gameType not in 1v1,2v2,3v3,4v4,FFA ; should never occur
-		return
-	aAlerts[gameType].remove(selectedIndex)
-	TV_Delete(selectedID)
+	TV_GetText(selectedText, selectedID := TV_GetSelection())
+	if selectedText in 1v1,2v2,3v3,4v4,FFA ;delete all alerts for this game mode
+	{
+		if TV_GetChild(selectedID)
+		{
+			TV_DeleteChildren(selectedID)
+			aAlerts.Remove(gameType)
+		}	
+	}
+	else ; delete the selected alert
+	{
+		if !selectedIndex := TV_SelectedItemPosition(selectedID, parentID := TV_GetParent(selectedID))
+			return
+		TV_GetText(gameType, parentID)
+		if gameType not in 1v1,2v2,3v3,4v4,FFA ; should never occur
+			return
+		aAlerts[gameType].remove(selectedIndex)
+		TV_Delete(selectedID)
+	}
 	return
 
 	__UpgradeAlertGUIAddButton:
@@ -13266,7 +13284,7 @@ UpgradeAlertGUI(aAlertsCurrent)
 	Gui +OwnDialogs
 	conflictingAlerts := ""
 	if (VerbalWarning = "" || Timeout = "" || MinimapAlert = "" || UpgradeUserTitle = "")
-		MsgBox, 64, Error: Blank parameters.
+		MsgBox, 64, Error, Error: Blank parameters.
 	else if (Add1v1 + Add2v2 + Add3v3 + Add4v4) = 0
 		MsgBox, 64, Parameter Error, You must select at least one game mode.
 	else 
@@ -13317,9 +13335,17 @@ UpgradeAlertGUI(aAlertsCurrent)
 	TV_GetText(selectedText, selectedID := TV_GetSelection())
 	if selectedText in 1v1,2v2,3v3,4v4,FFA
 	{
-		GUIControl,, %DeleteAlertHwnd%, Delete Alert
+		if TV_GetChild(selectedID)
+		{
+			GUIControl,, %DeleteAlertHwnd%,  Delete All %selectedText% Alerts 
+			GUIControl, Enable, %DeleteAlertHwnd%
+		}
+		else 
+		{
+			GUIControl,, %DeleteAlertHwnd%,  Delete Alert
+			GUIControl, Disable, %DeleteAlertHwnd%
+		}
 		GUIControl,, %ModifyAlertHwnd%, Modify Alert
-		GUIControl, Disable, %DeleteAlertHwnd%
 		GUIControl, Disable, %ModifyAlertHwnd%	
 		GUIControl,, %VerbalWarningHwnd%
 		GUIControl,, %TimeoutHwnd%, 999999
@@ -13332,7 +13358,7 @@ UpgradeAlertGUI(aAlertsCurrent)
 		GUIControl, Enable, %DeleteAlertHwnd%
 		GUIControl, Enable, %ModifyAlertHwnd%	
 
-		if !selectedIndex := TV_SelectedItemPosition(selectedID, parentID)
+		if !selectedIndex := TV_SelectedItemPosition(selectedID, parentID := TV_GetParent(selectedID))
 			return
 		TV_GetText(gameType, parentID)
 		GUIControl,, %VerbalWarningHwnd%, % aAlerts[gameType, selectedIndex, "verbalWarning"]
@@ -13398,21 +13424,6 @@ iniReadUpgradeAlerts()
 	return obj	
 }
 
-TV_SelectedItemPosition(selectedID, byRef parentID := "")
-{
-	currentID := TV_GetChild(parentID := TV_GetParent(selectedID)) ; get the ID of the top alert in this gamemode list
-	selectedIndex := 0 
-	loop 
-	{
-		if (currentID = selectedID)
-		{
-			selectedIndex := A_Index 
-			break
-		}
-		currentID := TV_GetNext(currentID)			
-	} until currentID = 0 ; end of list 
-	return selectedIndex
-}
 
 ;f1:: alertSelectionGUI("ResearchBattlecruiserEnergyUpgrade")
 
@@ -13427,7 +13438,7 @@ alertSelectionGUI(currentItem := "")
 
 	gui, add, text, x+15 y+25, Select an upgrade:
 	gui, add, TreeView, xp y+15 w400 h400 hwndTVHandle checked g__alertSelectionGUITreeViewLabel AltSubmit
- 	imageList := IL_Create(91, 5, 1) ; 91 images for upgrades + 3 race
+ 	imageList := IL_Create(94, 5, 1) ; 91 images for upgrades + 3 race
  	TV_SetImageList(imageList)
  	for i, race in ["Terran", "Protoss", "Zerg"]
 	{
@@ -13596,6 +13607,9 @@ Will ring you when get home but if you pay water rates we will reimburse you whe
 
 Cheers. 
 
+550725089040195385
+
+
 */
 
-f4::objtree(alert_array)
+f4::objtree(aUpgradeAlerts)
