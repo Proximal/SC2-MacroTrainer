@@ -536,6 +536,11 @@ doUnitDetectionOnThisRun := alert_array[GameType, "Enabled"] && !doUnitDetection
 ;&& !((aLocalPlayer["Race"] = "Terran" && TownHallRallyEnableTerran) || (aLocalPlayer["Race"] = "Protoss" && TownHallRallyEnableProtoss) || (aLocalPlayer["Race"] = "Zerg" && TownHallRallyEnableZerg))
 ;	return
 
+; This could be done every run. It should be a lot faster than unit detection. More efficient and only called on some units
+;doUpgradeDetectionOnThisRun := UpgradeAlertsEnable%gameType% && !doUpgradeDetectionOnThisRun
+; I prefer this to dynamic references e.g UpgradeAlertsEnable%gameType% 
+doUpgradeDetection := (gameType = "1v1" && UpgradeAlertsEnable1v1) || (gameType = "2v2" && UpgradeAlertsEnable2v2) || (gameType = "3v3" && UpgradeAlertsEnable3v3) || (gameType = "4v4" && UpgradeAlertsEnable4v4)
+
 SupplyInProductionCount := gateway_count := warpgate_count := ZergWorkerInProductionCount := 0
 If (aLocalPlayer["Race"] = "Terran")
 	SupplyType := aUnitID["SupplyDepot"], geyserStructure := aUnitID["Refinery"]
@@ -619,8 +624,13 @@ loop, % DumpUnitMemory(UBMemDump)
 			aTmpCompleteStructures[unit_type] .=  (aTmpCompleteStructures[unit_type] != "" ? "|" : "") u_iteration "\" fingerPrint
 		}
 	}
-	else if (doUnitDetectionOnThisRun && alert_array[GameType, "IDLookUp"].HasKey(unit_type)) ; these units are enemies and have an entry in the alertWarnings
-		doUnitDetection(u_iteration, unit_type, unit_owner, numGetUnitIndexReusedCount(UBMemDump, u_iteration))
+	else 
+	{
+		if (doUnitDetectionOnThisRun && alert_array[GameType, "IDLookUp"].HasKey(unit_type)) ; these units are enemies and have an entry in the alertWarnings
+			doUnitDetection(u_iteration, unit_type, unit_owner, numGetUnitIndexReusedCount(UBMemDump, u_iteration))
+		if (doUpgradeDetection && aUpgradeAlerts.parentLookUp[gameType].HasKey(unit_type))
+			performUpgradeDetection(unit_type, u_iteration, unit_owner, numGetUnitFingerPrint(UBMemDump, u_iteration))
+	}
 }
 if warpgate_warn_on
 	gosub warpgate_warn

@@ -1816,8 +1816,8 @@ getStructureProductionInfo(unit, type, byRef aInfo, byRef totalQueueSize := "", 
 		return 0 ; refinery,reactor, depot, spine, extractor etc
 
 	CAbilQueue := readmemory(pAbilities + aOffsets[type], GameIdentifier)
-	totalQueueSize := readmemory(CAbilQueue + O_unitsQueued, GameIdentifier) ; this is the total real queue size e.g. max 5 on non-reactor, max 8 on reactored 
-	queuedArray := readmemory(CAbilQueue + O_pQueueArray, GameIdentifier)
+	, totalQueueSize := readmemory(CAbilQueue + O_unitsQueued, GameIdentifier) ; this is the total real queue size e.g. max 5 on non-reactor, max 8 on reactored 
+	, queuedArray := readmemory(CAbilQueue + O_pQueueArray, GameIdentifier)
 
 	while (A_Index <= totalQueueSize && B_QueuedUnitInfo := readmemory(queuedArray + 4 * (A_index-1), GameIdentifier) )   ; A_index-1 = queue position ;progress = 0 not being built, but is in queue
 	{
@@ -3736,6 +3736,41 @@ getTimeAtUnitConstruction(unit)
 	return (seconds := round(getTimeFull() - getUnitTimer(unit))) < 0 ? 0 : seconds ; getTime() is rounded to 1 decimal, so protect against small negative numbers. This shouldn't be required when calling getTimeFUll(), but doesn't hurt
 }
 
+; Do a obj.parentLookUp[gametype].HasKeys(unitID) before calling
+; I.e. only call the function for structures which can produce the upgrade (alter) items
+performUpgradeDetection(unitID, unitIndex, owner, fingerPrint)
+{
+	global aMiniMapWarning, aUpgradeAlerts, PrevWarning, GameType, time
+	static aWarned := []
+
+	if (time <= 10 && aWarned := []) ; No upgrade will start before this time. Easy way to reset for new game.
+	|| !getStructureProductionInfo(unitIndex, unitID, aInfo,, False) ; False return progress as time remaining (more accurate than rounded %)
+	|| !aUpgradeAlerts.alertLookUp[gameType].Haskey(aInfo.1.Item) ; No warning for this upgrade in this game mode
+	|| time > aUpgradeAlerts[GameType, key := aUpgradeAlerts.alertLookUp[gameType, aInfo.1.Item], "DWA"] ; Don't warn after this game time 
+		return 
+	; Ignore warned upgrade which is still researching, unless its timeRemainging > the prior time remaining or its being researched by a new structure (it has restarted)
+	; If (previously warned && ((!repeatable || <15 seconds since first started) || (upgrade has has progressed && same structure)) return + update progress
+	; When repeatable - if an upgrade is cancelled and restarted within 15 in game seconds  from starting, it will not be rewarmed.
+
+	if aWarned[owner].hasKey(aInfo.1.Item) 
+	&& ( !aUpgradeAlerts[GameType, key, "Repeatable"]  ; Don't warn on restart 
+	; && ( (!aUpgradeAlerts[GameType, key, "Repeatable"] || abs(aWarned[owner, aInfo.1.Item, "startTime"] - time) <= 15) ; Don't warn on restart 
+	|| (aWarned[owner, aInfo.1.Item, "timeRemaining"] >= aInfo.1.Progress && aWarned[owner, aInfo.1.Item, "fingerPrint"] = fingerPrint))  ; ; ** Use >= in case protoss upgrade gets unpowered
+		return "", aWarned[owner, aInfo.1.Item, "timeRemaining"] := aInfo.1.Progress ; Update that new progress. helps ensure that cancelled upgrades will be re-warned if they start again
+
+	;, aWarned[owner, aInfo.1.Item, "gameTime"] := time
+	aWarned[owner, aInfo.1.Item, "timeRemaining"] := aInfo.1.Progress 
+	, aWarned[owner, aInfo.1.Item, "fingerPrint"] := fingerPrint
+	, aWarned[owner, aInfo.1.Item, "startTime"] := time
+	, alert := aUpgradeAlerts[GameType, key]	
+	, PrevWarning := {"unitIndex": unitIndex, "FingerPrint": fingerPrint, "Type": unitID, "Owner": owner, "minimapAlert": alert.minimapAlert, "speech": alert.verbalWarning}
+	if alert.minimapAlert								
+		aMiniMapWarning.insert({ "Unit": unitIndex, "Time": Time, "FingerPrint": fingerPrint, "Type": unitID, "Owner": owner, "WarningType": "upgradeDetection"})
+	tSpeak(alert.verbalWarning)
+	return
+}
+
+
 ; One of the first functions i ever wrote. Very messy. But it works and im lazy
 ; Should have made it so that it uses the unit type as a lookup rather than iterating the warning types.
 ; But then would have to modify quite a bit, as you can have multiple warning for the same unit type
@@ -5603,3 +5638,100 @@ getCameraTownHalls(byRef aTownHalls := "")
 }
 */
 
+
+iniReadUpgradeAlerts()
+{
+	IniRead, objString, %config_file%, Upgrade Alerts, Alerts, %A_Space% ; Could replace this with a default obj string
+	if !isobject(obj := serDes(objString))
+		obj := []
+	obj.Remove("parentLookUp"),	obj.Remove("alertLookUp") ; these shouldnt be in the obj anyway
+	for i, gameType in ["1v1", "2v2", "3v3", "4v4"]
+	{
+		for key, alert in obj[gameType]
+		{
+			obj["parentLookUp", gameType, aUnitID[upgradeDefinitions.BuildingFromUpgrade(alert.upgradeGameTitle)]] := True
+			, obj["alertLookUp", gameType, alert.upgradeGameTitle] := key
+		}
+	}	
+	return obj	
+}
+
+
+class upgradeDefinitions
+{
+
+	static aUpgradeUserTitle := { Terran: { StarportTechLab: {ResearchBansheeCloak: "CloakingField", ResearchMedivacEnergyUpgrade: "CaduceusReactor", ResearchDurableMaterials: "DurableMaterials", ResearchRavenEnergyUpgrade: "CorvidReactor"}
+									, FusionCore: {ResearchBattlecruiserEnergyUpgrade: "BehemothReactor", ResearchBattlecruiserSpecializations: "WeaponRefit"}
+									, GhostAcademy: {ResearchPersonalCloaking: "PersonalCloaking"} ;, ResearchGhostEnergyUpgrade: ""
+									, BarracksTechLab: {ResearchShieldWall: "CombatShield", Stimpack: "Stimpack", ResearchPunisherGrenades: "ConcussiveShells"}
+									, FactoryTechLab: {ResearchDrillClaws: "DrillingClaws", ResearchHighCapacityBarrels: "InfernalPre-Igniter"} ;, ;ResearchTransformationServos: ""
+									, Armory: { TerranVehicleAndShipPlatingLevel1: "VehicleAndShipPlatingLevel1", TerranVehicleAndShipPlatingLevel2: "VehicleAndShipPlatingLevel2", TerranVehicleAndShipPlatingLevel3: "VehicleAndShipPlatingLevel3", TerranVehicleAndShipWeaponsLevel1: "VehicleAndShipWeaponsLevel1", TerranVehicleAndShipWeaponsLevel2: "VehicleAndShipWeaponsLevel2", TerranVehicleAndShipWeaponsLevel3: "VehicleAndShipWeaponsLevel3"} ;, TerranVehicleWeaponsLevel1: "";, TerranVehicleWeaponsLevel2: "";, TerranVehicleWeaponsLevel3: "";, TerranShipWeaponsLevel1: "";, TerranShipWeaponsLevel2: "";, TerranShipWeaponsLevel3: ""
+									, EngineeringBay: {TerranInfantryArmorLevel1: "InfantryArmorLevel1", TerranInfantryArmorLevel2: "InfantryArmorLevel2", TerranInfantryArmorLevel3: "InfantryArmorLevel3", TerranInfantryWeaponsLevel1: "InfantryWeaponsLevel1", TerranInfantryWeaponsLevel2: "InfantryWeaponsLevel2", TerranInfantryWeaponsLevel3: "InfantryWeaponsLevel3", ResearchNeosteelFrame: "NeosteelFrame", ResearchHiSecAutoTracking: "Hi-SecAutoTracking", UpgradeBuildingArmorLevel1: "StructureArmor"}}						
+						, Protoss:	{ FleetBeacon: {PhoenixRangeUpgrade: "AnionPulse-Crystals", ResearchInterceptorLaunchSpeedUpgrade: "GravitonCatapult"}
+									, Forge: {ProtossGroundWeaponsLevel1: "GroundWeaponsLevel1", ProtossGroundWeaponsLevel2: "GroundWeaponsLevel2", ProtossGroundWeaponsLevel3: "GroundWeaponsLevel3", ProtossGroundArmorLevel1: "GroundArmorLevel1", ProtossGroundArmorLevel2: "GroundArmorLevel2", ProtossGroundArmorLevel3: "GroundArmorLevel3", ProtossShieldsLevel1: "ShieldsLevel1", ProtossShieldsLevel2: "ShieldsLevel2", ProtossShieldsLevel3: "ShieldsLevel3"}
+									, RoboticsBay: {ResearchExtendedThermalLance: "ExtendedThermalLance", ResearchGraviticBooster: "GraviticBoosters", ResearchGraviticDrive: "GraviticDrive"}
+									, TemplarArchive: {ResearchPsiStorm: "PsionicStorm"}
+									, CyberneticsCore: {ResearchWarpGate: "WarpGate", ProtossAirWeaponsLevel1: "AirWeaponsLevel1", ProtossAirWeaponsLevel2: "AirWeaponsLevel2", ProtossAirWeaponsLevel3: "AirWeaponsLevel3", ProtossAirArmorLevel1: "AirArmorLevel1", ProtossAirArmorLevel2: "AirArmorLevel2", ProtossAirArmorLevel3: "AirArmorLevel3"}
+									, TwilightCouncil: {ResearchCharge: "Charge", ResearchStalkerTeleport: "Blink"}}
+						, Zerg:	{BanelingNest: {EvolveCentrificalHooks: "CentrifugalHooks"}
+									, InfestationPit: {EvolveInfestorEnergyUpgrade: "PathogenGlands", ResearchNeuralParasite: "NeuralParasite", EvolveFlyingLocusts: "FlyingLocusts"} ;, ResearchLocustLifetimeIncrease: ""
+									, UltraliskCavern: {EvolveChitinousPlating: "ChitinousPlating"}
+									, RoachWarren: {EvolveGlialRegeneration: "GlialReconstitution", EvolveTunnelingClaws: "TunnelingClaws"}
+									, Hatchery: {overlordspeed: "PneumatizedCarapace", ResearchBurrow: "Burrow"}
+									, Lair: {overlordspeed: "PneumatizedCarapace", ResearchBurrow: "Burrow", EvolveVentralSacks: "VentralSacks"}									
+									, Hive: {overlordspeed: "PneumatizedCarapace", ResearchBurrow: "Burrow", EvolveVentralSacks: "VentralSacks"}
+									, HydraliskDen: {hydraliskspeed: "GroovedSpines", MuscularAugments: "MuscularAugments"}
+									, SpawningPool: {zerglingmovementspeed: "MetabolicBoost", zerglingattackspeed: "AdrenalGlands"}
+									, Spire: {zergflyerarmor1: "FlyerCarapaceLevel1", zergflyerarmor2: "FlyerCarapaceLevel2", zergflyerarmor3: "FlyerCarapaceLevel3", zergflyerattack1: "FlyerAttacksLevel1", zergflyerattack2: "FlyerAttacksLevel2", zergflyerattack3: "FlyerAttacksLevel3"}
+									, GreaterSpire: {zergflyerarmor1: "FlyerCarapaceLevel1", zergflyerarmor2: "FlyerCarapaceLevel2", zergflyerarmor3: "FlyerCarapaceLevel3", zergflyerattack1: "FlyerAttacksLevel1", zergflyerattack2: "FlyerAttacksLevel2", zergflyerattack3: "FlyerAttacksLevel3"}
+									, EvolutionChamber: {zerggroundarmor1: "GroundCarapaceLevel1", zerggroundarmor2: "GroundCarapaceLevel2", zerggroundarmor3: "GroundCarapaceLevel3", zergmeleeweapons1: "MeleeAttacksLevel1", zergmeleeweapons2: "MeleeAttacksLevel2", zergmeleeweapons3: "MeleeAttacksLevel3", zergmissileweapons1: "MissileAttacksLevel1", zergmissileweapons2: "MissileAttacksLevel2", zergmissileweapons3: "MissileAttacksLevel3" }}}
+	static _ahack := upgradeDefinitions.initialiseVars()
+
+	initialiseVars()
+	{
+		this._aUserTitles := []
+		this._aGameTitles := []
+		this._aUpgradeToStructure := []
+		this._aUpgradesFromBuilding := []
+		this._aStructuresFromRace := []
+		for race, obj in this.aUpgradeUserTitle
+		{
+			this._aStructuresFromRace[race] := []
+			for structure, upgrades in obj
+			{
+				this._aStructuresFromRace[race].insert(structure)
+				this._aUpgradesFromBuilding[structure] := []
+				for gameTitle, commonTitle in upgrades
+				{
+					this._aGameTitles[commonTitle] := gameTitle
+					this._aUserTitles[gameTitle] := commonTitle
+					this._aUpgradeToStructure[gameTitle] := structure
+					this._aUpgradesFromBuilding[structure].insert(gameTitle)
+				}
+			}
+		}
+		return		
+	}
+	upgradeGameTitle(userTitle)
+	{
+		return this._aGameTitles[userTitle]
+	}
+	upgradeUserTitle(gameTitle)
+	{
+		return this._aUserTitles[gameTitle]
+	}
+	BuildingFromUpgrade(upgrade)
+	{
+		return this._aUpgradeToStructure[upgrade]
+	}
+	; returns an array of upgrades available from a structure	
+	upgradesFromBuilding(structure)
+	{
+		return this._aUpgradesFromBuilding[structure]
+	}
+	; Returns an array of structures 
+	structuresFromRace(race)
+	{
+		return this._aStructuresFromRace[race]
+	}
+}
