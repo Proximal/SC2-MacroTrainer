@@ -3625,34 +3625,30 @@ IniRead(File, Section, Key="", DefaultValue="")
 	Return Output
 }
 
-
 createAlertArray()
 {	
 	local alert_array := [] ; [1v1, unit#, parameter] - [A_LoopField, "list", "size"] alert_array[A_LoopField, "list", "size"]
 	loop, parse, l_GameType, `, ;comma is the separator
 	{
 		IniRead, BAS_on_%A_LoopField%, %config_file%, Building & Unit Alert %A_LoopField%, enable, 1	;alert system on/off
-		alert_array[A_LoopField, "Enabled"] := BAS_on_%A_LoopField% ;this style name, so it matches variable name for update
+		alert_array["Enabled", A_LoopField] := BAS_on_%A_LoopField% ;this style name, so it matches variable name for update
+		alert_array[A_LoopField] := []
 		loop	;loop thru the building list sequentially
 		{
 			IniRead, temp_name, %config_file%, Building & Unit Alert %A_LoopField%, %A_Index%_name_warning
 			if (  temp_name = "ERROR" ) ;ERROR default return
-			{
-				alert_array[A_LoopField, "list", "size"] := A_Index-1
 				break	
-			}
 			IniRead, temp_DWB, %config_file%, Building & Unit Alert %A_LoopField%, %A_Index%_Dont_Warn_Before_Time, 0 ;get around having blank keys in ini)=
 			IniRead, temp_DWA, %config_file%, Building & Unit Alert %A_LoopField%, %A_Index%_Dont_Warn_After_Time, 54000 ;15 hours - get around having blank keys in ini		
 			IniRead, Temp_repeat, %config_file%, Building & Unit Alert %A_LoopField%, %A_Index%_repeat_on_new, 0
 			IniRead, Temp_IDName, %config_file%, Building & Unit Alert %A_LoopField%, %A_Index%_IDName
-			alert_array[A_LoopField, A_Index, "Name"] := temp_name
-			alert_array[A_LoopField, A_Index, "DWB"] := temp_DWB
-			alert_array[A_LoopField, A_Index, "DWA"] := temp_DWA
-			alert_array[A_LoopField, A_Index, "Repeat"] := Temp_repeat
-			alert_array[A_LoopField, A_Index, "IDName"] := Temp_IDName
-			; This lookup has the has the id for each unit type which has an alert. 
+			alert_array[A_LoopField].Insert({ "Name": temp_name, "DWB":  temp_DWB, "DWA": temp_DWA, "Repeat": Temp_repeat, "IDName": Temp_IDName})
+				; This lookup has the has the id for each unit type which has an alert. 
 			; can do a simple alert_array[GameType, IDLookUp].HasKey(unitID) to check if the list has an alert for this unit type
-			alert_array[A_LoopField, "IDLookUp", aUnitID[Temp_IDName]] := True
+			; then can do a for loop on just these alerts
+			if !isObject(alert_array["IDLookUp", A_LoopField, aUnitID[Temp_IDName]])
+				alert_array["IDLookUp", A_LoopField, aUnitID[Temp_IDName]] := []
+			alert_array["IDLookUp", A_LoopField, aUnitID[Temp_IDName]].insert(alert_array[A_LoopField].MaxIndex())
 		}
 	}
 	Return alert_array
@@ -3785,29 +3781,30 @@ doUnitDetection(unit, type, owner, unitUsedCount, mode = "")
 	if !mode
 	{
 		;i should really compare the unit type, as theres a chance that the warned unit has died and was replaced with another unit which should be warned
-		loop_AlertList:
-		loop, % alert_array[GameType, "list", "size"]
-		{ 			; the below if statement for time		
-			Alert_Index := A_Index	;the alert index number which corresponds to the ini file/config
+		
+		;loop, % alert_array[GameType, "list", "size"]
+		for i, key in alert_array["IDLookUp", GameType, type]
+		{ 				
+			alert := alert_array[GameType, key]
 
-			if  ( type = aUnitID[alert_array[GameType, A_Index, "IDName"]] ) ;So if its a shrine and the player is not on ur team
+			if  ( type = aUnitID[alert["IDName"]] ) ;So if its a shrine and the player is not on ur team. This should be required as the type loop above should mean they will always match
 			{
 				createdAtTime := getTimeAtUnitConstruction(unit) ; This will be 0 for starting units (townhall + workers)
 
-				if ( createdAtTime < alert_array[GameType, A_Index, "DWB"]) ; Each time chrono is used on it createdAtTime will be slightly lower - but this isn't an issue as the unit would already have been warned 
+				if ( createdAtTime < alert["DWB"]) ; Each time chrono is used on it createdAtTime will be slightly lower - but this isn't an issue as the unit would already have been warned 
 				{	
-					if !Alert_TimedOut[owner, Alert_Index].HasKey(unit) || unitUsedCount != Alert_TimedOut[owner, Alert_Index, unit]
-						Alert_TimedOut[owner, Alert_Index, unit] := unitUsedCount 
+					if !Alert_TimedOut[owner, key].HasKey(unit) || unitUsedCount != Alert_TimedOut[owner, key, unit]
+						Alert_TimedOut[owner, key, unit] := unitUsedCount 
 					continue ; may be an alert with a different DWB for this unit type later on in the array
 				}
-				else if (time > alert_array[GameType, A_Index, "DWA"]) ; refer to time, as createdAtTime is reduced with each chrono. (which could cause a trigger if the unit was made just after DWA)
+				else if (time > alert["DWA"]) ; refer to time, as createdAtTime is reduced with each chrono. (which could cause a trigger if the unit was made just after DWA)
 					continue ; may be other warnings for this unit with different times
-				Else if (Alert_TimedOut[owner, Alert_Index].HasKey(unit) && unitUsedCount = Alert_TimedOut[owner, Alert_Index, unit])
-				|| (!alert_array[GameType, A_Index, "Repeat"] && Alerted_Buildings[owner].HasKey(A_Index))
-				|| (Alerted_Buildings_Base[owner, A_Index].Haskey(unit) && unitUsedCount = Alerted_Buildings_Base[owner, A_Index, unit])
+				Else if (Alert_TimedOut[owner, key].HasKey(unit) && unitUsedCount = Alert_TimedOut[owner, key, unit])
+				|| (!alert["Repeat"] && Alerted_Buildings[owner].HasKey(key))
+				|| (Alerted_Buildings_Base[owner, key].Haskey(unit) && unitUsedCount = Alerted_Buildings_Base[owner, key, unit])
 					return 
 				
-				; using Alert_Index in Alerted_Buildings_Base ensures that a warning will work for a hatch and later for lair when it finishes morphing
+				; using key in Alerted_Buildings_Base ensures that a warning will work for a hatch and later for lair when it finishes morphing
 				; if just used the fingerprint this wouldnt work (unless checked unit type)
 				PrevWarning := []							
 				aMiniMapWarning.insert({ "Unit": PrevWarning.unitIndex := unit 
@@ -3817,13 +3814,13 @@ doUnitDetection(unit, type, owner, unitUsedCount, mode = "")
 										, "Owner": PrevWarning.Owner := owner
 										, "WarningType": "unitDetection"})
 		
-				PrevWarning.speech := alert_array[GameType, A_Index, "Name"]			
-				tSpeak(alert_array[GameType, A_Index, "Name"])
-				if !alert_array[GameType, A_Index, "Repeat"]	; =0 these below setup a list like above, but contins the type - to prevent rewarning
-					Alerted_Buildings[owner, A_Index] := True
-					;Alerted_Buildings.insert( {(owner): Alert_Index})
+							
+				tSpeak(PrevWarning.speech := alert["Name"])
+				if !alert["Repeat"]	; =0 these below setup a list like above, but contins the type - to prevent rewarning
+					Alerted_Buildings[owner, key] := True
+					;Alerted_Buildings.insert( {(owner): key})
 			;	Alerted_Buildings_Base.insert( {(owner): unit}) ; prevents the same exact unit beings warned on next run thru
-				Alerted_Buildings_Base[owner, A_Index, unit] := unitUsedCount ; prevents the same exact unit beings warned on next run thru.
+				Alerted_Buildings_Base[owner, key, unit] := unitUsedCount ; prevents the same exact unit beings warned on next run thru.
 				return	
 			} ;End of if unit is on list and player not on our team 
 		} ; loop, % alert_array[GameType, "list", "size"]

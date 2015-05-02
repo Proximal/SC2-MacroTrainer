@@ -123,7 +123,7 @@ gameChange(UserSavedAppliedSettings := False)
 		;|| alert_array[GameType, "Enabled"])
 		SetTimer, MiniMap_Timer, %MiniMapRefresh%, -7
 		; Resume warning is written inside the doUnitDetection when called via Save
-		if ((ResumeWarnings || UserSavedAppliedSettings) && alert_array[GameType, "Enabled"])  
+		if ((ResumeWarnings || UserSavedAppliedSettings) && alert_array["Enabled", GameType])  
 			doUnitDetection(0, 0, 0, 0, "Resume")
 		Else
 			doUnitDetection(0, 0, 0, 0, "Reset") ; clear the variables within the function			
@@ -528,7 +528,7 @@ unit_bank_read:
 ; this allows this routine to be called faster to keep the other info up-to-date more quickly
 ;unit_bank_readCallCount++
 ;doUnitDetectionOnThisRun := unit_bank_readCallCount := Mod(unit_bank_readCallCount, 2) * (alert_array[GameType, "Enabled"] = 1)
-doUnitDetectionOnThisRun := alert_array[GameType, "Enabled"] && !doUnitDetectionOnThisRun
+doUnitDetectionOnThisRun := alert_array["Enabled", GameType] && !doUnitDetectionOnThisRun
 ; If nothing is on or if only unitdetection is on but it is to be skipped on this pass, just return
 ; **** Disable this check, as we need to update the thread shared aLocalUnitData object which is required for auto build!!****
 ;if !(warpgate_warn_on && aLocalPlayer["Race"] = "Protoss") && !WarningsGeyserOverSaturationEnable && !supplyon && !workeron && !doUnitDetectionOnThisRun
@@ -626,7 +626,7 @@ loop, % DumpUnitMemory(UBMemDump)
 	}
 	else 
 	{
-		if (doUnitDetectionOnThisRun && alert_array[GameType, "IDLookUp"].HasKey(unit_type)) ; these units are enemies and have an entry in the alertWarnings
+		if (doUnitDetectionOnThisRun && alert_array["IDLookUp", GameType].HasKey(unit_type)) ; these units are enemies and have an entry in the alertWarnings
 			doUnitDetection(u_iteration, unit_type, unit_owner, numGetUnitIndexReusedCount(UBMemDump, u_iteration))
 		if (doUpgradeDetection && aUpgradeAlerts.parentLookUp[gameType].HasKey(unit_type))
 			performUpgradeDetection(unit_type, u_iteration, unit_owner, numGetUnitFingerPrint(UBMemDump, u_iteration))
