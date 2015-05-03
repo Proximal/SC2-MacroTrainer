@@ -3627,28 +3627,30 @@ IniRead(File, Section, Key="", DefaultValue="")
 
 createAlertArray()
 {	
-	local alert_array := [] ; [1v1, unit#, parameter] - [A_LoopField, "list", "size"] alert_array[A_LoopField, "list", "size"]
-	loop, parse, l_GameType, `, ;comma is the separator
+	local alert_array := [], temp_name, temp_DWB, temp_DWA, Temp_repeat, Temp_IDName, minimapAlert
+
+	for i, gameType in ["1v1", "2v2", "3v3", "4v4"]
 	{
-		IniRead, BAS_on_%A_LoopField%, %config_file%, Building & Unit Alert %A_LoopField%, enable, 1	;alert system on/off
-		alert_array["Enabled", A_LoopField] := BAS_on_%A_LoopField% ;this style name, so it matches variable name for update
-		alert_array[A_LoopField] := []
+		IniRead, BAS_on_%gameType%, %config_file%, Building & Unit Alert %gameType%, enable, 0	;alert system on/off
+		alert_array["Enabled", gameType] := BAS_on_%gameType% ;this style name, so it matches variable name for update
+		alert_array[gameType] := []
 		loop	;loop thru the building list sequentially
 		{
-			IniRead, temp_name, %config_file%, Building & Unit Alert %A_LoopField%, %A_Index%_name_warning
-			if (  temp_name = "ERROR" ) ;ERROR default return
+			IniRead, temp_name, %config_file%, Building & Unit Alert %gameType%, %A_Index%_name_warning, ERROrABnCRQFQFtvq
+			if (  temp_name == "ERROrABnCRQFQFtvq" ) ; use a phrase that a user would never use
 				break	
-			IniRead, temp_DWB, %config_file%, Building & Unit Alert %A_LoopField%, %A_Index%_Dont_Warn_Before_Time, 0 ;get around having blank keys in ini)=
-			IniRead, temp_DWA, %config_file%, Building & Unit Alert %A_LoopField%, %A_Index%_Dont_Warn_After_Time, 54000 ;15 hours - get around having blank keys in ini		
-			IniRead, Temp_repeat, %config_file%, Building & Unit Alert %A_LoopField%, %A_Index%_repeat_on_new, 0
-			IniRead, Temp_IDName, %config_file%, Building & Unit Alert %A_LoopField%, %A_Index%_IDName
-			alert_array[A_LoopField].Insert({ "Name": temp_name, "DWB":  temp_DWB, "DWA": temp_DWA, "Repeat": Temp_repeat, "IDName": Temp_IDName})
+			IniRead, temp_DWB, %config_file%, Building & Unit Alert %gameType%, %A_Index%_Dont_Warn_Before_Time, 0 ;get around having blank keys in ini)=
+			IniRead, temp_DWA, %config_file%, Building & Unit Alert %gameType%, %A_Index%_Dont_Warn_After_Time, 54000 ;15 hours - get around having blank keys in ini		
+			IniRead, Temp_repeat, %config_file%, Building & Unit Alert %gameType%, %A_Index%_repeat_on_new, 0
+			IniRead, minimapAlert, %config_file%, Building & Unit Alert %gameType%, %A_Index%_minimapAlert, 1
+			IniRead, Temp_IDName, %config_file%, Building & Unit Alert %gameType%, %A_Index%_IDName
+			alert_array[gameType].Insert({ "Name": temp_name, "DWB":  temp_DWB, "DWA": temp_DWA, "Repeat": Temp_repeat, "IDName": Temp_IDName, "minimapAlert": minimapAlert})
 				; This lookup has the has the id for each unit type which has an alert. 
 			; can do a simple alert_array[GameType, IDLookUp].HasKey(unitID) to check if the list has an alert for this unit type
 			; then can do a for loop on just these alerts
-			if !isObject(alert_array["IDLookUp", A_LoopField, aUnitID[Temp_IDName]])
-				alert_array["IDLookUp", A_LoopField, aUnitID[Temp_IDName]] := []
-			alert_array["IDLookUp", A_LoopField, aUnitID[Temp_IDName]].insert(alert_array[A_LoopField].MaxIndex())
+			if !isObject(alert_array["IDLookUp", gameType, aUnitID[Temp_IDName]])
+				alert_array["IDLookUp", gameType, aUnitID[Temp_IDName]] := []
+			alert_array["IDLookUp", gameType, aUnitID[Temp_IDName]].insert(alert_array[gameType].MaxIndex())
 		}
 	}
 	Return alert_array
@@ -3733,10 +3735,10 @@ getTimeAtUnitConstruction(unit)
 }
 
 ; Do a obj.parentLookUp[gametype].HasKeys(unitID) before calling
-; I.e. only call the function for structures which can produce the upgrade (alter) items
+; I.e. only call the function for structures which can produce the upgrade (alert) items
 performUpgradeDetection(unitID, unitIndex, owner, fingerPrint)
 {
-	global aMiniMapWarning, aUpgradeAlerts, PrevWarning, GameType, time
+	global aMiniMapWarning, aUpgradeAlerts, GameType, time
 	static aWarned := []
 
 	if (time <= 10 && aWarned := []) ; No upgrade will start before this time. Easy way to reset for new game.
@@ -3759,9 +3761,9 @@ performUpgradeDetection(unitID, unitIndex, owner, fingerPrint)
 	, aWarned[owner, aInfo.1.Item, "fingerPrint"] := fingerPrint
 	, aWarned[owner, aInfo.1.Item, "startTime"] := time
 	, alert := aUpgradeAlerts[GameType, key]	
-	, PrevWarning := {"unitIndex": unitIndex, "FingerPrint": fingerPrint, "Type": unitID, "Owner": owner, "minimapAlert": alert.minimapAlert, "speech": alert.verbalWarning}
+	, previousDetectionWarning({"unitIndex": unitIndex, "FingerPrint": fingerPrint, "Type": unitID, "Owner": owner, "minimapAlert": alert.minimapAlert, "speech": alert.verbalWarning, "WarningType": "upgradeDetection"})
 	if alert.minimapAlert								
-		aMiniMapWarning.insert({ "Unit": unitIndex, "Time": Time, "FingerPrint": fingerPrint, "Type": unitID, "Owner": owner, "WarningType": "upgradeDetection"})
+		aMiniMapWarning.insert({ "unitIndex": unitIndex, "Time": Time, "FingerPrint": fingerPrint, "Type": unitID, "Owner": owner, "WarningType": "upgradeDetection"})
 	tSpeak(alert.verbalWarning)
 	return
 }
@@ -3775,7 +3777,7 @@ performUpgradeDetection(unitID, unitIndex, owner, fingerPrint)
 
 doUnitDetection(unit, type, owner, unitUsedCount, mode = "")
 {	
-	global config_file, alert_array, time, aMiniMapWarning, PrevWarning, GameIdentifier, aUnitID, GameType
+	global config_file, alert_array, time, aMiniMapWarning, GameIdentifier, aUnitID, GameType
 	static Alert_TimedOut := [], Alerted_Buildings := [], Alerted_Buildings_Base := []
 
 	if !mode
@@ -3806,16 +3808,12 @@ doUnitDetection(unit, type, owner, unitUsedCount, mode = "")
 				
 				; using key in Alerted_Buildings_Base ensures that a warning will work for a hatch and later for lair when it finishes morphing
 				; if just used the fingerprint this wouldnt work (unless checked unit type)
-				PrevWarning := []							
-				aMiniMapWarning.insert({ "Unit": PrevWarning.unitIndex := unit 
-										, "Time": Time
-										, "FingerPrint": PrevWarning.fingerPrint := getUnitFingerPrint(unit)
-										, "Type": PrevWarning.Type := type
-										, "Owner": PrevWarning.Owner := owner
-										, "WarningType": "unitDetection"})
-		
-							
-				tSpeak(PrevWarning.speech := alert["Name"])
+				fingerPrint := getUnitFingerPrint(unit)
+				, previousDetectionWarning({ "unitIndex": unit, "FingerPrint": fingerPrint, "Type": type, "Owner": owner, "minimapAlert": alert["minimapAlert"], "speech": alert["Name"], "WarningType": "unitDetection"})
+				if alert["minimapAlert"]
+				 	aMiniMapWarning.insert({ "unitIndex": unit, "Time": Time, "FingerPrint": fingerPrint, "Type": type, "Owner": owner, "WarningType": "unitDetection"})
+				
+				tSpeak(speech := alert["Name"])
 				if !alert["Repeat"]	; =0 these below setup a list like above, but contins the type - to prevent rewarning
 					Alerted_Buildings[owner, key] := True
 					;Alerted_Buildings.insert( {(owner): key})
@@ -3899,266 +3897,55 @@ doUnitDetection(unit, type, owner, unitUsedCount, mode = "")
 
 */
 
-/*
-doUnitDetection(unit, type, owner, mode = "")
-{	
-	global config_file, alert_array, time, aMiniMapWarning, PrevWarning, GameIdentifier, aUnitID, GameType
-	static Alert_TimedOut := [], Alerted_Buildings := [], Alerted_Buildings_Base := []
+; keys 
+; unitIndex, FingerPrint, speech, Type, Owner, minimapAlert, WarningType
 
-	if !mode
-	{
-		;i should really compare the unit type, as theres a chance that the warned unit has died and was replaced with another unit which should be warned
-		loop_AlertList:
-		loop, % alert_array[GameType, "list", "size"]
-		{ 			; the below if statement for time		
-			Alert_Index := A_Index	;the alert index number which corresponds to the ini file/config
-			if  ( type = aUnitID[alert_array[GameType, A_Index, "IDName"]] ) ;So if its a shrine and the player is not on ur team
-			{
-				createdAtTime := getTimeAtUnitConstruction(unit) ; This will be 0 for starting units (townhall + workers)
-				if ( createdAtTime < alert_array[GameType, A_Index, "DWB"]) ; OR createdAtTime > alert_array[GameType, A_Index, "DWA"]  ) ; too early/late to warn - add unit to 'warned list'
-				{	
-					if !Alert_TimedOut[owner, Alert_Index].HasKey(unit) || createdAtTime - Alert_TimedOut[owner, Alert_Index, unit]  >= .5
-						Alert_TimedOut[owner, Alert_Index, unit] := createdAtTime 
-					continue ; may be an alert with a different DWB for this unit type later on in the array
-
-				;	For index, object in Alert_TimedOut	; ;checks if the exact unit is in the time list already (eg if time > dont_warn_before, the original if statement wont be true so BAS_Warning will remain "give warning")			
-				;		if ( unit = object[owner, Alert_Index] ) ;checks if type is in the list already
-				;			continue, loop_AlertList ; dont break, as could be other alerts for same unit but with different times later/lower in list									
-				;	Alert_TimedOut[round(Alert_TimedOut.maxindex()) + 1, owner, Alert_Index] := unit
-				;	continue, loop_AlertList
-				}
-				else if (time > alert_array[GameType, A_Index, "DWA"]) ; refer to time, as createdAtTime is reduced with each chrono. (which could cause a trigger if the unit was made just after DWA)
-					continue ; may be other warnings for this unit with different times
-				Else
-				{	
-					if Alert_TimedOut[owner, Alert_Index].HasKey(unit) && createdAtTime - Alert_TimedOut[owner, Alert_Index, unit] < .5
-						return 
-
-					;during warn time lets check if the unit has already been warned			
-			;		For index, object in Alert_TimedOut	; ;checks if the exact unit is in the time list already (eg if time > dont_warn_before, the original if statement wont be true so BAS_Warning will remain "give warning")			
-			;			if ( unit = object[owner, Alert_Index] ) ;checks if type is in the list already									
-			;				return
-
-					If !alert_array[GameType, A_Index, "Repeat"] && Alerted_Buildings[owner].HasKey(A_Index) ;else check if this unit type has already been warned												
-						return ; This exact alert should not repeat and has already been warned
-
-						;For index, warned_type in Alerted_Buildings ;	if ( type = Alerted_Buildings[index, owner] ) ;checks if type is in the list already						
-						;	if ( Alert_Index = warned_type[owner] ) ;checks if alert index i.e. alert 1,2,3 is in the list already						
-						;		return			
-
-					;For index, warned_unit in Alerted_Buildings_Base  ; this list contains all the exact units which have already been warned				
-					;	if ( unit = warned_unit[owner] ) ;checks if type is in the list already				
-					;		return ; this warning is for the exact unitbase Address	
-					if Alerted_Buildings_Base[owner, A_Index].Haskey(unit) && createdAtTime - Alerted_Buildings_Base[owner, A_Index, unit] < .5
-						return
-				}	
-				PrevWarning := []							
-				aMiniMapWarning.insert({ "Unit": PrevWarning.unitIndex := unit 
-										, "Time": Time
-										, "UnitTimer": PrevWarning.UnitTimer := getUnitTimer(unit) 
-										, "Type": PrevWarning.Type := type
-										, "Owner":  PrevWarning.Owner := owner})
-		
-				PrevWarning.speech := alert_array[GameType, A_Index, "Name"]
-				
-				if !A_IsCompiled
-					soundplay *-1
-				
-				tSpeak(alert_array[GameType, A_Index, "Name"])
-				if !alert_array[GameType, A_Index, "Repeat"]	; =0 these below setup a list like above, but contins the type - to prevent rewarning
-					Alerted_Buildings[owner, A_Index] := True
-					;Alerted_Buildings.insert( {(owner): Alert_Index})
-			;	Alerted_Buildings_Base.insert( {(owner): unit}) ; prevents the same exact unit beings warned on next run thru
-				Alerted_Buildings_Base[owner, A_Index, unit] := createdAtTime ; prevents the same exact unit beings warned on next run thru. If repeat alerts is enabled, and the unit is killed and remade with the same unitIndex, then a warning will not be heard (need to add a aliveTime/gameTime)
-				return	
-			} ;End of if unit is on list and player not on our team 
-		} ; loop, % alert_array[GameType, "list", "size"]
-	}
-	else if (Mode = "Reset")
-	{
-		Alert_TimedOut := [], Alerted_Buildings := [], Alerted_Buildings_Base := []
-		Iniwrite, 0, %config_file%, Resume Warnings, Resume ; bit pointless as its getting deleted
-		IniDelete, %config_file%, Resume Warnings
-	}
-	else If (Mode = "Save")
-	{
-		Iniwrite, % SerDes(Alert_TimedOut), %config_file%, Resume Warnings, Alert_TimedOut		
-		Iniwrite, % SerDes(Alerted_Buildings), %config_file%, Resume Warnings, Alerted_Buildings		
-		Iniwrite, % SerDes(Alerted_Buildings_Base), %config_file%, Resume Warnings, Alerted_Buildings_Base		
-		Iniwrite, 1, %config_file%, Resume Warnings, Resume
-	}
-	Else if (Mode = "Resume")
-	{
-		Alert_TimedOut := [], Alerted_Buildings := [], Alerted_Buildings_Base := []
-		Iniwrite, 0, %config_file%, Resume Warnings, Resume
-		Iniread, string, %config_file%, Resume Warnings, Alert_TimedOut, %A_space%
-		if (string != A_space)
-		{
-			Alert_TimedOut := SerDes(string)
-			; 21/08/14 I noticed today this got stuck repeating units at start of match (hatch/cc)
-			; Cant seem to make it do it again though. Got it to do it once or twice but not sure what the cause was
-			; Added safety check in case SerDes() doesn't return an object
-			; But I don't believe this is the cause.
-			; I also had the main GUI load on startup and alt-tabed in/out at start of match
-			if !IsObject(Alert_TimedOut)
-				Alert_TimedOut := []
-		}
-		Iniread, string, %config_file%, Resume Warnings, Alerted_Buildings, %A_space%
-		if (string != A_space)
-		{
-			Alerted_Buildings := SerDes(string)
-			if !IsObject(Alerted_Buildings)
-				Alerted_Buildings := []
-		}
-		Iniread, string, %config_file%, Resume Warnings, Alerted_Buildings_Base, %A_space%
-		if (string != A_space)
-		{
-			Alerted_Buildings_Base := SerDes(string)
-			if !IsObject(Alerted_Buildings_Base)
-				Alerted_Buildings_Base := []
-		}
-		IniDelete, %config_file%, Resume Warnings
-	}
-	return
-}
-/*
-
-*/
-
-; One of the first functions i ever wrote. Very messy. But it works and im lazy
-; Should have made it so that it uses the unit type as a lookup rather than iterating the warning types.
-; But then would have to modify quite a bit, as you can have multiple warning for the same unit type
-; Also it's possible a unit won't be warned if an already warned unit dies and its unit index is reused
-; for another unit which should be warned. Should compare timeAlive value
-
-; I should really update this so that it doesn't have to loop each alert
-; I.e have the alerts unitID listed as the key which contains one or more alters
-; so then a single if haskey() could be performed
-/*		
-doUnitDetection(unit, type, owner, mode = "")
-{	
-	global config_file, alert_array, time, aMiniMapWarning, PrevWarning, GameIdentifier, aUnitID, GameType
-	static Alert_TimedOut := [], Alerted_Buildings := [], Alerted_Buildings_Base := []
-
-	if !mode
-	{
-		;i should really compare the unit type, as theres a chance that the warned unit has died and was replaced with another unit which should be warned
-		loop_AlertList:
-		loop, % alert_array[GameType, "list", "size"]
-		{ 			; the below if statement for time		
-			Alert_Index := A_Index	;the alert index number which corresponds to the ini file/config
-			if  ( type = aUnitID[alert_array[GameType, A_Index, "IDName"]] ) ;So if its a shrine and the player is not on ur team
-			{
-				if ( time < alert_array[GameType, A_Index, "DWB"] OR time > alert_array[GameType, A_Index, "DWA"]  ) ; too early/late to warn - add unit to 'warned list'
-				{			
-					For index, object in Alert_TimedOut	; ;checks if the exact unit is in the time list already (eg if time > dont_warn_before, the original if statement wont be true so BAS_Warning will remain "give warning")			
-						if ( unit = object[owner, Alert_Index] ) ;checks if type is in the list already
-							continue, loop_AlertList ; dont break, as could be other alerts for same unit but with different times later/lower in list									
-					Alert_TimedOut[round(Alert_TimedOut.maxindex()) + 1, owner, Alert_Index] := unit
-					continue, loop_AlertList
-				}
-				Else
-				{	;during warn time lets check if the unit has already been warned			
-					For index, object in Alert_TimedOut	; ;checks if the exact unit is in the time list already (eg if time > dont_warn_before, the original if statement wont be true so BAS_Warning will remain "give warning")			
-						if ( unit = object[owner, Alert_Index] ) ;checks if type is in the list already									
-							return
-
-					If  !alert_array[GameType, A_Index, "Repeat"] ;else check if this unit type has already been warned												
-						For index, warned_type in Alerted_Buildings ;	if ( type = Alerted_Buildings[index, owner] ) ;checks if type is in the list already						
-							if ( Alert_Index = warned_type[owner] ) ;checks if alert index i.e. alert 1,2,3 is in the list already						
-								return			
-
-					For index, warned_unit in Alerted_Buildings_Base  ; this list contains all the exact units which have already been warned				
-						if ( unit = warned_unit[owner] ) ;checks if type is in the list already				
-							return ; this warning is for the exact unitbase Address																				
-				}	
-				PrevWarning := []							
-				aMiniMapWarning.insert({ "Unit": PrevWarning.unitIndex := unit 
-										, "Time": Time
-										, "UnitTimer": PrevWarning.UnitTimer := getUnitTimer(unit) 
-										, "Type": PrevWarning.Type := type
-										, "Owner":  PrevWarning.Owner := owner})
-		
-				PrevWarning.speech := alert_array[GameType, A_Index, "Name"]
-				
-				tSpeak(alert_array[GameType, A_Index, "Name"])
-				if (!alert_array[GameType, A_Index, "Repeat"])	; =0 these below setup a list like above, but contins the type - to prevent rewarning
-					Alerted_Buildings.insert({(owner): Alert_Index})
-				Alerted_Buildings_Base.insert({(owner): unit}) ; prevents the same exact unit beings warned on next run thru
-				return	
-			} ;End of if unit is on list and player not on our team 
-		} ; loop, % alert_array[GameType, "list", "size"]
-	}
-	else if (Mode = "Reset")
-	{
-		Alert_TimedOut := [], Alerted_Buildings := [], Alerted_Buildings_Base := []
-		Iniwrite, 0, %config_file%, Resume Warnings, Resume ; bit pointless as its getting deleted
-		IniDelete, %config_file%, Resume Warnings
-	}
-	else If (Mode = "Save")
-	{
-		Iniwrite, % SerDes(Alert_TimedOut), %config_file%, Resume Warnings, Alert_TimedOut		
-		Iniwrite, % SerDes(Alerted_Buildings), %config_file%, Resume Warnings, Alerted_Buildings		
-		Iniwrite, % SerDes(Alerted_Buildings_Base), %config_file%, Resume Warnings, Alerted_Buildings_Base		
-		Iniwrite, 1, %config_file%, Resume Warnings, Resume
-	}
-	Else if (Mode = "Resume")
-	{
-		Alert_TimedOut := [], Alerted_Buildings := [], Alerted_Buildings_Base := []
-		Iniwrite, 0, %config_file%, Resume Warnings, Resume
-		Iniread, string, %config_file%, Resume Warnings, Alert_TimedOut, %A_space%
-		if (string != A_space)
-		{
-			Alert_TimedOut := SerDes(string)
-			; 21/08/14 I noticed today this got stuck repeating units at start of match (hatch/cc)
-			; Cant seem to make it do it again though. Got it to do it once or twice but not sure what the cause was
-			; Added safety check in case SerDes() doesn't return an object
-			; But I don't believe this is the cause.
-			; I also had the main GUI load on startup and alt-tabed in/out at start of match
-			if !IsObject(Alert_TimedOut)
-				Alert_TimedOut := []
-		}
-		Iniread, string, %config_file%, Resume Warnings, Alerted_Buildings, %A_space%
-		if (string != A_space)
-		{
-			Alerted_Buildings := SerDes(string)
-			if !IsObject(Alerted_Buildings)
-				Alerted_Buildings := []
-		}
-		Iniread, string, %config_file%, Resume Warnings, Alerted_Buildings_Base, %A_space%
-		if (string != A_space)
-		{
-			Alerted_Buildings_Base := SerDes(string)
-			if !IsObject(Alerted_Buildings_Base)
-				Alerted_Buildings_Base := []
-		}
-		IniDelete, %config_file%, Resume Warnings
-	}
-	return
-}
-*/
-
-announcePreviousUnitWarning()
+; pass object to set prior alert. 
+; pass null to invoke prior warning
+; any other value will reset clear the previous alert
+previousDetectionWarning(p := "")
 {
-	global
-	If PrevWarning
+	global aMiniMapWarning
+	static pWarning
+
+	if isObject(p)
+		pWarning := p.clone()
+	else if (p != "") ; call at start of game to allow 'There have been no alerts' to work
+		pWarning := ""
+	else If pWarning
 	{
-		if getUnitFingerPrint(PrevWarning.unitIndex) != PrevWarning.FingerPrint
-			tSpeak(PrevWarning.speech " is dead.")
+		if getUnitFingerPrint(pWarning.unitIndex) != pWarning.FingerPrint
+			tSpeak(pWarning.speech " is dead.")
 		else 
 		{
-			tSpeak(PrevWarning.speech)
-			aMiniMapWarning.insert({ "Unit": PrevWarning.unitIndex ; note difference,in key  unit/unitIndex 
-							, "Time":  getTime()
-							, "FingerPrint": PrevWarning.FingerPrint
-							, "Type": PrevWarning.Type 
-							, "Owner":  PrevWarning.Owner})
+			tSpeak(pWarning.speech)
+			if pWarning.minimapAlert
+			{
+				aMiniMapWarning.insert({ "unitIndex": pWarning.unitIndex
+								, "Time":  getTime()
+								, "FingerPrint": pWarning.FingerPrint
+								, "WarningType": pWarning.WarningType
+								, "Type": pWarning.Type 
+								, "Owner":  pWarning.Owner})
+			}
 		}
 	}
 	Else tSpeak("There have been no alerts")
 	return 
 }
 
+; This is called by the minimap thread via the main thread, when the 
+; user clicks 'save' in the alert list editor. It apply alert the changes for the current game.
+; otherwise if they don't click the save button on the options GUI, then 
+; the changes are not applied until the next game
+updateAlertArray()
+{
+	global alert_array := createAlertArray()
+}
+updateUpgradeAlerts()
+{
+	global aUpgradeAlerts := iniReadUpgradeAlerts()
+}
 
 readConfigFile()
 {
@@ -4571,18 +4358,22 @@ readConfigFile()
 	IniRead, ConvertGatewaysEnable, %config_file%, %section%, ConvertGatewaysEnable, 0
 	IniRead, ConvertGatewayCtrlGroup, %config_file%, %section%, ConvertGatewayCtrlGroup, 5
 
-	;[Alert Location]
-	IniRead, Playback_Alert_Key, %config_file%, Alert Location, Playback_Alert_Key, <#F7
-	IniRead, EnableLastAlertPlayBackHotkey, %config_file%, Alert Location, EnableLastAlertPlayBackHotkey, 1
 
-	alert_array := createAlertArray()
-	
-	section := "Upgrade Alerts"
-	IniRead, UpgradeAlertsEnable1v1, %config_file%, %section%, UpgradeAlertsEnable1v1, 0
-	IniRead, UpgradeAlertsEnable2v2, %config_file%, %section%, UpgradeAlertsEnable2v2, 0
-	IniRead, UpgradeAlertsEnable3v3, %config_file%, %section%, UpgradeAlertsEnable3v3, 0
-	IniRead, UpgradeAlertsEnable4v4, %config_file%, %section%, UpgradeAlertsEnable4v4, 0
-	aUpgradeAlerts := iniReadUpgradeAlerts()
+	if thisThreadTitle in main,minimap
+	{
+		;[Alert Location]
+		IniRead, Playback_Alert_Key, %config_file%, Alert Location, Playback_Alert_Key, <#F7
+		IniRead, EnableLastAlertPlayBackHotkey, %config_file%, Alert Location, EnableLastAlertPlayBackHotkey, 1
+
+		alert_array := createAlertArray()
+		
+		section := "Upgrade Alerts"
+		IniRead, UpgradeAlertsEnable1v1, %config_file%, %section%, UpgradeAlertsEnable1v1, 0
+		IniRead, UpgradeAlertsEnable2v2, %config_file%, %section%, UpgradeAlertsEnable2v2, 0
+		IniRead, UpgradeAlertsEnable3v3, %config_file%, %section%, UpgradeAlertsEnable3v3, 0
+		IniRead, UpgradeAlertsEnable4v4, %config_file%, %section%, UpgradeAlertsEnable4v4, 0
+		aUpgradeAlerts := iniReadUpgradeAlerts()
+	}
 
 	;[Overlays]
 	section := "Overlays"

@@ -4,6 +4,7 @@
 SetWorkingDir %A_ScriptDir%
 SetBatchLines, -1 ; This is the default for AHK_H, but any other value eg 30 causes major issues!
 ListLines, Off
+thisThreadTitle := "overlays"
 OnExit, ShutdownProcedure 
 scriptWinTitle := changeScriptMainWinTitle()
 global aThreads

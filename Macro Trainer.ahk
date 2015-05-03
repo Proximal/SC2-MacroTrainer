@@ -74,6 +74,7 @@ SetMouseDelay, -1
 SetBatchLines, -1
 SendMode, Input 
 Menu, Tray, Icon 
+thisThreadTitle := "main"
 if !A_IsAdmin 
 {
 	if (A_OSVersion = "WIN_XP") ; apparently the below command wont work on XP
@@ -773,7 +774,7 @@ return
 }
 
 g_PrevWarning:
-	aThreads.MiniMap.ahkPostFunction("announcePreviousUnitWarning")
+	aThreads.MiniMap.ahkPostFunction("previousDetectionWarning")
 Return
 
 
@@ -893,7 +894,7 @@ if (!time && isInMatch) || (UpdateTimers) ; time=0 outside game
 	; If user alt tabs back in fast enough (before this function runs) they will see the overlay before it deleted
 	autoBuildGameGUI.endGameDestroyOverlay() 
 
-	inject_timer := TimeReadRacesSet := UpdateTimers := PrevWarning := WinNotActiveAtStart := ResumeWarnings := 0 ;ie so know inject timer is off
+	inject_timer := TimeReadRacesSet := UpdateTimers := WinNotActiveAtStart := ResumeWarnings := 0 ;ie so know inject timer is off
 	isPlaying := EnableAutoWorkerTerran := EnableAutoWorkerProtoss := False ; otherwise if they don't have start enabled they may need to press the hotkey twice to activate
 	getAllKeys.aSendKeys := "" ; Clear the object so next game start the class will retrieve the keys again. Safer than solely relying on timer and file modify time
 	
@@ -3293,7 +3294,7 @@ try
 
 */
 
-	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vWarnings_TAB, Supply||Macro|Rally|Workers|Warpgates|Detection List
+	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vWarnings_TAB, Supply||Macro|Rally|Workers|Warpgates|Detection Lists
 	Gui, Tab, Supply	
 	; Gui, Add, GroupBox, w420 h335, Supply				
 		Gui, Add, Checkbox, X%XTabX% y+30 Vsupplyon checked%supplyon%, Enable Alert
@@ -3511,20 +3512,19 @@ try
 		Gui, add, text, xp+50 yp w340, These warnings will become active AFTER you convert your first warpgate.`n`nThe gateway will also be marked on the minimap providing the 'Display Alerts' option is enabled. (MiniMap/Overlays-->General)
 		;Gui, Font, s9 norm	
 
-	Gui, Tab, Detection List
-		loop, parse, l_GameType, `,
-			BAS_on_%A_LoopField% := alert_array["Enabled", A_LoopField]
+	Gui, Tab, Detection Lists
+		for i, gameType in ["1v1", "2v2", "3v3", "4v4"]
+			BAS_on_%gameType% := alert_array["Enabled", A_LoopField]
 		
-		Gui, Add, GroupBox, x+45 y+15 w265 h105 section, Enable Unit Warnings
+		Gui, Add, GroupBox, x+45 y+15 w265 h80 section, Enable Unit Warnings
 			Gui, Add, Checkbox, xp+15 yp+25 vBAS_on_1v1 checked%BAS_on_1v1%, 1v1
 			Gui, Add, Checkbox, x+15 yp vBAS_on_2v2 checked%BAS_on_2v2%, 2v2
 			Gui, Add, Checkbox, xs+15 y+15 vBAS_on_3v3 checked%BAS_on_3v3%, 3v3
 			Gui, Add, Checkbox, x+15 yp vBAS_on_4v4 checked%BAS_on_4v4%, 4v4
-			Gui, Add, Checkbox, xs+15 y+15 vBAS_on_FFA checked%BAS_on_FFA%, FFA 
 
 			Gui, Add, Button, center xs+140 ys+36 w100 h30 gAlert_List_Editor vAlert_List_Editor, Edit Alerts
 		
-		Gui, Add, GroupBox, Xs ys+115 w265 h80 section, Enable Upgrade Warnings
+		Gui, Add, GroupBox, Xs ys+105 w265 h80 section, Enable Upgrade Warnings
 			Gui, Add, Checkbox, xp+15 yp+25 vUpgradeAlertsEnable1v1 checked%UpgradeAlertsEnable1v1%, 1v1
 			Gui, Add, Checkbox, x+15 yp vUpgradeAlertsEnable2v2 checked%UpgradeAlertsEnable2v2%, 2v2
 			Gui, Add, Checkbox, xs+15 y+15 vUpgradeAlertsEnable3v3 checked%UpgradeAlertsEnable3v3%, 3v3
@@ -5116,6 +5116,17 @@ AutomationTerranCameraGroup_TT := AutomationProtossCameraGroup_TT := AutomationZ
 			AG_Enable_%A_LoopField%_TT := "Selected units will be automatically added to their set control groups."
 
 		Report_Email_TT := "Required if you are looking for a response"
+
+		Edit_Name_TT := "This text is read aload during the warning"
+		Edit_DWB_TT := TT_Edit_DWB_TT := "If the unit/building exists before this time, no warning will be made - this is helpful for creating multiple warnings for the same unit"
+		Edit_DWA_TT := TT_Edit_DWA_TT := "If the unit is made after this time, no warning will be made -  this is helpful for creating multiple warnings for the same unit"
+		Edit_RON_TT := "When enabled this SPECIFIC warning will be heard for each new unit/building of this type."
+		minimapAlert_TT := "Marks the unit on the minimap.`n`nYou must still enable 'Display Alerts' in the minimap/overlays section"
+		drop_ID_TT := "Use this list to find a units ID"
+		B_Modify_Alert_TT := "This updates the currently selected alert with the above parameters."
+		Delete_Alert_TT := "Removes the currently selected alert."
+		B_Add_New_Alert_TT := "Creates an alert using the above parameters for the selected game modes."
+		B_ALert_Cancel_TT := "Disregard changes"		
 	}
 	OnMessage(0x200, "mainThreadMessageHandler")
 	Gosub, G_GuiSetupDrawMiniMapDisable ; Disable controls based on current drawing settings
@@ -6474,39 +6485,40 @@ return
 
 alertListEditor()
 {
-	static Edit_Name, TT_Edit_DWB, Edit_DWB, TT_Edit_DWA, Edit_DWA, Edit_RON, drop_ID
+	static GUIhwnd, Edit_Name, TT_Edit_DWB, Edit_DWB, TT_Edit_DWA, Edit_DWA, Edit_RON, drop_ID
 		, C_Add_1v1, C_Add_3v3, C_Add_4v4, C_Add_2v2, OriginTabRAL
-		, Editalert_array, aTVNodes
-	static B_Modify_Alert, B_Delete_Alert, B_Add_New_Alert, B_ALert_Cancel, B_ALert_Save
-	static Edit_Namehwnd, Edit_DWBhwnd, Edit_DWAhwnd, Edit_RONhwnd, drop_IDhwnd
-		, B_Modify_Alerthwnd, B_Delete_Alerthwnd, B_Add_New_Alerthwnd	
-	global alert_array, l_UnitNames
+		, Editalert_array, aTVNodes, MinimapAlert
+	 	, B_Modify_Alert, B_Delete_Alert, B_Add_New_Alert, B_ALert_Cancel, B_ALert_Save
+		, Edit_Namehwnd, Edit_DWBhwnd, Edit_DWAhwnd, Edit_RONhwnd, drop_IDhwnd
+		, B_Modify_Alerthwnd, B_Delete_Alerthwnd, B_Add_New_Alerthwnd, MinimapAlerthwnd	
+	global alert_array, l_UnitNames, aThreads
 	
-	IfWinExist, Alert List Editor 
+	Gui unitAlertEditor:+LastFoundExist
+	IfWinExist 
 	{
 		WinActivate
 		Return 									
 	}
 	Editalert_array := [],	Editalert_array := createAlertArray()
-	Gui, New 
-	Gui -MaximizeBox
-	Gui, Add, GroupBox,  w220 h370 section, Current Detection List
-	Gui, Add, TreeView, xp+20 yp+20 gMyTree r20 w180
+	Gui, unitAlertEditor:New, -MaximizeBox +hwndGUIhwnd 
+	Gui, Add, GroupBox,  w220 h371 section, Current Detection List
+	Gui, Add, TreeView, xp+20 yp+20 gMyTree h329 w180
 	aTVNodes := []
-	for k, gameType in ["1v1", "2v2", "3v3", "4v4", "FFA"]
+	for k, gameType in ["1v1", "2v2", "3v3", "4v4"]
 	{
 		aTVNodes[gameType] := TV_Add(gameType)
 		for key, alert in Editalert_array[gameType]
-			TV_Add(truncateVerbalWarning(alert.name), aTVNodes[gameType])	
+			TV_Add(truncateString(alert.name), aTVNodes[gameType])	
 	}
 
-	Gui, Add, GroupBox, ys x+30 w245 h185 vOriginTabRAL, Parameters
+	Gui, Add, GroupBox, ys x+30 w245 h186 vOriginTabRAL, Parameters
 	GuiControlGet, OriginTabRAL, Pos
 		Gui, Add, Text,xp+10 yp+20 section, Name/Warning:
 		Gui, Add, Text,y+10 w80, Don't Warn if Exists Before (s):
 		Gui, Add, Text,y+10 w80, Don't Warn if Made After (s):
-		Gui, Add, Text,y+12, Repeat on New?
-		Gui, Add, Text,y+16, ID Code:
+		Gui, Add, Text,y+14, ID Code:
+		Gui, Add, Checkbox, y+10 VEdit_RON hwndEdit_RONhwnd checked1, Repeatable
+		Gui, Add, Checkbox, y+10 vMinimapAlert hwndMinimapAlerthwnd, Minimap Alert
 
 		Gui, Add, Edit, Right ys xs+85 section w135 vEdit_Name hwndEdit_Namehwnd
 		Gui, Add, Edit, Number Right y+11 w135 vTT_Edit_DWB
@@ -6514,11 +6526,10 @@ alertListEditor()
 		Gui, Add, Edit, Number Right y+11 w135 vTT_Edit_DWA
 			Gui, Add, UpDown,  Range1-100000 vEdit_DWA hwndEdit_DWAhwnd, 54000
 
-		Gui, Add, DropDownList, xs+90  y+8 w45 right VEdit_RON hwndEdit_RONhwnd, Yes||No|	
 		DetectionUnitListNames := 	"ID List||" l_UnitNames	;get the ID List Txt first in the shared list
 		Gui, Add, DropDownList, xs y+10 w135 Vdrop_ID hwnddrop_IDhwnd sort, %DetectionUnitListNames%
 
-	Gui, Add, GroupBox, y+30 x%OriginTabRALX% w245 h175, Alert Submission	
+	Gui, Add, GroupBox, y+60 x%OriginTabRALX% w245 h175, Alert Submission	
 		Gui, Add, Button, xp+10 yp+20 w225 section vB_Modify_Alert hwndB_Modify_Alerthwnd gB_Modify_Alert, Modify Alert
 		Gui, Add, Text,xs ys+27 w225 center, OR
 		Gui, Add, Button, xs y+5 w225 section gDelete_Alert vB_Delete_Alert hwndB_Delete_Alerthwnd Center, Delete Alert
@@ -6538,27 +6549,16 @@ alertListEditor()
 	Gui, Show, w490 h455, Alert List Editor  ; Show the window and its TreeView.
 
 	OnMessage(0x200, "mainThreadMessageHandler")
-
-		Edit_Name_TT := "This text is read aload during the warning"
-		Edit_DWB_TT := TT_Edit_DWB_TT := "If the unit/building exists before this time, no warning will be made - this is helpful for creating multiple warnings for the same unit"
-		Edit_DWA_TT := TT_Edit_DWA_TT := "If the unit is made after this time, no warning will be made -  this is helpful for creating multiple warnings for the same unit"
-		Edit_RON_TT := "If ''Yes'' this SPECIFIC warning will be heard for each new unit/building (of this type)."
-		drop_ID_TT := "Use this list to find a units ID"
-		B_Modify_Alert_TT := "This updates the currently selected alert with the above parameters."
-		Delete_Alert_TT := "Removes the currently selected alert."
-		B_Add_New_Alert_TT := "Creates an alert using the above parameters for the selected game modes."
-		B_ALert_Cancel_TT := "Disregard changes"
-	;	B_ALert_Save_TT := "This will save any changes made"
 	return
 
 	Delete_Alert:
 	TV_GetText(selectedText, selectedID := TV_GetSelection())
-	if selectedText in 1v1,2v2,3v3,4v4,FFA ;delete all alerts for this game mode
+	if aTVNodes[selectedText] = selectedID
 	{
 		if TV_GetChild(selectedID)
 		{
 			TV_DeleteChildren(selectedID)
-			Editalert_array.Remove(gameType)
+			Editalert_array.Remove(selectedText) ; gameType
 			GUIControl,, %B_Delete_Alerthwnd%, Delete Alert
 			GUIControl, Disable, %B_Delete_Alerthwnd%			
 		}	
@@ -6585,14 +6585,13 @@ alertListEditor()
 			if !itemPosition := TV_SelectedItemPosition(selectedID, parentID := TV_GetParent(selectedID) )
 				return
 			TV_GetText(gameType, parentID)
-			displayText := truncateVerbalWarning(Edit_Name)
+			displayText := truncateString(Edit_Name)
 			TV_Modify(selectedID,, displayText)
 			Editalert_array[gameType, itemPosition, "Name"] := Edit_Name
 			Editalert_array[gameType, itemPosition, "DWB"] := Edit_DWB
 			Editalert_array[gameType, itemPosition, "DWA"] := Edit_DWA
-			if (Edit_RON = "Yes")
-				Editalert_array[gameType, itemPosition, "Repeat"] := 1
-			Else Editalert_array[gameType, itemPosition, "Repeat"] := 0
+			Editalert_array[gameType, itemPosition, "Repeat"] := Edit_RON
+			Editalert_array[gameType, itemPosition, "minimapAlert"] := MinimapAlert
 			Editalert_array[gameType, itemPosition, "IDName"] := drop_ID	
 			GUIControl,, %B_Delete_Alerthwnd%, Delete Alert - %gameType% %displayText%
 			GUIControl,, %B_Modify_Alerthwnd%, Modify Alert - %gameType% %displayText%			
@@ -6610,22 +6609,24 @@ alertListEditor()
 		{
 			newAlertObj := []
 			newAlertObj.Name := Edit_Name, newAlertObj.DWB := Edit_DWB,  newAlertObj.DWA := Edit_DWA
-			newAlertObj.Repeat := Edit_RON = "Yes", newAlertObj.IDName := drop_ID			
+			, newAlertObj.Repeat := Edit_RON, newAlertObj.IDName := drop_ID, newAlertObj.minimapAlert := minimapAlert			
 			for k, gameType in ["1v1", "2v2", "3v3", "4v4"]
 			{
 				if (gameType = "1v1" && C_Add_1v1) || (gameType = "2v2" && C_Add_2v2) || (gameType = "3v3" && C_Add_3v3) || (gameType = "4v4" && C_Add_4v4)  
 				{
 					Editalert_array[gameType].insert(newAlertObj)
-					TV_Add(truncateVerbalWarning(Edit_Name), aTVNodes[gameType])
+					TV_Add(truncateString(Edit_Name), aTVNodes[gameType])
 				}
 			}
 		}
-		WinSet, Redraw,, Alert List Editor, Current Detection List ;forces a redraw as the '+' expander doesnt show (until a mouseover) if the parent had no items when the gui was initially drawn
+		WinSet, Redraw,, ahk_id %GUIhwnd% ;forces a redraw as the '+' expander doesnt show (until a mouseover) if the parent had no items when the gui was initially drawn
 		Return
 
 	MyTree:
 		TV_GetText(selectedText, selectedID := TV_GetSelection())
-		if selectedText in 1v1,2v2,3v3,4v4,FFA
+		; So selected text is a game mode and Its ID matches one of the root nods
+		; this protects again issue if an alert is named 1v1 or 2v2
+		if aTVNodes[selectedText] = selectedID
 		{
 			if TV_GetChild(selectedID)
 			{
@@ -6649,12 +6650,11 @@ alertListEditor()
 			TV_GetText(gameType, parentID)
 			GUIControl,, %Edit_Namehwnd%,% Editalert_array[gameType, selectedIndex, "Name"]
 			GUIControl,, %Edit_DWBhwnd%, % Editalert_array[gameType, selectedIndex, "DWB"]
-			GUIControl,, %Edit_DWAhwnd%, % Editalert_array[gameType, selectedIndex, "DWA"]
-			if (Editalert_array[gameType, selectedIndex, "Repeat"])
-				GUIControl, ChooseString, %Edit_RONhwnd%, Yes
-			Else GUIControl, ChooseString, %Edit_RONhwnd%, No
+			GUIControl,, %Edit_DWAhwnd%, % Editalert_array[gameType, selectedIndex, "DWA"]		
+			GUIControl,, %Edit_RONhwnd%, % round(Editalert_array[gameType, selectedIndex, "Repeat"])
+			GUIControl,, %minimapAlerthwnd%, % round(Editalert_array[gameType, selectedIndex, "minimapAlert"])
 			GUIControl,ChooseString, %drop_IDhwnd%, % Editalert_array[gameType, selectedIndex, "IDName"]
-			selectedText := truncateVerbalWarning(selectedText) ; not really required. Already shortened
+			selectedText := truncateString(selectedText) ; not really required. Already shortened
 			GUIControl,, %B_Delete_Alerthwnd%, Delete Alert - %gameType% %selectedText%
 			GUIControl,, %B_Modify_Alerthwnd%, Modify Alert - %gameType% %selectedText%
 		}
@@ -6663,32 +6663,39 @@ alertListEditor()
 	B_ALert_Save:
 	alert_array := Editalert_array
 	saveAlertArray(Editalert_array)
+	if aThreads.MiniMap.ahkReady() ; Update the current unit list in case in a game already. And the user doesn't click save on the options menu.
+		aThreads.MiniMap.ahkFunction("updateAlertArray")
 	Gui, Destroy
 	Return
+	unitAlertEditorGUIClose:
+	unitAlertEditorGUIEscape:
+	Gui, Destroy
+	return
 }
 
 saveAlertArray(alert_array)
 {	GLOBAL
-	loop, parse, l_GameType, `, 
+	for i, gameType in ["1v1", "2v2", "3v3", "4v4"]
 	{
-		IniDelete, %config_file%, Building & Unit Alert %A_LoopField% ;clear the list - prevent problems if now have less keys than b4
-		IniWrite, % alert_array["Enabled", A_LoopField], %config_file%, Building & Unit Alert %A_LoopField%, enable	;alert system on/off
-		;IniWrite, % alert_array[A_LoopField, "Clipboard"], %config_file%, Building & Unit Alert %A_LoopField%, copy2clipboard
-		alert_array["IDLookUp", A_LoopField] := []
-		for key, alert in alert_array[A_LoopField]
+		IniDelete, %config_file%, Building & Unit Alert %gameType% ;clear the list - prevent problems if now have less keys than b4
+		IniWrite, % alert_array["Enabled", gameType], %config_file%, Building & Unit Alert %gameType%, enable	;alert system on/off
+		;IniWrite, % alert_array[gameType, "Clipboard"], %config_file%, Building & Unit Alert %gameType%, copy2clipboard
+		alert_array["IDLookUp", gameType] := []
+		for key, alert in alert_array[gameType]
 		{
-			IniWrite, % alert["Name"], %config_file%, Building & Unit Alert %A_LoopField%, %A_Index%_name_warning
-			Iniwrite, % alert["DWB"], %config_file%, Building & Unit Alert %A_LoopField%, %A_Index%_Dont_Warn_Before_Time
-			IniWrite, % alert["DWA"], %config_file%, Building & Unit Alert %A_LoopField%, %A_Index%_Dont_Warn_After_Time
-			IniWrite, % alert["Repeat"], %config_file%, Building & Unit Alert %A_LoopField%, %A_Index%_repeat_on_new
-			IniWrite, % alert := alert["IDName"], %config_file%, Building & Unit Alert %A_LoopField%, %A_Index%_IDName
+			IniWrite, % alert["Name"], %config_file%, Building & Unit Alert %gameType%, %A_Index%_name_warning
+			Iniwrite, % alert["DWB"], %config_file%, Building & Unit Alert %gameType%, %A_Index%_Dont_Warn_Before_Time
+			IniWrite, % alert["DWA"], %config_file%, Building & Unit Alert %gameType%, %A_Index%_Dont_Warn_After_Time
+			IniWrite, % alert["Repeat"], %config_file%, Building & Unit Alert %gameType%, %A_Index%_repeat_on_new
+			IniWrite, % alert["minimapAlert"], %config_file%, Building & Unit Alert %gameType%, %A_Index%_minimapAlert
+			IniWrite, % alert := alert["IDName"], %config_file%, Building & Unit Alert %gameType%, %A_Index%_IDName
 			; This lookup has the has the id for each unit type which has an alert. 
 			; can do a simple alert_array[GameType, IDLookUp].HasKey(unitID) to check if the list has an alert for this unit type
-			alert_array["IDLookUp", A_LoopField, aUnitID[Temp_IDName]] := True	
+			alert_array["IDLookUp", gameType, aUnitID[Temp_IDName]] := True	
 			
-			if !isObject(alert_array["IDLookUp", A_LoopField, aUnitID[Temp_IDName]])
-				alert_array["IDLookUp", A_LoopField, aUnitID[Temp_IDName]] := []
-			alert_array["IDLookUp", A_LoopField, aUnitID[Temp_IDName]].insert(key)				
+			if !isObject(alert_array["IDLookUp", gameType, aUnitID[Temp_IDName]])
+				alert_array["IDLookUp", gameType, aUnitID[Temp_IDName]] := []
+			alert_array["IDLookUp", gameType, aUnitID[Temp_IDName]].insert(key)				
 		}
 	}
 	return
@@ -13149,7 +13156,7 @@ iniWriteAndUpdateAutoGrouping(OptionsSave, aAutoGroupCurrent)
 
 	return aAutoGroup
 }
-
+f4::
 UpgradeAlertEditor:
 UpgradeAlertGUI()
 return 
@@ -13158,12 +13165,12 @@ return
 ; should also check what happens with this hotkey and other alerts e.g. geyser saturation
 UpgradeAlertGUI()
 {
-	static UpgradePicturehwnd, UpgradeUserTitlehwnd, modifyAlertHwnd, deleteAlertHwnd
+	static GUIhwnd, UpgradePicturehwnd, UpgradeUserTitlehwnd, modifyAlertHwnd, deleteAlertHwnd
 		, VerbalWarningHwnd, TimeoutHwnd, MinimapAlertHwnd, RepeatableHwnd
 		, VerbalWarning, Timeout, MinimapAlert, UpgradeUserTitle, Repeatable
 		, Add1v1, Add2v2, Add3v3, Add4v4
 		, aTVNodes, aAlerts	
-	global aUpgradeAlerts ; To allow the changes to be saved
+	global aUpgradeAlerts, aThreads ; To allow the changes to be saved
 
 	Gui UpgradeAlertEditor:+LastFoundExist
 	IfWinExist 
@@ -13177,15 +13184,18 @@ UpgradeAlertGUI()
 	Gui, UpgradeAlertEditor:New, -MaximizeBox +hwndGUIhwnd
 	;Gui, +OwnerOptons
 	;Gui, Options:+Disabled  
-	Gui, Add, TreeView, xp+20 yp+20 gUpgradeAlertTree r20 w180
+	Gui, Add, TreeView, x+0 y+10 gUpgradeAlertTree h380 w180 section
 	aTVNodes := []
 	for k, gameType in ["1v1", "2v2", "3v3", "4v4"]
 	{
 		aTVNodes[gameType] := TV_Add(gameType)
 		for i, alert in aAlerts[gameType]
-			TV_Add(truncateVerbalWarning(alert.verbalWarning), aTVNodes[gameType])
+			TV_Add(truncateString(alert.verbalWarning), aTVNodes[gameType])
 	}
-	Gui, Add, GroupBox, x+30 ys w265 h185, Alert Parameters
+	gui, add, button, xs+55 y+20 w70 h40 g__UpgradeAlertGUISaveButton, Save 
+	gui, add, button, xs+265 yp w70 h40 gUpgradeAlertEditorGUIClose, cancel 
+
+	Gui, Add, GroupBox, xs+200 ys w265 h185, Alert Parameters
 	Gui, Add, Text, xp+10 yp+20 w80 section, Verbal Warning:
 		Gui, Add, Edit, xs+110 yp w135 center hwndVerbalWarningHwnd vVerbalWarning	
 	Gui, Add, Text, xs y+10, Don't warn after (s):
@@ -13200,25 +13210,24 @@ UpgradeAlertGUI()
 	Gui, add, button, x+10 yp g__UpgradeAlertGUIChangeButton, change 
 
 	Gui, Add, GroupBox, xs-10 ys+185 w265 h175, Alert Submission
-	Gui, Add, Button, xp+10 yp+20 w225 section hwndModifyAlertHwnd g__UpgradeAlertGUIModifyButton, Modify Alert
-	Gui, Add, Text,xs ys+27 w225 center, OR
-	Gui, Add, Button, xs y+5 w225 section Center hwndDeleteAlertHwnd g__UpgradeAlertGUIDeleteButton, Delete Alert
-	Gui, Add, Text,xs ys+27 w225 center, OR
+	Gui, Add, Button, xp+10 yp+20 w235 section hwndModifyAlertHwnd g__UpgradeAlertGUIModifyButton, Modify Alert
+	Gui, Add, Text,xs ys+27 w235 center, OR
+	Gui, Add, Button, xs y+5 w235 section Center hwndDeleteAlertHwnd g__UpgradeAlertGUIDeleteButton, Delete Alert
+	Gui, Add, Text,xs ys+27 w235 center, OR
 
-	Gui, Add, GroupBox, y+5 xs-5 w235 h55 section, New Alert	
+	Gui, Add, GroupBox, xs y+5 w235 h55 section, New Alert	
 	Gui, Add, Button, xs+5 yp+20 w120 g__UpgradeAlertGUIAddButton, Add This Alert to List
 	Gui, Add, Checkbox, checked x+10 yp-5 section vAdd1v1, 1v1
 	Gui, Add, Checkbox, checked x+10 vAdd3v3, 3v3
 	Gui, Add, Checkbox, checked yp+20 vAdd4v4, 4v4
 	Gui, Add, Checkbox, checked xs yp vAdd2v2, 2v2
-	gui, add, button, xs yp+30 g__UpgradeAlertGUISaveButton, Save 
-	gui, add, button, xs yp+30 gUpgradeAlertEditorGUIClose, cancel 
-	Gui, show 
-;	WinWaitClose, AHK_ID %GUIhwnd%	
+	Gui, show,, Alert List Editor
 	return 
 
 	__UpgradeAlertGUISaveButton:
 	iniWriteUpgradeAlerts(aUpgradeAlerts := aAlerts)
+	if aThreads.MiniMap.ahkReady() ; Update the current list in case in a game already. And the user doesn't click save on the options menu.
+		aThreads.MiniMap.ahkFunction("updateAlertArray")	
 	UpgradeAlertEditorGUIClose:
 	UpgradeAlertEditorGUIEscape:
 	Gui, Destroy
@@ -13237,7 +13246,7 @@ UpgradeAlertGUI()
 	TV_GetText(gameType, parentID)
 	if gameType not in 1v1,2v2,3v3,4v4,FFA ; should never occur
 		return 
-	displayText := truncateVerbalWarning(VerbalWarning)
+	displayText := truncateString(VerbalWarning)
 	TV_Modify(selectedID,, displayText)
 	obj := [], obj.verbalWarning := VerbalWarning, obj.DWA := Timeout, obj.minimapAlert := MinimapAlert, obj.Repeatable := Repeatable, obj.upgradeGameTitle := upgradeDefinitions.upgradeGameTitle(UpgradeUserTitle) 
 	aAlerts[gameType, selectedIndex] := obj
@@ -13250,12 +13259,12 @@ UpgradeAlertGUI()
 
 	__UpgradeAlertGUIDeleteButton:
 	TV_GetText(selectedText, selectedID := TV_GetSelection())
-	if selectedText in 1v1,2v2,3v3,4v4,FFA ;delete all alerts for this game mode
+	if aTVNodes[selectedText] = selectedID ; handles issue of alerts possibly being names 1v1, 2v2
 	{
 		if TV_GetChild(selectedID)
 		{
 			TV_DeleteChildren(selectedID)
-			aAlerts.Remove(gameType)
+			aAlerts.Remove(selectedText) ; gameType
 			GUIControl,, %DeleteAlertHwnd%,  Delete Alert
 			GUIControl, Disable, %DeleteAlertHwnd%			
 		}	
@@ -13308,7 +13317,7 @@ UpgradeAlertGUI()
 				}
 				aAlerts[gameType].insert(obj)
 				; aAlerts[gameType, "list", "size"] := aAlerts[gameType].MaxIndex() ; havenent added this to other routines
-				TV_Add(truncateVerbalWarning(VerbalWarning), aTVNodes[gameType])
+				TV_Add(truncateString(VerbalWarning), aTVNodes[gameType])
 			}
 		}
 	}
@@ -13327,7 +13336,7 @@ UpgradeAlertGUI()
 
 	UpgradeAlertTree:
 	TV_GetText(selectedText, selectedID := TV_GetSelection())
-	if selectedText in 1v1,2v2,3v3,4v4,FFA
+	if aTVNodes[selectedText] = selectedID ; handle issue if user names an alert 1v1
 	{
 		if TV_GetChild(selectedID)
 		{
@@ -13369,7 +13378,7 @@ UpgradeAlertGUI()
 		else GuiControl,, %UpgradePicturehwnd%, %A_Temp%\questionMark32.png
 		; otherwise long titles will cause the button text to look bad
 		; not really needed as theyre already shortened
-		selectedText := truncateVerbalWarning(selectedText)
+		selectedText := truncateString(selectedText)
 		GUIControl,, %DeleteAlertHwnd%, Delete Alert - %gameType% %selectedText%
 		GUIControl,, %ModifyAlertHwnd%, Modify Alert - %gameType% %selectedText%
 	}
@@ -13389,15 +13398,17 @@ UpgradeAlertGUI()
 	return
 }
 
-truncateVerbalWarning(s)
+truncateString(s, len := 18, suffix := "...")
 {
-	return strlen(s) > 18 ? SubStr(s, 1, 18) "..." : s
+	return strlen(s) > len ? SubStr(s, 1, len) suffix : s
 }
 
 iniWriteUpgradeAlerts(obj)
 {
 	obj.Remove("parentLookUp")
 	obj.Remove("alertLookUp")
+	objtree(obj)
+	msgbox 
 	IniWrite, % serDes(obj), %config_file%, Upgrade Alerts, Alerts
 	; Do this afterwards. Store less data in the key. And safer if unit ID changes (though they never would)
 	for i, gameType in ["1v1", "2v2", "3v3", "4v4"]
@@ -13420,8 +13431,8 @@ alertSelectionGUI(currentItem := "")
 	aHiddenCheckBoxes := []
 	gui, UpgradeAlertSelection:new, HwndHandleGUI OwnerUpgradeAlertEditor
 
-	gui, add, text, x+15 y+25, Select an upgrade:
-	gui, add, TreeView, xp y+15 w400 h400 hwndTVHandle checked g__alertSelectionGUITreeViewLabel AltSubmit
+	gui, add, text, x+0 y+10, Select an upgrade:
+	gui, add, TreeView, xp y+10 w400 h400 hwndTVHandle checked g__alertSelectionGUITreeViewLabel AltSubmit
  	imageList := IL_Create(94, 5, 1) ; 91 images for upgrades + 3 race
  	TV_SetImageList(imageList)
  	for i, race in ["Terran", "Protoss", "Zerg"]
@@ -13437,14 +13448,15 @@ alertSelectionGUI(currentItem := "")
 			{
 
 				options := "Icon" IL_Add(imageList, A_Temp "\UnitPanelMacroTrainer\" GameUpgradeTitle ".png", 0xFFFFFF, True)
-				options .= (GameUpgradeTitle = currentItem && currentItem != "") ? " check select" : "" ; Select automatically expands the item
+				; Upgrades can appear more than once (burrow for hatch/lair/hive). hasChecked prevents checking them all. Dont modify currentItem, as it used to return value if user cancels gui 
+				options .= (GameUpgradeTitle = currentItem && currentItem != "" && !hasChecked) ? (" check select", (hasChecked := True)) : "" ; Select automatically expands the item
 				TV_Add(upgradeDefinitions.upgradeUserTitle(GameUpgradeTitle), parentStructure, options)
 				a[race, structure].insert(GameUpgradeTitle)
 			}
 		}
 	}
-	gui, add, button, xp y+15 g__alertSelectionGUISave, Save 
-	gui, add, button, x+35 yp g__alertSelectionGUICancel, Cancel 
+	gui, add, button, xp y+10 g__alertSelectionGUISave w50, Save 
+	gui, add, button, x+35 yp g__alertSelectionGUICancel w50, Cancel 
 	GUI, show,, Select Upgrade
 	Gui, UpgradeAlertEditor:+Disabled
 	WinWaitClose, AHK_ID %HandleGUI%	

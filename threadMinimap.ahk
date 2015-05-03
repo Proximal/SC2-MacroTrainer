@@ -12,6 +12,7 @@
 SetWorkingDir %A_ScriptDir%
 SetBatchLines, -1
 ListLines, Off
+thisThreadTitle := "minimap"
 OnExit, ShutdownProcedure 
 
 /* ;Cmdline passed script parameters - Old method - now use globalVarsScript
@@ -115,7 +116,7 @@ gameChange(UserSavedAppliedSettings := False)
 		SetMiniMap(minimap)
 		setupMiniMapUnitLists(aMiniMapUnits) ; aMiniMapUnits is super global
 		EnemyBaseList := GetEBases()
-		
+		previousDetectionWarning(True) ; clear the last warning
 		; Lets just always run this routine. It's easier than toggling timer on/off when user changes settings
 		; via hotkey. And although it does create a DIB, it still wouldn't use any CPU while running 
 		; and not drawing.
@@ -193,9 +194,7 @@ ShutdownProcedure:
 Return
 
 DrawMiniMap()
-{	global
-	local UnitRead_i, unit, type, Owner, Radius, Filter, EndCount, colour, ResourceOverlay_i, unitcount
-	, DrawX, DrawY, Width, height, i, hbm, hdc, obm, G,  Region, pBitmap, PlayerColours, aUnitsToDraw, unit, x, y
+{	global DrawMiniMap, DrawSpawningRaces, DrawAlerts, DrawPlayerCameras, overlayMinimapTransparency, TimeReadRacesSet
 	static overlayTitle := getRandomString_Az09(10, 20), hwnd1
 
 	Gui MiniMapOverlay:+LastFoundExist
@@ -220,85 +219,12 @@ DrawMiniMap()
 	, Gdip_SetClipRect(G, minimap.ScreenLeft, minimap.ScreenTop, minimap.Width, minimap.Height, 0)
 
 	if DrawMiniMap
-	{
-	;	pBrushWhite := Gdip_BrushCreateSolid(0xffffffff)
-	;	Gdip_FillRectangle(G, pBrushWhite, minimap.BorderLeft, minimap.BorderTop , minimap.BorderWidth , minimap.BorderHeight)
-	;	Gdip_DeleteBrush(pBrushWhite)
-		
- 		getEnemyUnitsMiniMap(aUnitsToDraw)
- 		if DrawUnitDestinations
- 			Gdip_SetSmoothingMode(G, 4), drawUnitDestinations(G, aUnitsToDraw, aSpecialAlerts)
- 		; Don't anti alias. As that will blur where the rectangle meets the fill colour	
- 		Gdip_SetSmoothingMode(G, 3)
-		for index, unit in aUnitsToDraw.Normal
-			drawUnitRectangle(G, unit.X, unit.Y, unit.Radius)	;draw rectangles first
-		for index, unit in aUnitsToDraw.Custom
-			drawUnitRectangle(G, unit.X, unit.Y, unit.Radius)
-		for index, unit in aUnitsToDraw.Normal
-			FillUnitRectangle(G, unit.X, unit.Y, unit.Radius, unit.Colour)	
-		; Fill the custom highlighted units last, so that their colours won't be drawn over.			
-		for index, unit in aUnitsToDraw.Custom
-			FillUnitRectangle(G, unit.X, unit.Y, unit.Radius, unit.Colour)
-		if DrawUnitDestinations
-		{
-			For i, alert in aSpecialAlerts
-				Gdip_DrawImage(G, alert.pBitmap, alert.x, alert.y, alert.Width, alert.Height, 0, 0, alert.Width, alert.Height)
-		}
-	}
+		drawUnits(G)
 	Gdip_SetInterpolationMode(G, 2)	
-	If (DrawSpawningRaces && getTime() - round(TimeReadRacesSet) <= 14) ;round used to change undefined var to 0 for resume so dont display races
-	{	
-		;TimeReadRacesSet gets set to 0 at start of match
-		loop, parse, EnemyBaseList, |
-		{		
-			type := getUnitType(A_LoopField)
-			getUnitMinimapPos(A_LoopField, BaseX, BaseY)
-			if ( type = aUnitID["Nexus"]) 		
-			{	pBitmap := a_pBitmap["Protoss","RacePretty"]
-				Width := Gdip_GetImageWidth(pBitmap), Height := Gdip_GetImageHeight(pBitmap)	
-				Gdip_DrawImage(G, pBitmap, (BaseX - Width/5), (BaseY - Height/5), Width//2.5, Height//2.5, 0, 0, Width, Height)
-			}
-			Else if (type = aUnitID["CommandCenter"] || type = aUnitID["PlanetaryFortress"] || type =  aUnitID["OrbitalCommand"])
-			{
-				pBitmap := a_pBitmap["Terran","RacePretty"]
-				Width := Gdip_GetImageWidth(pBitmap), Height := Gdip_GetImageHeight(pBitmap)
-				Gdip_DrawImage(G, pBitmap, (BaseX - Width/10), (BaseY - Height/10), Width//5, Height//5, 0, 0, Width, Height)
-			}
-			Else if (type = aUnitID["Hatchery"] || type =  aUnitID["Lair"] || type =  aUnitID["Hive"])
-			{	pBitmap := a_pBitmap["Zerg","RacePretty"]
-				Width := Gdip_GetImageWidth(pBitmap), Height := Gdip_GetImageHeight(pBitmap)
-				Gdip_DrawImage(G, pBitmap, (BaseX - Width/6), (BaseY - Height/6), Width//3, Height//3, 0, 0, Width, Height)
-			}
-		}
-	}
+	If (DrawSpawningRaces && getTime() - round(TimeReadRacesSet) <= 14) ;round used to change undefined var to 0 for resume so dont display races. Var set via minimap thread
+		drawSpawningRaces(G)
 	if DrawAlerts
-	{
-		aRemoveItems := []
-		for i, warning in aMiniMapWarning ; care not somethings insert rather than set key to fingerprint. Should Change this - so that warnings have value indicating if the key is a fingerprint (allows easier removal than a loop) - but need to think if about multiple warnings with same fingerprint
-		{	
-			; this will remove warnings when they time out or if the unit had died 
-			; or been cancelled and replaced with another one 
-			If (Time - warning.Time >= 20 ;display for 20 seconds
-			|| getUnitFingerPrint(warning.Unit) != warning.FingerPrint)
-			{	
-				aRemoveItems.Insert(fingerprint)
-				continue
-			}	
-			If aPlayer[warning.Owner, "Team"] != aLocalPlayer["Team"]
-			{
-				If arePlayerColoursEnabled() && aPlayer[Owner, "Colour"] = "Green"
-					pBitmap := a_pBitmap["PurpleX16"] 
-				Else pBitmap := a_pBitmap["GreenX16"]
-			}
-			Else pBitmap := a_pBitmap["RedX16"]
-			getUnitMinimapPos(warning.Unit, X, Y)
-
-			Width := Gdip_GetImageWidth(pBitmap), Height := Gdip_GetImageHeight(pBitmap)	
-			Gdip_DrawImage(G, pBitmap, (X - Width/2), (Y - Height/2), Width, Height, 0, 0, Width, Height)	
-		} 
-		for i, key in aRemoveItems
-			aMiniMapWarning.Remove(key, "")
-	}
+		drawAlerts(G)
 	if DrawPlayerCameras
 		Gdip_SetSmoothingMode(G, 4), drawPlayerCameras(G) ; Can't really see a difference between HighQuality and AntiAlias
 	Gdip_DeleteRegion(Region)
@@ -310,12 +236,98 @@ DrawMiniMap()
 	Return
 }
 
+drawUnits(G)
+{
+	global DrawUnitDestinations
+	;	pBrushWhite := Gdip_BrushCreateSolid(0xffffffff)
+	;	Gdip_FillRectangle(G, pBrushWhite, minimap.BorderLeft, minimap.BorderTop , minimap.BorderWidth , minimap.BorderHeight)
+	;	Gdip_DeleteBrush(pBrushWhite)
+		
+	getEnemyUnitsMiniMap(aUnitsToDraw)
+	if DrawUnitDestinations
+		Gdip_SetSmoothingMode(G, 4), drawUnitDestinations(G, aUnitsToDraw, aSpecialAlerts)
+	; Don't anti alias. As that will blur where the rectangle meets the fill colour	
+	Gdip_SetSmoothingMode(G, 3)
+	for index, unit in aUnitsToDraw.Normal
+		drawUnitRectangle(G, unit.X, unit.Y, unit.Radius)	;draw rectangles first
+	for index, unit in aUnitsToDraw.Custom
+		drawUnitRectangle(G, unit.X, unit.Y, unit.Radius)
+	for index, unit in aUnitsToDraw.Normal
+		FillUnitRectangle(G, unit.X, unit.Y, unit.Radius, unit.Colour)	
+	; Fill the custom highlighted units last, so that their colours won't be drawn over.			
+	for index, unit in aUnitsToDraw.Custom
+		FillUnitRectangle(G, unit.X, unit.Y, unit.Radius, unit.Colour)
+	if DrawUnitDestinations
+	{
+		For i, alert in aSpecialAlerts
+			Gdip_DrawImage(G, alert.pBitmap, alert.x, alert.y, alert.Width, alert.Height, 0, 0, alert.Width, alert.Height)
+	}
+	return
+}
+drawSpawningRaces(G)
+{
+	global EnemyBaseList
+	;TimeReadRacesSet gets set to 0 at start of match
+	loop, parse, EnemyBaseList, |
+	{		
+		type := getUnitType(A_LoopField)
+		getUnitMinimapPos(A_LoopField, BaseX, BaseY)
+		if ( type = aUnitID["Nexus"]) 		
+		{	pBitmap := a_pBitmap["Protoss","RacePretty"]
+			Width := Gdip_GetImageWidth(pBitmap), Height := Gdip_GetImageHeight(pBitmap)	
+			Gdip_DrawImage(G, pBitmap, (BaseX - Width/5), (BaseY - Height/5), Width//2.5, Height//2.5, 0, 0, Width, Height)
+		}
+		Else if (type = aUnitID["CommandCenter"] || type = aUnitID["PlanetaryFortress"] || type =  aUnitID["OrbitalCommand"])
+		{
+			pBitmap := a_pBitmap["Terran","RacePretty"]
+			Width := Gdip_GetImageWidth(pBitmap), Height := Gdip_GetImageHeight(pBitmap)
+			Gdip_DrawImage(G, pBitmap, (BaseX - Width/10), (BaseY - Height/10), Width//5, Height//5, 0, 0, Width, Height)
+		}
+		Else if (type = aUnitID["Hatchery"] || type =  aUnitID["Lair"] || type =  aUnitID["Hive"])
+		{	pBitmap := a_pBitmap["Zerg","RacePretty"]
+			Width := Gdip_GetImageWidth(pBitmap), Height := Gdip_GetImageHeight(pBitmap)
+			Gdip_DrawImage(G, pBitmap, (BaseX - Width/6), (BaseY - Height/6), Width//3, Height//3, 0, 0, Width, Height)
+		}
+	}
+	return
+}
+
+drawAlerts(G)
+{
+	global aMiniMapWarning, Time
+	aRemoveItems := []
+	for i, warning in aMiniMapWarning ; care not somethings insert rather than set key to fingerprint. Should Change this - so that warnings have value indicating if the key is a fingerprint (allows easier removal than a loop) - but need to think if about multiple warnings with same fingerprint
+	{	
+		; this will remove warnings when they time out or if the unit had died 
+		; or been cancelled and replaced with another one 
+		If (Time - warning.Time >= 20 ;display for 20 seconds
+		|| getUnitFingerPrint(warning.unitIndex) != warning.FingerPrint)
+		{	
+			aRemoveItems.Insert(fingerprint)
+			continue
+		}	
+		If aPlayer[warning.Owner, "Team"] != aLocalPlayer["Team"]
+		{
+			If arePlayerColoursEnabled() && aPlayer[Owner, "Colour"] = "Green"
+				pBitmap := a_pBitmap["PurpleX16"] 
+			Else pBitmap := a_pBitmap["GreenX16"]
+		}
+		Else pBitmap := a_pBitmap["RedX16"]
+		getUnitMinimapPos(warning.unitIndex, X, Y)
+		, Width := Gdip_GetImageWidth(pBitmap), Height := Gdip_GetImageHeight(pBitmap)	
+		, Gdip_DrawImage(G, pBitmap, (X - Width/2), (Y - Height/2), Width, Height, 0, 0, Width, Height)	
+	} 
+	for i, key in aRemoveItems
+		aMiniMapWarning.Remove(key, "")	
+	return
+}
+
 getEnemyUnitsMiniMap(byref aUnitsToDraw)
-{  LOCAL UnitAddress, pUnitModel, Filter, MemDump, Radius, x, y, PlayerColours, MemDump, PlayerColours, owner, unitName
- 	, Colour, Type, QueuedCommands
-  
+{  	global DeadFilterFlag, aMiniMapUnits, aUnitInfo, minimap, HighlightInvisible, HighlightHallucinations
+ 	, HostileColourAssist, DrawUnitDestinations, GameType
+
   aUnitsToDraw := [], aUnitsToDraw.Normal := [], aUnitsToDraw.Custom := []
-  PlayerColours := arePlayerColoursEnabled()
+  , PlayerColours := arePlayerColoursEnabled()
   loop, % DumpUnitMemory(MemDump)
   {
      Filter := numget(MemDump, (UnitAddress := (A_Index - 1) * S_uStructure) + O_uTargetFilter, "Int64")
@@ -340,7 +352,7 @@ getEnemyUnitsMiniMap(byref aUnitsToDraw)
            , customFlag := True
 	      , mapToMinimapPos(x, y) ; don't round them. As fraction might be important when subtracting scaled width in draw/fill rectangle
 
-           if (HighlightInvisible && Filter & aUnitTargetFilter.Hallucination) ; have here so even if non-halluc unit type has custom colour highlight, it will be drawn using halluc colour
+           if (HighlightHallucinations && Filter & aUnitTargetFilter.Hallucination) ; have here so even if non-halluc unit type has custom colour highlight, it will be drawn using halluc colour
            	  Colour := "UnitHighlightHallucinationsColour"
            else if aMiniMapUnits.Highlight.HasKey(type)
           	Colour := aMiniMapUnits.Highlight[type]
@@ -896,7 +908,7 @@ geyserOversaturationWarning(aGeyserStructures, maxWorkers, maxTime, maxWarnings,
 						{
 							aWarnings[geyser.fingerPrint, "startFollowUp"] := Time
 							, aWarnings[geyser.fingerPrint, "startFollowUpCount"] := round(aWarnings[geyser.fingerPrint, "startFollowUpCount"]) + 1
-							, aMiniMapWarning.insert({ "Unit": geyser.unitIndex
+							, aMiniMapWarning.insert({ "unitIndex": geyser.unitIndex
 													, "FingerPrint": geyser.fingerPrint
 													, "Time":  time
 													, "Type": geyserStructure
@@ -988,7 +1000,7 @@ TownHallRally(spokenWarning := "Rally")
 		aCurrentGameTemp.WarnedHalls := []
 	if time < 5
 		return 
-	getLocalCompletedTownHalls(aTownHalls) = 0
+	getLocalCompletedTownHalls(aTownHalls)
 
 	isLocalPlayerZerg := aLocalPlayer.Race = "Zerg"
 
@@ -1006,7 +1018,7 @@ TownHallRally(spokenWarning := "Rally")
 			if !aCurrentGameTemp.WarnedHalls.HasKey(fingerPrint) && (isLocalPlayerZerg || (!isLocalPlayerZerg && getStructureProductionInfo(unitIndex, getUnitType(unitIndex), aProduction,, True) && aProduction.1.progress > 0.6 && aProduction.1.Item != "MothershipCore"))
 			{
 				aCurrentGameTemp.WarnedHalls[fingerPrint] := unitIndex
-				aMiniMapWarning.insert({ "Unit": unitIndex
+				aMiniMapWarning.insert({ "unitIndex": unitIndex
 										, "FingerPrint": fingerPrint
 										, "Time":  time
 										, "Owner":  aLocalPlayer["Slot"]
