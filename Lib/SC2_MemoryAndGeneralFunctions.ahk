@@ -3953,7 +3953,7 @@ previousDetectionWarning(p := "")
 }
 
 ; This is called by the minimap thread via the main thread, when the 
-; user clicks 'save' in the alert list editor. It apply alert the changes for the current game.
+; user clicks 'save' in the alert list editor. It applies alert the changes for the current game.
 ; otherwise if they don't click the save button on the options GUI, then 
 ; the changes are not applied until the next game
 updateAlertArray()

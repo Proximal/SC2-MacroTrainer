@@ -5114,16 +5114,19 @@ AutomationTerranCameraGroup_TT := AutomationProtossCameraGroup_TT := AutomationZ
 
 		Report_Email_TT := "Required if you are looking for a response"
 
-		Edit_Name_TT := "This text is read aload during the warning"
-		Edit_DWB_TT := TT_Edit_DWB_TT := "If the unit/building exists before this time, no warning will be made - this is helpful for creating multiple warnings for the same unit"
-		Edit_DWA_TT := TT_Edit_DWA_TT := "If the unit is made after this time, no warning will be made -  this is helpful for creating multiple warnings for the same unit"
+		VerbalWarning_TT := Edit_Name_TT := "This text is read aloud during the warning"
+		Edit_DWB_TT := TT_Edit_DWB_TT := "If the unit/building exists before this time, no warning will be made - this is helpful for creating multiple warnings for the same unit.`n`nThis is in seconds, e.g. 600 is equivalent to a game time of 10 minutes."
+		Edit_DWA_TT := TT_Edit_DWA_TT := "If the unit is made after this time, no warning will be made -  this is helpful for creating multiple warnings for the same unit.`n`nThis is in seconds, e.g. 600 is equivalent to a game time of 10 minutes."
 		Edit_RON_TT := "When enabled this SPECIFIC warning will be heard for each new unit/building of this type."
 		minimapAlert_TT := "Marks the unit on the minimap.`n`nYou must still enable 'Display Alerts' in the minimap/overlays section"
 		drop_ID_TT := "Use this list to find a units ID"
-		B_Modify_Alert_TT := "This updates the currently selected alert with the above parameters."
-		Delete_Alert_TT := "Removes the currently selected alert."
-		B_Add_New_Alert_TT := "Creates an alert using the above parameters for the selected game modes."
-		B_ALert_Cancel_TT := "Disregard changes"		
+		ModifyUpgradeAlert_TT := B_Modify_Alert_TT := "This updates the currently selected alert with the above parameters."
+		DeleteUpgradeAlert_TT := B_Delete_Alert_TT := "Removes the currently selected alert."
+		AddUpgradeAlert_TT := B_Add_New_Alert_TT := "Creates an alert using the above parameters for the selected game modes."
+		B_ALert_Cancel_TT := "Disregard changes"
+
+		Repeatable_TT := "When enabled the warning will be issued each time the upgrade starts/restarts.`n`nIn other words, if the player cancels and then restarts the upgrade a warning will be issued.`nThis is also useful for upgrades which can occur multiple times e.g. mutate hive (lair -> hive)"
+		Timeout_TT := TimeoutUpgradeAlert_TT := "No warnings are issued if the upgrade starts after this game time.`n`nThis is in seconds, e.g. 600 is equivalent to a game time of 10 minutes."
 	}
 	OnMessage(0x200, "mainThreadMessageHandler")
 	Gosub, G_GuiSetupDrawMiniMapDisable ; Disable controls based on current drawing settings
@@ -6514,7 +6517,7 @@ alertListEditor()
 		Gui, Add, Text,y+10 w80, Don't Warn if Made After (s):
 		Gui, Add, Text,y+14, ID Code:
 		Gui, Add, Checkbox, y+10 VEdit_RON hwndEdit_RONhwnd checked1, Repeatable
-		Gui, Add, Checkbox, y+10 vMinimapAlert hwndMinimapAlerthwnd, Minimap Alert
+		Gui, Add, Checkbox, y+10 vMinimapAlert hwndMinimapAlerthwnd checked1, Minimap Alert
 
 		Gui, Add, Edit, Right ys xs+85 section w135 vEdit_Name hwndEdit_Namehwnd
 		Gui, Add, Edit, Number Right y+11 w135 vTT_Edit_DWB
@@ -13163,7 +13166,7 @@ UpgradeAlertGUI()
 {
 	static GUIhwnd, UpgradePicturehwnd, UpgradeUserTitlehwnd, modifyAlertHwnd, deleteAlertHwnd
 		, VerbalWarningHwnd, TimeoutHwnd, MinimapAlertHwnd, RepeatableHwnd
-		, VerbalWarning, Timeout, MinimapAlert, UpgradeUserTitle, Repeatable
+		, VerbalWarning, Timeout, MinimapAlert, UpgradeUserTitle, Repeatable, ModifyUpgradeAlert, DeleteUpgradeAlert, TimeoutUpgradeAlert, AddUpgradeAlert
 		, Add1v1, Add2v2, Add3v3, Add4v4
 		, aTVNodes, aAlerts	
 	global aUpgradeAlerts, aThreads ; To allow the changes to be saved
@@ -13178,8 +13181,6 @@ UpgradeAlertGUI()
 	; with aUpgradeAlerts to aAlerts i.e. references. Would need to do a deep copy.
 	aAlerts := iniReadUpgradeAlerts()
 	Gui, UpgradeAlertEditor:New, -MaximizeBox +hwndGUIhwnd
-	;Gui, +OwnerOptons
-	;Gui, Options:+Disabled  
 	Gui, Add, TreeView, x+0 y+10 gUpgradeAlertTree h380 w180 section
 	aTVNodes := []
 	for k, gameType in ["1v1", "2v2", "3v3", "4v4"]
@@ -13195,7 +13196,7 @@ UpgradeAlertGUI()
 	Gui, Add, Text, xp+10 yp+20 w80 section, Verbal Warning:
 		Gui, Add, Edit, xs+110 yp w135 center hwndVerbalWarningHwnd vVerbalWarning	
 	Gui, Add, Text, xs y+10, Don't warn after (s):
-		Gui, Add, Edit, Number Right yp xs+110 w80 
+		Gui, Add, Edit, Number Right yp xs+110 w80 vTimeoutUpgradeAlert
 		Gui, Add, UpDown,  Range0-99999  hwndTimeoutHwnd vTimeout, 99999 
 	Gui, add, checkbox, xs y+10 hwndMinimapAlertHwnd vMinimapAlert, Minimap Alert
 	Gui, add, checkbox, xs y+10 hwndRepeatableHwnd vRepeatable, Repeatable
@@ -13206,13 +13207,13 @@ UpgradeAlertGUI()
 	Gui, add, button, x+10 yp g__UpgradeAlertGUIChangeButton, change 
 
 	Gui, Add, GroupBox, xs-10 ys+185 w265 h175, Alert Submission
-	Gui, Add, Button, xp+10 yp+20 w235 section hwndModifyAlertHwnd g__UpgradeAlertGUIModifyButton, Modify Alert
+	Gui, Add, Button, xp+10 yp+20 w235 section hwndModifyAlertHwnd g__UpgradeAlertGUIModifyButton vModifyUpgradeAlert, Modify Alert ; Need variable for tooltip
 	Gui, Add, Text,xs ys+27 w235 center, OR
-	Gui, Add, Button, xs y+5 w235 section Center hwndDeleteAlertHwnd g__UpgradeAlertGUIDeleteButton, Delete Alert
+	Gui, Add, Button, xs y+5 w235 section Center hwndDeleteAlertHwnd g__UpgradeAlertGUIDeleteButton vDeleteUpgradeAlert, Delete Alert
 	Gui, Add, Text,xs ys+27 w235 center, OR
 
 	Gui, Add, GroupBox, xs y+5 w235 h55 section, New Alert	
-	Gui, Add, Button, xs+5 yp+20 w120 g__UpgradeAlertGUIAddButton, Add This Alert to List
+	Gui, Add, Button, xs+5 yp+20 w120 g__UpgradeAlertGUIAddButton vAddUpgradeAlert, Add This Alert to List
 	Gui, Add, Checkbox, checked x+10 yp-5 section vAdd1v1, 1v1
 	Gui, Add, Checkbox, checked x+10 vAdd3v3, 3v3
 	Gui, Add, Checkbox, checked yp+20 vAdd4v4, 4v4
@@ -13223,7 +13224,7 @@ UpgradeAlertGUI()
 	__UpgradeAlertGUISaveButton:
 	iniWriteUpgradeAlerts(aUpgradeAlerts := aAlerts)
 	if aThreads.MiniMap.ahkReady() ; Update the current list in case in a game already. And the user doesn't click save on the options menu.
-		aThreads.MiniMap.ahkFunction("updateAlertArray")	
+		aThreads.MiniMap.ahkFunction("updateUpgradeAlerts")	
 	UpgradeAlertEditorGUIClose:
 	UpgradeAlertEditorGUIEscape:
 	Gui, Destroy
@@ -13449,7 +13450,7 @@ alertSelectionGUI(currentItem := "")
 			}
 		}
 	}
-	gui, add, button, xp y+10 g__alertSelectionGUISave w50, Save 
+	gui, add, button, xp y+10 g__alertSelectionGUISave w50, Accept 
 	gui, add, button, x+35 yp g__alertSelectionGUICancel w50, Cancel 
 	GUI, show,, Select Upgrade
 	Gui, UpgradeAlertEditor:+Disabled
@@ -13465,7 +13466,11 @@ alertSelectionGUI(currentItem := "")
 	  	Gui, UpgradeAlertEditor:-Disabled
 	  	GUI, Destroy
   	}
-  	else msgbox You must select an upgrade before saving.
+  	else
+  	{
+  		Gui +OwnDialogs
+  		MsgBox, 64, Parameter Error, You must enable an upgrade before saving.
+  	}  
   	return 
   
   	__alertSelectionGUICancel:
@@ -13497,22 +13502,7 @@ alertSelectionGUI(currentItem := "")
 }
 
 
-
-
-
 /*
 550725089040195385
 */
 
-f1::
-settimer, test, 500
-return 
-
-
-test:
-loop, % getHighestUnitIndex()
-{
-	unit := A_Index - 1
-	performUpgradeDetection(getUnitType(unit), unit, getunitowner(unit), getUnitFingerPrint(unit))
-}
-return 
