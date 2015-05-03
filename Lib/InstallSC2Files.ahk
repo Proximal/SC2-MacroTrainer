@@ -156,6 +156,7 @@ InstallSC2Files()
 	FileInstall, Included Files\Used_Icons\Units\Protoss\immortal.png, %A_Temp%\UnitPanelMacroTrainer\immortal.png, 1
 	FileInstall, Included Files\Used_Icons\Units\Protoss\interceptor.png, %A_Temp%\UnitPanelMacroTrainer\interceptor.png, 1
 	FileInstall, Included Files\Used_Icons\Units\Protoss\mothership.png, %A_Temp%\UnitPanelMacroTrainer\mothership.png, 1
+	FileInstall, Included Files\Used_Icons\Units\Protoss\mothership.png, %A_Temp%\UnitPanelMacroTrainer\MorphToMothership.png, 1
 	FileInstall, Included Files\Used_Icons\Units\Protoss\mothershipcore.png, %A_Temp%\UnitPanelMacroTrainer\mothershipcore.png, 1
 	FileInstall, Included Files\Used_Icons\Units\Protoss\observer.png, %A_Temp%\UnitPanelMacroTrainer\observer.png, 1
 	FileInstall, Included Files\Used_Icons\Units\Protoss\oracle.png, %A_Temp%\UnitPanelMacroTrainer\oracle.png, 1
@@ -173,11 +174,14 @@ InstallSC2Files()
 	FileInstall, Included Files\Used_Icons\Buildings\Zerg\evolutionchamber.png,  %A_Temp%\UnitPanelMacroTrainer\evolutionchamber.png, 1
 	FileInstall, Included Files\Used_Icons\Buildings\Zerg\extractor.png,  %A_Temp%\UnitPanelMacroTrainer\extractor.png, 1
 	FileInstall, Included Files\Used_Icons\Buildings\Zerg\greaterspire.png,  %A_Temp%\UnitPanelMacroTrainer\greaterspire.png, 1
+	FileInstall, Included Files\Used_Icons\Buildings\Zerg\greaterspire.png,  %A_Temp%\UnitPanelMacroTrainer\UpgradeToGreaterSpire.png, 1
 	FileInstall, Included Files\Used_Icons\Buildings\Zerg\hatchery.png,  %A_Temp%\UnitPanelMacroTrainer\hatchery.png, 1
 	FileInstall, Included Files\Used_Icons\Buildings\Zerg\hive.png,  %A_Temp%\UnitPanelMacroTrainer\hive.png, 1
+	FileInstall, Included Files\Used_Icons\Buildings\Zerg\hive.png,  %A_Temp%\UnitPanelMacroTrainer\UpgradeToHive.png, 1
 	FileInstall, Included Files\Used_Icons\Buildings\Zerg\hydraliskden.png,  %A_Temp%\UnitPanelMacroTrainer\hydraliskden.png, 1
 	FileInstall, Included Files\Used_Icons\Buildings\Zerg\infestationpit.png,  %A_Temp%\UnitPanelMacroTrainer\infestationpit.png, 1
 	FileInstall, Included Files\Used_Icons\Buildings\Zerg\lair.png,  %A_Temp%\UnitPanelMacroTrainer\lair.png, 1
+	FileInstall, Included Files\Used_Icons\Buildings\Zerg\lair.png,  %A_Temp%\UnitPanelMacroTrainer\UpgradeToLair.png, 1
 	FileInstall, Included Files\Used_Icons\Buildings\Zerg\NydusCanal.png,  %A_Temp%\UnitPanelMacroTrainer\NydusCanal.png, 1
 	FileInstall, Included Files\Used_Icons\Buildings\Zerg\nydusnetwork.png,  %A_Temp%\UnitPanelMacroTrainer\nydusnetwork.png, 1
 	FileInstall, Included Files\Used_Icons\Buildings\Zerg\roachwarren.png,  %A_Temp%\UnitPanelMacroTrainer\roachwarren.png, 1

@@ -1984,15 +1984,15 @@ getStructureRallyPoints(unitIndex, byRef aRallyPoints := "", zergTownHallResourc
 	static O_IndexParentTypes := 0x18, cAbilRally := 0x1a
 
 	aRallyPoints := []
-	pAbilities := getUnitAbilityPointer(unitIndex)
-	abilitiesCount := getAbilitiesCount(pAbilities)	
-	ByteArrayAddress := ReadMemory(pAbilities, GameIdentifier) + 0x3  ; gets the address of a byte array which contains the ID list of the units abilities
-	cAbilRallyIndex := getAbilityIndex(cAbilRally, abilitiesCount, ByteArrayAddress) ;find the position/index of the rally ability in the ID list
+	, pAbilities := getUnitAbilityPointer(unitIndex)
+	, abilitiesCount := getAbilitiesCount(pAbilities)	
+	, ByteArrayAddress := ReadMemory(pAbilities, GameIdentifier) + 0x3  ; gets the address of a byte array which contains the ID list of the units abilities
+	, cAbilRallyIndex := getAbilityIndex(cAbilRally, abilitiesCount, ByteArrayAddress) ;find the position/index of the rally ability in the ID list
 	
 	if (cAbilRallyIndex >= 0)
 	{
 		pCAbillityStruct := readmemory(pAbilities + O_IndexParentTypes + 4 * cAbilRallyIndex, GameIdentifier)
-		bRallyStruct := readmemory(pCAbillityStruct + 0x34, GameIdentifier)
+		, bRallyStruct := readmemory(pCAbillityStruct + 0x34, GameIdentifier)
 		
 		ReadRawMemory(bRallyStruct + (zergTownHallResourceRally ? 0x74 : 0), GameIdentifier, rallyDump, 0x4 + 0x1C * 4) ; max rally count. Dump entire area - save a mem read
 		if rallyCount := NumGet(rallyDump, 0, "Int")
@@ -3741,11 +3741,29 @@ performUpgradeDetection(unitID, unitIndex, owner, fingerPrint)
 	global aMiniMapWarning, aUpgradeAlerts, GameType, time
 	static aWarned := []
 
-	if (time <= 10 && aWarned := []) ; No upgrade will start before this time. Easy way to reset for new game.
-	|| !getStructureProductionInfo(unitIndex, unitID, aInfo,, False) ; False return progress as time remaining (more accurate than rounded %)
-	|| !aUpgradeAlerts.alertLookUp[gameType].Haskey(aInfo.1.Item) ; No warning for this upgrade in this game mode
-	|| time > aUpgradeAlerts[GameType, key := aUpgradeAlerts.alertLookUp[gameType, aInfo.1.Item], "DWA"] ; Don't warn after this game time 
+	aSpecialUnits := {aUnitID.Hatchery: "UpgradeToLair"
+					, aUnitID.Lair: "UpgradeToHive"
+					, aUnitID.Spire: "UpgradeToGreaterSpire"
+					, aUnitID.MothershipCore: "MorphToMothership"}
+
+	if (time <= 10 && aWarned := [])
 		return 
+	if aUpgradeAlerts.alertLookUp[gameType].Haskey(aSpecialUnits[unitID]) && isHatchLairOrSpireMorphing(unitIndex, unitID)
+	{
+		aInfo := [], aInfo[1, "Item"] := aSpecialUnits[unitID]
+		, aInfo[1, "Progress"] := getUnitMorphTime(unitIndex, unitID, False)
+	}
+	else if !getStructureProductionInfo(unitIndex, unitID, aInfo,, False)
+		return
+	if !aUpgradeAlerts.alertLookUp[gameType].Haskey(aInfo.1.Item)
+	|| time > aUpgradeAlerts[GameType, key := aUpgradeAlerts.alertLookUp[gameType, aInfo.1.Item], "DWA"]
+		return
+
+;	if (time <= 10 && aWarned := []) ; No upgrade will start before this time. Easy way to reset for new game.
+;	|| !getStructureProductionInfo(unitIndex, unitID, aInfo,, False) ; False return progress as time remaining (more accurate than rounded %)
+;	|| !aUpgradeAlerts.alertLookUp[gameType].Haskey(aInfo.1.Item) ; No warning for this upgrade in this game mode
+;	|| time > aUpgradeAlerts[GameType, key := aUpgradeAlerts.alertLookUp[gameType, aInfo.1.Item], "DWA"] ; Don't warn after this game time 
+;		return 
 	; Ignore warned upgrade which is still researching, unless its timeRemainging > the prior time remaining or its being researched by a new structure (it has restarted)
 	; If (previously warned && ((!repeatable || <15 seconds since first started) || (upgrade has has progressed && same structure)) return + update progress
 	; When repeatable - if an upgrade is cancelled and restarted within 15 in game seconds  from starting, it will not be rewarmed.
@@ -3753,13 +3771,13 @@ performUpgradeDetection(unitID, unitIndex, owner, fingerPrint)
 	if aWarned[owner].hasKey(aInfo.1.Item) 
 	&& ( !aUpgradeAlerts[GameType, key, "Repeatable"]  ; Don't warn on restart 
 	; && ( (!aUpgradeAlerts[GameType, key, "Repeatable"] || abs(aWarned[owner, aInfo.1.Item, "startTime"] - time) <= 15) ; Don't warn on restart 
-	|| (aWarned[owner, aInfo.1.Item, "timeRemaining"] >= aInfo.1.Progress && aWarned[owner, aInfo.1.Item, "fingerPrint"] = fingerPrint))  ; ; ** Use >= in case protoss upgrade gets unpowered
-		return "", aWarned[owner, aInfo.1.Item, "timeRemaining"] := aInfo.1.Progress ; Update that new progress. helps ensure that cancelled upgrades will be re-warned if they start again
+	|| (aWarned[owner, aInfo.1.Item, "fingerPrints"].hasKey(fingerPrint) && aWarned[owner, aInfo.1.Item, fingerPrint, "timeRemaining"] >= aInfo.1.Progress))  ; ; ** Use >= in case protoss upgrade gets unpowered
+		return "", aWarned[owner, aInfo.1.Item, fingerPrint, "timeRemaining"] := aInfo.1.Progress ; Update that new progress. helps ensure that cancelled upgrades will be re-warned if they start again
 
 	;, aWarned[owner, aInfo.1.Item, "gameTime"] := time
-	aWarned[owner, aInfo.1.Item, "timeRemaining"] := aInfo.1.Progress 
-	, aWarned[owner, aInfo.1.Item, "fingerPrint"] := fingerPrint
-	, aWarned[owner, aInfo.1.Item, "startTime"] := time
+	aWarned[owner, aInfo.1.Item, fingerPrint, "timeRemaining"] := aInfo.1.Progress 
+	, aWarned[owner, aInfo.1.Item, "fingerPrints", fingerPrint] :=  True
+	;, aWarned[owner, aInfo.1.Item, "startTime"] := time
 	, alert := aUpgradeAlerts[GameType, key]	
 	, previousDetectionWarning({"unitIndex": unitIndex, "FingerPrint": fingerPrint, "Type": unitID, "Owner": owner, "minimapAlert": alert.minimapAlert, "speech": alert.verbalWarning, "WarningType": "upgradeDetection"})
 	if alert.minimapAlert								
@@ -5447,7 +5465,6 @@ iniReadUpgradeAlerts()
 
 class upgradeDefinitions
 {
-
 	static aUpgradeUserTitle := { Terran: { StarportTechLab: {ResearchBansheeCloak: "CloakingField", ResearchMedivacEnergyUpgrade: "CaduceusReactor", ResearchDurableMaterials: "DurableMaterials", ResearchRavenEnergyUpgrade: "CorvidReactor"}
 									, FusionCore: {ResearchBattlecruiserEnergyUpgrade: "BehemothReactor", ResearchBattlecruiserSpecializations: "WeaponRefit"}
 									, GhostAcademy: {ResearchPersonalCloaking: "PersonalCloaking"} ;, ResearchGhostEnergyUpgrade: ""
@@ -5459,18 +5476,19 @@ class upgradeDefinitions
 									, Forge: {ProtossGroundWeaponsLevel1: "GroundWeaponsLevel1", ProtossGroundWeaponsLevel2: "GroundWeaponsLevel2", ProtossGroundWeaponsLevel3: "GroundWeaponsLevel3", ProtossGroundArmorLevel1: "GroundArmorLevel1", ProtossGroundArmorLevel2: "GroundArmorLevel2", ProtossGroundArmorLevel3: "GroundArmorLevel3", ProtossShieldsLevel1: "ShieldsLevel1", ProtossShieldsLevel2: "ShieldsLevel2", ProtossShieldsLevel3: "ShieldsLevel3"}
 									, RoboticsBay: {ResearchExtendedThermalLance: "ExtendedThermalLance", ResearchGraviticBooster: "GraviticBoosters", ResearchGraviticDrive: "GraviticDrive"}
 									, TemplarArchive: {ResearchPsiStorm: "PsionicStorm"}
+									, MothershipCore: {MorphToMothership: "UpgradeToMothership"}
 									, CyberneticsCore: {ResearchWarpGate: "WarpGate", ProtossAirWeaponsLevel1: "AirWeaponsLevel1", ProtossAirWeaponsLevel2: "AirWeaponsLevel2", ProtossAirWeaponsLevel3: "AirWeaponsLevel3", ProtossAirArmorLevel1: "AirArmorLevel1", ProtossAirArmorLevel2: "AirArmorLevel2", ProtossAirArmorLevel3: "AirArmorLevel3"}
 									, TwilightCouncil: {ResearchCharge: "Charge", ResearchStalkerTeleport: "Blink"}}
 						, Zerg:	{BanelingNest: {EvolveCentrificalHooks: "CentrifugalHooks"}
 									, InfestationPit: {EvolveInfestorEnergyUpgrade: "PathogenGlands", ResearchNeuralParasite: "NeuralParasite", EvolveFlyingLocusts: "FlyingLocusts"} ;, ResearchLocustLifetimeIncrease: ""
 									, UltraliskCavern: {EvolveChitinousPlating: "ChitinousPlating"}
 									, RoachWarren: {EvolveGlialRegeneration: "GlialReconstitution", EvolveTunnelingClaws: "TunnelingClaws"}
-									, Hatchery: {overlordspeed: "PneumatizedCarapace", ResearchBurrow: "Burrow"}
-									, Lair: {overlordspeed: "PneumatizedCarapace", ResearchBurrow: "Burrow", EvolveVentralSacks: "VentralSacks"}									
+									, Hatchery: {overlordspeed: "PneumatizedCarapace", ResearchBurrow: "Burrow", UpgradeToLair: "MutateLair"}
+									, Lair: {overlordspeed: "PneumatizedCarapace", ResearchBurrow: "Burrow", EvolveVentralSacks: "VentralSacks", UpgradeToHive: "MutateHive"}									
 									, Hive: {overlordspeed: "PneumatizedCarapace", ResearchBurrow: "Burrow", EvolveVentralSacks: "VentralSacks"}
 									, HydraliskDen: {hydraliskspeed: "GroovedSpines", MuscularAugments: "MuscularAugments"}
 									, SpawningPool: {zerglingmovementspeed: "MetabolicBoost", zerglingattackspeed: "AdrenalGlands"}
-									, Spire: {zergflyerarmor1: "FlyerCarapaceLevel1", zergflyerarmor2: "FlyerCarapaceLevel2", zergflyerarmor3: "FlyerCarapaceLevel3", zergflyerattack1: "FlyerAttacksLevel1", zergflyerattack2: "FlyerAttacksLevel2", zergflyerattack3: "FlyerAttacksLevel3"}
+									, Spire: {zergflyerarmor1: "FlyerCarapaceLevel1", zergflyerarmor2: "FlyerCarapaceLevel2", zergflyerarmor3: "FlyerCarapaceLevel3", zergflyerattack1: "FlyerAttacksLevel1", zergflyerattack2: "FlyerAttacksLevel2", zergflyerattack3: "FlyerAttacksLevel3", UpgradeToGreaterSpire: "MutateGreaterSpire"}
 									, GreaterSpire: {zergflyerarmor1: "FlyerCarapaceLevel1", zergflyerarmor2: "FlyerCarapaceLevel2", zergflyerarmor3: "FlyerCarapaceLevel3", zergflyerattack1: "FlyerAttacksLevel1", zergflyerattack2: "FlyerAttacksLevel2", zergflyerattack3: "FlyerAttacksLevel3"}
 									, EvolutionChamber: {zerggroundarmor1: "GroundCarapaceLevel1", zerggroundarmor2: "GroundCarapaceLevel2", zerggroundarmor3: "GroundCarapaceLevel3", zergmeleeweapons1: "MeleeAttacksLevel1", zergmeleeweapons2: "MeleeAttacksLevel2", zergmeleeweapons3: "MeleeAttacksLevel3", zergmissileweapons1: "MissileAttacksLevel1", zergmissileweapons2: "MissileAttacksLevel2", zergmissileweapons3: "MissileAttacksLevel3" }}}
 	static _ahack := upgradeDefinitions.initialiseVars()

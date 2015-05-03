@@ -260,7 +260,7 @@ HotkeyGUI(p_Owner=0,p_Hotkey="",p_Limit="", p_Title="", p_CheckModifers = 0, p_D
     l_MouseKeysList=
        (ltrim join| Comments 
 ;       LButton  ; LBUtton disabled as I use this as a pass through hotkey
-        RButton
+;       RButton  ; disabled as the smart geyser now uses RButton only hotkey
         MButton
         WheelDown
         WheelUp

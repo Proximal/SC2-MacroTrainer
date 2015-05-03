@@ -5001,10 +5001,7 @@ AutomationTerranCameraGroup_TT := AutomationProtossCameraGroup_TT := AutomationZ
 		SelectArmyDeselectLoadedTransport_TT := "Removes loaded medivacs and warp prisms"
 		SelectArmyDeselectQueuedDrops_TT := "Removes transports which have a drop command queued`n`nDoesn't include tranports which have begun unloading."
 
-		SelectTransportsHotkey_TT := #SelectTransportsHotkey_TT := "This hotkey performs two functions depending on if it is double tapped or held down."
-													. "`n`nFunction 1) Double tap this key to select any loaded transports visible on the screen."
-													. "`n`nFunction 2) Hold this button and wave the mouse over the loaded transports to begin unloading them."		
-													. "`n`nClick the 'About' button below for more information."
+		SelectTransportsHotkey_TT := #SelectTransportsHotkey_TT := "Selects loaded transports (medivacs, warp prisms, or overlords) which are visible on screen."
 		EasyUnload_T_Key_TT := EasyUnload_P_Key_TT := EasyUnload_Z_Key_TT := "This needs to correspond to the SC2 unload all key."
 															. "`nThis key is used by both the 'Easy Select/Cursor Unload' and 'Unload All' functions."
 															. "`n`nIf the unload all feature is enabled, then when you double tap this key (and transports are the selected and highlighted unit type) all of the transports will immediately begin unloading."
@@ -6478,7 +6475,6 @@ Gui, Options:-Disabled
 GUI, Destroy
 return 
 
-f2::
 Alert_List_Editor:
 alertListEditor()
 return
@@ -13156,7 +13152,7 @@ iniWriteAndUpdateAutoGrouping(OptionsSave, aAutoGroupCurrent)
 
 	return aAutoGroup
 }
-f4::
+
 UpgradeAlertEditor:
 UpgradeAlertGUI()
 return 
@@ -13200,7 +13196,7 @@ UpgradeAlertGUI()
 		Gui, Add, Edit, xs+110 yp w135 center hwndVerbalWarningHwnd vVerbalWarning	
 	Gui, Add, Text, xs y+10, Don't warn after (s):
 		Gui, Add, Edit, Number Right yp xs+110 w80 
-		Gui, Add, UpDown,  Range0-999999 hwndTimeoutHwnd vTimeout, 999999
+		Gui, Add, UpDown,  Range0-99999  hwndTimeoutHwnd vTimeout, 99999 
 	Gui, add, checkbox, xs y+10 hwndMinimapAlertHwnd vMinimapAlert, Minimap Alert
 	Gui, add, checkbox, xs y+10 hwndRepeatableHwnd vRepeatable, Repeatable
 	;Gui, Add, Text,y+12, Repeat on New?
@@ -13407,8 +13403,6 @@ iniWriteUpgradeAlerts(obj)
 {
 	obj.Remove("parentLookUp")
 	obj.Remove("alertLookUp")
-	objtree(obj)
-	msgbox 
 	IniWrite, % serDes(obj), %config_file%, Upgrade Alerts, Alerts
 	; Do this afterwards. Store less data in the key. And safer if unit ID changes (though they never would)
 	for i, gameType in ["1v1", "2v2", "3v3", "4v4"]
@@ -13505,22 +13499,20 @@ alertSelectionGUI(currentItem := "")
 
 
 
-; 0412092572
+
 /*
-Hi Dot, received you message and currently in europe will be home in three weeks. 
-communication is very difficult and sending this VIa matt. 
-Will ring you when get home but if you pay water rates we will reimburse you when you get back.
-
-Cheers. 
-
 550725089040195385
-
-
 */
 
 f1::
-objtree(alert_array, "original")
-objtree(Editalert_array, "Editalert_array")
+settimer, test, 500
 return 
 
 
+test:
+loop, % getHighestUnitIndex()
+{
+	unit := A_Index - 1
+	performUpgradeDetection(getUnitType(unit), unit, getunitowner(unit), getUnitFingerPrint(unit))
+}
+return 
