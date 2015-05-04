@@ -1700,6 +1700,11 @@ WriteModifiers(shift := 0, ctrl := 0, alt := 0, ExactValue := 0)
 }
 
 ; can check if producing by checking queue size via buildstats()
+; *** note it's safer to check production info
+; As if unit becomes contaminated, then this will return 0!!!!
+; Probably the same for isGatewayConvertingToWarpGate() - havent checked.
+; a warp gate which is already converting and then contaminated will still convert.
+; I think perhaps this value gets bitwise-| with a contaminate value. CBF checking atm.
 isGatewayProducingOrConvertingToWarpGate(Gateway)
 { 
 ;	gateway 
@@ -4375,7 +4380,7 @@ readConfigFile()
 	
 	IniRead, ConvertGatewaysEnable, %config_file%, %section%, ConvertGatewaysEnable, 0
 	IniRead, ConvertGatewayCtrlGroup, %config_file%, %section%, ConvertGatewayCtrlGroup, 5
-
+	IniRead, ConvertGatewayDelay, %config_file%, %section%, ConvertGatewayDelay, 5
 
 	if thisThreadTitle in main,minimap
 	{
@@ -5541,3 +5546,4 @@ class upgradeDefinitions
 		return this._aStructuresFromRace[race]
 	}
 }
+

@@ -2704,6 +2704,7 @@ ini_settings_write:
 
 	IniWrite, %ConvertGatewaysEnable%, %config_file%, %section%, ConvertGatewaysEnable
 	IniWrite, %ConvertGatewayCtrlGroup%, %config_file%, %section%, ConvertGatewayCtrlGroup
+	IniWrite, %ConvertGatewayDelay%, %config_file%, %section%, ConvertGatewayDelay
 
 	;[Misc Hotkey]
 	IniWrite, %EnableWorkerCountSpeechHotkey%, %config_file%, Misc Hotkey, EnableWorkerCountSpeechHotkey
@@ -4258,11 +4259,18 @@ try
 	Gui, Tab, Convert Gateways
 		Gui, Add, Checkbox, xp+10 y+25 section vConvertGatewaysEnable checked%ConvertGatewaysEnable%, Enable
 		Gui, Add, Text, xs yp+25, Gateway Control Group:
-		Gui, Add, DropDownList,  % "x+30 yp-2 w45 center vConvertGatewayCtrlGroup Choose" (ConvertGatewayCtrlGroup = 0 ? 10 : ConvertGatewayCtrlGroup), 1|2|3|4|5||6|7|8|9|0
-		Gui, Font, s10 BOLD
-		Gui, add, text, xs ys+60 cRED, Note:
-		Gui, Font, s9 norm
-		Gui, add, text, xp+50 yp w340, The automation becomes active AFTER you manually convert your first gateway into a warpgate. This will only convert gateways which are already in the above control group.
+		Gui, Add, DropDownList,  % "xs+140 yp-2 w45 center vConvertGatewayCtrlGroup Choose" (ConvertGatewayCtrlGroup = 0 ? 10 : ConvertGatewayCtrlGroup), 1|2|3|4|5||6|7|8|9|0
+		
+		Gui, Add, Text, xs+ yp+35, Delay (s):
+		Gui, Add, Edit, Number Right xs+140 yp-2 w45 veditGUIConvertGatewayDelay
+		Gui, Add, UpDown,  Range0-300 vConvertGatewayDelay, %ConvertGatewayDelay%
+
+		gui, add, groupbox, xs yp+40 w380 h110, About
+		Gui, add, text, xs+10 yp+25, Automatically converts gateways into warpgates.
+		;Gui, Font, s10 BOLD
+		;Gui, add, text, xs+10 y+10 cRED, Note:
+		;Gui, Font, s9 norm
+		Gui, add, text, xs+10 y+15 w360, This automation becomes active AFTER you manually convert your first gateway into a warpgate. It will only convert gateways which are already in the above control group.
 
 
 	Gui, Add, Tab2, w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vHome_TAB, Home||Emergency
@@ -5080,6 +5088,9 @@ AutomationTerranCameraGroup_TT := AutomationProtossCameraGroup_TT := AutomationZ
 		;					. "`n`nYou must ensure the corresponding ""Set Control Group keys"", ""Add to Control Group Keys"",`nand ""Invoke Group Keys"" (under SC2 Keys on the left) match your SC2 hotkey setup."									
 
 		ConvertGatewayCtrlGroup_TT := "The control group which contains your gateways."
+		editGUIConvertGatewayDelay_TT := ConvertGatewayDelay_TT := "After a gateway has been left unconverted (and control grouped) for this number of game seconds, all unconverted gateways will then be converted to warpgates."
+			. "`n`nFor example, setting a value of 20 allows this function to act as a 'backup' in case you forget to convert a gateway, i.e. it provides an opportunity for you to manually convert the gateway."
+			. "`nSetting this value to 0 will convert gateways as soon as they finish constructing."
 		F_Inject_ModifierBeep_TT := "If the modifier keys (Shift, Ctrl, or Alt) or Windows Keys are held down when an Inject is attempted, a beep will heard.`nRegardless of this setting, the inject round will not begin until after these keys have been released."
 		BlockingStandard_TT := BlockingFunctional_TT := BlockingNumpad_TT := BlockingMouseKeys_TT := BlockingMultimedia_TT := BlockingMultimedia_TT := BlockingModifier_TT := "During certain automations these keys will be buffered or blocked to prevent interruption to the automation and your game play."
 		SC2AdvancedEnlargedMinimap_TT := "This option alters the size and position of the minimap."
@@ -12450,10 +12461,21 @@ class autoBuild
 	}
 }
 
+; Note if you don't set (reset) the times on game restart/finish, then theres a small
+; chance that an automation could be delayed slightly if the gametime matches. 
+; But this isn't really an issue we only use it with very small time checks
+; e.g. turn on auto-build at the same game time which it last built a unit in the previous game.
+; If call methods directly, then these will set the value for any new/derived instances. 
+
 class buildCheck
 {
 	static priorTimeGame := -50, priorTick := 0
 
+	__new()
+	{
+		this.priorTimeGame := -50, this.priorTick := 0
+		return this
+	}
 	hasGameSecondsElapsed(seconds := 3)
 	{
 		return Abs(getTime() - this.priorTimeGame) > seconds ; just check delta so dont have to worry about negatives
@@ -12909,24 +12931,44 @@ return
 
 convertWarpGates()
 {
-	global AutomationProtossCtrlGroup, ConvertGatewayCtrlGroup
-	static lastConversion := -50
-
-	time := getTime()
-	if (Abs(time - lastConversion) < 2) 
-		return
+	global AutomationProtossCtrlGroup, ConvertGatewayCtrlGroup,  ConvertGatewayDelay
+	static lastConversion := -50, aTimes := []
+	
+	if (time := getTime()) < 40 ; reset at start of game
+		return,  aTimes := [], lastConversion := 0
+	
 	gatewayGroup := ConvertGatewayCtrlGroup
-	tempControlGroup := AutomationProtossCtrlGroup
 
+	checkDelay := ConvertGatewayDelay > 0
+	; If a gateway which is converting to warpgate gets contaminated, it will probably result in program attempting to
+	; convert it every 2 seconds (as isGatewayConvertingToWarpGate() returns false). Not a big issue. Look into this one day.
 	for i, fingerPrint in controlGroupFingerPrints(gatewayGroup)
 	{
-		if getUnitFingerPrint(unitIndex := fingerPrint >> 18) != fingerPrint
-			continue 
-		if getUnitType(unitIndex) = aUnitID.Gateway && !isUnderConstruction(unitIndex) && isUnitPowered(unitIndex) && !isGatewayConvertingToWarpGate(unitIndex) 
-			gatewayCount++			
+		if getUnitFingerPrint(unitIndex := fingerPrint >> 18) = fingerPrint && getUnitType(unitIndex) = aUnitID.Gateway 
+		&& !isUnderConstruction(unitIndex) && isUnitPowered(unitIndex) && !isGatewayConvertingToWarpGate(unitIndex)
+		{ 
+			; Don't try to convert gateways which are producing units!
+			if !getStructureProductionInfo(unitIndex, aUnitID.Gateway, aInfo)
+				gatewayCount++
+			if checkDelay ; convert all gateways if one requires conversion
+			{
+				if !aTimes.HasKey(fingerPrint)
+					aTimes[fingerPrint] := time
+				else if (time - aTimes[fingerPrint] >= ConvertGatewayDelay)
+					DelayHasExpired := True
+			} 
+		}		
 	}
+
+	; Do this here, so that aTimes is updated
+	; give time for multiple converting warpgates to finish building, so they can all be converted in the same action
+	if Abs(time - lastConversion) < 2	
+		return 
+	; don't do if (ConvertGatewayDelay < 2 && Abs(time - lastConversion) < 2) - as this doesn't protect against game lag screen when delay >= 2		
+	
+	tempControlGroup := AutomationProtossCtrlGroup
 	; So a gateway needs converting
-	if !gatewayCount || waitForUser()
+	if !gatewayCount || (checkDelay && !DelayHasExpired) || waitForUser()
 		return 
 	Thread, NoTimers, true
 	critical, 1000	
@@ -12959,22 +13001,22 @@ convertWarpGates()
 	}
 	Input.revertKeyState()
 	setLowLevelInputHooks(False)
+	lastConversion := time
 	critical, off
 	Thread, NoTimers, false 
-	lastConversion := time
 	return 
 }
 
 
 waitForUser()
 {
-	global AutoWorkerAPMProtection
+	global automationAPMThreshold
 	if !isSelectionGroupable(oSelection) || isGamePaused() || isMenuOpen()
 		return 1		
 	While ( isUserBusyBuilding() || isCastingReticleActive() 
 	|| GetKeyState("LButton", "P") || GetKeyState("RButton", "P")
 	|| SC2Keys.checkNonInterruptibleKeys()
-	|| getPlayerCurrentAPM() > AutoWorkerAPMProtection
+	|| getPlayerCurrentAPM() > automationAPMThreshold ;AutoWorkerAPMProtection
 	|| A_mtTimeIdle < 50)
 	{
 		if (A_index > 36)
@@ -13190,7 +13232,7 @@ UpgradeAlertGUI()
 			TV_Add(truncateString(alert.verbalWarning), aTVNodes[gameType])
 	}
 	gui, add, button, xs+55 y+20 w70 h40 g__UpgradeAlertGUISaveButton, Save 
-	gui, add, button, xs+265 yp w70 h40 gUpgradeAlertEditorGUIClose, cancel 
+	gui, add, button, xs+265 yp w70 h40 gUpgradeAlertEditorGUIClose, Cancel 
 
 	Gui, Add, GroupBox, xs+200 ys w265 h185, Alert Parameters
 	Gui, Add, Text, xp+10 yp+20 w80 section, Verbal Warning:
@@ -13505,4 +13547,5 @@ alertSelectionGUI(currentItem := "")
 /*
 550725089040195385
 */
+
 
