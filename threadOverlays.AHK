@@ -1532,10 +1532,10 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 		}
 		else DestX := 0
 
-		; this moves the destionX to the right to account for the race-icon/name
+		; this moves the destionX to the right to account for the race-icon/name. And resets the position for the next player.
 		firstColumnX  := maxStructureDestX := maxUnitDestX := DestX
 		; destY is height of each players first panel row. And takes account showing upgrades and progress bars
-		structureY := DestY
+		, structureY := DestY, hasExistingUnits := False
 
 		if drawUnits
 		{
@@ -1547,7 +1547,7 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 						continue ; as i dont have a picture for that unit - not a real unit?
 					SourceWidth := Width := Gdip_GetImageWidth(pBitmap), SourceHeight := Height := Gdip_GetImageHeight(pBitmap) 
 					, Width *= UserScale *.5, Height *= UserScale *.5	; all unit/buildings/updagres are 38x38 after being halved
-
+					, hasExistingUnits := True
 					if SplitUnitPanel 
 					{
 						if aUnitInfo[unit, "isStructure"] 
@@ -1655,10 +1655,16 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 				}
 			}	
 
+
 			; Move all positions one block to the right. To provide a visual gap between existing and new units (which don't exit on the map)
-			DestX += (Width+5*UserScale) 	; Used when split panel is disabled	
-			maxStructureDestX += (Width+5*UserScale) 
-			maxUnitDestX += (Width+5*UserScale) 
+			; Don't shift them right if no existing units have been drawn. ** This also ensures that player 2+ units will be aligned
+			; correctly when in production only mode - otherwise they're 1 block to the right of the first drawn player
+			if hasExistingUnits
+			{
+				DestX += (Width+5*UserScale) 	; Used when split panel is disabled	
+				, maxStructureDestX += (Width+5*UserScale) 
+				, maxUnitDestX += (Width+5*UserScale) 
+			}
 
 			; Align to the longest production row so the new units (structures and units) which don't already exist on the map
 			; start being drawn at the same x position
@@ -1741,7 +1747,7 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 			; The y spacing will be a few pixels off if only upgrades are drawn (or no units drawn on that line)
 			; This is due to the below code taking into account structure and unit progress, haven't actually been drawn
 			offset := (SplitUnitPanel ? 2 : 1) * ((unitPanelDrawUnitProgress || unitPanelDrawStructureProgress) ? 5 : 0) * userscale
-			, destUpgradesY := structureY  + Height * 1.1 * (rowMultiplier - 1) + offset
+			, destUpgradesY := structureY + Height * 1.1 * (rowMultiplier - 1) + offset
 			, UpgradeX := firstColumnX
 
 			for itemName, item in aEnemyCurrentUpgrades[slot_number]

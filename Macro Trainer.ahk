@@ -4702,7 +4702,7 @@ try
 
 		DrawUnitOverlay_TT := "Displays an overlay similar to the 'observer panel', listing the current and in-production unit counts.`n`nUse the 'unit panel filter' to selectively remove/display units."
 		UnitOverlayMode_TT := "Determines if units, upgrades, or both units and upgrades are displayed."
-		UnitPanelFilterButton_TT := "Allows units to be selectively removed from the overlay."
+		UnitPanelFilterButton_TT := "Allows units to be selectively removed from the overlay.`n`nThis can be used to create a production only overlay."
 
 		ToggleAutoWorkerState_Key_TT := #ToggleAutoWorkerState_Key_TT := "Toggles (enables/disables) this function for the CURRENT match.`n`nWill only work during a match"
 		AutoWorkerProtectionDelay_TT := TT_AutoWorkerProtectionDelay_TT := "After a round a of workers has been made the function will sleep for this period of time (ms).`nThis helps prevent queueing too many workers.`n`n"
@@ -6761,28 +6761,28 @@ IfWinExist, MT Unit Filter Info
 	Return 									; prevent error due to reloading gui 
 }
 Gui, UnitFilterInfo:New
-Text := "
-	( LTrim
-		These filters will remove the selected units from the unit panel.
+Gui, Add, Edit, HwndHwndEdit x12 y+10 w360 h380 readonly -E0x200, 
+( LTrim
+	These filters will remove the selected units from the unit panel.
 
-		The unit panel displays two types of units, those which exist on the map (or are completed) and those which are being produced.
+	The unit panel displays two types of units, those which exist on the map (or are completed) and those which are being produced.
 
-		For each race there are two filters which are always active.
+	For each race there are two filters which are always active.
 
-		Filter 1: 'Completed' - This will remove completed (or fully built) units of the selected types.
+	Filter 1: 'Completed' - This will remove completed (or fully built) units of the selected types.
 
-		Filter 2: 'Under Construction' - This will remove units which are under construction/being produced. This includes the PhotonOverCharge ability for Protoss
+	Filter 2: 'Under Construction' - This will remove units which are under construction/being produced. This includes the PhotonOverCharge ability for Protoss
 
-		These filters can be used to effectively create a production only, unit only, or structure only panel.
+	These filters can be used to effectively create a production only, unit only, or structure only panel.
 
-		Please Note: 
+	Multiple units can be selected via shift or ctrl clicking.
 
-		It is best to actually use the unit panel first and then decide on which units you wish to filter.
+	Please Note: 
 
-		Some units are automatically removed, these include interceptors, locusts, broodlings, completed creep tumours, completed reactors, and completed techlabs.
-	)"
+	It is best to actually use the unit panel first and then decide on which units you wish to filter.
 
-Gui, Add, Edit, HwndHwndEdit x12 y+10 w360 h380 readonly -E0x200, % Text
+	Some units are automatically removed, these include interceptors, locusts, broodlings, completed creep tumours, completed reactors, and completed techlabs.
+)
 Gui, UnitFilterInfo:Show,, MT Unit Filter Info
 selectText(HwndEdit, -1) ; Deselect edit box text
 return
@@ -6797,17 +6797,17 @@ IfWinExist, MT Custom Unit Filter - Unit Panel
 if LV_UnitPanelFilter 
 	LV_UnitPanelFilter := ""  ; destroy the object so isobject() will force a reload of units (prevents problem when closing and the items remaining in the object when it gets reopened next)
 Gui, CustomUnitPanel:New
-Gui, Add, Text, x50 y+20 w60, Race: 
+Gui, Add, Text, x30 y+20 w60, Race: 
 Gui, Add, DropDownList, x+15 vGUI_UnitPanelRace gg_UnitPanelGUI, Terran||Protoss|Zerg
-Gui, Add, Text, x50 y+15 w60, Unit Filter: 
+Gui, Add, Text, x30 y+15 w60, Unit Filter: 
 Gui, Add, DropDownList, x+15 vGUI_UnitPanelListType gg_UnitPanelGUI, Completed||Under construction
-Gui, Add, Button, x+15 y20 w50   gg_SaveCustomUnitPanelFilter,  Save 
+Gui, Add, Button, x+35 y20 w50   gg_SaveCustomUnitPanelFilter,  Save 
 Gui, Add, Button, xp y+13 w50  gGuiClose,  Cancel 
 Gui, Add, Button, x+10 yp w50  gg_UnitFilterInfo,  Info 
 
-Gui, Add, ListView, x30 y90 r15 w160 Sort vUnitPanelFilteredUnitsCurrentRace gg_UnitPanelRemoveUnit, Currently Filtered ; This stores the currently displayed race which is  being displayed in the filtered LV as gui submit doesnt affect listview variable
+Gui, Add, ListView, x30 y90 r22 w160 Sort vUnitPanelFilteredUnitsCurrentRace gg_UnitPanelRemoveUnit count50, Currently Filtered ; This stores the currently displayed race which is  being displayed in the filtered LV as gui submit doesnt affect listview variable
 
-Gui, Add, ListView, x+20  r15 w160 Sort vUnitPanelAvailableUnits gg_UnitPanelAddUnit, Units
+Gui, Add, ListView, x+20  r22 w160 Sort vUnitPanelAvailableUnits gg_UnitPanelAddUnit section count50, Units ; Count might help improve speed when clicking the production only button
 GUI_UnitPanelMenu := []	;stores information used to manipualte the menus
 GUI_UnitPanelMenu.race  := UnitPanelAvailableUnits := "Terran"
 Gosub, g_UnitPanelGUI ; This sets the display race to terran
@@ -6815,7 +6815,13 @@ Gosub, g_UnitPanelGUI ; This sets the display race to terran
 Gui, Add, Button, x30 y+5 w160 h40  gg_UnitPanelRemoveUnit,  Remove 
 Gui, Add, Button, x+20 w160 h40  gg_UnitPanelAddUnit,  Add 
 
-GuI, CustomUnitPanel:Show, w400 h430, MT Custom Unit Filter - Unit Panel
+Gui, add, groupbox, xs+180 ys h155 w105, Predefined Setups
+Gui, add, button, xp+10 yp+25 gUnitPanelProductionMode, Production Only
+gui, add, button, xp y+10 wp disabled, Unit Only
+gui, add, button, xp y+10 wp disabled, Structure Only
+gui, add, button, xp y+10 wp gUnitPanelAllUnitsMode, All Units
+
+GuI, CustomUnitPanel:Show,, MT Custom Unit Filter - Unit Panel
 return
 
 
@@ -6829,14 +6835,54 @@ if (A_GuiEvent = "DoubleClick" || A_GuiEvent = "Normal") ;this only allows the a
 	LV_UnitPanelFilter[GUI_UnitPanelMenu.ListType, GUI_UnitPanelMenu.race ].MoveSelectedAvailableToCurrent()
 return
 
+unitPanelProductionMode:
+unitPanelProductionMode()
+return 
 
+unitPanelProductionMode()
+{
+	global LV_UnitPanelFilter, GUI_UnitPanelMenu
+	GuiControl, -Redraw, UnitPanelAvailableUnits
+	GuiControl, -Redraw, UnitPanelFilteredUnitsCurrentRace
+	for i, race in ["Terran", "Protoss", "Zerg"]
+	{
+		LV_UnitPanelFilter["FilteredCompleted", race].restoreItems() 
+		LV_UnitPanelFilter["FilteredCompleted", race].MoveAllAvailableToCurrent()
+
+	}
+	LV_UnitPanelFilter[GUI_UnitPanelMenu.ListType, GUI_UnitPanelMenu.race].restoreItems()
+	GuiControl, +Redraw, UnitPanelAvailableUnits
+	GuiControl, +Redraw, UnitPanelFilteredUnitsCurrentRace	
+	return
+}
+
+UnitPanelAllUnitsMode:
+UnitPanelAllUnitsMode()
+return 
+
+UnitPanelAllUnitsMode()
+{
+	global LV_UnitPanelFilter, GUI_UnitPanelMenu
+	GuiControl, -Redraw, UnitPanelAvailableUnits
+	GuiControl, -Redraw, UnitPanelFilteredUnitsCurrentRace
+	for i, race in ["Terran", "Protoss", "Zerg"]
+	{
+		LV_UnitPanelFilter["FilteredCompleted", race].restoreItems() 
+		LV_UnitPanelFilter["FilteredCompleted", race].MoveAllCurrentToAvailable()
+		LV_UnitPanelFilter["FilteredUnderConstruction", race].restoreItems() 
+		LV_UnitPanelFilter["FilteredUnderConstruction", race].MoveAllCurrentToAvailable()
+	}
+	LV_UnitPanelFilter[GUI_UnitPanelMenu.ListType, GUI_UnitPanelMenu.race].restoreItems()
+	GuiControl, +Redraw, UnitPanelAvailableUnits
+	GuiControl, +Redraw, UnitPanelFilteredUnitsCurrentRace	
+	return
+}
 
 g_SaveCustomUnitPanelFilter:
 gosub, g_CheckLV_UnitPanelObject	;this ensure that LV_UnitPanelFilter exists and is filled with the current lists
 section := "UnitPanelFilter"
-if !RaceObject
-	RaceObject := new cSC2Functions()
 for index, ListType in ["FilteredCompleted", "FilteredUnderConstruction"]
+{
 	for index, LoopRace in ["Terran", "Protoss", "Zerg"] 
 	{
 		List := convertObjectToList(LV_UnitPanelFilter[ListType, LoopRace, "CurrentItems"], "|")
@@ -6845,6 +6891,9 @@ for index, ListType in ["FilteredCompleted", "FilteredUnderConstruction"]
 			aUnitPanelUnits[LoopRace, ListType] := []
 		aUnitPanelUnits[LoopRace, ListType]	:= 	LV_UnitPanelFilter[ListType, LoopRace, "CurrentItems"] ;note the race and list type have been reversed here
 	}
+}
+if aThreads.Overlays.ahkReady() ; Update the current list in case in a game already. And the user doesn't click save on the options menu.
+	aThreads.Overlays.ahkFunction("updateUnitFilterLists")	
 Gui, CustomUnitPanel:Destroy  ;as there is a gosub here during an update/ini-transfer - dont want to detroy the wrong gui.
 return
 
@@ -7016,6 +7065,16 @@ class TwoPanelSelection_LV
 
 	}
 
+	MoveAllAvailableToCurrent()
+	{
+		aSelected := retrieveAllItemsFromListView(this.Available)
+		for index, item in aSelected
+			this.TransferItemsBetweenPanels(this.Available, this.current, item)
+		this.ModifyCol()
+		this.storeItems()
+		return		
+	}
+
 	MoveSelectedCurrentToAvailable()
 	{
 		aSelected := retrieveSelectedItemsFromListView(this.current)
@@ -7026,6 +7085,16 @@ class TwoPanelSelection_LV
 		return
 
 	}
+
+	MoveAllCurrentToAvailable()
+	{
+		aSelected := retrieveAllItemsFromListView(this.current)
+		for index, item in aSelected
+			this.TransferItemsBetweenPanels(this.current, this.Available, item)
+		this.ModifyCol()
+		this.storeItems()		
+	}
+
 
 	TransferItemsBetweenPanels(Origin, Deistination, Items, RemoveOriginals = True)
 	{
@@ -7094,8 +7163,20 @@ class TwoPanelSelection_LV
 		}
 		return a
 	}
+	retrieveAllItemsFromListView(ListView="", byref count = "")
+	{ 
 
-
+		if ListView
+			Gui, ListView, %ListView% ;note all future and current threads now refer to this listview!
+		a := []
+		Loop % LV_GetCount()
+		{
+			LV_GetText(RetrievedText, A_Index)
+			a[A_Index] := RetrievedText
+			count++
+		}
+		return a
+	}
 
 	addItemToListview(item, ListView="")
 	{

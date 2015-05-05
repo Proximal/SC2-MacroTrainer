@@ -3970,6 +3970,22 @@ updateUpgradeAlerts()
 {
 	global aUpgradeAlerts := iniReadUpgradeAlerts()
 }
+updateUnitFilterLists()
+{
+	global aUnitPanelUnits
+	; [UnitPanelFilter]
+	section := "UnitPanelFilter"
+	aUnitPanelUnits := []	;;array just used to store the smaller lists for each race
+	for index, race in ["Terran", "Protoss", "Zerg"] 
+	{
+		IniRead, list, %config_file%, %section%, %race%FilteredCompleted, %A_Space% ;Format FleetBeacon|TwilightCouncil|PhotonCannon	
+		aUnitPanelUnits[race, "FilteredCompleted"] := [] ; make it an object
+		ConvertListToObject(aUnitPanelUnits[race, "FilteredCompleted"], list)
+		IniRead, list, %config_file%, %section%, %race%FilteredUnderConstruction, %A_Space% ;Format FleetBeacon|TwilightCouncil|PhotonCannon	
+		aUnitPanelUnits[race, "FilteredUnderConstruction"] := [] ; make it an object
+		ConvertListToObject(aUnitPanelUnits[race, "FilteredUnderConstruction"], list)
+	}
+}
 
 readConfigFile()
 {
@@ -4505,7 +4521,7 @@ readConfigFile()
 	aUnitPanelUnits := []	;;array just used to store the smaller lists for each race
 	loop, parse, l_Races, `,
 	{
-		race := A_LoopField,
+		race := A_LoopField
 		IniRead, list, %config_file%, %section%, %race%FilteredCompleted, %A_Space% ;Format FleetBeacon|TwilightCouncil|PhotonCannon	
 		aUnitPanelUnits[race, "FilteredCompleted"] := [] ; make it an object
 		ConvertListToObject(aUnitPanelUnits[race, "FilteredCompleted"], list)
