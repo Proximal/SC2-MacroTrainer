@@ -1214,6 +1214,7 @@ isSocialMenuFocused()
 ; Time Alive in seconds
 ; 10/12/14 I just discovered that this is not accurate for protoss structures. 
 ; Chrono boost will cause this to increase faster, so care should be used.
+; contaminate may delay it - havent checked.
 getUnitTimer(unit)
 {	global 
 	return ReadMemory(B_uStructure + unit * S_uStructure + O_uTimer, GameIdentifier)/4096
@@ -1579,7 +1580,7 @@ isHatchLairOrSpireMorphing(unit, type := 0)
 isMotherShipCoreMorphing(unit)
 {
 	state := ReadMemory(getUnitAbilityPointer(unit) + 0x8, GameIdentifier, 1)
-	return state = 8 ? 1 : 0
+	return state = 8 
 }
 
 IsUserMovingCamera()
@@ -1877,17 +1878,17 @@ getZergProductionStringFromEgg(eggUnitIndex)
 getZergProductionFromEgg(eggUnitIndex)
 {
 	item := []
-	p := readmemory(getUnitAbilityPointer(eggUnitIndex) + 0x1C, GameIdentifier)
-	p := readmemory(p + 0x34, GameIdentifier) 		; cAbilQueueUse
-	p := readmemory(p, GameIdentifier) 				; LarvaTrain  - this pointer structure will also have the production time/total
-	timeRemaining := readmemory(p + 0x6C, GameIdentifier) 	
-	totalTime := readmemory(p + 0x68, GameIdentifier) 		
+	, p := readmemory(getUnitAbilityPointer(eggUnitIndex) + 0x1C, GameIdentifier)
+	, p := readmemory(p + 0x34, GameIdentifier) 		; cAbilQueueUse
+	, p := readmemory(p, GameIdentifier) 				; LarvaTrain  - this pointer structure will also have the production time/total
+	, timeRemaining := readmemory(p + 0x6C, GameIdentifier) 	
+	, totalTime := readmemory(p + 0x68, GameIdentifier) 		
 	p := readmemory(p + 0xf4, GameIdentifier)
 	if !aStringTable.haskey(pString := readmemory(p, GameIdentifier) ) ; pString
 		aStringTable[pString] := ReadMemory_Str(readMemory(pString + 0x4, GameIdentifier), GameIdentifier)
 	item.Progress := round((totalTime - timeRemaining)/totalTime, 2) 
-	item.Type := aUnitID[(item.Item := aStringTable[pString])] 
-	item.Count := item.Type = aUnitID.Zergling ? 2 : 1
+	, item.Type := aUnitID[(item.Item := aStringTable[pString])] 
+	, item.Count := item.Type = aUnitID.Zergling ? 2 : 1
 	return item
 }
 
