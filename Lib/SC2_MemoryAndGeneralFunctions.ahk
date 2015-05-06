@@ -3094,16 +3094,16 @@ isOwnerLocal(Owner) ; 1 its local player owned
 
 GetEnemyRaces()
 {	global aPlayer, aLocalPlayer
-	For slot_number in aPlayer
+	For i, player in aPlayer
 	{	
-		If ( aLocalPlayer["Team"] <>  team := aPlayer[slot_number, "Team"] )
+		If ( aLocalPlayer["Team"] <>  player["Team"] )
 		{
 			If (EnemyRaces <> "")
 				EnemyRaces .= ", "
-			EnemyRaces .= aPlayer[slot_number, "Race"]
+			EnemyRaces .= player["Race"]
 		}
 	}
-	return EnemyRaces .= "."
+	return EnemyRaces 
 }
 
 GetGameType(aPlayer)
@@ -3850,7 +3850,6 @@ doUnitDetection(unit, type, owner, unitUsedCount, mode = "")
 	else if (Mode = "Reset")
 	{
 		Alert_TimedOut := [], Alerted_Buildings := [], Alerted_Buildings_Base := []
-		Iniwrite, 0, %config_file%, Resume Warnings, Resume ; bit pointless as its getting deleted
 		IniDelete, %config_file%, Resume Warnings
 	}
 	else If (Mode = "Save")
@@ -3858,14 +3857,13 @@ doUnitDetection(unit, type, owner, unitUsedCount, mode = "")
 		Iniwrite, % SerDes(Alert_TimedOut), %config_file%, Resume Warnings, Alert_TimedOut		
 		Iniwrite, % SerDes(Alerted_Buildings), %config_file%, Resume Warnings, Alerted_Buildings		
 		Iniwrite, % SerDes(Alerted_Buildings_Base), %config_file%, Resume Warnings, Alerted_Buildings_Base		
-		Iniwrite, 1, %config_file%, Resume Warnings, Resume
+		Iniwrite, %A_NowUTC%, %config_file%, Resume Warnings, Resume ; Only resume if program restarted within 15 seconds
 	}
-	Else if (Mode = "Resume")
+	Else if (Mode = "Resume") ; Used when main thread saves options gui and emergency reload.
 	{
 		Alert_TimedOut := [], Alerted_Buildings := [], Alerted_Buildings_Base := []
-		Iniwrite, 0, %config_file%, Resume Warnings, Resume
 		Iniread, string, %config_file%, Resume Warnings, Alert_TimedOut, %A_space%
-		if (string != A_space)
+		if (string != "")
 		{
 			Alert_TimedOut := SerDes(string)
 			; 21/08/14 I noticed today this got stuck repeating units at start of match (hatch/cc)
@@ -3877,14 +3875,14 @@ doUnitDetection(unit, type, owner, unitUsedCount, mode = "")
 				Alert_TimedOut := []
 		}
 		Iniread, string, %config_file%, Resume Warnings, Alerted_Buildings, %A_space%
-		if (string != A_space)
+		if (string != "")
 		{
 			Alerted_Buildings := SerDes(string)
 			if !IsObject(Alerted_Buildings)
 				Alerted_Buildings := []
 		}
 		Iniread, string, %config_file%, Resume Warnings, Alerted_Buildings_Base, %A_space%
-		if (string != A_space)
+		if (string != "")
 		{
 			Alerted_Buildings_Base := SerDes(string)
 			if !IsObject(Alerted_Buildings_Base)
@@ -3895,13 +3893,8 @@ doUnitDetection(unit, type, owner, unitUsedCount, mode = "")
 	return
 }
 
-*/
 
 
-
-; I should really update this so that it doesn't have to loop each alert
-; I.e have the alerts unitID listed as the key which contains one or more alters
-; so then a single if haskey() could be performed
 ; Chrono fucks this method	i.e. getTimeAtUnitConstruction()	
 
 /*
@@ -4473,6 +4466,7 @@ readConfigFile()
 	IniRead, OverlayIdent, %config_file%, %section%, OverlayIdent, 2
 	IniRead, SplitUnitPanel, %config_file%, %section%, SplitUnitPanel, 1
 	IniRead, unitPanelAlignNewUnits, %config_file%, %section%, unitPanelAlignNewUnits, 1
+	IniRead, UnitPanelNewUnitGap, %config_file%, %section%, UnitPanelNewUnitGap, 1
 	;IniRead, DrawUnitUpgrades, %config_file%, %section%, DrawUnitUpgrades, 1
 	IniRead, UnitOverlayMode, %config_file%, %section%, UnitOverlayMode, Units + Upgrades
 	IniRead, unitPanelDrawStructureProgress, %config_file%, %section%, unitPanelDrawStructureProgress, 1
@@ -4600,13 +4594,17 @@ readConfigFile()
 	
 	; Resume Warnings
 	; This is written in the unitDetection save function
+	; The variable ResumeWarnings contains a A_NowUTC time value for when the warnings were saved
 	Iniread, ResumeWarnings, %config_file%, Resume Warnings, Resume, 0
+	if (ResumeWarnings && A_NowUTC - ResumeWarnings <= 20) ; Only resume if within 20 seconds
+		ResumeWarnings := True 
+	else ResumeWarnings := False
 
 	; [Misc Info]
 	section := "Misc Info"
 	IniRead, MT_HasWarnedLanguage, %config_file%, %section%, MT_HasWarnedLanguage, 0
 	; RestartMethod is written to in the emergency exit routine
-	; it is used in a couple of checks
+	; it is used in a couple of checks. Only the main thread will see this value as true.
 	IniRead, MT_Restart, %config_file%, %section%, RestartMethod, 0
 	if MT_Restart
 		IniWrite, 0, %config_file%, %section%, RestartMethod ; set the value back to 0	

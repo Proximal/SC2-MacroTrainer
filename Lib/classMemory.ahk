@@ -1,4 +1,6 @@
 ﻿/*
+    07/05/15 - version 1.9
+        - Fixed an issue with processPatternScan() failing when the startAddress was not 0. 
     17/12/14 - version 1.8
         - Fixed a 'bitness' bug in _MEMORY_BASIC_INFORMATION 
     12/12/14 - version 1.7
@@ -13,7 +15,7 @@
             -> A 32 bit AHK can read/write and use pointers in a 64 bit target application providing the addresses can fit inside a 4 byte ptr.
                If the address is too large, only the lower 4 bytes are passed to ReadProcessMemory()/WriteProcessMemory() i.e. the wrong address is passed.
         - readString() has been slightly optimised when reading null terminated strings of unknown size.
-        - New methods:
+        - New methods:  
             - suspend(), resume(), and isTargetProcess64Bit()
         - OpenProcess() has been modified and closeProcess() has been replaced by CloseHandle()
             -> These two changes will not affect users unless your code calls them directly.
@@ -279,7 +281,7 @@ class _ClassMemory
 
     version()
     {
-        return 1.8
+        return 1.9
     }   
 
     findPID(program, windowMatchMode := "3")
@@ -879,6 +881,8 @@ class _ClassMemory
    
     ; Method:       processPatternScan(aAOBPattern*)
     ;               Scan the memory space of the current process for an array of bytes pattern. 
+    ;               To use this in a loop (scanning for multiple occurrences of the same pattern),
+    ;               simply call it again passing the last found address + 1
     ; Parameters:
     ;   startAddress -      The memory address from which to begin the search.
     ;   endAddress -        The memory address at which the search ends. Defaults to 0x7FFFFFFF i.e. the maximum useful area for a 32 bit process
@@ -903,6 +907,8 @@ class _ClassMemory
         {
             if !this.VirtualQueryEx(address, aInfo)
                 return -1
+            if A_Index = 1
+                aInfo.Modify("RegionSize", aInfo.RegionSize - (address - aInfo.BaseAddress))
             if (aInfo.State = MEM_COMMIT) 
             && !(aInfo.Protect & (PAGE_NOACCESS | PAGE_GUARD)) ; can't read these areas
             ;&& (aInfo.Type = MEM_MAPPED || aInfo.Type = MEM_PRIVATE) ;Might as well read Image sections as well
@@ -1143,6 +1149,28 @@ class _ClassMemory
 
             if aLookUp.HasKey(key)
                 return numget(this.pStructure+0, aLookUp[key].Offset, aLookUp[key].Type)        
+        }
+        ; change this to __set one day.
+        modify(key, value)
+        {
+             static aLookUp := A_PtrSize = 8 
+                                ?   {   "BaseAddress": {"Offset": 0, "Type": "Int64"}
+                                    ,    "AllocationBase": {"Offset": 8, "Type": "Int64"}
+                                    ,    "AllocationProtect": {"Offset": 16, "Type": "UInt"}
+                                    ,    "RegionSize": {"Offset": 24, "Type": "Int64"}
+                                    ,    "State": {"Offset": 32, "Type": "UInt"}
+                                    ,    "Protect": {"Offset": 36, "Type": "UInt"}
+                                    ,    "Type": {"Offset": 40, "Type": "UInt"} }
+                                :   {  "BaseAddress": {"Offset": 0, "Type": "UInt"}
+                                    ,   "AllocationBase": {"Offset": 4, "Type": "UInt"}
+                                    ,   "AllocationProtect": {"Offset": 8, "Type": "UInt"}
+                                    ,   "RegionSize": {"Offset": 12, "Type": "UInt"}
+                                    ,   "State": {"Offset": 16, "Type": "UInt"}
+                                    ,   "Protect": {"Offset": 20, "Type": "UInt"}
+                                    ,   "Type": {"Offset": 24, "Type": "UInt"} }
+
+            if aLookUp.HasKey(key)
+                NumPut(value, this.pStructure+0, aLookUp[key].Offset, aLookUp[key].Type)            
         }
         Ptr()
         {

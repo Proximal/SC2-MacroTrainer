@@ -995,7 +995,7 @@ Else if (time > 0.4 && !isInMatch) && (getLocalPlayerNumber() != 16 || debugGame
 		;EnableAutoWorker%LocalPlayerRace% := True
 	}
 	;if ( Auto_Read_Races AND race_reading ) && !((ResumeWarnings || UserSavedAppliedSettings) && time > 12)
-	if (Auto_Read_Races && !ResumeWarnings && !UserSavedAppliedSettings && time <= 12)
+	if (Auto_Read_Races && !UserSavedAppliedSettings && time <= 12)
 		SetTimer, find_races_timer, 1000, -20
 
 	If aAutoGroup[aLocalPlayer.race, "Enable"]
@@ -1615,19 +1615,19 @@ PixelSearch(Colour, byref X, byref Y,variance=0, X_Margin=6, Y_Margin=6)
 ;	races
 ;-----------------------
 find_races_timer:
-If (time < 8)
-	Return
-SetTimer, find_races_timer, off		
+If (time >= 8)
+{
+	SetTimer, find_races_timer, off		
+	tSpeak(GetEnemyRaces())
+}
+return 
 
 find_races:
 if time	;leave this in, so if they press the hotkey while outside of game, wont get gibberish
 {
 	tSpeak(GetEnemyRaces())
-	If (A_ThisLabel = "find_races")
-	{
 		aThreads.MiniMap.ahkassign.TimeReadRacesSet := time	
-		keywait, % gethotkeySuffix(read_races_key), T2
-	}
+	keywait, % gethotkeySuffix(read_races_key), T2
 }
 return
 
@@ -2810,6 +2810,7 @@ ini_settings_write:
 	Iniwrite, %OverlayIdent%, %config_file%, %section%, OverlayIdent	
 	Iniwrite, %SplitUnitPanel%, %config_file%, %section%, SplitUnitPanel	
 	Iniwrite, %unitPanelAlignNewUnits%, %config_file%, %section%, unitPanelAlignNewUnits	
+	Iniwrite, %UnitPanelNewUnitGap%, %config_file%, %section%, UnitPanelNewUnitGap	
 	Iniwrite, %UnitOverlayMode%, %config_file%, %section%, UnitOverlayMode 
 	Iniwrite, %unitPanelDrawStructureProgress%, %config_file%, %section%, unitPanelDrawStructureProgress
 	Iniwrite, %unitPanelDrawUnitProgress%, %config_file%, %section%, unitPanelDrawUnitProgress
@@ -4301,7 +4302,7 @@ try
 		Gui, Add, Text, xp-65 y+5 w405, This hotkey key can be changed via the 'settings' Tab on the left.
 		Gui, Add, Text, xp y+20 w405, *The hotkey will not work if the windows key is disabled within the SC options. This program is capable of blocking the windows key (check settings tab).
 		Gui, Font ; get rid of Verdana
-	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vMiniMap_TAB, MiniMap||MiniMap2|Overlays|Background|Hotkeys|Info
+	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vMiniMap_TAB, MiniMap||MiniMap|Overlays|Background|Hotkeys|Info
 
 	Gui, Tab, MiniMap
 
@@ -4366,7 +4367,7 @@ try
 			Gui, Font, norm 
 
 
-	Gui, Tab, MiniMap2
+	Gui, Tab, 2
 		
 	/*
 		Gui, Add, Checkbox, X%CurrentGuiTabX% Y+15 vHighlightInvisible Checked%HighlightInvisible%, Highlight Invisible units
@@ -4446,16 +4447,17 @@ try
 				Gui, Add, Checkbox, xp+10 yp+20 vDrawUnitOverlay Checked%DrawUnitOverlay%, Enable
 				Gui, Add, DropDownList, xp yp+25 vUnitOverlayMode, Units + Upgrades|Units|Upgrades
 				GuiControl, ChooseString, UnitOverlayMode, %UnitOverlayMode%
-				Gui, Add, Checkbox, xp y+13 vSplitUnitPanel ggToggleAlignUnitGUI Checked%SplitUnitPanel%, Split Units/Buildings
-				Gui, Add, Checkbox, % "xp y+13 vUnitPanelAlignNewUnits Checked" unitPanelAlignNewUnits " disabled" !SplitUnitPanel, Align New units
-				Gui, Add, Checkbox, xp y+13 vUnitPanelDrawStructureProgress Checked%unitPanelDrawStructureProgress%, Show Structure Progress 
-				Gui, Add, Checkbox, xp y+13 vUnitPanelDrawUnitProgress Checked%unitPanelDrawUnitProgress%, Show Unit Progress 
-				Gui, Add, Checkbox, xp y+13 vUnitPanelDrawUpgradeProgress Checked%unitPanelDrawUpgradeProgress%, Show Upgrade Progress 
-				Gui, Add, Checkbox, xp y+13 vUnitPanelDrawScanProgress Checked%unitPanelDrawScanProgress%, Show Scan Production
-				Gui, Add, Checkbox, xp y+13 vunitPanelDrawLocalPlayer Checked%unitPanelDrawLocalPlayer%, Include Self 
+				Gui, Add, Checkbox, xp y+10 vSplitUnitPanel ggToggleAlignUnitGUI Checked%SplitUnitPanel%, Split Units/Buildings
+				Gui, Add, Checkbox, % "xp y+10 vUnitPanelAlignNewUnits Checked" unitPanelAlignNewUnits " disabled" !SplitUnitPanel, Align New units
+				Gui, Add, Checkbox, xp y+10 vUnitPanelNewUnitGap Checked%UnitPanelNewUnitGap%, New Unit Gap
+				Gui, Add, Checkbox, xp y+10 vUnitPanelDrawStructureProgress Checked%unitPanelDrawStructureProgress%, Show Structure Progress 
+				Gui, Add, Checkbox, xp y+10 vUnitPanelDrawUnitProgress Checked%unitPanelDrawUnitProgress%, Show Unit Progress 
+				Gui, Add, Checkbox, xp y+10 vUnitPanelDrawUpgradeProgress Checked%unitPanelDrawUpgradeProgress%, Show Upgrade Progress 
+				Gui, Add, Checkbox, xp y+10 vUnitPanelDrawScanProgress Checked%unitPanelDrawScanProgress%, Show Scan Production
+				Gui, Add, Checkbox, xp y+10 vunitPanelDrawLocalPlayer Checked%unitPanelDrawLocalPlayer%, Include Self 
 
 				;Gui, Add, Button, center xp+15 y+10 w100 h30 vUnitPanelFilterButton Gg_GUICustomUnitPanel, Unit Filter
-				Gui, Add, Button, center xp y+15 w70 h30 vUnitPanelFilterButton Gg_GUICustomUnitPanel, Unit Filter
+				Gui, Add, Button, center xp y+13 w70 h30 vUnitPanelFilterButton Gg_GUICustomUnitPanel, Unit Filter
 				Gui, Add, Button, center x+10 yp w70 h30 vUnitPanelGuideButton GgUnitPanelGuide, Guide
 
 			Gui, Add, GroupBox, XS ys+310 w195 h55 section, Player Identifier:	
@@ -4700,7 +4702,7 @@ try
 		DrawIdleWorkersOverlay_TT := "A worker icon with the current idle worker count is displayed when the idle count is greater than or equal to the minimum value.`n`nThe size and position can be changed easily so that it grabs your attention."
 		TT_IdleWorkerOverlayThreshold_TT := IdleWorkerOverlayThreshold_TT := "The idle worker overlay is only visible when your idle count is greater than or equal to this minimum value."
 
-		DrawUnitOverlay_TT := "Displays an overlay similar to the 'observer panel', listing the current and in-production unit counts.`n`nUse the 'unit panel filter' to selectively remove/display units."
+		DrawUnitOverlay_TT := "Displays an overlay similar to the 'observer panel', listing the existing and in-production unit counts.`n`n The 'unit filter' can selectively remove items, thereby creating a production only overlay."
 		UnitOverlayMode_TT := "Determines if units, upgrades, or both units and upgrades are displayed."
 		UnitPanelFilterButton_TT := "Allows units to be selectively removed from the overlay.`n`nThis can be used to create a production only overlay."
 
@@ -4785,6 +4787,8 @@ try
 							
 							Click the guide button below for a clearer illustration. (Pictures highlighting this setting are listed under ""Unit Panel"")
 						)"
+		UnitPanelNewUnitGap_TT := "New units are always drawn to the right of all other existing units, and this setting inserts a spacing gap between the two.`n`nA 'new' unit/structure is a unit which is in production and the unit owner does not already have an existing (completed) unit of this type. "
+
 		UnitPanelGuideButton_TT := "Opens the Macro Trainer overlay web page."
 							. "`nClick the ""Visual Help Guide"" link for a guide to the information presented in the unit panel."
 
@@ -5099,7 +5103,7 @@ AutomationTerranCameraGroup_TT := AutomationProtossCameraGroup_TT := AutomationZ
 		LauncherRadioBattleNet_TT := LauncherRadioStarCraft_TT := LauncherRadioDisabled_TT := "During startup MacroTrainer will attempt to launch either the Battle.net app or Starcraft."
 
 
-		LwinDisable_TT := "Disables the Left Windows Key while in a SC2 match.`n`nMacro Trainer Left windows hotkeys (and non-overridden windows keybinds) will still function."
+		LwinDisable_TT := "Disables the Left Windows Key while in a SC2 match.`n`nMacro Trainer left windows hotkeys (and non-overridden windows keybinds) will still function."
 		Key_EmergencyRestart_TT := #Key_EmergencyRestart_TT := "If pressed three times, this hotkey will restart the program.`n"
 					. "This is useful in the rare event that the program malfunctions or you lose keyboard/mouse input"
 
@@ -6765,23 +6769,19 @@ Gui, Add, Edit, HwndHwndEdit x12 y+10 w360 h380 readonly -E0x200,
 ( LTrim
 	These filters will remove the selected units from the unit panel.
 
-	The unit panel displays two types of units, those which exist on the map (or are completed) and those which are being produced.
+	The unit panel displays two types of units, those which exist on the map and those which are being produced.
 
 	For each race there are two filters which are always active.
 
-	Filter 1: 'Completed' - This will remove completed (or fully built) units of the selected types.
+	Filter 1: 'Completed' - This will remove completed units of the selected types.
 
-	Filter 2: 'Under Construction' - This will remove units which are under construction/being produced. This includes the PhotonOverCharge ability for Protoss
+	Filter 2: 'Under Construction' - This will remove units which are under construction or being produced. This includes the PhotonOverCharge ability for Protoss
 
 	These filters can be used to effectively create a production only, unit only, or structure only panel.
 
 	Multiple units can be selected via shift or ctrl clicking.
 
-	Please Note: 
-
-	It is best to actually use the unit panel first and then decide on which units you wish to filter.
-
-	Some units are automatically removed, these include interceptors, locusts, broodlings, completed creep tumours, completed reactors, and completed techlabs.
+	The following units are automatically removed: interceptors, locusts, broodlings, completed creep tumours, completed reactors, and completed techlabs.
 )
 Gui, UnitFilterInfo:Show,, MT Unit Filter Info
 selectText(HwndEdit, -1) ; Deselect edit box text

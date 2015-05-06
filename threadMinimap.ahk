@@ -95,6 +95,7 @@ gameChange(UserSavedAppliedSettings := False)
 		readConfigFile(), hasReadConfig := True
 	if !hasLoadedMemoryAddresses
 	{
+		; This thread could be launched before SC exists. E.g. user clicks Save in options GUI before launching SC
 		Process, wait, %GameExe%
 		while (!(B_SC2Process := getProcessBaseAddress(GameIdentifier)) || B_SC2Process < 0)		;using just the window title could cause problems if a folder had the same name e.g. sc2 folder
 			sleep 400
@@ -125,7 +126,7 @@ gameChange(UserSavedAppliedSettings := False)
 		SetTimer, MiniMap_Timer, %MiniMapRefresh%, -7
 		; Resume warning is written inside the doUnitDetection when called via Save
 		if ((ResumeWarnings || UserSavedAppliedSettings) && alert_array["Enabled", GameType])  
-			doUnitDetection(0, 0, 0, 0, "Resume")
+			doUnitDetection(0, 0, 0, 0, "Resume"), ResumeWarnings := False
 		Else
 			doUnitDetection(0, 0, 0, 0, "Reset") ; clear the variables within the function			
 		;if (warpgate_warn_on && aLocalPlayer["Race"] = "Protoss") || supplyon || alert_array[GameType, "Enabled"]

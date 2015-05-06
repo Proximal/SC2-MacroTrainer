@@ -1465,7 +1465,7 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 	GLOBAL aEnemyUnits, aEnemyUnitConstruction, a_pBitmap, aPlayer, aLocalPlayer, aHexColours, GameIdentifier, config_file, UnitOverlayX, UnitOverlayY 
 		, aUnitInfo, SplitUnitPanel, aEnemyCurrentUpgrades, UnitOverlayMode, aMiscUnitPanelInfo, aUnitID, overlayMatchTransparency
 		, unitPanelDrawStructureProgress, unitPanelDrawUnitProgress, unitPanelDrawUpgradeProgress, unitPanelAlignNewUnits 
-		, unitPanelDrawLocalPlayer, unitPanelDrawScanProgress
+		, unitPanelDrawLocalPlayer, unitPanelDrawScanProgress, UnitPanelNewUnitGap
 	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0
 
 	if !modifyOverlay("UnitOverlay", Redraw, overlayCreated, Drag, DragPrevious, UnitOverlayX, UnitOverlayY, 400, 400, hwnd1)
@@ -1659,7 +1659,7 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 			; Move all positions one block to the right. To provide a visual gap between existing and new units (which don't exit on the map)
 			; Don't shift them right if no existing units have been drawn. ** This also ensures that player 2+ units will be aligned
 			; correctly when in production only mode - otherwise they're 1 block to the right of the first drawn player
-			if hasExistingUnits
+			if (UnitPanelNewUnitGap && hasExistingUnits)
 			{
 				DestX += (Width+5*UserScale) 	; Used when split panel is disabled	
 				, maxStructureDestX += (Width+5*UserScale) 
