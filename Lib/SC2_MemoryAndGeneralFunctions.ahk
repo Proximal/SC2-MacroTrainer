@@ -3633,7 +3633,7 @@ IniRead(File, Section, Key="", DefaultValue="")
 
 createAlertArray()
 {	
-	local alert_array := [], temp_name, temp_DWB, temp_DWA, Temp_repeat, Temp_IDName, minimapAlert
+	local alert_array := [], temp_name, temp_DWB, temp_DWA, Temp_repeat, Temp_IDName, minimapAlert, gameType
 
 	for i, gameType in ["1v1", "2v2", "3v3", "4v4"]
 	{

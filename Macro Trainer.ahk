@@ -2043,10 +2043,20 @@ Return
 ; Can only arrive here if cancel or x-close/escape the options menu
 ; not via save (or apply) buttons
 
+; The delayOptionsGUIClose is required, as if user clicks apply, then immediately closes GUI
+; some settings won't be saved!!!
+
+delayOptionsGUIClose:
 OptionsGuiClose:
 OptionsGuiEscape:
 Gui, Options:-Disabled  
-Gui Destroy
+if optionsGUIApplyChanges
+{
+	settimer, delayOptionsGUIClose, 50
+	return
+}
+else settimer, delayOptionsGUIClose, off
+Gui, Options:Destroy ; Need to specify the GUI name for delayOptionsGUIClose to work.
 Gosub pre_startup	;so the correct values get read back for time *1000 conversion from ms/s vice versa
 Return				
 
@@ -2320,7 +2330,11 @@ ini_settings_write:
 			Gui, Submit
 			Gui, Destroy
 		}
-		Else Gui, Submit, NoHide
+		Else 
+		{
+			Gui, Submit, NoHide
+			optionsGUIApplyChanges := True
+		}
 	}
 	; Else from an update
 	; Not via GUI e.g. update so need to set a couple of variables to the values which would have been generated from a gui - mostly variance/percentages
@@ -2908,10 +2922,10 @@ ini_settings_write:
 
 	;this writes back the unit detection lists and settings
 
-	loop, parse, l_GameType, `,
+	for i, gameMode in ["1v1", "2v2", "3v3", "4v4"]
 	{
-		alert_array["Enabled", A_LoopField] := BAS_on_%A_LoopField%
-		IniWrite, % alert_array["Enabled", A_LoopField], %config_file%, Building & Unit Alert %A_LoopField%, enable	;alert system on/off
+		alert_array["Enabled", gameMode] := BAS_on_%gameMode%
+		IniWrite, % alert_array["Enabled", gameMode], %config_file%, Building & Unit Alert %gameMode%, enable	;alert system on/off
 	}
 
 	if (program.Info.IsUpdating && A_IsCompiled)	;as both of these have there own write routines which activate on clicking 'save' in their on guis
@@ -2949,6 +2963,7 @@ ini_settings_write:
 		UserSavedAppliedSettings := 1
 		If isInMatch  ; so if they change settings during match will update timers
 			UpdateTimers := 1
+		optionsGUIApplyChanges := False
 	}
 Return
 
@@ -3134,7 +3149,7 @@ try
 			gui, font, 		
 
 	Gui, Tab,  Auto
-		Gui, Add, GroupBox, y+15 w225 h215 section, Fully Automated Injects
+		Gui, Add, GroupBox, y+15 w225 h180 section, Fully Automated Injects
 			Gui, Add, Checkbox,xp+10 yp+30 vF_Inject_Enable checked%F_Inject_Enable%, Enable on match start
 		
 			Gui, Add, Text,y+15 xs+10 w140, Max injects per round: 
@@ -3145,15 +3160,15 @@ try
 				Gui, Add, Edit, Number Right x+5 yp-2 w60 vTT_FInjectHatchFrequency
 					Gui, Add, UpDown, Range0-100000 vFInjectHatchFrequency, %FInjectHatchFrequency%					
 
-			Gui, Add, Text, y+15 xs+10 w140, APM Delay:
-				Gui, Add, Edit, Number Right x+5 yp-2 w60 vTT_FInjectAPMProtection
-					Gui, Add, UpDown,  Range0-100000 vFInjectAPMProtection, %FInjectAPMProtection%		
+		;	Gui, Add, Text, y+15 xs+10 w140, APM Delay:
+		;		Gui, Add, Edit, Number Right x+5 yp-2 w60 vTT_FInjectAPMProtection
+		;			Gui, Add, UpDown,  Range0-100000 vFInjectAPMProtection, %FInjectAPMProtection%		
 			
 			Gui, Add, Checkbox, xs+10 yp+30 vEnableToggleAutoInjectHotkey checked%EnableToggleAutoInjectHotkey%, Enable/Disable Hotkey:
 				Gui, Add, Edit, Readonly y+10 xp+45 w120 R1 vF_InjectOff_Key center gedit_hotkey, %F_InjectOff_Key%
 				Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#F_InjectOff_Key,  Edit				
 
-		Gui, Add, GroupBox, xs ys+235 w400 h165, Notes:
+		Gui, Add, GroupBox, xs ys+200 w400 h165, Notes:
 		Gui, Add, Text, yp+57 xp+10 yp+25 w380,
 		(LTrim 
 		Auto injects will begin after you control group your queen to the correct (inject) queen control group.
@@ -3515,9 +3530,9 @@ try
 		;Gui, Font, s9 norm	
 
 	Gui, Tab, Detection Lists
-		for i, gameType in ["1v1", "2v2", "3v3", "4v4"]
-			BAS_on_%gameType% := alert_array["Enabled", A_LoopField]
-		
+		for i, gameMode in ["1v1", "2v2", "3v3", "4v4"]
+			BAS_on_%gameMode% := alert_array["Enabled", gameMode]
+
 		Gui, Add, GroupBox, x+45 y+15 w265 h80 section, Enable Unit Warnings
 			Gui, Add, Checkbox, xp+15 yp+25 vBAS_on_1v1 checked%BAS_on_1v1%, 1v1
 			Gui, Add, Checkbox, x+15 yp vBAS_on_2v2 checked%BAS_on_2v2%, 2v2
@@ -6688,6 +6703,7 @@ alertListEditor()
 
 saveAlertArray(alert_array)
 {	GLOBAL
+	local gameType
 	for i, gameType in ["1v1", "2v2", "3v3", "4v4"]
 	{
 		IniDelete, %config_file%, Building & Unit Alert %gameType% ;clear the list - prevent problems if now have less keys than b4
@@ -11362,7 +11378,7 @@ unloadAllTransports(hotkeySuffix)
 }
 
 
-
+/*
 ; Global Stim
 
 #If, !A_IsCompiled && WinActive(GameIdentifier) && isPlaying && aLocalPlayer.Race = "Terran" && !isMenuOpen()
@@ -11380,7 +11396,7 @@ if (tabsToSend := tabPos - aSelection.HighlightedGroup) < 0
 else send {tab %tabsToSend%}t+{tab %tabsToSend%}
 return
 #if
-
+*/
 
 AutoBuildGUIkeyPress:
 if (AutoBuildGUIkeyMode = "KeyDown")
