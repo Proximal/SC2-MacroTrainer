@@ -4309,7 +4309,7 @@ try
 		Gui, Font, S10 CDefault bold UNDERLINE, Verdana
 		Gui, Add, Text, x+20 y+20 center cRed, IMPORTANT
 		Gui, Font, s10 norm 
-		Gui, Add, Text, xp y+20 w405, This program blocks user input and simulates keystrokes. On RARE occasions it is possible that you will lose keyboard and mouse input OR a key becomes 'stuck' down.`n`nIn this event, use the EMERGENCY HOTKEY!`nWhen pressed it should release any 'stuck' key and restore user input.`n`nIf this fails, press the hotkey THREE times in quick succession to have the program restart. If you're still having problems, then the key is likely physically stuck down.
+		Gui, Add, Text, xp y+20 w405, This program blocks user input and simulates keystrokes. On EXTREMELY rare occasions it is possible that you will lose keyboard and mouse input OR a key becomes 'stuck' down.`n`nIn this event, use the EMERGENCY HOTKEY!`nWhen pressed it should release any 'stuck' key and restore user input.`n`nIf this fails, press the hotkey THREE times in quick succession to have the program restart. If you're still having problems, then the key is likely physically stuck down.
 		Gui, Add, Text, xp y+20, Hotkey:
 		Gui, Font, S10 CDefault bold, Verdana
 		Gui, Add, Text, xp+65 yp cRed, R.Windows Key && Spacebar`n  
@@ -4826,6 +4826,7 @@ try
 		TTUserIdle_LoLimit_TT  := UserIdle_LoLimit_TT := "The game will not be paused before this time. (In game/SC2 seconds)"
 		TTUserIdle_HiLimit_TT := UserIdle_HiLimit_TT := "The game will not be paused after this time. (In game/SC2 seconds)"
 
+		MaxWindowOnStart_TT := "The SC2 window is activated on commencement of a match.`n`nThis is helpful if you alt-tab out of SC while searching for a game."
 		speech_volume_TT := "The relative volume of the speech engine."
 		programVolume_TT := "The overall program volume. This affects both the speech volume and the 'beeps'."
 		speaker_volume_up_key_TT := speaker_volume_down_key_TT := "Changes the windows master volume."
