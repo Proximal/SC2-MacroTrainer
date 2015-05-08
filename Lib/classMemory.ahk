@@ -152,7 +152,7 @@
 
         Get the process's base address.
             msgbox % calc.BaseAddress ; When using the new operator this property is automatically set to the result of getProcessBaseAddress()
-        Or 
+        Or If that is not the correct base address, try using getModuleBaseAddress().
             msgbox % calc.getModuleBaseAddress()
 
         Get the base address of a specific module.

@@ -86,7 +86,7 @@ setVariables()
 	ahk2Exe := A_ScriptDir "\AHK_H modded Source and Files\AHK used by MacroTrainer\Compiler\Ahk2Exe.exe"
 	iconFile := A_ScriptDir "\Starcraft-2-32x32.ico"
 	msvcrFile :=  A_ScriptDir "\msvcr100.dll"
-	zipProgram :=   A_ScriptDir "\bin\7z.exe"
+	zipProgram := A_ScriptDir "\bin\7z.exe"
 	threadMiniMapSource :=  A_ScriptDir "\threadMiniMap.ahk"
 	threadMiniMapFullExe := A_ScriptDir "\bin\threadMiniMapfull.exe"
 	threadMiniMapFullAHK := A_ScriptDir "\bin\threadMiniMapfull.ahk"
@@ -131,7 +131,9 @@ compileIncludedThread(source, output, tempAHKFile)
 		UpdateDisplay("Failed to extract script resource from "  output)
 		return True, cleanUp()
 	}
-	deleteAppend(script, tempAHKFile)
+	; setting encoding in deleteAppends() to UTF-8 or CP65001 causes AHK to say 'error line 2 ; <COMPILER: v1.1.15.00>' is an invalid command when the string is executed via dllthread
+	; I can't seem to recreate this issue using test files		
+	deleteAppend(script, tempAHKFile, "")
 	return False	
 }
 
@@ -139,7 +141,7 @@ setVersion(version)
 { 
 	IniWrite, %version%, macroTrainerCurrentVersion.ini, info, currentVersion
 	IniWrite, %version%, MT_Config.ini, Version, version
-	deleteAppend("getMacroTrainerVersion()`r`n{`r`n`treturn " version "`r`n}", "lib\getMacroTrainerVersion.ahk")
+	deleteAppend("getMacroTrainerVersion()`r`n{`r`n`treturn " version "`r`n}", "lib\getMacroTrainerVersion.ahk", "UTF-8")
 }
 
 compileAndZipMain()
@@ -187,12 +189,13 @@ GetFileResource(file, scriptResource, type := 10)
     return string
 }
 
-deleteAppend(text, fileName, Encoding := "CP65001")
+deleteAppend(text, fileName, encoding := "")
 {
 	FileDelete, %fileName%
-	FileAppend, %text%, %fileName%, %Encoding%
+	FileAppend, %text%, %fileName%, %encoding%
 	return
 }
+
 CheckForUpdates(url)
 {
   	URLDownloadToFile, %url%, %A_Temp%\version_checker_temp_file.ini

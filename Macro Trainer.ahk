@@ -4780,8 +4780,7 @@ try
 							This setting is only active when the unit panel is split (structures/buildings). 
 							It determines where the first new unit and first new structure are drawn.
 							
-							When enabled new units and new structures will be drawn aligned along the x-axis. 
-							When disabled new units and new structures will be drawn along their own x-axes independent of one another.
+							When enabled new units and new structures will be vertically aligned. 
 
 							A 'new' unit/structure is a unit which is in production and the unit owner does not already have an existing (completed) unit of this type. 
 							
@@ -10845,9 +10844,9 @@ launchMiniMapThread()
 		if !aThreads.MiniMap
 			aThreads.MiniMap := AhkDllThread("Included Files\ahkH\AutoHotkey.dll")
 		if 0 
-			FileInstall, threadMiniMapFull.ahk, Ignore	
+			FileInstall, bin\threadMiniMapFull.ahk, Ignore	
 		if A_IsCompiled
-			miniMapScript := LoadScriptString("threadMiniMapFull.ahk")
+			miniMapScript := LoadScriptString("bin\threadMiniMapFull.ahk")
 		else FileRead, miniMapScript, threadMiniMap.ahk			
 		aThreads.MiniMap.ahktextdll(GlobalVarsScript("aThreads", 0, aThreads) miniMapScript,, localUnitDataCriSec " " &aLocalUnitData)
 	}
@@ -10861,9 +10860,9 @@ launchOverlayThread()
 		if !aThreads.Overlays
 			aThreads.Overlays := AhkDllThread("Included Files\ahkH\AutoHotkey.dll")
 		if 0 
-			FileInstall, threadOverlaysFull.ahk, Ignore	
+			FileInstall, bin\threadOverlaysFull.ahk, Ignore	
 		if A_IsCompiled
-			overlayScript := LoadScriptString("threadOverlaysFull.ahk")
+			overlayScript := LoadScriptString("bin\threadOverlaysFull.ahk")
 		else FileRead, overlayScript, threadOverlays.ahk	
 		aThreads.Overlays.ahktextdll(GlobalVarsScript("aThreads", 0, aThreads) overlayScript) ; takes 30-40 ms to become ready()
 	}
@@ -12819,12 +12818,16 @@ SmartGeyserControlGroup(geyserStructureIndex)
 			dSleep(10)
 			numGetSelectionSorted(oSelection)	
 		}
-		if oSelection.HighlightedGroup != harvesterID && oSelection.HighlightedGroup != aUnitId.Mule
+		; Prevent sending return cargo if harvester are not selected e.g. rallying a nexus to an undersaturated geyser would send a chrono
+		if oSelection.TabPositions.HasKey(harvesterID)
 		{
-			firstTab := tabToGroup(oSelection.HighlightedGroup, oSelection.TabPositions[harvesterID])
-			secondTab := tabToGroup(oSelection.TabPositions[harvesterID], oSelection.HighlightedGroup)
+			if oSelection.HighlightedGroup != harvesterID && oSelection.HighlightedGroup != aUnitId.Mule
+			{
+				firstTab := tabToGroup(oSelection.HighlightedGroup, oSelection.TabPositions[harvesterID])
+				secondTab := tabToGroup(oSelection.TabPositions[harvesterID], oSelection.HighlightedGroup)
+			}
+			input.psend(firstTab SC2Keys.key("ReturnCargo") secondTab)
 		}
-		input.psend(firstTab SC2Keys.key("ReturnCargo") secondTab)
 	}
 
 	if aSentToGeyser.MaxIndex()
