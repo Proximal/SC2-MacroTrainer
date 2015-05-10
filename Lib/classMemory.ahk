@@ -338,7 +338,7 @@ class _ClassMemory
     ;       address -   The memory address of the value or if using the offset parameter, 
     ;                   the base address of the pointer.
     ;       type    -   The integer type. 
-    ;                   Valid types are UChar, Char, UShort, Short, UInt, Int, UFloat, Float, Int64 and Double. 
+    ;                   Valid types are UChar, Char, UShort, Short, UInt, Int, Float, Int64 and Double. 
     ;                   Note: Types must not contain spaces i.e. " UInt" or "UInt " will not work. 
     ;                   When an invalid type is passed the method returns NULL and sets ErrorLevel to -2
     ;       aOffsets* - A variadic list of offsets. When using offsets the address parameter should equal the base address of the pointer.
@@ -481,7 +481,7 @@ class _ClassMemory
     ;       address -   The memory address to which data will be written or if using the offset parameter, 
     ;                   the base address of the pointer.
     ;       type    -   The integer type. 
-    ;                   Valid types are UChar, Char, UShort, Short, UInt, Int, UFloat, Float, Int64 and Double. 
+    ;                   Valid types are UChar, Char, UShort, Short, UInt, Int, Float, Int64 and Double. 
     ;                   Note: Types must not contain spaces i.e. " UInt" or "UInt " will not work. 
     ;                   When an invalid type is passed the method returns NULL and sets ErrorLevel to -2
     ;       aOffsets* - A variadic list of offsets. When using offsets the address parameter should equal the base address of the pointer.
@@ -523,7 +523,7 @@ class _ClassMemory
     ; Parameters:
     ;   base -          The base address of the pointer or the memory address for a non-pointer.
     ;   finalType -     The type of integer stored at the final address.
-    ;                   Valid types are UChar, Char, UShort, Short, UInt, Int, UFloat, Float, Int64 and Double. 
+    ;                   Valid types are UChar, Char, UShort, Short, UInt, Int, Float, Int64 and Double. 
     ;                   Note: Types must not contain spaces i.e. " UInt" or "UInt " will not work. 
     ;                   When an invalid type is passed the method returns NULL and sets ErrorLevel to -2
     ;   aOffsets* -     A variadic list of offsets used to calculate the pointers final address.
@@ -908,7 +908,7 @@ class _ClassMemory
             if !this.VirtualQueryEx(address, aInfo)
                 return -1
             if A_Index = 1
-                aInfo.Modify("RegionSize", aInfo.RegionSize - (address - aInfo.BaseAddress))
+                aInfo.RegionSize -= address - aInfo.BaseAddress
             if (aInfo.State = MEM_COMMIT) 
             && !(aInfo.Protect & (PAGE_NOACCESS | PAGE_GUARD)) ; can't read these areas
             ;&& (aInfo.Type = MEM_MAPPED || aInfo.Type = MEM_PRIVATE) ;Might as well read Image sections as well
@@ -1150,8 +1150,7 @@ class _ClassMemory
             if aLookUp.HasKey(key)
                 return numget(this.pStructure+0, aLookUp[key].Offset, aLookUp[key].Type)        
         }
-        ; change this to __set one day.
-        modify(key, value)
+        __set(key, value)
         {
              static aLookUp := A_PtrSize = 8 
                                 ?   {   "BaseAddress": {"Offset": 0, "Type": "Int64"}
@@ -1170,7 +1169,10 @@ class _ClassMemory
                                     ,   "Type": {"Offset": 24, "Type": "UInt"} }
 
             if aLookUp.HasKey(key)
+            {
                 NumPut(value, this.pStructure+0, aLookUp[key].Offset, aLookUp[key].Type)            
+                return value
+            }
         }
         Ptr()
         {
