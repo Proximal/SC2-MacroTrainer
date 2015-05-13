@@ -4219,7 +4219,7 @@ try
 			Gui, Add, Text, xp yp+25, Hotkey:
 			Gui, Add, Edit, Readonly yp-2 xs+105 center w65 R1 vcastRemoveUnit_key gedit_hotkey, %castRemoveUnit_key%
 			Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#castRemoveUnit_key,  Edit
-			Gui, Add, Text, Xs+15 yp+45 w360, This removes the first unit (top left of selection card) from the selected units.`n`nThis is useful for 'cloning' workers to geisers or sending 1 ling towards a group of banelings etc.
+			Gui, Add, Text, Xs+15 yp+45 w360, This removes the first unit (top left of selection card) from the selected units.`n`nThis is useful for 'cloning' workers to geysers or sending 1 ling towards a group of banelings etc.
 		
 		Gui, add, GroupBox, xs ys+180 w405 h220, Remove Damaged Units
 			Gui, Add, Checkbox, yp+25 xs+15 vRemoveDamagedUnitsEnable Checked%RemoveDamagedUnitsEnable%, Enable	
@@ -8511,7 +8511,8 @@ CreateHotkeys()
 
 disableAllHotkeys()
 {
-	global
+	local i, race, object
+
 	Hotkey, If, WinActive(GameIdentifier)						
 		try hotkey, %warning_toggle_key%, off			; 	deactivate the hotkeys
 														; 	so they can be updated with their new keys
@@ -8573,7 +8574,7 @@ disableAllHotkeys()
 			for i, hotkey in SC2Keys.AHKHotkeyObj("ControlGroupAssign"  A_index - 1)
 				try hotkey, %hotkey%, off
 		}
-		for i, race in ["Terran,Protoss,Zerg"]
+		for i, race in ["Terran", "Protoss", "Zerg"]
 		{
 			for i, object in aQuickSelect[race]
 				try hotkey, % object.hotkey, off
@@ -11329,12 +11330,12 @@ unloadAllTransports(hotkeySuffix)
 
 	; The isUnloading doesn't update fast enough to prevent extra apm due to user spamming the hotkey
 	; and triggering the function again
-
+	if isCastingReticleActive() 
+	    input.pSend(SC2Keys.key("Cancel"))
 	if aSelection.Count = 1 && getCargoCount(aSelection.Units.1.UnitIndex, isUnloading) && !isUnloading
-		input.pSend(unloadAllCargoString SC2Keys.key("Cancel")) ; send Escape as we should try to remove the casting reticle invoked my pressing the hotkey ability
+		input.pSend(unloadAllCargoString) ; send Escape as we should try to remove the casting reticle invoked my pressing the hotkey ability
 	else if aSelection.Count > 1
 	{
-		input.pSend(SC2Keys.key("Cancel"))
 		aUnloaded := []
 		input.pSend(SC2Keys.key("ControlGroupAssign" tempGroup))
 		slectionCount := aSelection.Count
@@ -11378,26 +11379,23 @@ unloadAllTransports(hotkeySuffix)
 	return
 }
 
-
-/*
 ; Global Stim
 
 #If, !A_IsCompiled && WinActive(GameIdentifier) && isPlaying && aLocalPlayer.Race = "Terran" && !isMenuOpen()
 && numGetSelectionSorted(aSelection) && (aSelection.TabPositions.HasKey(aUnitID["Marauder"]) || aSelection.TabPositions.HasKey(aUnitID["Marine"]))
+&& (aSelection.HighLightedId != aUnitID["Marauder"] && aSelection.HighLightedId != aUnitID["Marine"])
 && (aSelection.HighLightedId != aUnitID["SCV"] || !isUserBusyBuilding()) ; This line allows a turret to be built if an scv is in the same selection as a marine/marauder
 t::
-if aSelection.HighLightedId = aUnitID["Marauder"] || aSelection.HighLightedId = aUnitID["Marine"]
-    tabPos := aSelection.HighlightedGroup
-else if aSelection.TabPositions.HasKey(aUnitID["Marine"])
+if aSelection.TabPositions.HasKey(aUnitID["Marine"])
     tabPos := aSelection.TabPositions[aUnitID["Marine"]] 
 else tabPos := aSelection.TabPositions[aUnitID["Marauder"]] 
 
 if (tabsToSend := tabPos - aSelection.HighlightedGroup) < 0
-    send, % "+{tab " abs(tabsToSend) "}t{tab "  abs(tabsToSend) "}"
-else send {tab %tabsToSend%}t+{tab %tabsToSend%}
+	input.pSend(sRepeat(SC2Keys.key("SubgroupPrev"), abs(tabsToSend)) SC2Keys.key("Stim") sRepeat(SC2Keys.key("SubgroupNext"), abs(tabsToSend)))
+else input.pSend(sRepeat(SC2Keys.key("SubgroupNext"), abs(tabsToSend)) SC2Keys.key("Stim") sRepeat(SC2Keys.key("SubgroupPrev"), abs(tabsToSend)))
 return
 #if
-*/
+
 
 AutoBuildGUIkeyPress:
 if (AutoBuildGUIkeyMode = "KeyDown")
@@ -13645,8 +13643,94 @@ alertSelectionGUI(currentItem := "")
 }
 
 
-/*
-550725089040195385
-*/
+castSmartMassRecall:
+if (aLocalPlayer.race != "Protoss")
+	return
+else if (A_PriorHotkey = A_ThisHotkey "" && A_TimeSincePriorHotkey <= 250 && protossRecallFlagActive)
+{
 
+   protossRecall(gethotkeySuffix(A_ThisHotkey), "MassRecall")
+   protossRecallFlagActive := False
+}
+else 
+{
+    protossRecallFlagActive := True
+    keywait, % gethotkeySuffix(A_ThisHotkey), T.260 ; Make it slightly longer than the threshold to enter the routine in case just holding it down
+}
+return 
 
+castSmartPhotonOvercharge:
+if (aLocalPlayer.race != "Protoss")
+	return
+else if (A_PriorHotkey = A_ThisHotkey "" && A_TimeSincePriorHotkey <= 250 && protossPhotonOverchargeFlagActive)
+{
+
+   protossRecall(gethotkeySuffix(A_ThisHotkey), "PhotonOvercharge")
+   protossPhotonOverchargeFlagActive := False
+}
+else 
+{
+    protossPhotonOverchargeFlagActive := True
+    keywait, % gethotkeySuffix(A_ThisHotkey), T.260 ; Make it slightly longer than the threshold to enter the routine in case just holding it down
+}
+return 
+
+protossRecall(hotkeySuffix, ability)
+{
+	numGetSelectionSorted(aSelection)
+	if !(aSelection.TabPositions.HasKey(aUnitID.MothershipCore) || aSelection.TabPositions.HasKey(aUnitID.Mothership))
+	||  (aSelection.TabPositions[aUnitID.MothershipCore] != aSelection.HighlightedGroup && aSelection.TabPositions[aUnitID.Mothership] != aSelection.HighlightedGroup)
+		return 
+	isMothershipCore := aSelection.TabPositions[aUnitID.MothershipCore] = aSelection.HighlightedGroup
+	if (ability = "PhotonOvercharge") 
+	{
+		if !isMothershipCore
+			return ; motherships can't cast PO 
+		abilityKey := SC2Keys.key("PhotonOvercharge/MothershipCore")
+	}
+	else abilityKey := SC2Keys.key(isMothershipCore ? "MassRecall/MothershipCore" : "MassRecall/Mothership")
+    critical, 1000
+    setLowLevelInputHooks(True)
+    dsleep(30)
+    input.pReleaseKeys(True)
+    for i, unit in aSelection.units
+    {
+    	if unit.unitId = aUnitID.MothershipCore || unit.unitId = aUnitID.Mothership
+    	{
+    		found := findClosestNexus(unit.unitIndex, x, y) 
+    		break
+    	}
+    }
+    if (found && getUnitEnergy(unit.unitIndex) >= 100)
+    {
+		if isCastingReticleActive() 
+		     input.pSend(SC2Keys.key("Cancel"))
+        input.pSend(abilityKey "{click " x ", " y "}")
+    }
+    setLowLevelInputHooks(False)
+    critical, off
+    Thread, Priority, -2147483648       
+    keywait, %hotkeySuffix%    
+}
+
+findClosestNexus(mothershipIndex, byRef minimapX, byRef minimapY)
+{
+	aNexi := []
+	baseCount := getPlayerBaseCameraCount(), count := 0 ; not put this on same line as loop, % - bug in AHK
+	loop, % DumpUnitMemory(MemDump)
+	{
+		if !isTargetDead(TargetFilter := numgetUnitTargetFilter(MemDump, unitIndex := A_Index - 1)) && aLocalPlayer["Slot"] = numgetUnitOwner(MemDump, unitIndex)
+		&& !(TargetFilter & aUnitTargetFilter["UnderConstruction"]) && aUnitID["Nexus"] = numgetUnitModelType(numgetUnitModelPointer(MemDump, unitIndex)) 
+		    count++, aNexi.insert({"unitIndex": unitIndex,  "x": numGetUnitPositionX(MemDump, unitIndex), "y": numGetUnitPositionY(MemDump, unitIndex)})
+	} until count = baseCount
+	if !aNexi.MaxIndex()
+		return false 
+	mothershipX :=  numGetUnitPositionX(MemDump, mothershipIndex), mothershipY :=  numGetUnitPositionY(MemDump, mothershipIndex)
+	for i, nexus in aNexi
+	{
+		distance := (mothershipX - nexus.x)**2 + (mothershipY - nexus.y)**2 ; don't need the actual distance, so no need to squareRoot
+		if (distance < foundDistance || foundDistance = "")
+			foundDistance := distance, minimapX := nexus.x, minimapY := nexus.y
+	}
+	return True, mapToMinimapPos(minimapX, minimapY)
+}

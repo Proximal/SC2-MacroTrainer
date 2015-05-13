@@ -181,6 +181,7 @@ class SC2Keys
 		this.debug.variablesFilePath := variablesFilePath
 		this.debug.hotkeyProfile := file
 		this.debug.hotkeySuffix := suffix
+		this.debug.isGridLayout := suffix = "_GLS" || suffix = "_GRS" 
 
 		if FileExist(variablesFilePath) && getTime()
 		{
@@ -233,6 +234,12 @@ class SC2Keys
 		; then that will alter the hotkeys.
 		; In summary, if a user has change gridlayout keys for CommandButton13 then escape will not cancel the action (target reticle isn't present so should cause issues for me)
 		; however if user changes one or both of CommandButton14 hotkeys then escape will not work to cancel targeting reticles
+		
+		; ****** There are two cancels and these differ for grid layouts!******** 
+		; Escape does not cancel unit targeting abilities with grid layouts!!!! e.g. recall, attack etc
+		; Escape still works to cancel build card or a production items/structures.
+		; escape will cancel placing a structure, but not other targeting abilities. 
+
 		static keys := "
 		( LTrim c 					
 			;myLookupReference					|Standard 			|_NRS 				|_SC1 				|grid							|section 				|key
@@ -279,6 +286,11 @@ class SC2Keys
 			TransportUnloadAll					|d 					|d					|u 					|CommandButton13				|Commands 				|BunkerUnloadAll		
 			QueenSpawnLarva						|v 					|l					|v 					|CommandButton11				|Commands 				|MorphMorphalisk/Queen		
 			TimeWarp/Nexus						|c 					|n					|c 					|CommandButton10				|Commands 				|TimeWarp/Nexus			
+			PhotonOvercharge/MothershipCore 	|F 					|G 					|F    				|CommandButton10 				|Commands 				|MothershipCoreWeapon/MothershipCore
+			MassRecall/MothershipCore 			|R 					|U 					|R    				|CommandButton11				|Commands 				|MothershipCoreMassRecall/MothershipCore
+			; Note different commandButton Positions
+			MassRecall/Mothership 				|R 					|U 					|R    				|CommandButton10				|Commands 				|MothershipMassRecall/Mothership		
+			Stim								|T 					|I 					|T    				|CommandButton10				|Commands 				|Stim 	
 		)"
 
 		if suffix not in Standard,_NRS,_SC1,_GLS,_GRS
@@ -416,9 +428,10 @@ class SC2Keys
 			aLookup["CommandButton" id] := key	
 		}
 
-		; This ensures we use escape to cast cancel, unless user has changed one or more hotkeys for CommandButton14
+		; Uses the default cancel button, unless user has changed one or more hotkeys for CommandButton14
 		; Refer to other hotkey section for more details
-		IniRead, key, %file%, Hotkeys, CommandButton14, Escape
+		; with grids escape does not cancel unit targeting abilities e.g. attack!
+		IniRead, key, %file%, Hotkeys, CommandButton14, % suffix = "_GRS" ? "/" : "B"
 		aLookup["Cancel"] := key ; The obj.Cancel.hotkey  = Cancel so it works below
 		for k, item in obj 
 		{
