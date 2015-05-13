@@ -172,10 +172,10 @@ loadMemoryAddresses(base, version := "")
 		; These versions have matching offsets
 		; !version in case the findVersion function stuffs up and returns 0/blank, thereby just assume match with latest offsets
 		; Also worker threads do not pass the client verison
-		if (version = "2.1.9.34644" || !version) 
-			versionMatch := "2.1.9.34644"		
-		;else if version in 2.1.5.32392,2.1.4.32283,2.1.6.32540,2.1.7.33148
-		;	 versionMatch := version
+		if (version = "2.1.10.35237" || !version) 
+			versionMatch := "2.1.10.35237"		
+		else if version in 2.1.9.34644
+			 versionMatch := version
 		else versionMatch := false
 		;	[Memory Addresses]
 		B_LocalCharacterNameID := base + 0x4FB4DF4 ; stored as string Name#123 There are a couple of these, but only one works after SC restart or out of game
@@ -4391,6 +4391,10 @@ readConfigFile()
 	IniRead, ConvertGatewaysEnable, %config_file%, %section%, ConvertGatewaysEnable, 0
 	IniRead, ConvertGatewayCtrlGroup, %config_file%, %section%, ConvertGatewayCtrlGroup, 5
 	IniRead, ConvertGatewayDelay, %config_file%, %section%, ConvertGatewayDelay, 5
+	
+	IniRead, SmartMassRecallEnable, %config_file%, %section%, SmartMassRecallEnable, 0
+	IniRead, SmartPhotonOverchargeEnable, %config_file%, %section%, SmartPhotonOverchargeEnable, 0
+	IniRead, GlobalStimEnable, %config_file%, %section%, GlobalStimEnable, 0
 
 	if thisThreadTitle in main,minimap
 	{

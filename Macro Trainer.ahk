@@ -183,7 +183,7 @@ getSubGroupAliasArray(aUnitSubGroupAlias)
 setupTargetFilters(aUnitTargetFilter)
 	
 CreatepBitmaps(a_pBitmap, aUnitID)
-Menu, Tray, Tip, MT_V%ProgramVersion% Coded By Kalamity
+;Menu, Tray, Tip, MT_V%ProgramVersion% Coded By Kalamity
 
 If InStr(A_ScriptDir, old_backup_DIR)
 {
@@ -2720,6 +2720,11 @@ ini_settings_write:
 	IniWrite, %ConvertGatewayCtrlGroup%, %config_file%, %section%, ConvertGatewayCtrlGroup
 	IniWrite, %ConvertGatewayDelay%, %config_file%, %section%, ConvertGatewayDelay
 
+	IniWrite, %SmartMassRecallEnable%, %config_file%, %section%, SmartMassRecallEnable
+	IniWrite, %SmartPhotonOverchargeEnable%, %config_file%, %section%, SmartPhotonOverchargeEnable
+	IniWrite, %GlobalStimEnable%, %config_file%, %section%, GlobalStimEnable
+
+
 	;[Misc Hotkey]
 	IniWrite, %EnableWorkerCountSpeechHotkey%, %config_file%, Misc Hotkey, EnableWorkerCountSpeechHotkey
 	IniWrite, %worker_count_local_key%, %config_file%, Misc Hotkey, worker_count_key
@@ -4169,7 +4174,7 @@ try
 		Gui, Add, Edit, Readonly yp-2 xp+130 center w85 R1 vAutoBuildPauseAllkey gedit_hotkey +disabled, %AutoBuildPauseAllkey%
 		Gui, Add, Button, yp-2 x+10 gEdit_hotkey v#AutoBuildPauseAllkey +disabled, Edit
 
-	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vMiscAutomation_TAB, Select Army||Spread|Remove Units|Easy Select/Unload|Smart Geyser|Convert Gateways
+	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vMiscAutomation_TAB, Select Army||Spread|Remove Units|Easy Select/Unload|Smart Abilities|Convert Gateways
 	Gui, Tab, Select Army
 		Gui, add, GroupBox, y+15 w405 h130 section, Select Army
 		Gui, Add, Checkbox, Xs+15 yp+25 vSelectArmyEnable Checked%SelectArmyEnable% , Enable Select Army Function		
@@ -4263,13 +4268,17 @@ try
 				Note: The transports must be the active (highlighted) subgroup.
 			)
 
-	Gui, Tab, Smart Geyser
-		Gui, add, GroupBox, y+10 w325 h135 section, Settings
+	Gui, Tab, Smart Abilities
+		Gui, add, GroupBox, y+10 w325 h150 section, Smart Geyser
 		Gui, Add, Checkbox, xp+10 yp+25 vSmartGeyserEnable checked%smartGeyserEnable% gSmartGeyserOptionsMenuEnableCheck, Enable Smart Geyser 
 		Gui, Add, Checkbox, xp y+10 vSmartGeyserReturnCargo checked%smartGeyserReturnCargo%, Return Cargo
 	 	Gui, Add, text, xs+10 y+15 w305, Right clicking a group of workers towards a refinery, assimilator, or extractor will only send the correct amount of workers to harvest gas.
-	 	Gui, Add, text, xs+10 y+35 w305, *This is not currently 100`% reliable.
+	 	Gui, Add, text, xs+10 y+15 w305, *This is not currently 100`% reliable.
 	 	
+	 	Gui, Add, Checkbox, xs y+35 vSmartMassRecallEnable checked%SmartMassRecallEnable%, Mass recall
+	 	Gui, Add, Checkbox, xs y+10 vSmartPhotonOverchargeEnable checked%SmartPhotonOverchargeEnable%, Photon Overcharge
+	 	Gui, Add, Checkbox, xs y+15 vGlobalStimEnable checked%GlobalStimEnable%, Global Stim
+
 	 	gosub SmartGeyserOptionsMenuEnableCheck
 
 	Gui, Tab, Convert Gateways
@@ -5032,6 +5041,12 @@ AutomationTerranCameraGroup_TT := AutomationProtossCameraGroup_TT := AutomationZ
 		EasyUnload_T_Key_TT := EasyUnload_P_Key_TT := EasyUnload_Z_Key_TT := "This needs to correspond to the SC2 unload all key."
 															. "`nThis key is used by both the 'Easy Select/Cursor Unload' and 'Unload All' functions."
 															. "`n`nIf the unload all feature is enabled, then when you double tap this key (and transports are the selected and highlighted unit type) all of the transports will immediately begin unloading."
+
+
+		SmartMassRecallEnable_TT := "Double tapping the MSC/mothership mass recall hotkey will cast the ability on the closest nexus.`nThe MSC/mothership must be the active subgroup."
+		SmartPhotonOverchargeEnable_TT := "Double tapping the MSC photon overcharge hotkey will cast the ability on the closest nexus.`nThe MSC must be the active subgroup."
+
+		GlobalStimEnable_TT := "While the unit selection contains marines or marauders, pressing the stim ability hotkey will cast stim regardless of which subgroup is active.`n`nFor example, selecting ravens, ghosts, and marines and then pressing the stim hotkey will cast stim, even if ravens or ghosts are the active subgroup."
 
 		loop, parse, l_Races, `,
 		{
@@ -8347,7 +8362,8 @@ CreateHotkeys()
 	#If, WinActive(GameIdentifier) && isPlaying && (!isMenuOpen() || isChatOpen()) 
 	;#If, ((aLocalPlayer["Race"] = "Terran" && EnableAutoWorkerTerran) || (aLocalPlayer["Race"] = "Protoss" && EnableAutoWorkerProtoss)) && WinActive(GameIdentifier) && isPlaying && !isMenuOpen() 
 	;#If, WinActive(GameIdentifier) && time && !isMenuOpen() && EnableAutoWorker`%LocalPlayerRace`%
-	#if isPlaying && WinActive(GameIdentifier) && !isCastingReticleActive() && GeyserStructureHoverCheck(hoveredGeyserUnitIndex)
+	#If isPlaying && WinActive(GameIdentifier) && !isCastingReticleActive() && GeyserStructureHoverCheck(hoveredGeyserUnitIndex)
+	#If, WinActive(GameIdentifier) && isPlaying && aLocalPlayer.Race = "Terran" && !isMenuOpen() && globalStimSelectionCheck(aSelection)
 	#If
 
 	Hotkey, If, WinActive(GameIdentifier)
@@ -8399,6 +8415,13 @@ CreateHotkeys()
 			hotkey, %inject_reset_key%, inject_reset, on
 		}	
 
+		if (aLocalPlayer["Race"] = "Terran" && GlobalStimEnable)
+		{
+			Hotkey, If, WinActive(GameIdentifier) && isPlaying && aLocalPlayer.Race = "Terran" && !isMenuOpen() && globalStimSelectionCheck(aSelection)
+			for i, hotkey in SC2Keys.AHKHotkeyObj("Stim")
+				try hotkey, %hotkey%, castGlobalStim, on
+		}	
+
 	; Note: for double reference need to use ` to escape % in current command so that is evaluated when hotkey fires
 	; could also do if, % "EasyUnload%LocalPlayerRac%"
 	;Hotkey, If, WinActive(GameIdentifier) && !isMenuOpen() && EasyUnload`%LocalPlayerRace`%Enable && time
@@ -8426,6 +8449,19 @@ CreateHotkeys()
 		|| (aLocalPlayer["Race"] = "Protoss" && SelectTransportsProtossEnable)
 		|| (aLocalPlayer["Race"] = "Zerg" && SelectTransportsZergEnable)
 			hotkey, %SelectTransportsHotkey%, gCastSelectLoadedTransport, on
+
+		if (aLocalPlayer["Race"] = "Protoss" && SmartMassRecallEnable)
+		{
+			for i, hotkey in SC2Keys.AHKHotkeyObj("MassRecall/Mothership")
+				try hotkey, ~%hotkey%, castSmartMassRecall, on
+			for i, hotkey in SC2Keys.AHKHotkeyObj("MassRecall/MothershipCore")
+				try hotkey, ~%hotkey%, castSmartMassRecall, on			
+		}		
+		if (aLocalPlayer["Race"] = "Protoss" && SmartPhotonOverchargeEnable)
+		{
+			for i, hotkey in SC2Keys.AHKHotkeyObj("PhotonOvercharge/MothershipCore")
+				try hotkey, ~%hotkey%, castSmartPhotonOvercharge, on
+		}
 
 		; Converting a send key to a hotkey so need to remove '{' and '}' if present e.g. {F1}
 		; sc ability hotkeys can only be 1 key
@@ -8546,6 +8582,11 @@ disableAllHotkeys()
 		try	hotkey, %inject_start_key%, off
 		try	hotkey, %inject_reset_key%, off	
 
+	
+	Hotkey, If, WinActive(GameIdentifier) && isPlaying && aLocalPlayer.Race = "Terran" && !isMenuOpen() && globalStimSelectionCheck(aSelection)
+	    for i, hotkey in SC2Keys.AHKHotkeyObj("Stim")
+	        try hotkey, %hotkey%, Off
+
 	autoBuild.disableHotkeys() ; **This function has a "Hotkey, If"!! But it falls into the below firing condition
 	Hotkey, If, WinActive(GameIdentifier) && isPlaying && !isMenuOpen()
 		try hotkey, %AutoBuildGUIkey%, off
@@ -8558,6 +8599,13 @@ disableAllHotkeys()
 			try hotkey, % "~^+" hotkey, off
 			try hotkey, % "~" hotkey, off
 		}
+        for i, hotkey in SC2Keys.AHKHotkeyObj("MassRecall/Mothership")
+            try hotkey, ~%hotkey%, Off 
+        for i, hotkey in SC2Keys.AHKHotkeyObj("MassRecall/MothershipCore")
+            try hotkey, ~%hotkey%, Off  
+        for i, hotkey in SC2Keys.AHKHotkeyObj("PhotonOvercharge/MothershipCore")
+            try hotkey, ~%hotkey%, Off
+
 		try hotkey, %SelectTransportsHotkey%, off
 		for i, hotkey in SC2Keys.AHKHotkeyObj("TransportUnloadAll")
 			try hotkey, % "~" hotkey, off
@@ -11380,12 +11428,7 @@ unloadAllTransports(hotkeySuffix)
 }
 
 ; Global Stim
-
-#If, !A_IsCompiled && WinActive(GameIdentifier) && isPlaying && aLocalPlayer.Race = "Terran" && !isMenuOpen()
-&& numGetSelectionSorted(aSelection) && (aSelection.TabPositions.HasKey(aUnitID["Marauder"]) || aSelection.TabPositions.HasKey(aUnitID["Marine"]))
-&& (aSelection.HighLightedId != aUnitID["Marauder"] && aSelection.HighLightedId != aUnitID["Marine"])
-&& (aSelection.HighLightedId != aUnitID["SCV"] || !isUserBusyBuilding()) ; This line allows a turret to be built if an scv is in the same selection as a marine/marauder
-t::
+castGlobalStim:
 if aSelection.TabPositions.HasKey(aUnitID["Marine"])
     tabPos := aSelection.TabPositions[aUnitID["Marine"]] 
 else tabPos := aSelection.TabPositions[aUnitID["Marauder"]] 
@@ -11394,7 +11437,13 @@ if (tabsToSend := tabPos - aSelection.HighlightedGroup) < 0
 	input.pSend(sRepeat(SC2Keys.key("SubgroupPrev"), abs(tabsToSend)) SC2Keys.key("Stim") sRepeat(SC2Keys.key("SubgroupNext"), abs(tabsToSend)))
 else input.pSend(sRepeat(SC2Keys.key("SubgroupNext"), abs(tabsToSend)) SC2Keys.key("Stim") sRepeat(SC2Keys.key("SubgroupPrev"), abs(tabsToSend)))
 return
-#if
+
+globalStimSelectionCheck(byRef aSelection)
+{
+	return numGetSelectionSorted(aSelection) && (aSelection.TabPositions.HasKey(aUnitID["Marauder"]) || aSelection.TabPositions.HasKey(aUnitID["Marine"]))
+			&& (aSelection.HighLightedId != aUnitID["Marauder"] && aSelection.HighLightedId != aUnitID["Marine"])
+			&& (aSelection.HighLightedId != aUnitID["SCV"] || !isUserBusyBuilding()) ; This line allows a turret to be built if an scv is in the same selection as a marine/marauder	
+}
 
 
 AutoBuildGUIkeyPress:
@@ -13734,3 +13783,4 @@ findClosestNexus(mothershipIndex, byRef minimapX, byRef minimapY)
 	}
 	return True, mapToMinimapPos(minimapX, minimapY)
 }
+
