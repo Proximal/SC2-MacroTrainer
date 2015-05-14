@@ -1,7 +1,7 @@
 All Code used to compile and run MacroTrainer.
 
 The code is written in AHK and is ran using a (very) slightly altered version of 
-AHK_H 32W-MD.
+AHK_H 32W-MD (1.1.15.00).
 
 If you are interested in SC2 memory functions, most (but not all) of these are inside 
 "/lib/SC2_MemoryAndGeneralFunctions.ahk"
@@ -16,17 +16,14 @@ If you really wish to run the program in script form, then you will need to use 
 modded AHK_H files found in "AHK_H modded Source and Files\AHK used by MacroTrainer\"
 
 
-Compiling for distribution:
-Ensure the correct version numbers are set in the config, macro trainer, and macroTrainerCurrentVersion.ini files.
+Compiling:
+Run the MacroCompiler.ahk script. 
+Select an appropriate version/update-type.
+Click the compile button.
+The compiled EXE will be saved in \bin\currentMacroTrainer.zip
 
-Compile the minimapThread.ahk using AHK_H 32Bit-MD (do not use compression). This will automatically include any called functions.
+When compiling for personal use, be aware that setting the version/update-type to anything other than 'current' may prevent the auto-update feature from working. 
 
-Use resource hacker (\Included Files\Resource Hacker) or winRar to extract the script from the RCData folder.
-Save the script as threadMiniMapFull.ahk
-
-Repeat the above steps for the threadOverlays.AHK and save as threadOverlaysFull.AHK
-
-Compile "macro trainer vX.XX.ahk" as "macro trainer vX.XX.exe" using AHK_H 32Bit-MD (do not use compression as this will prevent the change icon feature functioning). Zip the exe along with msvcr100.dll into currentMacroTrainer.zip and upload to FTP server.
 
 
 

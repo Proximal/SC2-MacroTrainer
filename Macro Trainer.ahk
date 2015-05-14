@@ -9763,6 +9763,7 @@ clickUnitPortraitsDemo(aUnitPortraitLocations, Modifers := "+")
 debugData()
 { 	global aPlayer, O_mTop, GameIdentifier
 	, A_UnitGroupSettings, aLocalPlayer, aUnitName, SC2WindowEXStyles
+	
 	Player := getLocalPlayerNumber()
 	
 	SysGet, VirtualScreenWidth, 78
@@ -9803,6 +9804,7 @@ debugData()
 	. "Virtual min pos: " XminVritual ", " YminVritual "`n"
 	. "Virtual max pos: " XmaxVritual ", "  YmaxVritual "`n"
 	. "Virtual Size: " VirtualScreenWidth ", " VirtualScreenHeight "`n"
+	. debugMonitorBoundingCoordinates() "`n"
 	. "Screen DPI: " A_ScreenDPI "`n" 
 	. "==========================================="
 	. "`nSC2 Folders: 	'?' represent replaced account numbers - maintains privacy.`n"	

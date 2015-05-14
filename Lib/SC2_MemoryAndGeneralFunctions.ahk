@@ -3242,7 +3242,7 @@ SetupColourArrays(ByRef HexColour, Byref MatrixColour)
 		If IsByRef(MatrixColour)
 		{
 			colour := Item2
-			colourRed := "0x" substr(colour, 1, 2) ;theres a way of doing this with math but im lazy
+			colourRed := "0x" substr(colour, 1, 2) 
 			colourGreen := "0x" substr(colour, 3, 2)
 			colourBlue := "0x" substr(colour, 5, 2)	
 			colourRed := Round(colourRed/0xFF,2)
@@ -4416,7 +4416,9 @@ readConfigFile()
 	section := "Overlays"
 	; This function will get return  the x,y coordinates for the top left, and bottom right of the 
 	; desktop screen (the area on both monitors)
-	DesktopScreenCoordinates(XminScreen, YminScreen, XmaxScreen, YmaxScreen)
+	;DesktopScreenCoordinates(XminScreen, YminScreen, XmaxScreen, YmaxScreen)
+	local Xcentre, Ycentre
+	getPrimaryMonitorCentre(Xcentre, Ycentre)
 	list := "APMOverlay,IncomeOverlay,ResourcesOverlay,ArmySizeOverlay,WorkerOverlay,IdleWorkersOverlay,UnitOverlay,LocalPlayerColourOverlay,MacroTownHallOverlay,LocalUpgradesOverlay,autoBuildOverlay"
 	loop, parse, list, `,
 	{
@@ -4427,17 +4429,11 @@ readConfigFile()
 			if (%A_LoopField%Scale < .5)	;so cant get -scales (or invisibly small)
 				%A_LoopField%Scale := .5
 		}
-		; Use < for min position and >= for max as it draws to the right.
-		; Also, its still possible for the overlay to be a pixel or two before the right edge of the
-		; screen and still not be visible! or lead to a drawing/updateLayeredWindow fail.
-		; Added a -30 check to max Pos so should always be able to see/click it to move
-		; providing the draw doesn't fail
-		IniRead, %A_LoopField%X, %config_file%, %section%, %A_LoopField%X, % A_ScreenWidth/2
-		if (%A_LoopField%X = "" || %A_LoopField%X < XminScreen || %A_LoopField%X >= XmaxScreen - 30) ; guard against blank key
-			%A_LoopField%X := A_ScreenWidth/2
-		IniRead, %A_LoopField%Y, %config_file%, %section%, %A_LoopField%Y, % A_ScreenHeight/2	
-		if (%A_LoopField%Y = "" || %A_LoopField%Y < YminScreen || %A_LoopField%Y >= YmaxScreen - 30)
-			%A_LoopField%Y := A_ScreenHeight/2
+		IniRead, %A_LoopField%X, %config_file%, %section%, %A_LoopField%X, %Xcentre%
+		IniRead, %A_LoopField%Y, %config_file%, %section%, %A_LoopField%Y, %Ycentre%	
+		if (%A_LoopField%X != Xcentre || %A_LoopField%Y != Ycentre)
+		&& !isCoordinateBoundedByMonitor(%A_LoopField%X, %A_LoopField%Y)
+			%A_LoopField%X := Xcentre, %A_LoopField%Y := Ycentre
 	}
 
 	IniRead, EnableHideMiniMapHotkey, %config_file%, %section%, EnableHideMiniMapHotkey, 1
