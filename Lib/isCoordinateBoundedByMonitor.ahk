@@ -10,6 +10,8 @@
 
 isCoordinateBoundedByMonitor(x, y)
 {
+    if (x = "" || y = "")
+        Return False
     ; This loop only takes ~0.007 ms
     SysGet, MonitorCount, MonitorCount
     loop, % MonitorCount

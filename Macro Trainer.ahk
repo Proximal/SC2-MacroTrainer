@@ -113,6 +113,7 @@ if (!FileExist("msvcr100.dll") && A_IsCompiled)
 InstallSC2Files() ; Run this before the gosub pre_startup  - otherwise menu items will be missing!
 
 Menu Tray, Add, &Settings && Options, options_menu
+Menu, Tray, Icon, &Settings && Options, %A_Temp%\settings.ico 
 Menu Tray, Add, &Check For Updates, TrayUpdate
 Menu Tray, Add, &Homepage, Homepage
 Menu Tray, Add, &Reload, g_reload
@@ -663,6 +664,8 @@ g_DeselectUnit:
 if (getSelectionCount() > 1)
 {
 	ClickUnitPortrait(0, X, Y, Xpage, Ypage) ; -1 as selection index begins at 0 i.e 1st unit at pos 0 top left
+	if isCastingReticleActive()
+		input.pSend(SC2Keys.key("Cancel"))
 	input.pSend("+{Click " x " " y "}")
 }
 return
@@ -2298,6 +2301,8 @@ Else If A_IsCompiled  ; config file doesn't exist
 	firstRunGUI(ProgramVersion)
 	Gosub pre_startup
 	gosub options_menu
+	; Place traytip here as firstRunGUI() doesn't return until overlay closed, so clicking the tray icon won't do anything
+	TrayTip, Macro Trainer, The options menu can be accessed via the tray icon., 30, 16 ; Disabled sound
 }
 Return	; to the startup procedure
 	
@@ -10305,34 +10310,6 @@ castSelectLoadedTransport()
 }
 
 
-
-;castBlinkStalker()
-if 1
-{
-	numGetSelectionSorted(aSelection)
-	aVitality := []
-	for i, unit in aSelection.units
-	{
-		getCurrentHpAndShields(unit.unitIndex, aHealthAndShields)
-		if (unit.UnitID = aUnitId.Stalker)
-		{
-			unit.Health := aHealthAndShields.Health 
-			unit.Shields := aHealthAndShields.Shields
-			aVitality.insert(unit)
-		}
-	}
-	sort2DArray(aVitality, "Shields", False)
-	msgbox % objtree(aVitality)
-	aBlink := []
-	for i, unit in aVitality
-	{
-		gameTime := getTime()
-		if (unit.shields <= 15 && )
-			aBlink.insert({unitIndex: unit.UnitIndex, lastBlink: ignore })
-	}
-
-}
-return 
 
 /*
 ; testing not being used

@@ -3,7 +3,7 @@
 DebugSCHotkeys(noGUI := False)
 {
 	static log ; to dump to clipboard
-
+	log := ""
 	Gui, DebugSCHotkeys:New  ; destroy previous windows with same name
 	
 	SC2Keys.getAllKeys() ; Ensure that aNonInterruptibleKeys are set
@@ -40,10 +40,8 @@ DebugSCHotkeys(noGUI := False)
 	Gui, Add, Button, Default g__DebugSCHotkeysClipboardDump, Dump To Clipboard
 
 	for i, name in SC2Keys.getReferences()
-	{
 		LV_Add("", name, SC2Keys.StarCraftHotkey(name), SC2Keys.key(name), SC2Keys.key(name, True), SC2Keys.AHKHotkey(name), SC2Keys.AHKHotkey(name, True))
 
-	}
 	loop, % LV_GetCount("Column")
 		LV_ModifyCol(A_Index, "AutoHdr") ; resize contents+header
 	if noGUI

@@ -56,6 +56,7 @@ class SC2Keys
 	{
 		this.aStarCraftHotkeys := [] ; set via the below functions
 		this.aHotkeySuffix := [] ; clear it so that it may be repopulated on new calls
+		this.aKeyReferences := []	
 		this.getHotkeyProfile(file, suffix)
 		if (suffix = "_GLS" || suffix = "_GRS")
 			obj := this.readProfileGrid(file, suffix)
@@ -69,7 +70,7 @@ class SC2Keys
 		}
 		this.aNonInterruptibleKeys := this.getNonInterruptibleKeys()
 		; Always set the refernces as due to this shitty poorly planned class, if user adds a secondary hotkey it needs to be added to the references
-		for reference in this.aSendKeys 	
+		for reference in this.aSendKeys
 			this.aKeyReferences.Insert(reference)
 
 		return this.aSendKeys

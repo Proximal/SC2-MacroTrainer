@@ -17,6 +17,7 @@ modded AHK_H files found in "AHK_H modded Source and Files\AHK used by MacroTrai
 
 
 Compiling:
+
 Run the MacroCompiler.ahk script. 
 Select an appropriate version/update-type.
 Click the compile button.
