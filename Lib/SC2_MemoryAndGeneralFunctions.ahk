@@ -1,4 +1,4 @@
-﻿;lets make all of the offsets super global (cant be fucked putting them in
+;lets make all of the offsets super global (cant be fucked putting them in
 ; a global memory address array)
 Global B_LocalCharacterNameID
 , B_LocalPlayerSlot
@@ -139,7 +139,8 @@ Global B_LocalCharacterNameID
 , B_ReplayFolder
 , B_HorizontalResolution
 , B_VerticalResolution
-
+, P_MinimapPosition
+, O_MinimapPosition
 
 global aUnitModel := []
 , aStringTable := []
@@ -437,46 +438,10 @@ loadMemoryAddresses(base, version := "")
 		 B_HorizontalResolution := base + 0x503F520
 		 B_VerticalResolution := B_HorizontalResolution + 0x4
 
-	/*
-		; There is value reached via a pointer which will change the rendered resolution (even in widowed mode)
-		P_HorizontalResolutionReal := base + 0x01106654
-			01_HorizontalResolutionReal := 0x90 
-		P_VerticalResolutionReal := base + 0x01106654
-			01_VerticalResolutionReal := 0x94
 
-	*/
+		P_MinimapPosition := base + 0x03159A34
+		O_MinimapPosition := [0x4, 0xE0, 0xD4, 0x25C]
 
-	 ; The below offsets are not Currently used but are current for 2.0.8
-
-	/*
-
-	 	P_IsUserCasting := base +	0x0209C3C8					; this is probably something to do with the control card
-			O1_IsUserCasting := 0x364 							; 1 indicates user is casting a spell e.g. fungal, snipe, or is trying to place a structure
-			O2_IsUserCasting := 0x19C 							; auto casting e.g. swarm host displays 1 always 
-			O3_IsUserCasting := 0x228
-			O4_IsUserCasting := 0x168
-
-		P_IsCursorReticleBurrowedInfestor:= base + 0x021857EC			; 1 byte	;seems to return 1 when cursors is reticle but not for inject larva on queen
-			O1_IsCursorReticleBurrowedInfestor := 0x1C 					; also retursn 1 for burrowed swarm hosts though - auto cast? (and fungal - but reticle present for fungal)
-			O2_IsCursorReticleBurrowedInfestor := 0x14 					; 0 when placing a building
-
-		P_IsUserBuildingWithDrone := base + 0x0209C3C8		; gives 1 when drone has basic mutation or advance mutaion/ open
-			01_IsUserBuildingWithDrone := 0x364 				; Note: If still on hatch tech and all advanced building 'greyed out' will give 0!!!!!
-			02_IsUserBuildingWithDrone := 0x17C 				; also gives 1 when actually attempting to place building
-			03_IsUserBuildingWithDrone := 0x228
-			04_IsUserBuildingWithDrone := 0x168
-	*/
-
-	/* Not Currently used
-		B_CameraBounds := base + 0x209A094
-			O_x0Bound := 0x0
-			O_XmBound := 0x8
-			O_Y0Bound := 0x04
-			O_YmBound := 0x0C
-		
-		B_CurrentBaseCam := 0x017AB3C8	;not current
-			P1_CurrentBaseCam := 0x25C		;not current
-	*/	
 	}
 	return versionMatch
 }	
@@ -2870,7 +2835,7 @@ setupMiniMapUnitLists(byRef aMiniMapUnits)
 ; The actual mapleft() functions will not return the true values from the map editor
 ; eg left is 2 when it should be 0
 
-SetMiniMap(byref minimap)
+SetMiniMapOld(byref minimap)
 {	
 	global SC2AdvancedEnlargedMinimap
 
@@ -2960,6 +2925,95 @@ SetMiniMap(byref minimap)
 	minimap.AddToRadius := 1 / minimap.scale	
 	Return
 }
+
+
+updateMinimapPosition()
+{
+	global minimap
+	SetMiniMap(minimap)
+}
+
+
+
+SetMiniMap(byref minimap)
+{	
+	global SC2AdvancedEnlargedMinimap
+
+	enlarged := (SC2AdvancedEnlargedMinimap = 1) 
+	; minimap is a super global (though here it is a local)
+	minimap := []
+
+	minimapScreenPosition(left, right, bottom, top)
+	; x, y screen coordinates of the full minimap UI Border
+	minimap.BorderLeft := left
+	minimap.BorderRight := right
+	minimap.BorderTop  := top
+	minimap.BorderBottom := bottom
+	minimap.BorderWidth := minimap.BorderRight - minimap.BorderLeft
+	minimap.BorderHeight := minimap.BorderBottom - minimap.BorderTop
+
+	;minimap.MapLeft := getmapleft()
+	;minimap.MapRight := getmapright()	
+	;minimap.MapTop := getMaptop()
+	;minimap.MapBottom := getMapBottom()
+	; Using this method is much better when a map side is much larger than the actual visual (playable) size
+	; i.e. map bounds > camera bounds. 
+	; Only the camerabounds +/- margin are actually displayed on the minimap and are playable.
+	; Press 'o' to see these bounds in the map editor
+
+	; Refers to actual playable map positions
+	minimap.MapLeft := getCameraBoundsLeft() - 7
+	minimap.MapRight := getCameraBoundsRight() + 7
+	minimap.MapTop := getCameraBoundsTop() + 4
+	minimap.MapBottom := getCameraBoundsBottom() - 4
+	minimap.MapPlayableWidth := minimap.MapRight - minimap.MapLeft
+	minimap.MapPlayableHeight := minimap.MapTop - minimap.MapBottom	
+	
+	; 23/08/14 not sure if i should round the x/y offset
+	if (minimap.MapPlayableWidth >= minimap.MapPlayableHeight)
+	{
+		round(minimap.scale := minimap.BorderWidth / minimap.MapPlayableWidth, 6)
+		minimap.ScreenLeft := minimap.BorderLeft
+		minimap.ScreenRight := minimap.BorderRight	
+		if minimap.MapPlayableWidth = minimap.MapPlayableHeight
+			Y_offset := 0
+		else Y_offset := round((minimap.BorderHeight - minimap.scale * minimap.MapPlayableHeight) / 2)
+		minimap.ScreenTop := minimap.BorderTop + Y_offset
+		minimap.ScreenBottom := minimap.BorderBottom - Y_offset
+		minimap.Height := minimap.ScreenBottom - minimap.ScreenTop
+		minimap.Width := minimap.BorderWidth 
+
+		minimap.RelativeLeft := 0
+		minimap.RelativeRight := minimap.ScreenRight - minimap.ScreenLeft
+		minimap.RelativeTop := 0
+		minimap.RelativeBottom := minimap.ScreenBottom - minimap.ScreenTop
+
+	}
+	else
+	{
+		minimap.scale := minimap.BorderHeight / minimap.MapPlayableHeight
+		X_Offset := round((minimap.BorderWidth - minimap.scale * minimap.MapPlayableWidth) / 2)
+		minimap.ScreenLeft := minimap.BorderLeft + X_Offset
+		minimap.ScreenRight := minimap.BorderRight - X_Offset	
+		minimap.ScreenTop := minimap.BorderTop
+		minimap.ScreenBottom := minimap.BorderBottom
+		minimap.Height := minimap.BorderHeight 
+		minimap.Width := minimap.ScreenRight - minimap.ScreenLeft	
+
+		minimap.RelativeLeft := 0
+		minimap.RelativeRight := minimap.ScreenRight - minimap.ScreenLeft
+		minimap.RelativeTop := 0
+		minimap.RelativeBottom := minimap.ScreenBottom - minimap.ScreenTop		
+	}
+
+	minimap.UnitMinimumRadius := 1 / minimap.scale
+	minimap.UnitMaximumRadius := 10
+	minimap.AddToRadius := 1 / minimap.scale	
+	Return
+}
+
+
+
 
 initialiseBrushColours(aHexColours, byRef a_pBrushes)
 {
@@ -3517,6 +3571,8 @@ DestroyOverlays()
 }
 
 
+; Use these functions to get co-ordinates for clicking
+; Not for drawing on the minimap
 getUnitMinimapPos(Unit, ByRef  x, ByRef y) ; Note raounded as mouse clicks dont round decimals e.g. 10.9 = 10
 {
 	mapToMinimapPos(x := getUnitPositionX(Unit), y := getUnitPositionY(Unit))
@@ -3532,6 +3588,21 @@ mapToMinimapPos(ByRef  X, ByRef  Y)
 	, Y := round(minimap.Screenbottom - (Y/minimap.MapPlayableHeight * minimap.Height))		
 	return	
 }
+; Use these two functions to draw items on the minimap
+getUnitRelativeMinimapPos(Unit, ByRef  x, ByRef y) ; Note raounded as mouse clicks dont round decimals e.g. 10.9 = 10
+{
+	mapToRelativeMinimapPos(x := getUnitPositionX(Unit), y := getUnitPositionY(Unit))
+	, x := round(x), y := round(y)
+}
+mapToRelativeMinimapPos(ByRef  X, ByRef  Y) 
+{
+	global minimap
+	X -= minimap.MapLeft, Y -= minimap.MapBottom ; correct units position as mapleft/start of map can be >0
+	, X := round(X/minimap.MapPlayableWidth * minimap.Width)
+	, Y := round(1-Y/minimap.MapPlayableHeight * minimap.Height)		
+	return	
+}
+
 /*
 ; I was playing around with this for a long time, and it did make some maps better.
 ; But simply using the camera bounds instead of map bounds fixes a lot of stuff
@@ -5561,4 +5632,216 @@ class upgradeDefinitions
 		return this._aStructuresFromRace[race]
 	}
 }
+; 4 byte ints listed in memory: 28 1066 290 808 (at 1920x1080)
+; an 8 byte value 4578435137564 (first two ints)
+; These are the coordinates of the minimap UI borders
+; relative to the game screen (not the monitor position)
 
+; ***Note: SC memory has left position as 28, but this isn't clickable in SC (it's part of the border overlay)
+; so need to +1 to the returned value!!!!
+; The right edge is stored as 290, but it is really 289 (-1)
+minimapLocation(byRef left, byRef right, byRef bottom, byRef top)
+{
+	static 	o_left := 0x20, o_Bottom := 0x24, o_Right := 0x28, o_Top := 0x2C
+	p := pointer(GameIdentifier, P_MinimapPosition, O_MinimapPosition*)
+	, left := ReadMemory(p + o_left, GameIdentifier)
+	, right := ReadMemory(p + o_Right, GameIdentifier)
+	, bottom := ReadMemory(p + o_Bottom, GameIdentifier)
+	, top := ReadMemory(p + o_Top, GameIdentifier)
+	return 
+}
+
+
+; SC2 Window Modes EXStyle
+; Windowed FullScreen 	:= 0x00040000
+; FullScreen 			:= 0x00040008
+; Windowed 				:= 0x00040100
+ 
+; Breakdown
+; WS_THICKFRAME       =   0x00040000 ; WindowedFullScreen
+; WS_EX_TOPMOST       =   0x00000008
+; WS_EX_WINDOWEDGE    =   0x00000100
+; winset fails when attempting to modify these values
+
+GameWindowStyle()
+{
+	style := WinGet("EXStyle", GameIdentifier)
+	if (style = 0x00040000)
+		return "WindowedFullScreen"
+	else if (style = 0x00040008) 
+		return "FullScreen"
+	else if (style = 0x00040100) 
+		return "Windowed"
+	else return style
+}	
+
+
+systemWindowEdgeSize(byRef widthSizeFrame, byref heightSizeFrame, byRef captionHeight)
+{
+	; SM_CXSIZEFRAME, SM_CYSIZEFRAME: Thickness of the sizing border around the perimeter of a window 
+	; that can be resized, in pixels. SM_CXSIZEFRAME is the width of the horizontal border, 
+	; and SM_CYSIZEFRAME is the height of the vertical border. 
+	; Synonymous with SM_CXFRAME and SM_CYFRAME.
+	
+	; SM_CYCAPTION: Height of a caption area, in pixels.
+
+	SysGet, widthSizeFrame, 32 ; SM_CXSIZEFRAME
+	SysGet, heightSizeFrame, 33 ; SM_CYSIZEFRAME
+	SysGet, captionHeight, 4 ; SM_CYCAPTION
+	return 
+}
+
+minimapScreenPosition(byRef left, byRef right, byRef bottom, byRef top)
+{
+	Wframe := Hframe := Hcaption := 0
+	winGetPos, Xsc, Ysc, Wsc, Hsc, %GameIdentifier%
+	windowMode := GameWindowStyle()
+	if (windowMode = "Windowed")
+		systemWindowEdgeSize(Wframe, Hframe, Hcaption)
+	minimapLocation(left, right, bottom, top)
+	left += Xsc + Wframe + 1 ; + 1 Account for difference in SC stored value
+	right += Xsc + Wframe - 1 ; - 1 Account for difference in SC stored value
+	bottom += Ysc + Hcaption + Hframe ; When windowed the top SC border consists of a caption and frame
+	top += Ysc + Hcaption + Hframe
+	return
+}
+
+
+ClickUnitPortrait2(SelectionIndex=0, byref X=0, byref Y=0, byref Xpage=0, byref Ypage=0, ClickPageTab = 0) ;SelectionIndex begins at 0 topleft unit
+{
+	static AspectRatio, Xu0, Yu0, Size, Xpage1, Ypage1, Ypage6, YpageDistance
+	, pXclient, pYclient, pWclient, pHclient
+	; Should check width/height as possible for those to change but still be same aspect ratio
+	if (AspectRatio != newAspectRatio := getClientAspectRatio(Xclient, Yclient, Wclient, Hclient))
+	|| pXclient != Xclient || pYclient != Yclient || pWclient != Wclient || pHclient !=  Hclient
+	{
+		AspectRatio := newAspectRatio, pXclient := Xclient, pYclient := Yclient, pWclient := Wclient, pHclient := Hclient
+
+		
+		if GameWindowStyle() = "Windowed"
+		{
+			; mouse clients are relative to the games client area (so need to subtract borders)
+			systemWindowEdgeSize(Wframe, Hframe, Hcaption)
+			, minLength := Hclient > Wclient ? Wclient : Hclient
+			, Size := floor((48/957)*minLength) ; 49
+			; Regardless of client width and height, the 6th column always occurs at the centre of the game window
+			; i.e. it's a fixed position
+
+			; subtracting borders/caption in the manner, as I didn't account for the fact that AHKs mousegetpos
+			; returns coordinates which include these edges and therefore all the testing was done with calculations
+			; that include these borders and then remove them at the end.
+			, Xu0 := (Wclient//2) - 5*Size + .25*Size - Wframe, Yu0 := (697/851)*Hclient + size/2 - Hframe - Hcaption
+			, Xpage1 := Xu0 - .75*size, Ypage1 := Yu0 - size//7
+			, Ypage6 := Ypage1 + 2.5*size
+		}
+		else If (AspectRatio = "16:10")
+		{
+			Xu0 := (578/1680)*Wclient, Yu0 := (888/1050)*Hclient	;X,Yu0 = the middle of unit portrait 0 ( the top left unit)
+			Size := (56/1680)*Wclient										;the unit portrait is square 56x56
+			Xpage1 := (528/1680)*Wclient, Ypage1 := (877/1050)*Hclient, Ypage6 := (1016/1050)*Hclient	;Xpage1 & Ypage6 are locations of the Portrait Page numbers 1-5 
+		}	
+		Else If (AspectRatio = "5:4")
+		{	
+			Xu0 := (400/1280)*Wclient, Yu0 := (876/1024)*Hclient
+			Size := (51.57/1280)*Wclient
+			Xpage1 := (352/1280)*Wclient, Ypage1 := (864/1024)*Hclient, Ypage6 := (992/1024)*Hclient
+		}	
+		Else If (AspectRatio = "4:3")
+		{	
+			Xu0 := (400/1280)*Wclient, Yu0 := (812/960)*Hclient
+			Size := (51.14/1280)*Wclient
+			Xpage1 := (350/1280)*Wclient, Ypage1 := (800/960)*Hclient, Ypage6 := (928/960)*Hclient
+		}
+		; If the screen resolution is > game, the game will still probably be running in this aspect ratio (as it will look the best)
+		; It will just not take up the entire screen (assume positioned top left 0,0)
+		Else ;if (AspectRatio = "16:9") 
+		{
+			Xu0 := (692/1920)*Wclient, Yu0 := (916/1080)*Hclient
+			Size := (57/1920)*Wclient	;its square
+			Xpage1 := (638/1920)*Wclient, Ypage1 := (901/1080)*Hclient, Ypage6 := (1044/1080)*Hclient
+
+		}
+
+		YpageDistance := (Ypage6 - Ypage1)/5		;because there are 6 pages - 6-1
+	}
+
+	if ClickPageTab	;use this to return the selection back to a specified page
+	{
+		PageIndex := ClickPageTab - 1
+		Xpage := Xpage1, Ypage := Ypage1 + (PageIndex * YpageDistance)
+		return 1
+	}
+
+	; You can have a max of 6 pages 1-6. 
+	; This function will stuff up if unit portraits higher than 144 units are called. 
+	; So always check the units portrait location before calling
+	PageIndex := floor(SelectionIndex / 24)
+	, SelectionIndex -= 24 * PageIndex
+	, Offset_y := floor(SelectionIndex / 8) 
+	, Offset_x := SelectionIndex -= 8 * Offset_y		
+	, x := Xu0 + (Offset_x *Size), Y := Yu0 + (Offset_y *Size)
+
+	; A delay may be required for selection page to update
+	; could use an overide value - but not sure if the click would register
+	if (PageIndex != getUnitSelectionPage())
+	{
+		Xpage := Xpage1, Ypage := Ypage1 + (PageIndex * YpageDistance)
+		return 1 ; indicating that you must left click the index page first
+	}
+	return 0	
+}
+
+
+clickCommandCard2(position, byRef x, byRef y)
+{
+	static AspectRatio, X0, y0, Size, width, height
+
+	if (AspectRatio != newAspectRatio := getClientAspectRatio(Xclient, Yclient, Wclient, Hclient))
+	|| 1
+	{
+		AspectRatio := newAspectRatio
+
+		windowed := GameWindowStyle() = "Windowed"
+		if windowed
+		{
+			; mouse clients are relative to the games client area (so need to subtract borders)
+			systemWindowEdgeSize(Wframe, Hframe, Hcaption)
+			Hclient -= Hframe + Hcaption
+			Wclient -= Wframe
+		}
+
+		If (AspectRatio = "16:10")
+		{
+			X0 := (1314/1680)*Wclient, y0 := (893/1050)*Hclient		
+			width := (65/1680)*Wclient, height := (66/1050)*Hclient										
+		}	
+		Else If (AspectRatio = "5:4")
+		{	
+			X0 := (944/1280)*Wclient, y0 := (880/1024)*Hclient
+			width := (61/1280)*Wclient, height := (60/1024)*Hclient	
+		}	
+		Else If (AspectRatio = "4:3")
+		{	
+			X0 := (944/1280)*Wclient, y0 := (815/960)*Hclient
+			width := (61/1280)*Wclient, height := (61/960)*Hclient	
+		}
+		; If the screen resolution is > game, the game will still probably be running in this aspect ratio (as it will look the best)
+		; It will just not take up the entire screen (assume positioned top left 0,0)		
+		Else if (AspectRatio = "16:9")
+		{
+			X0 := (1542/1920)*Wclient, y0 := (916/1080)*Hclient
+			width := (68/1920)*Wclient, height := (69/1080)*Hclient	
+		}
+		else 
+		{
+			width := height := (53/878) * (Hclient > Wclient ? Wclient : Hclient)
+			, finalX := Wclient-85,	finalY := Hclient-25
+			, X0 := finalX - 4 * width, Y0 := finalY - 2 * width
+		}
+	}
+	row := floor(position/5)
+	, column := floor(position - 5 * row)
+	, x := X0 + (column * width) + (width//2)
+	, y := y0 + (row * height - height//2)
+	return
+}

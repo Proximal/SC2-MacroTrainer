@@ -19,6 +19,16 @@
 ; Send {blind}A or {blind}{A up}
 ; This will always send a shift even with setcapsLock state off
 
+; **** Ensure 'coordmode, mouse, window' is in effect before calling any method which clicks at the current cursor location
+; otherwise if the game is in true window mode the clicks will be off if the window is not positioned at 0,0
+; **** also ensure XframeOffset and YframeOffset are appropriately set if the application is in true window mode
+; to do this call systemWindowEdgeSize(Wframe, Hframe, Hcaption) 
+; XframeOffset := Wframe
+; YframeOffset := Hcaption + Hframe
+; These things are required, as clicks are relative to the client area which does not include the
+; size of the window frame/border
+
+
 class Input 
 {
 ;	static keys := ["LControl", "RControl", "LAlt", "RAlt", "LShift", "RShift", "LWin", "RWin"
@@ -61,6 +71,8 @@ class Input
 		, 	LastLeftClickX, LastLeftClickY
 		;,	lastKeyboardTick, lastMouseTick
 		, 	Control, WinTitle, WinText,	ExcludeTitle, ExcludeText
+		, XframeOffset := 0
+		, YframeOffset := 0
 
 	; To restore box drags correctly requires a pass through hotkey on lbutton 
 	; So we can determine the x, y location of the start of the box drag (where the left button
@@ -72,8 +84,8 @@ class Input
 	setLastLeftClickPos()
 	{
 		MouseGetPos, x, y
-		input.LastLeftClickX := x
-		input.LastLeftClickY := y
+		input.LastLeftClickX := x - this.XframeOffset
+		input.LastLeftClickY := y - this.YframeOffset
 		return
 	}
 
@@ -183,7 +195,7 @@ class Input
 				; SetCursorPos is so the green box drag will appear in SC.
 				; otherwise the box drag wont appear until the user moves the mouse 
 				MouseGetPos, x, y
-				dllcall("SetCursorPos", "int", x, "int", y)
+				dllcall("SetCursorPos", "int", x-this.XframeOffset, "int", y-this.YframeOffset)
 			}	
 		}
 		return							
@@ -374,6 +386,7 @@ I should look into testing if setting the repeat count actually does anything
 					    if (!numbers.maxindex() || numbers.maxindex() = 1)
 					    {
 					        MouseGetPos, x, y  ; will cause problems if send hex number to insertpClickObject the regex below fixes this
+					        x-=this.XframeOffset, y-=this.YframeOffset
 					        clickCount := numbers.maxindex() ? numbers.1 : 1
 					    }
 					    else if (numbers.maxindex() = 2 || numbers.maxindex() = 3)
@@ -585,7 +598,10 @@ I should look into testing if setting the repeat count actually does anything
 		caseMode := A_StringCaseSense
 		StringCaseSense, Off 
 		if (x = "" || y = "")
+		{
 			MouseGetPos, x, y
+			x-=this.XframeOffset, y-=this.YframeOffset
+		}
 
 		lParam := x & 0xFFFF | (y & 0xFFFF) << 16
 		WParam := 0 ; Needed for the |= to work

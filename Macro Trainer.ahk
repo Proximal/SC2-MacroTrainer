@@ -49,7 +49,7 @@
 	remove log in unit panel for missing upgrades
 
 */
-
+CoordMode, Mouse, Window ; Required for postmessage to get the correct mousepos when game is in true windowed mode
 SetWorkingDir %A_ScriptDir%  ; Ensures a consistent starting directory.
 #SingleInstance force 
 #MaxHotkeysPerInterval 99999	; a user requested feature (they probably have their own macro script)
@@ -336,26 +336,7 @@ if A_OSVersion in WIN_7,WIN_VISTA ; win8 should probably be here too - need read
 	}
 }
 
-; SC2 Window Modes EXStyle
-; Windowed FullScreen 	:= 0x00040000
-; FullScreen 			:= 0x00040008
-; Windowed 				:= 0x00040100
- 
-; Breakdown
-; WS_THICKFRAME       =   0x00040000 ; WindowedFullScreen
-; WS_EX_TOPMOST       =   0x00000008
-; WS_EX_WINDOWEDGE    =   0x00000100
-; winset fails when attempting to modify these values
-
-; 	Style or ExStyle: Retrieves an 8-digit hexadecimal number representing style 
-;	or extended style (respectively) of a window. 
-;	If there are no matching windows, OutputVar is made blank. 
-SC2WindowEXStyles := []
-	SC2WindowEXStyles.WindowedFullScreen := 0x00040000
-	SC2WindowEXStyles.FullScreen := 0x00040008
-	SC2WindowEXStyles.Windowed := 0x00040100
-
-If WinGet("EXStyle", GameIdentifier) = SC2WindowEXStyles.FullScreen
+If GameWindowStyle() = "FullScreen"
 && (DrawMiniMap || DrawAlerts || DrawSpawningRaces
 || DrawIncomeOverlay || DrawResourcesOverlay || DrawArmySizeOverlay
 || DrawWorkerOverlay || DrawIdleWorkersOverlay || DrawLocalPlayerColourOverlay
@@ -842,7 +823,7 @@ mt_pause_resume:
 if (mt_Paused := !mt_Paused)
 {
 	isInMatch := False ; with this clock = 0 when not in game 
-	timeroff("clock", "money", "gas", "scvidle", "supply", "worker", "inject", "Auto_Group", "convertWarpGates", "AutoGroupIdle", "g_autoWorkerProductionCheck", "cast_ForceInject", "auto_inject", "find_races_timer", "advancedInjectTimerFunctionLabel")
+	timeroff("clock", "money", "gas", "scvidle", "supply", "worker", "inject", "Auto_Group", "convertWarpGates", "AutoGroupIdle", "g_autoWorkerProductionCheck", "cast_ForceInject", "auto_inject", "find_races_timer", "advancedInjectTimerFunctionLabel", "monitorGameWindow")
 	inject_timer := 0	;ie so know inject timer is off
 	Try DestroyOverlays()
 	aThreads.MiniMap.ahkPause.1
@@ -870,7 +851,7 @@ time := GetTime()
 if (!time && isInMatch) || (UpdateTimers) ; time=0 outside game
 {	
 	isInMatch := False ; with this clock = 0 when not in game (while in game at 0s clock = 44)	
-	timeroff("money", "gas", "scvidle", "supply", "worker", "inject", "Auto_Group", "AutoGroupIdle", "convertWarpGates", "g_autoWorkerProductionCheck", "cast_ForceInject", "auto_inject", "find_races_timer", "advancedInjectTimerFunctionLabel")
+	timeroff("money", "gas", "scvidle", "supply", "worker", "inject", "Auto_Group", "AutoGroupIdle", "convertWarpGates", "g_autoWorkerProductionCheck", "cast_ForceInject", "auto_inject", "find_races_timer", "advancedInjectTimerFunctionLabel", "monitorGameWindow")
 	; Don't call these thread functions if just updating settings. 
 	; They will be called below. When everything is turned back on.
 	; Resetting the unit detections here probably increased the chances of the warning not
@@ -944,6 +925,7 @@ Else if (time > 0.4 && !isInMatch) && (getLocalPlayerNumber() != 16 || debugGame
 	sleep, -1
 
 	SetMiniMap(minimap) ; Used for clicking - not just drawing
+	monitorGameWindow(True) ; initialise the current size of the windo
 	; If I was using the minerals for anything, then if this was called again due to just settings being changed/restart (minerals would have been used up)
 	aResourceLocations := getMapInfoMineralsAndGeysers() 
 	if WinActive(GameIdentifier)
@@ -1011,6 +993,7 @@ Else if (time > 0.4 && !isInMatch) && (getLocalPlayerNumber() != 16 || debugGame
 	} 																; Hence with these two timers running autogroup will occur at least once every 30 ms, but generally much more frequently
 	if ConvertGatewaysEnable
 		settimer, convertWarpGates, 250
+	settimer, monitorGameWindow, 500, -1
 	UserSavedAppliedSettings := 0
 }
 return
@@ -1951,6 +1934,38 @@ ShellMessage(wParam, lParam)
 				;aThreads.Overlays.AhkLabel.unitPanelOverlayTimer
 				ReDrawOverlays := False
 			}
+		}
+	}
+	return
+}
+monitorGameWindow:
+monitorGameWindow()
+return
+
+monitorGameWindow(initialise := False)
+{
+	global minimap
+	static aPrev := []
+	winGetPos, x, y, w, h, %GameIdentifier%
+	style := GameWindowStyle()
+	;tooltip, % w ", " h
+	if (initialise 
+	|| ((aPrev.x != x || aPrev.y != y || aPrev.w != w || aPrev.h != h || aPrev.style != style) && !(GetKeyState("LButton") ||GetKeyState("RButton"))))
+	{
+		aPrev.x := x, aPrev.y := y, aPrev.w := w, aPrev.h := h,	aPrev.style := style
+		if (style = "Windowed")
+		{
+			systemWindowEdgeSize(Wframe, Hframe, Hcaption)
+			input.XframeOffset := Wframe
+			input.YframeOffset := Hcaption + Hframe
+		}
+		else input.XframeOffset := input.YframeOffset := 0
+
+		if !initialise
+		{
+			sleep 200
+			SetMiniMap(minimap)
+			aThreads.MiniMap.ahkPostFunction("updateMinimapPosition")
 		}
 	}
 	return
@@ -9767,7 +9782,7 @@ clickUnitPortraitsDemo(aUnitPortraitLocations, Modifers := "+")
 
 debugData()
 { 	global aPlayer, O_mTop, GameIdentifier
-	, A_UnitGroupSettings, aLocalPlayer, aUnitName, SC2WindowEXStyles
+	, A_UnitGroupSettings, aLocalPlayer, aUnitName
 	
 	Player := getLocalPlayerNumber()
 	
@@ -9776,16 +9791,7 @@ debugData()
 	DesktopScreenCoordinates(XminVritual, YminVritual, XmaxVritual, YmaxVritual)
 	process, exist, %GameExe%
 	if (pid := ErrorLevel)
-	{
-		windowStyle := WinGet("EXStyle", GameIdentifier)
-		if SC2WindowEXStyles.WindowedFullScreen = windowStyle
-			windowMode := "WindowedFullScreen"
-		else if SC2WindowEXStyles.FullScreen = windowStyle
-			windowMode := "FullScreen"
-		else if SC2WindowEXStyles.Windowed = windowStyle
-			windowMode := "Windowed"
-		else windowMode := "Refer to style"
-	}
+		windowStyle := GameWindowStyle()
 
 
 	DllCall("QueryPerformanceFrequency", "Int64*", Frequency), DllCall("QueryPerformanceCounter", "Int64*", CurrentTick)
@@ -9820,8 +9826,7 @@ debugData()
 	. "SC PID: " pid "`n"
 	. "SC Vr.: " getProcessFileVersion(GameExe) "`n"
 	. "SC Base.: " dectohex(getProcessBaseAddress(GameIdentifier)) "`n"
-	. "Window: " windowStyle "`n"
-	. "Widow Mode: " windowMode   "`n"
+	. "Window Mode: " windowStyle "`n"
 	. "==========================================="
 	. "`n"
 	. "`n"
@@ -13763,3 +13768,54 @@ findClosestNexus(mothershipIndex, byRef minimapX, byRef minimapY)
 	return True, mapToMinimapPos(minimapX, minimapY)
 }
 
+f1::
+setminimap(a)
+objtree(a)
+return 
+
+;CoordMode, Mouse, Screen
+input.pclick(,,"R")
+return 
+ 
+f2::
+minimapLocation(l, r, b, t)
+tootipStuff(l, r, b, t)
+return
+
+!left::
+!right::
+!up::
+!down::
+CoordMode, Mouse, screen
+FineMouseMove(substr(A_ThisHotkey, 2), True)
+
+	Wframe := Hframe := Hcaption := 0
+	winGetPos, Xsc, Ysc, Wsc, Hsc, %GameIdentifier%
+	windowMode := GameWindowStyle()
+	if (windowMode = "Windowed")
+		systemWindowEdgeSize(Wframe, Hframe, Hcaption)
+		MouseGetPos, x, y
+tooltip, % (x + Wframe) ", " y - Hcaption - Hframe, x+25, y+25
+return 
+
+
+tootipStuff(p*)
+{
+	for i, v in p 
+	s .= (s!= "" ? ", " : "") v
+	tooltip, %s%
+}
+
+
+!f1::gosub DrawSCUIOverlay
+
+/*
+887 661
+8 byte 2838973383543
+
+
+w <= 1040
+h <= 856
+
+if w < 1111
+	no space between edge and  selection page

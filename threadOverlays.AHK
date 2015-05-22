@@ -2186,6 +2186,8 @@ strikeOutUpgrade(G, x, y, width, height, currentSmoothingMode := 0)
 drawUIPositions(destroy := False, overlayExist := False)
 {
 	static overlayCreated, hwnd1, mainWindowTitle
+	, hwndMinimap
+
 	
 	if overlayExist 
 		return WinExist("ahk_id " hwnd1)
@@ -2198,9 +2200,10 @@ drawUIPositions(destroy := False, overlayExist := False)
 	}
 	else If (!overlayCreated)
 	{
+		getClientAspectRatio(Xclient, Yclient, Wclient, Hclient)
 		; Create a layered window ;E0x20 click thru (+E0x80000 : must be used for UpdateLayeredWindow to work!) that is always on top (+AlwaysOnTop), has no taskbar entry or caption
 		Gui, UIPositions: -Caption Hwndhwnd1 +E0x20 +E0x80000 +LastFound  +ToolWindow +AlwaysOnTop -DPIScale
-		Gui, UIPositions: Show, % "NA X0 Y0 W" A_ScreenWidth " h" A_ScreenHeight, % getRandomString_Az09(10, 20)
+		Gui, UIPositions: Show, % "NA X" Xclient " Y" Yclient " W" Wclient " h" Hclient, % getRandomString_Az09(10, 20)
 		overlayCreated := True
 		; The overlay is automatically destroyed when the macro Trainer options GUI closes
 		if !mainWindowTitle
@@ -2208,30 +2211,48 @@ drawUIPositions(destroy := False, overlayExist := False)
 			IniRead, version, %config_file%, Version, version, 1 
 			mainWindowTitle := "V" version  " Settings" 
 		}
+		Gui, UIPositionsMinimap: -Caption HwndhwndMinimap +E0x20 +E0x80000 +LastFound +ToolWindow +AlwaysOnTop -DPIScale +OwnerUIPositions
+		Gui, UIPositionsMinimap: Show, NA, % getRandomString_Az09(10, 20)
 	}
-
-	hbm := CreateDIBSection(A_ScreenWidth, A_ScreenHeight)
+	
+loop 
+{
+	getClientAspectRatio(Xclient, Yclient, Wclient, Hclient)
+	hbm := CreateDIBSection(Wclient+1, Hclient+1)
 	, hdc := CreateCompatibleDC()
 	, obm := SelectObject(hdc, hbm)
 	, G := Gdip_GraphicsFromHDC(hdc)	
 	, Gdip_SetSmoothingMode(G, 4)
 	, Gdip_SetInterpolationMode(G, 2)	
 
+	if windowed := GameWindowStyle() = "Windowed"
+	{
+			getClientAspectRatio(Xclient, Yclient, Wclient, Hclient)
+			systemWindowEdgeSize(Wframe, Hframe, Hcaption)
+			xOffset := Wframe	
+			yOffset := Hframe + Hcaption
+			
+	}
+	else xOffset := yOffset := 0
+
+
+
+
 	loop, 24
 	{
-		ClickUnitPortrait(A_Index - 1, x, y)
+		ClickUnitPortrait2(A_Index - 1, x, y), x += xOffset, y += yOffset
 		aSize := StrSplit(gdip_TextToGraphics(G, A_Index - 1, "x"(x) "y"(y)  " Bold Italic cFFFF0000 s14 ", "Arial",,, True), "|")
 		gdip_TextToGraphics(G, A_Index - 1, "x"(x - aSize[3]//2) "y"(y - aSize[4]//2)  " Bold Italic cFFFF0000 s14 ", "Arial")
 	}
 	loop, 6 
 	{
-		ClickUnitPortrait(A_Index - 1, x, y, xPage, yPage, A_index)
+		ClickUnitPortrait2(A_Index - 1, x, y, xPage, yPage, A_index), xPage += xOffset, yPage += yOffset
 		aSize := StrSplit(gdip_TextToGraphics(G, A_Index, "x"(xPage) "y"(yPage)  " Bold Italic cFFFF0000 s14 ", "Arial",,, True), "|")
 		gdip_TextToGraphics(G, A_Index, "x"(xPage - aSize[3]//2) "y"(yPage - aSize[4]//2)  " Bold Italic cFFFF0000 s14 ", "Arial")
 	}
-	loop, 15
+	loop, 15 ; 15
 	{
-		clickCommandCard(A_Index - 1, x, y)
+		clickCommandCard2(A_Index - 1, x, y), x += xOffset, y += yOffset		
 		aSize := StrSplit(gdip_TextToGraphics(G, A_Index - 1, "x"(x) "y"(y)  " Bold Italic cFFFF0000 s14 ", "Arial",,, True), "|")
 		gdip_TextToGraphics(G, A_Index - 1, "x"(x - aSize[3]//2) "y"(y - aSize[4]//2)  " Bold Italic cFFFF0000 s14 ", "Arial")
 	}
@@ -2241,31 +2262,47 @@ drawUIPositions(destroy := False, overlayExist := False)
 	; If game not running (or memory addresses not loaded yet) get time will return 0.0
 	; so don't try to draw the map edges
 	SetMiniMap(aMinimap)
-	if gettime()
-	{
-		pPen := Gdip_CreatePen(0xcFFFF0000, 1)
-		Gdip_DrawLines(G, pPen, aMinimap.ScreenLeft "," aMinimap.ScreenTop "|" 
-							.   aMinimap.ScreenRight "," aMinimap.ScreenTop "|" 
-							.   aMinimap.ScreenRight "," aMinimap.ScreenBottom "|" 
-							.   aMinimap.ScreenLeft "," aMinimap.ScreenBottom "|" 
-							.   aMinimap.ScreenLeft "," aMinimap.ScreenTop) 
-		Gdip_DeletePen(pPen)
-	}
-	; Draw the minimap UI border
-	pPen := Gdip_CreatePen(0xcFF00FFFF, 1)
-	Gdip_DrawLines(G, pPen, aMinimap.BorderLeft "," aMinimap.BorderTop "|" 
-						.   aMinimap.BorderRight "," aMinimap.BorderTop "|" 
-						.   aMinimap.BorderRight "," aMinimap.BorderBottom "|" 
-						.   aMinimap.BorderLeft "," aMinimap.BorderBottom "|" 
-						.   aMinimap.BorderLeft "," aMinimap.BorderTop) 
+
+	; This draws the rectangle around the playable map area
+	pPen := Gdip_CreatePen(0xcFFFF0000, 1)
+	Gdip_DrawLines(G, pPen, aMinimap.ScreenLeft-Xclient "," aMinimap.ScreenTop-Yclient "|" 
+						.   aMinimap.ScreenRight-Xclient "," aMinimap.ScreenTop-Yclient "|" 
+						.   aMinimap.ScreenRight-Xclient "," aMinimap.ScreenBottom-Yclient "|" 
+						.   aMinimap.ScreenLeft-Xclient "," aMinimap.ScreenBottom-Yclient "|" 
+						.   aMinimap.ScreenLeft-Xclient "," aMinimap.ScreenTop-Yclient) 
+	Gdip_DeletePen(pPen)
+
+
+
+	Gdip_DrawRectangle(G, pPen, 0, 0, Wclient, Hclient)
+
 	Gdip_DeletePen(pPen)
 	
+
+	; Draws the rectangle around the entire minimap UI border
+	; This needs its own window, as the coordinates are relative to the minimap UI border	
 	Gdip_DeleteGraphics(G) 
-	, UpdateLayeredWindow(hwnd1, hdc)
-	, SelectObject(hdc, obm) 
-	, DeleteObject(hbm)
-	, DeleteDC(hdc)
-	settimer, destroySCUIPosOverlay, 250
+	UpdateLayeredWindow(hwnd1, hdc, Xclient, Yclient, Wclient+1, Hclient+1)
+	SelectObject(hdc, obm) 
+	DeleteObject(hbm)
+	DeleteDC(hdc)
+	
+	hbm := CreateDIBSection(600, 600), hdc := CreateCompatibleDC(), obm := SelectObject(hdc, hbm)
+	G := Gdip_GraphicsFromHDC(hdc), Gdip_SetSmoothingMode(G, 4), Gdip_SetInterpolationMode(G, 2)	
+	pPen := Gdip_CreatePen(0xcFF00FFFF, 1)
+	Gdip_DrawLines(G, pPen, 0 "," 0 "|" 
+						.   aMinimap.BorderWidth "," 0 "|" 
+						.   aMinimap.BorderWidth "," aMinimap.BorderHeight "|" 
+						.   0 "," aMinimap.BorderHeight "|" 
+						.   0 "," aMinimap.0) 
+	Gdip_DeletePen(pPen), Gdip_DeleteGraphics(G) 
+	UpdateLayeredWindow(hwndMinimap, hdc, aMinimap.BorderLeft, aMinimap.BorderTop, 600, 600)
+	SelectObject(hdc, obm), DeleteObject(hbm), DeleteDC(hdc)
+
+
+	;settimer, destroySCUIPosOverlay, 250
+	sleep 200
+}
 	return
 
 	destroySCUIPosOverlay:
@@ -2274,6 +2311,8 @@ drawUIPositions(destroy := False, overlayExist := False)
 		settimer,, off
 		drawUIPositions(True)
 	}
+
+
 	return
 }
 

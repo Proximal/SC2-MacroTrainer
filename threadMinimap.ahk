@@ -211,13 +211,13 @@ DrawMiniMap()
 	; but im too lazy to convert (drawing pos) the code so that DIB with fully screen height isn't required.
 	; Update: DIB size does not influence draw speed. But it does slow down the call to GraphicsClear
 	; but since creating a new dib every time, this call isn't required!
-	hbm := CreateDIBSection(A_ScreenWidth/4, A_ScreenHeight) 
+	hbm := CreateDIBSection(minimap.Width+1, minimap.Height+1) 
 	, hdc := CreateCompatibleDC()
 	, obm := SelectObject(hdc, hbm)
 	, G := Gdip_GraphicsFromHDC(hdc) ;needs to be here
 	;DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0)	;DO NOT USE. Slow and not required
-	, Region := Gdip_GetClipRegion(G)
-	, Gdip_SetClipRect(G, minimap.ScreenLeft, minimap.ScreenTop, minimap.Width, minimap.Height, 0)
+;	, Region := Gdip_GetClipRegion(G)
+;	, Gdip_SetClipRect(G, minimap.ScreenLeft, minimap.ScreenTop, minimap.Width, minimap.Height, 0)
 
 	if DrawMiniMap
 		drawUnits(G)
@@ -228,9 +228,19 @@ DrawMiniMap()
 		drawAlerts(G)
 	if DrawPlayerCameras
 		Gdip_SetSmoothingMode(G, 4), drawPlayerCameras(G) ; Can't really see a difference between HighQuality and AntiAlias
-	Gdip_DeleteRegion(Region)
-	, Gdip_DeleteGraphics(G)
-	, UpdateLayeredWindow(hwnd1, hdc, 0, 0, A_ScreenWidth/4, A_ScreenHeight, overlayMinimapTransparency) ;only draw on left side of the screen
+/*
+		pPen := Gdip_CreatePen(0xcFFFF0000, 1)
+		Gdip_DrawLines(G, pPen, minimap.RelativeBorderLeft "," minimap.RelativeBorderTop "|" 
+							.   minimap.RelativeBorderRight "," minimap.RelativeBorderTop "|" 
+							.   minimap.RelativeBorderRight "," minimap.RelativeBorderBottom "|" 
+							.   minimap.RelativeBorderLeft "," minimap.RelativeBorderBottom "|" 
+							.   minimap.RelativeBorderLeft "," minimap.RelativeBorderTop) 
+		Gdip_DeletePen(pPen)
+*/
+
+;	Gdip_DeleteRegion(Region)
+	Gdip_DeleteGraphics(G)
+	, UpdateLayeredWindow(hwnd1, hdc, minimap.ScreenLeft, minimap.ScreenTop, minimap.Width+1, minimap.Height+1, overlayMinimapTransparency) ;only draw on left side of the screen
 	, SelectObject(hdc, obm) ; needed else eats ram ; Select the object back into the hdc
 	, DeleteObject(hbm)   ; needed else eats ram 	; Now the bitmap may be deleted
 	, DeleteDC(hdc) ; Also the device context related to the bitmap may be deleted
@@ -272,7 +282,7 @@ drawSpawningRaces(G)
 	loop, parse, EnemyBaseList, |
 	{		
 		type := getUnitType(A_LoopField)
-		getUnitMinimapPos(A_LoopField, BaseX, BaseY)
+		getUnitRelativeMinimapPos(A_LoopField, BaseX, BaseY)
 		if ( type = aUnitID["Nexus"]) 		
 		{	pBitmap := a_pBitmap["Protoss","RacePretty"]
 			Width := Gdip_GetImageWidth(pBitmap), Height := Gdip_GetImageHeight(pBitmap)	
@@ -314,7 +324,7 @@ drawAlerts(G)
 			Else pBitmap := a_pBitmap["GreenX16"]
 		}
 		Else pBitmap := a_pBitmap["RedX16"]
-		getUnitMinimapPos(warning.unitIndex, X, Y)
+		getUnitRelativeMinimapPos(warning.unitIndex, X, Y)
 		, Width := Gdip_GetImageWidth(pBitmap), Height := Gdip_GetImageHeight(pBitmap)	
 		, Gdip_DrawImage(G, pBitmap, (X - Width/2), (Y - Height/2), Width, Height, 0, 0, Width, Height)	
 	} 
@@ -351,7 +361,7 @@ getEnemyUnitsMiniMap(byref aUnitsToDraw)
 	       x := numget(MemDump, UnitAddress + O_uX, "int")/4096
            , y := numget(MemDump, UnitAddress + O_uY, "int")/4096
            , customFlag := True
-	      , mapToMinimapPos(x, y) ; don't round them. As fraction might be important when subtracting scaled width in draw/fill rectangle
+	      , mapToRelativeMinimapPos(x, y) ; don't round them. As fraction might be important when subtracting scaled width in draw/fill rectangle
 
            if (HighlightHallucinations && Filter & aUnitTargetFilter.Hallucination) ; have here so even if non-halluc unit type has custom colour highlight, it will be drawn using halluc colour
            	  Colour := "UnitHighlightHallucinationsColour"
@@ -411,7 +421,7 @@ drawUnitDestinations(pGraphics, byRef aUnitsToDraw, byRef aSpecialAlerts)
 				; as destinations are drawn first, the picture gets drawn over by unit boxes
 				else if (command.ability = "TacNukeStrike")
 				{	
-					mapToMinimapPos(x := command.targetX, y := command.targetY)
+					mapToRelativeMinimapPos(x := command.targetX, y := command.targetY)
 					Width := Gdip_GetImageWidth(pBitmap := a_pBitmap["pingNuke"]), Height := Gdip_GetImageHeight(pBitmap)	
 					;Gdip_DrawImage(pGraphics, pBitmap, (X - Width/2), (Y - Height/2), Width, Height, 0, 0, Width, Height)
 					aSpecialAlerts.Insert( {pBitmap: pBitmap, Width: Width, Height: Height, x: X - Width/2, y : Y - Height/2})
@@ -428,7 +438,7 @@ drawUnitDestinations(pGraphics, byRef aUnitsToDraw, byRef aSpecialAlerts)
 					x := unit.x, y := unit.y 	
 				Else 
 					x := targetX, y := targetY
-				mapToMinimapPos(targetX := command.targetX, targetY := command.targetY)	
+				mapToRelativeMinimapPos(targetX := command.targetX, targetY := command.targetY)	
 				Gdip_DrawLine(pGraphics, a_pPens[colour], x, y, targetX, targetY)
 			}
 		}
@@ -502,7 +512,7 @@ drawPlayerCameras(pGraphics)
 			angle := getPlayerCameraAngle(slotNumber)
 			, xCenter := getPlayerCameraPositionX(slotNumber)
 			, yCenter := getPlayerCameraPositionY(slotNumber)
-			, mapToMinimapPos(xCenter, yCenter)
+			, mapToRelativeMinimapPos(xCenter, yCenter)
 
 			, x1 := xCenter - (19/1920*A_ScreenWidth/minimap.MapPlayableWidth * minimap.Width) * (angle/maxAngle)**2
 			, y1 := yCenter - (13/1080*A_ScreenHeight/minimap.MapPlayableHeight * minimap.Height) * angle/maxAngle
