@@ -211,7 +211,7 @@ DrawMiniMap()
 	; but im too lazy to convert (drawing pos) the code so that DIB with fully screen height isn't required.
 	; Update: DIB size does not influence draw speed. But it does slow down the call to GraphicsClear
 	; but since creating a new dib every time, this call isn't required!
-	hbm := CreateDIBSection(minimap.Width+1, minimap.Height+1) 
+	hbm := CreateDIBSection(minimap.BorderWidth+1, minimap.BorderHeight+1) 
 	, hdc := CreateCompatibleDC()
 	, obm := SelectObject(hdc, hbm)
 	, G := Gdip_GraphicsFromHDC(hdc) ;needs to be here
@@ -228,19 +228,19 @@ DrawMiniMap()
 		drawAlerts(G)
 	if DrawPlayerCameras
 		Gdip_SetSmoothingMode(G, 4), drawPlayerCameras(G) ; Can't really see a difference between HighQuality and AntiAlias
-/*
+
 		pPen := Gdip_CreatePen(0xcFFFF0000, 1)
-		Gdip_DrawLines(G, pPen, minimap.RelativeBorderLeft "," minimap.RelativeBorderTop "|" 
-							.   minimap.RelativeBorderRight "," minimap.RelativeBorderTop "|" 
-							.   minimap.RelativeBorderRight "," minimap.RelativeBorderBottom "|" 
-							.   minimap.RelativeBorderLeft "," minimap.RelativeBorderBottom "|" 
-							.   minimap.RelativeBorderLeft "," minimap.RelativeBorderTop) 
+	Gdip_DrawLines(G, pPen, 0 "," 0 "|" 
+						.   minimap.BorderWidth "," 0 "|" 
+						.   minimap.BorderWidth "," minimap.BorderHeight "|" 
+						.   0 "," minimap.BorderHeight "|" 
+						.   0 "," minimap.0) 
 		Gdip_DeletePen(pPen)
-*/
+
 
 ;	Gdip_DeleteRegion(Region)
 	Gdip_DeleteGraphics(G)
-	, UpdateLayeredWindow(hwnd1, hdc, minimap.ScreenLeft, minimap.ScreenTop, minimap.Width+1, minimap.Height+1, overlayMinimapTransparency) ;only draw on left side of the screen
+	, UpdateLayeredWindow(hwnd1, hdc, minimap.VirtualBorderLeft, minimap.VirtualBorderTop, minimap.BorderWidth+1, minimap.BorderHeight+1, overlayMinimapTransparency) ;only draw on left side of the screen
 	, SelectObject(hdc, obm) ; needed else eats ram ; Select the object back into the hdc
 	, DeleteObject(hbm)   ; needed else eats ram 	; Now the bitmap may be deleted
 	, DeleteDC(hdc) ; Also the device context related to the bitmap may be deleted

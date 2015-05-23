@@ -2943,14 +2943,33 @@ SetMiniMap(byref minimap)
 	; minimap is a super global (though here it is a local)
 	minimap := []
 
-	minimapScreenPosition(left, right, bottom, top)
+	winGetPos, Xsc, Ysc, Wsc, Hsc, %GameIdentifier%
+	if GameWindowStyle() = "Windowed"
+		systemWindowEdgeSize(leftFrame, topFrame)
+	else leftFrame := topFrame:= 0
+	; The coodinates of the entire SC minimap border
+	; relative to the SC client area (doesn't include the SC window frame if present)
+	minimapLocation(left, right, bottom, top)
+
 	; x, y screen coordinates of the full minimap UI Border
-	minimap.BorderLeft := left
-	minimap.BorderRight := right
-	minimap.BorderTop  := top
-	minimap.BorderBottom := bottom
-	minimap.BorderWidth := minimap.BorderRight - minimap.BorderLeft
-	minimap.BorderHeight := minimap.BorderBottom - minimap.BorderTop
+	; Relative to the virtual screen (desktop area)
+	minimap.VirtualBorderLeft := left + Xsc + leftFrame ; + 1
+	minimap.VirtualBorderRight := right + Xsc + leftFrame - 1 ; - 1 Account for difference in SC stored value
+	minimap.VirtualBorderTop  := top + Ysc + topFrame ; When windowed the top SC border consists of a caption and frame
+	minimap.VirtualBorderBottom := bottom + Ysc + topFrame 
+	
+	; Not doing right - left, as need to accunt for fact that minmap is 1 out
+	minimap.BorderWidth := minimap.VirtualBorderRight - minimap.VirtualBorderLeft
+	minimap.BorderHeight := minimap.VirtualBorderBottom - minimap.VirtualBorderTop
+
+	; x, y screen coordinates of the full minimap UI Border
+	; Relative to the SC client area NOT window
+	; i.e. relative to the top left display area of the SC window which isn't a part of the outer window border
+	; or window frame 
+	minimap.ClientBorderLeft := left ;+ 1
+	minimap.ClientBorderRight := right - 1
+	minimap.ClientBorderBottom := bottom
+	minimap.ClientBorderTop := top
 
 	;minimap.MapLeft := getmapleft()
 	;minimap.MapRight := getmapright()	
@@ -2960,7 +2979,6 @@ SetMiniMap(byref minimap)
 	; i.e. map bounds > camera bounds. 
 	; Only the camerabounds +/- margin are actually displayed on the minimap and are playable.
 	; Press 'o' to see these bounds in the map editor
-
 	; Refers to actual playable map positions
 	minimap.MapLeft := getCameraBoundsLeft() - 7
 	minimap.MapRight := getCameraBoundsRight() + 7
@@ -2969,48 +2987,95 @@ SetMiniMap(byref minimap)
 	minimap.MapPlayableWidth := minimap.MapRight - minimap.MapLeft
 	minimap.MapPlayableHeight := minimap.MapTop - minimap.MapBottom	
 	
-	; 23/08/14 not sure if i should round the x/y offset
-	if (minimap.MapPlayableWidth >= minimap.MapPlayableHeight)
-	{
-		round(minimap.scale := minimap.BorderWidth / minimap.MapPlayableWidth, 6)
-		minimap.ScreenLeft := minimap.BorderLeft
-		minimap.ScreenRight := minimap.BorderRight	
-		if minimap.MapPlayableWidth = minimap.MapPlayableHeight
-			Y_offset := 0
-		else Y_offset := round((minimap.BorderHeight - minimap.scale * minimap.MapPlayableHeight) / 2)
-		minimap.ScreenTop := minimap.BorderTop + Y_offset
-		minimap.ScreenBottom := minimap.BorderBottom - Y_offset
-		minimap.Height := minimap.ScreenBottom - minimap.ScreenTop
-		minimap.Width := minimap.BorderWidth 
+	Xoffset := Yoffset := 0
+	minimap.scale := minimap.BorderWidth / minimap.MapPlayableWidth
+	; if MapPlayableWidth = MapPlayableHeight no values need to be changed
+	if (minimap.MapPlayableWidth > minimap.MapPlayableHeight)
+		Yoffset := round((minimap.BorderHeight - minimap.scale * minimap.MapPlayableHeight) / 2)
+	else if (minimap.MapPlayableWidth < minimap.MapPlayableHeight)
+		Xoffset := round((minimap.BorderWidth - minimap.scale * minimap.MapPlayableWidth) / 2)
 
-		minimap.RelativeLeft := 0
-		minimap.RelativeRight := minimap.ScreenRight - minimap.ScreenLeft
-		minimap.RelativeTop := 0
-		minimap.RelativeBottom := minimap.ScreenBottom - minimap.ScreenTop
+	minimap.Width := minimap.BorderWidth - 2*Xoffset
+	minimap.Height := minimap.BorderHeight - 2*Yoffset
 
-	}
-	else
-	{
-		minimap.scale := minimap.BorderHeight / minimap.MapPlayableHeight
-		X_Offset := round((minimap.BorderWidth - minimap.scale * minimap.MapPlayableWidth) / 2)
-		minimap.ScreenLeft := minimap.BorderLeft + X_Offset
-		minimap.ScreenRight := minimap.BorderRight - X_Offset	
-		minimap.ScreenTop := minimap.BorderTop
-		minimap.ScreenBottom := minimap.BorderBottom
-		minimap.Height := minimap.BorderHeight 
-		minimap.Width := minimap.ScreenRight - minimap.ScreenLeft	
+	; Delta of the minimap UI border edge and the displayed/sized map
+	; To be used with drawing the minimap
+	; The minimap must be positioned at the top left of the FULL SC minimap as this is 0 based
+	minimap.DrawingHorizontalOffset := Xoffset		
+	minimap.DrawingVerticalOffset := Yoffset	
 
-		minimap.RelativeLeft := 0
-		minimap.RelativeRight := minimap.ScreenRight - minimap.ScreenLeft
-		minimap.RelativeTop := 0
-		minimap.RelativeBottom := minimap.ScreenBottom - minimap.ScreenTop		
-	}
+	; playable minimap position relative to the entire SC window (includes the window frame/border)
+	; To be used with input calculations that are destined for the AHK send command when coordmode = Window
+	minimap.WindowInputBottom := minimap.ClientBorderBottom + topFrame - Yoffset
+	minimap.WindowInputTop := minimap.ClientBorderTop + topFrame + Yoffset
+	minimap.WindowInputLeft := minimap.ClientBorderLeft + leftFrame + Xoffset
+
+	; playable minimap position relative to the SC client area (doesn't include the window frame/border)
+	; Used for input calculations that are destined for the input class (postmessage)
+	minimap.clientInputBottom := minimap.ClientBorderBottom - Yoffset
+	minimap.clientInputTop := minimap.ClientBorderTop + Yoffset
+	minimap.clientInputLeft := minimap.ClientBorderLeft + Xoffset
+
 
 	minimap.UnitMinimumRadius := 1 / minimap.scale
 	minimap.UnitMaximumRadius := 10
 	minimap.AddToRadius := 1 / minimap.scale	
 	Return
 }
+
+; Use these functions to get co-ordinates for clicking
+; Not for drawing on the minimap
+getUnitMinimapPos(Unit, ByRef  x, ByRef y) ; Note raounded as mouse clicks dont round decimals e.g. 10.9 = 10
+{
+	mapToMinimapPos(x := getUnitPositionX(Unit), y := getUnitPositionY(Unit))
+	, x := round(x), y := round(y)
+}
+; x, y should be rounded for mouse clicks and for drawing.
+; Although the unit drawing function already floors, so it's not really necessary for that.
+mapToMinimapPos(ByRef  X, ByRef  Y) 
+{
+	global minimap
+	X -= minimap.MapLeft, Y -= minimap.MapBottom ; correct units position as mapleft/start of map can be >0
+	, X := round(minimap.clientInputLeft + (X/minimap.MapPlayableWidth * minimap.Width))
+	, Y := round(minimap.clientInputBottom - (Y/minimap.MapPlayableHeight * minimap.Height))		
+	return	
+}
+
+; Use these two functions to draw items on the minimap
+getUnitRelativeMinimapPos(Unit, ByRef  x, ByRef y) ; Note raounded as mouse clicks dont round decimals e.g. 10.9 = 10
+{
+	mapToRelativeMinimapPos(x := getUnitPositionX(Unit), y := getUnitPositionY(Unit))
+	, x := round(x), y := round(y)
+}
+
+mapToRelativeMinimapPos(ByRef  X, ByRef  Y) 
+{
+	global minimap
+	X -= minimap.MapLeft, Y -= minimap.MapBottom ; correct units position as mapleft/start of map can be >0
+	, X := round(minimap["DrawingHorizontalOffset"] + (X/minimap.MapPlayableWidth * minimap.Width))
+	, Y := round(minimap["DrawingVerticalOffset"] + (1-(Y/minimap.MapPlayableHeight)) * minimap.Height)		
+	return	
+}
+
+
+; For AHK click commands. **Coordmode = screen
+getUnitWindowMinimapPos(Unit, ByRef  x, ByRef y) ; Note redounded as mouse clicks dont round decimals e.g. 10.9 = 10
+{
+	mapToWindowMinimapPos(x := getUnitPositionX(Unit), y := getUnitPositionY(Unit))
+	, x := round(x), y := round(y)
+}
+mapToWindowMinimapPos(ByRef  X, ByRef  Y) 
+{
+	global minimap
+	X -= minimap.MapLeft, Y -= minimap.MapBottom ; correct units position as mapleft/start of map can be >0
+	, X := round(minimap["WindowInputLeft"] + (X/minimap.MapPlayableWidth * minimap.Width))
+	, Y := round(minimap["WindowInputBottom"] - (Y/minimap.MapPlayableHeight * minimap.Height))		
+	return	
+}
+
+
+
+
 
 
 
@@ -3571,37 +3636,8 @@ DestroyOverlays()
 }
 
 
-; Use these functions to get co-ordinates for clicking
-; Not for drawing on the minimap
-getUnitMinimapPos(Unit, ByRef  x, ByRef y) ; Note raounded as mouse clicks dont round decimals e.g. 10.9 = 10
-{
-	mapToMinimapPos(x := getUnitPositionX(Unit), y := getUnitPositionY(Unit))
-	, x := round(x), y := round(y)
-}
-; x, y should be rounded for mouse clicks and for drawing.
-; Although the unit drawing function already floors, so it's not really necessary for that.
-mapToMinimapPos(ByRef  X, ByRef  Y) 
-{
-	global minimap
-	X -= minimap.MapLeft, Y -= minimap.MapBottom ; correct units position as mapleft/start of map can be >0
-	, X := round(minimap.ScreenLeft + (X/minimap.MapPlayableWidth * minimap.Width))
-	, Y := round(minimap.Screenbottom - (Y/minimap.MapPlayableHeight * minimap.Height))		
-	return	
-}
-; Use these two functions to draw items on the minimap
-getUnitRelativeMinimapPos(Unit, ByRef  x, ByRef y) ; Note raounded as mouse clicks dont round decimals e.g. 10.9 = 10
-{
-	mapToRelativeMinimapPos(x := getUnitPositionX(Unit), y := getUnitPositionY(Unit))
-	, x := round(x), y := round(y)
-}
-mapToRelativeMinimapPos(ByRef  X, ByRef  Y) 
-{
-	global minimap
-	X -= minimap.MapLeft, Y -= minimap.MapBottom ; correct units position as mapleft/start of map can be >0
-	, X := round(X/minimap.MapPlayableWidth * minimap.Width)
-	, Y := round(1-Y/minimap.MapPlayableHeight * minimap.Height)		
-	return	
-}
+
+
 
 /*
 ; I was playing around with this for a long time, and it did make some maps better.
@@ -5635,7 +5671,7 @@ class upgradeDefinitions
 ; 4 byte ints listed in memory: 28 1066 290 808 (at 1920x1080)
 ; an 8 byte value 4578435137564 (first two ints)
 ; These are the coordinates of the minimap UI borders
-; relative to the game screen (not the monitor position)
+; relative to the SC client area (doesn't include the SC window frame)
 
 ; ***Note: SC memory has left position as 28, but this isn't clickable in SC (it's part of the border overlay)
 ; so need to +1 to the returned value!!!!
@@ -5676,7 +5712,7 @@ GameWindowStyle()
 }	
 
 
-systemWindowEdgeSize(byRef widthSizeFrame, byref heightSizeFrame, byRef captionHeight)
+systemWindowEdgeSize(byRef leftAndRightBorder := "", byref topBorder := "", byRef BottomBorder  := "")
 {
 	; SM_CXSIZEFRAME, SM_CYSIZEFRAME: Thickness of the sizing border around the perimeter of a window 
 	; that can be resized, in pixels. SM_CXSIZEFRAME is the width of the horizontal border, 
@@ -5688,21 +5724,42 @@ systemWindowEdgeSize(byRef widthSizeFrame, byref heightSizeFrame, byRef captionH
 	SysGet, widthSizeFrame, 32 ; SM_CXSIZEFRAME
 	SysGet, heightSizeFrame, 33 ; SM_CYSIZEFRAME
 	SysGet, captionHeight, 4 ; SM_CYCAPTION
+
+	leftAndRightBorder := widthSizeFrame
+	, topBorder := heightSizeFrame + captionHeight
+	, BottomBorder := heightSizeFrame
 	return 
 }
 
-minimapScreenPosition(byRef left, byRef right, byRef bottom, byRef top)
+; Returns various screen coordinates relating to the minimap position
+; screen[side] - value relative to the virtual desktop
+; clientArea[side] - value relative to the SC client area (the visible client window that excludes the client window border/frame if it's present)
+; client[side] - value relative to entire SC client window (i.e. includes the client window border/frame if present)
+minimapPosition(byRef screenleft, byRef screenright, byRef screenbottom, byRef screentop
+, byref clientAreaLeft, byRef clientAreaRight, byRef clientAreaBottom, byRef clientAreaTop
+, byref clientLeft, byRef clientRight, byRef clientBottom, byRef clientTop)
 {
-	Wframe := Hframe := Hcaption := 0
+	leftFrame := topFrame := 0
 	winGetPos, Xsc, Ysc, Wsc, Hsc, %GameIdentifier%
 	windowMode := GameWindowStyle()
 	if (windowMode = "Windowed")
-		systemWindowEdgeSize(Wframe, Hframe, Hcaption)
+		systemWindowEdgeSize(leftFrame, topFrame)
 	minimapLocation(left, right, bottom, top)
-	left += Xsc + Wframe + 1 ; + 1 Account for difference in SC stored value
-	right += Xsc + Wframe - 1 ; - 1 Account for difference in SC stored value
-	bottom += Ysc + Hcaption + Hframe ; When windowed the top SC border consists of a caption and frame
-	top += Ysc + Hcaption + Hframe
+	screenleft += left + Xsc + leftFrame ;+ 1 ; + 1 Account for difference in SC stored value
+	screenright += right + Xsc + leftFrame - 1 ; - 1 Account for difference in SC stored value
+	screenbottom += bottom + Ysc + topFrame ; When windowed the top SC border consists of a caption and frame
+	screentop += top + Ysc + topFrame
+	; can't join this code with the above lines by a comma for some reason
+	clientAreaLeft := left + 1
+	, clientAreaRight := right - 1
+	, clientAreaBottom := bottom
+	, clientAreaTop := top	
+
+	, clientLeft := left + 1 + leftFrame
+	, clientRight := right - 1 + leftFrame
+	, clientBottom := bottom + topFrame
+	, clientTop := top + topFrame
+
 	return
 }
 
@@ -5721,7 +5778,7 @@ ClickUnitPortrait2(SelectionIndex=0, byref X=0, byref Y=0, byref Xpage=0, byref 
 		if GameWindowStyle() = "Windowed"
 		{
 			; mouse clients are relative to the games client area (so need to subtract borders)
-			systemWindowEdgeSize(Wframe, Hframe, Hcaption)
+			systemWindowEdgeSize(leftFrame, topFrame)
 			, minLength := Hclient > Wclient ? Wclient : Hclient
 			, Size := floor((48/957)*minLength) ; 49
 			; Regardless of client width and height, the 6th column always occurs at the centre of the game window
@@ -5730,7 +5787,7 @@ ClickUnitPortrait2(SelectionIndex=0, byref X=0, byref Y=0, byref Xpage=0, byref 
 			; subtracting borders/caption in the manner, as I didn't account for the fact that AHKs mousegetpos
 			; returns coordinates which include these edges and therefore all the testing was done with calculations
 			; that include these borders and then remove them at the end.
-			, Xu0 := (Wclient//2) - 5*Size + .25*Size - Wframe, Yu0 := (697/851)*Hclient + size/2 - Hframe - Hcaption
+			, Xu0 := (Wclient//2) - 5*Size + .25*Size - leftFrame, Yu0 := (697/851)*Hclient + size/2 - topFrame
 			, Xpage1 := Xu0 - .75*size, Ypage1 := Yu0 - size//7
 			, Ypage6 := Ypage1 + 2.5*size
 		}
@@ -5805,9 +5862,9 @@ clickCommandCard2(position, byRef x, byRef y)
 		if windowed
 		{
 			; mouse clients are relative to the games client area (so need to subtract borders)
-			systemWindowEdgeSize(Wframe, Hframe, Hcaption)
-			Hclient -= Hframe + Hcaption
-			Wclient -= Wframe
+			systemWindowEdgeSize(leftFrame, topFrame)
+			Wclient -= leftFrame
+			Hclient -= topFrame
 		}
 
 		If (AspectRatio = "16:10")

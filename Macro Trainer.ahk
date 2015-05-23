@@ -1955,9 +1955,9 @@ monitorGameWindow(initialise := False)
 		aPrev.x := x, aPrev.y := y, aPrev.w := w, aPrev.h := h,	aPrev.style := style
 		if (style = "Windowed")
 		{
-			systemWindowEdgeSize(Wframe, Hframe, Hcaption)
-			input.XframeOffset := Wframe
-			input.YframeOffset := Hcaption + Hframe
+			systemWindowEdgeSize(leftFrame, topFrame)
+			input.XframeOffset := leftFrame
+			input.YframeOffset := topFrame
 		}
 		else input.XframeOffset := input.YframeOffset := 0
 
@@ -13768,13 +13768,18 @@ findClosestNexus(mothershipIndex, byRef minimapX, byRef minimapY)
 	return True, mapToMinimapPos(minimapX, minimapY)
 }
 
-f1::
++f1::
 setminimap(a)
 objtree(a)
 return 
-
+f1::
+u:= getSelectedUnitIndex()
+getUnitWindowMinimapPos(u, x, y)
 ;CoordMode, Mouse, Screen
-input.pclick(,,"R")
+;input.pclick(x,y,"L")
+click, %x%, %y%
+MouseMove, x, y
+tooltip, % x ", " y
 return 
  
 f2::
@@ -13793,9 +13798,10 @@ FineMouseMove(substr(A_ThisHotkey, 2), True)
 	winGetPos, Xsc, Ysc, Wsc, Hsc, %GameIdentifier%
 	windowMode := GameWindowStyle()
 	if (windowMode = "Windowed")
-		systemWindowEdgeSize(Wframe, Hframe, Hcaption)
-		MouseGetPos, x, y
-tooltip, % (x + Wframe) ", " y - Hcaption - Hframe, x+25, y+25
+		systemWindowEdgeSize(left, top)
+	else left := top := 0
+	MouseGetPos, x, y
+tooltip, % (x + left) ", " y - top, x+25, y+25
 return 
 
 

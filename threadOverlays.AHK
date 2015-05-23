@@ -2228,9 +2228,9 @@ loop
 	if windowed := GameWindowStyle() = "Windowed"
 	{
 			getClientAspectRatio(Xclient, Yclient, Wclient, Hclient)
-			systemWindowEdgeSize(Wframe, Hframe, Hcaption)
-			xOffset := Wframe	
-			yOffset := Hframe + Hcaption
+			systemWindowEdgeSize(leftFrame, topFrame)
+			xOffset := leftFrame	
+			yOffset := topFrame
 			
 	}
 	else xOffset := yOffset := 0
@@ -2286,8 +2286,8 @@ loop
 	SelectObject(hdc, obm) 
 	DeleteObject(hbm)
 	DeleteDC(hdc)
-	
-	hbm := CreateDIBSection(600, 600), hdc := CreateCompatibleDC(), obm := SelectObject(hdc, hbm)
+
+	hbm := CreateDIBSection(aMinimap.BorderWidth+1, aMinimap.BorderHeight+1), hdc := CreateCompatibleDC(), obm := SelectObject(hdc, hbm)
 	G := Gdip_GraphicsFromHDC(hdc), Gdip_SetSmoothingMode(G, 4), Gdip_SetInterpolationMode(G, 2)	
 	pPen := Gdip_CreatePen(0xcFF00FFFF, 1)
 	Gdip_DrawLines(G, pPen, 0 "," 0 "|" 
@@ -2296,7 +2296,7 @@ loop
 						.   0 "," aMinimap.BorderHeight "|" 
 						.   0 "," aMinimap.0) 
 	Gdip_DeletePen(pPen), Gdip_DeleteGraphics(G) 
-	UpdateLayeredWindow(hwndMinimap, hdc, aMinimap.BorderLeft, aMinimap.BorderTop, 600, 600)
+	UpdateLayeredWindow(hwndMinimap, hdc, aMinimap.BorderLeft, aMinimap.BorderTop, aMinimap.BorderWidth+1, aMinimap.BorderHeight+1)
 	SelectObject(hdc, obm), DeleteObject(hbm), DeleteDC(hdc)
 
 
