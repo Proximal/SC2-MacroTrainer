@@ -1944,11 +1944,9 @@ return
 
 monitorGameWindow(initialise := False)
 {
-	global minimap
 	static aPrev := []
 	winGetPos, x, y, w, h, %GameIdentifier%
 	style := GameWindowStyle()
-	;tooltip, % w ", " h
 	if (initialise 
 	|| ((aPrev.x != x || aPrev.y != y || aPrev.w != w || aPrev.h != h || aPrev.style != style) && !(GetKeyState("LButton") ||GetKeyState("RButton"))))
 	{
@@ -1960,12 +1958,24 @@ monitorGameWindow(initialise := False)
 			input.YframeOffset := topFrame
 		}
 		else input.XframeOffset := input.YframeOffset := 0
-
+		clickCommandCard(0, 0, 0, True)
+		ClickUnitPortrait(0, 0, 0, 0, 0, 0, True) 
+		if !A_IsCompiled
+			soundplay *-1
 		if !initialise
 		{
-			sleep 200
-			SetMiniMap(minimap)
+			minimapLocation(pLeft, pRight, pBottom, pTop)
+			finish := A_TickCount + 5000
+			loop 
+			{
+				sleep 50
+				minimapLocation(left, right, bottom, top)
+			} until A_TickCount >= finish || pLeft != left || pRight != right || pBottom != bottom || pTop != top
+			sleep 100 ; This isn't required
 			aThreads.MiniMap.ahkPostFunction("updateMinimapPosition")
+			SetMiniMap(minimap)
+			if !A_IsCompiled
+				soundplay *-1
 		}
 	}
 	return
@@ -7984,7 +7994,6 @@ autoWorkerProductionCheck()
 		;dsleep(20)
 		dsleep(10)
 
-
 		; The reason the camera jumps with current code is due to user currently pressing the town hall ctrl group 
 		; e.g. 4, pReleases it, then presses it down again - it effectively creates this 4s4
 
@@ -13768,6 +13777,7 @@ findClosestNexus(mothershipIndex, byRef minimapX, byRef minimapY)
 	return True, mapToMinimapPos(minimapX, minimapY)
 }
 
+/*
 +f1::
 setminimap(a)
 objtree(a)
@@ -13805,13 +13815,6 @@ tooltip, % (x + left) ", " y - top, x+25, y+25
 return 
 
 
-tootipStuff(p*)
-{
-	for i, v in p 
-	s .= (s!= "" ? ", " : "") v
-	tooltip, %s%
-}
-
 
 !f1::gosub DrawSCUIOverlay
 
@@ -13830,3 +13833,19 @@ h <= 856
 
 if w < 1111
 	no space between edge and  selection page
+*/
+/*
+f1::
+sleep 200
+tootipStuff(isUserBusyBuilding(), isCastingReticleActive(), GetKeyState("LButton", "P"), GetKeyState("RButton", "P"),  SC2Keys.checkNonInterruptibleKeys()
+	, getPlayerCurrentAPM() > automationAPMThreshold, A_mtTimeIdle < 50)
+
+return 
+
+tootipStuff(p*)
+{
+	for i, v in p 
+	s .= (s!= "" ? ", " : "") v
+	tooltip, %s%
+}
+

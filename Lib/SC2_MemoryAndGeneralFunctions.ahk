@@ -3000,7 +3000,7 @@ SetMiniMap(byref minimap)
 	; To be used with drawing the minimap
 	; The minimap must be positioned at the top left of the FULL SC minimap as this is 0 based
 	minimap.DrawingHorizontalOffset := Xoffset		
-	minimap.DrawingVerticalOffset := Yoffset	
+	minimap.DrawingVerticalOffset := Yoffset
 
 	; playable minimap position relative to the entire SC window (includes the window frame/border)
 	; To be used with input calculations that are destined for the AHK send command when coordmode = Window
@@ -5342,7 +5342,7 @@ StarcraftInstallPath()
 ; You can have a max of 6 pages 1-6. 
 ; This function will stuff up if unit portraits higher than 144 units are called. 
 ; So always check the units portrait location before calling
-ClickUnitPortrait(SelectionIndex=0, byref X=0, byref Y=0, byref Xpage=0, byref Ypage=0, ClickPageTab = 0) ;SelectionIndex begins at 0 topleft unit
+ClickUnitPortraitOld(SelectionIndex=0, byref X=0, byref Y=0, byref Xpage=0, byref Ypage=0, ClickPageTab = 0) ;SelectionIndex begins at 0 topleft unit
 {
 	static AspectRatio, Xu0, Yu0, Size, Xpage1, Ypage1, Ypage6, YpageDistance
 	; Should check width/height as possible for those to change but still be same aspect ratio
@@ -5414,7 +5414,7 @@ This function returns the x, y co-ordinates for the specific command card button
 */
 
 
-clickCommandCard(position, byRef x, byRef y)
+clickCommandCardOld(position, byRef x, byRef y)
 {
 	static AspectRatio, X0, y0, Size, width, height
 
@@ -5761,18 +5761,14 @@ minimapPosition(byRef screenleft, byRef screenright, byRef screenbottom, byRef s
 	return
 }
 
-
-ClickUnitPortrait2(SelectionIndex=0, byref X=0, byref Y=0, byref Xpage=0, byref Ypage=0, ClickPageTab = 0) ;SelectionIndex begins at 0 topleft unit
+;SelectionIndex begins at 0 topleft unit
+ClickUnitPortrait(SelectionIndex=0, byref X=0, byref Y=0, byref Xpage=0, byref Ypage=0, ClickPageTab = 0, setSize := False) 
 {
-	static AspectRatio, Xu0, Yu0, Size, Xpage1, Ypage1, Ypage6, YpageDistance
-	, pXclient, pYclient, pWclient, pHclient
-	; Should check width/height as possible for those to change but still be same aspect ratio
-	if (AspectRatio != newAspectRatio := getClientAspectRatio(Xclient, Yclient, Wclient, Hclient))
-	|| pXclient != Xclient || pYclient != Yclient || pWclient != Wclient || pHclient !=  Hclient
-	{
-		AspectRatio := newAspectRatio, pXclient := Xclient, pYclient := Yclient, pWclient := Wclient, pHclient := Hclient
+	static Xu0, Yu0, Size, Xpage1, Ypage1, Ypage6, YpageDistance
 
-		
+	if setSize
+	{
+		AspectRatio := getClientAspectRatio(Xclient, Yclient, Wclient, Hclient)
 		if GameWindowStyle() = "Windowed"
 		{
 			; mouse clients are relative to the games client area (so need to subtract borders)
@@ -5847,15 +5843,13 @@ ClickUnitPortrait2(SelectionIndex=0, byref X=0, byref Y=0, byref Xpage=0, byref 
 }
 
 
-clickCommandCard2(position, byRef x, byRef y)
+clickCommandCard(position, byRef x, byRef y, setSize := False)
 {
-	static AspectRatio, X0, y0, Size, width, height
+	static X0, y0, width, height
 
-	if (AspectRatio != newAspectRatio := getClientAspectRatio(Xclient, Yclient, Wclient, Hclient))
-	|| 1
+	if setSize
 	{
-		AspectRatio := newAspectRatio
-
+		AspectRatio := getClientAspectRatio(Xclient, Yclient, Wclient, Hclient)
 		windowed := GameWindowStyle() = "Windowed"
 		if windowed
 		{
@@ -5863,9 +5857,11 @@ clickCommandCard2(position, byRef x, byRef y)
 			systemWindowEdgeSize(leftFrame, topFrame)
 			Wclient -= leftFrame
 			Hclient -= topFrame
+			width := height := (53/878) * (Hclient > Wclient ? Wclient : Hclient)
+			, finalX := Wclient-85,	finalY := Hclient-25
+			, X0 := finalX - 4 * width, Y0 := finalY - 2 * width
 		}
-
-		If (AspectRatio = "16:10")
+		else If (AspectRatio = "16:10")
 		{
 			X0 := (1314/1680)*Wclient, y0 := (893/1050)*Hclient		
 			width := (65/1680)*Wclient, height := (66/1050)*Hclient										
@@ -5882,16 +5878,10 @@ clickCommandCard2(position, byRef x, byRef y)
 		}
 		; If the screen resolution is > game, the game will still probably be running in this aspect ratio (as it will look the best)
 		; It will just not take up the entire screen (assume positioned top left 0,0)		
-		Else if (AspectRatio = "16:9")
+		Else ;if (AspectRatio = "16:9")
 		{
 			X0 := (1542/1920)*Wclient, y0 := (916/1080)*Hclient
 			width := (68/1920)*Wclient, height := (69/1080)*Hclient	
-		}
-		else 
-		{
-			width := height := (53/878) * (Hclient > Wclient ? Wclient : Hclient)
-			, finalX := Wclient-85,	finalY := Hclient-25
-			, X0 := finalX - 4 * width, Y0 := finalY - 2 * width
 		}
 	}
 	row := floor(position/5)

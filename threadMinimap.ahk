@@ -206,19 +206,15 @@ DrawMiniMap()
 		Gui, MiniMapOverlay: -Caption Hwndhwnd1 +E0x20 +E0x80000 +LastFound +ToolWindow +AlwaysOnTop ; Dont need to specify -DPIScale here as calling CreateDIBSection() and updatelayered window with constant values
 		Gui, MiniMapOverlay: Show, NA, %overlayTitle%
 	}
-	; Create a gdi bitmap with width and height of what we are going to draw into it. This is the entire drawing area for everything
-	;only draw on left side of the screen - DIB size influences speed considerably
-	; but im too lazy to convert (drawing pos) the code so that DIB with fully screen height isn't required.
 	; Update: DIB size does not influence draw speed. But it does slow down the call to GraphicsClear
 	; but since creating a new dib every time, this call isn't required!
 	hbm := CreateDIBSection(minimap.BorderWidth+1, minimap.BorderHeight+1) 
-	, hdc := CreateCompatibleDC()
-	, obm := SelectObject(hdc, hbm)
-	, G := Gdip_GraphicsFromHDC(hdc) ;needs to be here
-	;DllCall("gdiplus\GdipGraphicsClear", "UInt", G, "UInt", 0)	;DO NOT USE. Slow and not required
-;	, Region := Gdip_GetClipRegion(G)
-;	, Gdip_SetClipRect(G, minimap.ScreenLeft, minimap.ScreenTop, minimap.Width, minimap.Height, 0)
-
+	, hdc := CreateCompatibleDC(), obm := SelectObject(hdc, hbm), G := Gdip_GraphicsFromHDC(hdc)
+	; This will clip the camera to the playable map region, however the game only clips the camera to the total minimap area,
+	; so this isn't required. Also, the SC map allows half of the unit rectangle to be past the playable map edge (when it's smaller than the entire minimap edge)
+	; so to can't clip playable area if you want to draw it correctly.
+	;, Region := Gdip_GetClipRegion(G)
+	;, Gdip_SetClipRect(G, minimap.DrawingHorizontalOffset, minimap.DrawingVerticalOffset, minimap.Width , minimap.Height, 0)
 	if DrawMiniMap
 		drawUnits(G)
 	Gdip_SetInterpolationMode(G, 2)	
@@ -238,12 +234,10 @@ DrawMiniMap()
 		Gdip_DeletePen(pPen)
 */
 
-;	Gdip_DeleteRegion(Region)
+	; Gdip_DeleteRegion(Region)
 	Gdip_DeleteGraphics(G)
-	, UpdateLayeredWindow(hwnd1, hdc, minimap.VirtualBorderLeft, minimap.VirtualBorderTop, minimap.BorderWidth+1, minimap.BorderHeight+1, overlayMinimapTransparency) ;only draw on left side of the screen
-	, SelectObject(hdc, obm) ; needed else eats ram ; Select the object back into the hdc
-	, DeleteObject(hbm)   ; needed else eats ram 	; Now the bitmap may be deleted
-	, DeleteDC(hdc) ; Also the device context related to the bitmap may be deleted
+	, UpdateLayeredWindow(hwnd1, hdc, minimap.VirtualBorderLeft, minimap.VirtualBorderTop, minimap.BorderWidth+1, minimap.BorderHeight+1, overlayMinimapTransparency) 
+	, SelectObject(hdc, obm), DeleteObject(hbm), DeleteDC(hdc)
 	Return
 }
 

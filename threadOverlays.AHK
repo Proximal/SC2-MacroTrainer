@@ -2240,19 +2240,19 @@ loop
 
 	loop, 24
 	{
-		ClickUnitPortrait2(A_Index - 1, x, y), x += xOffset, y += yOffset
+		ClickUnitPortrait(A_Index - 1, x, y), x += xOffset, y += yOffset
 		aSize := StrSplit(gdip_TextToGraphics(G, A_Index - 1, "x"(x) "y"(y)  " Bold Italic cFFFF0000 s14 ", "Arial",,, True), "|")
 		gdip_TextToGraphics(G, A_Index - 1, "x"(x - aSize[3]//2) "y"(y - aSize[4]//2)  " Bold Italic cFFFF0000 s14 ", "Arial")
 	}
 	loop, 6 
 	{
-		ClickUnitPortrait2(A_Index - 1, x, y, xPage, yPage, A_index), xPage += xOffset, yPage += yOffset
+		ClickUnitPortrait(A_Index - 1, x, y, xPage, yPage, A_index), xPage += xOffset, yPage += yOffset
 		aSize := StrSplit(gdip_TextToGraphics(G, A_Index, "x"(xPage) "y"(yPage)  " Bold Italic cFFFF0000 s14 ", "Arial",,, True), "|")
 		gdip_TextToGraphics(G, A_Index, "x"(xPage - aSize[3]//2) "y"(yPage - aSize[4]//2)  " Bold Italic cFFFF0000 s14 ", "Arial")
 	}
 	loop, 15 ; 15
 	{
-		clickCommandCard2(A_Index - 1, x, y), x += xOffset, y += yOffset		
+		clickCommandCard(A_Index - 1, x, y), x += xOffset, y += yOffset		
 		aSize := StrSplit(gdip_TextToGraphics(G, A_Index - 1, "x"(x) "y"(y)  " Bold Italic cFFFF0000 s14 ", "Arial",,, True), "|")
 		gdip_TextToGraphics(G, A_Index - 1, "x"(x - aSize[3]//2) "y"(y - aSize[4]//2)  " Bold Italic cFFFF0000 s14 ", "Arial")
 	}
