@@ -228,7 +228,7 @@ DrawMiniMap()
 		drawAlerts(G)
 	if DrawPlayerCameras
 		Gdip_SetSmoothingMode(G, 4), drawPlayerCameras(G) ; Can't really see a difference between HighQuality and AntiAlias
-
+/*
 		pPen := Gdip_CreatePen(0xcFFFF0000, 1)
 	Gdip_DrawLines(G, pPen, 0 "," 0 "|" 
 						.   minimap.BorderWidth "," 0 "|" 
@@ -236,7 +236,7 @@ DrawMiniMap()
 						.   0 "," minimap.BorderHeight "|" 
 						.   0 "," minimap.0) 
 		Gdip_DeletePen(pPen)
-
+*/
 
 ;	Gdip_DeleteRegion(Region)
 	Gdip_DeleteGraphics(G)

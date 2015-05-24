@@ -2261,15 +2261,21 @@ loop
 	gdip_TextToGraphics(G, "p", "x"(x - aSize[3]//2) "y"(y - aSize[4]//2)  " Bold Italic cFFFF0000 s14 ", "Arial")
 	; If game not running (or memory addresses not loaded yet) get time will return 0.0
 	; so don't try to draw the map edges
-	SetMiniMap(aMinimap)
+	SetMiniMap(minimap)
 
 	; This draws the rectangle around the playable map area
 	pPen := Gdip_CreatePen(0xcFFFF0000, 1)
-	Gdip_DrawLines(G, pPen, aMinimap.ScreenLeft-Xclient "," aMinimap.ScreenTop-Yclient "|" 
-						.   aMinimap.ScreenRight-Xclient "," aMinimap.ScreenTop-Yclient "|" 
-						.   aMinimap.ScreenRight-Xclient "," aMinimap.ScreenBottom-Yclient "|" 
-						.   aMinimap.ScreenLeft-Xclient "," aMinimap.ScreenBottom-Yclient "|" 
-						.   aMinimap.ScreenLeft-Xclient "," aMinimap.ScreenTop-Yclient) 
+	left := minimap.ClientBorderLeft + xOffset + minimap.DrawingHorizontalOffset
+	right := minimap.ClientBorderRight + xOffset - minimap.DrawingHorizontalOffset
+	top := minimap.ClientBorderTop + yOffset + minimap.DrawingVerticalOffset
+	Bottom := minimap.ClientBorderBottom + yOffset - minimap.DrawingVerticalOffset
+;	msgbox % left " " right "`n" top " " bottom 
+
+	Gdip_DrawLines(G, pPen, left "," top "|" 
+						.  right "," top "|" 
+						.  right "," bottom "|" 
+						.  left "," bottom "|" 
+						.   left "," top) 
 	Gdip_DeletePen(pPen)
 
 
@@ -2287,16 +2293,17 @@ loop
 	DeleteObject(hbm)
 	DeleteDC(hdc)
 
-	hbm := CreateDIBSection(aMinimap.BorderWidth+1, aMinimap.BorderHeight+1), hdc := CreateCompatibleDC(), obm := SelectObject(hdc, hbm)
+	hbm := CreateDIBSection(minimap.BorderWidth+1, minimap.BorderHeight+1), hdc := CreateCompatibleDC(), obm := SelectObject(hdc, hbm)
 	G := Gdip_GraphicsFromHDC(hdc), Gdip_SetSmoothingMode(G, 4), Gdip_SetInterpolationMode(G, 2)	
 	pPen := Gdip_CreatePen(0xcFF00FFFF, 1)
 	Gdip_DrawLines(G, pPen, 0 "," 0 "|" 
-						.   aMinimap.BorderWidth "," 0 "|" 
-						.   aMinimap.BorderWidth "," aMinimap.BorderHeight "|" 
-						.   0 "," aMinimap.BorderHeight "|" 
-						.   0 "," aMinimap.0) 
+						.   minimap.BorderWidth "," 0 "|" 
+						.   minimap.BorderWidth "," minimap.BorderHeight "|" 
+						.   0 "," minimap.BorderHeight "|" 
+						.   0 "," 0) 
+
 	Gdip_DeletePen(pPen), Gdip_DeleteGraphics(G) 
-	UpdateLayeredWindow(hwndMinimap, hdc, aMinimap.BorderLeft, aMinimap.BorderTop, aMinimap.BorderWidth+1, aMinimap.BorderHeight+1)
+	UpdateLayeredWindow(hwndMinimap, hdc, minimap.VirtualBorderLeft, minimap.VirtualBorderTop, minimap.BorderWidth+1, minimap.BorderHeight+1)
 	SelectObject(hdc, obm), DeleteObject(hbm), DeleteDC(hdc)
 
 

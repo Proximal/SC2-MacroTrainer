@@ -13815,6 +13815,11 @@ tootipStuff(p*)
 
 !f1::gosub DrawSCUIOverlay
 
+^f1::
+SetMiniMapOld(a)
+objtree(a, "Old")
+return
+
 /*
 887 661
 8 byte 2838973383543

@@ -2937,12 +2937,8 @@ updateMinimapPosition()
 
 SetMiniMap(byref minimap)
 {	
-	global SC2AdvancedEnlargedMinimap
-
-	enlarged := (SC2AdvancedEnlargedMinimap = 1) 
 	; minimap is a super global (though here it is a local)
 	minimap := []
-
 	winGetPos, Xsc, Ysc, Wsc, Hsc, %GameIdentifier%
 	if GameWindowStyle() = "Windowed"
 		systemWindowEdgeSize(leftFrame, topFrame)
@@ -2950,23 +2946,19 @@ SetMiniMap(byref minimap)
 	; The coodinates of the entire SC minimap border
 	; relative to the SC client area (doesn't include the SC window frame if present)
 	minimapLocation(left, right, bottom, top)
-
 	; x, y screen coordinates of the full minimap UI Border
 	; Relative to the virtual screen (desktop area)
-	minimap.VirtualBorderLeft := left + Xsc + leftFrame ; + 1
+	minimap.VirtualBorderLeft := left + Xsc + leftFrame + 1
 	minimap.VirtualBorderRight := right + Xsc + leftFrame - 1 ; - 1 Account for difference in SC stored value
 	minimap.VirtualBorderTop  := top + Ysc + topFrame ; When windowed the top SC border consists of a caption and frame
 	minimap.VirtualBorderBottom := bottom + Ysc + topFrame 
-	
-	; Not doing right - left, as need to accunt for fact that minmap is 1 out
+	; Not doing right - left, as need to account for the fact that minmap is 1 out
 	minimap.BorderWidth := minimap.VirtualBorderRight - minimap.VirtualBorderLeft
 	minimap.BorderHeight := minimap.VirtualBorderBottom - minimap.VirtualBorderTop
-
 	; x, y screen coordinates of the full minimap UI Border
 	; Relative to the SC client area NOT window
-	; i.e. relative to the top left display area of the SC window which isn't a part of the outer window border
-	; or window frame 
-	minimap.ClientBorderLeft := left ;+ 1
+	; i.e. relative to the top left display area of the SC window which isn't a part of the outer window border or window frame 
+	minimap.ClientBorderLeft := left + 1
 	minimap.ClientBorderRight := right - 1
 	minimap.ClientBorderBottom := bottom
 	minimap.ClientBorderTop := top
@@ -2975,7 +2967,7 @@ SetMiniMap(byref minimap)
 	;minimap.MapRight := getmapright()	
 	;minimap.MapTop := getMaptop()
 	;minimap.MapBottom := getMapBottom()
-	; Using this method is much better when a map side is much larger than the actual visual (playable) size
+	; Using this new method is much better when a map side is much larger than the actual visual (playable) size
 	; i.e. map bounds > camera bounds. 
 	; Only the camerabounds +/- margin are actually displayed on the minimap and are playable.
 	; Press 'o' to see these bounds in the map editor
@@ -2987,14 +2979,20 @@ SetMiniMap(byref minimap)
 	minimap.MapPlayableWidth := minimap.MapRight - minimap.MapLeft
 	minimap.MapPlayableHeight := minimap.MapTop - minimap.MapBottom	
 	
-	Xoffset := Yoffset := 0
-	minimap.scale := minimap.BorderWidth / minimap.MapPlayableWidth
-	; if MapPlayableWidth = MapPlayableHeight no values need to be changed
-	if (minimap.MapPlayableWidth > minimap.MapPlayableHeight)
-		Yoffset := round((minimap.BorderHeight - minimap.scale * minimap.MapPlayableHeight) / 2)
+	if (minimap.MapPlayableWidth >= minimap.MapPlayableHeight)
+	{
+		minimap.scale := minimap.BorderWidth / minimap.MapPlayableWidth
+		Xoffset := 0
+		if minimap.MapPlayableWidth = minimap.MapPlayableHeight
+			Yoffset := 0
+		else Yoffset := round((minimap.BorderHeight - minimap.scale * minimap.MapPlayableHeight) / 2)
+	}
 	else if (minimap.MapPlayableWidth < minimap.MapPlayableHeight)
-		Xoffset := round((minimap.BorderWidth - minimap.scale * minimap.MapPlayableWidth) / 2)
-
+	{
+		minimap.scale := minimap.BorderHeight / minimap.MapPlayableHeight
+		Xoffset := round((minimap.BorderWidth - minimap.scale * minimap.MapPlayableWidth) / 2) ; perhaps this should be floor
+		Yoffset := 0
+	}
 	minimap.Width := minimap.BorderWidth - 2*Xoffset
 	minimap.Height := minimap.BorderHeight - 2*Yoffset
 
