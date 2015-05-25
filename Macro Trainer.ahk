@@ -144,6 +144,7 @@ aThreads.Speech.ahktextdll(generateSpeechScript())
 
 global aLocalUnitData := []
 global localUnitDataCriSec := CriticalSection()
+global g_aGameWindow := CriticalObject()
 
 start:
 global config_file := "MT_Config.ini"
@@ -933,7 +934,7 @@ Else if (time > 0.4 && !isInMatch) && (getLocalPlayerNumber() != 16 || debugGame
 	if (MaxWindowOnStart && time < 5 && !WinActive(GameIdentifier)) 
 	{	
 		WinActivate, %GameIdentifier%
-		MouseMove A_ScreenWidth/2, A_ScreenHeight/2
+		MouseMove, g_aGameWindow.Width//2, g_aGameWindow.Height//2
 		WinNotActiveAtStart := 1
 	}
 	setupMiniMapUnitLists(aMiniMapUnits)
@@ -1034,7 +1035,7 @@ return
 ; lower chrono order is chronoed first
 Cast_ChronoStructure(aStructuresToChrono, selectionMode := False)
 {	GLOBAL aUnitID, CG_control_group, chrono_key, CG_nexus_Ctrlgroup_key, CG_chrono_remainder, ChronoBoostSleep
-	, HumanMouse, HumanMouseTimeLo, HumanMouseTimeHi, NextSubgroupKey, AutomationProtossCtrlGroup
+	,  NextSubgroupKey, AutomationProtossCtrlGroup
 
 	oStructureToChrono := [], a_gatewaysConvertingToWarpGates := [], a_WarpgatesOnCoolDown := []
 
@@ -1111,7 +1112,6 @@ Cast_ChronoStructure(aStructuresToChrono, selectionMode := False)
 	If !oStructureToChrono.maxIndex()
 		return
 	
-	MouseGetPos, start_x, start_y
 	HighlightedGroup := getSelectionHighlightedGroup()
 	selectionPage := getUnitSelectionPage()
 	max_chronod := nexus_chrono_count - CG_chrono_remainder
@@ -1125,12 +1125,8 @@ Cast_ChronoStructure(aStructuresToChrono, selectionMode := False)
 		sleep, %ChronoBoostSleep%
 		getUnitMinimapPos(object.unit, click_x, click_y)
 		input.pSend(SC2Keys.key("TimeWarp/Nexus"))
-		If HumanMouse
-			MouseMoveHumanSC2("x" click_x "y" click_y "t" rand(HumanMouseTimeLo, HumanMouseTimeHi))
 		Input.pClick(click_x, click_y)
 	}
-	If HumanMouse
-		MouseMoveHumanSC2("x" start_x "y" start_y "t" rand(HumanMouseTimeLo, HumanMouseTimeHi))
 	elapsedTimeGrouping := stopwatch(timerID)	
 	if (elapsedTimeGrouping < 20)
 		sleep, % ceil(20 - elapsedTimeGrouping)	
@@ -1468,15 +1464,12 @@ cast_inject:
 		;menu is always 1 regardless if chat is up
 		;chat is 0 when  menu is in focus
 	Thread, NoTimers, true  ;cant use critical with input buffer, as prevents hotkey threads launching and hence tracking input				
-	MouseGetPos, start_x, start_y
 	;input.hookBlock(True, True)
 	MTBlockInput, On
 	if input.releaseKeys(True)
 		sleep 60
 	else sleep 40
 	castInjectLarva(auto_inject, 0, auto_inject_sleep) ;ie nomral injectmethod
-	If HumanMouse
-		MouseMoveHumanSC2("x" start_x "y" start_y "t" HumanMouseTimeLo)
 	;input.hookBlock()
 	MTBlockInput, Off
 	Thread, NoTimers, false
@@ -1944,26 +1937,41 @@ return
 
 monitorGameWindow(initialise := False)
 {
-	static aPrev := []
-	winGetPos, x, y, w, h, %GameIdentifier%
+	aspectRatio := getClientAspectRatio(x, y, w, h, trueAspectRatio)
 	style := GameWindowStyle()
 	if (initialise 
-	|| ((aPrev.x != x || aPrev.y != y || aPrev.w != w || aPrev.h != h || aPrev.style != style) && !(GetKeyState("LButton") ||GetKeyState("RButton"))))
+	|| ((g_aGameWindow.X != x || g_aGameWindow.Y != y || g_aGameWindow.Width != w || g_aGameWindow.Height != h || g_aGameWindow.style != style) && !(GetKeyState("LButton") ||GetKeyState("RButton"))))
 	{
-		aPrev.x := x, aPrev.y := y, aPrev.w := w, aPrev.h := h,	aPrev.style := style
 		if (style = "Windowed")
-		{
-			systemWindowEdgeSize(leftFrame, topFrame)
-			input.XframeOffset := leftFrame
-			input.YframeOffset := topFrame
-		}
-		else input.XframeOffset := input.YframeOffset := 0
+			systemWindowEdgeSize(leftFrameWidth, topFrameHeight, bottomFrameHeight)
+		else leftFrameWidth := topFrameHeight := bottomFrameHeight := 0
+		
+		input.XframeOffset := leftFrameWidth
+		input.YframeOffset := topFrameHeight
+		; set these values before restting the position of the command cards/unit selection
+		g_aGameWindow.AspectRatio := aspectRatio
+		, g_aGameWindow.trueAspectRatio := trueAspectRatio
+		, g_aGameWindow.X := x, g_aGameWindow.Y := y
+		, g_aGameWindow.Width := w, g_aGameWindow.Height := h 
+		, g_aGameWindow.style := style
+		, g_aGameWindow.ClientAreaWidth := w - 2*leftFrameWidth
+		, g_aGameWindow.ClientAreaHeight := h - topFrameHeight - bottomFrameHeight
+		, g_aGameWindow.leftFrameWidth := leftFrameWidth
+		, g_aGameWindow.topFrameHeight := topFrameHeight
+		, g_aGameWindow.bottomFrameHeight := bottomFrameHeight
+
+		; Reset the position values for the command cards and unit portraits
 		clickCommandCard(0, 0, 0, True)
-		ClickUnitPortrait(0, 0, 0, 0, 0, 0, True) 
-		if !A_IsCompiled
-			soundplay *-1
+		ClickUnitPortrait(0, 0, 0, 0, 0, 0, True)
+		getCargoPos(0, 0, 0, True) 
+		;if !A_IsCompiled
+		;	soundplay *-1
+		
+
+
 		if !initialise
 		{
+			; These values take a little while to change after the size has been altered. Especially when going from windowed -> windowed fullscreen
 			minimapLocation(pLeft, pRight, pBottom, pTop)
 			finish := A_TickCount + 5000
 			loop 
@@ -1974,8 +1982,8 @@ monitorGameWindow(initialise := False)
 			sleep 100 ; This isn't required
 			aThreads.MiniMap.ahkPostFunction("updateMinimapPosition")
 			SetMiniMap(minimap)
-			if !A_IsCompiled
-				soundplay *-1
+		;	if !A_IsCompiled
+		;		soundplay *-1
 		}
 	}
 	return
@@ -8695,7 +8703,6 @@ getCamCenteredUnit(UnitList) ; |delimited ** ; needs a minimum of 70+ ms to upda
 castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendWhileBlocked("^" CG_control_group)
 {	global
 	LOCAL 	click_x, click_y, BaseCount, oSelection, SkipUsedQueen, MissedHatcheries, QueenCount, FoundQueen
-			, start_x, start_y
 			, QueenMultiInjects, MaxInjects, CurrentQueenInjectCount
 			, HatchIndex, Dx1, Dy1, Dx2, Dy2, QueenIndex
 			, stopWatchCtrlID, Xpage, Ypage, x, y
@@ -8790,8 +8797,6 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 						FoundQueen := CurrentHatch.NearbyQueen := Queen.HasInjected := 1 																		
 						input.pSend(SC2Keys.key("QueenSpawnLarva"))
 						click_x := CurrentHatch.MiniMapX, click_y := CurrentHatch.MiniMapY
-						If HumanMouse
-							MouseMoveHumanSC2("x" click_x "y" click_y "t" rand(HumanMouseTimeLo, HumanMouseTimeHi))
 						Input.pClick(click_x, click_y)
 						if sleepTime
 							sleep % ceil(sleepTime * rand(1, Inject_SleepVariance)) ; eg rand(1, 1.XXXX) as the second parameter will always have a decimal point, dont have to worry about it returning just full integers eg 1 or 2 or 3
@@ -8845,9 +8850,6 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 						}
 						input.pSend(SC2Keys.key("QueenSpawnLarva")) ;always need to send this, otherwise might left click minimap for somereason
 						click_x := CurrentHatch.MiniMapX, click_y := CurrentHatch.MiniMapY
-						If HumanMouse
-							MouseMoveHumanSC2("x" click_x "y" click_y "t" rand(HumanMouseTimeLo, HumanMouseTimeHi))
-					;	MTclick(click_x, click_y, "Left", "+")
 						input.psend("+{click " click_x ", " click_y "}")
 						if sleepTime
 							sleep % ceil(sleepTime * rand(1, Inject_SleepVariance))
@@ -8941,41 +8943,25 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 		HatchIndex := getBuildingList(aUnitID["Hatchery"], aUnitID["Lair"], aUnitID["Hive"])
 		if Inject_RestoreScreenLocation
 			input.pSend(setCameraHotkey)
-		If (drag_origin = "Right" OR drag_origin = "R") And !HumanMouse ;so left origin - not case sensitive
-			Dx1 := A_ScreenWidth-25, Dy1 := 45, Dx2 := 35, Dy2 := A_ScreenHeight-240	
+		If (drag_origin = "Right" || drag_origin = "R")
+			Dx1 := g_aGameWindow.ClientAreaWidth-25, Dy1 := 45, Dx2 := 35, Dy2 := g_aGameWindow.ClientAreaHeight-240	
 		Else ;left origin
-			Dx1 := 25, Dy1 := 25, Dx2 := A_ScreenWidth-40, Dy2 := A_ScreenHeight-240
+			Dx1 := 25, Dy1 := 25, Dx2 := g_aGameWindow.ClientAreaWidth-40, Dy2 := g_aGameWindow.ClientAreaHeight-240
 		loop, % getPlayerBaseCameraCount()	
 		{
 			input.pSend(SC2Keys.key("TownCamera"))
 			sleep % ceil( (sleepTime/2) * rand(1, Inject_SleepVariance))	;need a sleep somerwhere around here to prevent walkabouts...sc2 not registerings box drag?
 			if isCastingReticleActive() ; i.e. cast larva
 				input.pSend(SC2Keys.key("Cancel")) ; (deselects queen larva) (useful on an already injected hatch) 
-			If (drag_origin = "Right" OR drag_origin = "R") And HumanMouse ;so left origin - not case sensitive
-				Dx1 := A_ScreenWidth-15-rand(0,(360/1920)*A_ScreenWidth), Dy1 := 45+rand(5,(200/1080)*A_ScreenHeight), Dx2 := 40+rand((-5/1920)*A_ScreenWidth,(300/1920)*A_ScreenWidth), Dy2 := A_ScreenHeight-240-rand((-5/1080)*A_ScreenHeight,(140/1080)*A_ScreenHeight)
-			Else If (drag_origin = "Left" OR drag_origin = "L") AND HumanMouse ;left origin
-				Dx1 := 25+rand((0/1920)*A_ScreenWidth,(360/1920)*A_ScreenWidth), Dy1 := 25+rand((-5/1080)*A_ScreenHeight,(200/1080)*A_ScreenHeight), Dx2 := A_ScreenWidth-40-rand((-5/1920)*A_ScreenWidth,(300/1920)*A_ScreenWidth), Dy2 := A_ScreenHeight-240-rand((-5/1080)*A_ScreenHeight,(140/1080)*A_ScreenHeight)					
-			If HumanMouse
-			{
-				MouseMoveHumanSC2("x" Dx1 "y" Dy1 "t" rand(HumanMouseTimeLo, HumanMouseTimeHi))
-				input.pSend("{click down}")
-				MouseMoveHumanSC2("x" Dx2 "y" Dy2 "t" rand(HumanMouseTimeLo, HumanMouseTimeHi))
-				input.pSend("{click up}")
-			}
-			Else 
-				input.pSend("{click D " Dx1 " " Dy1 "}{Click U " Dx2 " " Dy2 "}")
+	 
+			input.pSend("{click D " Dx1 " " Dy1 "}{Click U " Dx2 " " Dy2 "}")
 			sleep % ceil( (sleepTime/2) * rand(1, Inject_SleepVariance))
 			if (QueenIndex := filterSlectionTypeByEnergy(25, aUnitID["Queen"]))
 			{																	
 				input.pSend(SC2Keys.key("QueenSpawnLarva"))							;have to think about macro hatch though
-				click_x := A_ScreenWidth/2 , click_y := A_ScreenHeight/2		;due to not using Shift - must have 2 queens if on same screen
+																				;due to not using Shift - must have 2 queens if on same screen
 																				;as will inject only 1 (as it will go to 1 hatch, then get the order to go the other before injecting the 1s)
-				If HumanMouse
-				{	click_x += rand((-75/1920)*A_ScreenWidth,(75/1080)*A_ScreenHeight), click_y -= 100+rand((-75/1920)*A_ScreenWidth,(75/1080)*A_ScreenHeight)
-					MouseMoveHumanSC2("x" click_x  "y" click_y "t" rand(HumanMouseTimeLo, HumanMouseTimeHi))
-					input.pSend("{click Left " click_x ", " click_y "}")
-				}
-				Else Input.pClick(click_x, click_y)
+				Input.pClick(g_aGameWindow.ClientAreaWidth/2, g_aGameWindow.ClientAreaHeight/2)
 			}
 		}	
 		if Inject_RestoreScreenLocation
@@ -9141,7 +9127,7 @@ selectArmy()
 	; If i use the box drag method, then I will need to also remove workers and any allied units (left/shared control)
 	If SelectArmyOnScreen
 	{
-		input.pSend("{click D " 0 " " 0 "}{Click U " A_ScreenWidth " "  A_ScreenHeight "}") ;  A_ScreenHeight-240 "}")
+		input.pSend("{click D " 0 " " 0 "}{Click U " g_aGameWindow.ClientAreaWidth " "  g_aGameWindow.ClientAreaHeight "}") ;  A_ScreenHeight-240 "}")
 		dSleep(80) 
 	}
 	else if (getArmyUnitCount() != getSelectionCount())
@@ -9282,7 +9268,7 @@ quickSelect(aDeselect)
 		{	
 			; If reticle was present, no delay is needed between sending escape and box dragging. 
 			; Tested by lowering CPU speed to 1.6G Hz and running linx with this function 					
-			input.pSend("{click D " 0 " " 0 "}{Click U " A_ScreenWidth " "  A_ScreenHeight "}") ;  A_ScreenHeight-240 "}")
+			input.pSend("{click D " 0 " " 0 "}{Click U " g_aGameWindow.ClientAreaWidth " "  g_aGameWindow.ClientAreaHeight "}") ;  A_ScreenHeight-240 "}")
 			dSleep(80) 		
 		}
 		else if instr(aDeselect.BaseSelection, "Control Group")
@@ -10287,7 +10273,7 @@ castSelectLoadedTransport()
 	input.pReleaseKeys()
 
 	;input.pSend("{click D " A_ScreenWidth-25 " " 45 "}{Click U " 35 " "  A_ScreenHeight-30 "}") ;  A_ScreenHeight-240 "}")
-	input.pClickDrag(0, 0, A_ScreenWidth, A_ScreenHeight)
+	input.pClickDrag(0, 0, g_aGameWindow.ClientAreaWidth, g_aGameWindow.ClientAreaHeight)
 	dsleep(110)
 	if numGetSelectionSorted(aSelected)
 	{
@@ -10906,8 +10892,10 @@ launchMiniMapThread()
 			FileInstall, bin\threadMiniMapFull.ahk, Ignore	
 		if A_IsCompiled
 			miniMapScript := LoadScriptString("bin\threadMiniMapFull.ahk")
-		else FileRead, miniMapScript, threadMiniMap.ahk			
-		aThreads.MiniMap.ahktextdll(GlobalVarsScript("aThreads", 0, aThreads) miniMapScript,, localUnitDataCriSec " " &aLocalUnitData)
+		else FileRead, miniMapScript, threadMiniMap.ahk		
+		GlobalVarsScript("aThreads", 0, aThreads)	
+		GlobalVarsScript("g_aGameWindow", 0, g_aGameWindow)	
+		aThreads.MiniMap.ahktextdll(GlobalVarsScript() miniMapScript,, localUnitDataCriSec " " &aLocalUnitData)
 	}
 	Return 
 }
@@ -10922,8 +10910,10 @@ launchOverlayThread()
 			FileInstall, bin\threadOverlaysFull.ahk, Ignore	
 		if A_IsCompiled
 			overlayScript := LoadScriptString("bin\threadOverlaysFull.ahk")
-		else FileRead, overlayScript, threadOverlays.ahk	
-		aThreads.Overlays.ahktextdll(GlobalVarsScript("aThreads", 0, aThreads) overlayScript) ; takes 30-40 ms to become ready()
+		else FileRead, overlayScript, threadOverlays.ahk
+		GlobalVarsScript("aThreads", 0, aThreads)	
+		GlobalVarsScript("g_aGameWindow", 0, g_aGameWindow)				
+		aThreads.Overlays.ahktextdll(GlobalVarsScript() overlayScript) ; takes 30-40 ms to become ready()
 	}
 	Return 
 }
@@ -11127,59 +11117,6 @@ isUnitInView(unit)
 	Return r
 }
 
-return 
-;clipboard := ""
-unit := getSelectedUnitIndex()
-	uX := getUnitPositionX(unit)
-	, uY:= getUnitPositiony(unit)
-	, cX := getPlayerCameraPositionX()
-	, cY := getPlayerCameraPositionY()
-;clipboard .= cX ", " cY "`n" uX ", " uY "`n==============="
-return 
-
-
-
-;a1 := input.pSend("+{click D L 0 0}+{Click U L 1920 1080}")
-;input.pSend("{F2}")
-;sleep(250)
-;a3 := input.pSend("+{click D L 0 0}+{Click U L 1920 1080}")
-;input.pClickDrag(0,0,A_ScreenWidth,A_ScreenHeight, "L", "+", 1)
-
-;input.pSend(" +{click D L 0 0}{Click U L 1920 1080}")
-;input.pSend("{click D R " 0 " " 0 "}{Click U R " A_ScreenWidth " "  A_ScreenHeight "}")
-
-/*
- U 1920 1080
- U R 1920 1080
-
- r 
- m 
- x1 
- x2
- WheelUp 
- wu 
- WheelDown
- wd
- else 
- left
-
- +{click D L 0 0}{Click U L 1920 1080}
-
- */
-/*
-
-f1::
-send {f5}
-return 
-sleep 100
-v := ReadMemory(B_iFkeys, GameIdentifier, 2)
-send {f5 Up}
-msgbox % v
-return 
-
-A
-*/
-
 ; force will release any logically down key
 ; which would be useful if a key is stuck and its a hotkey as well, so it
 ; cant be released by the user 
@@ -11290,39 +11227,7 @@ debugAllKeyStates(logical := True, physical := True)
 ; 109ms
 ; 698 if NA isnt present
 
-/*
- for units on top of each other clicking the same border edge location twice will unload 1, then the other
- this is not true for units horizontally next to each other
- The portraits are close enough to being square for all resolutions
-*/
 
-getCargoPos(position, byRef xPos, byRef yPos)
-{
-	static AspectRatio, x, y, width, supported := True
-	if (AspectRatio != newAspectRatio := getScreenAspectRatio())
-	{
-		supported := True
-		AspectRatio := newAspectRatio
-		If (AspectRatio = "16:10")
-			x := (714/1680)*A_ScreenWidth, y := (914/1050)*A_ScreenHeight, width := 56  ; h := 55 
-		else If (AspectRatio = "5:4")
-			x := (525/1280)*A_ScreenWidth, y := (901/1024)*A_ScreenHeight, width := 50  ; h := 50 
-		else If (AspectRatio = "4:3")	
-			x := (524/1280)*A_ScreenWidth, y := (836/960)*A_ScreenHeight, width := 51  ; h := 50 close enough to being square
-		else if (AspectRatio = "16:9")
-			x := (830/1920)*A_ScreenWidth, y := (939/1080)*A_ScreenHeight, width := 57 ; h = 56 close enough to being square
-		else supported := false 
-	}
-	if supported
-	{
-		column := floor(position/2)
-	 	, row := floor(position - 2 * column)
-		, xPos := x + (column * width) + (width//2)
-		, yPos := y + (row * width + width//2)
-		return True
-	}
-	return False
-}
 
 UnloadAllTransports:
 ; without UnloadAllTransportsFlagActive, once the user presses the hotkey twice, each press after that would
@@ -13797,26 +13702,10 @@ minimapLocation(l, r, b, t)
 tootipStuff(l, r, b, t)
 return
 
-!left::
-!right::
-!up::
-!down::
-CoordMode, Mouse, screen
-FineMouseMove(substr(A_ThisHotkey, 2), True)
-
-	Wframe := Hframe := Hcaption := 0
-	winGetPos, Xsc, Ysc, Wsc, Hsc, %GameIdentifier%
-	windowMode := GameWindowStyle()
-	if (windowMode = "Windowed")
-		systemWindowEdgeSize(left, top)
-	else left := top := 0
-	MouseGetPos, x, y
-tooltip, % (x + left) ", " y - top, x+25, y+25
-return 
 
 
 
-!f1::gosub DrawSCUIOverlay
+
 
 ^f1::
 SetMiniMapOld(a)
@@ -13848,4 +13737,47 @@ tootipStuff(p*)
 	s .= (s!= "" ? ", " : "") v
 	tooltip, %s%
 }
+
+*/
+
+!f1::gosub DrawSCUIOverlay
+return 
+f1::
+loop, 8
+{
+	getCargoPos(A_Index - 1, x, y)
+	mousemove, x, y
+	tooltip, % x ", " y 
+	sleep 1000
+}
+
+
+return
+
+f2::
+tooltip, % getScreenAspectRatio()
+return 
+
+!left::
+!right::
+!up::
+!down::
+CoordMode, Mouse, screen
+FineMouseMove(substr(A_ThisHotkey, 2), True)
+
+	Wframe := Hframe := Hcaption := 0
+	winGetPos, Xsc, Ysc, Wsc, Hsc, %GameIdentifier%
+	windowMode := GameWindowStyle()
+	if (windowMode = "Windowed")
+		systemWindowEdgeSize(left, top)
+	else left := top := 0
+	MouseGetPos, x, y
+tooltip, % (x + left) ", " y - top, x+25, y+25
+return 
+
+f4::
+getClientAspectRatio(Xclient, Yclient, Wclient, Hclient)
+MouseGetPos, x, y
+MouseMove, (Wclient*.46), Hclient*.9
+return 
 

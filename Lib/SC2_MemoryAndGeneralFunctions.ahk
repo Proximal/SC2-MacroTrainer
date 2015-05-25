@@ -5477,20 +5477,14 @@ getMiniMapPingIconPos(byref xPos, byref yPos)
 	else return false, xPos := yPos := "" 
 }
 
-getClientAspectRatio(byRef x := "", byRef y := "", byRef w := "", byRef h := "")
+getClientAspectRatio(byRef x := "", byRef y := "", byRef w := "", byRef h := "", byRef trueAspectRatio := "")
 { 	
-	static lastTick := 0, AspectRatio, pX, pY, pW, pH
-
-	; winGetPos only takes ~ 0.047 ms, however it could be called many times in quick succession
-	; via click unit portrait
-	if (A_TickCount - lastTick < 1000)
-		return AspectRatio, x := pX, y := pY, w := pW, h := pH	
+	; winGetPos only takes ~ 0.047 ms
 	WinGetPos, x, y, w, h, %GameIdentifier%
 	if (w = "") ; client window doesn't exist
 		w := A_ScreenWidth, h := A_ScreenHeight, x := y := 0
-	lastTick := A_TickCount
 	;ROUND as this should group 1366x768 (1.7786458333) in with 16:9
-	AspectRatio := Round(w / h, 2)
+	trueAspectRatio := AspectRatio := Round(w / h, 2)
 	if ( AspectRatio = Round(1680/1050, 2)) 	; 1.6
 		AspectRatio := "16:10"
 	else if (AspectRatio = Round(1920/1080, 2)) ; 1.78s
@@ -5499,7 +5493,6 @@ getClientAspectRatio(byRef x := "", byRef y := "", byRef w := "", byRef h := "")
 		AspectRatio := "5:4"
 	else if (AspectRatio = Round(1600/1200, 2)) ; 1.33
 		AspectRatio := "4:3"
-
 	return AspectRatio, pX := x, pY := y, pW := w, pH := h
 }
 
@@ -5768,12 +5761,14 @@ ClickUnitPortrait(SelectionIndex=0, byref X=0, byref Y=0, byref Xpage=0, byref Y
 
 	if setSize
 	{
-		AspectRatio := getClientAspectRatio(Xclient, Yclient, Wclient, Hclient)
-		if GameWindowStyle() = "Windowed"
+		AspectRatio := g_aGameWindow.AspectRatio
+		, Wclient := g_aGameWindow.Width
+		, Hclient := g_aGameWindow.Height
+
+		if g_aGameWindow.style = "Windowed"
 		{
 			; mouse clients are relative to the games client area (so need to subtract borders)
-			systemWindowEdgeSize(leftFrame, topFrame)
-			, minLength := Hclient > Wclient ? Wclient : Hclient
+			minLength := Hclient > Wclient ? Wclient : Hclient
 			, Size := floor((48/957)*minLength) ; 49
 			; Regardless of client width and height, the 6th column always occurs at the centre of the game window
 			; i.e. it's a fixed position
@@ -5781,7 +5776,7 @@ ClickUnitPortrait(SelectionIndex=0, byref X=0, byref Y=0, byref Xpage=0, byref Y
 			; subtracting borders/caption in the manner, as I didn't account for the fact that AHKs mousegetpos
 			; returns coordinates which include these edges and therefore all the testing was done with calculations
 			; that include these borders and then remove them at the end.
-			, Xu0 := (Wclient//2) - 5*Size + .25*Size - leftFrame, Yu0 := (697/851)*Hclient + size/2 - topFrame
+			, Xu0 := (Wclient//2) - 5*Size + .25*Size - g_aGameWindow.leftFrameWidth, Yu0 := (697/851)*Hclient + size/2 - g_aGameWindow.topFrameHeight
 			, Xpage1 := Xu0 - .75*size, Ypage1 := Yu0 - size//7
 			, Ypage6 := Ypage1 + 2.5*size
 		}
@@ -5849,16 +5844,16 @@ clickCommandCard(position, byRef x, byRef y, setSize := False)
 
 	if setSize
 	{
-		AspectRatio := getClientAspectRatio(Xclient, Yclient, Wclient, Hclient)
-		windowed := GameWindowStyle() = "Windowed"
-		if windowed
+		AspectRatio := g_aGameWindow.AspectRatio
+		, Wclient := g_aGameWindow.Width
+		, Hclient := g_aGameWindow.Height
+		if g_aGameWindow.style = "Windowed"
 		{
 			; mouse clients are relative to the games client area (so need to subtract borders)
-			systemWindowEdgeSize(leftFrame, topFrame)
-			Wclient -= leftFrame
-			Hclient -= topFrame
+			Wclient -= g_aGameWindow.leftFrameWidth
+			Hclient -= g_aGameWindow.topFrameHeight
 			width := height := (53/878) * (Hclient > Wclient ? Wclient : Hclient)
-			, finalX := Wclient-85,	finalY := Hclient-25
+			, finalX := Wclient-87,	finalY := Hclient-25
 			, X0 := finalX - 4 * width, Y0 := finalY - 2 * width
 		}
 		else If (AspectRatio = "16:10")
@@ -5890,3 +5885,71 @@ clickCommandCard(position, byRef x, byRef y, setSize := False)
 	, y := y0 + (row * height - height//2)
 	return
 }
+
+
+/*
+ for units on top of each other clicking the same border edge location twice will unload 1, then the other
+ this is not true for units horizontally next to each other
+ The portraits are close enough to being square for all resolutions
+*/
+
+getCargoPosOld(position, byRef xPos, byRef yPos)
+{
+	static AspectRatio, x, y, width, supported := True
+	if (AspectRatio != newAspectRatio := getScreenAspectRatio())
+	{
+		supported := True
+		AspectRatio := newAspectRatio
+		If (AspectRatio = "16:10")
+			x := (760/1680)*A_ScreenWidth, y := (937/1050)*A_ScreenHeight, width := 56  ; h := 55 
+		else If (AspectRatio = "5:4")
+			x := (575/1280)*A_ScreenWidth, y := (926/1024)*A_ScreenHeight, width := 50  ; h := 50 
+		else If (AspectRatio = "4:3")	
+			x := (575/1280)*A_ScreenWidth, y := (861/960)*A_ScreenHeight, width := 51  ; h := 50 close enough to being square
+		else if (AspectRatio = "16:9")
+			x := (887/1920)*A_ScreenWidth, y := (967/1080)*A_ScreenHeight, width := 57 ; h = 56 close enough to being square
+		else supported := false 
+	}
+	if supported
+	{
+		column := floor(position/2)
+	 	, row := floor(position - 2 * column)
+		, xPos := x + (column * width)
+		, yPos := y + (row * width)
+		return True
+	}
+	return False
+}
+
+
+getCargoPos(position, byRef xPos, byRef yPos, setSize := False)
+{
+	static x, y, width
+	if setSize
+	{
+		AspectRatio := g_aGameWindow.AspectRatio
+		, Wclient := g_aGameWindow.Width
+		, Hclient := g_aGameWindow.Height
+
+		if  g_aGameWindow.style = "Windowed"
+		{
+			minLength := Hclient > Wclient ? Wclient : Hclient
+			, width := floor((48/957)*minLength)
+			, x := round(Wclient*.455) - g_aGameWindow.leftFrameWidth
+			, y := round(Hclient*.9) - g_aGameWindow.topFrameHeight
+		}
+		else If (AspectRatio = "16:10")
+			x := (760/1680)*Wclient, y := (937/1050)*Hclient, width := 56  ; h := 55 
+		else If (AspectRatio = "5:4")
+			x := (575/1280)*Wclient, y := (926/1024)*Hclient, width := 50  ; h := 50 
+		else If (AspectRatio = "4:3")	
+			x := (575/1280)*Wclient, y := (861/960)*Hclient, width := 51  ; h := 50 close enough to being square
+		else if (AspectRatio = "16:9")
+			x := (887/1920)*Wclient, y := (967/1080)*Hclient, width := 57 ; h = 56 close enough to being square
+	}
+	column := floor(position/2)
+ 	, row := floor(position - 2 * column)
+	, xPos := x + (column * width)
+	, yPos := y + (row * width)
+}
+

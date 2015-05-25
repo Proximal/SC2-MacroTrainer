@@ -8,6 +8,7 @@ thisThreadTitle := "overlays"
 OnExit, ShutdownProcedure 
 scriptWinTitle := changeScriptMainWinTitle()
 global aThreads
+global g_aGameWindow
 
 l_GameType := "1v1,2v2,3v3,4v4,FFA"
 l_Races := "Terran,Protoss,Zerg"
@@ -2235,21 +2236,35 @@ loop
 	}
 	else xOffset := yOffset := 0
 
+	unitType := getUnitType(getselectedunitIndex(0))
 
-
-
-	loop, 24
+	if getSelectionCount() = 1 && (unitType = aUnitId.Medivac || unitType = aUnitID.WarpPrism ||unitType = aUnitID.WarpPrismPhasing)
 	{
-		ClickUnitPortrait(A_Index - 1, x, y), x += xOffset, y += yOffset
-		aSize := StrSplit(gdip_TextToGraphics(G, A_Index - 1, "x"(x) "y"(y)  " Bold Italic cFFFF0000 s14 ", "Arial",,, True), "|")
-		gdip_TextToGraphics(G, A_Index - 1, "x"(x - aSize[3]//2) "y"(y - aSize[4]//2)  " Bold Italic cFFFF0000 s14 ", "Arial")
+		getCargoPos(0, 0, 0, True) 
+		loop, 8
+		{
+			getCargoPos(A_Index - 1, x, y), x += xOffset, y += yOffset		
+			aSize := StrSplit(gdip_TextToGraphics(G, A_Index - 1, "x"(x) "y"(y)  " Bold Italic cFFFF0000 s14 ", "Arial",,, True), "|")
+			gdip_TextToGraphics(G, A_Index - 1, "x"(x - aSize[3]//2) "y"(y - aSize[4]//2)  " Bold Italic cFFFF0000 s14 ", "Arial")
+		}
 	}
-	loop, 6 
+	else 
 	{
-		ClickUnitPortrait(A_Index - 1, x, y, xPage, yPage, A_index), xPage += xOffset, yPage += yOffset
-		aSize := StrSplit(gdip_TextToGraphics(G, A_Index, "x"(xPage) "y"(yPage)  " Bold Italic cFFFF0000 s14 ", "Arial",,, True), "|")
-		gdip_TextToGraphics(G, A_Index, "x"(xPage - aSize[3]//2) "y"(yPage - aSize[4]//2)  " Bold Italic cFFFF0000 s14 ", "Arial")
+		ClickUnitPortrait(0, 0, 0, 0, 0, 0, True)
+		loop, 24
+		{
+			ClickUnitPortrait(A_Index - 1, x, y), x += xOffset, y += yOffset
+			aSize := StrSplit(gdip_TextToGraphics(G, A_Index - 1, "x"(x) "y"(y)  " Bold Italic cFFFF0000 s14 ", "Arial",,, True), "|")
+			gdip_TextToGraphics(G, A_Index - 1, "x"(x - aSize[3]//2) "y"(y - aSize[4]//2)  " Bold Italic cFFFF0000 s14 ", "Arial")
+		}
+		loop, 6 
+		{
+			ClickUnitPortrait(A_Index - 1, x, y, xPage, yPage, A_index), xPage += xOffset, yPage += yOffset
+			aSize := StrSplit(gdip_TextToGraphics(G, A_Index, "x"(xPage) "y"(yPage)  " Bold Italic cFFFF0000 s14 ", "Arial",,, True), "|")
+			gdip_TextToGraphics(G, A_Index, "x"(xPage - aSize[3]//2) "y"(yPage - aSize[4]//2)  " Bold Italic cFFFF0000 s14 ", "Arial")
+		}
 	}
+	clickCommandCard(0, 0, 0, True)
 	loop, 15 ; 15
 	{
 		clickCommandCard(A_Index - 1, x, y), x += xOffset, y += yOffset		
