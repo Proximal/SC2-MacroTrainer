@@ -2934,7 +2934,7 @@ updateMinimapPosition()
 }
 
 
-
+; Takes ~ 0.21 ms
 SetMiniMap(byref minimap)
 {	
 	; minimap is a super global (though here it is a local)
@@ -4351,9 +4351,6 @@ readConfigFile()
 	IniRead, auto_update, %config_file%, %section%, auto_check_updates, 1
 	IniRead, launch_settings, %config_file%, %section%, launch_settings, 0
 	IniRead, MaxWindowOnStart, %config_file%, %section%, MaxWindowOnStart, 1
-	IniRead, HumanMouse, %config_file%, %section%, HumanMouse, 0
-	IniRead, HumanMouseTimeLo, %config_file%, %section%, HumanMouseTimeLo, 70
-	IniRead, HumanMouseTimeHi, %config_file%, %section%, HumanMouseTimeHi, 110
 
 	;IniRead, UnitDetectionTimer_ms, %config_file%, %section%, UnitDetectionTimer_ms, 3500
 	
@@ -4364,7 +4361,7 @@ readConfigFile()
 
 	;[Key Blocking]
 	section := "Key Blocking"
-	IniRead, SC2AdvancedEnlargedMinimap, %config_file%, %section%, SC2AdvancedEnlargedMinimap, 0
+	
 	IniRead, LwinDisable, %config_file%, %section%, LwinDisable, 1
 	IniRead, Key_EmergencyRestart, %config_file%, %section%, Key_EmergencyRestart, <#Space
 
@@ -5342,30 +5339,49 @@ StarcraftInstallPath()
 ; You can have a max of 6 pages 1-6. 
 ; This function will stuff up if unit portraits higher than 144 units are called. 
 ; So always check the units portrait location before calling
-ClickUnitPortraitOld(SelectionIndex=0, byref X=0, byref Y=0, byref Xpage=0, byref Ypage=0, ClickPageTab = 0) ;SelectionIndex begins at 0 topleft unit
+
+ClickUnitPortrait(SelectionIndex=0, byref X=0, byref Y=0, byref Xpage=0, byref Ypage=0, ClickPageTab = 0, setSize := False) 
 {
-	static AspectRatio, Xu0, Yu0, Size, Xpage1, Ypage1, Ypage6, YpageDistance
-	; Should check width/height as possible for those to change but still be same aspect ratio
-	if (AspectRatio != newAspectRatio := getClientAspectRatio(Xclient, Yclient, Wclient, Hclient))
+	static Xu0, Yu0, Size, Xpage1, Ypage1, Ypage6, YpageDistance
+
+	if setSize
 	{
-		AspectRatio := newAspectRatio
-		If (AspectRatio = "16:10")
+		AspectRatio := g_aGameWindow.AspectRatio
+		, Wclient := g_aGameWindow.Width
+		, Hclient := g_aGameWindow.Height
+
+		if g_aGameWindow.style = "Windowed"
 		{
-			Xu0 := (578/1680)*A_ScreenWidth, Yu0 := (888/1050)*A_ScreenHeight	;X,Yu0 = the middle of unit portrait 0 ( the top left unit)
-			Size := (56/1680)*A_ScreenWidth										;the unit portrait is square 56x56
-			Xpage1 := (528/1680)*A_ScreenWidth, Ypage1 := (877/1050)*A_ScreenHeight, Ypage6 := (1016/1050)*A_ScreenHeight	;Xpage1 & Ypage6 are locations of the Portrait Page numbers 1-5 
+			; mouse clients are relative to the games client area (so need to subtract borders)
+			minLength := Hclient > Wclient ? Wclient : Hclient
+			, Size := floor((48/957)*minLength) ; 49
+			; Regardless of client width and height, the 6th column always occurs at the centre of the game window
+			; i.e. it's a fixed position
+
+			; subtracting borders/caption in the manner, as I didn't account for the fact that AHKs mousegetpos
+			; returns coordinates which include these edges and therefore all the testing was done with calculations
+			; that include these borders and then remove them at the end.
+			, Xu0 := (Wclient//2) - 5*Size + .25*Size - g_aGameWindow.leftFrameWidth, Yu0 := (697/851)*Hclient + size/2 - g_aGameWindow.topFrameHeight
+			, Xpage1 := Xu0 - .75*size, Ypage1 := Yu0 - size//7
+			, Ypage6 := Ypage1 + 2.5*size
+		}
+		else If (AspectRatio = "16:10")
+		{
+			Xu0 := (578/1680)*Wclient, Yu0 := (888/1050)*Hclient	;X,Yu0 = the middle of unit portrait 0 ( the top left unit)
+			Size := (56/1680)*Wclient										;the unit portrait is square 56x56
+			Xpage1 := (528/1680)*Wclient, Ypage1 := (877/1050)*Hclient, Ypage6 := (1016/1050)*Hclient	;Xpage1 & Ypage6 are locations of the Portrait Page numbers 1-5 
 		}	
 		Else If (AspectRatio = "5:4")
 		{	
-			Xu0 := (400/1280)*A_ScreenWidth, Yu0 := (876/1024)*A_ScreenHeight
-			Size := (51.57/1280)*A_ScreenWidth
-			Xpage1 := (352/1280)*A_ScreenWidth, Ypage1 := (864/1024)*A_ScreenHeight, Ypage6 := (992/1024)*A_ScreenHeight
+			Xu0 := (400/1280)*Wclient, Yu0 := (876/1024)*Hclient
+			Size := (51.57/1280)*Wclient
+			Xpage1 := (352/1280)*Wclient, Ypage1 := (864/1024)*Hclient, Ypage6 := (992/1024)*Hclient
 		}	
 		Else If (AspectRatio = "4:3")
 		{	
-			Xu0 := (400/1280)*A_ScreenWidth, Yu0 := (812/960)*A_ScreenHeight
-			Size := (51.14/1280)*A_ScreenWidth
-			Xpage1 := (350/1280)*A_ScreenWidth, Ypage1 := (800/960)*A_ScreenHeight, Ypage6 := (928/960)*A_ScreenHeight
+			Xu0 := (400/1280)*Wclient, Yu0 := (812/960)*Hclient
+			Size := (51.14/1280)*Wclient
+			Xpage1 := (350/1280)*Wclient, Ypage1 := (800/960)*Hclient, Ypage6 := (928/960)*Hclient
 		}
 		; If the screen resolution is > game, the game will still probably be running in this aspect ratio (as it will look the best)
 		; It will just not take up the entire screen (assume positioned top left 0,0)
@@ -5376,6 +5392,7 @@ ClickUnitPortraitOld(SelectionIndex=0, byref X=0, byref Y=0, byref Xpage=0, byre
 			Xpage1 := (638/1920)*Wclient, Ypage1 := (901/1080)*Hclient, Ypage6 := (1044/1080)*Hclient
 
 		}
+
 		YpageDistance := (Ypage6 - Ypage1)/5		;because there are 6 pages - 6-1
 	}
 
@@ -5405,6 +5422,7 @@ ClickUnitPortraitOld(SelectionIndex=0, byref X=0, byref Y=0, byref Xpage=0, byre
 	return 0	
 }
 
+
 /*
 Command card has 3 rows with 5 buttons each
 Top left button is 0 
@@ -5412,29 +5430,38 @@ next button on right is 1
 bottom right button is 14
 This function returns the x, y co-ordinates for the specific command card button.
 */
-
-
-clickCommandCardOld(position, byRef x, byRef y)
+clickCommandCard(position, byRef x, byRef y, setSize := False)
 {
-	static AspectRatio, X0, y0, Size, width, height
+	static X0, y0, width, height
 
-	if (AspectRatio != newAspectRatio := getClientAspectRatio(Xclient, Yclient, Wclient, Hclient))
+	if setSize
 	{
-		AspectRatio := newAspectRatio
-		If (AspectRatio = "16:10")
+		AspectRatio := g_aGameWindow.AspectRatio
+		, Wclient := g_aGameWindow.Width
+		, Hclient := g_aGameWindow.Height
+		if g_aGameWindow.style = "Windowed"
 		{
-			X0 := (1314/1680)*A_ScreenWidth, y0 := (893/1050)*A_ScreenHeight		
-			width := (65/1680)*A_ScreenWidth, height := (66/1050)*A_ScreenHeight										
+			; mouse clients are relative to the games client area (so need to subtract borders)
+			Wclient -= g_aGameWindow.leftFrameWidth
+			Hclient -= g_aGameWindow.topFrameHeight
+			width := height := (53/878) * (Hclient > Wclient ? Wclient : Hclient)
+			, finalX := Wclient-87,	finalY := Hclient-25
+			, X0 := finalX - 4 * width, Y0 := finalY - 2 * width
+		}
+		else If (AspectRatio = "16:10")
+		{
+			X0 := (1314/1680)*Wclient, y0 := (893/1050)*Hclient		
+			width := (65/1680)*Wclient, height := (66/1050)*Hclient										
 		}	
 		Else If (AspectRatio = "5:4")
 		{	
-			X0 := (944/1280)*A_ScreenWidth, y0 := (880/1024)*A_ScreenHeight
-			width := (61/1280)*A_ScreenWidth, height := (60/1024)*A_ScreenHeight	
+			X0 := (944/1280)*Wclient, y0 := (880/1024)*Hclient
+			width := (61/1280)*Wclient, height := (60/1024)*Hclient	
 		}	
 		Else If (AspectRatio = "4:3")
 		{	
-			X0 := (944/1280)*A_ScreenWidth, y0 := (815/960)*A_ScreenHeight
-			width := (61/1280)*A_ScreenWidth, height := (61/960)*A_ScreenHeight	
+			X0 := (944/1280)*Wclient, y0 := (815/960)*Hclient
+			width := (61/1280)*Wclient, height := (61/960)*Hclient	
 		}
 		; If the screen resolution is > game, the game will still probably be running in this aspect ratio (as it will look the best)
 		; It will just not take up the entire screen (assume positioned top left 0,0)		
@@ -5450,6 +5477,46 @@ clickCommandCardOld(position, byRef x, byRef y)
 	, y := y0 + (row * height - height//2)
 	return
 }
+
+
+/*
+ for units on top of each other clicking the same border edge location twice will unload 1, then the other
+ this is not true for units horizontally next to each other
+ The portraits are close enough to being square for all resolutions
+*/
+
+getCargoPos(position, byRef xPos, byRef yPos, setSize := False)
+{
+	static x, y, width
+	if setSize
+	{
+		AspectRatio := g_aGameWindow.AspectRatio
+		, Wclient := g_aGameWindow.Width
+		, Hclient := g_aGameWindow.Height
+
+		if  g_aGameWindow.style = "Windowed"
+		{
+			minLength := Hclient > Wclient ? Wclient : Hclient
+			, width := floor((48/957)*minLength)
+			, x := round(Wclient*.455) - g_aGameWindow.leftFrameWidth
+			, y := round(Hclient*.9) - g_aGameWindow.topFrameHeight
+		}
+		else If (AspectRatio = "16:10")
+			x := (760/1680)*Wclient, y := (937/1050)*Hclient, width := 56  ; h := 55 
+		else If (AspectRatio = "5:4")
+			x := (575/1280)*Wclient, y := (926/1024)*Hclient, width := 50  ; h := 50 
+		else If (AspectRatio = "4:3")	
+			x := (575/1280)*Wclient, y := (861/960)*Hclient, width := 51  ; h := 50 close enough to being square
+		else if (AspectRatio = "16:9")
+			x := (887/1920)*Wclient, y := (967/1080)*Hclient, width := 57 ; h = 56 close enough to being square
+	}
+	column := floor(position/2)
+ 	, row := floor(position - 2 * column)
+	, xPos := x + (column * width)
+	, yPos := y + (row * width)
+}
+
+
 
 
 ; Gives the co-ordinates for the ping icon/toolbar (so don't have to worry about differ user SC hotkeys)
@@ -5754,202 +5821,10 @@ minimapPosition(byRef screenleft, byRef screenright, byRef screenbottom, byRef s
 	return
 }
 
-;SelectionIndex begins at 0 topleft unit
-ClickUnitPortrait(SelectionIndex=0, byref X=0, byref Y=0, byref Xpage=0, byref Ypage=0, ClickPageTab = 0, setSize := False) 
-{
-	static Xu0, Yu0, Size, Xpage1, Ypage1, Ypage6, YpageDistance
-
-	if setSize
-	{
-		AspectRatio := g_aGameWindow.AspectRatio
-		, Wclient := g_aGameWindow.Width
-		, Hclient := g_aGameWindow.Height
-
-		if g_aGameWindow.style = "Windowed"
-		{
-			; mouse clients are relative to the games client area (so need to subtract borders)
-			minLength := Hclient > Wclient ? Wclient : Hclient
-			, Size := floor((48/957)*minLength) ; 49
-			; Regardless of client width and height, the 6th column always occurs at the centre of the game window
-			; i.e. it's a fixed position
-
-			; subtracting borders/caption in the manner, as I didn't account for the fact that AHKs mousegetpos
-			; returns coordinates which include these edges and therefore all the testing was done with calculations
-			; that include these borders and then remove them at the end.
-			, Xu0 := (Wclient//2) - 5*Size + .25*Size - g_aGameWindow.leftFrameWidth, Yu0 := (697/851)*Hclient + size/2 - g_aGameWindow.topFrameHeight
-			, Xpage1 := Xu0 - .75*size, Ypage1 := Yu0 - size//7
-			, Ypage6 := Ypage1 + 2.5*size
-		}
-		else If (AspectRatio = "16:10")
-		{
-			Xu0 := (578/1680)*Wclient, Yu0 := (888/1050)*Hclient	;X,Yu0 = the middle of unit portrait 0 ( the top left unit)
-			Size := (56/1680)*Wclient										;the unit portrait is square 56x56
-			Xpage1 := (528/1680)*Wclient, Ypage1 := (877/1050)*Hclient, Ypage6 := (1016/1050)*Hclient	;Xpage1 & Ypage6 are locations of the Portrait Page numbers 1-5 
-		}	
-		Else If (AspectRatio = "5:4")
-		{	
-			Xu0 := (400/1280)*Wclient, Yu0 := (876/1024)*Hclient
-			Size := (51.57/1280)*Wclient
-			Xpage1 := (352/1280)*Wclient, Ypage1 := (864/1024)*Hclient, Ypage6 := (992/1024)*Hclient
-		}	
-		Else If (AspectRatio = "4:3")
-		{	
-			Xu0 := (400/1280)*Wclient, Yu0 := (812/960)*Hclient
-			Size := (51.14/1280)*Wclient
-			Xpage1 := (350/1280)*Wclient, Ypage1 := (800/960)*Hclient, Ypage6 := (928/960)*Hclient
-		}
-		; If the screen resolution is > game, the game will still probably be running in this aspect ratio (as it will look the best)
-		; It will just not take up the entire screen (assume positioned top left 0,0)
-		Else ;if (AspectRatio = "16:9") 
-		{
-			Xu0 := (692/1920)*Wclient, Yu0 := (916/1080)*Hclient
-			Size := (57/1920)*Wclient	;its square
-			Xpage1 := (638/1920)*Wclient, Ypage1 := (901/1080)*Hclient, Ypage6 := (1044/1080)*Hclient
-
-		}
-
-		YpageDistance := (Ypage6 - Ypage1)/5		;because there are 6 pages - 6-1
-	}
-
-	if ClickPageTab	;use this to return the selection back to a specified page
-	{
-		PageIndex := ClickPageTab - 1
-		Xpage := Xpage1, Ypage := Ypage1 + (PageIndex * YpageDistance)
-		return 1
-	}
-
-	; You can have a max of 6 pages 1-6. 
-	; This function will stuff up if unit portraits higher than 144 units are called. 
-	; So always check the units portrait location before calling
-	PageIndex := floor(SelectionIndex / 24)
-	, SelectionIndex -= 24 * PageIndex
-	, Offset_y := floor(SelectionIndex / 8) 
-	, Offset_x := SelectionIndex -= 8 * Offset_y		
-	, x := Xu0 + (Offset_x *Size), Y := Yu0 + (Offset_y *Size)
-
-	; A delay may be required for selection page to update
-	; could use an overide value - but not sure if the click would register
-	if (PageIndex != getUnitSelectionPage())
-	{
-		Xpage := Xpage1, Ypage := Ypage1 + (PageIndex * YpageDistance)
-		return 1 ; indicating that you must left click the index page first
-	}
-	return 0	
-}
 
 
-clickCommandCard(position, byRef x, byRef y, setSize := False)
-{
-	static X0, y0, width, height
-
-	if setSize
-	{
-		AspectRatio := g_aGameWindow.AspectRatio
-		, Wclient := g_aGameWindow.Width
-		, Hclient := g_aGameWindow.Height
-		if g_aGameWindow.style = "Windowed"
-		{
-			; mouse clients are relative to the games client area (so need to subtract borders)
-			Wclient -= g_aGameWindow.leftFrameWidth
-			Hclient -= g_aGameWindow.topFrameHeight
-			width := height := (53/878) * (Hclient > Wclient ? Wclient : Hclient)
-			, finalX := Wclient-87,	finalY := Hclient-25
-			, X0 := finalX - 4 * width, Y0 := finalY - 2 * width
-		}
-		else If (AspectRatio = "16:10")
-		{
-			X0 := (1314/1680)*Wclient, y0 := (893/1050)*Hclient		
-			width := (65/1680)*Wclient, height := (66/1050)*Hclient										
-		}	
-		Else If (AspectRatio = "5:4")
-		{	
-			X0 := (944/1280)*Wclient, y0 := (880/1024)*Hclient
-			width := (61/1280)*Wclient, height := (60/1024)*Hclient	
-		}	
-		Else If (AspectRatio = "4:3")
-		{	
-			X0 := (944/1280)*Wclient, y0 := (815/960)*Hclient
-			width := (61/1280)*Wclient, height := (61/960)*Hclient	
-		}
-		; If the screen resolution is > game, the game will still probably be running in this aspect ratio (as it will look the best)
-		; It will just not take up the entire screen (assume positioned top left 0,0)		
-		Else ;if (AspectRatio = "16:9")
-		{
-			X0 := (1542/1920)*Wclient, y0 := (916/1080)*Hclient
-			width := (68/1920)*Wclient, height := (69/1080)*Hclient	
-		}
-	}
-	row := floor(position/5)
-	, column := floor(position - 5 * row)
-	, x := X0 + (column * width) + (width//2)
-	, y := y0 + (row * height - height//2)
-	return
-}
 
 
-/*
- for units on top of each other clicking the same border edge location twice will unload 1, then the other
- this is not true for units horizontally next to each other
- The portraits are close enough to being square for all resolutions
-*/
-
-getCargoPosOld(position, byRef xPos, byRef yPos)
-{
-	static AspectRatio, x, y, width, supported := True
-	if (AspectRatio != newAspectRatio := getScreenAspectRatio())
-	{
-		supported := True
-		AspectRatio := newAspectRatio
-		If (AspectRatio = "16:10")
-			x := (760/1680)*A_ScreenWidth, y := (937/1050)*A_ScreenHeight, width := 56  ; h := 55 
-		else If (AspectRatio = "5:4")
-			x := (575/1280)*A_ScreenWidth, y := (926/1024)*A_ScreenHeight, width := 50  ; h := 50 
-		else If (AspectRatio = "4:3")	
-			x := (575/1280)*A_ScreenWidth, y := (861/960)*A_ScreenHeight, width := 51  ; h := 50 close enough to being square
-		else if (AspectRatio = "16:9")
-			x := (887/1920)*A_ScreenWidth, y := (967/1080)*A_ScreenHeight, width := 57 ; h = 56 close enough to being square
-		else supported := false 
-	}
-	if supported
-	{
-		column := floor(position/2)
-	 	, row := floor(position - 2 * column)
-		, xPos := x + (column * width)
-		, yPos := y + (row * width)
-		return True
-	}
-	return False
-}
 
 
-getCargoPos(position, byRef xPos, byRef yPos, setSize := False)
-{
-	static x, y, width
-	if setSize
-	{
-		AspectRatio := g_aGameWindow.AspectRatio
-		, Wclient := g_aGameWindow.Width
-		, Hclient := g_aGameWindow.Height
-
-		if  g_aGameWindow.style = "Windowed"
-		{
-			minLength := Hclient > Wclient ? Wclient : Hclient
-			, width := floor((48/957)*minLength)
-			, x := round(Wclient*.455) - g_aGameWindow.leftFrameWidth
-			, y := round(Hclient*.9) - g_aGameWindow.topFrameHeight
-		}
-		else If (AspectRatio = "16:10")
-			x := (760/1680)*Wclient, y := (937/1050)*Hclient, width := 56  ; h := 55 
-		else If (AspectRatio = "5:4")
-			x := (575/1280)*Wclient, y := (926/1024)*Hclient, width := 50  ; h := 50 
-		else If (AspectRatio = "4:3")	
-			x := (575/1280)*Wclient, y := (861/960)*Hclient, width := 51  ; h := 50 close enough to being square
-		else if (AspectRatio = "16:9")
-			x := (887/1920)*Wclient, y := (967/1080)*Hclient, width := 57 ; h = 56 close enough to being square
-	}
-	column := floor(position/2)
- 	, row := floor(position - 2 * column)
-	, xPos := x + (column * width)
-	, yPos := y + (row * width)
-}
 

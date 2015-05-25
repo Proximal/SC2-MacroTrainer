@@ -543,35 +543,44 @@ ToolTip
 return
 
 DrawSCUIOverlay:
-
+if !WinExist(GameIdentifier) || !gettime()
+{
+	Gui +OwnDialogs
+ 	msgbox, 0x30, ¯\_(ツ)_/¯, You need to be in a SC game/replay!, 15
+	return 
+}
 if !aThreads.Overlays.ahkReady()
 {
 	launchOverlayThread()
-	; if launched from replay or out of game and before thread has been loaded once
+	; if launched from replay
 	; need to give time for it to load memory addresses to draw the minimap pos
 	sleep 500
 }
-if aThreads.Overlays.ahkFunction("drawUIPositions", 0, 1)
+if aThreads.Overlays.ahkFunction("drawUIPositions", 0, 1) ; If it exists
 {
 	aThreads.Overlays.ahkPostFunction("drawUIPositions", 1)
 	GuiControl,, %A_GuiControl%, SC UI Pos
 }
 else 
 {
-	aThreads.Overlays.ahkPostFunction("drawUIPositions")
+	Gui Options:+LastFoundExist
+	aThreads.Overlays.ahkPostFunction("drawUIPositions", 0, 0, WinExist())
 	GuiControl,, %A_GuiControl%, Off
 }
 return
 
 PerformPatternScan:
-Process, exist, %GameExe%
-if ErrorLevel
+if WinExist(GameIdentifier)
 {
 	SCPatternScan := new _ClassSCPatternScan() 
 	SCPatternScan.listView()
 	SCPatternScan := "" ; destroy the object closing the opened process handle
 }
-else msgbox, , derp, Starcraft needs to be running....., 15
+else 
+{
+	Gui +OwnDialogs
+	msgbox, 0x30, ¯\_(ツ)_/¯, Starcraft needs to be running....., 15
+}
 return 
 
 g_GetDebugData:
@@ -604,17 +613,14 @@ g_PlayModifierWarningSound:
 return
 
 ping:
-	if getMiniMapPingIconPos(x, y)
-	{
-		critical, 1000
-		input.pReleaseKeys(True)
-		setLowLevelInputHooks(True)
-		if isChatOpen()
-			input.psend("{click " x ", " y "}{click}{Enter}")
-		else input.psend("{click " x ", " y "}{click}")
-		Input.revertKeyState()
-		setLowLevelInputHooks(False)
-	}
+critical, 1000
+input.pReleaseKeys(True)
+setLowLevelInputHooks(True)
+if isChatOpen()
+	input.psend("{click 0 0}" SC2Keys.key("MinimapPing") "{click}{Enter}")
+else input.psend(SC2Keys.key("MinimapPing") "{click}")
+Input.revertKeyState()
+setLowLevelInputHooks(False)
 Return
 
 g_DoNothing:
@@ -824,7 +830,7 @@ mt_pause_resume:
 if (mt_Paused := !mt_Paused)
 {
 	isInMatch := False ; with this clock = 0 when not in game 
-	timeroff("clock", "money", "gas", "scvidle", "supply", "worker", "inject", "Auto_Group", "convertWarpGates", "AutoGroupIdle", "g_autoWorkerProductionCheck", "cast_ForceInject", "auto_inject", "find_races_timer", "advancedInjectTimerFunctionLabel", "monitorGameWindow")
+	timeroff("clock", "money", "gas", "scvidle", "supply", "worker", "inject", "Auto_Group", "convertWarpGates", "AutoGroupIdle", "g_autoWorkerProductionCheck", "cast_ForceInject", "auto_inject", "find_races_timer", "advancedInjectTimerFunctionLabel", "monitorGameWindow", "monitorMinimapPosition")
 	inject_timer := 0	;ie so know inject timer is off
 	Try DestroyOverlays()
 	aThreads.MiniMap.ahkPause.1
@@ -852,7 +858,7 @@ time := GetTime()
 if (!time && isInMatch) || (UpdateTimers) ; time=0 outside game
 {	
 	isInMatch := False ; with this clock = 0 when not in game (while in game at 0s clock = 44)	
-	timeroff("money", "gas", "scvidle", "supply", "worker", "inject", "Auto_Group", "AutoGroupIdle", "convertWarpGates", "g_autoWorkerProductionCheck", "cast_ForceInject", "auto_inject", "find_races_timer", "advancedInjectTimerFunctionLabel", "monitorGameWindow")
+	timeroff("money", "gas", "scvidle", "supply", "worker", "inject", "Auto_Group", "AutoGroupIdle", "convertWarpGates", "g_autoWorkerProductionCheck", "cast_ForceInject", "auto_inject", "find_races_timer", "advancedInjectTimerFunctionLabel", "monitorGameWindow", "monitorMinimapPosition")
 	; Don't call these thread functions if just updating settings. 
 	; They will be called below. When everything is turned back on.
 	; Resetting the unit detections here probably increased the chances of the warning not
@@ -994,7 +1000,8 @@ Else if (time > 0.4 && !isInMatch) && (getLocalPlayerNumber() != 16 || debugGame
 	} 																; Hence with these two timers running autogroup will occur at least once every 30 ms, but generally much more frequently
 	if ConvertGatewaysEnable
 		settimer, convertWarpGates, 250
-	settimer, monitorGameWindow, 500, -1
+	settimer, monitorGameWindow, 250, -1
+	settimer, monitorMinimapPosition, 250, -1
 	UserSavedAppliedSettings := 0
 }
 return
@@ -1934,6 +1941,26 @@ ShellMessage(wParam, lParam)
 monitorGameWindow:
 monitorGameWindow()
 return
+monitorMinimapPosition:
+monitorMinimapPosition()
+return 
+
+; Have this in a separate function/pseudo thread to monitorGameWindow, as the minimap position can take a few
+; seconds to update after the window changes size, and so moving the bordered window around will result in the
+; minmap being updated really slowly (as you need to wait for the minimap memory values to change)
+monitorMinimapPosition()
+{
+	static aPrev := []
+	minimapLocation(left, right, bottom, top)
+	if aPrev.left != left || aPrev.right != right || aPrev.bottom != bottom || aPrev.top != top 
+	{
+		aPrev.left := left, aPrev.right := right, aPrev.bottom := bottom, aPrev.top := top
+		aThreads.MiniMap.ahkPostFunction("updateMinimapPosition")
+		SetMiniMap(minimap)	
+	}
+	return
+}
+
 
 monitorGameWindow(initialise := False)
 {
@@ -1964,26 +1991,11 @@ monitorGameWindow(initialise := False)
 		clickCommandCard(0, 0, 0, True)
 		ClickUnitPortrait(0, 0, 0, 0, 0, 0, True)
 		getCargoPos(0, 0, 0, True) 
-		;if !A_IsCompiled
-		;	soundplay *-1
-		
-
 
 		if !initialise
 		{
-			; These values take a little while to change after the size has been altered. Especially when going from windowed -> windowed fullscreen
-			minimapLocation(pLeft, pRight, pBottom, pTop)
-			finish := A_TickCount + 5000
-			loop 
-			{
-				sleep 50
-				minimapLocation(left, right, bottom, top)
-			} until A_TickCount >= finish || pLeft != left || pRight != right || pBottom != bottom || pTop != top
-			sleep 100 ; This isn't required
 			aThreads.MiniMap.ahkPostFunction("updateMinimapPosition")
 			SetMiniMap(minimap)
-		;	if !A_IsCompiled
-		;		soundplay *-1
 		}
 	}
 	return
@@ -2793,9 +2805,6 @@ ini_settings_write:
 	IniWrite, %auto_update%, %config_file%, %section%, auto_check_updates
 	Iniwrite, %launch_settings%, %config_file%, %section%, launch_settings
 	Iniwrite, %MaxWindowOnStart%, %config_file%, %section%, MaxWindowOnStart
-	Iniwrite, %HumanMouse%, %config_file%, %section%, HumanMouse
-	Iniwrite, %HumanMouseTimeLo%, %config_file%, %section%, HumanMouseTimeLo
-	Iniwrite, %HumanMouseTimeHi%, %config_file%, %section%, HumanMouseTimeHi
 	;Iniwrite, %UnitDetectionTimer_ms%, %config_file%, %section%, UnitDetectionTimer_ms
 	Iniwrite, %MTCustomIcon%, %config_file%, %section%, MTCustomIcon
 
@@ -2817,7 +2826,6 @@ ini_settings_write:
 	
 	;[Key Blocking]
 	section := "Key Blocking"
-	IniWrite, %SC2AdvancedEnlargedMinimap%, %config_file%, %section%, SC2AdvancedEnlargedMinimap
 	IniWrite, %LwinDisable%, %config_file%, %section%, LwinDisable
 	IniWrite, %Key_EmergencyRestart%, %config_file%, %section%, Key_EmergencyRestart
 
@@ -3665,31 +3673,10 @@ try
 
 		Gui, Add, GroupBox, xs y+20 w410 h140 section, Misc		
 			Gui, Add, Checkbox, xs+10 yp+25 VMaxWindowOnStart Checked%MaxWindowOnStart%, Maximise Starcraft on match start		
-			Gui, Add, Checkbox, xs+10 yp+30 gHumanMouseWarning VHumanMouse Checked%HumanMouse%, Use human like mouse movements
-			Gui, Add, Text, yp+30 xs+10, Time range for each mouse movement (ms):
-			Gui, Add, Text, yp xs+240, Lower limit:
-			Gui, Add, Edit, Number Right x+25 yp-2 w45 
-				Gui, Add, UpDown,  Range1-300 vHumanMouseTimeLo, %HumanMouseTimeLo%, ;these belong to the above edit		Gui, Add, Text,yp xp+10, Lower limit:
-			Gui, Add, Text,yp+30 xs+240, Upper limit:
-			Gui, Add, Edit, Number Right x+25 yp-2 w45 
-				Gui, Add, UpDown,  Range1-300 vHumanMouseTimeHi, %HumanMouseTimeHi%, ;these belong to the above edit
-
-
+		
 
 	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vSettings_TAB, Settings				
 		Gui, Add, GroupBox, w161 h110 section, Misc
-			Gui, Add, Checkbox, xp+10 yp+25 vSC2AdvancedEnlargedMinimap gSC2AdvancedEnlargedMinimapWarning checked%SC2AdvancedEnlargedMinimap%, SC2Advanced Minimap
-/*
-			Gui, Add, Text, xs+10 yp+35 w60, Send Delay:
-			Gui, Add, Edit, Number Right x+30 yp-2 w45 vTT_pSendDelay
-				Gui, Add, UpDown,  Range-1-300 vpSendDelay, %pSendDelay%
-
-			Gui, Add, Text, xs+10 yp+40 w60, Click Delay:
-			Gui, Add, Edit, Number Right x+30 yp-2 w45 vTT_pClickDelay
-				Gui, Add, UpDown,  Range-1-300 vpClickDelay, %pClickDelay%
-*/
-			
-			;yp+30
 
 		Gui, Add, GroupBox, xs ys+115 w161 h85, Launcher 
 			Gui, Add, Radio, % "xp+10 yp+25 vLauncherRadioBattleNet checked" (LauncherMode = "Battle.net"), Battle.net 
@@ -5165,9 +5152,7 @@ AutomationTerranCameraGroup_TT := AutomationProtossCameraGroup_TT := AutomationZ
 			. "`nSetting this value to 0 will convert gateways as soon as they finish constructing."
 		F_Inject_ModifierBeep_TT := "If the modifier keys (Shift, Ctrl, or Alt) or Windows Keys are held down when an Inject is attempted, a beep will heard.`nRegardless of this setting, the inject round will not begin until after these keys have been released."
 		BlockingStandard_TT := BlockingFunctional_TT := BlockingNumpad_TT := BlockingMouseKeys_TT := BlockingMultimedia_TT := BlockingMultimedia_TT := BlockingModifier_TT := "During certain automations these keys will be buffered or blocked to prevent interruption to the automation and your game play."
-		SC2AdvancedEnlargedMinimap_TT := "This option alters the size and position of the minimap."
-									. "`n`nThese minimap coordinates are used for both drawing and automations."
-									. "`nTherefore only enable this setting if you have used the 'SC2-Advanced' hack to enlarge the minimap!"
+		
 		LauncherRadioBattleNet_TT := LauncherRadioStarCraft_TT := LauncherRadioDisabled_TT := "During startup MacroTrainer will attempt to launch either the Battle.net app or Starcraft."
 
 
@@ -5223,12 +5208,6 @@ catch, e
 	if !A_IsCompiled
 		msgbox %  e.what "`n" e.file "`n" e.line "`n" e.extra
 }
-Return
-
-HumanMouseWarning:
-	GuiControlGet, Checked, ,HumanMouse 
-	if Checked
-		msgbox, 16, Human Mouse Movement Warning, The only reason to possibly use this setting, is if you are streaming your games and want your viewers to think you're legit.`n`nThis affects injects and chronoboost movements.`nThis setting moves the mouse in a somewhat random arc/line.`n`nThe 'Time' setting dictates the duration of each individual mouse movement. For each movement, a random move time is generated using the upper and lower time bounds.`n`nI repeat DO NOT USE this unless you're a streamer! It offers no advantages!
 Return
 
 
@@ -5367,14 +5346,6 @@ if (g1 = g2)
 	msgbox, 48, Config Warning!, The base and storage control groups must NOT be the same.`nRefer to their respective tooltips for more information.
 return
 
-
-SC2AdvancedEnlargedMinimapWarning:
-GuiControlGet, g1,, SC2AdvancedEnlargedMinimap
-if g1
-	msgbox, 48, Config Warning!, % "Only enable this setting if you have used the 'SC2-Advanced' hack ('Minimal-Interface' option) to enlarge the minimap!"
-								. "`n`nDue to the altered UI none of the automations are guaranteed to work correctly even if they 'appear' to work. "
-								. "The only exception to this is the auto-grouping function."
-return
 QuickSelectGUBaseSelectionZergTransportCheck:
 ; Zerg army selection will not include transports (orverlords) so uncheck them and disable
 if instr(A_GuiControl, "Zerg")
@@ -9413,12 +9384,14 @@ quickSelect(aDeselect)
 	__quickSelectFunctionRemoveHooksExit:	
 	input.RevertKeyState()
 	setLowLevelInputHooks(False)
-	critical, off 
+	critical, off ; This is required do not remove! Observe the difference it makes when holding down the function hotkey
 	sleep, -1
 	Thread, Priority, -2147483648
 	sleep, 20
 	return
 }
+
+
 
 ; aSelected can be used to pass an already SORTED selected array
 ; if no array, or an empty array is passed then it will retrieve one
@@ -13738,7 +13711,7 @@ tootipStuff(p*)
 	tooltip, %s%
 }
 
-*/
+
 
 !f1::gosub DrawSCUIOverlay
 return 
@@ -13781,3 +13754,12 @@ MouseGetPos, x, y
 MouseMove, (Wclient*.46), Hclient*.9
 return 
 
+
+;f3::
+thread, NoTimers, true 
+i := stopwatch()
+loop, % count := 10000
+	SetMiniMap(minimap)
+msgbox % stopwatch(i) / count
+return 
+*/

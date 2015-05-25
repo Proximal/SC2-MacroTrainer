@@ -2184,40 +2184,36 @@ strikeOutUpgrade(G, x, y, width, height, currentSmoothingMode := 0)
 ; 	The playable size of the minimap i.e. the size of the displayed map
 ;	The minimap UI borders
 ; Used to check if positions are correct for various aspect ratios / resolutions
-drawUIPositions(destroy := False, overlayExist := False)
+drawUIPositions(destroy := False, overlayExist := False, optionsHwnd := False)
 {
-	static overlayCreated, hwnd1, mainWindowTitle
-	, hwndMinimap
+	static hwnd1, hwndMinimap, optionsGUIHwnd := False
 
 	
 	if overlayExist 
 		return WinExist("ahk_id " hwnd1)
 	else if destroy
 	{
-		overlayCreated := False
+
 		Try Gui, UIPositions: Destroy
-		settimer, destroySCUIPosOverlay, off
+		settimer, destroyRedrawSCUIPosOverlay, off
+		optionsGUIHwnd := False
 		return
 	}
-	else If (!overlayCreated)
+	if optionsHwnd
+		optionsGUIHwnd := optionsHwnd
+	Gui UIPositions:+LastFoundExist
+	IfWinNotExist
 	{
 		getClientAspectRatio(Xclient, Yclient, Wclient, Hclient)
 		; Create a layered window ;E0x20 click thru (+E0x80000 : must be used for UpdateLayeredWindow to work!) that is always on top (+AlwaysOnTop), has no taskbar entry or caption
 		Gui, UIPositions: -Caption Hwndhwnd1 +E0x20 +E0x80000 +LastFound  +ToolWindow +AlwaysOnTop -DPIScale
 		Gui, UIPositions: Show, % "NA X" Xclient " Y" Yclient " W" Wclient " h" Hclient, % getRandomString_Az09(10, 20)
-		overlayCreated := True
 		; The overlay is automatically destroyed when the macro Trainer options GUI closes
-		if !mainWindowTitle
-		{
-			IniRead, version, %config_file%, Version, version, 1 
-			mainWindowTitle := "V" version  " Settings" 
-		}
 		Gui, UIPositionsMinimap: -Caption HwndhwndMinimap +E0x20 +E0x80000 +LastFound +ToolWindow +AlwaysOnTop -DPIScale +OwnerUIPositions
 		Gui, UIPositionsMinimap: Show, NA, % getRandomString_Az09(10, 20)
+		settimer, destroyRedrawSCUIPosOverlay, 400
 	}
-	
-loop 
-{
+
 	getClientAspectRatio(Xclient, Yclient, Wclient, Hclient)
 	hbm := CreateDIBSection(Wclient+1, Hclient+1)
 	, hdc := CreateCompatibleDC()
@@ -2229,12 +2225,12 @@ loop
 	if windowed := GameWindowStyle() = "Windowed"
 	{
 			getClientAspectRatio(Xclient, Yclient, Wclient, Hclient)
-			systemWindowEdgeSize(leftFrame, topFrame)
+			systemWindowEdgeSize(leftFrame, topFrame, bottomFrame)
 			xOffset := leftFrame	
 			yOffset := topFrame
 			
 	}
-	else xOffset := yOffset := 0
+	else xOffset := yOffset := leftFrame := topFrame := bottomFrame := 0
 
 	unitType := getUnitType(getselectedunitIndex(0))
 
@@ -2285,19 +2281,20 @@ loop
 	top := minimap.ClientBorderTop + yOffset + minimap.DrawingVerticalOffset
 	Bottom := minimap.ClientBorderBottom + yOffset - minimap.DrawingVerticalOffset
 ;	msgbox % left " " right "`n" top " " bottom 
-
-	Gdip_DrawLines(G, pPen, left "," top "|" 
+	
+	pRedPen := Gdip_CreatePen(0xcFFFF0000, 1)
+	pBluePen := Gdip_CreatePen(0xcFF00FFFF, 1)
+	Gdip_DrawLines(G, pRedPen, left "," top "|" 
 						.  right "," top "|" 
 						.  right "," bottom "|" 
 						.  left "," bottom "|" 
 						.   left "," top) 
-	Gdip_DeletePen(pPen)
-
-
-
-	Gdip_DrawRectangle(G, pPen, 0, 0, Wclient, Hclient)
-
-	Gdip_DeletePen(pPen)
+	if windowed
+	{
+		Gdip_DrawRectangle(G, pRedPen, 0, 0, Wclient, Hclient)
+		Gdip_DrawRectangle(G, pBluePen, leftFrame, topFrame, Wclient-2*leftFrame, Hclient - topFrame - bottomFrame)
+	}
+	
 	
 
 	; Draws the rectangle around the entire minimap UI border
@@ -2310,31 +2307,26 @@ loop
 
 	hbm := CreateDIBSection(minimap.BorderWidth+1, minimap.BorderHeight+1), hdc := CreateCompatibleDC(), obm := SelectObject(hdc, hbm)
 	G := Gdip_GraphicsFromHDC(hdc), Gdip_SetSmoothingMode(G, 4), Gdip_SetInterpolationMode(G, 2)	
-	pPen := Gdip_CreatePen(0xcFF00FFFF, 1)
-	Gdip_DrawLines(G, pPen, 0 "," 0 "|" 
+	Gdip_DrawLines(G, pBluePen, 0 "," 0 "|" 
 						.   minimap.BorderWidth "," 0 "|" 
 						.   minimap.BorderWidth "," minimap.BorderHeight "|" 
 						.   0 "," minimap.BorderHeight "|" 
 						.   0 "," 0) 
 
-	Gdip_DeletePen(pPen), Gdip_DeleteGraphics(G) 
+	Gdip_DeleteGraphics(G) 
 	UpdateLayeredWindow(hwndMinimap, hdc, minimap.VirtualBorderLeft, minimap.VirtualBorderTop, minimap.BorderWidth+1, minimap.BorderHeight+1)
 	SelectObject(hdc, obm), DeleteObject(hbm), DeleteDC(hdc)
-
-
-	;settimer, destroySCUIPosOverlay, 250
-	sleep 200
-}
+	Gdip_DeletePen(pRedPen)
+	Gdip_DeletePen(pBluePen)
 	return
 
-	destroySCUIPosOverlay:
-	if !WinExist(mainWindowTitle) || !WinExist("ahk_id " hwnd1)
+	destroyRedrawSCUIPosOverlay:
+	if !WinExist("ahk_id " optionsGUIHwnd) || !WinExist("ahk_id " hwnd1) || !gettime()
 	{
 		settimer,, off
 		drawUIPositions(True)
 	}
-
-
+	else drawUIPositions() ; Redraw it
 	return
 }
 

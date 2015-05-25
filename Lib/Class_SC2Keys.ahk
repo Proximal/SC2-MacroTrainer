@@ -344,6 +344,7 @@ class SC2Keys
 			CameraView6 					|Shift+F6		 			|Shift+F9					|Shift+F6				|Shift+F6		 		|Shift+F9						|CameraView5
 			CameraView7 					|Shift+F7		 			|Shift+F10					|Shift+F7				|Shift+F7		 		|Shift+F10						|CameraView6
 			CameraView8 					|Shift+F8		 			|Shift+F11					|Shift+F8				|Shift+F8		 		|Shift+F11						|CameraView7																																			
+			MinimapPing 					|Alt+G		 				|Alt+P 						|Alt+G					|Alt+G 			 		|Alt+G 							|MinimapPing																																				
 		)"
 
 		aLookUp := []
