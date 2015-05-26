@@ -193,9 +193,10 @@ class Input
 			if this.dragLeftClick
 			{
 				; SetCursorPos is so the green box drag will appear in SC.
-				; otherwise the box drag wont appear until the user moves the mouse 
+				; otherwise the box drag wont appear until the user moves the mouse
+				CoordMode, Mouse, Screen ; coordinates are relative to the screen
 				MouseGetPos, x, y
-				dllcall("SetCursorPos", "int", x-this.XframeOffset, "int", y-this.YframeOffset)
+				dllcall("SetCursorPos", "int", x, "int", y)
 			}	
 		}
 		return							

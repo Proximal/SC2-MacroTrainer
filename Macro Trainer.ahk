@@ -113,11 +113,16 @@ if (!FileExist("msvcr100.dll") && A_IsCompiled)
 InstallSC2Files() ; Run this before the gosub pre_startup  - otherwise menu items will be missing!
 
 Menu Tray, Add, &Settings && Options, options_menu
-Menu, Tray, Icon, &Settings && Options, %A_Temp%\settings.ico 
+;Menu, Tray, Icon, &Settings && Options, %A_Temp%\settings.ico, 1 
+Menu, Tray, Icon, &Settings && Options, %A_Temp%\MacroTrainerFiles\GUI\settings20.png,, 0
 Menu Tray, Add, &Check For Updates, TrayUpdate
+Menu, Tray, Icon, &Check For Updates, %A_Temp%\MacroTrainerFiles\GUI\checkUpdate20.png,, 0
 Menu Tray, Add, &Homepage, Homepage
+Menu, Tray, Icon, &Homepage, %A_Temp%\MacroTrainerFiles\GUI\home20.png,, 0
 Menu Tray, Add, &Reload, g_reload
+Menu, Tray, Icon, &Reload, %A_Temp%\MacroTrainerFiles\GUI\reload20.png,, 0
 Menu Tray, Add, Exit, ExitApp ;this is actually a label not the command!
+Menu, Tray, Icon, Exit, %A_Temp%\MacroTrainerFiles\GUI\redClose20.png,, 0
 Menu Tray, Default, &Settings && Options
 If A_IsCompiled
 	Menu Tray, NoStandard
@@ -1551,7 +1556,7 @@ cast_ForceInject:
 					|| getPlayerCurrentAPM() > automationAPMThreshold ;FInjectAPMProtection
 					||  A_mtTimeIdle < 70
 					{
-						if (A_TickCount - startInjectWait > 1000)
+						if (A_TickCount - startInjectWait >= 100)
 							return
 						Thread, Priority, -2147483648
 						sleep 1
@@ -2895,6 +2900,7 @@ ini_settings_write:
 	Iniwrite, %unitPanelDrawStructureProgress%, %config_file%, %section%, unitPanelDrawStructureProgress
 	Iniwrite, %unitPanelDrawUnitProgress%, %config_file%, %section%, unitPanelDrawUnitProgress
 	Iniwrite, %unitPanelDrawUpgradeProgress%, %config_file%, %section%, unitPanelDrawUpgradeProgress
+	Iniwrite, %unitPanelPlayerProgressColours%, %config_file%, %section%, unitPanelPlayerProgressColours
 	Iniwrite, %unitPanelDrawScanProgress%, %config_file%, %section%, unitPanelDrawScanProgress
 	Iniwrite, %unitPanelDrawLocalPlayer%, %config_file%, %section%, unitPanelDrawLocalPlayer
 ;	Iniwrite, %OverlayBackgrounds%, %config_file%, %section%, OverlayBackgrounds	
@@ -4480,7 +4486,7 @@ try
 
 	Gui, Tab, Overlays
 			;Gui, add, text, y+20 X%XTabX%, Display Overlays:
-			Gui, Add, GroupBox, y+15 x+20 w195 h300 section, Display Overlays:
+			Gui, Add, GroupBox, y+10 x+20 w195 h315 section, Display Overlays:
 				Gui, Add, Checkbox, xp+10 yp+20 vDrawIncomeOverlay Checked%DrawIncomeOverlay%, Income
 					Gui, Add, Checkbox, xp+95 yp vDrawLocalPlayerIncome Checked%drawLocalPlayerIncome%, Include Self
 				Gui, Add, Checkbox, xs+10 y+13 vDrawResourcesOverlay Checked%DrawResourcesOverlay%, Resources
@@ -4507,9 +4513,9 @@ try
 				Gui, Add, DropDownList, x+10 yp-2 vlocalUpgradesOverlayMode w100, Time Remaining|Progress bar
 				GuiControl, ChooseString, localUpgradesOverlayMode, %localUpgradesOverlayMode%
 
-				Gui, Add, GroupBox, ys XS+220 w170 h300, Match Overlay:
+				Gui, Add, GroupBox, ys XS+220 w170 h315, Match Overlay:
 				Gui, Add, Checkbox, xp+10 yp+20 vDrawUnitOverlay Checked%DrawUnitOverlay%, Enable
-				Gui, Add, DropDownList, xp yp+25 vUnitOverlayMode, Units + Upgrades|Units|Upgrades
+				Gui, Add, DropDownList, xp yp+20 vUnitOverlayMode, Units + Upgrades|Units|Upgrades
 				GuiControl, ChooseString, UnitOverlayMode, %UnitOverlayMode%
 				Gui, Add, Checkbox, xp y+10 vSplitUnitPanel ggToggleAlignUnitGUI Checked%SplitUnitPanel%, Split Units/Buildings
 				Gui, Add, Checkbox, % "xp y+10 vUnitPanelAlignNewUnits Checked" unitPanelAlignNewUnits " disabled" !SplitUnitPanel, Align New units
@@ -4517,14 +4523,15 @@ try
 				Gui, Add, Checkbox, xp y+10 vUnitPanelDrawStructureProgress Checked%unitPanelDrawStructureProgress%, Show Structure Progress 
 				Gui, Add, Checkbox, xp y+10 vUnitPanelDrawUnitProgress Checked%unitPanelDrawUnitProgress%, Show Unit Progress 
 				Gui, Add, Checkbox, xp y+10 vUnitPanelDrawUpgradeProgress Checked%unitPanelDrawUpgradeProgress%, Show Upgrade Progress 
+				Gui, Add, Checkbox, xp y+10 vUnitPanelPlayerProgressColours Checked%unitPanelPlayerProgressColours%, Progess Player Colours
 				Gui, Add, Checkbox, xp y+10 vUnitPanelDrawScanProgress Checked%unitPanelDrawScanProgress%, Show Scan Production
 				Gui, Add, Checkbox, xp y+10 vunitPanelDrawLocalPlayer Checked%unitPanelDrawLocalPlayer%, Include Self 
 
 				;Gui, Add, Button, center xp+15 y+10 w100 h30 vUnitPanelFilterButton Gg_GUICustomUnitPanel, Unit Filter
-				Gui, Add, Button, center xp y+13 w70 h30 vUnitPanelFilterButton Gg_GUICustomUnitPanel, Unit Filter
+				Gui, Add, Button, center xp y+10 w70 h30 vUnitPanelFilterButton Gg_GUICustomUnitPanel, Unit Filter
 				Gui, Add, Button, center x+10 yp w70 h30 vUnitPanelGuideButton GgUnitPanelGuide, Guide
 
-			Gui, Add, GroupBox, XS ys+310 w195 h55 section, Player Identifier:	
+			Gui, Add, GroupBox, XS ys+325 w195 h55 section, Player Identifier:	
 			;	Gui, Add, Text, yp+25 xp+10 w80, Player Identifier:
 				if OverlayIdent in 0,1,2,3
 					droplist3_var := OverlayIdent + 1
@@ -4858,6 +4865,7 @@ try
 		unitPanelDrawStructureProgress_TT := "Displays a progress bar below any structure under construction."
 		unitPanelDrawUnitProgress_TT := "Displays a progress bar below any unit in production."
 		unitPanelDrawUpgradeProgress_TT := "Displays a progress bar below the current upgrades."
+		unitPanelPlayerProgressColours_TT := "Progress bars are drawn using player colours instead of the standard green."
 		unitPanelDrawScanProgress_TT := "Displays a decimal value in the top left corner of Orbital Commands. This indicates how close the next scan is to being available.`n`nThis accounts for Command Centres morphing into Orbitals."
 		unitPanelDrawLocalPlayer_TT := "Includes the local player in the match panel."
 		OverlayIdent_TT := "Changes or disables the method of identifying players in the overlays.`n`nThe 'cycle identifier' hotkey allows you to change this setting during a match."
@@ -7969,7 +7977,7 @@ autoWorkerProductionCheck()
 		|| getPlayerCurrentAPM() > automationAPMThreshold ;AutoWorkerAPMProtection
 		||  A_mtTimeIdle < 50)
 		{
-			if (A_index > 36)
+			if (A_index >= 5)
 				return ; (actually could be 480 ms - sleep 1 usually = 20ms)
 			Thread, Priority, -2147483648	
 			sleep 1
@@ -12135,7 +12143,7 @@ class autoBuild
   		thread, notimers, false
   		return obj
 	}
-	canPerformBuild(loops := 15)
+	canPerformBuild(loops := 5)
 	{ 	global automationAPMThreshold
 		if isGamePaused() || isMenuOpen()
 			return False
@@ -13053,8 +13061,8 @@ waitForUser()
 	|| getPlayerCurrentAPM() > automationAPMThreshold ;AutoWorkerAPMProtection
 	|| A_mtTimeIdle < 50)
 	{
-		if (A_index > 36)
-			return 1 ; (actually could be 480 ms - sleep 1 usually = 20ms)
+		if (A_index >= 5)
+			return 1 ; (sleep 1 usually = 20ms)
 		Thread, Priority, -2147483648	
 		sleep 1
 		Thread, Priority, 0	

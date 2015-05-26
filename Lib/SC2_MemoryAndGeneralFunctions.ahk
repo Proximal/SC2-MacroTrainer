@@ -4574,6 +4574,7 @@ readConfigFile()
 	IniRead, unitPanelDrawStructureProgress, %config_file%, %section%, unitPanelDrawStructureProgress, 1
 	IniRead, unitPanelDrawUnitProgress, %config_file%, %section%, unitPanelDrawUnitProgress, 1
 	IniRead, unitPanelDrawUpgradeProgress, %config_file%, %section%, unitPanelDrawUpgradeProgress, 1
+	IniRead, unitPanelPlayerProgressColours, %config_file%, %section%, unitPanelPlayerProgressColours, 0
 	IniRead, unitPanelDrawScanProgress, %config_file%, %section%, unitPanelDrawScanProgress, 0
 	IniRead, unitPanelDrawLocalPlayer, %config_file%, %section%, unitPanelDrawLocalPlayer, 0
 ;	IniRead, OverlayBackgrounds, %config_file%, %section%, OverlayBackgrounds, 0

@@ -19,6 +19,12 @@ InstallSC2Files()
 
 	FileInstall, Starcraft-2-32x32.ico, %A_Temp%\Starcraft-2-32x32.ico,1
 	
+	FileInstall, Included Files\Used_Icons\settings20.png, %A_Temp%\MacroTrainerFiles\GUI\settings20.png, 1
+	FileInstall, Included Files\Used_Icons\checkUpdate20.png, %A_Temp%\MacroTrainerFiles\GUI\checkUpdate20.png, 1
+	FileInstall, Included Files\Used_Icons\home20.png, %A_Temp%\MacroTrainerFiles\GUI\home20.png, 1
+	FileInstall, Included Files\Used_Icons\reload20.png, %A_Temp%\MacroTrainerFiles\GUI\reload20.png, 1
+	FileInstall, Included Files\Used_Icons\redClose20.png, %A_Temp%\MacroTrainerFiles\GUI\redClose20.png, 1
+	
 	FileInstall, Included Files\GUI\Add Plus Green.ico, %A_Temp%\MacroTrainerFiles\GUI\Add Plus Green.ico, 1 
 	FileInstall, Included Files\GUI\Remove Minus Red.ico, %A_Temp%\MacroTrainerFiles\GUI\Remove Minus Red.ico, 1 
 	FileInstall, Included Files\GUI\Down Arrow Blue.ico, %A_Temp%\MacroTrainerFiles\GUI\Down Arrow Blue.ico, 1 

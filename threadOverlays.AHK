@@ -1466,7 +1466,7 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 	GLOBAL aEnemyUnits, aEnemyUnitConstruction, a_pBitmap, aPlayer, aLocalPlayer, aHexColours, GameIdentifier, config_file, UnitOverlayX, UnitOverlayY 
 		, aUnitInfo, SplitUnitPanel, aEnemyCurrentUpgrades, UnitOverlayMode, aMiscUnitPanelInfo, aUnitID, overlayMatchTransparency
 		, unitPanelDrawStructureProgress, unitPanelDrawUnitProgress, unitPanelDrawUpgradeProgress, unitPanelAlignNewUnits 
-		, unitPanelDrawLocalPlayer, unitPanelDrawScanProgress, UnitPanelNewUnitGap
+		, unitPanelDrawLocalPlayer, unitPanelDrawScanProgress, UnitPanelNewUnitGap, unitPanelPlayerProgressColours
 	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0
 
 	if !modifyOverlay("UnitOverlay", Redraw, overlayCreated, Drag, DragPrevious, UnitOverlayX, UnitOverlayY, 400, 400, hwnd1)
@@ -1532,6 +1532,8 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 			, DestX := Width+15*UserScale 
 		}
 		else DestX := 0
+
+		pProgressBrush := unitPanelPlayerProgressColours ? a_pBrushes[player.colour] : a_pBrushes.Green
 
 		; this moves the destionX to the right to account for the race-icon/name. And resets the position for the next player.
 		firstColumnX  := maxStructureDestX := maxUnitDestX := DestX
@@ -1639,7 +1641,7 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 							; floor helps keep a consistent height for the bar - as the y address may be a a float + the float the height can cause inconsistent results 
 							; I.e. one bar might appear slightly taller 
 							, Gdip_FillRectangle(G, a_pBrushes.TransparentBlack, DestX + 5 * UserScale *.5, floor(DestY+Height + 5 * UserScale *.5), Width - 10 * UserScale *.5, Height/16)
-							, Gdip_FillRectangle(G, a_pBrushes.Green, DestX + 5 * UserScale *.5, floor(DestY+Height + 5 * UserScale *.5), Width*progress - progress * 10 * UserScale *.5, Height/16)
+							, Gdip_FillRectangle(G, pProgressBrush, DestX + 5 * UserScale *.5, floor(DestY+Height + 5 * UserScale *.5), Width*progress - progress * 10 * UserScale *.5, Height/16)
 							, Gdip_SetSmoothingMode(G, 4)
 						}
 							aEnemyUnitConstruction[slot_number, priority].remove(unit, "")
@@ -1709,7 +1711,7 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 							Gdip_SetSmoothingMode(G, 0)
 							;Gdip_FillRectangle(G, a_pBrushes.TransparentBlack, DestX + 5 * UserScale *.5, DestY+Height, Width - 10 * UserScale *.5, Height/15) ; DestY+Height
 							, Gdip_FillRectangle(G, a_pBrushes.TransparentBlack, DestX + 5 * UserScale *.5, floor(DestY+Height + 5 * UserScale *.5), Width - 10 * UserScale *.5, Height/16)
-							, Gdip_FillRectangle(G, a_pBrushes.Green, DestX + 5 * UserScale *.5, floor(DestY+Height + 5 * UserScale *.5), Width*item.progress - item.progress * 10 * UserScale *.5, Height/16)
+							, Gdip_FillRectangle(G, pProgressBrush, DestX + 5 * UserScale *.5, floor(DestY+Height + 5 * UserScale *.5), Width*item.progress - item.progress * 10 * UserScale *.5, Height/16)
 							, Gdip_SetSmoothingMode(G, 4)
 						}
 
@@ -1772,7 +1774,7 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 					{
 						Gdip_SetSmoothingMode(G, 0)
 						, Gdip_FillRectangle(G, a_pBrushes.TransparentBlack, UpgradeX + 5 * UserScale *.5, floor(destUpgradesY+Height), Width - 10 * UserScale *.5, Height/16)
-						, Gdip_FillRectangle(G, a_pBrushes.Green, UpgradeX + 5 * UserScale *.5, floor(destUpgradesY+Height), Width*item.progress - item.progress * 10 * UserScale *.5, Height/16)
+						, Gdip_FillRectangle(G, pProgressBrush, UpgradeX + 5 * UserScale *.5, floor(destUpgradesY+Height), Width*item.progress - item.progress * 10 * UserScale *.5, Height/16)
 						, Gdip_SetSmoothingMode(G, 4)
 					}
 
