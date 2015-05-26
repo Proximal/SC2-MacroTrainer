@@ -2267,11 +2267,6 @@ drawUIPositions(destroy := False, overlayExist := False, optionsHwnd := False)
 		aSize := StrSplit(gdip_TextToGraphics(G, A_Index - 1, "x"(x) "y"(y)  " Bold Italic cFFFF0000 s14 ", "Arial",,, True), "|")
 		gdip_TextToGraphics(G, A_Index - 1, "x"(x - aSize[3]//2) "y"(y - aSize[4]//2)  " Bold Italic cFFFF0000 s14 ", "Arial")
 	}
-	getMiniMapPingIconPos(x, y)
-	aSize := StrSplit(gdip_TextToGraphics(G, "P", "x"(x) "y"(y)  " Bold Italic cFFFF0000 s14 ", "Arial",,, True), "|")
-	gdip_TextToGraphics(G, "p", "x"(x - aSize[3]//2) "y"(y - aSize[4]//2)  " Bold Italic cFFFF0000 s14 ", "Arial")
-	; If game not running (or memory addresses not loaded yet) get time will return 0.0
-	; so don't try to draw the map edges
 	SetMiniMap(minimap)
 
 	; This draws the rectangle around the playable map area
@@ -2351,3 +2346,29 @@ convertScanCountUnitOverlay(energy, MorphTime, MorphPercent)
 	else return "." result
 }
 
+
+
+; Called in response to monitor resolution change, refresh rate change, and addition/removal of a monitor
+checkOverlayPositions()
+{
+	local Xcentre, Ycentre, list, adjusted, overlay
+	; This function will get return  the x,y coordinates for the top left, and bottom right of the 
+	; desktop screen (the area on both monitors)
+	;DesktopScreenCoordinates(XminScreen, YminScreen, XmaxScreen, YmaxScreen)
+	getPrimaryMonitorCentre(Xcentre, Ycentre)
+	list := "APMOverlay,IncomeOverlay,ResourcesOverlay,ArmySizeOverlay,WorkerOverlay,IdleWorkersOverlay,UnitOverlay,LocalPlayerColourOverlay,MacroTownHallOverlay,LocalUpgradesOverlay"
+	loop, parse, list, `,
+	{
+		overlay := A_LoopField
+		if !isCoordinateBoundedByMonitor(%overlay%X, %overlay%Y)
+		{
+			%overlay%X := Xcentre, %overlay%Y := Ycentre
+			adjusted := True
+			Gui %overlay%:+LastFoundExist
+			IfWinExist
+				Try winmove,,, Xcentre, Ycentre	
+			; else the GUI has been destroyed or never existed and when drawn will use the altered values.
+		}
+	}
+	return adjusted
+}

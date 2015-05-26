@@ -308,8 +308,7 @@ InstallSC2Files()
 	FileInstall, Included Files\Used_Icons\Upgrades\Zerg\zergmissileweapons2.png, %A_Temp%\UnitPanelMacroTrainer\zergmissileweapons2.png, 1
 	FileInstall, Included Files\Used_Icons\Upgrades\Zerg\zergmissileweapons3.png, %A_Temp%\UnitPanelMacroTrainer\zergmissileweapons3.png, 1
 
-	; This was previously used by dSpeak() - This function isn't called any more
-	; This is still used by ResourHackIcons() 
+	; This was previously used by dSpeak() and ResourHackIcons() - These functions are not used any more
 	; Use the Non-MD version so don't need to worry about msvcr100.dll
-	FileInstall, Included Files\ahkH\nonMD\AutoHotkey.exe, %A_Temp%\AHK.exe, 1
+	; FileInstall, Included Files\ahkH\nonMD\AutoHotkey.exe, %A_Temp%\AHK.exe, 1
 }

@@ -288,8 +288,9 @@ WinWait, %GameIdentifier%
 while (!(B_SC2Process := getProcessBaseAddress(GameIdentifier)) || B_SC2Process < 0)		;using just the window title could cause problems if a folder had the same name e.g. sc2 folder
 	sleep 400				; required to prevent memory read error - Handle closed: error 		
 SC2hWnd := WinExist(GameIdentifier)
-OnMessage(DllCall("RegisterWindowMessage", Str,"SHELLHOOK" ), "ShellMessage")
 versionMatch := loadMemoryAddresses(B_SC2Process, clientVersion := getProcessFileVersion(GameExe))
+OnMessage(DllCall("RegisterWindowMessage", Str,"SHELLHOOK" ), "ShellMessage")
+OnMessage(0x7E, "WM_DISPLAYCHANGE")
 settimer, timer_exit, 500, -100 ; Put this here so if user closes and Reopens SC while a version mismatch is displayed the RPM() won't fail
 if (!versionMatch && clientVersion && A_IsCompiled) ; clientVersion check if true - if function fails (shouldn't) it will be 0/blank
 {
@@ -1914,7 +1915,7 @@ ShellMessage(wParam, lParam)
 			aThreads.Overlays.AhkFunction("DestroyOverlays")
 			aThreads.MiniMap.AhkFunction("DestroyOverlays")
 		}
-		else if (SC2hWnd = lParam && getTime() && isInMatch)
+		else if (SC2hWnd = lParam && getTime() && isPlaying)
 		{
 			;mt_Paused otherwise will redisplay the hidden and frozen overlays
 			if (ReDrawOverlays && !mt_Paused && !IsInList(aLocalPlayer.Type, "Referee", "Spectator")) ; This will redraw immediately - but this isn't needed at all
@@ -1938,6 +1939,20 @@ ShellMessage(wParam, lParam)
 	}
 	return
 }
+; When ever the program reads the config file it checks to ensure that an overlay is positioned inside a monitor
+; However changing the resolution after starting the program can result in an overlay being hidden until the config is read again (use saves from the options menu)
+; Called for: Add/removed monitor, resolution or refresh rate change.
+WM_DISPLAYCHANGE(wParam, lParam)
+{
+	width := lParam & 0xffff ;new horizontal res
+	height := (lParam >> 16) & 0xffff ;new vertical res
+
+	autoBuildGameGUI.checkOverlayPosition()
+	aThreads.Overlays.AhkFunction("checkOverlayPositions")
+	; dont need to worry about the minimap
+	return 
+}
+
 monitorGameWindow:
 monitorGameWindow()
 return
@@ -1975,7 +1990,7 @@ monitorGameWindow(initialise := False)
 		
 		input.XframeOffset := leftFrameWidth
 		input.YframeOffset := topFrameHeight
-		; set these values before restting the position of the command cards/unit selection
+		; set these values before resetting the position of the command cards/unit selection
 		g_aGameWindow.AspectRatio := aspectRatio
 		, g_aGameWindow.trueAspectRatio := trueAspectRatio
 		, g_aGameWindow.X := x, g_aGameWindow.Y := y

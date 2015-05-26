@@ -98,6 +98,18 @@ class autoBuildGameGUI
 		this.fillLocalRace()
 		this.Refresh()
 	}
+	checkOverlayPosition()
+	{
+		global autoBuildOverlayX, autoBuildOverlayY
+		if !isCoordinateBoundedByMonitor(autoBuildOverlayX, autoBuildOverlayY)
+		{
+			getPrimaryMonitorCentre(Xcentre, Ycentre)
+			autoBuildOverlayX := Xcentre, autoBuildOverlayY := Ycentre
+			Gui, autoBuildGUI: +LastFoundExist
+			IfWinExist
+				Try winmove,,, Xcentre, Ycentre				
+		}
+	}
 	interact(enable)
 	{
 		;Gui, % "autoBuildGUI: " (enable ? "-" : "+") "E0x20"

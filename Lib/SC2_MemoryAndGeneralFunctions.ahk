@@ -4519,7 +4519,7 @@ readConfigFile()
 	; This function will get return  the x,y coordinates for the top left, and bottom right of the 
 	; desktop screen (the area on both monitors)
 	;DesktopScreenCoordinates(XminScreen, YminScreen, XmaxScreen, YmaxScreen)
-	local Xcentre, Ycentre
+	local Xcentre, Ycentre, list
 	getPrimaryMonitorCentre(Xcentre, Ycentre)
 	list := "APMOverlay,IncomeOverlay,ResourcesOverlay,ArmySizeOverlay,WorkerOverlay,IdleWorkersOverlay,UnitOverlay,LocalPlayerColourOverlay,MacroTownHallOverlay,LocalUpgradesOverlay,autoBuildOverlay"
 	loop, parse, list, `,
@@ -5820,7 +5820,6 @@ minimapPosition(byRef screenleft, byRef screenright, byRef screenbottom, byRef s
 
 	return
 }
-
 
 
 
