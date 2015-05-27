@@ -170,7 +170,7 @@ gameChange()
 			sleep 400
 		hasLoadedMemoryAddresses := loadMemoryAddresses(B_SC2Process)
 	}
-	if (Time := getTime())
+	if (Time := getTime()) && getLocalPlayerNumber() != 16
 	{
 		; aStringTable and aUnitModel are super global declared in memory and general functions
 		aUnitModel := [], aStringTable := [], MT_CurrentGame := []
@@ -2201,8 +2201,7 @@ drawUIPositions(destroy := False, overlayExist := False, optionsHwnd := False)
 		optionsGUIHwnd := False
 		return
 	}
-	if optionsHwnd
-		optionsGUIHwnd := optionsHwnd
+	optionsGUIHwnd := optionsHwnd
 	Gui UIPositions:+LastFoundExist
 	IfWinNotExist
 	{
@@ -2318,7 +2317,7 @@ drawUIPositions(destroy := False, overlayExist := False, optionsHwnd := False)
 	return
 
 	destroyRedrawSCUIPosOverlay:
-	if !WinExist("ahk_id " optionsGUIHwnd) || !WinExist("ahk_id " hwnd1) || !gettime()
+	if (optionsGUIHwnd && !WinExist("ahk_id " optionsGUIHwnd)) || !WinExist("ahk_id " hwnd1) || !gettime()
 	{
 		settimer,, off
 		drawUIPositions(True)

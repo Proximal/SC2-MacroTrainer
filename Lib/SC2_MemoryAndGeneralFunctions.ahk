@@ -2934,6 +2934,10 @@ updateMinimapPosition()
 }
 
 
+; *** note about minimap size and input
+; the left and right locations reported by minimapLocation()/memory do not match where you can click on the minimap.
+; left+1 and right-1 are the bounds for the clickable margins!
+
 ; Takes ~ 0.21 ms
 SetMiniMap(byref minimap)
 {	
@@ -2948,18 +2952,18 @@ SetMiniMap(byref minimap)
 	minimapLocation(left, right, bottom, top)
 	; x, y screen coordinates of the full minimap UI Border
 	; Relative to the virtual screen (desktop area)
-	minimap.VirtualBorderLeft := left + Xsc + leftFrame + 1
-	minimap.VirtualBorderRight := right + Xsc + leftFrame - 1 ; - 1 Account for difference in SC stored value
+	minimap.VirtualBorderLeft := left + Xsc + leftFrame ;+ 1
+	minimap.VirtualBorderRight := right + Xsc + leftFrame ;- 1 ; - 1 Account for difference in SC stored value
 	minimap.VirtualBorderTop  := top + Ysc + topFrame ; When windowed the top SC border consists of a caption and frame
 	minimap.VirtualBorderBottom := bottom + Ysc + topFrame 
-	; Not doing right - left, as need to account for the fact that minmap is 1 out
+	; Not doing right - left, as need to account for the fact that minimap is +1 -1 out
 	minimap.BorderWidth := minimap.VirtualBorderRight - minimap.VirtualBorderLeft
 	minimap.BorderHeight := minimap.VirtualBorderBottom - minimap.VirtualBorderTop
 	; x, y screen coordinates of the full minimap UI Border
 	; Relative to the SC client area NOT window
 	; i.e. relative to the top left display area of the SC window which isn't a part of the outer window border or window frame 
-	minimap.ClientBorderLeft := left + 1
-	minimap.ClientBorderRight := right - 1
+	minimap.ClientBorderLeft := left ;+ 1
+	minimap.ClientBorderRight := right ;- 1
 	minimap.ClientBorderBottom := bottom
 	minimap.ClientBorderTop := top
 
@@ -5735,6 +5739,10 @@ class upgradeDefinitions
 ; ***Note: SC memory has left position as 28, but this isn't clickable in SC (it's part of the border overlay)
 ; so need to +1 to the returned value!!!!
 ; The right edge is stored as 290, but it is really 289 (-1)
+; *** note about minimap size and input
+; the left and right locations are reported by minimapLocation()/memory do not match where you can click on the minimap.
+; left+1 and right-1 are the bounds for the clickable margins!
+
 minimapLocation(byRef left, byRef right, byRef bottom, byRef top)
 {
 	static 	o_left := 0x20, o_Bottom := 0x24, o_Right := 0x28, o_Top := 0x2C
@@ -5789,42 +5797,6 @@ systemWindowEdgeSize(byRef leftAndRightBorder := "", byref topBorder := "", byRe
 	, BottomBorder := heightSizeFrame
 	return 
 }
-
-; Returns various screen coordinates relating to the minimap position
-; screen[side] - value relative to the virtual desktop
-; clientArea[side] - value relative to the SC client area (the visible client window that excludes the client window border/frame if it's present)
-; client[side] - value relative to entire SC client window (i.e. includes the client window border/frame if present)
-minimapPosition(byRef screenleft, byRef screenright, byRef screenbottom, byRef screentop
-, byref clientAreaLeft, byRef clientAreaRight, byRef clientAreaBottom, byRef clientAreaTop
-, byref clientLeft, byRef clientRight, byRef clientBottom, byRef clientTop)
-{
-	leftFrame := topFrame := 0
-	winGetPos, Xsc, Ysc, Wsc, Hsc, %GameIdentifier%
-	windowMode := GameWindowStyle()
-	if (windowMode = "Windowed")
-		systemWindowEdgeSize(leftFrame, topFrame)
-	minimapLocation(left, right, bottom, top)
-	screenleft += left + Xsc + leftFrame ;+ 1 ; + 1 Account for difference in SC stored value
-	screenright += right + Xsc + leftFrame - 1 ; - 1 Account for difference in SC stored value
-	screenbottom += bottom + Ysc + topFrame ; When windowed the top SC border consists of a caption and frame
-	screentop += top + Ysc + topFrame
-	; can't join this code with the above lines by a comma for some reason
-	clientAreaLeft := left + 1
-	, clientAreaRight := right - 1
-	, clientAreaBottom := bottom
-	, clientAreaTop := top	
-
-	, clientLeft := left + 1 + leftFrame
-	, clientRight := right - 1 + leftFrame
-	, clientBottom := bottom + topFrame
-	, clientTop := top + topFrame
-
-	return
-}
-
-
-
-
 
 
 

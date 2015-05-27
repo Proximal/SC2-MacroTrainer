@@ -101,7 +101,7 @@ gameChange(UserSavedAppliedSettings := False)
 			sleep 400
 		hasLoadedMemoryAddresses := loadMemoryAddresses(B_SC2Process)
 	}
-	if (Time := getTime())
+	if (Time := getTime()) && getLocalPlayerNumber() != 16
 	{
 		isWarpGateTechComplete := gateway_count := warpgate_warning_set := 0
 		TimeReadRacesSet := 0

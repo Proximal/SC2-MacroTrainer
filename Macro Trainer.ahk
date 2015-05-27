@@ -190,7 +190,7 @@ getSubGroupAliasArray(aUnitSubGroupAlias)
 setupTargetFilters(aUnitTargetFilter)
 	
 CreatepBitmaps(a_pBitmap, aUnitID)
-;Menu, Tray, Tip, MT_V%ProgramVersion% Coded By Kalamity
+Menu, Tray, Tip, MT By Kalamity Vr. %ProgramVersion%
 
 If InStr(A_ScriptDir, old_backup_DIR)
 {
@@ -549,12 +549,15 @@ ToolTip
 return
 
 DrawSCUIOverlay:
-if !WinExist(GameIdentifier) || !gettime()
+if !WinExist(GameIdentifier) || !gettime() || getLocalPlayerNumber() = 16 ; commard card and portrait positioning is not dynamic in a replay
 {
 	Gui +OwnDialogs
- 	msgbox, 0x30, ¯\_(ツ)_/¯, You need to be in a SC game/replay!, 15
+	if gettime() && getLocalPlayerNumber() = 16
+ 		msgbox, 0x30, ¯\_(ツ)_/¯, This feature doesn't work in replays or when observing games.`nUse 'resume from replay' or begin a new match., 15
+ 	else msgbox, 0x30, ¯\_(ツ)_/¯, You need to be in a SC game!, 15
 	return 
 }
+
 if !aThreads.Overlays.ahkReady()
 {
 	launchOverlayThread()
@@ -1981,7 +1984,7 @@ monitorMinimapPosition()
 	return
 }
 
-
+; takes 0.44 ms monitorGameWindow(false)
 monitorGameWindow(initialise := False)
 {
 	aspectRatio := getClientAspectRatio(x, y, w, h, trueAspectRatio)
@@ -2199,16 +2202,16 @@ TrayUpdate:
 	{
 		Gui, New
 		Gui +Toolwindow +AlwaysOnTop	
-		Gui, Add, Picture, x12 y10 w90 h90 , %A_Temp%\Starcraft-2.ico
+		Gui, Add, Picture, x12 y10 w60 h60, %A_Temp%\Starcraft-2.ico
 		Gui, Font, S10 CDefault, Verdana
-		Gui, Add, Text, x112 y15  , You already have the latest version.
-		Gui, Add, Text, xp yp+20  , Version:
+		Gui, Add, Text, x92 y15, You already have the latest version.
+		Gui, Add, Text, xp yp+20, Version:
 		Gui, Font, S10 CDefault Bold, Verdana
-		Gui, Add, Text, xp+60 yp  , %ProgramVersion%
+		Gui, Add, Text, xp+60 yp, %ProgramVersion%
 		Gui, Font, Norm 
 		Gui, Font, S8 CDefault Bold, Verdana
 		Gui, Font, Norm 
-		Gui, Add, Button, Default x160 yp+40  w100 h30 gGuiReturn, &OK
+		Gui, Add, Button, Default x130 yp+40  w100 h30 gGuiReturn, &OK
 		Gui, Show,, Macro Trainer Update
 		Return
 	}
@@ -7977,7 +7980,7 @@ autoWorkerProductionCheck()
 		|| getPlayerCurrentAPM() > automationAPMThreshold ;AutoWorkerAPMProtection
 		||  A_mtTimeIdle < 50)
 		{
-			if (A_index >= 5)
+			if (A_index >= 4)
 				return ; (actually could be 480 ms - sleep 1 usually = 20ms)
 			Thread, Priority, -2147483648	
 			sleep 1
@@ -12143,7 +12146,7 @@ class autoBuild
   		thread, notimers, false
   		return obj
 	}
-	canPerformBuild(loops := 5)
+	canPerformBuild(loops := 4)
 	{ 	global automationAPMThreshold
 		if isGamePaused() || isMenuOpen()
 			return False
@@ -13061,7 +13064,7 @@ waitForUser()
 	|| getPlayerCurrentAPM() > automationAPMThreshold ;AutoWorkerAPMProtection
 	|| A_mtTimeIdle < 50)
 	{
-		if (A_index >= 5)
+		if (A_index >= 4)
 			return 1 ; (sleep 1 usually = 20ms)
 		Thread, Priority, -2147483648	
 		sleep 1
@@ -13786,3 +13789,4 @@ loop, % count := 10000
 msgbox % stopwatch(i) / count
 return 
 */
+
