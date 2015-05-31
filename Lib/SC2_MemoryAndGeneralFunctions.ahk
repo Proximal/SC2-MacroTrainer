@@ -641,6 +641,7 @@ getPlayerWorkersBuilt(player="")
 		player := aLocalPlayer["Slot"]
 	Return ReadMemory(B_pStructure + O_pWorkersBuilt + player*S_pStructure, GameIdentifier)
 }
+; Probably not accurate for drones morphing into structures
 getPlayerWorkersLost(player="")
 { 	global aLocalPlayer
 	If (player = "")
@@ -4131,6 +4132,8 @@ readConfigFile()
 	section := "Forced Inject"
 	IniRead, F_Inject_Enable, %config_file%, %section%, F_Inject_Enable, 0
 	IniRead, FInjectHatchFrequency, %config_file%, %section%, FInjectHatchFrequency, 2500
+	if (FInjectHatchFrequency < 500) ; prior to vr.3.142 users could set this to anything!
+		FInjectHatchFrequency := 500
 	IniRead, FInjectHatchMaxHatches, %config_file%, %section%, FInjectHatchMaxHatches, 10
 	IniRead, FInjectAPMProtection, %config_file%, %section%, FInjectAPMProtection, 190
 	IniRead, F_InjectOff_Key, %config_file%, %section%, F_InjectOff_Key, Lwin & F5
@@ -5753,7 +5756,6 @@ minimapLocation(byRef left, byRef right, byRef bottom, byRef top)
 	, top := ReadMemory(p + o_Top, GameIdentifier)
 	return 
 }
-
 
 ; SC2 Window Modes EXStyle
 ; Windowed FullScreen 	:= 0x00040000

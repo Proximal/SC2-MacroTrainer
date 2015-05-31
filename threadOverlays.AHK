@@ -80,24 +80,23 @@ return
 
 
 overlayTimer:
-
-If (WinActive(GameIdentifier) || Dragoverlay) ;really only needed to resize/scale not drag - as the movement is done via  a post message - needed as overlay becomes the active window during drag etc
+If (WinActive(GameIdentifier) || Dragoverlay) && getTime() ;really only needed to resize/scale not drag - as the movement is done via  a post message - needed as overlay becomes the active window during drag etc
 {
-	If (DrawIncomeOverlay && time)
+	If DrawIncomeOverlay
 		DrawIncomeOverlay(ReDrawIncome, IncomeOverlayScale, OverlayIdent, OverlayBackgrounds, Dragoverlay)
-	If (DrawAPMOverlay && time)
+	If DrawAPMOverlay
 		DrawAPMOverlay(ReDrawAPM, APMOverlayScale, OverlayIdent, modeAPM_EPM, OverlayBackgrounds, Dragoverlay)
-	If (DrawResourcesOverlay && time)
+	If DrawResourcesOverlay
 		DrawResourcesOverlay(ReDrawResources, ResourcesOverlayScale, OverlayIdent, OverlayBackgrounds, Dragoverlay)
-	If (DrawArmySizeOverlay && time)
+	If DrawArmySizeOverlay
 		DrawArmySizeOverlay(ReDrawArmySize, ArmySizeOverlayScale, OverlayIdent, OverlayBackgrounds, Dragoverlay)
-	If (DrawWorkerOverlay && time)
+	If DrawWorkerOverlay
 		DrawWorkerOverlay(ReDrawWorker, WorkerOverlayScale, Dragoverlay) ;2 less parameters
-	If (DrawIdleWorkersOverlay && time)
+	If DrawIdleWorkersOverlay
 		DrawIdleWorkersOverlay(ReDrawIdleWorkers, IdleWorkersOverlayScale, dragOverlay)
-	if (DrawLocalPlayerColourOverlay && time && (GameType != "1v1" && GameType != "FFA"))   ;easier just to redraw it each time as otherwise have to change internal for when dragging
+	if (DrawLocalPlayerColourOverlay && (GameType != "1v1" && GameType != "FFA"))   ;easier just to redraw it each time as otherwise have to change internal for when dragging
 		DrawLocalPlayerColourOverlay(ReDrawLocalPlayerColour, LocalPlayerColourOverlayScale, DragOverlay)	
-	If (DrawMacroTownHallOverlay && time)
+	If DrawMacroTownHallOverlay
 		DrawMacroTownHallOverlay(RedrawMacroTownHall, MacroTownHallOverlayScale, DragOverlay)
 }
 ; sometimes the overlay timer doesnt work, so this is a backup which ensure theyre destroyed
@@ -109,7 +108,7 @@ else if (!WinActive(GameIdentifier) && !Dragoverlay && !areOverlaysWaitingToRedr
 ; and destroys the overlays, then the this interrupted timer resumes and continues to draw the overlays leaving some of them displayed in a static form.
 ; I've added an if time check to each overlay, but it's still possible (extremely unlikely) that one overlay could be left drawn. But the below check will prevent this.
 ; For maximum safety this needs to be at the bottom and not part of if-else chain. gameChange sets time variable - so dont need to use RPM getTime()
-if !time
+if !time ; safe to use var, as it's updated in gameChange()
 {
 	SetTimer, overlayTimer, off 
 	DestroyOverlays()
@@ -2322,7 +2321,7 @@ drawUIPositions(destroy := False, overlayExist := False, optionsHwnd := False)
 		settimer,, off
 		drawUIPositions(True)
 	}
-	else drawUIPositions() ; Redraw it
+	else drawUIPositions(,, optionsGUIHwnd) ; Redraw it
 	return
 }
 

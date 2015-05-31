@@ -839,7 +839,7 @@ mt_pause_resume:
 if (mt_Paused := !mt_Paused)
 {
 	isInMatch := False ; with this clock = 0 when not in game 
-	timeroff("clock", "money", "gas", "scvidle", "supply", "worker", "inject", "Auto_Group", "convertWarpGates", "AutoGroupIdle", "g_autoWorkerProductionCheck", "cast_ForceInject", "auto_inject", "find_races_timer", "advancedInjectTimerFunctionLabel", "monitorGameWindow", "monitorMinimapPosition")
+	timeroff("clock", "money", "gas", "scvidle", "supply", "worker", "inject", "Auto_Group", "convertWarpGates", "AutoGroupIdle", "g_autoWorkerProductionCheck", "cast_ForceInject", "cast_ForceInjectDelayed", "auto_inject", "find_races_timer", "advancedInjectTimerFunctionLabel", "monitorGameWindow", "monitorMinimapPosition")
 	inject_timer := 0	;ie so know inject timer is off
 	Try DestroyOverlays()
 	aThreads.MiniMap.ahkPause.1
@@ -867,7 +867,7 @@ time := GetTime()
 if (!time && isInMatch) || (UpdateTimers) ; time=0 outside game
 {	
 	isInMatch := False ; with this clock = 0 when not in game (while in game at 0s clock = 44)	
-	timeroff("money", "gas", "scvidle", "supply", "worker", "inject", "Auto_Group", "AutoGroupIdle", "convertWarpGates", "g_autoWorkerProductionCheck", "cast_ForceInject", "auto_inject", "find_races_timer", "advancedInjectTimerFunctionLabel", "monitorGameWindow", "monitorMinimapPosition")
+	timeroff("money", "gas", "scvidle", "supply", "worker", "inject", "Auto_Group", "AutoGroupIdle", "convertWarpGates", "g_autoWorkerProductionCheck", "cast_ForceInject", "cast_ForceInjectDelayed", "auto_inject", "find_races_timer", "advancedInjectTimerFunctionLabel", "monitorGameWindow", "monitorMinimapPosition")
 	; Don't call these thread functions if just updating settings. 
 	; They will be called below. When everything is turned back on.
 	; Resetting the unit detections here probably increased the chances of the warning not
@@ -948,8 +948,8 @@ Else if (time > 0.4 && !isInMatch) && (getLocalPlayerNumber() != 16 || debugGame
 		ReDrawAPM := ReDrawMiniMap := ReDrawIncome := ReDrawResources := ReDrawArmySize := ReDrawWorker := RedrawUnit := ReDrawIdleWorkers := ReDrawLocalPlayerColour := 1
 	if (MaxWindowOnStart && time < 5 && !WinActive(GameIdentifier)) 
 	{	
-		WinActivate, %GameIdentifier%
 		MouseMove, g_aGameWindow.Width//2, g_aGameWindow.Height//2
+		WinActivate, %GameIdentifier%
 		WinNotActiveAtStart := 1
 	}
 	setupMiniMapUnitLists(aMiniMapUnits)
@@ -1498,13 +1498,14 @@ cast_inject:
 		KeyWait, % gethotkeySuffix(cast_inject_key), T.3	; have to have this short, as sometimes the script sees this key as down when its NOT and so waits for the entire time for it to be let go - so if a user presses  this key multiple times to inject (as hatches arent ready) some of those presses will be ingnored
 Return
 
-
+cast_ForceInjectDelayed:
 cast_ForceInject:
 	if !F_Inject_Enable
 	{
 		settimer, cast_ForceInject, off	
 		return 
 	}
+	settimer, cast_ForceInject, %FInjectHatchFrequency%	 ; Ensure this is accessible via cast_ForceInjectDelayed label too! As it needs to turn it back on
 	if !WinActive(GameIdentifier) || !time
 		return
 	;For Index, CurrentHatch in oHatcheries
@@ -1520,7 +1521,7 @@ cast_ForceInject:
 			zergGetHatcheriesToInject(oHatcheries)
 		; Use 35 seconds as it will be > the 29 real seconds per inject  - so the unit list isn't iterated twice when injects occur or every time this routine runs.
 		; So no hatch should remain uninjected for more than 2 inject rounds (~1.3)
-		else if (A_TickCount - MT_CurrentGame.LastHatchCheckTick >= 35000) 
+		else if (A_TickCount - MT_CurrentGame.LastHatchCheckTick >= 15000) 
 			zergGetHatcheriesToInject(oHatcheries)
 		; Note oHatcheries is updated each time castInjectLarva() is called.
 		; This should be adequate to ensure that new hatches are added, and (with the above !MaxIndex() check) there are always hatches in this list for the below check
@@ -1538,32 +1539,21 @@ cast_ForceInject:
 				if isQueenNearHatch(Queen, CurrentHatch, MI_QueenDistance) && Queen.Energy >= 25 && !isHatchInjected(CurrentHatch.Unit)
 				&& (!InjectConserveQueenEnergy || round(getTownHallLarvaCount(CurrentHatch.Unit)) < 19) 
 				{
-					Thread, Priority, -2147483648
-					sleep % rand(0, 2000)
-					Thread, Priority, 0	
-					startInjectWait := A_TickCount
-				;	while getkeystate("LWin", "P") || getkeystate("RWin", "P")	
-				;	|| getkeystate("LWin") || getkeystate("RWin")	
-				;	|| getkeystate("LButton", "P") || getkeystate("RButton", "P")
-				;	|| getkeystate("LButton") || getkeystate("RButton")
-				;	|| getkeystate("Shift") || getkeystate("Ctrl") || getkeystate("Alt")
-				;	|| getkeystate("Shift", "P") || getkeystate("Ctrl", "P") || getkeystate("Alt", "P")	
-				;	|| getkeystate("Enter") ; required so chat box doesnt get reopened when user presses enter to close the chatbox
-				;	|| isUserPerformingAction()
-				;	|| MT_InputIdleTime() < 50  ;probably best to leave this in, as every now and then the next command wont be shift modified
-				;	|| getPlayerCurrentAPM() > FInjectAPMProtection
-				
-					While GetKeyState("LButton", "P") || GetKeyState("RButton", "P")
+					if (A_ThisLabel = "cast_ForceInject") && randomSleepValue := rand(0, 2000)
+					{
+						settimer, cast_ForceInject, Off ; Do this, as users could have a low timer freq. causing cast_ForceInjectDelayed to be continually reset
+						SetTimer, cast_ForceInjectDelayed, -%randomSleepValue%
+						return
+					}
+
+					if GetKeyState("LButton", "P") || GetKeyState("RButton", "P")
 					|| SC2Keys.checkNonInterruptibleKeys()
 					|| isUserBusyBuilding() || isCastingReticleActive() 
 					|| getPlayerCurrentAPM() > automationAPMThreshold ;FInjectAPMProtection
 					||  A_mtTimeIdle < 70
 					{
-						if (A_TickCount - startInjectWait >= 100)
-							return
-						Thread, Priority, -2147483648
-						sleep 1
-						Thread, Priority, 0	
+						settimer, cast_ForceInjectDelayed, -50	; use cast_ForceInjectDelayed so it doesn't get delayed by the above settimer
+						return
 					}
 					if (!WinActive(GameIdentifier) || isGamePaused() || isMenuOpen() || !isSelectionGroupable(oSelection)) 
 						return
@@ -1572,7 +1562,10 @@ cast_ForceInject:
 					input.pReleaseKeys(True)
 					dSleep(40)  ; give 10 ms to allow for selection buffer to fully update so we are extra safe. 
 					if isSelectionGroupable(oSelection) ; in case it somehow changed/updated 
+					{
 						castInjectLarva("MiniMap", 1, 0)
+						settimer, cast_ForceInject, -1000 ; So the next inject won't occur immediately
+					}
 					Input.revertKeyState()	
 					setLowLevelInputHooks(False)					
 					return
@@ -1581,8 +1574,6 @@ cast_ForceInject:
 		}
 	}
 	return
-
- 
 
 
 PixelSearch(Colour, byref X, byref Y,variance=0, X_Margin=6, Y_Margin=6)
@@ -2370,7 +2361,7 @@ Else If A_IsCompiled  ; config file doesn't exist
 	Gosub pre_startup
 	gosub options_menu
 	; Place traytip here as firstRunGUI() doesn't return until overlay closed, so clicking the tray icon won't do anything
-	TrayTip, Macro Trainer, The options menu can be accessed via the tray icon., 30, 16 ; Disabled sound
+	TrayTip, Macro Trainer, The options menu can be accessed via this tray icon., 30, 16 ; Disabled sound
 }
 Return	; to the startup procedure
 	
@@ -3233,7 +3224,7 @@ try
 
 			Gui, Add, Text,y+15 xs+10 w140, Check Hatches Every (ms): 
 				Gui, Add, Edit, Number Right x+5 yp-2 w60 vTT_FInjectHatchFrequency
-					Gui, Add, UpDown, Range0-100000 vFInjectHatchFrequency, %FInjectHatchFrequency%					
+					Gui, Add, UpDown, Range500-100000 vFInjectHatchFrequency, %FInjectHatchFrequency%					
 
 		;	Gui, Add, Text, y+15 xs+10 w140, APM Delay:
 		;		Gui, Add, Edit, Number Right x+5 yp-2 w60 vTT_FInjectAPMProtection
@@ -3578,7 +3569,7 @@ try
 				Gui, Add, Edit, % "yp x+20 W100 R1 vWarningsWorker" race "SpokenWarning center hidden" (A_index != 1), % WarningsWorker%race%SpokenWarning	
 		}
 	Gui, Tab, Warpgates
-	Gui, Add, GroupBox, y+20 w410 h135, Forgotten Gateway/Warpgate Warning
+	Gui, Add, GroupBox, y+20 w410 h135, Unconverted Gateway Warning
 
 			Gui, Add, Checkbox,xp+10 yp+25 Vwarpgate_warn_on checked%warpgate_warn_on%, Enable Alert
 
@@ -3633,7 +3624,7 @@ try
 	Gui, Add, GroupBox, Xs ys+65 w340 h135, About
 		Gui, Add, Text, xp+15 yp+25 w320, 
 		(LTrim 
-		This function provides a verbal warning for the specified item.
+		This function provides a verbal warning for the specified enemy item.
 
 		It can also display a visual 'X' marker on the minimap, thereby indicating the items location.
 
@@ -3885,7 +3876,7 @@ try
 		This function will add selected units to their predetermined control groups, providing:
 
 		• One of the selected units in not in said control group.
-		• All of the selected units 'belong'  in this control group.
+		• All of the selected units belong in this control group.
 
 		Units are added after all keys/buttons have been released.
 		)
@@ -7688,7 +7679,7 @@ SetTimer, g_autoWorkerProductionCheck, 200
 return 
 
 g_autoWorkerProductionCheck:
-;if (WinActive(GameIdentifier) && time && EnableAutoWorker%LocalPlayerRace% && !TmpDisableAutoWorker && !AW_MaxWorkersReached)
+SetTimer, g_autoWorkerProductionCheck, 200 ; Safer here, otherwise slim chance that TmpDisableAutoWorker will prevent it being reached
 if WinActive(GameIdentifier) && time && !TmpDisableAutoWorker && !AW_MaxWorkersReached
 && ((aLocalPlayer["Race"] = "Terran" && EnableAutoWorkerTerran) || (aLocalPlayer["Race"] = "Protoss" && EnableAutoWorkerProtoss))
 	autoWorkerProductionCheck()
@@ -7973,26 +7964,24 @@ autoWorkerProductionCheck()
 	if (MaxWokersTobeMade >= 1) && (idleBases || almostComplete || (halfcomplete && !nearHalfComplete)  ) ; i have >= 1 in case i stuffed the math and end up with a negative number or a fraction
 	{
 		if !isSelectionGroupable(oSelection) || isGamePaused() || isMenuOpen()
-			return 		
-		While ( isUserBusyBuilding() || isCastingReticleActive() 
+			return 	
+		; Don't do a loop. Could increase timer freq. to call again sooner, but the current 200ms should be fine.	
+		if ( isUserBusyBuilding() || isCastingReticleActive() 
 		|| GetKeyState("LButton", "P") || GetKeyState("RButton", "P")
 		|| SC2Keys.checkNonInterruptibleKeys()
 		|| getPlayerCurrentAPM() > automationAPMThreshold ;AutoWorkerAPMProtection
 		||  A_mtTimeIdle < 50)
 		{
-			if (A_index >= 4)
-				return ; (actually could be 480 ms - sleep 1 usually = 20ms)
-			Thread, Priority, -2147483648	
-			sleep 1
-			Thread, Priority, 0	
+				SetTimer, g_autoWorkerProductionCheck, -60
+				return 
 		}
 
 		; as can be stuck in the loop above for a while, lets check still have minerals to build the workers
-		if (MaxWokersTobeMade > currentMax := howManyUnitsCanBeProduced(50))
-			MaxWokersTobeMade := currentMax
+		;if (MaxWokersTobeMade > currentMax := howManyUnitsCanBeProduced(50))
+		;	MaxWokersTobeMade := currentMax
 		
-		if (!isSelectionGroupable(oSelection) || isGamePaused() || isMenuOpen() || !MaxWokersTobeMade) ; MaxWokersTobeMade could be 0 after the loop above
-			return
+		;if (!isSelectionGroupable(oSelection) || isGamePaused() || isMenuOpen() || !MaxWokersTobeMade) ; MaxWokersTobeMade could be 0 after the loop above
+		;	return
 		Thread, NoTimers, true
 		critical, 1000
 		setLowLevelInputHooks(True)
@@ -9790,6 +9779,7 @@ debugData()
 
 	DllCall("QueryPerformanceFrequency", "Int64*", Frequency), DllCall("QueryPerformanceCounter", "Int64*", CurrentTick)
 	getSystemTimerResolutions(MinTimer, MaxTimer)
+	systemWindowEdgeSize(leftAndRightBorder, topBorder, BottomBorder)
 	result := "Trainer Vr: " getMacroTrainerVersion() "`n"
 	. "Script & Path: " A_ScriptFullPath "`n"
 	. "Is64bitOS: " A_Is64bitOS "`n"
@@ -9801,7 +9791,10 @@ debugData()
 	. "QPFreq: " Frequency "`n"
 	. "QpTick: " CurrentTick "`n"
 	. "KeyRepeatRate: " getKeyRepeatRate() "`n"
-	. "KeyDelay: " getKeyDelay() "`n`n"
+	. "KeyDelay: " getKeyDelay() "`n"
+	. "Border L/R: " leftAndRightBorder "`n"
+	. "Border T: " topBorder "`n"
+	. "Border B: " BottomBorder "`n"
 	. "==========================================="
 	. "`nScreen Info:`n"
 	. "SC2 Res: " SC2HorizontalResolution() ", " SC2VerticalResolution() "`n"
@@ -9822,7 +9815,6 @@ debugData()
 	. "SC Base.: " dectohex(getProcessBaseAddress(GameIdentifier)) "`n"
 	. "Window Mode: " windowStyle "`n"
 	. "==========================================="
-	. "`n"
 	. "`n"
 	. "Game Data:`n"
 	result .= "GetGameType: " GetGameType(aPlayer) "`n"
@@ -11380,7 +11372,11 @@ return
 autoBuildTimer:
 if !gettime()
 	SetTimer, autoBuildTimer, Off 
-else autoBuild.build(aLocalPlayer.Race)
+else
+{
+	settimer, autoBuildTimer, % autoBuild.timerFreq	; As the timer can be altered inside the function
+	autoBuild.build(aLocalPlayer.Race)
+}
 return
 
 
@@ -12137,8 +12133,11 @@ class autoBuild
 	copyLocalUnits()
 	{
 		Obj := []
-  		if !TryLockWait(localUnitDataCriSec, 30, 5)
+  		if !TryLock(localUnitDataCriSec)
+  		{
+  			settimer, autoBuildTimer, -100	
   			return ""
+  		}
   		thread, notimers, true 
   		for type, indexes in aLocalUnitData
   			Obj[type] := indexes
@@ -12146,22 +12145,20 @@ class autoBuild
   		thread, notimers, false
   		return obj
 	}
-	canPerformBuild(loops := 4)
+	; It's best not to use the loop at all! no delayed (interrupted) threads!
+	canPerformBuild()
 	{ 	global automationAPMThreshold
 		if isGamePaused() || isMenuOpen()
 			return False
-		While isUserBusyBuilding() || isCastingReticleActive() 
+		If isUserBusyBuilding() || isCastingReticleActive() 
 		|| GetKeyState("LButton", "P") || GetKeyState("RButton", "P")
 		|| SC2Keys.checkNonInterruptibleKeys()
 		|| getkeystate("Tab", "P") 
 		|| getPlayerCurrentAPM() > automationAPMThreshold
 		;||  A_mtTimeIdle < 50
 		{
-			if (A_index > loops)
-				return False ; (sleep 1 usually = 20ms - so 20*loop count)
-			Thread, Priority, -2147483648	
-			sleep 1
-			Thread, Priority, 0	
+			settimer, autoBuildTimer, -100
+			return false
 		}
 		if isGamePaused() || isMenuOpen()
 			return false
@@ -12231,7 +12228,7 @@ class autoBuild
 				buildStuff := True	
 			else buildObj[buildingName].buildString := "" ; There's a slim timing window below where if an autoBild item is enabled, it may have a previous build string...might as well prevent it
 		}
-		if !buildStuff || !this.canPerformBuild(1) || !numGetSelectionSorted(oSelection) || !oSelection.IsGroupable
+		if !buildStuff || !this.canPerformBuild() || !numGetSelectionSorted(oSelection) || !oSelection.IsGroupable
 			return
 
 		Thread, NoTimers, true
@@ -12971,7 +12968,10 @@ A1 ?? ?? ?? ?? 85 C0 74 0A 8B 10 51 8B C8 8B 42 14 FF D0 C3
 
 convertWarpGates:
 if WinActive(GameIdentifier) && time && aThreads.Minimap.ahkgetvar.isWarpGateTechComplete
+{
+	settimer, convertWarpGates, 250
 	convertWarpGates()
+}
 return
 
 convertWarpGates()
@@ -13013,8 +13013,14 @@ convertWarpGates()
 	
 	tempControlGroup := AutomationProtossCtrlGroup
 	; So a gateway needs converting
-	if !gatewayCount || (checkDelay && !DelayHasExpired) || waitForUser()
+	if !gatewayCount || (checkDelay && !DelayHasExpired)
 		return 
+	if state := waitForUser()
+	{
+		if (state = -1)
+			SetTimer, convertWarpGates, -100
+		return
+	}
 	Thread, NoTimers, true
 	critical, 1000	
 	setLowLevelInputHooks(True)
@@ -13058,18 +13064,12 @@ waitForUser()
 	global automationAPMThreshold
 	if !isSelectionGroupable(oSelection) || isGamePaused() || isMenuOpen()
 		return 1		
-	While ( isUserBusyBuilding() || isCastingReticleActive() 
+	If ( isUserBusyBuilding() || isCastingReticleActive() 
 	|| GetKeyState("LButton", "P") || GetKeyState("RButton", "P")
 	|| SC2Keys.checkNonInterruptibleKeys()
 	|| getPlayerCurrentAPM() > automationAPMThreshold ;AutoWorkerAPMProtection
 	|| A_mtTimeIdle < 50)
-	{
-		if (A_index >= 4)
-			return 1 ; (sleep 1 usually = 20ms)
-		Thread, Priority, -2147483648	
-		sleep 1
-		Thread, Priority, 0	
-	}
+		return -1
 	if isGamePaused() || isMenuOpen() || !isSelectionGroupable(oSelection)
 		return 1		
 	return 0

@@ -600,12 +600,12 @@ loop, % DumpUnitMemory(UBMemDump)
 			else if (Filter & aUnitTargetFilter.UnderConstruction && (aLocalPlayer["Race"] != "Terran" || isBuildInProgressConstructionActive(numgetUnitAbilityPointer(UBMemDump, u_iteration), unit_type)))
 				SupplyInProductionCount++	
 		}
-		else if ( warpgate_warn_on AND (unit_type = aUnitID["Gateway"] OR unit_type = aUnitID["WarpGate"]) 
+		else if ((unit_type = aUnitID["Gateway"] OR unit_type = aUnitID["WarpGate"]) 
 		AND !(Filter & aUnitTargetFilter.UnderConstruction))
 		{
 			if (isWarpGateTechComplete && unit_type = aUnitID["Gateway"] && !isGatewayConvertingToWarpGate(u_iteration) && isUnitPowered(u_iteration)) 
 			{
-				gateway_count ++	
+				gateway_count++	
 				if warpgate_warning_set
 				{
 					if !aGatewayWarnings.HasKey(fingerPrint := getUnitFingerPrint(u_iteration))
