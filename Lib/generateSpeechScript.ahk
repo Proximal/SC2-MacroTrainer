@@ -76,6 +76,7 @@ generateSpeechScript()
         return
         ; Have to blank the SAPI object before terminating speechThread
         ; Otherwise main program will hang when it attempts to terminate this thread
+        ; Still sometimes hangs!!
         clearSAPI:
         SAPI := []
         return
@@ -138,6 +139,15 @@ generateSpeechScript()
                 SAPI.Rate := rate
                 SAPI.volume := SAPIVol
                 SAPI.Speak(message, 1) ; 1 allows asynchronous, so function returns immediately. This solves all the problems with timings/losing messages                           
+            }
+            catch, e
+            {
+                if !A_IsCompiled
+                {
+                    s := "SAPI:``n" e.What "``n" e.File "``n" e.Line "``n" e.Message "``n" e.Extra
+                    FileAppend, =========``n%s%``n========``n, log.txt
+                    SAPI := ComObjCreate("SAPI.SpVoice") 
+                }
             }
             Return
         }

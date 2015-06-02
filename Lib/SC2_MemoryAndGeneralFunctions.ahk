@@ -3044,6 +3044,14 @@ mapToMinimapPos(ByRef  X, ByRef  Y)
 	return	
 }
 
+minimapToMapPos(ByRef  X, ByRef  Y) 
+{
+	global minimap
+	x := ((x - minimap.clientInputLeft)*minimap.MapPlayableWidth)/minimap.Width + minimap.MapLeft
+	y := (abs(y -  minimap.clientInputBottom)*minimap.MapPlayableHeight)/minimap.Height + minimap.MapBottom 	
+	return		
+}
+
 ; Use these two functions to draw items on the minimap
 getUnitRelativeMinimapPos(Unit, ByRef  x, ByRef y) ; Note raounded as mouse clicks dont round decimals e.g. 10.9 = 10
 {

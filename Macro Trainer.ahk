@@ -1539,12 +1539,12 @@ cast_ForceInject:
 				if isQueenNearHatch(Queen, CurrentHatch, MI_QueenDistance) && Queen.Energy >= 25 && !isHatchInjected(CurrentHatch.Unit)
 				&& (!InjectConserveQueenEnergy || round(getTownHallLarvaCount(CurrentHatch.Unit)) < 19) 
 				{
-					if (A_ThisLabel = "cast_ForceInject") && randomSleepValue := rand(0, 2000)
-					{
-						settimer, cast_ForceInject, Off ; Do this, as users could have a low timer freq. causing cast_ForceInjectDelayed to be continually reset
-						SetTimer, cast_ForceInjectDelayed, -%randomSleepValue%
-						return
-					}
+				;	if (A_ThisLabel = "cast_ForceInject") && randomSleepValue := rand(0, 2000)
+				;	{
+				;		settimer, cast_ForceInject, Off ; Do this, as users could have a low timer freq. causing cast_ForceInjectDelayed to be continually reset
+				;		SetTimer, cast_ForceInjectDelayed, -%randomSleepValue%
+				;		return
+				;	}
 
 					if GetKeyState("LButton", "P") || GetKeyState("RButton", "P")
 					|| SC2Keys.checkNonInterruptibleKeys()
@@ -1552,7 +1552,8 @@ cast_ForceInject:
 					|| getPlayerCurrentAPM() > automationAPMThreshold ;FInjectAPMProtection
 					||  A_mtTimeIdle < 70
 					{
-						settimer, cast_ForceInjectDelayed, -50	; use cast_ForceInjectDelayed so it doesn't get delayed by the above settimer
+						settimer, cast_ForceInject, -50
+					;	settimer, cast_ForceInjectDelayed, -50	; use cast_ForceInjectDelayed so it doesn't get delayed by the above settimer
 						return
 					}
 					if (!WinActive(GameIdentifier) || isGamePaused() || isMenuOpen() || !isSelectionGroupable(oSelection)) 
@@ -4313,7 +4314,7 @@ try
 		Gui, Add, Checkbox, xp+10 yp+25 vSmartGeyserEnable checked%smartGeyserEnable% gSmartGeyserOptionsMenuEnableCheck, Enable Smart Geyser 
 		Gui, Add, Checkbox, xp y+10 vSmartGeyserReturnCargo checked%smartGeyserReturnCargo%, Return Cargo
 	 	Gui, Add, text, xs+10 y+15 w305, Right clicking a group of workers towards a refinery, assimilator, or extractor will only send the correct amount of workers to harvest gas.
-	 	Gui, Add, text, xs+10 y+15 w305, *This is not currently 100`% reliable.
+	 	Gui, Add, text, xs+10 y+15 w305, *Currently this is not 100`% reliable.
 	 	
 	 	Gui, Add, Checkbox, xs y+35 vSmartMassRecallEnable checked%SmartMassRecallEnable%, Mass recall
 	 	Gui, Add, Checkbox, xs y+10 vSmartPhotonOverchargeEnable checked%SmartPhotonOverchargeEnable%, Photon Overcharge
@@ -13789,4 +13790,6 @@ loop, % count := 10000
 msgbox % stopwatch(i) / count
 return 
 */
+
+
 
