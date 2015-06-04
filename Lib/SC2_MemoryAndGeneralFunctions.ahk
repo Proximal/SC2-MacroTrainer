@@ -504,6 +504,11 @@ getUnitFingerPrint(unitIndex)
 	return readmemory(B_uStructure + S_uStructure * unitIndex, GameIdentifier)
 }
 
+FingerPrintToIndex(fingerPrint)
+{
+	return fingerPrint >> 18
+}
+
 IsInControlGroup(group, unitIndex)
 {
 	count := getControlGroupCount(Group)
@@ -2987,19 +2992,53 @@ SetMiniMap(byref minimap)
 	if (minimap.MapPlayableWidth >= minimap.MapPlayableHeight)
 	{
 		minimap.scale := minimap.BorderWidth / minimap.MapPlayableWidth
+		minimap.scale := round(minimap.scale, 2)
 		Xoffset := 0
 		if minimap.MapPlayableWidth = minimap.MapPlayableHeight
 			Yoffset := 0
-		else Yoffset := round((minimap.BorderHeight - minimap.scale * minimap.MapPlayableHeight) / 2)
+		else Yoffset := ceil((minimap.BorderHeight - minimap.scale * minimap.MapPlayableHeight) / 2) ; was round
+
+		if Yoffset 
+		{
+			if minimap.scale = 1.76 ; omicron
+				Yoffset += 1
+			else if minimap.scale = 1.46 ;katherine square
+				Yoffset += 2
+		}
 	}
 	else if (minimap.MapPlayableWidth < minimap.MapPlayableHeight)
 	{
 		minimap.scale := minimap.BorderHeight / minimap.MapPlayableHeight
-		Xoffset := round((minimap.BorderWidth - minimap.scale * minimap.MapPlayableWidth) / 2) ; perhaps this should be floor
+		;Xoffset := round((minimap.BorderWidth - minimap.scale * minimap.MapPlayableWidth) / 2) ; perhaps this should be floor
 		Yoffset := 0
+
+		minimap.scale := round(minimap.scale, 2) ; needs to be min. 2
+		Xoffset := floor((minimap.BorderWidth - minimap.scale * minimap.MapPlayableWidth) / 2) 
+		; correct border edge margins
+		; scale = 3.225 round() or unaltered is correct 
+		; scale = 2.9841818 round() or unaltered is correct 
+		; scale = 2.6875 round() or unaltered is correct 
+		; scale = 2.480769 floor() is correct 
+		; (full/playable) xoffset error
+		; 72x80  + 1 scale = 3.23
+		; 72x152 + 1 scale = 1.70
+		; 26x256 + 1 scale = 1.01
+		
+		
+		;minimap.xoffsetFull := (minimap.BorderWidth - minimap.scale * minimap.MapPlayableWidth)
+		;minimap.xoffsetHalf := (minimap.BorderWidth - minimap.scale * minimap.MapPlayableWidth)/2
+
+		if minimap.scale = 3.23 || minimap.scale = 1.70 || minimap.scale = 1.01 
+		|| minimap.scale = 1.72
+		|| minimap.scale = 1.36 || minimap.scale = 1.25 ; was in windowed mode for this line
+			Xoffset += 1
+		else if minimap.scale = 1.34 ; crystal pools 1920x1080
+			Xoffset -= 1
 	}
+	; Perhaps adding to inaccuracy my multiplying rounded values...
 	minimap.Width := minimap.BorderWidth - 2*Xoffset
 	minimap.Height := minimap.BorderHeight - 2*Yoffset
+
 
 	; Delta of the minimap UI border edge and the displayed/sized map
 	; To be used with drawing the minimap

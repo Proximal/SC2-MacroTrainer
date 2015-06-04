@@ -638,7 +638,7 @@ loop, % DumpUnitMemory(UBMemDump)
 			;if !isobject(aTmpCompleteStructures[unit_type])
 			;	aTmpCompleteStructures[unit_type] := []
 			;aTmpCompleteStructures[unit_type, u_iteration] := True
-			aTmpCompleteStructures[unit_type] .=  (aTmpCompleteStructures[unit_type] != "" ? "|" : "") u_iteration "\" fingerPrint
+			aTmpCompleteStructures[unit_type] .=  (aTmpCompleteStructures[unit_type] != "" ? "|" : "") fingerPrint
 		}
 	}
 	else 
@@ -980,11 +980,9 @@ getLocalCompletedTownHalls(byRef aTownHalls := "")
 	{
 		if aCompleteStructures.HasKey(type)
 		{
-			for i, indexesAndFingerPrints in strsplit(aCompleteStructures[type], "|")
+			for i, fingerPrint in strsplit(aCompleteStructures[type], "|")
 			{
-				unit := strsplit(indexesAndFingerPrints, "\")  ; u_iteration "\" fingerPrint
-				, index := unit.1, fingerPrint := unit.2
-				if getUnitFingerPrint(unit.1) = unit.2
+				if getUnitFingerPrint(index := FingerPrintToIndex(fingerPrint)) = fingerPrint
 				{
 					aTownHalls[unit.2] := {	"type": type
 										,	"unitIndex": index

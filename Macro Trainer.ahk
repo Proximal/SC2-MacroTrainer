@@ -105,7 +105,7 @@ if (!FileExist("msvcr100.dll") && A_IsCompiled)
 {
 	FileInstall, msvcr100.dll, msvcr100.dll, 0
 	reload ; already have admin rights
-	sleep 1000 ; this sleep is needed to prevent the script continuing execution before this instance is closed
+	sleep 1000 ; this sleep is needed to prevent the script continuing execution before this instance is closed - perhaps bug in older vr. AHK_H
 }
 ;if A_IsCompiled
 ;	Gosub, SingleInstanceCheck
@@ -254,7 +254,7 @@ if (MTCustomProgramName && A_ScriptName != MTCustomProgramName && A_IsCompiled)
 
 if (!isInputLanguageEnglish() && !MT_HasWarnedLanguage)
 {
-	IniWrite, 1, %config_file%, Misc Info, MT_HasWarnedLanguage
+	IniWrite, %A_IsCompiled%, %config_file%, Misc Info, MT_HasWarnedLanguage ; 1 for users 0 for me.
 	msgbox, % 32 + 4096, Non-English Input Language, % "It seems you are using a non-English language/character-set.`nThis program may not function correctly with non-English keyboard layouts."
 			. "`n`nIf you experience problems, perhaps try changing your keyboard-input layout/language to English."
 			. "`n`nYou will not see this warning again."
@@ -315,12 +315,8 @@ if (!versionMatch && clientVersion && A_IsCompiled) ; clientVersion check if tru
 ; but i tried doing this once before and it caused issues because i forgot to update some address 
 ; names in the functions.... so i cant be bothered taking the risk
 settimer, clock, 250
-; now using a shell monitor to keep destroy overlays
-;SetTimer, OverlayKeepOnTop, 2000, -2000	;better here, as since WOL 2.0.4 having it in the "clock" section isn't reliable 	
-
-;l_Changeling := aUnitID["ChangelingZealot"] "," aUnitID["ChangelingMarineShield"] ","  aUnitID["ChangelingMarine"] 
-;				. ","  aUnitID["ChangelingZerglingWings"] "," aUnitID["ChangelingZergling"]
-
+launchMiniMapThread()
+launchOverlayThread()
 
 if A_OSVersion in WIN_7,WIN_VISTA ; win8 should probably be here too - need read up on DWM in windows8
 {
@@ -350,25 +346,13 @@ If GameWindowStyle() = "FullScreen"
 || DrawUnitOverlay || DrawAPMOverlay || DrawMacroTownHallOverlay || DrawLocalUpgradesOverlay)
 && !MT_Restart && A_IsCompiled ; so not restarted via hotkey or icon 
 {
-	ChangeButtonNames.set("SC2 Is NOT in 'windowed Fullscreen' mode!", "Disable", "Continue") 
 	; OK/Cancel messagebox
-	MsgBox, 49, SC2 Is NOT in 'windowed Fullscreen' mode!
+	MsgBox, 32, SC2 Is NOT in 'windowed Fullscreen' mode!
 	, % "Starcraft seems to be in 'fullscreen' mode and you have overlays enabled within"
 	. " the Macro Trainer.`n`n"
 	. "The Minimap hack and overlays will only be visible while in 'windowed Fullscreen' mode.`n`n"
 	. "This setting can be changed within the SC2 options menu.`n`n"
-	. "Click 'Disable' to turn off all the overlays in Macro Trainer.`n"
-	. "Click 'Continue' if you intend on changing the SC2 Window Mode."
-	ifMsgbox Ok ; 'Disable'
-	{
-		DrawMiniMap := DrawAlerts := DrawSpawningRaces := DrawIncomeOverlay := DrawResourcesOverlay
-		:= DrawArmySizeOverlay := DrawWorkerOverlay := DrawIdleWorkersOverlay 
-		:= DrawLocalPlayerColourOverlay := DrawUnitOverlay 
-		:= DrawAPMOverlay := DrawMacroTownHallOverlay := DrawLocalUpgradesOverlay := 0
-		gosub, ini_settings_write
-	}
 }
-;settimer, g_CheckForScriptToGetGameInfo, -3600000 ; 1hour
 return
 ;-----------------------
 ; End of execution
@@ -425,41 +409,7 @@ GuiControl,, TransparentBackgroundSlider, % round((TransparentBackgroundColour >
 paintPictureControl(_TransparentBackgroundColour, TransparentBackgroundColour)
 return 
 
-paintPictureControl(Handle, Colour, RoundCorner := 0, ControlW := "", ControlH := "")
-{ 
-	; GuiControlGet will only work for the current GUI thread. Could add a another variable for
-	; this if required
-	If (ControlW = "" OR ControlH = "")
-	{
-		GuiControlGet, Control, Pos, %Handle%
-		; Assume Controls are DPISCale enabled and account for this. (all of my controls are).
-		; Otherwise at higher DPIs the pictures end up non-scaled, consequently theyre smaller than the surrounding controls
-		ControlW *= A_ScreenDPI/96, ControlH *= A_ScreenDPI/96 
-	}
 
-	pBitmap  := Gdip_CreateBitmap(ControlW, ControlH)
-	G := Gdip_GraphicsFromImage(pBitmap)
-	pBrushBackground  := Gdip_BrushCreateSolid("0xFFF0F0F0") 	;cover the edges of the pic
-	Gdip_FillRectangle(G, pBrushBackground, 0, 0, ControlW, ControlH)
-	pBrush  := Gdip_BrushCreateSolid(Colour)
-	if RoundCorner
-	{
-		Gdip_SetSmoothingMode(G, 4)
-		Gdip_FillRoundedRectangle(G, pBrush, 0, 0, ControlW, ControlH, RoundCorner)
-	}
-	Else 
-	{
-		Gdip_FillRectangle(G, pBrush, 0, 0, ControlW, ControlH)
-		pPen := Gdip_CreatePen(0xFF000000, 1)
-		Gdip_DrawRectangle(G, pPen, 0, 0, ControlW-1, ControlH-1) 
-		Gdip_DeletePen(pPen)	
-	}	
-	hBitmap := Gdip_CreateHBITMAPFromBitmap(pBitmap)
-	SetImage(Handle, HBitmap)	
-	Gdip_DeleteBrush(pBrush), Gdip_DeleteBrush(pBrushBackground), Gdip_DeleteGraphics(G)
-	Gdip_DisposeImage(pBitmap), DeleteObject(hBitmap)
-	Return
-}
 
 ;2147483647  - highest priority so if i ever give something else a high priority, this key combo will still interupt (if thread isnt critical)
 ;#MaxThreadsBuffer on
@@ -930,14 +880,9 @@ Else if (time > 0.4 && !isInMatch) && (getLocalPlayerNumber() != 16 || debugGame
 	; If they're not used they will not use any CPU once loaded.
 	; And saves having to worry about loading/closing them
 	; When toggling overlays etc
-	if !aThreads.MiniMap.ahkReady()
-		launchMiniMapThread()
-	else
-		aThreads.MiniMap.ahkFunction("gameChange", UserSavedAppliedSettings) ; setting change is for unit detection, to reload saved already warned units
+	aThreads.MiniMap.ahkFunction("gameChange", UserSavedAppliedSettings) ; setting change is for unit detection, to reload saved already warned units
 	sleep, -1
-	if !aThreads.Overlays.ahkReady()
-		launchOverlayThread()
-	else aThreads.Overlays.ahkFunction("gameChange")	
+	aThreads.Overlays.ahkFunction("gameChange")	
 	sleep, -1
 
 	SetMiniMap(minimap) ; Used for clicking - not just drawing
@@ -2039,6 +1984,8 @@ if !WinExist(GameIdentifier) ; This is much faster (0.05 ms vs 0.75 ms) than cal
 return
 
 ShutdownProcedure:
+if debugShutdown
+	ListLines, on
 debugShutdown ? log("`n`n==================`n" A_hour ":" A_Min ":" A_Sec "`nPerforming Shutdown Procedure") : ""
 	;changeScriptMainWinTitle(A_ScriptFullPath " - AutoHotkey v" A_AhkVersion)
 	if FileExist(config_file) ; needed if exits due to dll/other-files not being installed
@@ -10904,81 +10851,13 @@ launchOverlayThread()
 			overlayScript := LoadScriptString("bin\threadOverlaysFull.ahk")
 		else FileRead, overlayScript, threadOverlays.ahk
 		GlobalVarsScript("aThreads", 0, aThreads)	
-		GlobalVarsScript("g_aGameWindow", 0, g_aGameWindow)				
+		GlobalVarsScript("g_aGameWindow", 0, g_aGameWindow)	
 		aThreads.Overlays.ahktextdll(GlobalVarsScript() overlayScript) ; takes 30-40 ms to become ready()
 	}
 	Return 
 }
 
-/*
-Previous method. (Pretty much identical, just longer)
-launchMiniMapThread()
-{
 
-	if !aThreads.MiniMap.ahkReady()
-	{
-		if !aThreads.MiniMap
-			aThreads.MiniMap := AhkDllThread("Included Files\ahkH\AutoHotkey.dll")
-		if A_IsCompiled
-		{
-			if 0 
-				FileInstall, threadMiniMapFull.ahk, Ignore
-			miniMapScript :=  LoadScriptString("threadMiniMapFull.ahk")
-		
-		; pObject  & pCriticalSection are passed as cmdline parameter 1 and 2 respectively
-			aThreads.MiniMap.ahktextdll(miniMapScript 
-				, "", pObject := CriticalObject(aThreads,1) " " pCriticalSection := CriticalObject(aThreads,2) )
-
-		}
-		else
-			aThreads.MiniMap.ahkdll("threadMiniMap.ahk"
-								, "", pObject := CriticalObject(aThreads,1) " " pCriticalSection := CriticalObject(aThreads,2) )
-	}
-	Return 
-}
-
-*/
-
-
-
-gSendBM:
-sleep 500
-text :=
-(
-"     
-  GGG     EEEEE      TTTTT
-G             E                  T
-G   GG    EEE               T
-G      G    E                  T
-  GGG     EEEEE          T
-  OOO      U       U   TTTTT
-O      O    U       U        T
-O      O    U       U        T
-O      O    U       U        T
-  OOO        UUU          T"
-)
-;input.setTarget("Edit1", "ahk_exe notepad.exe")
-thread, Interrupt, off
-space := ""
-loop, % count := 40
-	spaces .= A_space
-loop
-{
-	
-	spaces := substr(spaces, 1, -4)
-	loop, parse, text, `n
-	{
-		input.pSend("+{enter}")
-		if (A_Index = 1) ; i cant prevent ahk from stripping the spaces on the first line of the text ?? #ltrim doesnt do jack
-			input.pSendChars(" ")
-		else 
-			input.pSendChars(SubStr(spaces A_LoopField , 1, 40))
-		input.pSend("{enter}")
-	}
-	if !strlen(spaces)
-		break
-	sleep 700
-}
 
 
 gRemoveDamagedUnit:
@@ -12171,17 +12050,11 @@ class autoBuild
 	{
 		if this.localUnits.HasKey(type)
 		{
-			indexesAndFingerPrints := this.localUnits[type]
-			loop, parse, indexesAndFingerPrints, |
-			{ 	; This is a bit overkill. The other thread updates this info ever 1.5 seconds or so
-				; and it's not a big deal if it's outdated.... but we are just checking a couple of units so might as well do it
-
-				;if getUnitType(A_LoopField) = type 
-				;&& getUnitOwner(A_LoopField) = aLocalPlayer.slot 
-				;&& !(getunittargetfilter(A_LoopField) & (aUnitTargetFilter.Dead | aUnitTargetFilter.UnderConstruction))	
-				;	return true
-				unit := strsplit(A_LoopField, "\") ; u_iteration "\" fingerPrint
-				if getUnitFingerPrint(unit.1) = unit.2
+			; This is a bit overkill. The other thread updates this info ever 1.5 seconds or so
+			; and it's not a big deal if it's outdated.... but we are just checking a couple of units so might as well do it			
+			for i, fingerPrint in strsplit(this.localUnits[type], "|")
+			{ 	
+				if getUnitFingerPrint(FingerPrintToIndex(fingerPrint)) = fingerPrint
 					return true
 			}
 		}
@@ -13791,5 +13664,44 @@ msgbox % stopwatch(i) / count
 return 
 */
 
+/*
+f1::
+gosub DrawSCUIOverlay
+return 
+
+f2::
+setminimap(a)
+objtree(a)
+return 
+*/
+
+f1::
+sendKey := "q"
+sendKey2 := "a"
+input.psend(sendKey)
+msgbox % GetKeySC(sendKey)
+. "`n" GetKeyVK(sendKey)
+. "`n" chr(GetKeyVK(sendKey))
+. "`n========`n"
+. GetKeySC(sendKey2)
+. "`n" GetKeyVK(sendKey2)
+. "`n" chr(GetKeyVK(sendKey2))
+
+
+return 
+
+
+f2::
+msgbox % dwhkl := DllCall("LoadKeyboardLayout", "Str", "00000409", "Uint", 1)
+
+sendKey := "a"
+r := MapVirtualKeyEx(GetKeyVK(sendKey), 2, dwhkl)
+msgbox % r "`n" Chr(r)
+return 
+
+MapVirtualKeyEx(uCode, uMapType, dwhkl)
+{
+	return DllCall("MapVirtualKeyEx", "UInt", uCode, "UInt", uMapType, "Ptr", dwhkl)
+}
 
 
