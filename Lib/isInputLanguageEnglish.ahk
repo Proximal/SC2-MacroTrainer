@@ -1,4 +1,4 @@
-; returns true if the current Input primary language is English
+; returns true if the current Input language of the active window is English
 
 isInputLanguageEnglish()
 {

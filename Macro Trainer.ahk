@@ -255,8 +255,8 @@ if (MTCustomProgramName && A_ScriptName != MTCustomProgramName && A_IsCompiled)
 if (!isInputLanguageEnglish() && !MT_HasWarnedLanguage)
 {
 	IniWrite, %A_IsCompiled%, %config_file%, Misc Info, MT_HasWarnedLanguage ; 1 for users 0 for me.
-	msgbox, % 32 + 4096, Non-English Input Language, % "It seems you are using a non-English language/character-set.`nThis program may not function correctly with non-English keyboard layouts."
-			. "`n`nIf you experience problems, perhaps try changing your keyboard-input layout/language to English."
+	msgbox, % 32 + 4096, Non-English Input Language, % "It seems you are using a non-English language/character-set.`nAutomations may not function correctly with non-English (QWERTY) keyboard layouts."
+			. "`n`nIf you experience problems, perhaps try changing your keyboard input layout/language to QWERTY/English."
 			. "`n`nYou will not see this warning again."
 }
 
@@ -9569,7 +9569,7 @@ log(getSelectionCount() " " stopwatch(tt))
 return 
 */
 
-; accepts an array which contains indivdual objects with portrait and modifiers keys
+; accepts an array which contains individual objects with portrait and modifiers keys
 ; can click on any portrait with specified modifier 
 ; useful for ctrl+shift deslecting some portrait types, while shift deselecting others 
 
@@ -9596,7 +9596,8 @@ clickUnitPortraitsWithModifiers(aUnitPortraitLocationsAndModifiers)
 					dsleep(1)
 				dsleep(7) ; small static delay
 			}
-			input.pSend("{click " x " " y "}")			
+			input.pSend("{click " x " " y "}")
+
 		}
 	}
 	if currentModifiers
@@ -10223,15 +10224,23 @@ castSelectLoadedTransport()
 		aLookup[aUnitID.WarpPrismPhasing] := True 
 		aLookup[aUnitID.overlord] := True 
 
+		; When deselecting via ^+ need to account for subgroup alias, e.g. for terran landed vikings and hellbats
+		; burrowed mines won't cause an issue, as they came after the medivac in the selection panel.
+		; The issue is due to the fact that these units have different unitIDs, so if just comparing unit ids, would cause
+		; a click on the ctrl+shift click on the hellion and a second click on the hellbat, however the hellbat has already been removed
+		; and this click could occur on the medivac (since it moves position as the hellions/hellbats were removed)
 		for i, unit in aSelected.units
 		{
-			if (unit.unitId = prevID)
+			if aUnitSubGroupAlias.hasKey(unit.unitId)
+				unit.unitId := aUnitSubGroupAlias[unit.unitId]
+			;if (unit.unitId = prevID || (aUnitSubGroupAlias.hasKey(unit.unitId) && aUnitSubGroupAlias[unit.unitId] = prevID))
+			if unit.unitId = prevID
 				continue 
 
 			if !aLookup.haskey(unit.unitId)
 			{
-				prevID := unit.unitId
-				aClicks.insert({ "portrait":  unit.unitPortrait, "modifiers": "^+"})
+				prevID := aUnitSubGroupAlias.hasKey(unit.unitId) ? aUnitSubGroupAlias[unit.unitId] : unit.unitId
+				aClicks.insert({ "portrait":  unit.unitPortrait, "modifiers": "^+", "type": aUnitName[unit.unitId]})
 			}
 			else if !getCargoCount(unit.unitIndex)
 				aClicks.insert({ "portrait":  unit.unitPortrait, "modifiers": "+"})	
@@ -13674,34 +13683,5 @@ setminimap(a)
 objtree(a)
 return 
 */
-
-f1::
-sendKey := "q"
-sendKey2 := "a"
-input.psend(sendKey)
-msgbox % GetKeySC(sendKey)
-. "`n" GetKeyVK(sendKey)
-. "`n" chr(GetKeyVK(sendKey))
-. "`n========`n"
-. GetKeySC(sendKey2)
-. "`n" GetKeyVK(sendKey2)
-. "`n" chr(GetKeyVK(sendKey2))
-
-
-return 
-
-
-f2::
-msgbox % dwhkl := DllCall("LoadKeyboardLayout", "Str", "00000409", "Uint", 1)
-
-sendKey := "a"
-r := MapVirtualKeyEx(GetKeyVK(sendKey), 2, dwhkl)
-msgbox % r "`n" Chr(r)
-return 
-
-MapVirtualKeyEx(uCode, uMapType, dwhkl)
-{
-	return DllCall("MapVirtualKeyEx", "UInt", uCode, "UInt", uMapType, "Ptr", dwhkl)
-}
 
 
