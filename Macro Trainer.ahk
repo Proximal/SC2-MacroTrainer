@@ -1078,8 +1078,12 @@ Cast_ChronoStructure(aStructuresToChrono, selectionMode := False)
 	max_chronod := nexus_chrono_count - CG_chrono_remainder
 	input.pSend((CG_control_group != "Off" ? SC2Keys.key("ControlGroupAssign" AutomationProtossCtrlGroup) : "") SC2Keys.key("ControlGroupRecall" CG_nexus_Ctrlgroup_key))
 	timerID := stopwatch()
-	sleep, 30 	; Can use real sleep here as not a silent automation
-	for  index, object in oStructureToChrono
+	sleep, 50 	; Can use real sleep here as not a silent automation. Was 30, increased to 50 as checking selection now
+	numGetSelectionSorted(oSelection)
+	if oSelection.HighlightedId != aUnitId.Nexus && oSelection.TabPositions.HasKey(aUnitId.Nexus) ; if !hasKey, indicates selection buffer hasnt fully updated so just assume nexus is at first tab (though this will fail if control group 4 already selected and tab position isnt 0)
+		input.pSend(sRepeat(SC2Keys.key("SubgroupNext"), oSelection.Types - oSelection.HighlightedGroup + oSelection.TabPositions[aUnitId.Nexus]))
+
+	for index, object in oStructureToChrono
 	{
 		If (A_index > max_chronod)
 			Break
@@ -9291,16 +9295,19 @@ quickSelect(aDeselect)
 	{
 		for i, unit in aSelected.units
 		{
-			;if (unit.unitId = prevID) 
-			;	continue 
-			;if (aDeselect.SelectUnitTypes && !aLookup.haskey(unit.unitId))
-			;|| (aDeselect.DeselectUnitTypes && aLookup.haskey(unit.unitId)) 
-			;{ 
-			;	prevID := unit.unitId 	; this is disabled until i fix the sort with units in same tab eg tanks/stanks + hellions/hellbats ; And also need to consider the consequence of hallucinations and the issues with tabSize/position in numgetSelectionSorted()
-			;	clickPortraits.insert({ "portrait":  unit.unitPortrait, "modifiers": "^+"})
-			;	clickPortraits.insert({ "portrait":  unit.unitPortrait, "modifiers": "+"}) 
-			;}
+			if unit.tabPosition = prevTabPosition || (unit.unitId = prevType && prevIsHallucinated)
+				continue 
+			; If the selection is set to 'starting' there is a risk that the unit died and the portrait is now blank
+
+			; hallucinated units can be tabbed, but ^+ clicking them removes the real ones too, so don't try to click the real ones if the hallucinated ones have already been clicked
+			; hallucinated units come before real ones				
 			if (aDeselect.SelectUnitTypes && !aLookup.haskey(unit.unitId))
+			|| (aDeselect.DeselectUnitTypes && aLookup.haskey(unit.unitId)) 
+			{ 
+				prevTabPosition := unit.tabPosition, prevType := unit.unitId, prevIsHallucinated := aUnitTargetFilter.Hallucination & unit.TargetFilter	; this is disabled until i fix the sort with units in same tab eg tanks/stanks + hellions/hellbats ; And also need to consider the consequence of hallucinations and the issues with tabSize/position in numgetSelectionSorted()
+				clickPortraits.insert({ "portrait":  unit.unitPortrait, "modifiers": "^+"})
+			}
+			else if (aDeselect.SelectUnitTypes && !aLookup.haskey(unit.unitId))
 			|| (aDeselect.DeselectUnitTypes && aLookup.haskey(unit.unitId)) 
 			|| (removeStructures && unit.TargetFilter & aUnitTargetFilter.Structure)
 			|| (removeAllied && getUnitOwner(unit.unitIndex) != aLocalPlayer["Slot"])
@@ -9569,7 +9576,7 @@ log(getSelectionCount() " " stopwatch(tt))
 return 
 */
 
-; accepts an array which contains individual objects with portrait and modifiers keys
+; accepts an array which contains individuallll objects with portrait and modifiers keys
 ; can click on any portrait with specified modifier 
 ; useful for ctrl+shift deslecting some portrait types, while shift deselecting others 
 
@@ -9597,7 +9604,6 @@ clickUnitPortraitsWithModifiers(aUnitPortraitLocationsAndModifiers)
 				dsleep(7) ; small static delay
 			}
 			input.pSend("{click " x " " y "}")
-
 		}
 	}
 	if currentModifiers
@@ -10231,15 +10237,14 @@ castSelectLoadedTransport()
 		; and this click could occur on the medivac (since it moves position as the hellions/hellbats were removed)
 		for i, unit in aSelected.units
 		{
-			if aUnitSubGroupAlias.hasKey(unit.unitId)
-				unit.unitId := aUnitSubGroupAlias[unit.unitId]
-			;if (unit.unitId = prevID || (aUnitSubGroupAlias.hasKey(unit.unitId) && aUnitSubGroupAlias[unit.unitId] = prevID))
-			if unit.unitId = prevID
+			; hallucinated units can be tabbed, but ^+ clicking them remvoes the real ones too, so don't try to click the real ones if the hallucinated ones have already been clicked
+			; hallucinated units come before real ones
+			if unit.tabPosition = prevTabPosition || (unit.unitId = prevType && prevIsHallucinated)
 				continue 
 
 			if !aLookup.haskey(unit.unitId)
 			{
-				prevID := aUnitSubGroupAlias.hasKey(unit.unitId) ? aUnitSubGroupAlias[unit.unitId] : unit.unitId
+				prevTabPosition := unit.tabPosition, prevType := unit.unitId, prevIsHallucinated := aUnitTargetFilter.Hallucination & unit.TargetFilter
 				aClicks.insert({ "portrait":  unit.unitPortrait, "modifiers": "^+", "type": aUnitName[unit.unitId]})
 			}
 			else if !getCargoCount(unit.unitIndex)

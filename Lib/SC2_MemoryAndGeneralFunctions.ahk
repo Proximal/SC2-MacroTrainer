@@ -2172,6 +2172,8 @@ numGetControlGroupObject(Byref oControlGroup, Group)
 ; hallucinated units are also selected with the select army hotkey (unless theyre probes)
 ; so easy/dirty fix is to give them a new subgroup alias slightly lower than their non-hallucinated brothers
 
+; hallucinated units can be tabbed, but ^+ clicking them removes the real ones too, so don't try to click the real ones if the hallucinated ones have already been clicked
+
 ; A subgroup alias is really just a unitID/type i.e. the unit belongs in the tank group
 
 ; This method does not call bubbleSort2DArray. bubbleSort2DArray uses a bubble method of sorting
@@ -2246,6 +2248,7 @@ numGetSelectionSorted(ByRef aSelection, ReverseOrder := False)
 				; Above we are explicitly creating a 0 and 1 object for the hallucination check/order.
 				; So now we have to check if this has any keys - otherwise will get a blank key in the TabPositions and TabSizes fields
 				; doing the check here will be slightly faster than doing the check above on every single unit (as here it's only doing it practically for each unit type)
+				;hallucinated := !hallucinationOrder
 				if object2.MaxIndex()
 				{
 					; I put the next couple of lines here so they don't get needlessly looped
