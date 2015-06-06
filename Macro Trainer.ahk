@@ -219,15 +219,22 @@ if A_OSVersion in WIN_8,WIN_7,WIN_VISTA
 ;-----------------------
 ;	Startup
 ;-----------------------
-
-If (auto_update AND A_IsCompiled AND url.UpdateZip := CheckForUpdates(ProgramVersion, latestVersion, url.CurrentVersionInfo))
+; use the below expression, as this allows me to check what happens when the program is slow to check for an update i.e. delay execution
+; Also ensures macroTrainerAnnouncements are updated regardless of auto-update settings
+If url.UpdateZip := CheckForUpdates(url.CurrentVersionInfo, ProgramVersion, latestVersion, macroTrainerAnnouncements)
 {
-	gosub autoUpdateFound
-	return			
+	if (auto_update && A_IsCompiled)
+	{
+		gosub autoUpdateFound
+		return		
+	}	
 }
 
 LaunchClose:
 Launch: ; Used by the buttons in the GUI auto update (disable & cancel)
+; If the tray icon i clicked before checkForUpdates() finishes the announcements are hidden
+if (macroTrainerAnnouncements != "")
+	gosub updateUserAnnouncements
 If (A_GuiControl = "Disable_Auto_Update")
 {
 	; need to specify the options: gui as this thread wasn't spawned from the options menu
@@ -368,6 +375,16 @@ return
 #Include, Included Files\_ClassSCPatternScan.ahk
 #Include, Included Files\chronoGUIMainScript.ahk
 #include <Class_SC2Keys>
+
+updateUserAnnouncements:
+Gui Options:+LastFoundExist
+IfWinExist 
+{
+	Guicontrol, Options:, %HwndAnnouncementsEdit%, %macroTrainerAnnouncements%
+	Guicontrol, Options:show, %HwndAnnouncementsEdit%
+	Guicontrol, Options:show, AnnouncementsGrouboxVariable
+}	
+return 
 
 ColourSelector:
 ; A_GuiControl = #AssociatedVariable
@@ -2086,7 +2103,7 @@ TrayUpdate:
 		Return 					
 	}
 	if (A_ThisLabel = "autoUpdateFound")
-	|| (A_ThisLabel = "TrayUpdate" && (url.UpdateZip := CheckForUpdates(ProgramVersion, latestVersion, url.CurrentVersionInfo)))
+	|| (A_ThisLabel = "TrayUpdate" && (url.UpdateZip := CheckForUpdates(url.CurrentVersionInfo, ProgramVersion, latestVersion, macroTrainerAnnouncements)))
 	{
 		; Very minor bug - for some reason &Canecel does not underline the 'C' in the button
 		; for the trayupdate - but it does for the autoupdate
@@ -4292,19 +4309,20 @@ try
 
 	Gui, Add, Tab2, w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vHome_TAB, Home||Emergency
 	Gui, Tab, Home
-			Gui, Add, Button, y+30 gTrayUpdate w150, Check For Updates
-			Gui, Add, Button, y+20 gB_HelpFile w150, Read The Help File
-			Gui, Add, Button, y+20 gB_ChangeLog w150 vSillyGUIControlIdentVariable2, Read The ChangeLog
-			Gui, Add, Checkbox,y+30 Vlaunch_settings checked%launch_settings%, Show this menu on startup	
-
-			GuiControlGet, HomeButtonLocation, Pos, SillyGUIControlIdentVariable2 ;
-
-			Gui, Add, Button, X360 y%HomeButtonLocationY% gHomepage w150, Homepage
-
-
-			Gui, Add, Picture, x170 y320 h90 w90, %A_Temp%\Protoss90.png
-			Gui, Add, Picture, x+50 yp-20 h128 w128, %A_Temp%\Terran90.png
-			Gui, Add, Picture, x+50  yp+20 h90 w90, %A_Temp%\Zerg90.png
+		Gui, Add, Button, y+30 gTrayUpdate w150, Check For Updates
+		Gui, Add, Button, y+15 gB_HelpFile w150, Read The Help File
+		Gui, Add, Button, y+15 gB_ChangeLog w150, Read The ChangeLog
+		Gui, Add, Button, y+15 gHomepage w150, Homepage
+		Gui, Add, Checkbox,y+30 Vlaunch_settings checked%launch_settings%, Show this menu on startup
+		; If tray icon is clicked before CheckForUpdates() has run, then this will be blank monemtarily until it's updated - so hide it until then.
+		; Use an edit, as that allows text (e.g. urls) to be copied.
+		Gui, Add, groupbox, % "x360 y58 w225 h190 vAnnouncementsGrouboxVariable Hidden" (macroTrainerAnnouncements = ""), Announcements
+		Gui, Add, Edit, % "HwndHwndAnnouncementsEdit xp+10 yp+20 wp-20 hp-25 readonly -E0x200 -VScroll -HScroll Hidden" (macroTrainerAnnouncements = ""), %macroTrainerAnnouncements%
+		selectText(HwndAnnouncementsEdit, -1)
+		
+		Gui, Add, Picture, x170 y320 h90 w90, %A_Temp%\Protoss90.png
+		Gui, Add, Picture, x+50 yp-20 h128 w128, %A_Temp%\Terran90.png
+		Gui, Add, Picture, x+50  yp+20 h90 w90, %A_Temp%\Zerg90.png
 
 	Gui, Tab, Emergency	
 		Gui, Font, S10 CDefault bold UNDERLINE, Verdana
