@@ -10,7 +10,7 @@ CheckForUpdates(url, installed_version, byRef latestVersion, byRef announcements
 		If (latestVersion > installed_version && zipURL)
 			Return zipURL ; update exist
 	}
-	latestVersion := installed_version ; incase there was an error
+	latestVersion := installed_version ; in case there was an error
 	FileDelete %A_Temp%\version_checker_temp_file.ini
 	Return 0 ; no update or error
 }

@@ -32,7 +32,7 @@
       Thanks to all the replies in Forum Topic which motivates me to perfect this.
 */
 
-#SingleInstance Force
+;#SingleInstance Force
 
 ; Example 1: Download the leading 100 bytes of default HTML and extract a part of text.
 ; URL := "http://www.formyip.com/"
@@ -42,10 +42,10 @@
 
 
 ; Example 2, Download a binary file ( AHK Script Decompiler ) and save it.
-URL := "http://www.autohotkey.com/download/Exe2Ahk.exe"
-If ( InternetFileRead( binData, URL, False, 10240) > 0 && !ErrorLevel )
-  If VarZ_Save( binData, A_ScriptDir "\Exe2Ahk.exe" )
-     MsgBox, 64, AHK Script Compiler Downloaded and Saved, % A_ScriptDir "\Exe2Ahk.exe"
+;URL := "http://www.autohotkey.com/download/Exe2Ahk.exe"
+;If ( InternetFileRead( binData, URL, False, 10240) > 0 && !ErrorLevel )
+;  If VarZ_Save( binData, A_ScriptDir "\Exe2Ahk.exe" )
+;     MsgBox, 64, AHK Script Compiler Downloaded and Saved, % A_ScriptDir "\Exe2Ahk.exe"
 
 
 ; Example 3, Download a FTP file: EditPlus 3.11 Evaluation Version (1 MB) and save it.
@@ -59,8 +59,8 @@ If ( InternetFileRead( binData, URL, False, 10240) > 0 && !ErrorLevel )
 
 ; AHK will automatically unload libraries on exit. If you are particular, here is a method
 ; to unload Wininet library without a handle.
-DllCall( "FreeLibrary", UInt,DllCall( "GetModuleHandle", Str,"wininet.dll") )
-Return ;                                                 // end of auto-execute section //
+;DllCall( "FreeLibrary", UInt,DllCall( "GetModuleHandle", Str,"wininet.dll") )
+;Return ;                                                 // end of auto-execute section //
 
 
 InternetFileRead( ByRef V, URL="", RB=0, bSz=1024, DLP="DLP", F=0x84000000 ) {

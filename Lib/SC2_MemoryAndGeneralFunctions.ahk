@@ -2173,6 +2173,7 @@ numGetControlGroupObject(Byref oControlGroup, Group)
 ; so easy/dirty fix is to give them a new subgroup alias slightly lower than their non-hallucinated brothers
 
 ; hallucinated units can be tabbed, but ^+ clicking them removes the real ones too, so don't try to click the real ones if the hallucinated ones have already been clicked
+; Burrowed zerg units can be tabbed between and ^+ only removes the the clicked type (i.e. burrowed or normal, not both)
 
 ; A subgroup alias is really just a unitID/type i.e. the unit belongs in the tank group
 
@@ -2942,6 +2943,29 @@ updateMinimapPosition()
 	SetMiniMap(minimap)
 }
 
+/*
+MacroTrainer Map border edge alignment vs scale
+All scales as recorded at 1920x1080
+1v1 
+	Coda le  fine (1.79)
+	Echo le - fine (1.87) * interesting - in SC map UI the top 'margin' is drawn, but the bottom isn't!
+	Expedition lost - fine (1.87)
+	Vaani reasearch station - fine (1.43)
+	Cactus valley - fine (1.68)
+	Inferno pools - fine (1.46)
+	Iron fortress le - fine (1.68)
+2v2
+	Crystal pools - out -1 (1.34)
+	Desert refuge - fine (1.37)
+	Katherine square - Out +2 (1.46)
+	Omicron - Out +1 (1.76)
+	Preservation le - fine (1.24)
+	Seething jungle - fine (1.58)
+	Wolfe Industries - fine (1.51)
+	Old country - fine (1.37)
+*/
+
+
 
 ; *** note about minimap size and input
 ; the left and right locations reported by minimapLocation()/memory do not match where you can click on the minimap.
@@ -3005,7 +3029,7 @@ SetMiniMap(byref minimap)
 		{
 			if minimap.scale = 1.76 ; omicron
 				Yoffset += 1
-			else if minimap.scale = 1.46 ;katherine square
+			else if minimap.scale = 1.46 ; katherine square
 				Yoffset += 2
 		}
 	}

@@ -112,8 +112,9 @@ if (!FileExist("msvcr100.dll") && A_IsCompiled)
 
 InstallSC2Files() ; Run this before the gosub pre_startup  - otherwise menu items will be missing!
 
+
 Menu Tray, Add, &Settings && Options, options_menu
-;Menu, Tray, Icon, &Settings && Options, %A_Temp%\settings.ico, 1 
+;Menu Tray, Disable, &Settings && Options
 Menu, Tray, Icon, &Settings && Options, %A_Temp%\MacroTrainerFiles\GUI\settings20.png,, 0
 Menu Tray, Add, &Check For Updates, TrayUpdate
 Menu, Tray, Icon, &Check For Updates, %A_Temp%\MacroTrainerFiles\GUI\checkUpdate20.png,, 0
@@ -2291,6 +2292,7 @@ pre_startup:
 if FileExist(config_file) ; the file exists lets read the ini settings
 {
 	readConfigFile()
+	program.Info.hasReadConfig := True
 	if (ProgramVersion > read_version) ; its an update and the file exists - better backup the users settings
 	{
 		if !A_IsCompiled
@@ -3047,6 +3049,10 @@ return
 */
 
 options_menu:
+; Only load the manu if the config file has been read otherwise the GUI could give an error (why try was used)
+; or worse, it could load some variables, while others are the 'default' GUI values - i.e. click save and change a heap of values.
+if !program.Info.HasReadConfig
+	return
 /*
 IfWinExist, V%ProgramVersion% Settings
 {
@@ -4687,11 +4693,11 @@ try
 		:= sec_idle_TT := sec_gas_TT := sec_mineral_TT := sec_supply_TT := TT_sec_supply_TT := TT_sec_mineral_TT := TT_sec_gas_TT := TT_sec_idle_TT := TT_sec_warpgate_TT := sec_warpgate_TT 
 		:= TT_WarningsGeyserOverSaturationFollowUpCount_TT := WarningsGeyserOverSaturationFollowUpCount_TT := "Sets how many additional warnings are to be given after the first initial warning (assuming the resource does not fall below the inciting value) - the warnings then turn off."
 		additional_delay_supply_TT := TT_additional_delay_supply_TT := additional_delay_minerals_TT := additional_delay_gas_TT := additional_idle_workers_TT 
-		:= TT_additional_delay_minerals_TT := TT_additional_delay_gas_TT := TT_additional_idle_workers_TT := TT_delay_warpgate_warn_followup_TT := delay_warpgate_warn_followup_TT := "This sets the delay between the initial warning, and the additional/follow-up warnings. (in real seconds)"
+		:= TT_additional_delay_minerals_TT := TT_additional_delay_gas_TT := TT_additional_idle_workers_TT := TT_delay_warpgate_warn_followup_TT := delay_warpgate_warn_followup_TT := "This sets the delay between the initial warning and the additional/follow-up warnings. (In real seconds)"
 		
 		TT_WarningsWorkerTerranFollowUpDelay_TT := 	TT_WarningsWorkerProtossFollowUpDelay_TT := TT_WarningsWorkerZergFollowUpDelay_TT 
 		:= WarningsWorkerTerranFollowUpDelay_TT := WarningsWorkerProtossFollowUpDelay_TT := WarningsWorkerZergFollowUpDelay_TT 
-		:= TT_WarningsGeyserOverSaturationFollowUpDelay_TT := WarningsGeyserOverSaturationFollowUpDelay_TT := "This sets the delay between the initial warning, and the additional/follow-up warnings. (in SC2 seconds)"
+		:= TT_WarningsGeyserOverSaturationFollowUpDelay_TT := WarningsGeyserOverSaturationFollowUpDelay_TT := "This sets the delay between the initial warning and the additional/follow-up warnings. (In SC2 seconds)"
 		TT_WarningsWorkerZergTimeWithoutProduction_TT := WarningsWorkerZergTimeWithoutProduction_TT := "A warning will be heard if a drone has not started (being produced) in this amount of time (SC2 seconds)" 
 		
 		TT_WarningsWorkerTerranTimeWithoutProduction_TT := WarningsWorkerTerranTimeWithoutProduction_TT
@@ -9747,8 +9753,16 @@ debugData()
 	DesktopScreenCoordinates(XminVritual, YminVritual, XmaxVritual, YmaxVritual)
 	process, exist, %GameExe%
 	if (pid := ErrorLevel)
+	{
 		windowStyle := GameWindowStyle()
-
+		aspectRatio := getClientAspectRatio(x, y, w, h, trueAspectRatio)
+		SCWindwowString := "SC2 Res (mem): " SC2HorizontalResolution() "x" SC2VerticalResolution() "`n"
+		. "Window: (" x ", " y ") " w " x" h "`n"
+		.  "AspectRatio: " aspectRatio " (" trueAspectRatio ")`n"
+		. "Window Mode: " windowStyle "`n"
+	}
+	else 
+		SCWindwowString := "SC not running.`n"
 
 	DllCall("QueryPerformanceFrequency", "Int64*", Frequency), DllCall("QueryPerformanceCounter", "Int64*", CurrentTick)
 	getSystemTimerResolutions(MinTimer, MaxTimer)
@@ -9770,13 +9784,13 @@ debugData()
 	. "Border B: " BottomBorder "`n"
 	. "==========================================="
 	. "`nScreen Info:`n"
-	. "SC2 Res: " SC2HorizontalResolution() ", " SC2VerticalResolution() "`n"
-	. "Primary Monitor: " A_ScreenWidth ", " A_ScreenHeight "`n"
-	. "Virtual min pos: " XminVritual ", " YminVritual "`n"
-	. "Virtual max pos: " XmaxVritual ", "  YmaxVritual "`n"
-	. "Virtual Size: " VirtualScreenWidth ", " VirtualScreenHeight "`n"
+	. "Primary Monitor: " A_ScreenWidth "x" A_ScreenHeight "`n"
+	. "Virtual Screen: (" XminVritual ", " YminVritual ") -> (" XmaxVritual ", "  YmaxVritual ") " VirtualScreenWidth "x" VirtualScreenHeight "`n"
 	. debugMonitorBoundingCoordinates() "`n"
 	. "Screen DPI: " A_ScreenDPI "`n" 
+	. "==========================================="
+	. "`nSC Window:`n"
+	. SCWindwowString
 	. "==========================================="
 	. "`nSC2 Folders: 	'?' represent replaced account numbers - maintains privacy.`n"	
 	. "Replay Folder: "  RegExReplace(getReplayFolder(), "\d{4}\\", "????\")  "`n"
@@ -9786,7 +9800,6 @@ debugData()
 	. "SC PID: " pid "`n"
 	. "SC Vr.: " getProcessFileVersion(GameExe) "`n"
 	. "SC Base.: " dectohex(getProcessBaseAddress(GameIdentifier)) "`n"
-	. "Window Mode: " windowStyle "`n"
 	. "==========================================="
 	. "`n"
 	. "Game Data:`n"
@@ -13705,6 +13718,5 @@ f2::
 setminimap(a)
 objtree(a)
 return 
+
 */
-
-

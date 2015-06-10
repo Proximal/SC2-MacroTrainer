@@ -14,7 +14,7 @@ debugMonitorBoundingCoordinates()
     loop, % MonitorCount
     {
         SysGet, pos, Monitor, %A_Index%
-        line := "(" posLeft ", " posTop ") -> (" posRight ", " posBottom ")"
+        line := "(" posLeft ", " posTop ") -> (" posRight ", " posBottom ") "  posRight - posLeft "x" posBottom - posTop
         if (A_Index = primaryMonitorID)
             primaryString := "Primary: " line
         else otherString .= "Secondary: " line "`n"
