@@ -609,7 +609,7 @@ loop, % DumpUnitMemory(UBMemDump)
 				if warpgate_warning_set
 				{
 					if !aGatewayWarnings.HasKey(fingerPrint := getUnitFingerPrint(u_iteration))
-						aGatewayWarnings[fingerPrint] := { "Unit": u_iteration
+						aGatewayWarnings[fingerPrint] := { "UnitIndex": u_iteration
 														, "FingerPrint": fingerPrint  
 														, "Time": Time
 														, "Type": unit_type
@@ -702,7 +702,7 @@ warpgate_warn:
 		for index, object in aGatewayWarnings, aRemoveGateways := []
 		{
 			if aMiniMapWarning.HasKey(object.FingerPrint)
-			&& (getUnitType(object.unit) != aUnitID["Gateway"] || object.FingerPrint != getUnitFingerPrint(object.unit) || isGatewayConvertingToWarpGate(object.unit) || !isUnitPowered(object.unit)) ;doing this in case unit dies or becomes other players gateway as this list onyl gets cleared when gateway count = 0
+			&& (getUnitType(object.UnitIndex) != aUnitID["Gateway"] || object.FingerPrint != getUnitFingerPrint(object.UnitIndex) || isGatewayConvertingToWarpGate(object.UnitIndex) || !isUnitPowered(object.UnitIndex)) ;doing this in case unit dies or becomes other players gateway as this list onyl gets cleared when gateway count = 0
 				aMiniMapWarning.Remove(object.FingerPrint, ""),	aRemoveGateways.Insert(object.FingerPrint)
 		}
 		for i, FingerPrint in aRemoveGateways
@@ -984,7 +984,7 @@ getLocalCompletedTownHalls(byRef aTownHalls := "")
 			{
 				if getUnitFingerPrint(index := FingerPrintToIndex(fingerPrint)) = fingerPrint
 				{
-					aTownHalls[unit.2] := {	"type": type
+					aTownHalls[fingerPrint] := {	"type": type
 										,	"unitIndex": index
 										, 	"fingerPrint": fingerPrint}
 					count++
