@@ -205,6 +205,7 @@ DrawMiniMap()
 		; Create a layered window ;E0x20 click thru (+E0x80000 : must be used for UpdateLayeredWindow to work!) that is always on top (+AlwaysOnTop), has no taskbar entry or caption		
 		Gui, MiniMapOverlay: -Caption Hwndhwnd1 +E0x20 +E0x80000 +LastFound +ToolWindow +AlwaysOnTop ; Dont need to specify -DPIScale here as calling CreateDIBSection() and updatelayered window with constant values
 		Gui, MiniMapOverlay: Show, NA, %overlayTitle%
+		; could  use Gui, % "MiniMapOverlay: +owner" WinExist(GameIdentifier) ; so then it's automatically hidden by windows when SC loses focus (well it's z-order is above SC)
 	}
 	; Update: DIB size does not influence draw speed. But it does slow down the call to GraphicsClear
 	; but since creating a new dib every time, this call isn't required!

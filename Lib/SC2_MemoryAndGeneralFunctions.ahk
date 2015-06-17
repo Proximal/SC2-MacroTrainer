@@ -3251,6 +3251,7 @@ FillUnitRectangle(G, x, y, radius, colour)
 	width := height := radius * 2 * minimap.scale 
 	, Gdip_FillRectangle(G, a_pBrushes[colour], (x - width / 2)//1, (y - height /2)//1, (width+enlarge)//1, (height+enlarge)//1)
 }
+
 /*
 drawUnitRectangleTest(x, y, radius)
 { 	
@@ -5808,7 +5809,7 @@ class upgradeDefinitions
 		return this._aStructuresFromRace[race]
 	}
 }
-; 4 byte ints listed in memory: 28 1066 290 808 (at 1920x1080)
+; 4 byte ints listed in memory: 808 28 1066 290  (at 1920x1080)
 ; an 8 byte value 4578435137564 (first two ints)
 ; These are the coordinates of the minimap UI borders
 ; relative to the SC client area (doesn't include the SC window frame)
@@ -5822,7 +5823,7 @@ class upgradeDefinitions
 
 minimapLocation(byRef left, byRef right, byRef bottom, byRef top)
 {
-	static 	o_left := 0x20, o_Bottom := 0x24, o_Right := 0x28, o_Top := 0x2C
+	static 	o_Top := 0x1C, o_left := 0x20, o_Bottom := 0x24, o_Right := 0x28
 	p := pointer(GameIdentifier, P_MinimapPosition, O_MinimapPosition*)
 	, left := ReadMemory(p + o_left, GameIdentifier)
 	, right := ReadMemory(p + o_Right, GameIdentifier)
@@ -5830,6 +5831,28 @@ minimapLocation(byRef left, byRef right, byRef bottom, byRef top)
 	, top := ReadMemory(p + o_Top, GameIdentifier)
 	return 
 }
+
+; There are two sets of coordiantes, one directly after the other. I have not observed any differences between the two.
+; However, two users (German and Chinese) reported that the minimap isn't aligned correctly.
+; I was previously using the minimap top value from the second set of values (the rest was from the first)
+minimapLocationDebug()
+{
+	static 	o_Top := 0x1C, o_left := 0x20, o_Bottom := 0x24, o_Right := 0x28
+
+	p := pointer(GameIdentifier, P_MinimapPosition, O_MinimapPosition*)
+	, left := ReadMemory(p + o_left, GameIdentifier)
+	, right := ReadMemory(p + o_Right, GameIdentifier)
+	, bottom := ReadMemory(p + o_Bottom, GameIdentifier)
+	, top := ReadMemory(p + o_Top, GameIdentifier)
+	, left2 := ReadMemory(p + 0x10 + o_left, GameIdentifier)
+	, right2 := ReadMemory(p + 0x10 + o_Right, GameIdentifier)
+	, bottom2 := ReadMemory(p + 0x10 + o_Bottom, GameIdentifier)
+	, top2 := ReadMemory(p  + 0x10 + o_Top, GameIdentifier) ; Can be different Forbidden sanctuary 
+
+	return "Left: " left "`nRight: " right "`nBottom: " bottom "`nTop: " top "`n"
+		.  "Left2: " left2 "`nRight2: " right2 "`nBottom2: " bottom2 "`nTop2: " top2 "`n"
+}
+
 
 ; SC2 Window Modes EXStyle
 ; Windowed FullScreen 	:= 0x00040000

@@ -67,7 +67,8 @@ If 0 ; ignored by script but installed by compiler
    	FileInstall, Included Files\ahkH\AutoHotkey.dll, this param is ignored
 }
 SetStoreCapslockMode, off ; needed in case a user binds something to the capslock key in sc2 - other AHK always sends capslock to adjust for case.
-ListLines(False) 
+if A_IsCompiled
+	ListLines(False) 
 SetControlDelay -1 	; make this global so buttons dont get held down during controlclick
 SetKeyDelay, -1	 	; Incase SendInput reverts to Event - and for controlsend delay
 SetMouseDelay, -1
@@ -3709,8 +3710,7 @@ try
 			Gui, Add, Button, xp yp+30  Gg_DebugKey w75 h25,  Key States
 			Gui, Add, Button, xp+90 yp gDebugSCHotkeys  w75 h25, SC Hotkeys
 			Gui, Add, Button, xp-90 yp+30  GdegbugGUIStats vdegbugGUIVar w75 h25, Control Pos
-
-			
+			Gui, Add, Button, xp+90 yp  gOptionesMenuDebugFiles w75 h25, Debug Files
 
 
 		Gui, Add, GroupBox, Xs+171 ys+290 w245 h60, Emergency Restart Key
@@ -3757,8 +3757,8 @@ try
 		Gui, Add, Edit, xp y+10 w350 h180 vReport_TXT, %BugText%
 
 		GUI, Add, ListView, xp y+15 w350 H100 vEmailAttachmentListViewID, Attachments
-		LV_Add("", A_ScriptDir "\" config_file) ;includes the MT_Config.ini file ; this can not be removed by the user	
-		LV_ModifyCol()  ; Auto-size all columns to fit their contents
+		;LV_Add("", A_ScriptDir "\" config_file) ;includes the MT_Config.ini file ; this can not be removed by the user	
+		LV_ModifyCol(1, "AutoHdr")  ; Auto-size  fit the contents and header
 		Gui, Add, Button, xp-55 yp+40 w50 h25 gg_AddEmailAttachment, Add
 		Gui, Add, Button, xp yp+35 w50 h25 gg_RemoveEmailAttachment, Remove
 		Gui, Add, Button, vB_Report gB_Report xp+195 y+8 w80 h50, Send
@@ -6065,42 +6065,25 @@ B_Report:
 			LV_GetText(AttachmentPath, A_Index) ; start at 1 as 0 retrieves the column header
 			attachments .= AttachmentPath ","
 		}
-
-		if FileExist(A_Temp "\MacroTrainerDebugData.txt")
-			FileDelete, %A_Temp%\MacroTrainerDebugData.txt
-		FileAppend, % DebugData(), %A_Temp%\MacroTrainerDebugData.txt
-		attachments .= A_Temp "\MacroTRainerDebugData.txt,"	
-		if FileExist(A_Temp "\MacroTrainerSystemDebugData.txt")
-			FileDelete, %A_Temp%\MacroTrainerSystemDebugData.txt
-		FileAppend, % WMISystemInfo_Summary(), %A_Temp%\MacroTrainerSystemDebugData.txt
-		attachments .= A_Temp "\MacroTrainerSystemDebugData.txt,"
-		if FileExist(A_Temp "\MacroTrainerHotkeyDebugData.txt")
-			FileDelete, %A_Temp%\MacroTrainerHotkeyDebugData.txt
-		FileAppend, % DebugSCHotkeys(True), %A_Temp%\MacroTrainerHotkeyDebugData.txt
-		attachments .= A_Temp "\MacroTrainerHotkeyDebugData.txt,"		
-		; Try to include the active custom hotkey profile if it exists - DebugSCHotkeys() sets the SC2Keys above
-		if WinExist(GameIdentifier) 
-		{
-			if FileExist(SC2Keys.debug.variablesFilePath)
-				attachments .= SC2Keys.debug.variablesFilePath ","	
-			if FileExist(SC2Keys.debug.hotkeyProfile)
-				attachments .= SC2Keys.debug.hotkeyProfile ","	
-		}
+		for i, file in aDebugFiles := debugFiles()	
+			attachments .= file ","
 		attachments := Trim(attachments, " `t`,")
-
 		if ((error := bugReportPoster(Report_Email, "Bug Report:`n`n" Report_TXT, attachments, ticketNumber)) >= 1)
 		{
-			FileDelete, %A_Temp%\MacroTRainerDebugData.txt ; Try to delete as there is a return here
-			FileDelete, %A_Temp%\MacroTrainerSystemDebugData.txt 
-			FileDelete, %A_Temp%\MacroTrainerHotkeyDebugData.txt 
 			GuiControl, ,Report_TXT, %Report_TXT%`n`n`nAuto Bug Report Error:`n%error%
 			msgbox, % 49 + 4096, Error, % "There was an error submitting your report"
 				. "`n`nError: " error
 				. "`n`nPress OK to submit the report using your web browser"
+				. "`n(Please attach all the files listed in the 'MacroDebug' folder!!)"
 				. "`n`nOtherwise Press cancel"
 			IfMsgBox, OK
+			{
 				run % url.BugReport
-			else return 
+				FileCreateDir, MacroDebug
+				for i, file in aDebugFiles
+					FileCopy, %file%, % "MacroDebug\" SplitPath(file).FileName,  1
+				Run, MacroDebug
+			}
 		}
 		else if (error = -1)
 		{
@@ -6117,11 +6100,44 @@ B_Report:
 			GuiControl, ,Report_TXT, `n`n`n`n`n`n%a_tab%%a_tab%Thank You!
 			msgbox, 64, , Report Sent`n`nTicket Number: %ticketNumber%, 10
 		}
-		FileDelete, %A_Temp%\MacroTRainerDebugData.txt ; Try to delete
-		FileDelete, %A_Temp%\MacroTrainerSystemDebugData.txt 
-		FileDelete, %A_Temp%\MacroTrainerHotkeyDebugData.txt 
 	}
 	return
+
+
+optionesMenuDebugFiles:
+aDebugFiles := debugFiles()
+FileCreateDir, MacroDebug
+for i, file in aDebugFiles
+	FileCopy, %file%, % "MacroDebug\" SplitPath(file).FileName,  1
+Run, MacroDebug
+msgbox Done.`nFiles located in Directory:`n%A_WorkingDir%\MacroDebug
+return 
+
+
+debugFiles()
+{
+	attachments := []
+	attachments.insert(A_ScriptDir "\" config_file)
+	string := "##########`nSC Data`n##########`n`n`n"
+	. DebugData() "`n"
+	. "`n`n##########`nSystem Data`n##########`n`n"
+	. WMISystemInfo_Summary() "`n"
+	. "`n`n##########`nHotkey Data`n##########`n`n"
+	. DebugSCHotkeys(True)
+	deleteAppend(A_Temp "\MacroTrainerDebugData.txt", string)
+	attachments.insert(A_Temp "\MacroTrainerDebugData.txt")
+	; Try to include the active custom hotkey profile if it exists - DebugSCHotkeys() sets the SC2Keys above
+	if WinExist(GameIdentifier) 
+	{
+		if FileExist(SC2Keys.debug.variablesFilePath)
+			attachments.insert(SC2Keys.debug.variablesFilePath)	
+		if FileExist(SC2Keys.debug.hotkeyProfile)
+			attachments.insert(SC2Keys.debug.hotkeyProfile)
+	}
+	return attachments
+}
+
+
 
 ;could hide everything each time, then unhide once, but that causes every so slightly more blinking on gui changes
 ; Note this is launched automatically when the GUI is first created, as the first TV item (Home) is automatically selected
@@ -6225,7 +6241,7 @@ Loop
     	goto g_RemoveEmailAttachment ; otherwise some items wont get deleted as lv_next gets confused in loop
     }
 }
-LV_ModifyCol()  ; Auto-size all columns to fit their contents
+LV_ModifyCol(1, "AutoHdr")  ; Auto-size  Fit the contents and header
 if UserTriedToRemoveIniAttachment
 	msgbox Your config file is always attached to a bug report.`nIt can not be removed.
 return 
@@ -9741,7 +9757,6 @@ clickUnitPortraitsDemo(aUnitPortraitLocations, Modifers := "+")
 	return	
 }
 
-
 debugData()
 { 	global aPlayer, O_mTop, GameIdentifier
 	, A_UnitGroupSettings, aLocalPlayer, aUnitName
@@ -9760,9 +9775,29 @@ debugData()
 		. "Window: (" x ", " y ") " w " x" h "`n"
 		.  "AspectRatio: " aspectRatio " (" trueAspectRatio ")`n"
 		. "Window Mode: " windowStyle "`n"
+
+		; Delete the below part - its for an individual user test
+
+		loadedMinimapAddress := dectohex(pointer(GameIdentifier, P_MinimapPosition, O_MinimapPosition*) + 0x1C)
+		minimapAddres := "Address (loaded): " loadedMinimapAddress "`n"
+		minimapAddres .= "Address (pattern): "
+		mem := new _ClassMemory(GameIdentifier)
+		; pattern scan for 1920x1080 values
+		if (address := mem.processPatternScan(mem.baseaddress,, 0x28, 0x03, 0x00, 0x00, 0x1C, 0x00, 0x00, 0x00, 0x2A, 0x04, 0x00, 0x00, 0x22, 0x01, 0x00, 0x00, 0x28, 0x03, 0x00 0x00)) > 0
+			minimapAddres .= dectohex(address) "`n"
+		else minimapAddres .= "Not Found!`n"
+
 	}
 	else 
 		SCWindwowString := "SC not running.`n"
+
+
+	isSCRunning := pid
+	isInGame := isSCRunning && (getLocalPlayerNumber() != 16)
+
+	if isSCRunning && getTime() ; so works with replay 
+		minimapSting := minimapLocationDebug()
+	else minimapSting := "Not in a game!`n"
 
 	DllCall("QueryPerformanceFrequency", "Int64*", Frequency), DllCall("QueryPerformanceCounter", "Int64*", CurrentTick)
 	getSystemTimerResolutions(MinTimer, MaxTimer)
@@ -9800,8 +9835,11 @@ debugData()
 	. "SC PID: " pid "`n"
 	. "SC Vr.: " getProcessFileVersion(GameExe) "`n"
 	. "SC Base.: " dectohex(getProcessBaseAddress(GameIdentifier)) "`n"
-	. "==========================================="
-	. "`n"
+	. "===========================================`n"
+	.	"Minimap Location: (Memory)`n" 
+	.	minimapSting
+	. minimapAddres
+	. "===========================================`n"
 	. "Game Data:`n"
 	result .= "GetGameType: " GetGameType(aPlayer) "`n"
 	. "Enemy Team Size: " getEnemyTeamsize() "`n"
@@ -13599,4 +13637,7 @@ findClosestNexus(mothershipIndex, byRef minimapX, byRef minimapY)
 	}
 	return True, mapToMinimapPos(minimapX, minimapY)
 }
+
+
+
 
