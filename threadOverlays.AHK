@@ -2372,3 +2372,4 @@ checkOverlayPositions()
 	}
 	return adjusted
 }
+

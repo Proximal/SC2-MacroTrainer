@@ -237,6 +237,7 @@ DrawMiniMap()
 
 	; Gdip_DeleteRegion(Region)
 	Gdip_DeleteGraphics(G)
+;	, UpdateLayeredWindow(hwnd1, hdc, minimap.VirtualBorderLeft * minimap.DPIScale, minimap.VirtualBorderTop * minimap.DPIScale, minimap.BorderWidth+1 * minimap.DPIScale, minimap.BorderHeight+1 * minimap.DPIScale, overlayMinimapTransparency) 
 	, UpdateLayeredWindow(hwnd1, hdc, minimap.VirtualBorderLeft, minimap.VirtualBorderTop, minimap.BorderWidth+1, minimap.BorderHeight+1, overlayMinimapTransparency) 
 	, SelectObject(hdc, obm), DeleteObject(hbm), DeleteDC(hdc)
 	Return

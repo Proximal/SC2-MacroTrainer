@@ -2989,6 +2989,19 @@ SetMiniMap(byref minimap)
 	minimap.VirtualBorderRight := right + Xsc + leftFrame ;- 1 ; - 1 Account for difference in SC stored value
 	minimap.VirtualBorderTop  := top + Ysc + topFrame ; When windowed the top SC border consists of a caption and frame
 	minimap.VirtualBorderBottom := bottom + Ysc + topFrame 
+	
+	; Have to do something like this to fix the minimap scaling issue with certain DPIs
+	; however, this will break the postmessage input, as that is not scaled.
+	; Further more, certain DPIs (e.g. 150) in win8.1 report incorrectly which would break stuff too - reported as 96
+	; This can cause weird values - for example the SC memory X,Y resolution might be correct, or it could be scaled down
+	; and the system metrics resolution could be correct or scaled down or vice versa depending on OS
+	; probably due to the incorrect DPI value
+	; minimap.VirtualBorderLeft *= A_screenDPI / 96 
+	; minimap.VirtualBorderRight *= A_screenDPI / 96 
+	; minimap.VirtualBorderTop *= A_screenDPI / 96 
+	; minimap.VirtualBorderBottom *= A_screenDPI / 96 
+	minimap.DPIScale := A_screenDPI/96
+
 	; Not doing right - left, as need to account for the fact that minimap is +1 -1 out
 	minimap.BorderWidth := minimap.VirtualBorderRight - minimap.VirtualBorderLeft
 	minimap.BorderHeight := minimap.VirtualBorderBottom - minimap.VirtualBorderTop

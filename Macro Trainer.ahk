@@ -9772,7 +9772,7 @@ debugData()
 		windowStyle := GameWindowStyle()
 		aspectRatio := getClientAspectRatio(x, y, w, h, trueAspectRatio)
 		SCWindwowString := "SC2 Res (mem): " SC2HorizontalResolution() "x" SC2VerticalResolution() "`n"
-		. "Window: (" x ", " y ") " w " x" h "`n"
+		. "Window: (" x ", " y ") " w "x" h "`n"
 		.  "AspectRatio: " aspectRatio " (" trueAspectRatio ")`n"
 		. "Window Mode: " windowStyle "`n"
 
@@ -13628,7 +13628,7 @@ findClosestNexus(mothershipIndex, byRef minimapX, byRef minimapY)
 	} until count = baseCount
 	if !aNexi.MaxIndex()
 		return false 
-	mothershipX :=  numGetUnitPositionX(MemDump, mothershipIndex), mothershipY :=  numGetUnitPositionY(MemDump, mothershipIndex)
+	mothershipX := numGetUnitPositionX(MemDump, mothershipIndex), mothershipY :=  numGetUnitPositionY(MemDump, mothershipIndex)
 	for i, nexus in aNexi
 	{
 		distance := (mothershipX - nexus.x)**2 + (mothershipY - nexus.y)**2 ; don't need the actual distance, so no need to squareRoot
@@ -13637,6 +13637,9 @@ findClosestNexus(mothershipIndex, byRef minimapX, byRef minimapY)
 	}
 	return True, mapToMinimapPos(minimapX, minimapY)
 }
+
+
+
 
 
 
