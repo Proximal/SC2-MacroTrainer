@@ -2972,7 +2972,7 @@ All scales as recorded at 1920x1080
 ; left+1 and right-1 are the bounds for the clickable margins!
 
 ; Takes ~ 0.21 ms
-SetMiniMap(byref minimap)
+SetMiniMap2(byref minimap)
 {	
 	; minimap is a super global (though here it is a local)
 	minimap := []
@@ -2983,28 +2983,24 @@ SetMiniMap(byref minimap)
 	; The coodinates of the entire SC minimap border
 	; relative to the SC client area (doesn't include the SC window frame if present)
 	minimapLocation(left, right, bottom, top)
+	
+	minimap.DPIScale := A_screenDPI/96
+	left *= minimap.DPIScale
+	right *= minimap.DPIScale
+	bottom *= minimap.DPIScale
+	top *= minimap.DPIScale
+	Xsc *= minimap.DPIScale
+	Ysc *= minimap.DPIScale
+
 	; x, y screen coordinates of the full minimap UI Border
 	; Relative to the virtual screen (desktop area)
 	minimap.VirtualBorderLeft := left + Xsc + leftFrame ;+ 1
 	minimap.VirtualBorderRight := right + Xsc + leftFrame ;- 1 ; - 1 Account for difference in SC stored value
 	minimap.VirtualBorderTop  := top + Ysc + topFrame ; When windowed the top SC border consists of a caption and frame
 	minimap.VirtualBorderBottom := bottom + Ysc + topFrame 
-	
-	; Have to do something like this to fix the minimap scaling issue with certain DPIs
-	; however, this will break the postmessage input, as that is not scaled.
-	; Further more, certain DPIs (e.g. 150) in win8.1 report incorrectly which would break stuff too - reported as 96
-	; This can cause weird values - for example the SC memory X,Y resolution might be correct, or it could be scaled down
-	; and the system metrics resolution could be correct or scaled down or vice versa depending on OS
-	; probably due to the incorrect DPI value
-	; minimap.VirtualBorderLeft *= A_screenDPI / 96 
-	; minimap.VirtualBorderRight *= A_screenDPI / 96 
-	; minimap.VirtualBorderTop *= A_screenDPI / 96 
-	; minimap.VirtualBorderBottom *= A_screenDPI / 96 
-	minimap.DPIScale := A_screenDPI/96
-
 	; Not doing right - left, as need to account for the fact that minimap is +1 -1 out
-	minimap.BorderWidth := minimap.VirtualBorderRight - minimap.VirtualBorderLeft
-	minimap.BorderHeight := minimap.VirtualBorderBottom - minimap.VirtualBorderTop
+	minimap.BorderWidth := right - left
+	minimap.BorderHeight := bottom - top
 	; x, y screen coordinates of the full minimap UI Border
 	; Relative to the SC client area NOT window
 	; i.e. relative to the top left display area of the SC window which isn't a part of the outer window border or window frame 
@@ -3012,6 +3008,8 @@ SetMiniMap(byref minimap)
 	minimap.ClientBorderRight := right ;- 1
 	minimap.ClientBorderBottom := bottom
 	minimap.ClientBorderTop := top
+	minimap.ClientBorderWidth := right - left
+	minimap.ClientBorderHeight := bottom - top	
 
 	;minimap.MapLeft := getmapleft()
 	;minimap.MapRight := getmapright()	
@@ -3075,9 +3073,16 @@ SetMiniMap(byref minimap)
 		else if minimap.scale = 1.34 ; crystal pools 1920x1080
 			Xoffset -= 1
 	}
+	minimap.scale *= A_screenDPI / 96
+
+	minimap.WidthClient := 
 	; Perhaps adding to inaccuracy my multiplying rounded values...
 	minimap.Width := minimap.BorderWidth - 2*Xoffset
 	minimap.Height := minimap.BorderHeight - 2*Yoffset
+
+	
+
+	
 
 
 	; Delta of the minimap UI border edge and the displayed/sized map
@@ -3105,6 +3110,121 @@ SetMiniMap(byref minimap)
 	Return
 }
 
+SetMiniMap(byref minimap)
+{	
+	; minimap is a super global (though here it is a local)
+	minimap := []
+
+	DPIScale := A_screenDPI/96
+	winGetPos, Xsc, Ysc, Wsc, Hsc, %GameIdentifier%
+	XscRaw := Xsc, YscRaw := Ysc, HscRaw := Hsc
+	Xsc *= DPIScale, Ysc *= DPIScale, Wsc *= DPIScale, Hsc *= DPIScale
+	if GameWindowStyle() = "Windowed"
+		systemWindowEdgeSize(leftFrame, topFrame) ; Frame sizes are already scaled for DPI aware programs.
+	else leftFrame := topFrame:= 0
+	; The coodinates of the entire SC minimap border
+	; relative to the SC client area (doesn't include the SC window frame if present)
+	minimapLocation(left, right, bottom, top)
+	
+	; x, y screen coordinates of the full minimap UI Border relative to the SC client area NOT window
+	; i.e. relative to the top left display area of the SC window which isn't a part of the outer window border or window frame 
+	minimap.CALeft := left ;+ 1
+	minimap.CARight := right ;- 1
+	minimap.CABottom := bottom
+	minimap.CATop := top
+	minimap.CAWidth := right - left
+	minimap.CAHeight := bottom - top	
+	; x, y screen coordinates of the full minimap UI Border relative to the virtual screen (desktop area) 
+	; Need to DPI scale the SC minimap border coordinates and the SC window position from winGetPos
+	minimap.VSLeft := left*DPIScale + Xsc + leftFrame ;+ 1
+	minimap.VSRight := right*DPIScale + Xsc + leftFrame ;- 1 ; - 1 Account for difference in SC stored value
+	minimap.VSTop  := top*DPIScale + Ysc + topFrame ; When windowed the top SC border consists of a caption and frame
+	minimap.VSBottom := bottom*DPIScale + Ysc + topFrame 
+	minimap.VSWidth := minimap.VSRight - minimap.VSLeft
+	minimap.VSHeight := minimap.VSBottom - minimap.VSTop
+
+	;minimap.MapLeft := getmapleft(), minimap.MapRight := getmapright(), minimap.MapTop := getMaptop(), minimap.MapBottom := getMapBottom()
+	; Using this new method is much better when a map side is much larger than the actual visual (playable) size
+	; i.e. map bounds > camera bounds. 
+	; Only the camerabounds +/- margin are actually displayed on the minimap and are playable.
+	; Press 'o' to see these bounds in the map editor
+	; Refers to actual playable map positions
+	minimap.MapLeft := getCameraBoundsLeft() - 7, minimap.MapRight := getCameraBoundsRight() + 7
+	minimap.MapTop := getCameraBoundsTop() + 4, minimap.MapBottom := getCameraBoundsBottom() - 4
+	minimap.MapPlayableWidth := minimap.MapRight - minimap.MapLeft
+	minimap.MapPlayableHeight := minimap.MapTop - minimap.MapBottom	
+	
+	if (minimap.MapPlayableWidth >= minimap.MapPlayableHeight)
+	{
+		minimap.CAScale := minimap.CAWidth / minimap.MapPlayableWidth
+		minimap.VSScale := round(minimap.CAScale * DPIScale, 2) ; Account for DPI
+		minimap.CAScale := round(minimap.CAScale, 2)
+		Xoffset := 0
+		if minimap.MapPlayableWidth = minimap.MapPlayableHeight
+			Yoffset := 0
+		else Yoffset := ceil((minimap.CAHeight - minimap.CAScale * minimap.MapPlayableHeight) / 2) ; was round
+
+		if Yoffset 
+		{
+			if minimap.CAScale = 1.76 ; omicron
+				Yoffset += 1
+			else if minimap.CAScale = 1.46 ; katherine square
+				Yoffset += 2
+		}
+	}
+	else if (minimap.MapPlayableWidth < minimap.MapPlayableHeight)
+	{
+		minimap.CAScale := minimap.CAHeight / minimap.MapPlayableHeight
+		minimap.VSScale := round(minimap.CAScale* DPIScale, 2) ; needs to be min. 2
+		minimap.CAScale := round(minimap.CAScale, 2) ; needs to be min. 2
+		Yoffset := 0
+		Xoffset := floor((minimap.CAWidth - minimap.CAScale * minimap.MapPlayableWidth) / 2) 
+		; correct border edge margins
+		; scale = 3.225 round() or unaltered is correct 
+		; scale = 2.9841818 round() or unaltered is correct 
+		; scale = 2.6875 round() or unaltered is correct 
+		; scale = 2.480769 floor() is correct 
+		; (full/playable) xoffset error
+		; 72x80  + 1 scale = 3.23
+		; 72x152 + 1 scale = 1.70
+		; 26x256 + 1 scale = 1.01
+		
+		
+		;minimap.xoffsetFull := (minimap.BorderWidth - minimap.scale * minimap.MapPlayableWidth)
+		;minimap.xoffsetHalf := (minimap.BorderWidth - minimap.scale * minimap.MapPlayableWidth)/2
+
+		if minimap.CAScale = 3.23 || minimap.CAScale = 1.70 || minimap.CAScale = 1.01 
+		|| minimap.CAScale = 1.72
+		|| minimap.CAScale = 1.36 || minimap.CAScale = 1.25 ; was in windowed mode for this line
+			Xoffset += 1
+		else if minimap.CAScale = 1.34 ; crystal pools 1920x1080
+			Xoffset -= 1
+	}
+	; Perhaps adding to inaccuracy my multiplying rounded values...
+	minimap.CAPlayableWidth := minimap.CAWidth - 2*Xoffset 
+	minimap.CAPlayableHeight := minimap.CAHeight - 2*Yoffset 
+
+	minimap.VSPlayableWidth := minimap.VSWidth - 2*Xoffset * DPIScale
+	minimap.VSPlayableHeight := minimap.VSHeight - 2*Yoffset * DPIScale			
+	
+	; Delta of the minimap UI border edge and the displayed/sized map
+	; To be used with drawing the minimap
+	; The minimap must be positioned at the top left of the FULL SC minimap as this is 0 based
+	minimap.DrawingHorizontalOffset := Xoffset * DPIScale	
+	minimap.DrawingVerticalOffset := Yoffset * DPIScale
+
+	; playable minimap position relative to the SC client area (doesn't include the window frame/border)
+	; Used for input calculations that are destined for the input class (postmessage)
+	minimap.clientInputBottom := minimap.CABottom - Yoffset
+	minimap.clientInputTop := minimap.CATop + Yoffset
+	minimap.clientInputLeft := minimap.CALeft + Xoffset
+
+
+	minimap.UnitMinimumRadius := 1 / minimap.VSScale
+	minimap.UnitMaximumRadius := 10
+	minimap.AddToRadius := 1 / minimap.VSScale	
+	Return
+}
 ; Use these functions to get co-ordinates for clicking
 ; Not for drawing on the minimap
 getUnitMinimapPos(Unit, ByRef  x, ByRef y) ; Note raounded as mouse clicks dont round decimals e.g. 10.9 = 10
@@ -3118,17 +3238,9 @@ mapToMinimapPos(ByRef  X, ByRef  Y)
 {
 	global minimap
 	X -= minimap.MapLeft, Y -= minimap.MapBottom ; correct units position as mapleft/start of map can be >0
-	, X := round(minimap.clientInputLeft + (X/minimap.MapPlayableWidth * minimap.Width))
-	, Y := round(minimap.clientInputBottom - (Y/minimap.MapPlayableHeight * minimap.Height))		
+	, X := round(minimap.clientInputLeft + (X/minimap.MapPlayableWidth * minimap.CAPlayableWidth))
+	, Y := round(minimap.clientInputBottom - (Y/minimap.MapPlayableHeight * minimap.CAPlayableHeight))		
 	return	
-}
-
-minimapToMapPos(ByRef  X, ByRef  Y) 
-{
-	global minimap
-	x := ((x - minimap.clientInputLeft)*minimap.MapPlayableWidth)/minimap.Width + minimap.MapLeft
-	y := (abs(y -  minimap.clientInputBottom)*minimap.MapPlayableHeight)/minimap.Height + minimap.MapBottom 	
-	return		
 }
 
 ; Use these two functions to draw items on the minimap
@@ -3142,31 +3254,17 @@ mapToRelativeMinimapPos(ByRef  X, ByRef  Y)
 {
 	global minimap
 	X -= minimap.MapLeft, Y -= minimap.MapBottom ; correct units position as mapleft/start of map can be >0
-	, X := round(minimap["DrawingHorizontalOffset"] + (X/minimap.MapPlayableWidth * minimap.Width))
-	, Y := round(minimap["DrawingVerticalOffset"] + (1-(Y/minimap.MapPlayableHeight)) * minimap.Height)		
+	, X := round(minimap["DrawingHorizontalOffset"] + (X/minimap.MapPlayableWidth * minimap.VSPlayableWidth))
+	, Y := round(minimap["DrawingVerticalOffset"] + (1-(Y/minimap.MapPlayableHeight)) * minimap.VSPlayableHeight)		
 	return	
 }
-
-
 ; For AHK click commands. **Coordmode = screen
-getUnitWindowMinimapPos(Unit, ByRef  x, ByRef y) ; Note redounded as mouse clicks dont round decimals e.g. 10.9 = 10
+; Couldn't seem to get it to work with client or window
+getUnitScreenMinimapPos(Unit, ByRef  x, ByRef y) ; Note redounded as mouse clicks dont round decimals e.g. 10.9 = 10
 {
-	mapToWindowMinimapPos(x := getUnitPositionX(Unit), y := getUnitPositionY(Unit))
-	, x := round(x), y := round(y)
+	mapToRelativeMinimapPos(x := getUnitPositionX(Unit), y := getUnitPositionY(Unit))
+	, x := round(x)+minimap.VSLeft, y := round(y) + minimap.VSTop
 }
-mapToWindowMinimapPos(ByRef  X, ByRef  Y) 
-{
-	global minimap
-	X -= minimap.MapLeft, Y -= minimap.MapBottom ; correct units position as mapleft/start of map can be >0
-	, X := round(minimap["WindowInputLeft"] + (X/minimap.MapPlayableWidth * minimap.Width))
-	, Y := round(minimap["WindowInputBottom"] - (Y/minimap.MapPlayableHeight * minimap.Height))		
-	return	
-}
-
-
-
-
-
 
 
 
@@ -3254,14 +3352,14 @@ drawUnitRectangle(G, x, y, radius, colour := "black")
 { 	
 	global minimap, static enlarge := 1
 	; The w,h + enlarge in function call increase size so as to help hide inaccuracy
-	width := height := radius * 2 * minimap.scale 
+	width := height := radius * 2 * minimap.VSScale 
 	, Gdip_DrawRectangle(G, a_pPens[colour], (x - 1 - width / 2)//1, (y - 1 - height /2)//1, (width + 1 + enlarge)//1, (height + 1+enlarge)//1)
 }
 
 FillUnitRectangle(G, x, y, radius, colour)
 { 	global minimap, static enlarge := 1
 	; The w,h + enlarge in function call increase size so as to help hide inaccuracy
-	width := height := radius * 2 * minimap.scale 
+	width := height := radius * 2 * minimap.VSScale 
 	, Gdip_FillRectangle(G, a_pBrushes[colour], (x - width / 2)//1, (y - height /2)//1, (width+enlarge)//1, (height+enlarge)//1)
 }
 
@@ -5486,7 +5584,6 @@ ClickUnitPortrait(SelectionIndex=0, byref X=0, byref Y=0, byref Xpage=0, byref Y
 			Xu0 := (692/1920)*Wclient, Yu0 := (916/1080)*Hclient
 			Size := (57/1920)*Wclient	;its square
 			Xpage1 := (638/1920)*Wclient, Ypage1 := (901/1080)*Hclient, Ypage6 := (1044/1080)*Hclient
-
 		}
 
 		YpageDistance := (Ypage6 - Ypage1)/5		;because there are 6 pages - 6-1

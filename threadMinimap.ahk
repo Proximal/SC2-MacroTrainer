@@ -209,7 +209,7 @@ DrawMiniMap()
 	}
 	; Update: DIB size does not influence draw speed. But it does slow down the call to GraphicsClear
 	; but since creating a new dib every time, this call isn't required!
-	hbm := CreateDIBSection(minimap.BorderWidth+1, minimap.BorderHeight+1) 
+	hbm := CreateDIBSection(minimap.VSWidth+1, minimap.VSHeight+1) 
 	, hdc := CreateCompatibleDC(), obm := SelectObject(hdc, hbm), G := Gdip_GraphicsFromHDC(hdc)
 	; This will clip the camera to the playable map region, however the game only clips the camera to the total minimap area,
 	; so this isn't required. Also, the SC map allows half of the unit rectangle to be past the playable map edge (when it's smaller than the entire minimap edge)
@@ -237,8 +237,7 @@ DrawMiniMap()
 
 	; Gdip_DeleteRegion(Region)
 	Gdip_DeleteGraphics(G)
-;	, UpdateLayeredWindow(hwnd1, hdc, minimap.VirtualBorderLeft * minimap.DPIScale, minimap.VirtualBorderTop * minimap.DPIScale, minimap.BorderWidth+1 * minimap.DPIScale, minimap.BorderHeight+1 * minimap.DPIScale, overlayMinimapTransparency) 
-	, UpdateLayeredWindow(hwnd1, hdc, minimap.VirtualBorderLeft, minimap.VirtualBorderTop, minimap.BorderWidth+1, minimap.BorderHeight+1, overlayMinimapTransparency) 
+	, UpdateLayeredWindow(hwnd1, hdc, minimap.VSLeft, minimap.VSTop, minimap.VSWidth+1, minimap.VSHeight+1, overlayMinimapTransparency) 
 	, SelectObject(hdc, obm), DeleteObject(hbm), DeleteDC(hdc)
 	Return
 }

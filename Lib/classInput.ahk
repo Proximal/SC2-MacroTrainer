@@ -71,8 +71,6 @@ class Input
 		, 	LastLeftClickX, LastLeftClickY
 		;,	lastKeyboardTick, lastMouseTick
 		, 	Control, WinTitle, WinText,	ExcludeTitle, ExcludeText
-		, XframeOffset := 0
-		, YframeOffset := 0
 
 	; To restore box drags correctly requires a pass through hotkey on lbutton 
 	; So we can determine the x, y location of the start of the box drag (where the left button
@@ -84,8 +82,8 @@ class Input
 	setLastLeftClickPos()
 	{
 		MouseGetPos, x, y
-		input.LastLeftClickX := x - this.XframeOffset
-		input.LastLeftClickY := y - this.YframeOffset
+		input.LastLeftClickX := x
+		input.LastLeftClickY := y
 		return
 	}
 
@@ -387,7 +385,6 @@ I should look into testing if setting the repeat count actually does anything
 					    if (!numbers.maxindex() || numbers.maxindex() = 1)
 					    {
 					        MouseGetPos, x, y  ; will cause problems if send hex number to insertpClickObject the regex below fixes this
-					        x-=this.XframeOffset, y-=this.YframeOffset
 					        clickCount := numbers.maxindex() ? numbers.1 : 1
 					    }
 					    else if (numbers.maxindex() = 2 || numbers.maxindex() = 3)
@@ -599,10 +596,7 @@ I should look into testing if setting the repeat count actually does anything
 		caseMode := A_StringCaseSense
 		StringCaseSense, Off 
 		if (x = "" || y = "")
-		{
 			MouseGetPos, x, y
-			x-=this.XframeOffset, y-=this.YframeOffset
-		}
 
 		lParam := x & 0xFFFF | (y & 0xFFFF) << 16
 		WParam := 0 ; Needed for the |= to work

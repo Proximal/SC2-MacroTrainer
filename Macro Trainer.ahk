@@ -49,7 +49,7 @@
 	remove log in unit panel for missing upgrades
 
 */
-CoordMode, Mouse, Window ; Required for postmessage to get the correct mousepos when game is in true windowed mode
+CoordMode, Mouse, Client ; Required for postmessage to get the correct mousepos when game is in true windowed mode
 SetWorkingDir %A_ScriptDir%  ; Ensures a consistent starting directory.
 #SingleInstance force 
 #MaxHotkeysPerInterval 99999	; a user requested feature (they probably have their own macro script)
@@ -1956,8 +1956,6 @@ monitorGameWindow(initialise := False)
 			systemWindowEdgeSize(leftFrameWidth, topFrameHeight, bottomFrameHeight)
 		else leftFrameWidth := topFrameHeight := bottomFrameHeight := 0
 		
-		input.XframeOffset := leftFrameWidth
-		input.YframeOffset := topFrameHeight
 		; set these values before resetting the position of the command cards/unit selection
 		g_aGameWindow.AspectRatio := aspectRatio
 		, g_aGameWindow.trueAspectRatio := trueAspectRatio
@@ -13643,4 +13641,39 @@ findClosestNexus(mothershipIndex, byRef minimapX, byRef minimapY)
 
 
 
+
+q::
+;MouseGetPos, x, y
+;tooltip, %x%
+input.pSend("{click R}")
+return
+
+
+
+aThreads.Overlays.ahkPostFunction("drawUIPositions", 0, 0, 0)
+return 
+
+
+f2::
+setminimap(a)
+objtree(a)
+return 
+
++f1::
+CoordMode, Mouse, Screen
+getUnitScreenMinimapPos(getSelectedUnitIndex(), x, y)
+
+click, %x%, %y%
+;click, 500, 760
+return
+getUnitMinimapPos(getSelectedUnitIndex(), x, y)
+input.pclick(x, y)
+return 
+
+ins::
+critical 
+CoordMode, Mouse, Screen
+MouseGetPos, x, y 
+tooltip, %x%`, %y% 
+return 
 

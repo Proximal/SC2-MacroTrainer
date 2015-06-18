@@ -2201,20 +2201,25 @@ drawUIPositions(destroy := False, overlayExist := False, optionsHwnd := False)
 		return
 	}
 	optionsGUIHwnd := optionsHwnd
+	getClientAspectRatio(Xclient, Yclient, Wclient, Hclient)
+	DPIScale := A_ScreenDPI / 96
+	Xclient *= DPIScale
+	Yclient *= DPIScale
+	Wclient *= DPIScale
+	Hclient *= DPIScale
 	Gui UIPositions:+LastFoundExist
 	IfWinNotExist
 	{
-		getClientAspectRatio(Xclient, Yclient, Wclient, Hclient)
+		
 		; Create a layered window ;E0x20 click thru (+E0x80000 : must be used for UpdateLayeredWindow to work!) that is always on top (+AlwaysOnTop), has no taskbar entry or caption
-		Gui, UIPositions: -Caption Hwndhwnd1 +E0x20 +E0x80000 +LastFound  +ToolWindow +AlwaysOnTop -DPIScale
+		Gui, UIPositions: -Caption Hwndhwnd1 +E0x20 +E0x80000 +LastFound  +ToolWindow +AlwaysOnTop +DPIScale
 		Gui, UIPositions: Show, % "NA X" Xclient " Y" Yclient " W" Wclient " h" Hclient, % getRandomString_Az09(10, 20)
 		; The overlay is automatically destroyed when the macro Trainer options GUI closes
-		Gui, UIPositionsMinimap: -Caption HwndhwndMinimap +E0x20 +E0x80000 +LastFound +ToolWindow +AlwaysOnTop -DPIScale +OwnerUIPositions
+		Gui, UIPositionsMinimap: -Caption HwndhwndMinimap +E0x20 +E0x80000 +LastFound +ToolWindow +AlwaysOnTop +DPIScale +OwnerUIPositions
 		Gui, UIPositionsMinimap: Show, NA, % getRandomString_Az09(10, 20)
 		settimer, destroyRedrawSCUIPosOverlay, 400
 	}
 
-	getClientAspectRatio(Xclient, Yclient, Wclient, Hclient)
 	hbm := CreateDIBSection(Wclient+1, Hclient+1)
 	, hdc := CreateCompatibleDC()
 	, obm := SelectObject(hdc, hbm)
@@ -2224,7 +2229,6 @@ drawUIPositions(destroy := False, overlayExist := False, optionsHwnd := False)
 
 	if windowed := GameWindowStyle() = "Windowed"
 	{
-			getClientAspectRatio(Xclient, Yclient, Wclient, Hclient)
 			systemWindowEdgeSize(leftFrame, topFrame, bottomFrame)
 			xOffset := leftFrame	
 			yOffset := topFrame
@@ -2239,7 +2243,8 @@ drawUIPositions(destroy := False, overlayExist := False, optionsHwnd := False)
 		getCargoPos(0, 0, 0, True) 
 		loop, 8
 		{
-			getCargoPos(A_Index - 1, x, y), x += xOffset, y += yOffset		
+			getCargoPos(A_Index - 1, x, y), x += xOffset, y += yOffset	
+			x *= DPIScale, y *= DPIScale	
 			aSize := StrSplit(gdip_TextToGraphics(G, A_Index - 1, "x"(x) "y"(y)  " Bold Italic cFFFF0000 s14 ", "Arial",,, True), "|")
 			gdip_TextToGraphics(G, A_Index - 1, "x"(x - aSize[3]//2) "y"(y - aSize[4]//2)  " Bold Italic cFFFF0000 s14 ", "Arial")
 		}
@@ -2250,12 +2255,14 @@ drawUIPositions(destroy := False, overlayExist := False, optionsHwnd := False)
 		loop, 24
 		{
 			ClickUnitPortrait(A_Index - 1, x, y), x += xOffset, y += yOffset
+			x *= DPIScale, y *= DPIScale
 			aSize := StrSplit(gdip_TextToGraphics(G, A_Index - 1, "x"(x) "y"(y)  " Bold Italic cFFFF0000 s14 ", "Arial",,, True), "|")
 			gdip_TextToGraphics(G, A_Index - 1, "x"(x - aSize[3]//2) "y"(y - aSize[4]//2)  " Bold Italic cFFFF0000 s14 ", "Arial")
 		}
 		loop, 6 
 		{
 			ClickUnitPortrait(A_Index - 1, x, y, xPage, yPage, A_index), xPage += xOffset, yPage += yOffset
+			xPage *= DPIScale, yPage *= DPIScale
 			aSize := StrSplit(gdip_TextToGraphics(G, A_Index, "x"(xPage) "y"(yPage)  " Bold Italic cFFFF0000 s14 ", "Arial",,, True), "|")
 			gdip_TextToGraphics(G, A_Index, "x"(xPage - aSize[3]//2) "y"(yPage - aSize[4]//2)  " Bold Italic cFFFF0000 s14 ", "Arial")
 		}
@@ -2263,27 +2270,36 @@ drawUIPositions(destroy := False, overlayExist := False, optionsHwnd := False)
 	clickCommandCard(0, 0, 0, True)
 	loop, 15 ; 15
 	{
-		clickCommandCard(A_Index - 1, x, y), x += xOffset, y += yOffset		
+		clickCommandCard(A_Index - 1, x, y), x += xOffset, y += yOffset	
+		x *= DPIScale, y *= DPIScale	
 		aSize := StrSplit(gdip_TextToGraphics(G, A_Index - 1, "x"(x) "y"(y)  " Bold Italic cFFFF0000 s14 ", "Arial",,, True), "|")
 		gdip_TextToGraphics(G, A_Index - 1, "x"(x - aSize[3]//2) "y"(y - aSize[4]//2)  " Bold Italic cFFFF0000 s14 ", "Arial")
 	}
 	SetMiniMap(minimap)
-
+	pRedPen := Gdip_CreatePen(0xcFFFF0000, 1)
+	pBluePen := Gdip_CreatePen(0xcFF00FFFF, 1)
 	; This draws the rectangle around the playable map area
-	pPen := Gdip_CreatePen(0xcFFFF0000, 1)
+/*	
 	left := minimap.ClientBorderLeft + xOffset + minimap.DrawingHorizontalOffset
 	right := minimap.ClientBorderRight + xOffset - minimap.DrawingHorizontalOffset
 	top := minimap.ClientBorderTop + yOffset + minimap.DrawingVerticalOffset
 	Bottom := minimap.ClientBorderBottom + yOffset - minimap.DrawingVerticalOffset
+	left *= DPIScale
+	right *= DPIScale
+	top *= DPIScale
+	Bottom *= DPIScale
+
 ;	msgbox % left " " right "`n" top " " bottom 
 	
-	pRedPen := Gdip_CreatePen(0xcFFFF0000, 1)
-	pBluePen := Gdip_CreatePen(0xcFF00FFFF, 1)
-	Gdip_DrawLines(G, pRedPen, left "," top "|" 
-						.  right "," top "|" 
-						.  right "," bottom "|" 
-						.  left "," bottom "|" 
-						.   left "," top) 
+
+	
+	;Gdip_DrawLines(G, pRedPen, left "," top "|" 
+	;					.  right "," top "|" 
+	;					.  right "," bottom "|" 
+	;					.  left "," bottom "|" 
+	;					.   left "," top) 
+	
+*/
 	if windowed
 	{
 		Gdip_DrawRectangle(G, pRedPen, 0, 0, Wclient, Hclient)
@@ -2300,16 +2316,18 @@ drawUIPositions(destroy := False, overlayExist := False, optionsHwnd := False)
 	DeleteObject(hbm)
 	DeleteDC(hdc)
 
-	hbm := CreateDIBSection(minimap.BorderWidth+1, minimap.BorderHeight+1), hdc := CreateCompatibleDC(), obm := SelectObject(hdc, hbm)
+	hbm := CreateDIBSection(minimap.VSWidth+1, minimap.VSHeight+1), hdc := CreateCompatibleDC(), obm := SelectObject(hdc, hbm)
 	G := Gdip_GraphicsFromHDC(hdc), Gdip_SetSmoothingMode(G, 4), Gdip_SetInterpolationMode(G, 2)	
 	Gdip_DrawLines(G, pBluePen, 0 "," 0 "|" 
-						.   minimap.BorderWidth "," 0 "|" 
-						.   minimap.BorderWidth "," minimap.BorderHeight "|" 
-						.   0 "," minimap.BorderHeight "|" 
+						.   minimap.VSWidth "," 0 "|" 
+						.   minimap.VSWidth "," minimap.VSHeight "|" 
+						.   0 "," minimap.VSHeight "|" 
 						.   0 "," 0) 
 
+	Gdip_DrawRectangle(G, pRedPen, minimap.DrawingHorizontalOffset, minimap.DrawingVerticalOffset, minimap.VSPlayableWidth, minimap.VSPlayableHeight)
+
 	Gdip_DeleteGraphics(G) 
-	UpdateLayeredWindow(hwndMinimap, hdc, minimap.VirtualBorderLeft, minimap.VirtualBorderTop, minimap.BorderWidth+1, minimap.BorderHeight+1)
+	UpdateLayeredWindow(hwndMinimap, hdc,minimap.VSLeft, minimap.VSTop, minimap.VSWidth+1, minimap.VSHeight+1)
 	SelectObject(hdc, obm), DeleteObject(hbm), DeleteDC(hdc)
 	Gdip_DeletePen(pRedPen)
 	Gdip_DeletePen(pBluePen)
