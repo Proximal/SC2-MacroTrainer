@@ -9,6 +9,10 @@ If you are interested in SC2 memory functions, most (but not all) of these are i
 If you are looking for a general AHK memory reading/writing function check out 
 "/lib/ClassMemory.ahk"
 
+Coding:
+
+This is the first program I ever made and has gone through various changes e.g. single-threaded to multi-threaded, consequently the code is extremely messy. There has been a lot of copy and pasta, and I can't be bothered rewriting stuff.....but it works :)
+
 Running:
 
 The code will not run using the standard AHK_H (or AHK_L) releases. 
@@ -18,7 +22,7 @@ modded AHK_H files found in "AHK_H modded Source and Files\AHK used by MacroTrai
 
 Compiling:
 
-Run the MacroCompiler.ahk script. 
+Run the MacroCompiler.ahk script. (You need to have some version of AHK installed e.g. AHK_L or AHK_H)
 Select an appropriate version/update-type.
 Click the compile button.
 The compiled EXE will be saved in \bin\currentMacroTrainer.zip

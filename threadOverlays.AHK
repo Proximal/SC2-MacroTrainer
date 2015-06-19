@@ -2318,14 +2318,20 @@ drawUIPositions(destroy := False, overlayExist := False, optionsHwnd := False)
 
 	hbm := CreateDIBSection(minimap.VSWidth+1, minimap.VSHeight+1), hdc := CreateCompatibleDC(), obm := SelectObject(hdc, hbm)
 	G := Gdip_GraphicsFromHDC(hdc), Gdip_SetSmoothingMode(G, 4), Gdip_SetInterpolationMode(G, 2)	
+	Gdip_DrawRectangle(G, pRedPen, minimap.DrawingHorizontalOffset, minimap.DrawingVerticalOffset, minimap.VSPlayableWidth, minimap.VSPlayableHeight)
 	Gdip_DrawLines(G, pBluePen, 0 "," 0 "|" 
 						.   minimap.VSWidth "," 0 "|" 
 						.   minimap.VSWidth "," minimap.VSHeight "|" 
 						.   0 "," minimap.VSHeight "|" 
 						.   0 "," 0) 
 
-	Gdip_DrawRectangle(G, pRedPen, minimap.DrawingHorizontalOffset, minimap.DrawingVerticalOffset, minimap.VSPlayableWidth, minimap.VSPlayableHeight)
-
+	
+;	if (minimap.DrawingHorizontalOffset || minimap.DrawingVerticalOffset)
+;	{
+;		if minimap.DrawingVerticalOffset
+;			Gdip_DrawLine(G, pRedPen, 0, minimap.DrawingVerticalOffset, minimap.VSPlayableWidth, y2)
+;	}
+	
 	Gdip_DeleteGraphics(G) 
 	UpdateLayeredWindow(hwndMinimap, hdc,minimap.VSLeft, minimap.VSTop, minimap.VSWidth+1, minimap.VSHeight+1)
 	SelectObject(hdc, obm), DeleteObject(hbm), DeleteDC(hdc)

@@ -92,6 +92,8 @@ Global B_LocalCharacterNameID
 , O3_SelectionPage
 , DeadFilterFlag
 , BuriedFilterFlag
+, B_MapInfo
+, O_FileInfoPointer
 , B_MapStruct
 , O_mLeft
 , O_mBottom
@@ -323,6 +325,10 @@ loadMemoryAddresses(base, version := "")
 		DeadFilterFlag := 0x0000000200000000	
 		BuriedFilterFlag := 0x0000000010000000
 
+		 B_MapInfo := base + 0x3574010
+			O_FileInfoPointer := 0 
+
+		; at B_MapStruct -0x5C is a pointer which list map file name, map name, description and other stuff
 		 B_MapStruct := base + 0x357406C		;0x353C3B4 ;0x3534EDC ; 0X024C9E7C 
 			 O_mLeft := B_MapStruct + 0xDC	                                   
 			 O_mBottom := B_MapStruct + 0xE0	                                   
@@ -447,6 +453,10 @@ loadMemoryAddresses(base, version := "")
 }	
 ; The actual mapleft() functions will not return the true values from the map editor
 ; eg left is 2 when it should be 0
+; 19/6/15
+; There are some other map values near this mapsture (integer) and floats
+; the integer value is simply the below memory address values /4096 - however they seem to be rounded
+; e.g. 745471/4096=181.999 vs 182
 getMapLeft()
 {	global
 	return ReadMemory(O_mLeft, GameIdentifier) / 4096
@@ -463,7 +473,22 @@ getMapTop()
 {	global
 	return ReadMemory(O_mTop, GameIdentifier) / 4096
 }
-
+getMapPlayableLeft()
+{
+	return getCameraBoundsLeft() - 7
+}
+getMapPlayableRight()
+{
+	return getCameraBoundsRight() + 7
+}
+getMapPlayableBottom()
+{
+	return getCameraBoundsBottom() - 4
+}
+getMapPlayableTop() 
+{
+	return getCameraBoundsTop() + 4
+}
 getCameraBoundsLeft()
 {
 	return ReadMemory(B_camLeft, GameIdentifier) / 4096
@@ -2845,97 +2870,6 @@ setupMiniMapUnitLists(byRef aMiniMapUnits)
 ; The actual mapleft() functions will not return the true values from the map editor
 ; eg left is 2 when it should be 0
 
-SetMiniMapOld(byref minimap)
-{	
-	global SC2AdvancedEnlargedMinimap
-
-	enlarged := (SC2AdvancedEnlargedMinimap = 1) 
-	; minimap is a super global (though here it is a local)
-	minimap := []
-
-	AspectRatio := getClientAspectRatio(Xclient, Yclient, Wclient, Hclient)
-	; Border refers to the SC minimap UI coordinates
-	If (AspectRatio = "16:10")
-	{
-		minimap.BorderLeft := ((enlarged ? 8 : 27)/1680) * A_ScreenWidth
-		minimap.BorderRight := ((enlarged ? 314 : 281)/1680) * A_ScreenWidth
-		minimap.BorderTop := ((enlarged ? 736 : 786)/1050) * A_ScreenHeight
-		minimap.BorderBottom := ((enlarged ? 1042 : 1036)/1050) * A_ScreenHeight
-	}	
-	Else If (AspectRatio = "5:4")
-	{	
-		minimap.BorderLeft := ((enlarged ? 7 : 25)/1280) * A_ScreenWidth
-		minimap.BorderRight := ((enlarged ? 287 : 257)/1280) * A_ScreenWidth
-		minimap.BorderTop := ((enlarged ? 737 : 783)/1024) * A_ScreenHeight
-		minimap.BorderBottom := ((enlarged ? 1016 : 1011)/1024) * A_ScreenHeight
-	}	
-	Else If (AspectRatio = "4:3")
-	{	
-		minimap.BorderLeft := ((enlarged ? 7 : 25)/1280) * A_ScreenWidth
-		minimap.BorderRight := ((enlarged ? 287 : 257)/1280) * A_ScreenWidth
-		minimap.BorderTop := ((enlarged ? 673 : 718)/960) * A_ScreenHeight
-		minimap.BorderBottom := ((enlarged ? 953 : 947)/960) * A_ScreenHeight
-	}
-	Else ;16:9 Else if (AspectRatio = "16:9")
-	{
-		; 23/08/14 Borderleft changed from 28 to 29
-		minimap.BorderLeft := ((enlarged ? 8 : 29)/1920) * Wclient
-		minimap.BorderRight := ((enlarged ? 323 : 289)/1920) * Wclient
-		minimap.BorderTop  := ((enlarged ? 757 : 808)/1080) * Hclient
-		minimap.BorderBottom := ((enlarged ? 1072 : 1066)/1080) * Hclient
-	}
-	;minimap.MapLeft := getmapleft()
-	;minimap.MapRight := getmapright()	
-	;minimap.MapTop := getMaptop()
-	;minimap.MapBottom := getMapBottom()
-	; Using this method is much better when a map side is much larger than the actual visual (playable) size
-	; i.e. map bounds > camera bounds. 
-	; Only the camerabounds +/- margin are actually displayed on the minimap and are playable.
-	; Press 'o' to see these bounds in the map editor
-
-	minimap.MapLeft := getCameraBoundsLeft() - 7
-	minimap.MapRight := getCameraBoundsRight() + 7
-	minimap.MapTop := getCameraBoundsTop() + 4
-	minimap.MapBottom := getCameraBoundsBottom() - 4
-
-	minimap.BorderWidth := minimap.BorderRight - minimap.BorderLeft
-	minimap.BorderHeight := minimap.BorderBottom - minimap.BorderTop
-	
-	minimap.MapPlayableWidth := minimap.MapRight - minimap.MapLeft
-	minimap.MapPlayableHeight := minimap.MapTop - minimap.MapBottom
-
-	; 23/08/14 not sure if i should round the x/y offset
-	if (minimap.MapPlayableWidth >= minimap.MapPlayableHeight)
-	{
-		round(minimap.scale := minimap.BorderWidth / minimap.MapPlayableWidth, 6)
-		minimap.ScreenLeft := minimap.BorderLeft
-		minimap.ScreenRight := minimap.BorderRight	
-		if minimap.MapPlayableWidth = minimap.MapPlayableHeight
-			Y_offset := 0
-		else Y_offset := round((minimap.BorderHeight - minimap.scale * minimap.MapPlayableHeight) / 2)
-		minimap.ScreenTop := minimap.BorderTop + Y_offset
-		minimap.ScreenBottom := minimap.BorderBottom - Y_offset
-		minimap.Height := minimap.ScreenBottom - minimap.ScreenTop
-		minimap.Width := minimap.BorderWidth 
-	}
-	else
-	{
-		minimap.scale := minimap.BorderHeight / minimap.MapPlayableHeight
-		X_Offset := round((minimap.BorderWidth - minimap.scale * minimap.MapPlayableWidth) / 2)
-		minimap.ScreenLeft := minimap.BorderLeft + X_Offset
-		minimap.ScreenRight := minimap.BorderRight - X_Offset	
-		minimap.ScreenTop := minimap.BorderTop
-		minimap.ScreenBottom := minimap.BorderBottom
-		minimap.Height := minimap.BorderHeight 
-		minimap.Width := minimap.ScreenRight - minimap.ScreenLeft	
-	}
-
-	minimap.UnitMinimumRadius := 1 / minimap.scale
-	minimap.UnitMaximumRadius := 10
-	minimap.AddToRadius := 1 / minimap.scale	
-	Return
-}
-
 
 updateMinimapPosition()
 {
@@ -2972,143 +2906,6 @@ All scales as recorded at 1920x1080
 ; left+1 and right-1 are the bounds for the clickable margins!
 
 ; Takes ~ 0.21 ms
-SetMiniMap2(byref minimap)
-{	
-	; minimap is a super global (though here it is a local)
-	minimap := []
-	winGetPos, Xsc, Ysc, Wsc, Hsc, %GameIdentifier%
-	if GameWindowStyle() = "Windowed"
-		systemWindowEdgeSize(leftFrame, topFrame)
-	else leftFrame := topFrame:= 0
-	; The coodinates of the entire SC minimap border
-	; relative to the SC client area (doesn't include the SC window frame if present)
-	minimapLocation(left, right, bottom, top)
-	
-	minimap.DPIScale := A_screenDPI/96
-	left *= minimap.DPIScale
-	right *= minimap.DPIScale
-	bottom *= minimap.DPIScale
-	top *= minimap.DPIScale
-	Xsc *= minimap.DPIScale
-	Ysc *= minimap.DPIScale
-
-	; x, y screen coordinates of the full minimap UI Border
-	; Relative to the virtual screen (desktop area)
-	minimap.VirtualBorderLeft := left + Xsc + leftFrame ;+ 1
-	minimap.VirtualBorderRight := right + Xsc + leftFrame ;- 1 ; - 1 Account for difference in SC stored value
-	minimap.VirtualBorderTop  := top + Ysc + topFrame ; When windowed the top SC border consists of a caption and frame
-	minimap.VirtualBorderBottom := bottom + Ysc + topFrame 
-	; Not doing right - left, as need to account for the fact that minimap is +1 -1 out
-	minimap.BorderWidth := right - left
-	minimap.BorderHeight := bottom - top
-	; x, y screen coordinates of the full minimap UI Border
-	; Relative to the SC client area NOT window
-	; i.e. relative to the top left display area of the SC window which isn't a part of the outer window border or window frame 
-	minimap.ClientBorderLeft := left ;+ 1
-	minimap.ClientBorderRight := right ;- 1
-	minimap.ClientBorderBottom := bottom
-	minimap.ClientBorderTop := top
-	minimap.ClientBorderWidth := right - left
-	minimap.ClientBorderHeight := bottom - top	
-
-	;minimap.MapLeft := getmapleft()
-	;minimap.MapRight := getmapright()	
-	;minimap.MapTop := getMaptop()
-	;minimap.MapBottom := getMapBottom()
-	; Using this new method is much better when a map side is much larger than the actual visual (playable) size
-	; i.e. map bounds > camera bounds. 
-	; Only the camerabounds +/- margin are actually displayed on the minimap and are playable.
-	; Press 'o' to see these bounds in the map editor
-	; Refers to actual playable map positions
-	minimap.MapLeft := getCameraBoundsLeft() - 7
-	minimap.MapRight := getCameraBoundsRight() + 7
-	minimap.MapTop := getCameraBoundsTop() + 4
-	minimap.MapBottom := getCameraBoundsBottom() - 4
-	minimap.MapPlayableWidth := minimap.MapRight - minimap.MapLeft
-	minimap.MapPlayableHeight := minimap.MapTop - minimap.MapBottom	
-	
-	if (minimap.MapPlayableWidth >= minimap.MapPlayableHeight)
-	{
-		minimap.scale := minimap.BorderWidth / minimap.MapPlayableWidth
-		minimap.scale := round(minimap.scale, 2)
-		Xoffset := 0
-		if minimap.MapPlayableWidth = minimap.MapPlayableHeight
-			Yoffset := 0
-		else Yoffset := ceil((minimap.BorderHeight - minimap.scale * minimap.MapPlayableHeight) / 2) ; was round
-
-		if Yoffset 
-		{
-			if minimap.scale = 1.76 ; omicron
-				Yoffset += 1
-			else if minimap.scale = 1.46 ; katherine square
-				Yoffset += 2
-		}
-	}
-	else if (minimap.MapPlayableWidth < minimap.MapPlayableHeight)
-	{
-		minimap.scale := minimap.BorderHeight / minimap.MapPlayableHeight
-		;Xoffset := round((minimap.BorderWidth - minimap.scale * minimap.MapPlayableWidth) / 2) ; perhaps this should be floor
-		Yoffset := 0
-
-		minimap.scale := round(minimap.scale, 2) ; needs to be min. 2
-		Xoffset := floor((minimap.BorderWidth - minimap.scale * minimap.MapPlayableWidth) / 2) 
-		; correct border edge margins
-		; scale = 3.225 round() or unaltered is correct 
-		; scale = 2.9841818 round() or unaltered is correct 
-		; scale = 2.6875 round() or unaltered is correct 
-		; scale = 2.480769 floor() is correct 
-		; (full/playable) xoffset error
-		; 72x80  + 1 scale = 3.23
-		; 72x152 + 1 scale = 1.70
-		; 26x256 + 1 scale = 1.01
-		
-		
-		;minimap.xoffsetFull := (minimap.BorderWidth - minimap.scale * minimap.MapPlayableWidth)
-		;minimap.xoffsetHalf := (minimap.BorderWidth - minimap.scale * minimap.MapPlayableWidth)/2
-
-		if minimap.scale = 3.23 || minimap.scale = 1.70 || minimap.scale = 1.01 
-		|| minimap.scale = 1.72
-		|| minimap.scale = 1.36 || minimap.scale = 1.25 ; was in windowed mode for this line
-			Xoffset += 1
-		else if minimap.scale = 1.34 ; crystal pools 1920x1080
-			Xoffset -= 1
-	}
-	minimap.scale *= A_screenDPI / 96
-
-	minimap.WidthClient := 
-	; Perhaps adding to inaccuracy my multiplying rounded values...
-	minimap.Width := minimap.BorderWidth - 2*Xoffset
-	minimap.Height := minimap.BorderHeight - 2*Yoffset
-
-	
-
-	
-
-
-	; Delta of the minimap UI border edge and the displayed/sized map
-	; To be used with drawing the minimap
-	; The minimap must be positioned at the top left of the FULL SC minimap as this is 0 based
-	minimap.DrawingHorizontalOffset := Xoffset		
-	minimap.DrawingVerticalOffset := Yoffset
-
-	; playable minimap position relative to the entire SC window (includes the window frame/border)
-	; To be used with input calculations that are destined for the AHK send command when coordmode = Window
-	minimap.WindowInputBottom := minimap.ClientBorderBottom + topFrame - Yoffset
-	minimap.WindowInputTop := minimap.ClientBorderTop + topFrame + Yoffset
-	minimap.WindowInputLeft := minimap.ClientBorderLeft + leftFrame + Xoffset
-
-	; playable minimap position relative to the SC client area (doesn't include the window frame/border)
-	; Used for input calculations that are destined for the input class (postmessage)
-	minimap.clientInputBottom := minimap.ClientBorderBottom - Yoffset
-	minimap.clientInputTop := minimap.ClientBorderTop + Yoffset
-	minimap.clientInputLeft := minimap.ClientBorderLeft + Xoffset
-
-
-	minimap.UnitMinimumRadius := 1 / minimap.scale
-	minimap.UnitMaximumRadius := 10
-	minimap.AddToRadius := 1 / minimap.scale	
-	Return
-}
 
 SetMiniMap(byref minimap)
 {	
@@ -3143,14 +2940,13 @@ SetMiniMap(byref minimap)
 	minimap.VSWidth := minimap.VSRight - minimap.VSLeft
 	minimap.VSHeight := minimap.VSBottom - minimap.VSTop
 
-	;minimap.MapLeft := getmapleft(), minimap.MapRight := getmapright(), minimap.MapTop := getMaptop(), minimap.MapBottom := getMapBottom()
 	; Using this new method is much better when a map side is much larger than the actual visual (playable) size
 	; i.e. map bounds > camera bounds. 
 	; Only the camerabounds +/- margin are actually displayed on the minimap and are playable.
 	; Press 'o' to see these bounds in the map editor
 	; Refers to actual playable map positions
-	minimap.MapLeft := getCameraBoundsLeft() - 7, minimap.MapRight := getCameraBoundsRight() + 7
-	minimap.MapTop := getCameraBoundsTop() + 4, minimap.MapBottom := getCameraBoundsBottom() - 4
+	minimap.MapLeft := getMapPlayableLeft(), minimap.MapRight := getMapPlayableRight()
+	minimap.MapTop := getMapPlayableTop(), minimap.MapBottom := getMapPlayableBottom()
 	minimap.MapPlayableWidth := minimap.MapRight - minimap.MapLeft
 	minimap.MapPlayableHeight := minimap.MapTop - minimap.MapBottom	
 	
@@ -3162,44 +2958,25 @@ SetMiniMap(byref minimap)
 		Xoffset := 0
 		if minimap.MapPlayableWidth = minimap.MapPlayableHeight
 			Yoffset := 0
-		else Yoffset := ceil((minimap.CAHeight - minimap.CAScale * minimap.MapPlayableHeight) / 2) ; was round
-
-		if Yoffset 
-		{
-			if minimap.CAScale = 1.76 ; omicron
-				Yoffset += 1
-			else if minimap.CAScale = 1.46 ; katherine square
-				Yoffset += 2
-		}
+		else Yoffset := ceil(abs((minimap.CAHeight - minimap.CAScale * minimap.MapPlayableHeight) / 2)) ; ceil is needed on seething jungle, otherwise get negative offset ;was round previously. 
 	}
 	else if (minimap.MapPlayableWidth < minimap.MapPlayableHeight)
 	{
 		minimap.CAScale := minimap.CAHeight / minimap.MapPlayableHeight
 		minimap.VSScale := round(minimap.CAScale* DPIScale, 2) ; needs to be min. 2
 		minimap.CAScale := round(minimap.CAScale, 2) ; needs to be min. 2
-		Yoffset := 0
-		Xoffset := floor((minimap.CAWidth - minimap.CAScale * minimap.MapPlayableWidth) / 2) 
-		; correct border edge margins
-		; scale = 3.225 round() or unaltered is correct 
-		; scale = 2.9841818 round() or unaltered is correct 
-		; scale = 2.6875 round() or unaltered is correct 
-		; scale = 2.480769 floor() is correct 
-		; (full/playable) xoffset error
-		; 72x80  + 1 scale = 3.23
-		; 72x152 + 1 scale = 1.70
-		; 26x256 + 1 scale = 1.01
-		
-		
-		;minimap.xoffsetFull := (minimap.BorderWidth - minimap.scale * minimap.MapPlayableWidth)
-		;minimap.xoffsetHalf := (minimap.BorderWidth - minimap.scale * minimap.MapPlayableWidth)/2
-
-		if minimap.CAScale = 3.23 || minimap.CAScale = 1.70 || minimap.CAScale = 1.01 
-		|| minimap.CAScale = 1.72
-		|| minimap.CAScale = 1.36 || minimap.CAScale = 1.25 ; was in windowed mode for this line
-			Xoffset += 1
-		else if minimap.CAScale = 1.34 ; crystal pools 1920x1080
-			Xoffset -= 1
+		Yoffset := 0, Xoffset := floor(Abs((minimap.CAWidth - minimap.CAScale * minimap.MapPlayableWidth) / 2)) 
 	}
+	minimap.DrawingXoffset := Xoffset ; just for debugging
+	minimap.DrawingYoffset := Yoffset	
+	minimap.mapName := getMapName()
+	if minimap.mapName = "Omicron" 			
+		Yoffset += floor(1 * minimap.VSWidth/262)
+	else if minimap.mapName = "Katherine Square"
+		Yoffset += floor(2 * minimap.VSWidth/262) 		; 262 = map width at 1920x1080, so offset values scale to other resolutions
+	else if minimap.mapName = "Crystal Pools"			; seems fine with full screen resolutions, but not true windowed modes 
+		Xoffset -= floor(1 * minimap.VSHeight/258)
+
 	; Perhaps adding to inaccuracy my multiplying rounded values...
 	minimap.CAPlayableWidth := minimap.CAWidth - 2*Xoffset 
 	minimap.CAPlayableHeight := minimap.CAHeight - 2*Yoffset 
@@ -3225,9 +3002,16 @@ SetMiniMap(byref minimap)
 	minimap.AddToRadius := 1 / minimap.VSScale	
 	Return
 }
+
+getMapName()
+{
+	MapFileInfo := readmemory(B_MapInfo + O_FileInfoPointer, GameIdentifier)
+	return ReadMemory_Str(MapFileInfo + 0x2A0, GameIdentifier)
+}
+
 ; Use these functions to get co-ordinates for clicking
 ; Not for drawing on the minimap
-getUnitMinimapPos(Unit, ByRef  x, ByRef y) ; Note raounded as mouse clicks dont round decimals e.g. 10.9 = 10
+getUnitMinimapPos(Unit, ByRef  x, ByRef y) ; Note redounded as mouse clicks dont round decimals e.g. 10.9 = 10
 {
 	mapToMinimapPos(x := getUnitPositionX(Unit), y := getUnitPositionY(Unit))
 	, x := round(x), y := round(y)

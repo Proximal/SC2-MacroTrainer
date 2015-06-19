@@ -912,6 +912,7 @@ Else if (time > 0.4 && !isInMatch) && (getLocalPlayerNumber() != 16 || debugGame
 		ReDrawAPM := ReDrawMiniMap := ReDrawIncome := ReDrawResources := ReDrawArmySize := ReDrawWorker := RedrawUnit := ReDrawIdleWorkers := ReDrawLocalPlayerColour := 1
 	if (MaxWindowOnStart && time < 5 && !WinActive(GameIdentifier)) 
 	{	
+		input.releaseKeys(True) ; release the mouse button so user doesn't draw whatever theyre clicking
 		MouseMove, g_aGameWindow.Width//2, g_aGameWindow.Height//2
 		WinActivate, %GameIdentifier%
 		WinNotActiveAtStart := 1
@@ -4624,17 +4625,17 @@ try
 		Gui, Font, CDefault bold, Verdana
 		Gui, Add, Text, xs+10 y+20, Moving:
 		Gui, Font, s10 norm 
-		Gui, Add, Text, xs+25 y+10 w370, Simply left click somewhere on the text or graphics of the overlay (not a blank area) and drag the overlay to its new position.
+		Gui, Add, Text, xs+25 y+10 w370, Left click somewhere on the text or graphics of the overlay (not a blank area) and drag the overlay to its new position.
 	 	Gui, Font, CDefault bold, Verdana
 	 	Gui, Add, Text, xs+10 y+20, Resizing:
 	 	Gui, Font, norm 
-	 	Gui, Add, Text, xs+25 y+10 w370, Simply left click somewhere on the overlay and then rotate the mouse wheel forward/backward.
+	 	Gui, Add, Text, xs+25 y+10 w370, Left click somewhere on the overlay and then rotate the mouse wheel forward/backward.
 
 		Gui, Font, s9 CDefault bold, Verdana
 		Gui, Add, Text, center xs+10 y+25 w370 cRed, The MiniMap and Overlays will only work when SC is in 'Windowed (fullscreen)' mode.
 		Gui, Font, s10 norm 
 
-	if !ZergPic_TT
+	if !auto_inject_alert_TT
 	{
 		auto_inject_alert_TT := "This alert will sound X seconds after your last one-button inject, prompting you to inject again."
 		;W_inject_ding_on_TT := "Note: Due to an inconsistency with the programming language, some systems may not hear the 'windows ding'."
@@ -4780,7 +4781,7 @@ try
 		AutoWorkerMakeWorker_P_Key_TT := #AutoWorkerMakeWorker_P_Key_TT := "The keyboard hotkey used to build a probe.`nUsually 'E'."
 
 		TT_AutoWorkerMaxWorkerTerran_TT := TT_AutoWorkerMaxWorkerProtoss_TT := AutoWorkerMaxWorkerTerran_TT := AutoWorkerMaxWorkerProtoss_TT := "Worker production will stop for the remainder of the game when this number of workers exist.`n"
-						. "Workers can then be 'sacked' and the function will remain off!`n`nIf you wish to turn it back on, simply use the 'toggle hotkey' twice."
+						. "Workers can then be 'sacked' and the function will remain off!`n`nIf you wish to turn it back on, simply use the 'Toggle State' hotkey."
 						. "`nNote: For added randomness your final worker count will be within +/- 2 of this value."
 		TT_AutoWorkerMaxWorkerPerBaseTerran_TT := TT_AutoWorkerMaxWorkerPerBaseProtoss_TT := AutoWorkerMaxWorkerPerBaseTerran_TT := AutoWorkerMaxWorkerPerBaseProtoss_TT :=  "Worker production will stop when this number is exceeded by`n"
 					. "the current worker count per the number of fully constructed (and control grouped) main-bases`n"
@@ -9773,18 +9774,6 @@ debugData()
 		. "Window: (" x ", " y ") " w "x" h "`n"
 		.  "AspectRatio: " aspectRatio " (" trueAspectRatio ")`n"
 		. "Window Mode: " windowStyle "`n"
-
-		; Delete the below part - its for an individual user test
-
-		loadedMinimapAddress := dectohex(pointer(GameIdentifier, P_MinimapPosition, O_MinimapPosition*) + 0x1C)
-		minimapAddres := "Address (loaded): " loadedMinimapAddress "`n"
-		minimapAddres .= "Address (pattern): "
-		mem := new _ClassMemory(GameIdentifier)
-		; pattern scan for 1920x1080 values
-		if (address := mem.processPatternScan(mem.baseaddress,, 0x28, 0x03, 0x00, 0x00, 0x1C, 0x00, 0x00, 0x00, 0x2A, 0x04, 0x00, 0x00, 0x22, 0x01, 0x00, 0x00, 0x28, 0x03, 0x00 0x00)) > 0
-			minimapAddres .= dectohex(address) "`n"
-		else minimapAddres .= "Not Found!`n"
-
 	}
 	else 
 		SCWindwowString := "SC not running.`n"
@@ -9836,7 +9825,6 @@ debugData()
 	. "===========================================`n"
 	.	"Minimap Location: (Memory)`n" 
 	.	minimapSting
-	. minimapAddres
 	. "===========================================`n"
 	. "Game Data:`n"
 	result .= "GetGameType: " GetGameType(aPlayer) "`n"
@@ -13640,9 +13628,9 @@ findClosestNexus(mothershipIndex, byRef minimapX, byRef minimapY)
 
 
 
+/*
 
-
-q::
+f4::
 ;MouseGetPos, x, y
 ;tooltip, %x%
 input.pSend("{click R}")
@@ -13650,7 +13638,6 @@ return
 
 
 
-aThreads.Overlays.ahkPostFunction("drawUIPositions", 0, 0, 0)
 return 
 
 
@@ -13676,4 +13663,7 @@ CoordMode, Mouse, Screen
 MouseGetPos, x, y 
 tooltip, %x%`, %y% 
 return 
+
+*/
+
 
