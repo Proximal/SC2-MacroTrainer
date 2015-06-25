@@ -1068,7 +1068,7 @@ getUnitQueuedCommands(unit, byRef aQueuedMovements)
 			if !aStringTable.hasKey(pString := numget(cmdDump, 0x18, "UInt"))
 				aStringTable[pString] := ReadMemory_Str(readMemory(pString + 0x4, GameIdentifier), GameIdentifier)
 
-			aQueuedMovements.insert({ "targetX": targetX := numget(cmdDump, 0x28, "Int") / 4096
+			aQueuedMovements.insert({ "targetX": numget(cmdDump, 0x28, "Int") / 4096
 									, "targetY": numget(cmdDump, 0x2C, "Int") / 4096
 									, "targetZ": numget(cmdDump, 0x30, "Int") / 4096
 									, "ability": aStringTable[pString] 
@@ -1142,7 +1142,7 @@ getUnitQueuedCommandString(aQueuedCommandsOrUnitIndex)
 			else if (command.state = aUnitMoveStates.HoldPosition)
 				s .= "Hold,"
 			else if (movement.state	= aUnitMoveStates.FollowNoAttack)
-				s .= "FNA,"
+				s .= "FNA," ; ScanMove
 		}
 		else if (command.ability = "attack")
 			s .= "Attack,"
@@ -1167,7 +1167,7 @@ getUnitMoveState(unit)
 		BaseCmdQueStruct := ReadMemory(CmdQueue, GameIdentifier) & -2
 		return ReadMemory(BaseCmdQueStruct + O_cqState, GameIdentifier, 2) ;current state
 	}
-	else return -1 ;cant return 0 as that ould indicate A-move
+	else return -1 ;cant return 0 as that could indicate A-move
 }
 
 arePlayerColoursEnabled()
@@ -2912,7 +2912,8 @@ SetMiniMap(byref minimap)
 	; minimap is a super global (though here it is a local)
 	minimap := []
 
-	DPIScale := A_screenDPI/96
+	;DPIScale := A_ScreenDPI/96 ; disabled until i can personally test on win7,8, & 8.1 using a high DPI monitor
+	DPIScale := 1
 	winGetPos, Xsc, Ysc, Wsc, Hsc, %GameIdentifier%
 	XscRaw := Xsc, YscRaw := Ysc, HscRaw := Hsc
 	Xsc *= DPIScale, Ysc *= DPIScale, Wsc *= DPIScale, Hsc *= DPIScale
@@ -2967,12 +2968,12 @@ SetMiniMap(byref minimap)
 		minimap.CAScale := round(minimap.CAScale, 2) ; needs to be min. 2
 		Yoffset := 0, Xoffset := floor(Abs((minimap.CAWidth - minimap.CAScale * minimap.MapPlayableWidth) / 2)) 
 	}
-	minimap.DrawingXoffset := Xoffset ; just for debugging
-	minimap.DrawingYoffset := Yoffset	
+	;minimap.DrawingXoffset := Xoffset ; just for debugging
+	;minimap.DrawingYoffset := Yoffset	
 	minimap.mapName := getMapName()
 	if minimap.mapName = "Omicron" 			
 		Yoffset += floor(1 * minimap.VSWidth/262)
-	else if minimap.mapName = "Katherine Square"
+	else if (minimap.mapName = "Katherine Square" || minimap.mapName = "Dust Bowl")
 		Yoffset += floor(2 * minimap.VSWidth/262) 		; 262 = map width at 1920x1080, so offset values scale to other resolutions
 	else if minimap.mapName = "Crystal Pools"			; seems fine with full screen resolutions, but not true windowed modes 
 		Xoffset -= floor(1 * minimap.VSHeight/258)
@@ -4759,7 +4760,7 @@ getCargoCount(unit, byRef isUnloading := "")
 	transportStructure := readmemory(getUnitAbilityPointer(unit) + 0x24, GameIdentifier)
 	totalLoaded := readmemory(transportStructure + 0x3C, GameIdentifier)
 	totalUnloaded := readmemory(transportStructure + 0x40, GameIdentifier)
-	isUnloading := readmemory(transportStructure + 0x0C, GameIdentifier) = 259 ? 1 : 0
+	isUnloading := readmemory(transportStructure + 0x0C, GameIdentifier) = 259 
 	return totalLoaded - totalUnloaded
 }
 

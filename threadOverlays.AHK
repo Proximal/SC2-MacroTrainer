@@ -2202,7 +2202,8 @@ drawUIPositions(destroy := False, overlayExist := False, optionsHwnd := False)
 	}
 	optionsGUIHwnd := optionsHwnd
 	getClientAspectRatio(Xclient, Yclient, Wclient, Hclient)
-	DPIScale := A_ScreenDPI / 96
+	;DPIScale := A_ScreenDPI/96 ; disabled until i can personally test on win7,8, & 8.1 using a high DPI monitor
+	DPIScale := 1
 	Xclient *= DPIScale
 	Yclient *= DPIScale
 	Wclient *= DPIScale
@@ -2279,27 +2280,7 @@ drawUIPositions(destroy := False, overlayExist := False, optionsHwnd := False)
 	pRedPen := Gdip_CreatePen(0xcFFFF0000, 1)
 	pBluePen := Gdip_CreatePen(0xcFF00FFFF, 1)
 	; This draws the rectangle around the playable map area
-/*	
-	left := minimap.ClientBorderLeft + xOffset + minimap.DrawingHorizontalOffset
-	right := minimap.ClientBorderRight + xOffset - minimap.DrawingHorizontalOffset
-	top := minimap.ClientBorderTop + yOffset + minimap.DrawingVerticalOffset
-	Bottom := minimap.ClientBorderBottom + yOffset - minimap.DrawingVerticalOffset
-	left *= DPIScale
-	right *= DPIScale
-	top *= DPIScale
-	Bottom *= DPIScale
 
-;	msgbox % left " " right "`n" top " " bottom 
-	
-
-	
-	;Gdip_DrawLines(G, pRedPen, left "," top "|" 
-	;					.  right "," top "|" 
-	;					.  right "," bottom "|" 
-	;					.  left "," bottom "|" 
-	;					.   left "," top) 
-	
-*/
 	if windowed
 	{
 		Gdip_DrawRectangle(G, pRedPen, 0, 0, Wclient, Hclient)

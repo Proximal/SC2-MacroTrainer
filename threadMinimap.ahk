@@ -509,14 +509,14 @@ drawPlayerCameras(pGraphics)
 			, yCenter := getPlayerCameraPositionY(slotNumber)
 			, mapToRelativeMinimapPos(xCenter, yCenter)
 
-			, x1 := xCenter - (19/1920*A_ScreenWidth/minimap.MapPlayableWidth * minimap.Width) * (angle/maxAngle)**2
-			, y1 := yCenter - (13/1080*A_ScreenHeight/minimap.MapPlayableHeight * minimap.Height) * angle/maxAngle
+			, x1 := xCenter - (19/1920*A_ScreenWidth/minimap.MapPlayableWidth * minimap.VSPlayableWidth) * (angle/maxAngle)**2
+			, y1 := yCenter - (13/1080*A_ScreenHeight/minimap.MapPlayableHeight * minimap.VSPlayableHeight) * angle/maxAngle
 			
-			, x2 := x1 + (36/1920*A_ScreenWidth/minimap.MapPlayableWidth * minimap.Width) * (angle/maxAngle)**2
+			, x2 := x1 + (36/1920*A_ScreenWidth/minimap.MapPlayableWidth * minimap.VSPlayableWidth) * (angle/maxAngle)**2
 			, y2 := y1 
 
-			, x3 := (x2 - (x2 - x1)/2) + (xOffset := 14/1920*A_ScreenWidth/minimap.MapPlayableWidth * minimap.Width * (angle/maxAngle)**3)
-			, y3 := y2 + ((18/1080*A_ScreenHeight /minimap.MapPlayableHeight * minimap.Height) * angle/maxAngle)
+			, x3 := (x2 - (x2 - x1)/2) + (xOffset := 14/1920*A_ScreenWidth/minimap.MapPlayableWidth * minimap.VSPlayableWidth * (angle/maxAngle)**3)
+			, y3 := y2 + ((18/1080*A_ScreenHeight /minimap.MapPlayableHeight * minimap.VSPlayableHeight) * angle/maxAngle)
 
 			, x4 := x1 + ((x2 - x1)/2) - xOffset
 			, y4 := y3 
