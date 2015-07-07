@@ -8750,7 +8750,7 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 					{
 						local selectionCount := getSelectionCount()
 						ClickSelectUnitsPortriat(lRemoveQueens, "+")
-						clickSelectionPage(1)
+						clickSelectionPage(1) ; This causes the camera to jump when use minimal interface in SC advanced hack
 						while (getSelectionCount() != selectionCount - removedCount && A_Index <= 20)
 							dSleep(1)
 						dsleep(5)
@@ -13234,7 +13234,7 @@ UpgradeAlertGUI()
 	;Gui, Add, Text,xs y+16, Upgrade:
 	Gui, add, Picture, xs y+10 w33 h33 g__UpgradeAlertGUIChangeButton hwndUpgradePicturehwnd, %A_Temp%\questionMark32.png
 	Gui, add, edit, x+5 yp+10 w150 readonly center hwndUpgradeUserTitlehwnd vUpgradeUserTitle
-	Gui, add, button, x+10 yp g__UpgradeAlertGUIChangeButton, change 
+	Gui, add, button, x+10 yp g__UpgradeAlertGUIChangeButton, Change 
 
 	Gui, Add, GroupBox, xs-10 ys+185 w265 h175, Alert Submission
 	Gui, Add, Button, xp+10 yp+20 w235 section hwndModifyAlertHwnd g__UpgradeAlertGUIModifyButton vModifyUpgradeAlert, Modify Alert ; Need variable for tooltip
@@ -13665,5 +13665,4 @@ tooltip, %x%`, %y%
 return 
 
 */
-
-
+		; 4 byte ints listed in memory: 808 28 1066 290  (at 1920x1080)
