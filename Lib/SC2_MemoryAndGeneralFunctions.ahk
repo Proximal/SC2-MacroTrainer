@@ -180,8 +180,10 @@ loadMemoryAddresses(base, version := "")
 		; These versions have matching offsets
 		; !version in case the findVersion function stuffs up and returns 0/blank, thereby just assume match with latest offsets
 		; Also worker threads do not pass the client verison
-		if (version = "2.1.11.36281" || !version) 
+		if (version = "2.1.11.36281") 
 			versionMatch := "2.1.11.36281"		
+		else if (version = "2.1.12.36657" || !version) 
+			versionMatch := "2.1.12.36657"		
 		;else if version in 2.1.9.34644
 		;	 versionMatch := version
 		else versionMatch := false
@@ -2918,6 +2920,7 @@ SetMiniMap(byref minimap)
 	minimap := []
 
 	;DPIScale := A_ScreenDPI/96 ; disabled until i can personally test on win7,8, & 8.1 using a high DPI monitor
+	; *** DPI issue fixed - this DPI scale associated code is redundant and should be removed (except for VSLeft etc - which is used by getUnitScreenMinimapPos)
 	DPIScale := 1
 	winGetPos, Xsc, Ysc, Wsc, Hsc, %GameIdentifier%
 	XscRaw := Xsc, YscRaw := Ysc, HscRaw := Hsc
@@ -5796,6 +5799,3 @@ systemWindowEdgeSize(byRef leftAndRightBorder := "", byref topBorder := "", byRe
 	, BottomBorder := heightSizeFrame
 	return 
 }
-
-
-

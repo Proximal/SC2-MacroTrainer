@@ -1,3 +1,9 @@
+/* 
+; Consider replacing GDIPlus calls with function addresses to increase speed
+; Tested it with the unit overlay drawing function. It was actually .5-.6 ms slower!
+; Doesn't really make sense. There should be little overhead when accessing the global function object....
+*/
+
 ; **********************
 ; *******************
 	;Remember for GDIp update I have manually added SetImageX(hCtrl, hBM)  at end of gdip - not normally part of file 

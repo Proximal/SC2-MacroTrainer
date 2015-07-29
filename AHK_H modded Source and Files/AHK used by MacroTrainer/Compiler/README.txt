@@ -7,3 +7,7 @@ MacroTrainerAutoHotkeySC.bin as the Base File (.bin). This is the simplest metho
 
 Note:
 Ahk2Exe.exe itself has been compiled with the altered AHK used by macro trainer. If you attempt to use the standard AHK compilers you will receive an error ('Unrecognized Action') and the program WILL not fully compile, although you will be left with an exe.
+
+
+***
+The final compiled EXE derives its manifest from the base bin file. Therefore, to enable DPI awareness, ensure the binary file has its own manifest correctly set!

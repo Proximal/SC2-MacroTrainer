@@ -9783,7 +9783,7 @@ debugData()
 	isInGame := isSCRunning && (getLocalPlayerNumber() != 16)
 
 	if isSCRunning && getTime() ; so works with replay 
-		minimapSting := minimapLocationDebug()
+		minimapSting := minimapLocationDebug() "Map Name: " getMapName() "`n"
 	else minimapSting := "Not in a game!`n"
 
 	DllCall("QueryPerformanceFrequency", "Int64*", Frequency), DllCall("QueryPerformanceCounter", "Int64*", CurrentTick)
@@ -9795,6 +9795,7 @@ debugData()
 	. "OSVersion: " A_OSVersion "`n"
 	. "Language Code: " A_Language "`n"
 	. "Language: " getSystemLanguage() "`n"
+	. "DWM: " DwmIsCompositionEnabled() "`n"
 	. "MinTimer: " MinTimer "`n"
 	. "MaxTimer: " MaxTimer "`n"
 	. "QPFreq: " Frequency "`n"
@@ -13666,3 +13667,5 @@ return
 
 */
 		; 4 byte ints listed in memory: 808 28 1066 290  (at 1920x1080)
+
+

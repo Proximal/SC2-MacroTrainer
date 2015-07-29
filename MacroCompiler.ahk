@@ -82,6 +82,8 @@ return
 setVariables()
 {
 	global 
+	; **Note** The compiled exe will get it's manifest from the binFile
+	; So to enable DPI awareness, ensure the binFile has this enabled 
 	binFile := A_ScriptDir "\AHK_H modded Source and Files\AHK used by MacroTrainer\Compiler\MacroTrainerAutoHotkeySC.bin"
 	ahk2Exe := A_ScriptDir "\AHK_H modded Source and Files\AHK used by MacroTrainer\Compiler\Ahk2Exe.exe"
 	iconFile := A_ScriptDir "\Starcraft-2-32x32.ico"
