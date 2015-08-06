@@ -2979,7 +2979,7 @@ SetMiniMap(byref minimap)
 	;minimap.DrawingXoffset := Xoffset ; just for debugging
 	;minimap.DrawingYoffset := Yoffset	
 	minimap.mapName := getMapName()
-	if minimap.mapName = "Omicron" 			
+	if minimap.mapName = "Omicron" 	|| minimap.mapName = "Backcountry" 		
 		Yoffset += floor(1 * minimap.VSWidth/262)
 	else if (minimap.mapName = "Katherine Square" || minimap.mapName = "Dust Bowl")
 		Yoffset += floor(2 * minimap.VSWidth/262) 		; 262 = map width at 1920x1080, so offset values scale to other resolutions

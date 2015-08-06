@@ -1,4 +1,7 @@
 ﻿/*
+    06/08/15 - version 2.0
+        -   Fixed an issue with getProcessBaseAddress() on 32 bit OS systems.
+            The returned value was incorrect - however it would still work, as the lower 4 bytes were correct. 
     07/05/15 - version 1.9
         - Fixed an issue with processPatternScan() failing when the startAddress was not 0. 
     17/12/14 - version 1.8
@@ -281,7 +284,7 @@ class _ClassMemory
 
     version()
     {
-        return 1.9
+        return 2.0
     }   
 
     findPID(program, windowMatchMode := "3")
@@ -536,11 +539,11 @@ class _ClassMemory
     
     pointer(base, finalType := "UInt", offsets*)
     { 
-        For index, offset in offsets
+        if offsets.maxIndex() = 1
+            pointer := offsets[1] + this.Read(base, this.ptrType)
+        Else For index, offset in offsets
         {
-            if offsets.maxIndex() = 1
-                pointer := offset + this.Read(base, this.ptrType)
-            Else If (A_Index = 1) 
+            If (A_Index = 1) 
                 pointer := this.Read(offset + this.Read(base, this.ptrType), this.ptrType)
             Else If (index = offsets.MaxIndex())
                 pointer += offset
@@ -567,8 +570,7 @@ class _ClassMemory
 
     getAddressFromOffsets(address, aOffsets*)
     {
-        lastOffset := aOffsets.Remove() ;remove the highest key so can use pointer() to find final memory address (minus the last offset)
-        return  this.pointer(address, this.ptrType, aOffsets*) + lastOffset       
+        return  aOffsets.Remove() + this.pointer(address, this.ptrType, aOffsets*) ; remove the highest key so can use pointer() to find final memory address (minus the last offset)       
     }
 
     ; Interesting note:
@@ -616,7 +618,11 @@ class _ClassMemory
        ; GetWindowLong returns a Long (Int) and GetWindowLongPtr return a Long_Ptr
         return DllCall(A_PtrSize = 4     ; If DLL call fails, returned value will = 0
             ? "GetWindowLong"
-            : "GetWindowLongPtr", "Ptr", hWnd, "Int", -6, "Int64")  ; Use Int64 to prevent negative overflow when AHK is 32 bit and target process is 64bit       
+            : "GetWindowLongPtr"
+            , "Ptr", hWnd, "Int", -6, A_Is64bitOS ? "Int64" : "UInt")  
+            ; For the returned value when the OS is 64 bit use Int64 to prevent negative overflow when AHK is 32 bit and target process is 64bit 
+            ; however if the OS is 32 bit, must use UInt, otherwise the number will be huge (however it will still work as the lower 4 bytes are correct)      
+            ; Note - it's the OS bitness which matters here, not the scripts/AHKs
     }   
 
     ; http://winprogger.com/getmodulefilenameex-enumprocessmodulesex-failures-in-wow64/

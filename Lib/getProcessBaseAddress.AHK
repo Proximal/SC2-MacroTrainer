@@ -29,11 +29,11 @@ getProcessBaseAddress(WindowTitle, windowMatchMode := "3")    ;WindowTitle can b
         SetTitleMatchMode, %mode%    ; In case executed in autoexec
     if !hWnd
         return ; return blank failed to find window
-    else return DllCall( A_PtrSize = 4
-                            ? "GetWindowLong"
-                            : "GetWindowLongPtr"
-                        , "Ptr", hWnd
-                        , "Int", -6
-                        , "Int64") ; Use Int64 to prevent negative overflow when AHK is 32 bit and target process is 64bit
-     ; If DLL call fails, returned value will = 0
+    return DllCall(A_PtrSize = 4     ; If DLL call fails, returned value will = 0
+        ? "GetWindowLong"
+        : "GetWindowLongPtr"
+        , "Ptr", hWnd, "Int", -6, A_Is64bitOS ? "Int64" : "UInt")  
+        ; For the returned value when the OS is 64 bit use Int64 to prevent negative overflow when AHK is 32 bit and target process is 64bit 
+        ; however if the OS is 32 bit, must use UInt, otherwise the number will be huge (however it will still work as the lower 4 bytes are correct)      
+        ; Note - it's the OS bitness which matters here, not the scripts/AHKs
 }   
