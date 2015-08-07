@@ -2779,6 +2779,24 @@ SortBasesByBaseCam(BaseList, CurrentHatchCam)
 	return RTrim(list, "|")
 }
 
+commonUnitObject(baseType := True)
+{
+	if baseType
+	{
+		return {"Terran": {SupplyDepotLowered: "SupplyDepot", WidowMineBurrowed: "WidowMine", CommandCenterFlying: "CommandCenter", OrbitalCommandFlying: "OrbitalCommand"
+											, BarracksFlying: "Barracks", FactoryFlying: "Factory", StarportFlying: "Starport", SiegeTankSieged: "SiegeTank",  ThorHighImpactPayload: "Thor", VikingAssault: "VikingFighter"}
+								, "Zerg": {DroneBurrowed: "Drone", ZerglingBurrowed: "Zergling", HydraliskBurrowed: "Hydralisk", UltraliskBurrowed: "Ultralisk", RoachBurrowed: "Roach"
+								, InfestorBurrowed: "Infestor", BanelingBurrowed: "Baneling", QueenBurrowed: "Queen", SporeCrawlerUprooted: "SporeCrawler", SpineCrawlerUprooted: "SpineCrawler"}} 
+	}
+	else 
+	{
+		return	{"Terran": {SupplyDepot: "SupplyDepotLowered", WidowMine: "WidowMineBurrowed", CommandCenter: "CommandCenterFlying", OrbitalCommand: "OrbitalCommandFlying"
+										, Barracks: "BarracksFlying", Factory: "FactoryFlying", Starport: "StarportFlying", SiegeTank: "SiegeTankSieged",  Thor: "ThorHighImpactPayload", VikingFighter: "VikingAssault"}
+							, "Zerg": {Drone: "DroneBurrowed", Zergling: "ZerglingBurrowed", Hydralisk: "HydraliskBurrowed", Ultralisk: "UltraliskBurrowed", Roach: "RoachBurrowed"										
+							, Infestor: "InfestorBurrowed", Baneling: "BanelingBurrowed", Queen: "QueenBurrowed", SporeCrawler: "SporeCrawlerUprooted", SpineCrawler: "SpineCrawlerUprooted"}}
+	}
+}
+
 ; weirdly in the mapeditor the techlabs each have their own subgroup aliases
 ; yet they all appear in the same subgroup i.e. TechLab
 
@@ -4418,6 +4436,7 @@ readConfigFile()
 	IniRead, AutoBuildGUIAutoWorkerOffButton, %config_file%, %section%, AutoBuildGUIAutoWorkerOffButton, 0
 	IniRead, autoBuildEnablePauseAllHotkey, %config_file%, %section%, autoBuildEnablePauseAllHotkey, 0
 	IniRead, AutoBuildPauseAllkey, %config_file%, %section%, AutoBuildPauseAllkey, F8
+	iniReadAutoBuildQuota()
 
 	section := "AutomationCommon"
 	IniRead, automationAPMThreshold, %config_file%, %section%, automationAPMThreshold, 200
@@ -5797,5 +5816,22 @@ systemWindowEdgeSize(byRef leftAndRightBorder := "", byref topBorder := "", byRe
 	leftAndRightBorder := widthSizeFrame
 	, topBorder := heightSizeFrame + captionHeight
 	, BottomBorder := heightSizeFrame
+	return 
+}
+
+
+iniReadAutoBuildQuota()
+{
+	global aAutoBuildQuota
+	IniRead, string, %config_file%, AutoBuild, Quota, %A_space%
+	if !isobject(aAutoBuildQuota := SerDes(string))
+	{
+		aAutoBuildQuota := []
+		for i, raceObj in autoBuild.getProducibleUnits()
+		{
+			for j, unitName in raceObj
+				aAutoBuildQuota[unitName] := -1
+		}			
+	}
 	return 
 }

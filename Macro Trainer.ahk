@@ -2685,6 +2685,7 @@ ini_settings_write:
 	IniWrite, %AutoBuildGUIAutoWorkerOffButton%, %config_file%, %section%, AutoBuildGUIAutoWorkerOffButton
 	IniWrite, %autoBuildEnablePauseAllHotkey%, %config_file%, %section%, autoBuildEnablePauseAllHotkey
 	IniWrite, %AutoBuildPauseAllkey%, %config_file%, %section%, AutoBuildPauseAllkey
+	iniWriteAutoBuildQuota()
 
 	section := "AutomationCommon"
 	IniWrite, %automationAPMThreshold%, %config_file%, %section%, automationAPMThreshold
@@ -4095,7 +4096,7 @@ try
  			)
 			gui, font, norm s9
 
-	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vAutoBuild_TAB, Notes||Settings|GUI|Hotkeys|	
+	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vAutoBuild_TAB, Notes||Settings|GUI|Quota|Hotkeys|	
 	
 	Gui, Tab, Notes 
 		Gui, add, GroupBox, y+25 w400 h130, Note
@@ -4181,6 +4182,60 @@ try
 		)
 
 		gosub, AutoBuildOptionsMenuHotkeyModeCheck
+
+	Gui, Tab, Quota 
+	autoBuildQuotaGUI()
+
+	autoBuildQuotaGUI()
+	{
+		local i, name, obj, aItems, count, yOffset
+		aItems := autoBuild.getProducibleUnits()
+		loop, 3 
+		{
+			if A_Index = 1 
+				obj := aItems["Terran"]
+			else if A_index = 2 
+				obj := aItems["Protoss"]
+			else obj := aItems["Zerg"]
+			outerLoop := A_index, count := 0
+			for i, name in obj
+			{
+				if (name = "HellBat")
+					continue
+				if (++count = 1 && outerLoop = 1)
+					alignment := " y+25 section "
+				else if count = 1
+					alignment := " xs y+35 section "
+				else if mod(count, 3) = 1
+					alignment := " xs yp+35 section "
+				else alignment := " x+20 ys "
+				Gui, Add, Text, w70 %alignment%, %name%: 
+
+				Gui, Add, Edit, Number Right x+10 yp-2 w45 
+					Gui, Add, UpDown, Range-1-200 vAutoBuild%name%cap, % aAutoBuildQuota[name] = "" ? -1 : aAutoBuildQuota[name]
+
+			}
+		}
+
+	}
+
+	iniWriteAutoBuildQuota()
+	{
+		global aAutoBuildQuota
+		if !isobject(aAutoBuildQuota)
+			aAutoBuildQuota := []
+		for i, raceObj in autoBuild.getProducibleUnits()
+		{
+			for j, unitName in raceObj
+			{
+				if (unitName != "HellBat")
+					aAutoBuildQuota[unitName] := AutoBuild%unitName%cap != "" ? AutoBuild%unitName%cap : -1
+			}
+		}
+		aAutoBuildQuota["HellBat"] := aAutoBuildQuota["Hellion"]
+		Iniwrite, % SerDes(aAutoBuildQuota), %config_file%, AutoBuild, Quota
+		return
+	}
 
 	Gui, Tab, Hotkeys
 		GUI, Add, button, gLaunchAutoBuildEditor +disabled, Profile Editor
@@ -11949,6 +12004,12 @@ class autoBuild
 			return "Zerg"		
 		return
 	}
+	getProducibleUnits()
+	{
+		terran := "Marine,Reaper,Marauder,Ghost,Hellion,WidowMine,SiegeTank,HellBat,Thor,VikingFighter,Medivac,Raven,Banshee,Battlecruiser"
+		protoss := "Zealot,Sentry,Stalker,HighTemplar,DarkTemplar,Phoenix,Oracle,VoidRay,Tempest,Carrier,Observer,WarpPrism,Immortal,Colossus"
+		return obj := [], obj.terran := StrSplit(terran, ","), obj.protoss := StrSplit(protoss, ","), obj.zerg := ["Queen"]	
+	}
 	; don't pass queen to this function
 	getStructureFromUnitName(unitName)
 	{
@@ -12095,6 +12156,51 @@ class autoBuild
   		thread, notimers, false
   		return obj
 	}
+	existingUnitCount(unitType)
+	{
+		static aAddUnits := commonUnitObject(False)
+		
+		if !this.localUnits.HasKey(unitType)
+			mainCount := 0
+		else mainCount := this.stringUnitCount(this.localUnits[unitType])
+		unitName := aUnitName[unitType]
+		if aAddUnits[aLocalPlayer.race].haskey(unitName) 
+		&& (minorType := aUnitID[aAddUnits[aLocalPlayer.race, unitName]]) ; e.g. WidowMineBurrowed ID
+		&& this.localUnits.HasKey(minorType)
+			minorCount := this.stringUnitCount(this.localUnits[minorType])
+		else minorCount := 0
+		return mainCount + minorCount
+	}
+	; since unitData is only updated every 1.5 seconds, but autobuild runs every 500ms
+	; this will make production a little more responsive to unit deaths
+	stringUnitCount(fingerPrintString) ; e.g. 12345|12356|5234 or 23423
+	{
+		count := 0
+		loop, parse, fingerPrintString, |
+		{
+			if getUnitFingerPrint(FingerPrintToIndex(A_LoopField)) = A_LoopField
+				count++
+		}
+		return count
+	}
+	unitCount(unitType)
+	{
+		; cache the counts so that dont have to look them up each time from this.localUnits
+		; this.InProductionCount[unitType]) is set by this.filledSlotCount()
+		if !this.unitTotalCount.haskey(unitType)
+		{
+			if aUnitID["Hellion"] = unitType || aUnitID["HellBat"] = unitType 
+			{
+				this.unitTotalCount[aUnitID["Hellion"]] := round(this.InProductionCount[aUnitID["Hellion"]]) + this.existingUnitCount(aUnitID["Hellion"])
+				this.unitTotalCount[aUnitID["HellBat"]] := round(this.InProductionCount[aUnitID["HellBat"]]) + this.existingUnitCount(aUnitID["HellBat"])
+			}
+			else this.unitTotalCount[unitType] := round(this.InProductionCount[unitType]) + this.existingUnitCount(unitType)
+		}
+		if aUnitID["Hellion"] = unitType || aUnitID["HellBat"] = unitType 
+			return this.unitTotalCount[aUnitID["Hellion"]] +  this.unitTotalCount[aUnitID["HellBat"]]
+		return this.unitTotalCount[unitType] 
+	}
+
 	; It's best not to use the loop at all! no delayed (interrupted) threads!
 	canPerformBuild()
 	{ 	global automationAPMThreshold
@@ -12133,6 +12239,7 @@ class autoBuild
 	; Need to call this at the start of a game to update structure Ctrl Groups in case they changed via GUI
 	setBuildObj()
 	{
+		this.CurrentTimedOutUnits := []
 		this.oAutoBuild := this.getProductionObject()
 		this.resetProfileState()
 		return
@@ -12160,6 +12267,7 @@ class autoBuild
 		this.localUnits := this.copyLocalUnits()
 		if !isobject(this.localUnits)
 			return 
+		this.unitTotalCount := [], this.inProductionCount := []
 		;buildObj := this.oAutoBuild[race]
 		buildObj := this.randomiseAssociativeArray(this.oAutoBuild[race]) ; Randomise the order in which the structures are iterated
 		; This is an ordered array, so iterates the structures in the order that they would occur in the selection panel. e.g. rax -> factory -> starport
@@ -12277,6 +12385,7 @@ class autoBuild
 			; Currently If marine+marauder is enabled and player only has rax with techlabs, only rauders are made.
 			; Could probably add a check here to deal with this - e.g. cmp rax count with tech lab / non-techlab and the type of units to be made
 			; For non-terran races aTechLabUnits is empty and techLabs is 0. nonTechLabs will = count of structures with no units (or nearly complete) units in production
+			;gameTime := getTime()
 			loop, 2 
 			{
 				aUnits := A_Index = 1 ? aTechLabUnits : aNonTechLabUnits
@@ -12290,10 +12399,10 @@ class autoBuild
 					for i, name in aUnits
 					{
 						if obj[name].autoBuild && (!obj[name].requires.structure || this.hasUnit(obj[name].requires.structure))
-						&& this.howManyUnitsCanBeProduced(nonTechLabs, techLabs, obj[name].requires, 1) ; limit to 1 e.g. build 1 reaper, then build a marine on next loop  - repeat until done
+						&& this.howManyUnitsCanBeProduced(nonTechLabs, techLabs, obj[name].requires, name, 1) ; limit to 1 e.g. build 1 reaper, then build a marine on next loop  - repeat until done
 						{
-							builtSomething := True
-							sendString .= sRepeat(SC2Keys.key(obj[name].buildKeyLookup), 1)
+							builtSomething := True, this.unitTotalCount[aUnitID[name]] += 1
+							, sendString .= sRepeat(SC2Keys.key(obj[name].buildKeyLookup), 1)
 						}
 					}
 				}
@@ -12320,10 +12429,26 @@ class autoBuild
 		return round(aTechLabUnits.MaxIndex()) + round(aNonTechLabUnits.MaxIndex())
 	}
 
-
-	howManyUnitsCanBeProduced(byRef remainingSlots, byRef remainingTechLabSlots, aRequires, maxCount := "")
+	howManyUnitsCanBeProduced(byRef remainingSlots, byRef remainingTechLabSlots, aRequires, unitName, maxCount := "")
 	{
+		global aAutoBuildQuota
 		params := [], count := 0
+		unitQuota := aAutoBuildQuota[unitName]
+		if (unitQuota >= 0)
+		{
+			; Since the unit counts is only updated every 1.5 seconds, there is a large window
+			; where the newly produced units have not been counted - so when quota is met in production, time the units out for 1.6 seconds
+			if (delta := unitQuota - this.unitCount(aUnitID[unitName])) <= 0
+			{
+				if (unitName = "Hellion" || unitName = "HellBat")
+					this.CurrentTimedOutUnits["Hellion"] := this.CurrentTimedOutUnits["HellBat"] := A_TickCount
+				else this.CurrentTimedOutUnits[unitName] := A_TickCount	
+				return 0			
+			}
+			else if this.CurrentTimedOutUnits.HasKey(unitName) && A_TickCount - this.CurrentTimedOutUnits[unitName] < 2000
+				return 0  	
+			params.insert(delta)
+		}
 		if aRequires.minerals
 			params.insert(floor(this.CurrentMinerals / aRequires.minerals))
 		if aRequires.vespene	
@@ -12336,7 +12461,7 @@ class autoBuild
 		count := lowestValue(params*)
 
 		if (count < 0 || "")
-			count := 0 ; shouldnt happen
+			count := 0 
 		else 
 		{	
 			if (maxCount >= 0 && count > maxCount)
@@ -12412,6 +12537,8 @@ class autoBuild
 		{
 			if item.progress < nearDone || queueSize-- > 0
 				count++
+			itemType := aUnitID[item.item]
+			this.InProductionCount[itemType] := round(this.InProductionCount[itemType]) + 1	
 		}
 		return count
 	}
@@ -13668,3 +13795,14 @@ return
 */
 		; 4 byte ints listed in memory: 808 28 1066 290  (at 1920x1080)
 
+f1::
+objtree(autoBuild.CurrentTimedOutUnits)
+return 
+
+if !autoBuild.localUnits := autoBuild.copyLocalUnits()
+	return 
+autoBuild.unitTotalCount := [], autoBuild.inProductionCount := []
+;msgbox % autoBuild.existingUnitCount(aUnitID.marine)
+autoBuild.setCurrentResources()
+msgbox % autoBuild.howManyUnitsCanBeProduced(100, 100, {minerals: 50, vespene: 0, supply: 1}, "marine", 100)
+return 
