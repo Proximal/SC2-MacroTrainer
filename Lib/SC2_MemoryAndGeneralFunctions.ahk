@@ -5835,3 +5835,15 @@ iniReadAutoBuildQuota()
 	}
 	return 
 }
+
+HiWord(number)
+{
+	if (number & 0x80000000)
+		return (number >> 16)
+	return (number >> 16) & 0xffff	
+}	
+; returns rotation count. Downward rotations are -negative numbers
+mouseWheelRotations(wParam)
+{
+	return wParam > 0x7FFFFFFF ? HiWord(-(~wParam)-1)/120 :  HiWord(wParam)/120 ;get the higher order word & /120 = number of rotations
+}

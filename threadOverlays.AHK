@@ -387,17 +387,12 @@ toggleIdentifier()
 	return
 }
 
-HiWord(number)
-{
-	if (number & 0x80000000)
-		return (number >> 16)
-	return (number >> 16) & 0xffff	
-}	
+
 OverlayResize_WM_MOUSEWHEEL(wParam) 		;(wParam, lParam) 0x20A =mousewheel
 { 
 	local WheelMove, ActiveTitle, newScale, Scale
-	WheelMove := wParam > 0x7FFFFFFF ? HiWord(-(~wParam)-1)/120 :  HiWord(wParam)/120 ;get the higher order word & /120 = number of rotations
-	WinGetActiveTitle, ActiveTitle 			;downward rotations are -negative numbers
+	WheelMove := mouseWheelRotations(wParam)
+	WinGetActiveTitle, ActiveTitle 		
 	for overlayName, overlayTitle in aOverlayTitles
 	{	
 		if (ActiveTitle = overlayTitle)

@@ -8,12 +8,15 @@ allow icons to be moved up or down
 ; Remember this will catch MSGs from any AHK GUI in this main script
 mainThreadMessageHandler(wParam, lParam, msg, hwnd)
 {
+	static aLastClicks := []
 	if autoBuildGameGUI.hwnd = hwnd
 	{
 		if (msg = 0x200 && !autoBuildGameGUI.isTracking)    ; WM_MOUSEMOVE
 			autoBuildGameGUI.setMouseLeaveTracking()
 		else if msg = 0x203
 			msg := 0x201 ; convert double clicks into a left button down event 
+		else if msg = 0x020D ; WM_XBUTTONDBLCLK
+			msg := 0x020B
 
 		; Separate if
 		if msg = 0x200 
@@ -29,6 +32,25 @@ mainThreadMessageHandler(wParam, lParam, msg, hwnd)
 		}
 		else if (msg = 0x207 || msg = 0x209) ; Middle mouse
 			autoBuildGameGUI.offButtonPress()
+		else if msg = 0x020B ; WM_XBUTTONDOWN
+		{    
+			; cant use mouse wheel with the window style unless want to let SC lose focus, so need to make do :(
+			; If users have hotkeys bound to these buttons, then this wont work          
+			quotaChange := 0x0001 & (wParam >> 16) ? (-1, key := "XButton1") : (1, key := "XButton2") ; which xbutton
+			; not a great idea to sit in a loop while processing a msg, but it seems to work fine.
+			while GetKeyState(key, "P")
+			{
+				if autoBuildGameGUI.refresh(lParam & 0xFFFF, lParam >> 16, msg, quotaChange) = 1
+					break
+				if A_Index = 1
+				{
+					KeyWait, %key%, U T.250
+					if !ErrorLevel
+						break
+				}
+				else sleep 50
+			}
+		}
 		else autoBuildGameGUI.refresh(lParam & 0xFFFF, lParam >> 16, msg)
 		return 1
 	}
@@ -95,6 +117,10 @@ class autoBuildGameGUI
 		OnMessage(0x206, "mainThreadMessageHandler") ; WM_RBUTTONDBLCLK
 		OnMessage(0x207, "mainThreadMessageHandler") ; WM_MBUTTONDOWN
 		OnMessage(0x209, "mainThreadMessageHandler") ; WM_MBUTTONDBLCLK
+		OnMessage(0x020B, "mainThreadMessageHandler") ; WM_XBUTTONDOWN
+		OnMessage(0x020D, "mainThreadMessageHandler") ; WM_XBUTTONDBLCLK                
+		; OnMessage(0x20A, "mainThreadMessageHandler") ; WM_MOUSEHWHEEL - wont work with WM_noactivate
+
 		this.fillLocalRace()
 		this.Refresh()
 	}
@@ -184,7 +210,7 @@ class autoBuildGameGUI
 		this.getGUIStatus()
 		if !this.GUIExists
 			return
-		if enabled ; need to remove E0x8000000 to make it move while being dragged E0x8000000 prevents window activation when it is clicked, so restore it when dragging ends.
+		if enabled ; need to remove E0x8000000 (WS_EX_NOACTIVATE) to make it move while being dragged E0x8000000 prevents window activation when it is clicked, so restore it when dragging ends.
 		{
 			this.drag := True ; Keep track of drag via a variable so don't have to call getGUIStatus() indirectly on every wm_mousemove event
 			this.interact(True)
@@ -432,12 +458,20 @@ class autoBuildGameGUI
 			if item.isUnit ; If not pause / off icon draw ticks
 			{
 				Gdip_DrawImage(G, item.pBitmap, item.x, item.y, item.Width, item.Height, 0, 0, item.SourceWidth, item.SourceHeight)
+				if autoBuild.AutoBuildQuota[item.name] >= 0
+				{
+					if (count := autoBuild.AutoBuildQuota[item.name]) >= 100
+						width := 28
+					else if count >= 10
+						width := 20
+					else width := 12
+					Gdip_FillRoundedRectangle(G, a_pBrushes.TransparentBlack, item.x, item.y, width, 16, 2)
+					Gdip_TextToGraphics(G, autoBuild.AutoBuildQuota[item.name], "Top cFFFF0000 r4 BOLD s14 x" item.x  "y" item.y + 18, "Arial")
+				}
 				if item.enabled 
 					this.drawTick(G, item)	
 			}
 			else Gdip_DrawImage(G, item.pBitmap, item.x, item.y, item.Width, item.Height, 0, 0, item.SourceWidth, item.SourceHeight, autoBuild.isPaused && item.Name = "pauseButton" ? redmatrix : "")
-			 
-		
 		}
 	}
 	; We don't want to redraw the overlay on every WM_MouseMove msg
@@ -487,7 +521,7 @@ class autoBuildGameGUI
 		return 		
 	}
 
-	refresh(x := "", y := "", msg := "")
+	refresh(x := "", y := "", msg := "", quotaChange := 0)
 	{
 		global autoBuildInactiveOpacity
 		this.setCanvas(hbm, hdc, G)
@@ -509,9 +543,12 @@ class autoBuildGameGUI
 			}
 			autoBuild.resetProfileState() ; Disable any active hotkey profiles
 		}
-		this.drawItems(G, itemIndex)
+		if (itemIndex && msg = 0x020B) ; WM_XBUTTONDOWN
+			result := autoBuild.modifyAutoBuildQuota(this.items[itemIndex, "name"], quotaChange)
+		this.drawItems(G, itemIndex) 
 		UpdateLayeredWindow(this.hwnd, hdc,,,,, this.CanInteract ? 255 : autoBuildInactiveOpacity)
-		this.cleanup(hbm, hdc, G)	
+		this.cleanup(hbm, hdc, G)
+		return result	
 	}
 
 	collisionCheck(x, y)

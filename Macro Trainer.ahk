@@ -12239,7 +12239,10 @@ class autoBuild
 	; Need to call this at the start of a game to update structure Ctrl Groups in case they changed via GUI
 	setBuildObj()
 	{
+		global aAutoBuildQuota
+
 		this.CurrentTimedOutUnits := []
+		this.AutoBuildQuota := aAutoBuildQuota
 		this.oAutoBuild := this.getProductionObject()
 		this.resetProfileState()
 		return
@@ -12429,11 +12432,30 @@ class autoBuild
 		return round(aTechLabUnits.MaxIndex()) + round(aNonTechLabUnits.MaxIndex())
 	}
 
+	modifyAutoBuildQuota(unitName, delta)
+	{
+		if unitName in Hellion,Hellbat,HellionTank
+		{
+			if (this.AutoBuildQuota["Hellion"] += delta) < 0 
+				this.AutoBuildQuota["Hellion"] := -1, result := True
+			else if this.AutoBuildQuota["Hellion"] > 200
+				this.AutoBuildQuota["Hellion"] := 200, result := True
+			this.AutoBuildQuota["Hellbat"] := this.AutoBuildQuota["Hellion"]
+		}
+		else 
+		{
+			if (this.AutoBuildQuota[unitName] += delta) < 0
+				this.AutoBuildQuota[unitName] := -1, result := True
+			else if this.AutoBuildQuota[unitName] > 200
+				this.AutoBuildQuota[unitName] := 200, result := True
+		}
+		return result
+	}
+
 	howManyUnitsCanBeProduced(byRef remainingSlots, byRef remainingTechLabSlots, aRequires, unitName, maxCount := "")
 	{
-		global aAutoBuildQuota
 		params := [], count := 0
-		unitQuota := aAutoBuildQuota[unitName]
+		unitQuota := this.AutoBuildQuota[unitName]
 		if (unitQuota >= 0)
 		{
 			; Since the unit counts is only updated every 1.5 seconds, there is a large window
@@ -13794,7 +13816,7 @@ return
 
 */
 		; 4 byte ints listed in memory: 808 28 1066 290  (at 1920x1080)
-
+/*
 f1::
 objtree(autoBuild.CurrentTimedOutUnits)
 return 
