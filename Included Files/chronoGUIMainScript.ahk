@@ -194,7 +194,8 @@ iniReadAutoChrono(byRef aAutoChronoCopy, byRef aAutoChrono)
 	}
 	aAutoChronoCopy["MaxIndexGui"] := Round(aAutoChronoCopy["Items"].MaxIndex())
 	
-	aAutoChrono := aAutoChronoCopy
+	;aAutoChrono := aAutoChronoCopy
+	aAutoChrono := ObjFullyClone(aAutoChronoCopy)
 	return 
 }
 
@@ -231,7 +232,14 @@ iniWriteAndUpdateAutoChrono(byRef aAutoChronoCopy, byRef aAutoChrono)
 			IniWrite, %value%, %config_file%, %section%, %itemNumber%_%key%
 		}
 	}
-	aAutoChrono := aAutoChronoCopy
+	; Disables active hotkeys that have been deleted and removed from aAutoChronoCopy
+	Hotkey, If, WinActive(GameIdentifier) && isPlaying && !isMenuOpen()
+	for i, object in aAutoChrono["Items"]
+		try hotkey, % object.hotkey, off
+	Hotkey, If
+
+	; aAutoChrono := aAutoChronoCopy
+	aAutoChrono := ObjFullyClone(aAutoChronoCopy)
 	critical, off
 	return
 }

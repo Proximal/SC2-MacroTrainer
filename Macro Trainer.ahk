@@ -5525,9 +5525,7 @@ if instr(A_GuiControl, "New")
 }
 else if instr(A_GuiControl, "Delete")
 {
-
 	aQuickSelectCopy[Race].remove(aQuickSelectCopy[race "IndexGUI"])
-
 	if (aQuickSelectCopy[race "MaxIndexGUI"] = 1)
 	{
 		blankQuickSelectGUI(race)
@@ -5617,7 +5615,6 @@ iniWriteAndUpdateQuickSelect(byRef aQuickSelectCopy, byRef aQuickSelect)
 {
 	
 	; save the currently displayed items for each race (as they might not be saved already)
-	lRaces := "Terran,Protoss,Zerg"
 	; I've noticed sometimes the terran items will disappear (except for the first one - maybe couple)
 	; Cant pinpoint when this occurs. Perhaps if program restarts after deleting the section below
 	; but before finishing writing out the units??? 
@@ -5625,9 +5622,9 @@ iniWriteAndUpdateQuickSelect(byRef aQuickSelectCopy, byRef aQuickSelect)
 	; I've added a critcal section here - this should delay the restart hotkey firing (but not if closed via tray icon)
 	; But I doubt this is what is causing the issue - probably a bug elsewhere but I can't seem to work out how to invoke it
 	critical, on
-	loop, parse, lRaces, `, 
+	Hotkey, If, WinActive(GameIdentifier) && isPlaying && !isMenuOpen()
+	for i, race in ["Terran", "Protoss", "Zerg"] 
 	{
-		race := A_LoopField
 		section := "quick select " race
 		IniDelete, %config_file%, %section% ;clear the list
 		for index, object in aQuickSelectCopy[race]
@@ -5650,8 +5647,14 @@ iniWriteAndUpdateQuickSelect(byRef aQuickSelectCopy, byRef aQuickSelect)
 				IniWrite, %value%, %config_file%, %section%, %itemNumber%_%key%
 			}
 		}
+		; If deletes an enabled key, it will remain active (but blocked)
+		; so just disable all of them and allow createhotkeys() to remake them
+		for index, object in aQuickSelect[race]
+			try hotkey, % object.hotkey, off
 	}
-	aQuickSelect := aQuickSelectCopy
+	;aQuickSelect := aQuickSelectCopy
+	aQuickSelect := ObjFullyClone(aQuickSelectCopy)
+	Hotkey, If
 	critical, off
 	return
 }
@@ -5747,7 +5750,8 @@ iniReadQuickSelect(byRef aQuickSelectCopy, byRef aQuickSelect)
 		}
 		aQuickSelectCopy[race "MaxIndexGui"] := Round(aQuickSelectCopy[race].MaxIndex())
 	}	
-	aQuickSelect := aQuickSelectCopy
+	;aQuickSelect := aQuickSelectCopy
+	aQuickSelect := ObjFullyClone(aQuickSelectCopy)
 	return 
 }
 
@@ -8657,6 +8661,8 @@ disableAllHotkeys()
 	        try hotkey, %hotkey%, Off
 
 	autoBuild.disableHotkeys() ; **This function has a "Hotkey, If"!! But it falls into the below firing condition
+	; there is a second hotkey off command in iniWriteAndUpdateQuickSelect() and iniWriteAndUpdateAutoChrono()
+	; which uses this same hotkey expression!
 	Hotkey, If, WinActive(GameIdentifier) && isPlaying && !isMenuOpen()
 		try hotkey, %AutoBuildGUIkey%, off
 		try hotkey, %AutoBuildInteractGUIKey%, off
@@ -8682,6 +8688,7 @@ disableAllHotkeys()
 		try hotkey, %castSplitUnit_key%, off
 		try hotkey, %castRemoveUnit_key%, off
 		try hotkey, %castRemoveDamagedUnits_key%, off
+		; Theres a second hotkey off command in iniWriteAndUpdateAutoChrono()
 		for i, object in aAutoChrono["Items"]
 			try hotkey, % object.hotkey, off
 		loop, 10
@@ -8691,6 +8698,7 @@ disableAllHotkeys()
 			for i, hotkey in SC2Keys.AHKHotkeyObj("ControlGroupAssign"  A_index - 1)
 				try hotkey, %hotkey%, off
 		}
+		; there is a second hotkey off command in iniWriteAndUpdateQuickSelect()
 		for i, race in ["Terran", "Protoss", "Zerg"]
 		{
 			for i, object in aQuickSelect[race]
@@ -13816,15 +13824,8 @@ return
 
 */
 		; 4 byte ints listed in memory: 808 28 1066 290  (at 1920x1080)
-/*
-f1::
-objtree(autoBuild.CurrentTimedOutUnits)
-return 
 
-if !autoBuild.localUnits := autoBuild.copyLocalUnits()
-	return 
-autoBuild.unitTotalCount := [], autoBuild.inProductionCount := []
-;msgbox % autoBuild.existingUnitCount(aUnitID.marine)
-autoBuild.setCurrentResources()
-msgbox % autoBuild.howManyUnitsCanBeProduced(100, 100, {minerals: 50, vespene: 0, supply: 1}, "marine", 100)
-return 
+
+
+
+
