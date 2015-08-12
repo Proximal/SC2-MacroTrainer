@@ -2089,7 +2089,9 @@ if optionsGUIApplyChanges
 }
 else settimer, delayOptionsGUIClose, off
 Gui, Options:Destroy ; Need to specify the GUI name for delayOptionsGUIClose to work.
-Gosub pre_startup	;so the correct values get read back for time *1000 conversion from ms/s vice versa
+; so the correct values get read back for time *1000 conversion from ms/s vice versa
+; also ensures the the quick select and chrono boost arrays get updated if GUI is closed rather than saved
+Gosub pre_startup	
 Return				
 
 ;AUpdate_OnClose: ;from the Auto Update GUI
@@ -4153,7 +4155,7 @@ try
 
 	Gui, Tab, GUI
 		
-		Gui, add, GroupBox, y+10 w325 h275 section, Settings
+		Gui, add, GroupBox, y+10 w400 h275 section, Settings
 		Gui, Add, Text, section xp+15 yp+25, Hotkey Mode:
 		Gui, Add, DropDownList, yp-2 xp+130 vAutoBuildGUIkeyMode gAutoBuildOptionsMenuHotkeyModeCheck, Toggle||KeyDown
 		GuiControl, ChooseString, AutoBuildGUIkeyMode, %AutoBuildGUIkeyMode%		
@@ -4171,71 +4173,24 @@ try
 		Gui, Add, Checkbox, xs y+15 vAutoBuildGUIAutoWorkerToggle checked%AutoBuildGUIAutoWorkerToggle%, Include worker button
 		Gui, Add, Checkbox, xs vAutoBuildGUIAutoWorkerPause checked%AutoBuildGUIAutoWorkerPause%, Pause button disables worker production 
 		Gui, Add, Checkbox, xs vAutoBuildGUIAutoWorkerOffButton checked%AutoBuildGUIAutoWorkerOffButton%, Off button disables worker production 
-		gui, add, text, xs yp+25 w295, *Worker production is performed using the auto worker function. Therefore you must also configure that function if you wish to build workers.
+		gui, add, text, xs yp+25 w370, *Worker production is performed using the auto worker function. Therefore you must also configure that function if you wish to build workers.
 
-		Gui, add, GroupBox, xs-15 y+20 w325 h125 section, About 
-		gui, add, text, xp+15 yp+25 w295, 
+		Gui, add, GroupBox, xs-15 y+20 w400 h165 section, About 
+		gui, add, text, xp+15 yp+25 w370, 
 		( ltrim off 
 			This GUI/overlay is the primary method used to control auto production. Like other overlays it may be moved, however it cannot be resized.
 			
-			Right clicking anywhere inside this GUI will produce the same result as pressing the GUI 'pause' button. Middle clicking is equivalent to pressing the 'off' button.
+			Right clicking anywhere inside this GUI will produce the same result as pressing the GUI 'pause' button. 
+			
+			Middle clicking is equivalent to pressing the 'off' button.
+			
+			Clicking a unit picture using the xbutton1 or xbutton2 side mouse buttons will alter the production quota.
 		)
 
 		gosub, AutoBuildOptionsMenuHotkeyModeCheck
 
 	Gui, Tab, Quota 
 	autoBuildQuotaGUI()
-
-	autoBuildQuotaGUI()
-	{
-		local i, name, obj, aItems, count, yOffset
-		aItems := autoBuild.getProducibleUnits()
-		loop, 3 
-		{
-			if A_Index = 1 
-				obj := aItems["Terran"]
-			else if A_index = 2 
-				obj := aItems["Protoss"]
-			else obj := aItems["Zerg"]
-			outerLoop := A_index, count := 0
-			for i, name in obj
-			{
-				if (name = "HellBat")
-					continue
-				if (++count = 1 && outerLoop = 1)
-					alignment := " y+25 section "
-				else if count = 1
-					alignment := " xs y+35 section "
-				else if mod(count, 3) = 1
-					alignment := " xs yp+35 section "
-				else alignment := " x+20 ys "
-				Gui, Add, Text, w70 %alignment%, %name%: 
-
-				Gui, Add, Edit, Number Right x+10 yp-2 w45 
-					Gui, Add, UpDown, Range-1-200 vAutoBuild%name%cap, % aAutoBuildQuota[name] = "" ? -1 : aAutoBuildQuota[name]
-
-			}
-		}
-
-	}
-
-	iniWriteAutoBuildQuota()
-	{
-		global aAutoBuildQuota
-		if !isobject(aAutoBuildQuota)
-			aAutoBuildQuota := []
-		for i, raceObj in autoBuild.getProducibleUnits()
-		{
-			for j, unitName in raceObj
-			{
-				if (unitName != "HellBat")
-					aAutoBuildQuota[unitName] := AutoBuild%unitName%cap != "" ? AutoBuild%unitName%cap : -1
-			}
-		}
-		aAutoBuildQuota["HellBat"] := aAutoBuildQuota["Hellion"]
-		Iniwrite, % SerDes(aAutoBuildQuota), %config_file%, AutoBuild, Quota
-		return
-	}
 
 	Gui, Tab, Hotkeys
 		GUI, Add, button, gLaunchAutoBuildEditor +disabled, Profile Editor
@@ -11393,6 +11348,63 @@ else
 return
 
 
+autoBuildQuotaGUI()
+{
+    local i, name, obj, aItems, count, yOffset
+    aItems := autoBuild.getProducibleUnits()
+    loop, 3 
+    {
+        if A_Index = 1 
+            obj := aItems["Terran"]
+        else if A_index = 2 
+            obj := aItems["Protoss"]
+        else obj := aItems["Zerg"]
+        outerLoop := A_index, count := 0
+        for i, name in obj
+        {
+            if (name = "HellBat")
+                continue
+            if (++count = 1 && outerLoop = 1)
+                alignment := " y+15 section "
+            else if count = 1
+                alignment := " xs y+25 section "
+            else if mod(count, 3) = 1
+                alignment := " xs yp+30 section "
+            else alignment := " x+20 ys "
+            Gui, Add, Text, w70 %alignment%, %name%: 
+
+            Gui, Add, Edit, Number Right x+10 yp-2 w45 
+                Gui, Add, UpDown, Range-1-200 vAutoBuild%name%cap, % aAutoBuildQuota[name] = "" ? -1 : aAutoBuildQuota[name]
+        }
+    }
+    Gui, add, groupbox, xs yp+30 w400 h100, About 
+    Gui, Add, text, xp+10 yp+25 wp-20,
+    ( LTrim
+        Limits the unit count to the specified number. -1 results in uncapped production. 
+
+        Clicking a unit picture inside the in-game GUI using the xbutton1 or xbutton2 (side mouse) buttons will alter the production quota for the current match.
+    )
+
+}
+
+iniWriteAutoBuildQuota()
+{
+    global aAutoBuildQuota
+    if !isobject(aAutoBuildQuota)
+        aAutoBuildQuota := []
+    for i, raceObj in autoBuild.getProducibleUnits()
+    {
+        for j, unitName in raceObj
+        {
+            if (unitName != "HellBat")
+                aAutoBuildQuota[unitName] := AutoBuild%unitName%cap != "" ? AutoBuild%unitName%cap : -1
+        }
+    }
+    aAutoBuildQuota["HellBat"] := aAutoBuildQuota["Hellion"]
+    Iniwrite, % SerDes(aAutoBuildQuota), %config_file%, AutoBuild, Quota
+    return
+}
+
 #Include, Included Files\class_AutoBuildGameGUI.ahk
 class autoBuild
 {
@@ -13824,7 +13836,6 @@ return
 
 */
 		; 4 byte ints listed in memory: 808 28 1066 290  (at 1920x1080)
-
 
 
 
