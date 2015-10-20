@@ -1,7 +1,7 @@
 ﻿/*
     10/10/15 - version 2.1
         - Optimised the pointer() method
-        - Corrected some the DLLCall types (the previous types would still work fine)
+        - Corrected some DLLCall types (the previous types would still work fine)
     06/08/15 - version 2.0
         -   Fixed an issue with getProcessBaseAddress() on 32 bit OS systems.
             The returned value was incorrect - however it would still work, as the lower 4 bytes were correct. 
