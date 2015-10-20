@@ -1,4 +1,7 @@
 ﻿/*
+    10/10/15 - version 2.1
+        - Optimised the pointer() method
+        - Corrected some the DLLCall types (the previous types would still work fine)
     06/08/15 - version 2.0
         -   Fixed an issue with getProcessBaseAddress() on 32 bit OS systems.
             The returned value was incorrect - however it would still work, as the lower 4 bytes were correct. 
@@ -284,7 +287,7 @@ class _ClassMemory
 
     version()
     {
-        return 2.0
+        return 2.1
     }   
 
     findPID(program, windowMatchMode := "3")
@@ -317,7 +320,7 @@ class _ClassMemory
 
     openProcess(PID, dwDesiredAccess)
     {
-        return DllCall("OpenProcess", "UInt", dwDesiredAccess, "Int", False, "UInt", PID) ; NULL/Blank if failed to open process for some reason
+        return DllCall("OpenProcess", "UInt", dwDesiredAccess, "Int", False, "UInt", PID, "Ptr") ; NULL/Blank if failed to open process for some reason
     }   
 
     ; Method:   openProcess(PID, dwDesiredAccess)
@@ -332,7 +335,7 @@ class _ClassMemory
 
     closeHandle(hProcess)
     {
-        return DllCall("CloseHandle", "UInt", hProcess)
+        return DllCall("CloseHandle", "Ptr", hProcess)
     }
 
     ; Method:   read(address, type := "UInt", aOffsets*)
@@ -360,7 +363,7 @@ class _ClassMemory
         ; so set errorlevel to invalid parameter for DLLCall() i.e. -2
         if !this.aTypeSize.hasKey(type)
             return "", ErrorLevel := -2 
-        if DllCall("ReadProcessMemory", "UInt",  this.hProcess, "Ptr", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, type "*", result, "UInt", this.aTypeSize[type], "Ptr",0)
+        if DllCall("ReadProcessMemory", "Ptr", this.hProcess, "Ptr", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, type "*", result, "Ptr", this.aTypeSize[type], "Ptr",0)
             return result
         return        
     }
@@ -389,7 +392,7 @@ class _ClassMemory
     readRaw(address, byRef buffer, bytes := 4, aOffsets*)
     {
         VarSetCapacity(buffer, bytes)
-        return DllCall("ReadProcessMemory", "UInt", this.hProcess, "Ptr", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, "Ptr", &buffer, "UInt", bytes, "Ptr", 0)
+        return DllCall("ReadProcessMemory", "Ptr", this.hProcess, "Ptr", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, "Ptr", &buffer, "Ptr", bytes, "Ptr", 0)
     }
 
     ; Method:   readString(address, sizeBytes := 0, encoding := "utf-8", aOffsets*)
@@ -429,13 +432,13 @@ class _ClassMemory
         {
             ; Even if there are multi-byte-characters (bigger than the encodingSize i.e. surrogates) in the string, when reading in encodingSize byte chunks they will never register as null (as they will have bits set on those bytes)
             if (encoding = "utf-16" || encoding = "cp1200")
-                encodingSize := 2, charType := "Short"
-            else encodingSize := 1, charType := "Char"
+                encodingSize := 2, charType := "UShort", loopCount := 2
+            else encodingSize := 1, charType := "Char", loopCount := 4
             Loop
             {   ; Lets save a few reads by reading in 4 byte chunks
-                if !DllCall("ReadProcessMemory", "UInt", this.hProcess, "Ptr", address + ((outterIndex := A_index) - 1) * 4, "Ptr", &buffer, "Uint", 4, "Ptr", 0) || ErrorLevel
+                if !DllCall("ReadProcessMemory", "Ptr", this.hProcess, "Ptr", address + ((outterIndex := A_index) - 1) * 4, "Ptr", &buffer, "Ptr", 4, "Ptr", 0) || ErrorLevel
                     return "", this.ReadStringLastError := True 
-                else loop, % 4 / encodingSize
+                else loop, %loopCount%
                 {
                     if NumGet(buffer, (A_Index - 1) * encodingSize, charType) = 0 ; NULL terminator
                     {
@@ -446,7 +449,7 @@ class _ClassMemory
                 } 
             }
         }
-        if DllCall("ReadProcessMemory", "UInt", this.hProcess, "Ptr", address, "Ptr", &buffer, "Uint", sizeBytes, "Ptr", 0)   
+        if DllCall("ReadProcessMemory", "Ptr", this.hProcess, "Ptr", address, "Ptr", &buffer, "Ptr", sizeBytes, "Ptr", 0)   
             return StrGet(&buffer,, encoding)  
         return "", this.ReadStringLastError := True             
     }
@@ -475,7 +478,7 @@ class _ClassMemory
         requiredSize := StrPut(string, encoding) * encodingSize - (this.insertNullTerminator ? 0 : encodingSize)
         VarSetCapacity(buffer, requiredSize)
         StrPut(string, &buffer, StrLen(string) + (this.insertNullTerminator ?  1 : 0), encoding)
-        return DllCall("WriteProcessMemory", "UInt", this.hProcess, "Ptr", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, "Ptr", &buffer, "Uint", requiredSize, "Ptr", 0)
+        return DllCall("WriteProcessMemory", "Ptr", this.hProcess, "Ptr", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, "Ptr", &buffer, "Ptr", requiredSize, "Ptr", 0)
     }
     
     ; Method:   write(address, value, type := "Uint", aOffsets*)
@@ -498,7 +501,7 @@ class _ClassMemory
     {
         if !this.aTypeSize.hasKey(type)
             return "", ErrorLevel := -2 
-        return DllCall("WriteProcessMemory", "UInt", this.hProcess, "Ptr", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, type "*", value, "Uint", this.aTypeSize[type], "Ptr", 0) 
+        return DllCall("WriteProcessMemory", "Ptr", this.hProcess, "Ptr", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, type "*", value, "Ptr", this.aTypeSize[type], "Ptr", 0) 
     }
 
     ; Method:   writeRaw(address, byRef buffer, byRef bufferSize := 0, aOffsets*)
@@ -517,14 +520,14 @@ class _ClassMemory
 
     writeRaw(address, pBuffer, sizeBytes, aOffsets*)
     {
-        return DllCall("WriteProcessMemory", "UInt", this.hProcess, "Ptr", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, "Ptr", pBuffer, "Uint", sizeBytes, "Ptr", 0) 
+        return DllCall("WriteProcessMemory", "Ptr", this.hProcess, "Ptr", aOffsets.maxIndex() ? this.getAddressFromOffsets(address, aOffsets*) : address, "Ptr", pBuffer, "Ptr", sizeBytes, "Ptr", 0) 
     }
 
-    ; Method:           pointer(base, finalType := "UInt", offsets*)
+    ; Method:           pointer(address, finalType := "UInt", offsets*)
     ;                   This is an internal method. Since the other various methods all offer this functionality, they should be used instead.
     ;                   This will read integer values of both pointers and non-pointers (i.e. a single memory address)
     ; Parameters:
-    ;   base -          The base address of the pointer or the memory address for a non-pointer.
+    ;   address -       The base address of the pointer or the memory address for a non-pointer.
     ;   finalType -     The type of integer stored at the final address.
     ;                   Valid types are UChar, Char, UShort, Short, UInt, Int, Float, Int64 and Double. 
     ;                   Note: Types must not contain spaces i.e. " UInt" or "UInt " will not work. 
@@ -537,19 +540,11 @@ class _ClassMemory
     ;                   against null i.e. if (result = "") then an error has occurred.
     ;                   If the target application is 64bit the pointers are read as an 8 byte Int64 (this.PtrType)
     
-    pointer(base, finalType := "UInt", offsets*)
+    pointer(address, finalType := "UInt", offsets*)
     { 
-        if offsets.maxIndex() = 1
-            pointer := offsets[1] + this.Read(base, this.ptrType)
-        Else For index, offset in offsets
-        {
-            If (A_Index = 1) 
-                pointer := this.Read(offset + this.Read(base, this.ptrType), this.ptrType)
-            Else If (index = offsets.MaxIndex())
-                pointer += offset
-            Else pointer := this.Read(pointer + offset, this.ptrType)
-        }   
-        Return this.Read(offsets.maxIndex() ? pointer : base, finalType)
+        For index, offset in offsets
+            address := this.Read(address, this.ptrType) + offset 
+        Return this.Read(address, finalType)
     }
 
     ; Method:               getAddressFromOffsets(address, aOffsets*)
@@ -714,12 +709,12 @@ class _ClassMemory
 
     suspend()
     {
-        return DllCall("ntdll\NtSuspendProcess", "UInt", this.hProcess)
+        return DllCall("ntdll\NtSuspendProcess", "Ptr", this.hProcess)
     }  
 
     resume()
     {
-        return DllCall("ntdll\NtResumeProcess", "UInt", this.hProcess)
+        return DllCall("ntdll\NtResumeProcess", "Ptr", this.hProcess)
     } 
 
     ; Method:               getModules(byRef aModules)
@@ -771,10 +766,10 @@ class _ClassMemory
         VarSetCapacity(lpFilename, 2048 * (A_IsUnicode ? 2 : 1)) 
         DllCall("psapi\GetModuleFileNameEx"
                     , "Ptr", this.hProcess
-                    , "Uint", hModule
-                    , "Ptr", &lpFilename
+                    , "Ptr", hModule
+                    , "Str", lpFilename
                     , "Uint", 2048 / (A_IsUnicode ? 2 : 1))
-        return StrGet(&lpFilename)
+        return lpFilename
     }
 
     ; dwFilterFlag
@@ -809,7 +804,7 @@ class _ClassMemory
         VarSetCapacity(MODULEINFO, A_PtrSize * 3), aModuleInfo := []
         return DllCall("psapi\GetModuleInformation"
                     , "Ptr", this.hProcess
-                    , "UInt", hModule
+                    , "Ptr", hModule
                     , "Ptr", &MODULEINFO
                     , "UInt", A_PtrSize * 3)
                 , aModuleInfo := {  lpBaseOfDll: numget(MODULEINFO, 0, "Ptr")
@@ -988,8 +983,8 @@ class _ClassMemory
                                                 , "Ptr", this.hProcess
                                                 , "Ptr", address
                                                 , "Ptr", aInfo.pStructure
-                                                , "UInt", aInfo.SizeOfStructure
-                                                , "UInt") 
+                                                , "Ptr", aInfo.SizeOfStructure
+                                                , "Ptr") 
     }
 
     ; Scans a specified memory region for a pattern
@@ -1125,7 +1120,7 @@ class _ClassMemory
     {
         __new()
         {   
-            if !this.pStructure := DllCall("GlobalAlloc", "UInt", 0, "UInt", this.SizeOfStructure := A_PtrSize = 8 ? 48 : 28, "Ptr")
+            if !this.pStructure := DllCall("GlobalAlloc", "UInt", 0, "Ptr", this.SizeOfStructure := A_PtrSize = 8 ? 48 : 28, "Ptr")
                 return ""
             return this
         }
