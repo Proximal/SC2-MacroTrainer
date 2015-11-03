@@ -336,7 +336,7 @@ getEnemyUnitsMiniMap(byref aUnitsToDraw)
   , PlayerColours := arePlayerColoursEnabled()
   loop, % DumpUnitMemory(MemDump)
   {
-     Filter := numget(MemDump, (UnitAddress := (A_Index - 1) * S_uStructure) + O_uTargetFilter, "Int64")
+     Filter := numget(MemDump, (UnitAddress := (A_Index - 1) * OffsetsUnitStrucSize) + O_uTargetFilter, "Int64")
      ; Hidden e.g. marines in medivac/bunker etc. 
      ; Otherwise these unit colours get drawn over the top - medivac highlight colour is hidden.
      if (Filter & DeadFilterFlag || Filter & aUnitTargetFilter.Hidden || aMiniMapUnits.Exclude.HasKey(Type := numgetUnitModelType(pUnitModel := numget(MemDump, UnitAddress + O_uModelPointer, "Int"))))

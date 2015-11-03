@@ -295,7 +295,6 @@ Process, wait, %GameExe%
 ; 	WinGet("EXStyle") style checks to work properly
 ;  	Placed here, as it will also give extra time before trying to get 
 ;	base address (though it shouldn't be required for this)
-
 if !MT_CurrentInstance.SCWasRunning
 	sleep 2000 
 WinWait, %GameIdentifier%
@@ -876,6 +875,8 @@ Else if (time > 0.4 && !isInMatch) && (getLocalPlayerNumber() != 16 || debugGame
 	isInMatch := true
 	AW_MaxWorkersReached := TmpDisableAutoWorker := 0
 	aResourceLocations := []
+	aSCOffsets["playerAddress"] := new classAddressCachePlayerUnit("playerAddress")
+	aSCOffsets["unitAddress"] := new classAddressCachePlayerUnit("getUnitAddress")
 	global aStringTable := []
 	global aXelnagas := [] ; global cant come after command expressions
 	global MT_CurrentGame := []	; This is a variable which from now on will store
@@ -2018,17 +2019,6 @@ debugShutdown ? log("`n`n==================`n" A_hour ":" A_Min ":" A_Sec "`nPer
 	ReadRawMemory()
 	ReadMemory_Str()
 	
-debugShutdown ? log("Closing speech thread") : ""
-	;aThreads.miniMap.ahkLabel.ShutdownProcedure
-
-	; ahkTerminate is causing issues - I've probably done something wrong
-	; so just call the minimap ShutdownProcedure manually (don't really need to do this
-	; anyway) and let the threads close when the this process closes
-	if aThreads.Speech.ahkReady() 	; if exists
-	{
-		aThreads.Speech.ahkLabel.clearSAPI
-		aThreads.Speech.ahkTerminate() 
-	}
 debugShutdown ? log("Closing minimap thread") : ""
 	if aThreads.miniMap.ahkReady() 	
 		aThreads.miniMap.ahkTerminate() 
@@ -2048,6 +2038,21 @@ debugShutdown ? log("Deleting bitmaps") : ""
 debugShutdown ? log("Shutting down gdip") : ""
 	if pToken
 		Gdip_Shutdown(pToken) 
+
+debugShutdown ? log("Checking speech thread") : ""
+	;aThreads.miniMap.ahkLabel.ShutdownProcedure
+
+	; ahkTerminate is causing issues - Issues with AHK_H, SAPI and postmessage 
+	; so just call the minimap ShutdownProcedure manually (don't really need to do this
+	; anyway) and let the threads close when the this process closes
+	if aThreads.Speech.ahkReady() 	; if exists
+	{
+		debugShutdown ? log("clearSAPI speech thread") : ""
+		aThreads.Speech.ahkLabel.clearSAPI
+		debugShutdown ? log("ahkTerminate speech thread") : ""
+		aThreads.Speech.ahkTerminate() 
+	}
+
 	; I thought placing this here after most of the shutdown stuff would
 	; help the restart spam issue - but it hasn't :(
 	if (restartTrainer && A_OSVersion = "WIN_XP") ; apparently the below command wont work on XP
@@ -4630,7 +4635,7 @@ try
 		( ltrim
 		Hold down (and do not release) the "Adjust Overlays" Hotkey (%AdjustOverlayKey% key).
 			
-		You will hear a beep - all the overlays (excluding the minimap) are now adjustable.When you're done, release the "Adjust Overlays" Hotkey. 
+		You will hear a beep - all the overlays (excluding the minimap) are now adjustable. When you're done, release the "Adjust Overlays" Hotkey. 
 		)		
 		Gui, Font, CDefault bold, Verdana
 		Gui, Add, Text, xs+10 y+20, Moving:
@@ -10522,7 +10527,7 @@ swapAbilityPointerFreeze()
 	hwnd := openCloseProcess(GameIdentifier)
 	SuspendProcess(hwnd)
 	unit := getSelectedUnitIndex()
-	abilityPointerAddress := B_uStructure + unit * S_uStructure + O_P_uAbilityPointer
+	abilityPointerAddress := B_uStructure + unit * OffsetsUnitStrucSize + O_P_uAbilityPointer
 	originalValue := ReadMemory(abilityPointerAddress, GameIdentifier)
 	pAbilities := getUnitAbilityPointer(unit)
 	WriteMemory(abilityPointerAddress, pAbilities, "UInt") 
@@ -10541,7 +10546,7 @@ getUnitAbilitiesString(unit)
 	if !pAbilities := getUnitAbilityPointer(unit)
 		return clipboard := "pAbilities = 0"
 	p1 := readmemory(pAbilities, GameIdentifier)
-	s := "pAbilities: " chex(pAbilities) " Unit ID: " unit "`nuStruct: " chex(getunitAddress(unit)) " - " chex(getunitAddress(unit) + S_uStructure)
+	s := "pAbilities: " chex(pAbilities) " Unit ID: " unit "`nuStruct: " chex(getunitAddress(unit)) " - " chex(getunitAddress(unit) + OffsetsUnitStrucSize)
 	loop
 	{
 		if (p := ReadMemory( address := p1  +  B_AbilityStringPointer + (A_Index - 1)*4, GameIdentifier))
@@ -13837,6 +13842,580 @@ return
 */
 		; 4 byte ints listed in memory: 808 28 1066 290  (at 1920x1080)
 
+; 5886
 
 
 
+
+; Target filter +14
+
+
+
+f2::
+objtree(aSCOffsets)
+msgbox % chex(playerAddress := playerAddress(getLocalPlayerNumber()))
+
+msgbox % getPlayerMinerals() "`n" getLocalPlayerNumber()
+return 
+
+
+
+
+
+
+
+
+
+highestUnitIndexNew()
+{
+	SCBase := getProcessBaseAddress(GameIdentifier)
+	Return ReadMemory(SCBase + 0x1EA2DC0, GameIdentifier)
+}
+
+
+
+
+
+
+; 0x12D0000
+
+
+/* Unit Address function 3.0 (called when unit fingerprint changes)
+SC2.AssertAndCrash+3BE670 - 55                    - push ebp
+SC2.AssertAndCrash+3BE671 - 8B EC                 - mov ebp,esp
+SC2.AssertAndCrash+3BE673 - 56                    - push esi
+SC2.AssertAndCrash+3BE674 - 57                    - push edi
+SC2.AssertAndCrash+3BE675 - 8B F9                 - mov edi,ecx
+SC2.AssertAndCrash+3BE677 - 0FB7 47 04            - movzx eax,word ptr [edi+04] ; Moves the unit index (stored in a static address)
+SC2.AssertAndCrash+3BE67B - 8D 4F 04              - lea ecx,[edi+04]
+SC2.AssertAndCrash+3BE67E - BA FFFF0000           - mov edx,0000FFFF
+SC2.AssertAndCrash+3BE683 - 66 3B C2              - cmp ax,dx
+SC2.AssertAndCrash+3BE686 - 74 3C                 - je SC2.AssertAndCrash+3BE6C4
+SC2.AssertAndCrash+3BE688 - 8B D0                 - mov edx,eax
+SC2.AssertAndCrash+3BE68A - 83 E0 0F              - and eax,0F
+SC2.AssertAndCrash+3BE68D - 69 C0 E8010000        - imul eax,eax,000001E8
+SC2.AssertAndCrash+3BE693 - C1 EA 04              - shr edx,04
+SC2.AssertAndCrash+3BE696 - 8B 34 95 4848A402     - mov esi,[edx*4+SC2.exe+1F24848]
+SC2.AssertAndCrash+3BE69D - 33 35 ECBF3A02        - xor esi,[SC2.exe+188BFEC]
+SC2.AssertAndCrash+3BE6A3 - 81 F6 B834E146        - xor esi,46E134B8
+SC2.AssertAndCrash+3BE6A9 - 03 F0                 - add esi,eax ; esi = address
+SC2.AssertAndCrash+3BE6AB - 8D 47 10              - lea eax,[edi+10]
+SC2.AssertAndCrash+3BE6AE - 50                    - push eax
+SC2.AssertAndCrash+3BE6AF - 51                    - push ecx
+SC2.AssertAndCrash+3BE6B0 - 56                    - push esi
+SC2.AssertAndCrash+3BE6B1 - 8B CF                 - mov ecx,edi
+SC2.AssertAndCrash+3BE6B3 - E8 88E6FFFF           - call SC2.AssertAndCrash+3BCD40
+SC2.AssertAndCrash+3BE6B8 - 85 F6                 - test esi,esi
+SC2.AssertAndCrash+3BE6BA - 74 08                 - je SC2.AssertAndCrash+3BE6C4
+SC2.AssertAndCrash+3BE6BC - 5F                    - pop edi
+SC2.AssertAndCrash+3BE6BD - 8B C6                 - mov eax,esi
+SC2.AssertAndCrash+3BE6BF - 5E                    - pop esi
+SC2.AssertAndCrash+3BE6C0 - 5D                    - pop ebp
+SC2.AssertAndCrash+3BE6C1 - C2 0400               - ret 0004
+*/ 
+
+; DX lower 16b of EDX
+; 
+; 1446A230
+
+
+/*
+movsx and movzx are special versions of mov which are designed to be used between signed (movsx) and unsigned (movzx) registers of different sizes.
+
+Patch 3.0 - fucntion modifies unit address +4
+SC2.AssertAndCrash+3B1E51 - 8B EC                 - mov ebp,esp
+SC2.AssertAndCrash+3B1E53 - 51                    - push ecx
+SC2.AssertAndCrash+3B1E54 - 8B 55 0C              - mov edx,[ebp+0C] resolved to sc2.exe+1EA4DA0 which stores FFFF0009     eg *dynm 030B4DA0
+SC2.AssertAndCrash+3B1E57 - 0FB7 02               - movzx eax,word ptr [edx] moves the word into eax = 0009 - unit index
+SC2.AssertAndCrash+3B1E5A - 56                    - push esi
+SC2.AssertAndCrash+3B1E5B - 57                    - push edi
+ECX, EDX, ESI all = sc2.exe+1EA4DA0 (02714DA0), EDI = sc2.exe+1EA4DAC
+
+SC2.AssertAndCrash+3B1E5C - 89 4D FC              - mov [ebp-04],ecx - does nothing same value
+SC2.AssertAndCrash+3B1E5F - 8B 4D 08              - mov ecx,[ebp+08]      ecx, [2781B144]
+SC2.AssertAndCrash+3B1E62 - 8B 39                 - mov edi,[ecx]   --> 02714DA0 which equals sc2.exe+1EA4DA0!
+SC2.AssertAndCrash+3B1E64 - C1 EF 12              - shr edi,12      --> 2, 10, F, 13, 4, 12, 15
+SC2.AssertAndCrash+3B1E67 - BE FFFF0000           - mov esi,0000FFFF 02714DA0 (sc2.exe+1EA4DA0) -> 0000FFFF
+SC2.AssertAndCrash+3B1E6C - 81 E7 FF3F0000        - and edi,00003FFF 1B -> 1B
+SC2.AssertAndCrash+3B1E72 - 66 3B C6              - cmp ax,si
+SC2.AssertAndCrash+3B1E75 - 74 57                 - je SC2.AssertAndCrash+3B1ECE
+SC2.AssertAndCrash+3B1E77 - 8B D0                 - mov edx,eax   --> 0009 unit index
+SC2.AssertAndCrash+3B1E79 - C1 EA 03              - shr edx,03
+SC2.AssertAndCrash+3B1E7C - 8D 34 95 C84D0B03     - lea esi,[edx*4+SC2.exe+1EA4DC8]
+SC2.AssertAndCrash+3B1E83 - 0FB7 16               - movzx edx,word ptr [esi] ; LoWord
+SC2.AssertAndCrash+3B1E86 - 0FB7 76 02            - movzx esi,word ptr [esi+02] ; HiWord
+SC2.AssertAndCrash+3B1E8A - 53                    - push ebx
+SC2.AssertAndCrash+3B1E8B - 8B DA                 - mov ebx,edx
+
+SC2.AssertAndCrash+3B1E8D - 81 E3 FF0F0000        - and ebx,00000FFF   ; LoWord ebx=edx
+SC2.AssertAndCrash+3B1E93 - 0FB7 1C 9D 6899A102   - movzx ebx,word ptr [ebx*4+SC2.exe+1809968]
+SC2.AssertAndCrash+3B1E9B - 2B F3                 - sub esi,ebx
+SC2.AssertAndCrash+3B1E9D - 8B DE                 - mov ebx,esi
+SC2.AssertAndCrash+3B1E9F - 81 E3 FF0F0000        - and ebx,00000FFF
+SC2.AssertAndCrash+3B1EA5 - 0FB7 1C 9D 6899A102   - movzx ebx,word ptr [ebx*4+SC2.exe+1809968]
+SC2.AssertAndCrash+3B1EAD - 2B D3                 - sub edx,ebx
+
+SC2.AssertAndCrash+3B1EAF - 83 E0 07              - and eax,07
+SC2.AssertAndCrash+3B1EB2 - 69 C0 EC010000        - imul eax,eax,000001EC
+SC2.AssertAndCrash+3B1EB8 - F7 D2                 - not edx
+SC2.AssertAndCrash+3B1EBA - 66 89 55 08           - mov [ebp+08],dx
+SC2.AssertAndCrash+3B1EBE - 66 89 75 0A           - mov [ebp+0A],si
+SC2.AssertAndCrash+3B1EC2 - 8B 55 08              - mov edx,[ebp+08]
+SC2.AssertAndCrash+3B1EC5 - 66 89 7C 10 06        - mov [eax+edx+06],di   ; eax = unit offset, edx = dynamic unit base; alters value next to unit token / finger print
+SC2.AssertAndCrash+3B1ECA - 8B 55 0C              - mov edx,[ebp+0C]
+SC2.AssertAndCrash+3B1ECD - 5B                    - pop ebx
+SC2.AssertAndCrash+3B1ECE - 66 8B 02              - mov ax,[edx]
+SC2.AssertAndCrash+3B1ED1 - 66 89 41 04           - mov [ecx+04],ax
+SC2.AssertAndCrash+3B1ED5 - B8 FFFF0000           - mov eax,0000FFFF
+SC2.AssertAndCrash+3B1EDA - 66 89 41 06           - mov [ecx+06],ax
+
+
+Same function patch 3.0.1, except
+	SC2.AssertAndCrash+3B1E9B - 2B F3                 - sub esi,ebx 
+was replaced with 
+	SC2.AssertAndCrash+3B199B - 33 F3                 - xor esi,ebx ***
+
+
+SC2.AssertAndCrash+3B1951 - 8B EC                 - mov ebp,esp
+SC2.AssertAndCrash+3B1953 - 51                    - push ecx
+SC2.AssertAndCrash+3B1954 - 8B 55 0C              - mov edx,[ebp+0C]
+SC2.AssertAndCrash+3B1957 - 0FB7 02               - movzx eax,word ptr [edx] ; moves the unit index into eax
+SC2.AssertAndCrash+3B195A - 56                    - push esi
+SC2.AssertAndCrash+3B195B - 57                    - push edi
+SC2.AssertAndCrash+3B195C - 89 4D FC              - mov [ebp-04],ecx
+SC2.AssertAndCrash+3B195F - 8B 4D 08              - mov ecx,[ebp+08]
+SC2.AssertAndCrash+3B1962 - 8B 39                 - mov edi,[ecx]
+SC2.AssertAndCrash+3B1964 - C1 EF 12              - shr edi,12
+SC2.AssertAndCrash+3B1967 - BE FFFF0000           - mov esi,0000FFFF
+SC2.AssertAndCrash+3B196C - 81 E7 FF3F0000        - and edi,00003FFF
+SC2.AssertAndCrash+3B1972 - 66 3B C6              - cmp ax,si
+SC2.AssertAndCrash+3B1975 - 74 57                 - je SC2.AssertAndCrash+3B19CE
+SC2.AssertAndCrash+3B1977 - 8B D0                 - mov edx,eax
+SC2.AssertAndCrash+3B1979 - C1 EA 03              - shr edx,03 
+SC2.AssertAndCrash+3B197C - 8D 34 95 C82DFC01     - lea esi,[edx*4+SC2.exe+1EA2DC8]
+SC2.AssertAndCrash+3B1983 - 0FB7 16               - movzx edx,word ptr [esi]  ; LoWord
+SC2.AssertAndCrash+3B1986 - 0FB7 76 02            - movzx esi,word ptr [esi+02] ; HiWord
+SC2.AssertAndCrash+3B198A - 53                    - push ebx
+SC2.AssertAndCrash+3B198B - 8B DA                 - mov ebx,edx  ; unit index
+SC2.AssertAndCrash+3B198D - 81 E3 FF0F0000        - and ebx,00000FFF ; LoWord ebx=edx
+SC2.AssertAndCrash+3B1993 - 0FB7 1C 9D A8799201   - movzx ebx,word ptr [ebx*4+SC2.exe+18079A8]
+SC2.AssertAndCrash+3B199B - 33 F3                 - xor esi,ebx *** This line replaced sub esi,ebx 
+SC2.AssertAndCrash+3B199D - 8B DE                 - mov ebx,esi
+SC2.AssertAndCrash+3B199F - 81 E3 FF0F0000        - and ebx,00000FFF
+SC2.AssertAndCrash+3B19A5 - 0FB7 1C 9D A8799201   - movzx ebx,word ptr [ebx*4+SC2.exe+18079A8]
+SC2.AssertAndCrash+3B19AD - 2B D3                 - sub edx,ebx
+SC2.AssertAndCrash+3B19AF - 83 E0 07              - and eax,07
+SC2.AssertAndCrash+3B19B2 - 69 C0 EC010000        - imul eax,eax,000001EC
+SC2.AssertAndCrash+3B19B8 - F7 D2                 - not edx
+SC2.AssertAndCrash+3B19BA - 66 89 55 08           - mov [ebp+08],dx
+SC2.AssertAndCrash+3B19BE - 66 89 75 0A           - mov [ebp+0A],si
+SC2.AssertAndCrash+3B19C2 - 8B 55 08              - mov edx,[ebp+08]
+SC2.AssertAndCrash+3B19C5 - 66 89 7C 10 06        - mov [eax+edx+06],di ; eax = unit offset from start of unit block, edx = dynamic unit block address; alters value next to unit token / finger print 
+SC2.AssertAndCrash+3B19CA - 8B 55 0C              - mov edx,[ebp+0C]
+SC2.AssertAndCrash+3B19CD - 5B                    - pop ebx
+
+
+
+SC2.AssertAndCrash+3B1944 - cmovbe edx,ebx
+SC2.AssertAndCrash+3B1947 - mov [esp+08],edx
+SC2.AssertAndCrash+3B194B - jmp SC2.AssertAndCrash+129828
+SC2.AssertAndCrash+3B1950 - push ebp
+SC2.AssertAndCrash+3B1951 - mov ebp,esp
+SC2.AssertAndCrash+3B1953 - push ecx
+SC2.AssertAndCrash+3B1954 - mov edx,[ebp+0C]
+SC2.AssertAndCrash+3B1957 - movzx eax,word ptr [edx]
+SC2.AssertAndCrash+3B195A - push esi
+SC2.AssertAndCrash+3B195B - push edi
+SC2.AssertAndCrash+3B195C - mov [ebp-04],ecx
+SC2.AssertAndCrash+3B195F - mov ecx,[ebp+08]
+SC2.AssertAndCrash+3B1962 - mov edi,[ecx]
+SC2.AssertAndCrash+3B1964 - shr edi,12
+SC2.AssertAndCrash+3B1967 - mov esi,0000FFFF
+SC2.AssertAndCrash+3B196C - and edi,00003FFF
+SC2.AssertAndCrash+3B1972 - cmp ax,si
+SC2.AssertAndCrash+3B1975 - je SC2.AssertAndCrash+3B19CE
+SC2.AssertAndCrash+3B1977 - mov edx,eax
+SC2.AssertAndCrash+3B1979 - shr edx,03
+SC2.AssertAndCrash+3B197C - lea esi,[edx*4+SC2.exe+1EA2DC8]
+SC2.AssertAndCrash+3B1983 - movzx edx,word ptr [esi]
+SC2.AssertAndCrash+3B1986 - movzx esi,word ptr [esi+02]
+SC2.AssertAndCrash+3B198A - push ebx
+SC2.AssertAndCrash+3B198B - mov ebx,edx
+SC2.AssertAndCrash+3B198D - and ebx,00000FFF
+SC2.AssertAndCrash+3B1993 - movzx ebx,word ptr [ebx*4+SC2.exe+18079A8]
+SC2.AssertAndCrash+3B199B - xor esi,ebx
+SC2.AssertAndCrash+3B199D - mov ebx,esi
+SC2.AssertAndCrash+3B199F - and ebx,00000FFF
+SC2.AssertAndCrash+3B19A5 - movzx ebx,word ptr [ebx*4+SC2.exe+18079A8]
+SC2.AssertAndCrash+3B19AD - sub edx,ebx
+SC2.AssertAndCrash+3B19AF - and eax,07
+SC2.AssertAndCrash+3B19B2 - imul eax,eax,000001EC
+SC2.AssertAndCrash+3B19B8 - not edx
+SC2.AssertAndCrash+3B19BA - mov [ebp+08],dx
+SC2.AssertAndCrash+3B19BE - mov [ebp+0A],si
+SC2.AssertAndCrash+3B19C2 - mov edx,[ebp+08]
+SC2.AssertAndCrash+3B19C5 - mov [eax+edx+06],di
+SC2.AssertAndCrash+3B19CA - mov edx,[ebp+0C]
+SC2.AssertAndCrash+3B19CD - pop ebx
+SC2.AssertAndCrash+3B19CE - mov ax,[edx]
+SC2.AssertAndCrash+3B19D1 - mov [ecx+04],ax
+SC2.AssertAndCrash+3B19D5 - mov eax,0000FFFF
+SC2.AssertAndCrash+3B19DA - mov [ecx+06],ax
+SC2.AssertAndCrash+3B19DE - mov [edx],di
+SC2.AssertAndCrash+3B19E1 - pop edi
+SC2.AssertAndCrash+3B19E2 - pop esi
+SC2.AssertAndCrash+3B19E3 - cmp edx,[ebp-04]
+SC2.AssertAndCrash+3B19E6 - je SC2.AssertAndCrash+3B19FD
+SC2.AssertAndCrash+3B19E8 - mov eax,[ecx]
+SC2.AssertAndCrash+3B19EA - mov edx,eax
+SC2.AssertAndCrash+3B19EC - shr edx,12
+SC2.AssertAndCrash+3B19EF - not edx
+SC2.AssertAndCrash+3B19F1 - shl edx,12
+SC2.AssertAndCrash+3B19F4 - and eax,0003FFFF
+SC2.AssertAndCrash+3B19F9 - or edx,eax
+SC2.AssertAndCrash+3B19FB - mov [ecx],edx
+SC2.AssertAndCrash+3B19FD - mov eax,[ebp+10]
+SC2.AssertAndCrash+3B1A00 - inc word ptr [eax]
+SC2.AssertAndCrash+3B1A03 - mov esp,ebp
+SC2.AssertAndCrash+3B1A05 - pop ebp
+SC2.AssertAndCrash+3B1A06 - ret 000C
+
+
+*/
+f1::
+
+
+p := getLocalPlayerNumber(b)
+msgbox % p "`n" b
+return 
+
+
+
+/*
+SC2.exe+576B4E6 - 8B 35 70BC8E02        - mov esi,[SC2.exe+188BC70]
+SC2.exe+576B4EC - 33 35 F45DF702        - xor esi,[SC2.exe+1F15DF4]
+SC2.exe+576B4F2 - B9 00010000           - mov ecx,00000100
+SC2.exe+576B4F7 - 81 F6 A510AF6E        - xor esi,6EAF10A5
+SC2.exe+576B4FD - 01 4E 50              - add [esi+50],ecx
+*/
+
+
+thread, notimers, true 
+address := 0x00A8ABFC
+testarray := {"unit": 0x00A8ABFC}
+testarray2 := {"unittttttttttttttttttttttttttttttttttttttttttttttttttt": 0x00A8ABFC}
+
+loopcount := 50000
+id := stopwatch()
+loop, %loopcount%
+{
+	v1 := readMemory(address, GameIdentifier)
+}
+time1 := stopwatch(id, -1) / loopcount
+loop, %loopcount%
+{
+	v2 := readMemory(testarray["unit"], GameIdentifier)
+}
+time2 := stopwatch(id, -1) / loopcount
+loop, %loopcount%
+{
+	v3 := readMemory(testarray.unit, GameIdentifier)
+}
+time3 := stopwatch(id, -1) / loopcount
+msgbox % time1 "`n" time2 "`n" time3 
+. "`n" v1 "|" v2 "|" v3
+return 
+
+
+; B_SelectionStructure := base + 0x1EE9BB8 
+;f9::
+bytePattern := testUnitStructPattern()
+mem := new _ClassMemory(GameIdentifier) 
+msgbox % chex(mem.processPatternScan(mem.baseaddress,, bytePattern*))
+return 
+
+; find the first units in the dynamic structure
+; only for units that have not died
+testUnitStructPattern(unitSize := 0x1E8)
+{
+	byteArray := []
+	byteArray.insert(01), byteArray.insert(00), byteArray.insert(00),	byteArray.insert(00) ; unit 1
+	loop, % unitSize - 4
+		byteArray.insert("?")
+	byteArray.insert(01), byteArray.insert(00), byteArray.insert(04),	byteArray.insert(00) ; unit 2
+	loop, % unitSize - 4
+		byteArray.insert("?")
+	byteArray.insert(01), byteArray.insert(00), byteArray.insert(08),	byteArray.insert(00) ; unit 3
+	return byteArray
+}
+
+;306 south 8:30 
+
+
+
+
+
+
+
+
+
+
+/*
+offsets to find 
+
+		;	[Memory Addresses]
+		B_LocalCharacterNameID := base + 0x4FBADF4 ; stored as string Name#123 There are a couple of these, but only one works after SC restart or out of game
+		
+		B_ReplayWatchedPlayer := B_LocalPlayerSlot + 0x1
+		 
+		B_pStructure := base + 0x362BF90 ; 			 
+		S_pStructure := 0xE18
+			 O_pStatus := 0x0
+			 O_pXcam := 0x8
+			 O_pYcam := 0xC	
+			 O_pCamDistance := 0x10 ; 0xA - Dont know if this is correct - E
+			 O_pCamAngle := 0x14
+			 O_pCamRotation := 0x18
+
+			 ; 8 bytes were inserted here
+			 O_pTeam := 0x1C 
+			 O_pType := 0x1D ;same
+			 O_pVictoryStatus := 0x1E
+			 O_pName := 0x64 
+			 
+			 O_pRacePointer := 0x160
+			 O_pColour := 0x1B8
+			 O_pAccountID := 0x218 ; This moved by quite a bit (more than the others) 0x1C0 
+
+			 O_pAPM := 0x5F0 	; Instantaneous
+			 O_pAPMAverage := 0x5F8
+			 O_pEPM := 0x630 	; Instantaneous
+			 O_pEPMAverage := 0x638 	
+
+			 O_pWorkerCount := 0x7E0 ; **Care dont confuse this with HighestWorkerCount
+			 O_pTotalUnitsBuilt := 0x660 ; eg numbers of units made (includes 6 starting scvs) 
+			 O_pWorkersBuilt := 0x7F0 ; number of workers made (includes the 6 at the start of the game)
+			 O_pHighestWorkerCount := 0x808 ; the current highest worker account achieved
+			 O_pBaseCount := 0x850 
+
+			 O_pSupplyCap := 0x8A0		
+			 O_pSupply := 0x8B8 		
+			 O_pMinerals := 0x8F8 
+			 O_pGas := 0x900
+
+			 O_pArmySupply := 0x8D8	 
+			 O_pMineralIncome := 0x978
+			 O_pGasIncome := 0x980
+			 O_pArmyMineralSize := 0xC60 	; there are two (identical?) values for minerals/gas 
+			 O_pArmyGasSize := 0xC88 		; ** care dont use max army gas/mineral size! 
+
+		 P_IdleWorker := base + 0x314B920		
+			 O1_IdleWorker := 0x358
+			 O2_IdleWorker := 0x244 	; tends to always end with this offset if finding via pointer scan
+
+		; 	This can be found via three methods, pattern scan:
+		;	C1 EA 0A B9 00 01 00 00 01 0D ?? ?? ?? ?? F6 D2 A3 ?? ?? ?? ?? F6 C2 01 74 06 01 0D ?? ?? ?? ?? 83 3D ?? ?? ?? ?? 00 56 BE FF FF FF 7F
+		; 	Timer Address = readMemory(patternAddress + 0x1C)
+		; 	It can also be found as there are two (identical?) 4-byte timers next to each other.
+		; 	So do the usual search between times to find the timer value, then search for an 8 byte representation of 
+		;   two timers which have the same value.  GameGetMissionTime() refers to the second (+0x4) of these two timers.
+		;	And via IDA (Function: GameGetMissionTime) (-0x800000 from IDA address)
+
+		 B_Timer := base + 0x357A0D0		
+
+		 B_rStructure := base + 0x02F6C850	; Havent updated as dont use this
+			 S_rStructure := 0x10
+
+		 ; Also be sure to check the pointer in a real game. Ones which appear valid via mapeditor maps may not work.
+		 ; must be 0 when chat box not open yet another menu window is
+		 P_ChatFocus := base + 0x314B920 ;Just when chat box is in focus ; value = True if open. There will be 2 of these.
+			 O1_ChatFocus := 0x394 
+			 O2_ChatFocus := 0x174 		; tends to end with this offset
+
+		 P_MenuFocus := base + 0x5045A6C 	;this is all menus and includes chat box when in focus 
+			 O1_MenuFocus := 0x17C 			; tends to end with this offse
+
+		P_SocialMenu := base + 0x0409B098 ; ???? Havent updated as dont use it
+
+		 B_uCount := base + 0x36AA7E8 	; This is the units alive (and includes missiles) - near B_uHighestIndex (-0x18)		
+		 								; There are two of these values and they only differ the instant a unit dies esp with missle fire (ive used the higher value) - perhaps one updates slightly quicker - dont think i use this offset anymore other than as a value in debugData()
+		 								; Theres another one which excludes structures
+
+		 B_uHighestIndex := base + 0x36AA800  			; This is actually the highest currently alive unit (includes missiles while alive) and starts at 1 NOT 0! i.e. 1 unit alive = 1
+		 B_uStructure := base + 0x36AA840 ; B_uHighestIndex+0x40    			
+		 OffsetsUnitStrucSize := 0x1C0
+			 O_uModelPointer := 0x8
+			 O_uTargetFilter := 0x14
+			 O_uBuildStatus := 0x18		; buildstatus is really part of the 8 bit targ filter!
+			 O_uOwner := 0x2E ; There are 3 owner offsets (0x27, 0x40, 0x41) for changelings owner3 changes to the player it is mimicking
+			 O_XelNagaActive := 0x34 	; xel - dont use as doesnt work all the time
+			; something added in here in vr 2.10		  
+			 O_uX := 0x4C
+			 O_uY := 0x50
+			 O_uZ := 0x54
+			 O_uDestinationX := 0x80
+			 O_uDestinationY := 0x84
+			 O_P_uCmdQueuePointer := 0xD4 ;+4
+			 O_P_uAbilityPointer := 0xDC
+
+			 O_uPoweredState := 0xE0 									
+			 O_uChronoState := 0xE6	; there are other offsets which can be used for chrono/inject state ; pre 210 chrono and inject offsets were the same 
+			 O_uInjectState := 0xE7 ; +5 Weird this was 5 not 4 (and its values changed) chrono state just +4
+			 O_uBuffPointer := 0xEC
+
+
+			 O_uHpDamage := 0x114
+			 O_uShieldDamage := 0x118
+			 O_uEnergy := 0x11c 
+			 O_uTimer := 0x16C ;+4
+			
+		;CommandQueue 	; separate structure
+			 O_cqState := 0x40	
+		
+		; Unit Model Structure	
+		 O_mUnitID := 0x6	
+		 O_mSubgroupPriority := 0x3A8 ;0x398
+		 O_mMiniMapSize := 0x3AC ;0x39C
+		
+		; selection and ctrl groups
+		 B_SelectionStructure := base + 0x1EE9BB8 
+
+		; The structure begins with ctrl group 0
+
+		 B_CtrlGroupStructure := base + 0x3212ED8
+		 S_CtrlGroup := 0x1B60
+		 S_scStructure := 0x4	; Unit Selection & Ctrl Group Structures
+			 O_scTypeCount := 0x2
+			 O_scTypeHighlighted := 0x4
+			 O_scUnitIndex := 0x8
+
+		; gives the select army unit count (i.e. same as in the select army icon) - unit count not supply
+		; dont confuse with similar value which includes army unit counts in production - or if in map editor unit count/index.
+		; Shares a common base with P_IsUserPerformingAction, SelectionPtr, IdleWorkerPtr, ChatFocusPtr, B_UnitCursor, B_CameraMovingViaMouseAtScreenEdge (never realised it was so many derp)
+
+		B_localArmyUnitCount := base + 0x314B920
+			O1_localArmyUnitCount := 0x354
+			O2_localArmyUnitCount := 0x248
+
+		 B_TeamColours := base + 0x314D184 ; 2 when team colours is on, else 0
+		; another one at + 0x4FEDA58
+
+		 P_SelectionPage := base + 0x314B920  	; Tends to end with these offsets. ***theres one other 3 lvl pointer but for a split second (every few second or so) it points to 
+			 O1_SelectionPage := 0x320			; the wrong address! You need to increase CE timer resolution to see this happening! Or better yet use the 'continually perform the pointer scan until stopped' option.
+			 O2_SelectionPage := 0x15C			;this is for the currently selected unit portrait page ie 1-6 in game (really starts at 0-5)
+			 O3_SelectionPage := 0x14C 			;might actually be a 2 or 1 byte value....but works fine as 4
+
+		DeadFilterFlag := 0x0000000200000000	
+		BuriedFilterFlag := 0x0000000010000000
+
+		 B_MapInfo := base + 0x357A010
+			O_FileInfoPointer := 0 
+
+		; at B_MapStruct -0x5C is a pointer which list map file name, map name, description and other stuff
+		 B_MapStruct := base + 0x357A06C		;0x353C3B4 ;0x3534EDC ; 0X024C9E7C 
+			 O_mLeft := B_MapStruct + 0xDC	                                   
+			 O_mBottom := B_MapStruct + 0xE0	                                   
+			 O_mRight := B_MapStruct + 0xE4	    ; MapRight 157.999756 (akilon wastes) after dividing 4096   (647167 before)                  
+			 O_mTop := B_MapStruct + 0xE8	   	; MapTop: 622591 (akilon wastes) before dividing 4096  
+
+		B_camLeft := base + 0x314D8E0
+		B_camBottom := B_camLeft + 0x4
+		B_camRight := B_camBottom + 0x4
+		B_camTop := B_camRight + 0x4
+
+		 aUnitMoveStates := { Idle: -1  ; ** Note this isn't actually a read in game type/value its just what my function will return if it is idle
+							, Amove: 0 		
+							, Patrol: 1
+							, HoldPosition: 2
+							, Move: 256
+							, Follow: 512
+							, FollowNoAttack: 515} ; This is used by unit spell casters such as infestors and High temps which dont have a real attack 
+			
+		B_UnitCursor :=	base + 0x314B920  
+			O1_UnitCursor := 0x2C0	 					
+			O2_UnitCursor := 0x21C 					
+
+	 	; This base can be the same as B_UnitCursor				; If used as 4byte value, will return 256 	there are 2 of these memory addresses
+		 P_IsUserPerformingAction := base + 0x314B920 			; This is a 1byte value and return 1  when user is casting or in is rallying a hatch via gather/rally or is in middle of issuing Amove/patrol command but
+			 O1_IsUserPerformingAction := 0x230 				; if youre searching for a 4byte value in CE offset will be at 0x254 (but really if using it as 1 byte it is 0x255) - but im lazy and use it as a 4byte with my pointer command
+																; also 1 when placing a structure (after structure is selected) or trying to land rax to make a addon Also gives 1 when trying to burrow spore/spine
+																; When searching for 4 byte value this offset will be 0x254 
+																; this address is really really useful!
+																; it is even 0 with a burrowed swarm host selected (unless user click 'y' for rally which is even better)
+
+
+		; This tends to have the same offsets (though there are a few to choose from)
+		 P_IsBuildCardDisplayed := base + 0x315FA34 		; this displays 1 (swarm host) or 0 with units selected - displays 7 when targeting reticle displayed/or placing a building (same thing)
+			 01_IsBuildCardDisplayed := 0x7C 				; **but when either build card is displayed it displays 6 (even when all advanced structures are greyed out)!!!!
+			 02_IsBuildCardDisplayed := 0x74 				; also displays 6 when the toss hallucination card is displayed
+			 03_IsBuildCardDisplayed := 0x398 				; could use this in place of the current 'is user performing action offset'
+	 														; Note: There is another address which has the same info, but when placing a building it will swap between 6 & 7 (not stay at 7)!
+
+
+	 	; There are two chat buffers - One blanks after you press return (to send chat)
+	 	; while the other one keeps the text even after the chat is sent/closed
+	 	; this is the latter
+
+	 	; note there are two of these so make sure pick the right one as there addresses 
+	 	; can go from high to low so the one at the top of CE scan might not be the same one
+	 	; that was at the top last time!
+	 															
+	 	 P_ChatInput := base + 0x0310EDEC 		; ?????? not updated/used currently
+	 		 O1_ChatInput := 0x16C 
+	 		 O2_ChatInput := 0xC
+	 		 O3_ChatInput := 0x278
+	 		 O4_ChatInput := 0x0
+
+
+	;Around this modifier area are other values which contain the logical states
+	;SC2.exe+1FDF7C6 is a 2byte value which contains the state of the numbers 0-9
+	;SC2.exe+1FDF7D0 contains the state F-keys as well as keys like tab, backspace, Ins, left, right etc
+	;SC2.exe+1FDF7C8 (8 bytes) contains the state of most keys eg a-z etc
+
+
+
+												; there are two of these the later 1 is actually the one that affects the game
+												; Also the 1st one, if u hold down a modifier then go out of the game (small window mode)
+												; it will remain 1 even when back in and shift isn't down as moving a unit wont be shift-commanded! so dont use that one
+											  	;shift = 1, ctrl = 2, alt = 4 (and add them together)
+
+															
+		 B_CameraDragScroll := base + 0x308E7A8   			; 1 byte Returns 1 when user is moving camera via DragScroll i.e. mmouse button the main map But not when on the minimap (or if mbutton is held down on the unit panel)
+
+		
+		 B_InputStructure := base + 0x308EAB8  		
+			 B_iMouseButtons := B_InputStructure + 0x0 		; 1 Byte 	MouseButton state 1 for Lbutton,  2 for middle mouse, 4 for rbutton, 8 xbutton1, 16 xbutton2
+			 B_iSpace := B_iMouseButtons + 0x8 				; 1 Bytes
+			 B_iNums := B_iSpace + 0x2  					; 2 Bytes
+			 B_iChars := B_iNums + 0x2 						; 4 Bytes 
+			 B_iTilda := B_iChars + 0x4 					; 1 Byte  (could be 2 bytes)
+			 B_iNonAlphNumChars := B_iTilda + 0x2 			; 2 Bytes - keys: [];',./ Esc Entr \
+			 B_iNonCharKeys := B_iNonAlphNumChars + 0x2 	; 2 Bytes - keys: BS Up Down Left Right Ins Del Hom etc scrl lock pause caps + tab
+			 B_iFkeys := B_iNonCharKeys + 0x2 				; 2 bytes		
+			 B_iModifiers := B_iFkeys + 0x6 				; 1 Byte
+
+
+
+		 B_CameraMovingViaMouseAtScreenEdge := base + 0x314B920  		; Really a 1 byte value value indicates which direction screen will scroll due to mouse at edge of screen
+			 01_CameraMovingViaMouseAtScreenEdge := 0x2C0				; 1 = Diagonal Left/Top 		4 = Left Edge
+			 02_CameraMovingViaMouseAtScreenEdge := 0x20C				; 2 = Top 						5 = Right Edge			
+			 03_CameraMovingViaMouseAtScreenEdge := 0x5A4				; 3 = Diagonal Right/Top 	  	6 = Diagonal Left/ Bot	
+																		; 7 = Bottom Edge 			 	8 = Diagonal Right/Bot 
+																		; Note need to do a pointer scan with max offset > 1200d! Tends to have the same offsets
+		 B_IsGamePaused := base + 0x4F05E8C 						
+
+		 B_FramesPerSecond := base + 0x5008BC4
+		 B_Gamespeed  := base + 0x4F356A8
+
+		; example: D:\My Computer\My Documents\StarCraft II\Accounts\56025555\6-S2-1-34555\Replays\
+		; this works for En, Fr, and Kr languages 
+		 B_ReplayFolder :=  base + 0x4FBC668
+
+
+
+		 B_HorizontalResolution := base + 0x5045520
+		 B_VerticalResolution := B_HorizontalResolution + 0x4
+
+		; 4 byte ints listed in memory: 808 28 1066 290  (at 1920x1080)
+		P_MinimapPosition := base + 0x315FA34
+		O_MinimapPosition := [0x4, 0xE0, 0xD4, 0x25C]

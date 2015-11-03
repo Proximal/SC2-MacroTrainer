@@ -158,7 +158,7 @@
 
         Get the process's base address.
             msgbox % calc.BaseAddress ; When using the new operator this property is automatically set to the result of getProcessBaseAddress()
-        Or If that is not the correct base address, try using getModuleBaseAddress().
+        ***Or If that is not the correct base address, try using getModuleBaseAddress().***
             msgbox % calc.getModuleBaseAddress()
 
         Get the base address of a specific module.
@@ -581,9 +581,10 @@ class _ClassMemory
 
 
     ; Method:   getProcessBaseAddress(WindowTitle, windowMatchMode := 3)
-    ;           Returns the base address of a process. This is the same as calling getModuleBaseAddress() and passing 
+    ;           Returns the base address of a process. This should provide the same result calling getModuleBaseAddress() and passing 
     ;           a null value as the module parameter, however getProcessBaseAddress() should work regardless of the bitness
-    ;           of both the AHK exe and the target process.    
+    ;           of both the AHK exe and the target process.
+    ;           ***If this returns an incorrect value, try using the alternate getModuleBaseAddress().***    
     ; Parameters:
     ;   windowTitle         This can be any AHK windowTitle identifier, such as 
     ;                       ahk_exe, ahk_class, ahk_pid, or simply the window title. e.g. "ahk_exe SC2.exe" or "Starcraft II".

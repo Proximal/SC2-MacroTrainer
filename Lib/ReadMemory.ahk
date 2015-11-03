@@ -29,40 +29,31 @@ ReadMemory(MADDRESS=0,PROGRAM="",BYTES=4)
                return "Process Doesn't Exist", OLDPROC := "" ;blank OLDPROC so subsequent calls will work if process does exist
             ProcessHandle := DllCall("OpenProcess", "Int", 16, "Int", 0, "UInt", pid)   
         }
+        else return 
    }
    
    If !(ProcessHandle && DllCall("ReadProcessMemory", "UInt", ProcessHandle, "UInt", MADDRESS, "Ptr", &buffer, "UInt", BYTES, "Ptr", 0))
       return !ProcessHandle ? "Handle Closed: " closed : "Fail"
-   else if (BYTES = 1)
-      Type := "UChar"
-   else if (BYTES = 2)
-      Type := "UShort"
    else if (BYTES = 4)
       Type := "UInt"
+   else if (BYTES = 2)
+      Type := "UShort"         
+   else if (BYTES = 1)
+      Type := "UChar"
    else 
       Type := "Int64"
    return numget(buffer, 0, Type)
 }
 
+; Can pass an array of offsets by using *
+; eg, pointer(game, base, [0x10, 0x30, 0xFF]*)
+; or a := [0x10, 0x30, 0xFF]
+; pointer(game, address/baseAddress, a*)
+; or just type them in manually
 
-/*
-ReadMemory(MADDRESS=0,PROGRAM="",BYTES=4)
-{
-   Static OLDPROC, ProcessHandle
-   VarSetCapacity(MVALUE, BYTES,0)
-   If PROGRAM != %OLDPROC%
-   {
-      WinGet, pid, pid, % OLDPROC := PROGRAM
-      ProcessHandle := ( ProcessHandle ? 0*(closed:=DllCall("CloseHandle"
-      ,"UInt",ProcessHandle)) : 0 )+(pid ? DllCall("OpenProcess"
-      ,"Int",16,"Int",0,"UInt",pid) : 0)
-   }
-   If (ProcessHandle) && DllCall("ReadProcessMemory","UInt",ProcessHandle,"UInt",MADDRESS,"Str",MVALUE,"UInt",BYTES,"UInt *",0)
-   {	Loop % BYTES
-			Result += *(&MVALUE + A_Index-1) << 8*(A_Index-1)
-		Return Result
-	}
-   return !ProcessHandle ? "Handle Closed:" closed : "Fail"
+pointer(game, address, offsets*)
+{ 
+    For index, offset in offsets
+        address := ReadMemory(address, game) + offset 
+  Return ReadMemory(address, game)
 }
-
-*/
