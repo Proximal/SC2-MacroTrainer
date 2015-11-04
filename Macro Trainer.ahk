@@ -14084,12 +14084,34 @@ SC2.AssertAndCrash+3B1A06 - ret 000C
 */
 f1::
 
-
-p := getLocalPlayerNumber(b)
-msgbox % p "`n" b
+msgbox % getPlayerSupply(1) "/" getPlayerSupplyCap(1) 
+msgbox % getLocalPlayerNumber()
+msgbox % chex(playerAddress(getLocalPlayerNumber()))
 return 
 
++f9::
+SetPlayerMinerals()
+SetPlayerGas()
+return 
 
+/*
+O_pTeam
+O_pType
+O_pWorkerCount 
+O_pTotalUnitsBuilt 
+O_pWorkersBuilt 
+O_pHighestWorkerCount 
+
+ O_pSupplyCap
+O_pSupply
+O_pMinerals
+O_pGas
+O_pBaseCount
+
+O_pArmySupply
+O_pArmyMineralSize
+O_pArmyGasSize
+*/
 
 /*
 SC2.exe+576B4E6 - 8B 35 70BC8E02        - mov esi,[SC2.exe+188BC70]

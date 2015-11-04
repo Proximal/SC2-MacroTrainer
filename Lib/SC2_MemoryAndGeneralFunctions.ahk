@@ -11,8 +11,8 @@ Global B_LocalCharacterNameID
 , O_pCamAngle
 , O_pCamRotation
 , O_pYcam
-, O_pTeam
-, O_pType
+, OffsetsPlayerTeam
+, OffsetsPlayerType
 , O_pVictoryStatus 
 , O_pName
 , O_pRacePointer
@@ -20,23 +20,23 @@ Global B_LocalCharacterNameID
 , O_pAccountID
 , O_pAPM
 , O_pEPM
-, O_pWorkerCount
-, O_pWorkersBuilt
-, O_pHighestWorkerCount
-, O_pBaseCount
-, O_pSupplyCap
-, O_pSupply
-, O_pMinerals
-, O_pGas
-, O_pArmySupply
+, OffsetsPlayerWorkerCount
+, OffsetsPlayerWorkersBuilt
+, OffsetsPlayerHighestWorkerCount
+, OffsetsPlayerCompletedTownHalls
+, OffsetsPlayerSupplyCap
+, OffsetsPlayerSupply
+, OffsetsPlayerMinerals
+, OffsetsPlayerGas
+, OffsetsPlayerArmySupply
 , O_pMineralIncome
 , O_pGasIncome
-, O_pArmyMineralSize
-, O_pArmyGasSize
+, OffsetsPlayerArmyMineralCost
+, OffsetsPlayerArmyGasCost
 
-, P_IdleWorker
-, O1_IdleWorker
-, O2_IdleWorker
+, OffsetsIdleWorkerBase
+, OffsetsIdleWorkerOffset1
+, OffsetsIdleWorkerOffset2
 , B_Timer
 , B_rStructure
 , S_rStructure
@@ -46,14 +46,14 @@ Global B_LocalCharacterNameID
 , P_MenuFocus
 , O1_MenuFocus
 , P_SocialMenu
-, B_uCount
-, B_uHighestIndex
+, OffsetsUnitAliveCount
+, OffsetsUnitHighestAliveIndex
 , B_uStructure
 , OffsetsUnitStrucSize
 , O_uModelPointer
 , O_uTargetFilter
 , O_uBuildStatus
-, O_XelNagaActive
+;, O_XelNagaActive
 , O_uOwner
 , O_uX
 , O_uY
@@ -211,45 +211,47 @@ loadMemoryAddresses(base, version := "")
 			 O_pStatus := 0x0
 			 O_pXcam := 0x8 ; same address but obfuscated 
 			 O_pYcam := 0xC	;
-			 O_pCamDistance := 0x10 ; 0xA - Dont know if this is correct - E
+			 O_pCamDistance := 0x10 
 			 O_pCamAngle := 0x14
 			 O_pCamRotation := 0x18
 
-			 ; 8 bytes were inserted here
-			 O_pTeam := 0x1C ; patch 3.3
-			 O_pType := 0x1D ;patch 3.3
+			 OffsetsPlayerTeam := 0x1C ; patch 3.3
+			 OffsetsPlayerType := 0x1D ;patch 3.3
 			 O_pVictoryStatus := 0x1E
 			 O_pName := 0x64 
 			 
 			 O_pRacePointer := 0x160
 			 O_pColour := 0xD8   ; patch 3.3
-			 O_pAccountID := 0x218 ; This moved by quite a bit (more than the others) 0x1C0 
+			 O_pAccountID := 0x218 ;  0x1C0 
 
 			 O_pAPM := 0x5F0 	; Instantaneous
 			 O_pAPMAverage := 0x5F8
 			 O_pEPM := 0x630 	; Instantaneous
 			 O_pEPMAverage := 0x638 	
+;568
+			 OffsetsPlayerWorkerCountAll := 0x5C8 ; p3.3 ; This includes workers currently in production!
+			 OffsetsPlayerWorkerCount := 0x6E8 ; p3.3 ; **Care dont confuse this with HighestWorkerCount (or worker count + production above)
+			 OffsetsPlayerCurrentTotalUnits := 0x5B0 ; p3.3 ;  current number of units (includes 6 starting scvs/units) doesn't include structures.  Increments on unit completion.
+			 OffsetsPlayerTotalUnitsBuilt := 0x568 	; p3.3 	Units built, doesn't include structures. Increments on unit completion.					
+			 							; There are a couple of other similar values, one is probably highest current unit count achieved.
+			 OffsetsPlayerWorkersBuilt := 0x710 ; p3.3 ; number of workers made (includes the 6 at the start of the game) increases on worker completion
+			 OffsetsPlayerHighestWorkerCount := 0x868 ; p3.3 ; the current highest worker account achieved (increases on worker completion - providing its more workers than previous highest value)
+			 OffsetsPlayerCompletedTownHalls := 0x758 ; p3.3 ; Completed townHall count 
 
-			 O_pWorkerCount := 0x7E0 ; **Care dont confuse this with HighestWorkerCount
-			 O_pTotalUnitsBuilt := 0x660 ; eg numbers of units made (includes 6 starting scvs) 
-			 O_pWorkersBuilt := 0x7F0 ; number of workers made (includes the 6 at the start of the game)
-			 O_pHighestWorkerCount := 0x808 ; the current highest worker account achieved
-			 O_pBaseCount := 0x850 
+			 OffsetsPlayerSupplyCap := 0x7A8 ; p3.3	
+			 OffsetsPlayerSupply := 0x7C0 ; p3.3 		
+			 OffsetsPlayerMinerals := 0x800 ; p3.3 
+			 OffsetsPlayerGas := 0x808 ; p3.3 
 
-			 O_pSupplyCap := 0x8A0		
-			 O_pSupply := 0x8B8 		
-			 O_pMinerals := 0x800 ; patch 3.3 
-			 O_pGas := 0x808 ; patch 3.3 
-
-			 O_pArmySupply := 0x8D8	 
+			 OffsetsPlayerArmySupply := 0x7E0 ; p3.3	 
 			 O_pMineralIncome := 0x978
 			 O_pGasIncome := 0x980
-			 O_pArmyMineralSize := 0xC60 	; there are two (identical?) values for minerals/gas 
-			 O_pArmyGasSize := 0xC88 		; ** care dont use max army gas/mineral size! 
+			 OffsetsPlayerArmyMineralCost := 0xB68 ;p3.3 	; there are two (identical?) values for minerals/gas 
+			 OffsetsPlayerArmyGasCost := 0xB90 ; p3.3 		; ** care dont use max army gas/mineral value! 
 
-		 P_IdleWorker := base + 0x314B920		
-			 O1_IdleWorker := 0x358
-			 O2_IdleWorker := 0x244 	; tends to always end with this offset if finding via pointer scan
+		 OffsetsIdleWorkerBase := base + 0x0181A28C ; p3.3
+			 OffsetsIdleWorkerOffset1 := 0x8
+			 OffsetsIdleWorkerOffset2 := 0x134 
 
 		; 	This can be found via three methods, pattern scan:
 		;	C1 EA 0A B9 00 01 00 00 01 0D ?? ?? ?? ?? F6 D2 A3 ?? ?? ?? ?? F6 C2 01 74 06 01 0D ?? ?? ?? ?? 83 3D ?? ?? ?? ?? 00 56 BE FF FF FF 7F
@@ -275,18 +277,19 @@ loadMemoryAddresses(base, version := "")
 
 		P_SocialMenu := base + 0x0409B098 ; ???? Havent updated as dont use it
 
-		 B_uCount := base + 0x36AA7E8 	; This is the units alive (and includes missiles) - near B_uHighestIndex (-0x18)		
+		 OffsetsUnitAliveCount := base + 0x1821CC0 ;p3.3	; No longer near OffsetsUnitHighestAliveIndex
+		 								; This is the units alive (and includes missiles) - near OffsetsUnitHighestAliveIndex (-0x18)		
 		 								; There are two of these values and they only differ the instant a unit dies esp with missle fire (ive used the higher value) - perhaps one updates slightly quicker - dont think i use this offset anymore other than as a value in debugData()
 		 								; Theres another one which excludes structures
 
-		 B_uHighestIndex := base + 0x36AA800  			; This is actually the highest currently alive unit (includes missiles while alive) and starts at 1 NOT 0! i.e. 1 unit alive = 1
-		 B_uStructure := base + 0x36AA840 ; B_uHighestIndex+0x40    			
+		 OffsetsUnitHighestAliveIndex := base + 0x1F24840  ;p3.3		; This is actually the highest currently alive unit (includes missiles while alive) and starts at 1 NOT 0! i.e. 1 unit alive = 1
+		 B_uStructure := base + 0x36AA840 ; OffsetsUnitHighestAliveIndex+0x40    			
 		 OffsetsUnitStrucSize := 0x1E8 ; patch 3.3
 			 O_uModelPointer := 0x8
 			 O_uTargetFilter := 0x14
 			 O_uBuildStatus := 0x18		; buildstatus is really part of the 8 bit targ filter!
-			 O_uOwner := 0x2E ; There are 3 owner offsets (0x27, 0x40, 0x41) for changelings owner3 changes to the player it is mimicking
-			 O_XelNagaActive := 0x34 	; xel - dont use as doesnt work all the time
+			 O_uOwner := 0x2E ; p3.3 ; There are 3 owner offsets (0x27, 0x40, 0x41) for changelings owner3 changes to the player it is mimicking
+			; O_XelNagaActive := 0x34 	; xel - dont use as doesnt work all the time
 			; something added in here in vr 2.10		  
 			 O_uX := 0x4C
 			 O_uY := 0x50
@@ -485,8 +488,6 @@ playerAddress(player := 1)
 	eax := ecx + eax * 4 
 	eax := ReadMemory(EAX, GameIdentifier)
 	eax ^= ReadMemory(OffsetsSC2Base+0x188C68C, GameIdentifier)
-	; SC2.AssertAndCrash+375D3E - 35 DCBA2B77           - xor eax,ntdll.dll+15BADC
-	; Again this is just a static value that happens to match a memory module/address
 	return aSCOffsets["playerAddress", player] := eax ^= 0x772BBADC 
 }
 
@@ -720,21 +721,18 @@ getSelectionCount()
 }
 getIdleWorkers()
 {	global 	
-	return pointer(GameIdentifier, P_IdleWorker, O1_IdleWorker, O2_IdleWorker)
+	return pointer(GameIdentifier, OffsetsIdleWorkerBase, OffsetsIdleWorkerOffset1, OffsetsIdleWorkerOffset2)
 }
 getPlayerSupply(player="")
 { 	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]
-	Return round(ReadMemory(B_pStructure + O_pSupply + player*S_pStructure, GameIdentifier)  / 4096)		
+	Return round(ReadMemory(aSCOffsets["playerAddress", player] + OffsetsPlayerSupply, GameIdentifier)  / 4096)		
 	; Round Returns 0 when memory returns Fail
 }
-getPlayerSupplyCap(player="")
-{ 	Local SupplyCap 
-	If (player = "")
-		player := aLocalPlayer["Slot"]
-	SupplyCap := round(ReadMemory(B_pStructure + O_pSupplyCap + player*S_pStructure, GameIdentifier)  / 4096)
-	if (SupplyCap > 200)	; as this will actually report the amount of supply built i.e. can be more than 200
+getPlayerSupplyCap(player := "")
+{ 	
+	if (SupplyCap := getPlayerSupplyCapTotal(player)) > 200	; as this will actually report the amount of supply built i.e. can be more than 200
 		return 200
 	else return SupplyCap 
 }
@@ -742,13 +740,13 @@ getPlayerSupplyCapTotal(player="")
 { 	GLOBAL 
 	If (player = "")
 		player := aLocalPlayer["Slot"]	
-	Return round(ReadMemory(B_pStructure + O_pSupplyCap + player*S_pStructure, GameIdentifier)  / 4096)
+	Return round(ReadMemory(aSCOffsets["playerAddress", player] + OffsetsPlayerSupplyCap, GameIdentifier)  / 4096)
 }
 getPlayerWorkerCount(player="")
 { 	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]
-	Return ReadMemory(B_pStructure + O_pWorkerCount + player*S_pStructure, GameIdentifier)
+	Return ReadMemory(B_pStructure + OffsetsPlayerWorkerCount + player*S_pStructure, GameIdentifier)
 }
 
 ;  Number of workers made (includes the 6 at the start of the game)
@@ -759,7 +757,7 @@ getPlayerWorkersBuilt(player="")
 { global
 	If (player = "")
 		player := aLocalPlayer["Slot"]
-	Return ReadMemory(B_pStructure + O_pWorkersBuilt + player*S_pStructure, GameIdentifier)
+	Return ReadMemory(B_pStructure + OffsetsPlayerWorkersBuilt + player*S_pStructure, GameIdentifier)
 }
 ; Probably not accurate for drones morphing into structures
 getPlayerWorkersLost(player="")
@@ -772,7 +770,7 @@ getPlayerHighestWorkerCount(player="")
 { global
 	If (player = "")
 		player := aLocalPlayer["Slot"]
-	Return ReadMemory(B_pStructure + O_pHighestWorkerCount + player*S_pStructure, GameIdentifier)
+	Return ReadMemory(B_pStructure + OffsetsPlayerHighestWorkerCount + player*S_pStructure, GameIdentifier)
 }
 getUnitType(Unit) ;starts @ 0 i.e. first unit at 0
 { global 
@@ -820,12 +818,12 @@ getMiniMapRadius(Unit)
 
 getUnitCount()
 {	global
-	return ReadMemory(B_uCount, GameIdentifier)
+	return ReadMemory(OffsetsUnitAliveCount, GameIdentifier)
 }
 
 getHighestUnitIndex() 	; this is the highest alive units index - note it starts at 1
 {	global				; if 1 unit is alive it will return 1 (NOT 0)
-	Return ReadMemory(B_uHighestIndex, GameIdentifier)	
+	Return ReadMemory(OffsetsUnitHighestAliveIndex, GameIdentifier)	
 }
 getPlayerName(player) ; start at 0
 {	global
@@ -862,7 +860,7 @@ getPlayerType(player := "")
 							, 6: "Spectator" }
 	If (player = "")
 		player := aLocalPlayer["Slot"]					
-	Return oPlayerType[ReadMemory(aSCOffsets["playerAddress", player] + O_pType, GameIdentifier, 1)]
+	Return oPlayerType[ReadMemory(aSCOffsets["playerAddress", player] + OffsetsPlayerType, GameIdentifier, 1)]
 }
 
 getPlayerVictoryStatus(player)
@@ -914,7 +912,7 @@ getPlayerTeam(player="") ;team begins at 0
 {	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]	
-	Return ReadMemory(aSCOffsets["playerAddress", player] + O_pTeam , GameIdentifier, 1)
+	Return ReadMemory(aSCOffsets["playerAddress", player] + OffsetsPlayerTeam , GameIdentifier, 1)
 }
 getPlayerColour(player)
 {	static aPlayerColour
@@ -952,7 +950,7 @@ getPlayerBaseCameraCount(player="")
 { 	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]	
-	Return ReadMemory(B_pStructure + O_pBaseCount + player * S_pStructure, GameIdentifier)
+	Return ReadMemory(B_pStructure + OffsetsPlayerCompletedTownHalls + player * S_pStructure, GameIdentifier)
 }
 getPlayerMineralIncome(player="")
 { 	global
@@ -970,7 +968,7 @@ getPlayerArmySupply(player="")
 { 	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]	
-	Return ReadMemory(B_pStructure + O_pArmySupply + player * S_pStructure, GameIdentifier) / 4096
+	Return ReadMemory(B_pStructure + OffsetsPlayerArmySupply + player * S_pStructure, GameIdentifier) / 4096
 }
 
 ; Note this won't always agree with the replay active forces size.
@@ -981,13 +979,13 @@ getPlayerArmySizeMinerals(player="")
 { 	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]	
-	Return ReadMemory(B_pStructure + O_pArmyMineralSize + player * S_pStructure, GameIdentifier)
+	Return ReadMemory(B_pStructure + OffsetsPlayerArmyMineralCost + player * S_pStructure, GameIdentifier)
 }
 getPlayerArmySizeGas(player="")
 { 	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]	
-	Return ReadMemory(B_pStructure + O_pArmyGasSize + player * S_pStructure, GameIdentifier)
+	Return ReadMemory(B_pStructure + OffsetsPlayerArmyGasCost + player * S_pStructure, GameIdentifier)
 }
 getPlayerMinerals(player := "")
 { 	
@@ -995,13 +993,13 @@ getPlayerMinerals(player := "")
 	;	player := aLocalPlayer["Slot"]
 	If (player = "")
 		playerAddress := playerAddress(getLocalPlayerNumber())
-	Return ReadMemory(playerAddress + O_pMinerals, GameIdentifier)
+	Return ReadMemory(playerAddress + OffsetsPlayerMinerals, GameIdentifier)
 }
 getPlayerGas(player="")
 { 	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]	
-	Return ReadMemory(B_pStructure + O_pGas + player * S_pStructure, GameIdentifier)
+	Return ReadMemory(aSCOffsets["playerAddress", player] + OffsetsPlayerGas, GameIdentifier)
 }
 getPlayerCameraPositionX(Player="")
 {	global
@@ -1842,13 +1840,13 @@ SetPlayerMinerals(amount := 99999, player := "")
 { 	global
 	If (player = "")
 		player := getLocalPlayerNumber()
-	Return WriteMemory(B_pStructure + O_pMinerals + player * S_pStructure, GameIdentifier, amount, "UInt")   	 
+	Return WriteMemory(aSCOffsets["playerAddress", player]  + OffsetsPlayerMinerals, GameIdentifier, amount, "UInt")   	 
 }
 SetPlayerGas(amount := 99999, player := "")
 { 	global
 	If (player = "")
 		player := getLocalPlayerNumber()
-	Return WriteMemory(B_pStructure + O_pGas + player * S_pStructure, GameIdentifier, amount, "UInt")   
+	Return WriteMemory(aSCOffsets["playerAddress", player] + OffsetsPlayerGas, GameIdentifier, amount, "UInt")   
 }
 
 getBuildStatsPF(unit, byref QueueSize := "",  QueuePosition := 0) ; dirty hack until i can be bothered fixing this function
