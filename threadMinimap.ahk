@@ -336,7 +336,7 @@ getEnemyUnitsMiniMap(byref aUnitsToDraw)
   , PlayerColours := arePlayerColoursEnabled()
   loop, % DumpUnitMemory(MemDump)
   {
-     Filter := numget(MemDump, (UnitAddress := (A_Index - 1) * OffsetsUnitStrucSize) + O_uTargetFilter, "Int64")
+     Filter := numget(MemDump, (UnitAddress := (A_Index - 1) * OffsetsUnitStrucSize) + Offsets_Unit_TargetFilter, "Int64")
      ; Hidden e.g. marines in medivac/bunker etc. 
      ; Otherwise these unit colours get drawn over the top - medivac highlight colour is hidden.
      if (Filter & DeadFilterFlag || Filter & aUnitTargetFilter.Hidden || aMiniMapUnits.Exclude.HasKey(Type := numgetUnitModelType(pUnitModel := numget(MemDump, UnitAddress + O_uModelPointer, "Int"))))
@@ -591,11 +591,17 @@ loop, % DumpUnitMemory(UBMemDump)
 		{
 			if (unit_type = aUnitID["Egg"]) ; Eggs already constructed
 			{
-				aProduction := getZergProductionFromEgg(u_iteration)
-				if (aProduction.Type = aUnitID["Overlord"])
+				getStructureProductionInfo(u_iteration, unit_type, aProduction)
+				if (aProduction.1.Item = "Overlord")
 					SupplyInProductionCount++
-				else if (aProduction.Type = aUnitID["Drone"])	
-					ZergWorkerInProductionCount++
+				else if (aProduction.1.Item = "Drone")	
+					ZergWorkerInProductionCount++				
+				
+				;aProduction := getZergProductionFromEgg(u_iteration)
+				;if (aProduction.Type = aUnitID["Overlord"])
+				;	SupplyInProductionCount++
+				;else if (aProduction.Type = aUnitID["Drone"])	
+				;	ZergWorkerInProductionCount++
 			}
 			; So If unit is pylon/supply deopt and owner is protoss OR terran AND the supply depot is actively being constructed by an SCV
 			else if (Filter & aUnitTargetFilter.UnderConstruction && (aLocalPlayer["Race"] != "Terran" || isBuildInProgressConstructionActive(numgetUnitAbilityPointer(UBMemDump, u_iteration), unit_type)))

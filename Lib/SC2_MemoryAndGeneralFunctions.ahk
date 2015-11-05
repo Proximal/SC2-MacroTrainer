@@ -20,23 +20,23 @@ Global B_LocalCharacterNameID
 , O_pAccountID
 , O_pAPM
 , O_pEPM
-, OffsetsPlayerWorkerCount
-, OffsetsPlayerWorkersBuilt
-, OffsetsPlayerHighestWorkerCount
-, OffsetsPlayerCompletedTownHalls
-, OffsetsPlayerSupplyCap
-, OffsetsPlayerSupply
-, OffsetsPlayerMinerals
-, OffsetsPlayerGas
-, OffsetsPlayerArmySupply
+, Offsets_Player_WorkerCount
+, Offsets_Player_WorkersBuilt
+, Offsets_Player_HighestWorkerCount
+, Offsets_Player_CompletedTownHalls
+, Offsets_Player_SupplyCap
+, Offsets_Player_Supply
+, Offsets_Player_Minerals
+, Offsets_Player_Gas
+, Offsets_Player_ArmySupply
 , O_pMineralIncome
 , O_pGasIncome
-, OffsetsPlayerArmyMineralCost
-, OffsetsPlayerArmyGasCost
+, Offsets_Player_ArmyMineralCost
+, Offsets_Player_ArmyGasCost
 
-, OffsetsIdleWorkerBase
-, OffsetsIdleWorkerOffset1
-, OffsetsIdleWorkerOffset2
+, Offsets_IdleWorkerBase
+, Offsets_IdleWorkerOffset1
+, Offsets_IdleWorkerOffset2
 , B_Timer
 , B_rStructure
 , S_rStructure
@@ -46,22 +46,21 @@ Global B_LocalCharacterNameID
 , P_MenuFocus
 , O1_MenuFocus
 , P_SocialMenu
-, OffsetsUnitAliveCount
-, OffsetsUnitHighestAliveIndex
+, Offsets_UnitAliveCount
+, Offsets_UnitHighestAliveIndex
 , B_uStructure
-, OffsetsUnitStrucSize
-, O_uModelPointer
-, O_uTargetFilter
-, O_uBuildStatus
+, Offsets_Unit_StructSize
+, Offsets_Unit_ModelPointer
+, Offsets_Unit_TargetFilter
 ;, O_XelNagaActive
-, O_uOwner
+,  Offsets_Unit_Owner
 , O_uX
 , O_uY
 , O_uZ
 , O_uDestinationX
 , O_uDestinationY
-, O_P_uCmdQueuePointer
-, O_P_uAbilityPointer
+, OffsetsUnitCommandQueuePointer
+, OffsetsUnitAbilityPointer
 , O_uPoweredState
 , O_uChronoState
 , O_uInjectState
@@ -70,18 +69,31 @@ Global B_LocalCharacterNameID
 , O_uShieldDamage
 , O_uEnergy
 , O_uTimer
-, O_cqState
 
-, O_mUnitID
-, O_mSubgroupPriority
-, O_mMiniMapSize
-, B_SelectionStructure
+, Offsets_CommandQueue_State
+
+, OffSets_UnitAbilities_ParentByteArrayIndex
+, OffSets_UnitAbilities_AbilityPointerIndex
+, OffSets_UnitAbilities_AbilityStringPointerIndex
+
+, OffSets_CAbilQueue_QueuedCount
+, OffSets_CAbilQueue_QueuedUnitsPointer
+
+, OffSets_QueuedUnit_StringPointer
+, OffSets_QueuedUnit_BuildTimeTotal
+, OffSets_QueuedUnit_BuildTimeRemaining
+
+, Offsets_UnitModel_ID
+, Offsets_UnitModel_SubgroupPriority
+, Offsets_UnitModel_MinimapRadius
+
+, OffsetsSelectionBase
 , B_CtrlGroupStructure
 , S_CtrlGroup
-, S_scStructure
-, O_scTypeCount
-, O_scTypeHighlighted
-, O_scUnitIndex
+, OffsetsSelectionUnitSize
+, OffsetsSelectionTypeCount
+, OffsetsSelectionHighlightedGroup
+, OffsetsSelectionUnitOffset
 
 , B_localArmyUnitCount
 , O1_localArmyUnitCount
@@ -229,29 +241,29 @@ loadMemoryAddresses(base, version := "")
 			 O_pEPM := 0x630 	; Instantaneous
 			 O_pEPMAverage := 0x638 	
 ;568
-			 OffsetsPlayerWorkerCountAll := 0x5C8 ; p3.3 ; This includes workers currently in production!
-			 OffsetsPlayerWorkerCount := 0x6E8 ; p3.3 ; **Care dont confuse this with HighestWorkerCount (or worker count + production above)
-			 OffsetsPlayerCurrentTotalUnits := 0x5B0 ; p3.3 ;  current number of units (includes 6 starting scvs/units) doesn't include structures.  Increments on unit completion.
-			 OffsetsPlayerTotalUnitsBuilt := 0x568 	; p3.3 	Units built, doesn't include structures. Increments on unit completion.					
+			 Offsets_Player_WorkerCountAll := 0x5C8 ; p3.3 ; This includes workers currently in production!
+			 Offsets_Player_WorkerCount := 0x6E8 ; p3.3 ; **Care dont confuse this with HighestWorkerCount (or worker count + production above)
+			 Offsets_Player_CurrentTotalUnits := 0x5B0 ; p3.3 ;  current number of units (includes 6 starting scvs/units) doesn't include structures.  Increments on unit completion.
+			 Offsets_Player_TotalUnitsBuilt := 0x568 	; p3.3 	Units built, doesn't include structures. Increments on unit completion.					
 			 							; There are a couple of other similar values, one is probably highest current unit count achieved.
-			 OffsetsPlayerWorkersBuilt := 0x710 ; p3.3 ; number of workers made (includes the 6 at the start of the game) increases on worker completion
-			 OffsetsPlayerHighestWorkerCount := 0x868 ; p3.3 ; the current highest worker account achieved (increases on worker completion - providing its more workers than previous highest value)
-			 OffsetsPlayerCompletedTownHalls := 0x758 ; p3.3 ; Completed townHall count 
+			 Offsets_Player_WorkersBuilt := 0x710 ; p3.3 ; number of workers made (includes the 6 at the start of the game) increases on worker completion
+			 Offsets_Player_HighestWorkerCount := 0x868 ; p3.3 ; the current highest worker account achieved (increases on worker completion - providing its more workers than previous highest value)
+			 Offsets_Player_CompletedTownHalls := 0x758 ; p3.3 ; Completed townHall count 
 
-			 OffsetsPlayerSupplyCap := 0x7A8 ; p3.3	
-			 OffsetsPlayerSupply := 0x7C0 ; p3.3 		
-			 OffsetsPlayerMinerals := 0x800 ; p3.3 
-			 OffsetsPlayerGas := 0x808 ; p3.3 
+			 Offsets_Player_SupplyCap := 0x7A8 ; p3.3	
+			 Offsets_Player_Supply := 0x7C0 ; p3.3 		
+			 Offsets_Player_Minerals := 0x800 ; p3.3 
+			 Offsets_Player_Gas := 0x808 ; p3.3 
 
-			 OffsetsPlayerArmySupply := 0x7E0 ; p3.3	 
+			 Offsets_Player_ArmySupply := 0x7E0 ; p3.3	 
 			 O_pMineralIncome := 0x978
 			 O_pGasIncome := 0x980
-			 OffsetsPlayerArmyMineralCost := 0xB68 ;p3.3 	; there are two (identical?) values for minerals/gas 
-			 OffsetsPlayerArmyGasCost := 0xB90 ; p3.3 		; ** care dont use max army gas/mineral value! 
+			 Offsets_Player_ArmyMineralCost := 0xB68 ;p3.3 	; there are two (identical?) values for minerals/gas 
+			 Offsets_Player_ArmyGasCost := 0xB90 ; p3.3 		; ** care dont use max army gas/mineral value! 
 
-		 OffsetsIdleWorkerBase := base + 0x0181A28C ; p3.3
-			 OffsetsIdleWorkerOffset1 := 0x8
-			 OffsetsIdleWorkerOffset2 := 0x134 
+		 Offsets_IdleWorkerBase := base + 0x0181A28C ; p3.3
+			 Offsets_IdleWorkerOffset1 := 0x8
+			 Offsets_IdleWorkerOffset2 := 0x134 
 
 		; 	This can be found via three methods, pattern scan:
 		;	C1 EA 0A B9 00 01 00 00 01 0D ?? ?? ?? ?? F6 D2 A3 ?? ?? ?? ?? F6 C2 01 74 06 01 0D ?? ?? ?? ?? 83 3D ?? ?? ?? ?? 00 56 BE FF FF FF 7F
@@ -277,27 +289,25 @@ loadMemoryAddresses(base, version := "")
 
 		P_SocialMenu := base + 0x0409B098 ; ???? Havent updated as dont use it
 
-		 OffsetsUnitAliveCount := base + 0x1821CC0 ;p3.3	; No longer near OffsetsUnitHighestAliveIndex
-		 								; This is the units alive (and includes missiles) - near OffsetsUnitHighestAliveIndex (-0x18)		
+		Offsets_UnitAliveCount := base + 0x1821CC0 ;p3.3	; No longer near Offsets_UnitHighestAliveIndex
+		 								; This is the units alive (and includes missiles) - near Offsets_UnitHighestAliveIndex (-0x18)		
 		 								; There are two of these values and they only differ the instant a unit dies esp with missle fire (ive used the higher value) - perhaps one updates slightly quicker - dont think i use this offset anymore other than as a value in debugData()
 		 								; Theres another one which excludes structures
 
-		 OffsetsUnitHighestAliveIndex := base + 0x1F24840  ;p3.3		; This is actually the highest currently alive unit (includes missiles while alive) and starts at 1 NOT 0! i.e. 1 unit alive = 1
-		 B_uStructure := base + 0x36AA840 ; OffsetsUnitHighestAliveIndex+0x40    			
-		 OffsetsUnitStrucSize := 0x1E8 ; patch 3.3
-			 O_uModelPointer := 0x8
-			 O_uTargetFilter := 0x14
-			 O_uBuildStatus := 0x18		; buildstatus is really part of the 8 bit targ filter!
-			 O_uOwner := 0x2E ; p3.3 ; There are 3 owner offsets (0x27, 0x40, 0x41) for changelings owner3 changes to the player it is mimicking
+		 Offsets_UnitHighestAliveIndex := base + 0x1F24840  ;p3.3		; This is actually the highest currently alive unit (includes missiles while alive) and starts at 1 NOT 0! i.e. 1 unit alive at index 0 = 1, 1 alive at index 7 = 8 
+		; B_uStructure := base + 0x36AA840 ; Offsets_UnitHighestAliveIndex+0x40    			
+		 Offsets_Unit_StructSize := 0x1E8 ; patch 3.3 = 488d
+			 Offsets_Unit_ModelPointer := 0x8 ; p3.3
+			 Offsets_Unit_TargetFilter := 0x14 ; p3.3
+			 Offsets_Unit_Owner := 0x2E ; p3.3 ; There are 3 owner offsets (0x27, 0x40, 0x41) for changelings owner3 changes to the player it is mimicking
 			; O_XelNagaActive := 0x34 	; xel - dont use as doesnt work all the time
-			; something added in here in vr 2.10		  
 			 O_uX := 0x4C
 			 O_uY := 0x50
 			 O_uZ := 0x54
 			 O_uDestinationX := 0x80
 			 O_uDestinationY := 0x84
-			 O_P_uCmdQueuePointer := 0xD4 ;+4
-			 O_P_uAbilityPointer := 0xDC
+			 OffsetsUnitCommandQueuePointer := 0xE0 ; p3.3;0xD4
+			 OffsetsUnitAbilityPointer := 0xE8 ; p3.3 ;0xDC
 
 			 O_uPoweredState := 0xE0 									
 			 O_uChronoState := 0xE6	; there are other offsets which can be used for chrono/inject state ; pre 210 chrono and inject offsets were the same 
@@ -311,24 +321,37 @@ loadMemoryAddresses(base, version := "")
 			 O_uTimer := 0x16C ;+4
 			
 		;CommandQueue 	; separate structure
-			 O_cqState := 0x40	
+			 Offsets_CommandQueue_State := 0x4C ; p3.3 0x40
+
+		; Unit ability structure
+		OffSets_UnitAbilities_ParentByteArrayIndex := 0x4 
+		OffSets_UnitAbilities_AbilityPointerIndex := 0x18	 ; An array of pointers begins here - Pointers to each of the units abilities start here
+		OffSets_UnitAbilities_AbilityStringPointerIndex :=  0xA4 ; and array of string pointers begins here - these match to the OffSets_UnitAbilities_AbilityPointerIndex i.e. string index 0 is the name of ability pointer index 0
 		
+		OffSets_CAbilQueue_QueuedCount := 0x38 ; sc2.x 0x28
+		OffSets_CAbilQueue_QueuedUnitsPointer := 0x44 ; sc2.x 0x34
+
+		; Queued unit
+		OffSets_QueuedUnit_BuildTimeTotal := 0x80 ; pre p3.3 OffSets_QueuedUnit_BuildTimeTotal := 0x68
+		OffSets_QueuedUnit_BuildTimeRemaining := 0x84 ; pre p3.3 OffSets_QueuedUnit_BuildTimeRemaining := 0x6C		
+		OffSets_QueuedUnit_StringPointer := 0xF4 ; OffSets_QueuedUnit_StringPointer := 0xD0
+
+
 		; Unit Model Structure	
-		 O_mUnitID := 0x6	
-		 O_mSubgroupPriority := 0x3A8 ;0x398
-		 O_mMiniMapSize := 0x3AC ;0x39C
+		 Offsets_UnitModel_ID := 0x6 ; p3.3	
+		 Offsets_UnitModel_SubgroupPriority := 0x3CC ; p3.3; 0x3A8 
+		 Offsets_UnitModel_MinimapRadius := 0x3D0 ; p3.3 ;0x3AC ;0x39C
 		
 		; selection and ctrl groups
-		 B_SelectionStructure := base + 0x1EE9BB8 
+		 OffsetsSelectionBase := base + 0x1EE9BB8 
 
 		; The structure begins with ctrl group 0
-
 		 B_CtrlGroupStructure := base + 0x3212ED8
 		 S_CtrlGroup := 0x1B60
-		 S_scStructure := 0x4	; Unit Selection & Ctrl Group Structures
-			 O_scTypeCount := 0x2
-			 O_scTypeHighlighted := 0x4
-			 O_scUnitIndex := 0x8
+		 OffsetsSelectionUnitSize := 0x4	; Unit Selection & Ctrl Group Structures use same offsets
+			 OffsetsSelectionTypeCount := 0x2
+			 OffsetsSelectionHighlightedGroup := 0x4
+			 OffsetsSelectionUnitOffset := 0x8
 
 		; gives the select army unit count (i.e. same as in the select army icon) - unit count not supply
 		; dont confuse with similar value which includes army unit counts in production - or if in map editor unit count/index.
@@ -525,7 +548,7 @@ getunitAddress(unitIndex)
 	eax := unitIndex
 	edx := eax 
 	eax &= 0xF 
-	eax *= OffsetsUnitStrucSize
+	eax *= Offsets_Unit_StructSize
 	edx >>= 0x4 
 	esi := ReadMemory(edx*4+OffsetsSC2Base+0x1F24848, GameIdentifier)
 	esi ^= ReadMemory(OffsetsSC2Base+0x188BFEC, GameIdentifier)
@@ -609,7 +632,7 @@ getCameraBoundsTop()
 
 getUnitFingerPrint(unitIndex)
 {
-	return readmemory(B_uStructure + OffsetsUnitStrucSize * unitIndex, GameIdentifier)
+	return readmemory(aSCOffsets["unitAddress", unitIndex], GameIdentifier)
 }
 
 FingerPrintToIndex(fingerPrint)
@@ -620,11 +643,11 @@ FingerPrintToIndex(fingerPrint)
 IsInControlGroup(group, unitIndex)
 {
 	count := getControlGroupCount(Group)
-	ReadRawMemory(B_CtrlGroupStructure + S_CtrlGroup * group, GameIdentifier, Memory,  O_scUnitIndex + count * S_scStructure)
+	ReadRawMemory(B_CtrlGroupStructure + S_CtrlGroup * group, GameIdentifier, Memory,  OffsetsSelectionUnitOffset + count * OffsetsSelectionUnitSize)
 	loop, % count 
 	{
-		if NumGet(Memory, O_scUnitIndex + (A_Index - 1) * S_scStructure, "UInt") >> 18 = unitIndex
-			return getUnitFingerPrint(unitIndex) = NumGet(Memory, O_scUnitIndex + (A_Index - 1) * S_scStructure, "UInt")
+		if NumGet(Memory, OffsetsSelectionUnitOffset + (A_Index - 1) * OffsetsSelectionUnitSize, "UInt") >> 18 = unitIndex
+			return getUnitFingerPrint(unitIndex) = NumGet(Memory, OffsetsSelectionUnitOffset + (A_Index - 1) * OffsetsSelectionUnitSize, "UInt")
 	}
 	Return 0	
 }
@@ -633,9 +656,9 @@ controlGroupFingerPrints(Group)
 {
 	obj := []
 	count := getControlGroupCount(Group)
-	ReadRawMemory(B_CtrlGroupStructure + S_CtrlGroup * group, GameIdentifier, Memory,  O_scUnitIndex + count * S_scStructure)	
+	ReadRawMemory(B_CtrlGroupStructure + S_CtrlGroup * group, GameIdentifier, Memory,  OffsetsSelectionUnitOffset + count * OffsetsSelectionUnitSize)	
 	loop, % count 
-		obj.insert(NumGet(Memory, O_scUnitIndex + (A_Index - 1) * S_scStructure, "UInt"))
+		obj.insert(NumGet(Memory, OffsetsSelectionUnitOffset + (A_Index - 1) * OffsetsSelectionUnitSize, "UInt"))
 	return obj
 }
 
@@ -644,7 +667,7 @@ getControlGroupPortraitCount(group)
 	count := 0
 	loop, % bufferCount := numgetControlGroupMemory(controlBuffer, group)
 	{
-		unitIndex := (fingerPrint := NumGet(controlBuffer, (A_Index - 1) * S_scStructure, "UInt")) >> 18
+		unitIndex := (fingerPrint := NumGet(controlBuffer, (A_Index - 1) * OffsetsSelectionUnitSize, "UInt")) >> 18
 		if getUnitFingerPrint(unitIndex) = fingerPrint && !(getUnitTargetFilter(unitIndex) & aUnitTargetFilter.Hidden)
 			count++
 	}
@@ -658,7 +681,7 @@ getControlGroupPortraitCount(group)
 numgetControlGroupMemory(BYREF MemDump, group)
 {
 	if count := getControlGroupCount(Group)
-		ReadRawMemory(B_CtrlGroupStructure + S_CtrlGroup * group + O_scUnitIndex, GameIdentifier, MemDump, count * S_scStructure)
+		ReadRawMemory(B_CtrlGroupStructure + S_CtrlGroup * group + OffsetsSelectionUnitOffset, GameIdentifier, MemDump, count * OffsetsSelectionUnitSize)
 	return count
 }
 
@@ -687,7 +710,7 @@ getGameTickCount()
 
 ReadRawUnit(unit, ByRef Memory)	; dumps the raw memory for one unit
 {	GLOBAL
-	ReadRawMemory(B_uStructure + unit * OffsetsUnitStrucSize, GameIdentifier, Memory, OffsetsUnitStrucSize)
+	ReadRawMemory(B_uStructure + unit * Offsets_Unit_StructSize, GameIdentifier, Memory, Offsets_Unit_StructSize)
 	return
 }
 
@@ -697,37 +720,37 @@ ReadRawUnit(unit, ByRef Memory)	; dumps the raw memory for one unit
 
 getSelectedUnitIndex(i=0) ;IF Blank just return the first selected unit (at position 0)
 {	global
-	Return ReadMemory(B_SelectionStructure + O_scUnitIndex + i * S_scStructure, GameIdentifier) >> 18	;how the game does it
-	; returns the same thing ; Return ReadMemory(B_SelectionStructure + O_scUnitIndex + i * S_scStructure, GameIdentifier, 2) /4
+	Return ReadMemory(OffsetsSelectionBase + OffsetsSelectionUnitOffset + i * OffsetsSelectionUnitSize, GameIdentifier) >> 18	;how the game does it
+	; returns the same thing ; Return ReadMemory(OffsetsSelectionBase + OffsetsSelectionUnitOffset + i * OffsetsSelectionUnitSize, GameIdentifier, 2) /4
 }
 getSelectedUnitFingerPrint(i=0) ;IF Blank just return the first selected unit (at position 0)
 {	global
-	Return ReadMemory(B_SelectionStructure + O_scUnitIndex + i * S_scStructure, GameIdentifier) 
-	; returns the same thing ; Return ReadMemory(B_SelectionStructure + O_scUnitIndex + i * S_scStructure, GameIdentifier, 2) /4
+	Return ReadMemory(OffsetsSelectionBase + OffsetsSelectionUnitOffset + i * OffsetsSelectionUnitSize, GameIdentifier) 
+	; returns the same thing ; Return ReadMemory(OffsetsSelectionBase + OffsetsSelectionUnitOffset + i * OffsetsSelectionUnitSize, GameIdentifier, 2) /4
 }
 ; begins at 1
 ; Tab/subgroup count
 getSelectionTypeCount()	
 {	global
-	Return	ReadMemory(B_SelectionStructure + O_scTypeCount, GameIdentifier, 2)
+	Return	ReadMemory(OffsetsSelectionBase + OffsetsSelectionTypeCount, GameIdentifier, 2)
 }
 getSelectionHighlightedGroup()	; begins at 0 
 {	global
-	Return ReadMemory(B_SelectionStructure + O_scTypeHighlighted, GameIdentifier, 2)
+	Return ReadMemory(OffsetsSelectionBase + OffsetsSelectionHighlightedGroup, GameIdentifier, 2)
 }
 getSelectionCount()
 { 	global 
-	Return ReadMemory(B_SelectionStructure, GameIdentifier, 2)
+	Return ReadMemory(OffsetsSelectionBase, GameIdentifier, 2)
 }
 getIdleWorkers()
 {	global 	
-	return pointer(GameIdentifier, OffsetsIdleWorkerBase, OffsetsIdleWorkerOffset1, OffsetsIdleWorkerOffset2)
+	return pointer(GameIdentifier, Offsets_IdleWorkerBase, Offsets_IdleWorkerOffset1, Offsets_IdleWorkerOffset2)
 }
 getPlayerSupply(player="")
 { 	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]
-	Return round(ReadMemory(aSCOffsets["playerAddress", player] + OffsetsPlayerSupply, GameIdentifier)  / 4096)		
+	Return round(ReadMemory(aSCOffsets["playerAddress", player] + Offsets_Player_Supply, GameIdentifier)  / 4096)		
 	; Round Returns 0 when memory returns Fail
 }
 getPlayerSupplyCap(player := "")
@@ -740,13 +763,13 @@ getPlayerSupplyCapTotal(player="")
 { 	GLOBAL 
 	If (player = "")
 		player := aLocalPlayer["Slot"]	
-	Return round(ReadMemory(aSCOffsets["playerAddress", player] + OffsetsPlayerSupplyCap, GameIdentifier)  / 4096)
+	Return round(ReadMemory(aSCOffsets["playerAddress", player] + Offsets_Player_SupplyCap, GameIdentifier)  / 4096)
 }
 getPlayerWorkerCount(player="")
 { 	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]
-	Return ReadMemory(B_pStructure + OffsetsPlayerWorkerCount + player*S_pStructure, GameIdentifier)
+	Return ReadMemory(B_pStructure + Offsets_Player_WorkerCount + player*S_pStructure, GameIdentifier)
 }
 
 ;  Number of workers made (includes the 6 at the start of the game)
@@ -757,7 +780,7 @@ getPlayerWorkersBuilt(player="")
 { global
 	If (player = "")
 		player := aLocalPlayer["Slot"]
-	Return ReadMemory(B_pStructure + OffsetsPlayerWorkersBuilt + player*S_pStructure, GameIdentifier)
+	Return ReadMemory(B_pStructure + Offsets_Player_WorkersBuilt + player*S_pStructure, GameIdentifier)
 }
 ; Probably not accurate for drones morphing into structures
 getPlayerWorkersLost(player="")
@@ -770,60 +793,62 @@ getPlayerHighestWorkerCount(player="")
 { global
 	If (player = "")
 		player := aLocalPlayer["Slot"]
-	Return ReadMemory(B_pStructure + OffsetsPlayerHighestWorkerCount + player*S_pStructure, GameIdentifier)
+	Return ReadMemory(B_pStructure + Offsets_Player_HighestWorkerCount + player*S_pStructure, GameIdentifier)
 }
 getUnitType(Unit) ;starts @ 0 i.e. first unit at 0
 { global 
 
-	LOCAL pUnitModel := ReadMemory(B_uStructure + (Unit * OffsetsUnitStrucSize) + O_uModelPointer, GameIdentifier) ; note - this isnt really the correct pointer still have to << 5 
+	LOCAL pUnitModel := getUnitModelPointer(unit)
 	if !aUnitModel[pUnitModel]
     	getUnitModelInfo(pUnitModel)
   	return aUnitModel[pUnitModel].Type
-;	Return ReadMemory(((ReadMemory(B_uStructure + (Unit * OffsetsUnitStrucSize) 
-;				+ O_uModelPointer, GameIdentifier)) << 5) + O_mUnitID, GameIdentifier, 2) ; note the pointer is 4byte, but the unit type is 2byte/word
+;	Return ReadMemory(((ReadMemory(B_uStructure + (Unit * Offsets_Unit_StructSize) 
+;				+ Offsets_Unit_ModelPointer, GameIdentifier)) << 5) + Offsets_UnitModel_ID, GameIdentifier, 2) ; note the pointer is 4byte, but the unit type is 2byte/word
 }
 
 getUnitName2(unit)
 {	global 
-	Return substr(ReadMemory_Str(ReadMemory(ReadMemory(((ReadMemory(B_uStructure + (Unit * OffsetsUnitStrucSize) 
-			+ O_uModelPointer, GameIdentifier)) << 5) + 0xC, GameIdentifier), GameIdentifier) + 0x29, GameIdentifier), 6)
+	Return substr(ReadMemory_Str(ReadMemory(ReadMemory(((ReadMemory(B_uStructure + (Unit * Offsets_Unit_StructSize) 
+			+ Offsets_Unit_ModelPointer, GameIdentifier)) << 5) + 0xC, GameIdentifier), GameIdentifier) + 0x29, GameIdentifier), 6)
 	;	pNameDataAddress := ReadMemory(unit_type + 0x6C, "StarCraft II")
 	;	NameDataAddress  := ReadMemory(pNameDataAddress, "StarCraft II") + 0x29 
 	;	Name := ReadMemory_Str(NameDataAddress, , "StarCraft II")
 	;	NameLength := ReadMemory(NameDataAddress, "StarCraft II") 		
 }
-getUnitName(unit)
+getUnitName(unitIndex)
 {
-	mp := ReadMemory(B_uStructure + Unit * OffsetsUnitStrucSize + O_uModelPointer, GameIdentifier) << 5 ; 
-	pNameDataAddress := ReadMemory(mp + 0xC, GameIdentifier) ; mp + pName_address
-	pNameDataAddress := ReadMemory(pNameDataAddress, GameIdentifier) 
-	NameDataAddress := ReadMemory(pNameDataAddress, GameIdentifier) 
+	;mp := ReadMemory(aSCOffsets["unitAddress", unitIndex] + Offsets_Unit_ModelPointer, GameIdentifier) << 5 ; 
+	mp := getUnitModelPointer(unitIndex) ; 
+	, pNameDataAddress := ReadMemory(mp + 0xC, GameIdentifier) ; mp + pName_address
+	, pNameDataAddress := ReadMemory(pNameDataAddress, GameIdentifier) 
+	, NameDataAddress := ReadMemory(pNameDataAddress, GameIdentifier) 
 	return substr(ReadMemory_Str(NameDataAddress + 0x20, GameIdentifier), 11) ; trim Unit/Name/ from Unit/Name/Marine 
 }
 
-getUnitOwner(Unit) ;starts @ 0 i.e. first unit at 0 - 2.0.4 starts at 1?
+
+getUnitOwner(Unit) 
 { 	global
-	Return	ReadMemory((B_uStructure + (Unit * OffsetsUnitStrucSize)) + O_uOwner, GameIdentifier, 1) ; note the 1 to read 1 byte
+	Return	ReadMemory(aSCOffsets["unitAddress", unitIndex] +  Offsets_Unit_Owner, GameIdentifier, 1) ; note the 1 to read 1 byte
 }
 
 
 getMiniMapRadius(Unit)
 {	
-	LOCAL pUnitModel := ReadMemory(B_uStructure + (Unit * OffsetsUnitStrucSize) + O_uModelPointer, GameIdentifier) ; note - this isnt really the correct pointer still have to << 5 
+	LOCAL pUnitModel := getUnitModelPointer(unit)
 	if !aUnitModel[pUnitModel]
     	getUnitModelInfo(pUnitModel)
   	return aUnitModel[pUnitModel].MiniMapRadius	
-	;Return ReadMemory(((ReadMemory(B_uStructure + (unit * OffsetsUnitStrucSize) + O_uModelPointer, GameIdentifier) << 5) & 0xFFFFFFFF) + O_mMiniMapSize, GameIdentifier) /4096
+	;Return ReadMemory(((ReadMemory(B_uStructure + (unit * Offsets_Unit_StructSize) + Offsets_Unit_ModelPointer, GameIdentifier) << 5) & 0xFFFFFFFF) + Offsets_UnitModel_MinimapRadius, GameIdentifier) /4096
 }
 
 getUnitCount()
 {	global
-	return ReadMemory(OffsetsUnitAliveCount, GameIdentifier)
+	return ReadMemory(Offsets_UnitAliveCount, GameIdentifier)
 }
 
 getHighestUnitIndex() 	; this is the highest alive units index - note it starts at 1
 {	global				; if 1 unit is alive it will return 1 (NOT 0)
-	Return ReadMemory(OffsetsUnitHighestAliveIndex, GameIdentifier)	
+	Return ReadMemory(Offsets_UnitHighestAliveIndex, GameIdentifier)	
 }
 getPlayerName(player) ; start at 0
 {	global
@@ -950,7 +975,7 @@ getPlayerBaseCameraCount(player="")
 { 	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]	
-	Return ReadMemory(B_pStructure + OffsetsPlayerCompletedTownHalls + player * S_pStructure, GameIdentifier)
+	Return ReadMemory(B_pStructure + Offsets_Player_CompletedTownHalls + player * S_pStructure, GameIdentifier)
 }
 getPlayerMineralIncome(player="")
 { 	global
@@ -968,7 +993,7 @@ getPlayerArmySupply(player="")
 { 	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]	
-	Return ReadMemory(B_pStructure + OffsetsPlayerArmySupply + player * S_pStructure, GameIdentifier) / 4096
+	Return ReadMemory(B_pStructure + Offsets_Player_ArmySupply + player * S_pStructure, GameIdentifier) / 4096
 }
 
 ; Note this won't always agree with the replay active forces size.
@@ -979,13 +1004,13 @@ getPlayerArmySizeMinerals(player="")
 { 	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]	
-	Return ReadMemory(B_pStructure + OffsetsPlayerArmyMineralCost + player * S_pStructure, GameIdentifier)
+	Return ReadMemory(B_pStructure + Offsets_Player_ArmyMineralCost + player * S_pStructure, GameIdentifier)
 }
 getPlayerArmySizeGas(player="")
 { 	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]	
-	Return ReadMemory(B_pStructure + OffsetsPlayerArmyGasCost + player * S_pStructure, GameIdentifier)
+	Return ReadMemory(B_pStructure + Offsets_Player_ArmyGasCost + player * S_pStructure, GameIdentifier)
 }
 getPlayerMinerals(player := "")
 { 	
@@ -993,13 +1018,13 @@ getPlayerMinerals(player := "")
 	;	player := aLocalPlayer["Slot"]
 	If (player = "")
 		playerAddress := playerAddress(getLocalPlayerNumber())
-	Return ReadMemory(playerAddress + OffsetsPlayerMinerals, GameIdentifier)
+	Return ReadMemory(playerAddress + Offsets_Player_Minerals, GameIdentifier)
 }
 getPlayerGas(player="")
 { 	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]	
-	Return ReadMemory(aSCOffsets["playerAddress", player] + OffsetsPlayerGas, GameIdentifier)
+	Return ReadMemory(aSCOffsets["playerAddress", player] + Offsets_Player_Gas, GameIdentifier)
 }
 getPlayerCameraPositionX(Player="")
 {	global
@@ -1047,7 +1072,7 @@ getPlayerCurrentAPM(Player="")
 
 isUnderConstruction(building) ; starts @ 0 and only for BUILDINGS!
 { 	global  ; 0 means its completed
-;	Return ReadMemory(B_uStructure + (building * OffsetsUnitStrucSize) + O_uBuildStatus, GameIdentifier) ;- worked fine
+;	Return ReadMemory(B_uStructure + (building * Offsets_Unit_StructSize) + O_uBuildStatus, GameIdentifier) ;- worked fine
 	return getUnitTargetFilter(building) & aUnitTargetFilter.UnderConstruction
 }
 
@@ -1058,47 +1083,47 @@ isUnitAStructure(unit)
 
 getUnitEnergy(unit)
 {	global
-	Return Floor(ReadMemory(B_uStructure + (unit * OffsetsUnitStrucSize) + O_uEnergy, GameIdentifier) / 4096)
+	Return Floor(ReadMemory(B_uStructure + (unit * Offsets_Unit_StructSize) + O_uEnergy, GameIdentifier) / 4096)
 }
 
 getUnitEnergyRaw(unit)
 {	global
-	Return ReadMemory(B_uStructure + (unit * OffsetsUnitStrucSize) + O_uEnergy, GameIdentifier) / 4096
+	Return ReadMemory(B_uStructure + (unit * Offsets_Unit_StructSize) + O_uEnergy, GameIdentifier) / 4096
 }
 
 numgetUnitEnergy(ByRef unitDump, unit)
 {	global
-	Return Floor(numget(unitDump, unit * OffsetsUnitStrucSize + O_uEnergy, "Uint") / 4096)
+	Return Floor(numget(unitDump, unit * Offsets_Unit_StructSize + O_uEnergy, "Uint") / 4096)
 }
 
 numgetUnitEnergyRaw(ByRef unitDump, unit)
 {	global
-	Return numget(unitDump, unit * OffsetsUnitStrucSize + O_uEnergy, "Uint") / 4096
+	Return numget(unitDump, unit * Offsets_Unit_StructSize + O_uEnergy, "Uint") / 4096
 }
 ; Damage which has been delt to the unit
 ; need to substract max hp in unit to find actual health value/percentage
 getUnitHpDamage(unit)
 {	global
-	Return Floor(ReadMemory(B_uStructure + (unit * OffsetsUnitStrucSize) + O_uHpDamage, GameIdentifier) / 4096)
+	Return Floor(ReadMemory(B_uStructure + (unit * Offsets_Unit_StructSize) + O_uHpDamage, GameIdentifier) / 4096)
 }
 
 getUnitShieldDamage(unit)
 {	global
-	Return Floor(ReadMemory(B_uStructure + (unit * OffsetsUnitStrucSize) + O_uShieldDamage, GameIdentifier) / 4096)
+	Return Floor(ReadMemory(B_uStructure + (unit * Offsets_Unit_StructSize) + O_uShieldDamage, GameIdentifier) / 4096)
 }
 
 getUnitPositionX(unit)
 {	global
-	Return ReadMemory(B_uStructure + (unit * OffsetsUnitStrucSize) + O_uX, GameIdentifier) /4096
+	Return ReadMemory(B_uStructure + (unit * Offsets_Unit_StructSize) + O_uX, GameIdentifier) /4096
 }
 getUnitPositionY(unit)
 {	global
-	Return ReadMemory(B_uStructure + (unit * OffsetsUnitStrucSize) + O_uY, GameIdentifier) /4096
+	Return ReadMemory(B_uStructure + (unit * Offsets_Unit_StructSize) + O_uY, GameIdentifier) /4096
 }
 
 getUnitPositionZ(unit)
 {	global
-	Return ReadMemory(B_uStructure + (unit * OffsetsUnitStrucSize) + O_uZ, GameIdentifier) /4096
+	Return ReadMemory(B_uStructure + (unit * Offsets_Unit_StructSize) + O_uZ, GameIdentifier) /4096
 }
 
 
@@ -1113,7 +1138,7 @@ getUnitPositionZ(unit)
 	will = the adress of the first command
 	also, the last bit of the Command ptr (pre &) will be set to 1
 
-;  O_cqState := 0x40
+;  Offsets_CommandQueue_State := 0x40 = AbilityCommand
 ; Nukes offsets/Research
 <Struct Name="QueuedCommand" Size="-1">
 <Member Name="pNextCommand" Type="Unsigned" Size="4" Offset="0"/>
@@ -1164,14 +1189,14 @@ getUnitQueuedCommands(unit, byRef aQueuedMovements)
 							, "targetIsUnit": 0x10
 							, "useUnitPosition": 0x20 }
 	aQueuedMovements := []
-	if (CmdQueue := ReadMemory(B_uStructure + unit * OffsetsUnitStrucSize + O_P_uCmdQueuePointer, GameIdentifier)) ; points if currently has a command - 0 otherwise
+	if (CmdQueue := ReadMemory(aSCOffsets["unitAddress", unit] + OffsetsUnitCommandQueuePointer, GameIdentifier)) ; points if currently has a command - 0 otherwise
 	{
 		pNextCmd := ReadMemory(CmdQueue, GameIdentifier) ; If & -2 this is really the first command ie  = BaseCmdQueStruct
 		loop 
 		{
 			ReadRawMemory(pNextCmd & -2, GameIdentifier, cmdDump, 0x42)
 			, targetFlag := numget(cmdDump, 0x38, "UInt")
-			, state := numget(cmdDump, O_cqState, "Short")
+			, state := numget(cmdDump, Offsets_CommandQueue_State, "Short") ; )_cqstate = 0x40
 			, targetUnitIndex := numget(cmdDump, 0x20, "UInt") >> 18 
 			;OrderFlags := numget(cmdDump, 0x3C, "UInt") ; OrderFlags 
 			if !aStringTable.hasKey(pString := numget(cmdDump, 0x18, "UInt"))
@@ -1199,7 +1224,84 @@ getUnitQueuedCommands(unit, byRef aQueuedMovements)
 	}
 	else return 0
 }
+; Queued command structure
+; patch 3.3
+; + 0 pointer to next command
+; +4 = Unit address
+; +0x20 = Ability string pointer
+; +0x28 Target unit finger print 
+; +0x30 - Target X - Pretty Sure
+; +0x34 - Target y - Pretty Sure
+; +0x38 - Target z - Pretty Sure
+; +0x40 = Target Flag ? - think this is correct
+; +0x4C = Ability state  / command ability (2 bytes)
+; +0x4E = Player (1 byte)
 
+
+; Target Flag  Done with a probe
+; 00010000
+; 00011111 1F mvoe to point
+; 00011111 1F Attack Point
+; 01101101 6D attack structure with probe
+; 01101111 6F move to structure 
+; targetIsUnit = 0xA 10b ?
+; targetIsPoint = 0x10 10000b ?
+; This doesnt make sense compared to the old enum, is point was less than isUnit
+
+getUnitQueuedCommandstest(unit, byRef aQueuedMovements)
+{
+/*	
+	static aTargetFlags := { "overrideUnitPositon":  0x1
+							, "unknown02": 0x2
+							, "unknown04": 0x4
+							, "targetIsPoint": 0x8
+							, "targetIsUnit": 0x10
+						, "useUnitPosition": 0x20 }
+	*/	
+	static aTargetFlags := { "overrideUnitPositon":  "???"
+							, "unknown02": "???"
+							, "unknown04": "???"
+							, "targetIsPoint": 0x10 ;??
+							, "targetIsUnit": 0xA   ;??
+						, "useUnitPosition": "???" }	
+
+	aQueuedMovements := []
+	setformat, IntegerFast, H
+	if (CmdQueue := ReadMemory(aSCOffsets["unitAddress", unit] + OffsetsUnitCommandQueuePointer, GameIdentifier)) ; points if currently has a command - 0 otherwise
+	{
+		pNextCmd := ReadMemory(CmdQueue, GameIdentifier) ; If & -2 this is really the first command ie  = BaseCmdQueStruct
+		loop 
+		{
+			;msgbox % "loop " A_index "`n" (clipboard := pNextCmd & -2)
+			ReadRawMemory(pNextCmd & -2, GameIdentifier, cmdDump, Offsets_CommandQueue_State+2)
+			, targetUnitIndex := numget(cmdDump, 0x28, "UInt") >> 18  ; pre p3.3 0x20
+			, targetFlag := numget(cmdDump, 0x40, "UInt") ; pre 3.3 0x38
+			, state := numget(cmdDump, Offsets_CommandQueue_State, "Short") ; _cqstate = 0x40 p3.3 +0x4C
+			;OrderFlags := numget(cmdDump, 0x3C, "UInt") ; OrderFlags 
+			if !aStringTable.hasKey(pString := numget(cmdDump, 0x20, "UInt")) ; pre p3.3 0x18
+				aStringTable[pString] := ReadMemory_Str(readMemory(pString + 0x4, GameIdentifier), GameIdentifier)
+
+			aQueuedMovements.insert({ "targetX": numget(cmdDump, 0x30, "Int") / 4096  ; pre p3.0 0x28
+									, "targetY": numget(cmdDump, 0x34, "Int") / 4096  ; pre p3.0 0x2C
+									, "targetZ": numget(cmdDump, 0x38, "Int") / 4096  ; pre p3.0 0x30
+									, "ability": aStringTable[pString] 
+									;, "targetFlag" : targetFlag
+									;, "OrderFlags": OrderFlags
+									;, "flagString": CommandFlagsToString(OrderFlags)
+									, "targetIndex": targetUnitIndex
+									, "state": state })
+			if (A_Index > 20 || !(targetFlag & aTargetFlags.targetIsPoint || targetFlag & aTargetFlags.targetIsUnit)) ; || targetFlag = 7))
+			{
+				; something went wrong or target isnt a point/unit and the targ flag isnt 7 either 
+				aQueuedMovements := []
+				return 0
+			}
+
+		} Until (1 & pNextCmd := numget(cmdDump, 0, "Int"))				; loop until the last/first bit of pNextCmd is set to 1
+		return aQueuedMovements.MaxIndex() 	; interestingly after -2 & pNextCmd (the last one) it should = the first address
+	}
+	else return 0
+}
 
 CommandFlagsToString(commandFlags)
 {
@@ -1271,10 +1373,10 @@ getUnitQueuedCommandString(aQueuedCommandsOrUnitIndex)
 getUnitMoveState(unit)
 {	
 	local CmdQueue, BaseCmdQueStruct
-	if (CmdQueue := ReadMemory(B_uStructure + unit * OffsetsUnitStrucSize + O_P_uCmdQueuePointer, GameIdentifier)) ; points if currently has a command - 0 otherwise
+	if (CmdQueue := ReadMemory(B_uStructure + unit * Offsets_Unit_StructSize + OffsetsUnitCommandQueuePointer, GameIdentifier)) ; points if currently has a command - 0 otherwise
 	{
 		BaseCmdQueStruct := ReadMemory(CmdQueue, GameIdentifier) & -2
-		return ReadMemory(BaseCmdQueStruct + O_cqState, GameIdentifier, 2) ;current state
+		return ReadMemory(BaseCmdQueStruct + Offsets_CommandQueue_State, GameIdentifier, 2) ;current state
 	}
 	else return -1 ;cant return 0 as that could indicate A-move
 }
@@ -1322,7 +1424,7 @@ isSocialMenuFocused()
 ; contaminate may delay it - havent checked.
 getUnitTimer(unit)
 {	global 
-	return ReadMemory(B_uStructure + unit * OffsetsUnitStrucSize + O_uTimer, GameIdentifier)/4096
+	return ReadMemory(B_uStructure + unit * Offsets_Unit_StructSize + O_uTimer, GameIdentifier)/4096
 }
 
 /*
@@ -1429,8 +1531,8 @@ isLocalUnitHoldingXelnaga(unitIndex)
 ;  	for some reason this offset can be reversed for some units 
 ; 	perhaps if they kill a unit which is already on the tower?
 ; 	but it happens quite often
-;	return ReadMemory(B_uStructure + unit * OffsetsUnitStrucSize + O_XelNagaActive, GameIdentifier)
-	;if (256 = ReadMemory(B_uStructure + unit * OffsetsUnitStrucSize + O_XelNagaActive, GameIdentifier))
+;	return ReadMemory(B_uStructure + unit * Offsets_Unit_StructSize + O_XelNagaActive, GameIdentifier)
+	;if (256 = ReadMemory(B_uStructure + unit * Offsets_Unit_StructSize + O_XelNagaActive, GameIdentifier))
 	;	return 1
 	;else return 0
 
@@ -1482,8 +1584,8 @@ getGameSpeed()
 ; but im lazy and this works
 
 getWarpGateCooldown(WarpGate) ; unitIndex
-{	global B_uStructure, OffsetsUnitStrucSize, O_P_uAbilityPointer, GameIdentifier
-	u_AbilityPointer := B_uStructure + WarpGate * OffsetsUnitStrucSize + O_P_uAbilityPointer
+{	global B_uStructure, Offsets_Unit_StructSize, OffsetsUnitAbilityPointer, GameIdentifier
+	u_AbilityPointer := B_uStructure + WarpGate * Offsets_Unit_StructSize + OffsetsUnitAbilityPointer
 	ablilty := ReadMemory(u_AbilityPointer, GameIdentifier) & 0xFFFFFFFC
 	p1 := ReadMemory(ablilty + 0x28, GameIdentifier)	; Ability WarpGateTrain
 	if !(p2 := ReadMemory(p1 + 0x1C, GameIdentifier)) ; 0 if it has never warped in a unit
@@ -1520,12 +1622,31 @@ getMedivacBoostCooldown(unit)
 
 getUnitAbilityPointer(unit) ;returns a pointer which still needs to be read. The pointer will be different for every unit, but for units of same type when read point to same address
 {	global
-	return ReadMemory(B_uStructure + unit * OffsetsUnitStrucSize + O_P_uAbilityPointer, GameIdentifier) & 0xFFFFFFFC
+	return ReadMemory(aSCOffsets["unitAddress", unit] + OffsetsUnitAbilityPointer, GameIdentifier) & 0xFFFFFFFC
+}
+
+getUnitAbilitiesString(unit)
+{
+	if !pAbilities := getUnitAbilityPointer(unit)
+		return clipboard := "pAbilities = 0"
+	p1 := readmemory(pAbilities, GameIdentifier)
+	s := "pAbilities: " chex(pAbilities) " Unit ID: " unit "`nuStruct: " chex(getunitAddress(unit)) " - " chex(getunitAddress(unit) + Offsets_Unit_StructSize)
+	loop
+	{
+		if (p := ReadMemory( address := p1  +  OffSets_UnitAbilities_AbilityStringPointerIndex + (A_Index - 1)*4, GameIdentifier))
+		{
+			s .= "`n"  A_Index - 1 " | Pointer Address " chex(pAddress := pAbilities + OffSets_UnitAbilities_AbilityPointerIndex + (A_Index - 1)*4) " | Pointer Value "  chex(ReadMemory(pAddress, GameIdentifier)) " | "  ReadMemory_Str(ReadMemory(p + 4, GameIdentifier), GameIdentifier)
+			count++
+		}
+	} until p = 0
+	s .= "`nLoop Count: " count A_TAB "Read Count: " getAbilitiesCount(pAbilities)
+	msgbox % clipboard := s
+	return s
 }
 
 numgetUnitAbilityPointer(byRef unitDump, unit)
 {
-	return numget(unitDump, unit * OffsetsUnitStrucSize + O_P_uAbilityPointer, "UInt") & 0xFFFFFFFC
+	return numget(unitDump, unit * Offsets_Unit_StructSize + OffsetsUnitAbilityPointer, "UInt") & 0xFFFFFFFC
 }
 
 ; 6144 when stimmed 4096 when not
@@ -1543,17 +1664,17 @@ isUnitChronoed(unit)
 			; dont think i have to do the if = 128 check now, but leave it just in case - havent checked 
 			; every building for a default value
 	
-	return 128 = ReadMemory(B_uStructure + unit * OffsetsUnitStrucSize + O_uChronoState, GameIdentifier, 1)	
+	return 128 = ReadMemory(B_uStructure + unit * Offsets_Unit_StructSize + O_uChronoState, GameIdentifier, 1)	
 }
 
 numgetIsUnitChronoed(byref unitDump, unit)
 {	global	
-	return 128 = numget(unitDump, unit * OffsetsUnitStrucSize + O_uChronoState, "UChar")	
+	return 128 = numget(unitDump, unit * Offsets_Unit_StructSize + O_uChronoState, "UChar")	
 }
 
 numgetIsUnitPowered(byref unitDump, unit)
 {	global	
-	return 0 = numget(unitDump, unit * OffsetsUnitStrucSize + O_uPoweredState, "UInt")	
+	return 0 = numget(unitDump, unit * Offsets_Unit_StructSize + O_uPoweredState, "UInt")	
 }
 
 ; This whole area (inject/chrono/powered) is some type of bit field.
@@ -1565,7 +1686,7 @@ numgetIsUnitPowered(byref unitDump, unit)
 isHatchInjected(Hatch)
 {	global	; 1 byte = 18h chrono for protoss structures, 48h when injected for zerg -  10h normal state
 			; this changed in 2.10 - 0 idle 4 for inject (probably dont need the if = 4 check)
-	return 4 = ReadMemory(B_uStructure + Hatch * OffsetsUnitStrucSize + O_uInjectState, GameIdentifier, 1)
+	return 4 = ReadMemory(B_uStructure + Hatch * Offsets_Unit_StructSize + O_uInjectState, GameIdentifier, 1)
 }
 ; The byte at O_uPoweredState + 7 changes to 1 when unpowered
 ; O_uPoweredState - really a byte or bit field flag address (SC is testing the bytes at this address against multiple values). So there may be other things which change it too!
@@ -1574,7 +1695,7 @@ isHatchInjected(Hatch)
 ; Returns True for structures which do not require power e.g. nexus, pylons, rocks
 isUnitPowered(unit)
 {
-	return 0 = ReadMemory(B_uStructure + unit * OffsetsUnitStrucSize + O_uPoweredState, GameIdentifier)	
+	return 0 = ReadMemory(B_uStructure + unit * Offsets_Unit_StructSize + O_uPoweredState, GameIdentifier)	
 }
 
 isWorkerInProductionOld(unit) ; units can only be t or P, no Z
@@ -1840,25 +1961,24 @@ SetPlayerMinerals(amount := 99999, player := "")
 { 	global
 	If (player = "")
 		player := getLocalPlayerNumber()
-	Return WriteMemory(aSCOffsets["playerAddress", player]  + OffsetsPlayerMinerals, GameIdentifier, amount, "UInt")   	 
+	Return WriteMemory(aSCOffsets["playerAddress", player]  + Offsets_Player_Minerals, GameIdentifier, amount, "UInt")   	 
 }
 SetPlayerGas(amount := 99999, player := "")
 { 	global
 	If (player = "")
 		player := getLocalPlayerNumber()
-	Return WriteMemory(aSCOffsets["playerAddress", player] + OffsetsPlayerGas, GameIdentifier, amount, "UInt")   
+	Return WriteMemory(aSCOffsets["playerAddress", player] + Offsets_Player_Gas, GameIdentifier, amount, "UInt")   
 }
 
 getBuildStatsPF(unit, byref QueueSize := "",  QueuePosition := 0) ; dirty hack until i can be bothered fixing this function
-{	GLOBAL GameIdentifier
-	STATIC O_pQueueArray := 0x34, O_IndexParentTypes := 0x18, O_unitsQueued := 0x28
+{	
 	CAbilQueue := ReadMemory(getUnitAbilityPointer(unit) + 0x5C, GameIdentifier)
 
-	localQueSize := ReadMemory(CAbilQueue + O_unitsQueued, GameIdentifier, 1) ; This is actually the queue size
+	localQueSize := ReadMemory(CAbilQueue + OffSets_CAbilQueue_QueuedCount, GameIdentifier, 1) ; This is actually the queue size
 
 	if IsByRef(QueueSize)
 		QueueSize := localQueSize
-	queuedArray := readmemory(CAbilQueue + O_pQueueArray, GameIdentifier)
+	queuedArray := readmemory(CAbilQueue + OffSets_CAbilQueue_QueuedUnitsPointer, GameIdentifier)
 	B_QueuedUnitInfo := readmemory(queuedArray + 4 * QueuePosition, GameIdentifier)
 
 	if localQueSize
@@ -1886,7 +2006,7 @@ getBuildStats(building, byref QueueSize := "", byRef item := "")
 	{
 		if localQueSize
 		{
-			if !aStringTable.hasKey(pString := readMemory(B_QueuedUnitInfo + 0xD0, GameIdentifier))
+			if !aStringTable.hasKey(pString := readMemory(B_QueuedUnitInfo + OffSets_QueuedUnit_StringPointer, GameIdentifier))
 				aStringTable[pString] := ReadMemory_Str(readMemory(pString + 0x4, GameIdentifier), GameIdentifier)
 			item := aStringTable[pString]
 		}
@@ -1904,8 +2024,7 @@ getBuildStats(building, byref QueueSize := "", byRef item := "")
 ; byref totalQueueSize will return the total number of units queued up
 getStructureProductionInfo(unit, type, byRef aInfo, byRef totalQueueSize := "", percent := True)
 {
-	STATIC O_pQueueArray := 0x34, O_IndexParentTypes := 0x18, O_unitsQueued := 0x28
-		, aOffsets := []
+	STATIC aOffsets := []
 
 	aInfo := []
 	if (!pAbilities := getUnitAbilityPointer(unit))
@@ -1918,7 +2037,7 @@ getStructureProductionInfo(unit, type, byRef aInfo, byRef totalQueueSize := "", 
 		{
 			CAbilQueueIndex := getCAbilQueueIndex(pAbilities, getAbilitiesCount(pAbilities)) ; CAbilQueueIndex
 			if (CAbilQueueIndex != -1)
-				aOffsets[type] := O_IndexParentTypes + 4 * CAbilQueueIndex
+				aOffsets[type] := OffSets_UnitAbilities_AbilityPointerIndex + 4 * CAbilQueueIndex
 			else 
 				aOffsets[type] := -1
 		}
@@ -1927,12 +2046,11 @@ getStructureProductionInfo(unit, type, byRef aInfo, byRef totalQueueSize := "", 
 		return 0 ; refinery,reactor, depot, spine, extractor etc
 
 	CAbilQueue := readmemory(pAbilities + aOffsets[type], GameIdentifier)
-	, totalQueueSize := readmemory(CAbilQueue + O_unitsQueued, GameIdentifier) ; this is the total real queue size e.g. max 5 on non-reactor, max 8 on reactored 
-	, queuedArray := readmemory(CAbilQueue + O_pQueueArray, GameIdentifier)
-
+	, totalQueueSize := readmemory(CAbilQueue + OffSets_CAbilQueue_QueuedCount, GameIdentifier) ; this is the total real queue size e.g. max 5 on non-reactor, max 8 on reactored 
+	, queuedArray := readmemory(CAbilQueue + OffSets_CAbilQueue_QueuedUnitsPointer, GameIdentifier)
 	while (A_Index <= totalQueueSize && B_QueuedUnitInfo := readmemory(queuedArray + 4 * (A_index-1), GameIdentifier) )   ; A_index-1 = queue position ;progress = 0 not being built, but is in queue
 	{
-		if !aStringTable.hasKey(pString := readMemory(B_QueuedUnitInfo + 0xD0, GameIdentifier))
+		if !aStringTable.hasKey(pString := readMemory(B_QueuedUnitInfo + OffSets_QueuedUnit_StringPointer, GameIdentifier))
 			aStringTable[pString] := ReadMemory_Str(readMemory(pString + 0x4, GameIdentifier), GameIdentifier)
 		item := aStringTable[pString]
 		; progress 0 if hasn't started so don't add it to the list
@@ -1944,37 +2062,12 @@ getStructureProductionInfo(unit, type, byRef aInfo, byRef totalQueueSize := "", 
 }
 
 
-getStructureProductionInfoCurrent(unit, byRef aInfo)
-{
-	STATIC O_pQueueArray := 0x34, O_IndexParentTypes := 0x18, O_unitsQueued := 0x28
-	aInfo := []
-	if (!pAbilities := getUnitAbilityPointer(unit))
-		return 0
-	if (-1 = CAbilQueueIndex := getCAbilQueueIndex(pAbilities, getAbilitiesCount(pAbilities)))
-		return 0 ; refinery,reactor, depot, spine, extractor
-
-	CAbilQueue := readmemory(pAbilities + O_IndexParentTypes + 4 * CAbilQueueIndex, GameIdentifier)
-	QueueSize := readmemory(CAbilQueue + O_unitsQueued, GameIdentifier)
-	queuedArray := readmemory(CAbilQueue + O_pQueueArray, GameIdentifier)
-
-	while (A_Index <= QueueSize && B_QueuedUnitInfo := readmemory(queuedArray + 4 * (A_index-1), GameIdentifier) )   ; A_index-1 = queue position ;progress = 0 not being built, but is in queue
-	{
-		if !aStringTable.hasKey(pString := readMemory(B_QueuedUnitInfo + 0xD0, GameIdentifier))
-			aStringTable[pString] := ReadMemory_Str(readMemory(pString + 0x4, GameIdentifier), GameIdentifier)
-		item := aStringTable[pString]
-		if progress := getPercentageUnitCompleted(B_QueuedUnitInfo) ; 0.0 will be seen as false 
-			aInfo.insert({ "Item": item, "progress": progress})
-		else break 
-	} 
-	return round(aInfo.maxIndex())  ;? aInfo.maxIndex() : 0
-}
-
 getZergProductionStringFromEgg(eggUnitIndex)
 {
 	p := readmemory(getUnitAbilityPointer(eggUnitIndex) + 0x1C, GameIdentifier)
 	p := readmemory(p + 0x34, GameIdentifier) 		; cAbilQueueUse
 	p := readmemory(p, GameIdentifier) 				; LarvaTrain  - this pointer structure will also have the production time/total
-	p := readmemory(p + 0xf4, GameIdentifier)
+	p := readmemory(p + 0xf4, GameIdentifier) ; OffSets_QueuedUnit_StringPointer ??
 	if !aStringTable.haskey(pString := readmemory(p, GameIdentifier) ) ; pString
 		return aStringTable[pString] := ReadMemory_Str(readMemory(pString + 0x4, GameIdentifier), GameIdentifier)
 	return aStringTable[pString]
@@ -1986,9 +2079,10 @@ getZergProductionFromEgg(eggUnitIndex)
 	, p := readmemory(getUnitAbilityPointer(eggUnitIndex) + 0x1C, GameIdentifier)
 	, p := readmemory(p + 0x34, GameIdentifier) 		; cAbilQueueUse
 	, p := readmemory(p, GameIdentifier) 				; LarvaTrain  - this pointer structure will also have the production time/total
-	, timeRemaining := readmemory(p + 0x6C, GameIdentifier) 	
-	, totalTime := readmemory(p + 0x68, GameIdentifier) 		
-	p := readmemory(p + 0xf4, GameIdentifier)
+	, totalTime := readmemory(p + 0x80, GameIdentifier) 	 ; pre p3.0 0x68
+	, timeRemaining := readmemory(p + 0x84, GameIdentifier)  ; pre p3.0 0x6C
+		
+	p := readmemory(p + 0xf4, GameIdentifier) ; OffSets_QueuedUnit_StringPointer??
 	if !aStringTable.haskey(pString := readmemory(p, GameIdentifier) ) ; pString
 		aStringTable[pString] := ReadMemory_Str(readMemory(pString + 0x4, GameIdentifier), GameIdentifier)
 	item.Progress := round((totalTime - timeRemaining)/totalTime, 2) 
@@ -2045,18 +2139,17 @@ getAbilityIndex(abilityID, abilitiesCount, ByteArrayAddress := "", byRef byteArr
 
 findAbilityTypePointer(pAbilities, unitType, abilityString)
 {
-	static aUnitAbilitiesOffsets := [], B_AbilityStringPointer := 0xA4 ; string pointers for abilities start here
-		, O_IndexParentTypes := 0x18 ; base where pointers to specific ability areas begin
+	static aUnitAbilitiesOffsets := []
 
 	if aUnitAbilitiesOffsets[unitType].hasKey(abilityString)
 		return pAbilities + aUnitAbilitiesOffsets[unitType, abilityString]
 	p1 := readmemory(pAbilities, GameIdentifier)
 	loop
 	{
-		if (!p := ReadMemory(p1 + B_AbilityStringPointer + (A_Index - 1)*4, GameIdentifier))
+		if (!p := ReadMemory(p1 + OffSets_UnitAbilities_AbilityStringPointerIndex + (A_Index - 1)*4, GameIdentifier))
 			return 0
 		if (abilityString = string := ReadMemory_Str(ReadMemory(p + 0x4, GameIdentifier), GameIdentifier))
-			return pAbilities + (aUnitAbilitiesOffsets[unitType, abilityString] := O_IndexParentTypes + (A_Index - 1)*4)	
+			return pAbilities + (aUnitAbilitiesOffsets[unitType, abilityString] := OffSets_UnitAbilities_AbilityPointerIndex + (A_Index - 1)*4)	
 	} until (A_Index > 100)
 	return  0 ; something went wrong
 }
@@ -2092,17 +2185,17 @@ findAbilityTypePointer(pAbilities, unitType, abilityString)
 ; zergTownHallResourceRally - When true returns the rally structure for resources i.e. drones, instead of other units
 getStructureRallyPoints(unitIndex, byRef aRallyPoints := "", zergTownHallResourceRally := False)
 {
-	static O_IndexParentTypes := 0x18, cAbilRally := 0x1a
+	static cAbilRally := 0x1a
 
 	aRallyPoints := []
 	, pAbilities := getUnitAbilityPointer(unitIndex)
 	, abilitiesCount := getAbilitiesCount(pAbilities)	
-	, ByteArrayAddress := ReadMemory(pAbilities, GameIdentifier) + 0x3  ; gets the address of a byte array which contains the ID list of the units abilities
+	, ByteArrayAddress := ReadMemory(pAbilities, GameIdentifier) + OffSets_UnitAbilities_ParentByteArrayIndex  ; gets the address of a byte array which contains the ID list of the units abilities
 	, cAbilRallyIndex := getAbilityIndex(cAbilRally, abilitiesCount, ByteArrayAddress) ;find the position/index of the rally ability in the ID list
 	
 	if (cAbilRallyIndex >= 0)
 	{
-		pCAbillityStruct := readmemory(pAbilities + O_IndexParentTypes + 4 * cAbilRallyIndex, GameIdentifier)
+		pCAbillityStruct := readmemory(pAbilities + OffSets_UnitAbilities_AbilityPointerIndex + 4 * cAbilRallyIndex, GameIdentifier)
 		, bRallyStruct := readmemory(pCAbillityStruct + 0x34, GameIdentifier)
 		
 		ReadRawMemory(bRallyStruct + (zergTownHallResourceRally ? 0x74 : 0), GameIdentifier, rallyDump, 0x4 + 0x1C * 4) ; max rally count. Dump entire area - save a mem read
@@ -2124,16 +2217,13 @@ getStructureRallyPoints(unitIndex, byRef aRallyPoints := "", zergTownHallResourc
 }
 
 getPercentageUnitCompleted(B_QueuedUnitInfo)
-{	GLOBAL GameIdentifier
-	STATIC O_TotalTime := 0x68, O_TimeRemaining := 0x6C
-
-	TotalTime := ReadMemory(B_QueuedUnitInfo + O_TotalTime, GameIdentifier)
-	RemainingTime := ReadMemory(B_QueuedUnitInfo + O_TimeRemaining, GameIdentifier)
-
+{	
+	TotalTime := ReadMemory(B_QueuedUnitInfo + OffSets_QueuedUnit_BuildTimeTotal, GameIdentifier)
+	RemainingTime := ReadMemory(B_QueuedUnitInfo + OffSets_QueuedUnit_BuildTimeRemaining, GameIdentifier)
 	return round( (TotalTime - RemainingTime) / TotalTime, 2) ;return .47 (ie 47%)
 }
 
-; Production struct
+; Production struct sc 2.0x
 ; TypeID = 0x44 (specific to the building type)
 ; supply = 0x64
 ; TotalTime = 0x68
@@ -2146,10 +2236,9 @@ getPercentageUnitCompleted(B_QueuedUnitInfo)
 ; returns seconds round to 2 decimal points
 ; returns 0/false if hasnt started
 getTimeUntilUnitCompleted(B_QueuedUnitInfo)
-{	GLOBAL GameIdentifier
-	STATIC O_TotalTime := 0x68, O_TimeRemaining := 0x6C
-	TotalTime := ReadMemory(B_QueuedUnitInfo + O_TotalTime, GameIdentifier)
-	RemainingTime := ReadMemory(B_QueuedUnitInfo + O_TimeRemaining, GameIdentifier)
+{
+	TotalTime := ReadMemory(B_QueuedUnitInfo + OffSets_QueuedUnit_BuildTimeTotal, GameIdentifier)
+	RemainingTime := ReadMemory(B_QueuedUnitInfo + OffSets_QueuedUnit_BuildTimeRemaining, GameIdentifier)
 	if (TotalTime = RemainingTime) ; hasn't started so don't add it to any lists
 		return 0
 	return round(RemainingTime / 65536, 2) ;return 6.47 
@@ -2159,40 +2248,37 @@ getTimeUntilUnitCompleted(B_QueuedUnitInfo)
 ; 	+0x48 != 0 when reactor present
 getPointerAddressToQueuedUnitInfo(pAbilities, CAbilQueueIndex, byref QueueSize := "")
 {	GLOBAL GameIdentifier
-	STATIC O_pQueueArray := 0x34, O_IndexParentTypes := 0x18, O_unitsQueued := 0x28
 
-	CAbilQueue := readmemory(pAbilities + O_IndexParentTypes + 4 * CAbilQueueIndex, GameIdentifier)
+	CAbilQueue := readmemory(pAbilities + OffSets_UnitAbilities_AbilityPointerIndex + 4 * CAbilQueueIndex, GameIdentifier)
 
-	QueueSize := readmemory(CAbilQueue + O_unitsQueued, GameIdentifier)
+	QueueSize := readmemory(CAbilQueue + OffSets_CAbilQueue_QueuedCount, GameIdentifier)
 
-	return queuedArray := readmemory(CAbilQueue + O_pQueueArray, GameIdentifier)
+	return queuedArray := readmemory(CAbilQueue + OffSets_CAbilQueue_QueuedUnitsPointer, GameIdentifier)
 }
 
 getPointerToQueuedUnitInfo(pAbilities, CAbilQueueIndex, byref QueueSize := "", QueuePosition := 0)
-{	GLOBAL GameIdentifier
-	STATIC O_pQueueArray := 0x34, O_IndexParentTypes := 0x18, O_unitsQueued := 0x28
-
-	CAbilQueue := readmemory(pAbilities + O_IndexParentTypes + 4 * CAbilQueueIndex, GameIdentifier)
+{	
+	CAbilQueue := readmemory(pAbilities + OffSets_UnitAbilities_AbilityPointerIndex + 4 * CAbilQueueIndex, GameIdentifier)
 
 	if IsByRef(QueueSize) 
-		QueueSize := readmemory(CAbilQueue + O_unitsQueued, GameIdentifier)
+		QueueSize := readmemory(CAbilQueue + OffSets_CAbilQueue_QueuedCount, GameIdentifier)
 
-	queuedArray := readmemory(CAbilQueue + O_pQueueArray, GameIdentifier)
+	queuedArray := readmemory(CAbilQueue + OffSets_CAbilQueue_QueuedUnitsPointer, GameIdentifier)
 	return readmemory(queuedArray + 4 * QueuePosition, GameIdentifier)
 }
 
 getAbilitiesCount(pAbilities)
 {	GLOBAL GameIdentifier
-	return ReadMemory(pAbilities + 0x16, GameIdentifier, 1)
+	return ReadMemory(pAbilities + 0x17, GameIdentifier, 1) ; pre 3.03 0x16
 }
 
 getCAbilQueueIndex(pAbilities, AbilitiesCount)
 {	GLOBAL GameIdentifier
 	STATIC CAbilQueue := 0x19
-	ByteArrayAddress := ReadMemory(pAbilities, GameIdentifier) + 0x3 
+	ByteArrayAddress := ReadMemory(pAbilities, GameIdentifier) + OffSets_UnitAbilities_ParentByteArrayIndex ; sc 2.x 0x3 
 	ReadRawMemory(ByteArrayAddress, GameIdentifier, MemDump, AbilitiesCount)
 	loop % AbilitiesCount
-		if (CAbilQueue = numget(MemDump, A_Index-1, "Char"))
+		if (CAbilQueue = numget(MemDump, A_Index-1, "UChar"))
 			return A_Index-1
 	 return -1 ;error
 }
@@ -2202,10 +2288,10 @@ getAbilListIndex(pAbilities, AbilitiesCount)
 {	GLOBAL GameIdentifier
 	STATIC CAbilQueue := 0x19
 	abilties := []
-	ByteArrayAddress := ReadMemory(pAbilities, GameIdentifier) + 0x3 
+	ByteArrayAddress := ReadMemory(pAbilities, GameIdentifier) + OffSets_UnitAbilities_ParentByteArrayIndex 
 	ReadRawMemory(ByteArrayAddress, GameIdentifier, MemDump, AbilitiesCount)
 	loop % AbilitiesCount
-		abilties.insert(CAbilQueue := dectohex(numget(MemDump, A_Index-1, "Char")))
+		abilties.insert(CAbilQueue := dectohex(numget(MemDump, A_Index-1, "UChar")))
 	 return abilties
 }
 
@@ -2249,18 +2335,18 @@ getCharacerInfo(byref returnName := "", byref returnID := "")
 
 ; note ctrl group base address really starts with ctrl group 0 - but the negative offset from ctrl group 1 works fine
 numGetControlGroupObject(Byref oControlGroup, Group)
-{	GLOBAL B_CtrlGroupStructure, S_CtrlGroup, GameIdentifier, S_scStructure, O_scUnitIndex
+{	GLOBAL B_CtrlGroupStructure, S_CtrlGroup, GameIdentifier, OffsetsSelectionUnitSize, OffsetsSelectionUnitOffset
 	oControlGroup := []
 	GroupSize := getControlGroupCount(Group)
 
-	ReadRawMemory(B_CtrlGroupStructure + S_CtrlGroup * group, GameIdentifier, MemDump, GroupSize * S_scStructure + O_scUnitIndex)
+	ReadRawMemory(B_CtrlGroupStructure + S_CtrlGroup * group, GameIdentifier, MemDump, GroupSize * OffsetsSelectionUnitSize + OffsetsSelectionUnitOffset)
 ;	oControlGroup["Count"]	:= numget(MemDump, 0, "Short")
-;	oControlGroup["Types"]	:= numget(MemDump, O_scTypeCount, "Short") ;this will get whats actually in the memory
+;	oControlGroup["Types"]	:= numget(MemDump, OffsetsSelectionTypeCount, "Short") ;this will get whats actually in the memory
 	oControlGroup["Count"]	:= oControlGroup["Types"] := 0
 	oControlGroup.units := []
 	loop % numget(MemDump, 0, "Short")
 	{
-		fingerPrint := numget(MemDump,(A_Index-1) * S_scStructure + O_scUnitIndex , "Int")
+		fingerPrint := numget(MemDump,(A_Index-1) * OffsetsSelectionUnitSize + OffsetsSelectionUnitOffset , "Int")
 		unit := fingerPrint >> 18
 
 		;if (!isUnitDead(unit) && isUnitLocallyOwned(unit))
@@ -2339,16 +2425,16 @@ numGetSelectionSorted(ByRef aSelection, ReverseOrder := False)
 	global aLocalPlayer
 	aSelection := []
 	, selectionCount := getSelectionCount()
-	, ReadRawMemory(B_SelectionStructure, GameIdentifier, MemDump, selectionCount * S_scStructure + O_scUnitIndex)
+	, ReadRawMemory(OffsetsSelectionBase, GameIdentifier, MemDump, selectionCount * OffsetsSelectionUnitSize + OffsetsSelectionUnitOffset)
 	, aSelection.Count := numget(MemDump, 0, "Short")
-	, aSelection.Types := numget(MemDump, O_scTypeCount, "Short")
-	, aSelection.HighlightedGroup := numget(MemDump, O_scTypeHighlighted, "Short")
+	, aSelection.Types := numget(MemDump, OffsetsSelectionTypeCount, "Short")
+	, aSelection.HighlightedGroup := numget(MemDump, OffsetsSelectionHighlightedGroup, "Short")
 	, aStorage := []
 	loop % aSelection.Count
 	{
 		; Use a negative priority so AHKs normal object enumerates them in the correct 
 		; unit panel order (backwards to how they would normally be enumerated)
-		priority := -1 * getUnitSubGroupPriority(unitIndex := numget(MemDump,(A_Index-1) * S_scStructure + O_scUnitIndex , "Int") >> 18)
+		priority := -1 * getUnitSubGroupPriority(unitIndex := numget(MemDump,(A_Index-1) * OffsetsSelectionUnitSize + OffsetsSelectionUnitOffset , "Int") >> 18)
 		, subGroupAlias := aUnitSubGroupAlias.hasKey(unitId := getUnitType(unitIndex)) ? aUnitSubGroupAlias[unitId] : unitId 
 		, sIndices .= "," unitIndex
 		, hallucinationOrder := !((filter := getUnitTargetFilter(unitIndex)) & aUnitTargetFilter.Hallucination) ; hallucinations come first so they get key 0 real units get key 1
@@ -2482,13 +2568,13 @@ numGetSelectionSortedTest(ReverseOrder := False)
 	global aLocalPlayer
 	static dllFunction := "d:\My Computer\My Documents\Visual Studio 2010\Projects\fddgf\Debug\fddgf.dll"
 	selectionCount := getSelectionCount()
-	ReadRawMemory(B_SelectionStructure, GameIdentifier, MemDump, selectionCount * S_scStructure + O_scUnitIndex)
+	ReadRawMemory(OffsetsSelectionBase, GameIdentifier, MemDump, selectionCount * OffsetsSelectionUnitSize + OffsetsSelectionUnitOffset)
 	if !func
 		func := DllCall("GetProcAddress", Ptr, DllCall("LoadLibrary", Str, dllFunction, "Ptr"), AStr, "sortSelection", "Ptr")
 	
 	loop % selectionCount
 	{
-		priority := getUnitSubGroupPriority(unitIndex := numget(MemDump,(A_Index-1) * S_scStructure + O_scUnitIndex , "Int") >> 18)
+		priority := getUnitSubGroupPriority(unitIndex := numget(MemDump,(A_Index-1) * OffsetsSelectionUnitSize + OffsetsSelectionUnitOffset , "Int") >> 18)
 		subGroupAlias := aUnitSubGroupAlias.hasKey(unitId := getUnitType(unitIndex)) ? aUnitSubGroupAlias[unitId] : unitId 
 		hallucinationOrder := (getUnitTargetFilter(unitIndex) & aUnitTargetFilter.Hallucination) ; hallucinations come first so they get key 0 real units get key 1
 		testString .= (A_Index != 1 ? "|" : "") priority "," subGroupAlias "," 	hallucinationOrder "," unitIndex				
@@ -2520,16 +2606,16 @@ numGetSelectionSortedMachineCodeTest(ByRef aSelection, byRef aStorage)
 		mCodeF := MCode("1,x86:558BEC83EC0C8B450C5633F6488945F474768B450853578BD6C1E2028D0CB504000000014D0C8D3C888D1C90897DFC8B3F895DF88B1B3BDF7F4675288B7C90048B5C88043BFB7C38751A8B7C900C8B4C880C3BF97F2A750C8B4C90108B550C3B0C907C1C8B55FC8B4DF86A045F8B1A8B318919893283C10483C2044F75EF33F6463B75F472915F5B33C0405EC9C3")
 	aSelection := []
 	, selectionCount := getSelectionCount()
-	, ReadRawMemory(B_SelectionStructure, GameIdentifier, MemDump, selectionCount * S_scStructure + O_scUnitIndex)
+	, ReadRawMemory(OffsetsSelectionBase, GameIdentifier, MemDump, selectionCount * OffsetsSelectionUnitSize + OffsetsSelectionUnitOffset)
 	, aSelection.Count := numget(MemDump, 0, "Short")
-	, aSelection.Types := numget(MemDump, O_scTypeCount, "Short")
-	, aSelection.HighlightedGroup := numget(MemDump, O_scTypeHighlighted, "Short")
+	, aSelection.Types := numget(MemDump, OffsetsSelectionTypeCount, "Short")
+	, aSelection.HighlightedGroup := numget(MemDump, OffsetsSelectionHighlightedGroup, "Short")
 	, aStorage := []
 	, aSelection.units := []
 	VarSetCapacity(buffer, aSelection.Count * 16, 0)
 	loop % aSelection.Count
 	{
-		priority := getUnitSubGroupPriority(unitIndex := numget(MemDump,(A_Index-1) * S_scStructure + O_scUnitIndex , "Int") >> 18)
+		priority := getUnitSubGroupPriority(unitIndex := numget(MemDump,(A_Index-1) * OffsetsSelectionUnitSize + OffsetsSelectionUnitOffset , "Int") >> 18)
 		subGroupAlias := aUnitSubGroupAlias.hasKey(unitId := getUnitType(unitIndex)) ? aUnitSubGroupAlias[unitId] : unitId 
 		sIndices .= "," unitIndex
 		hallucination := ((filter := getUnitTargetFilter(unitIndex)) & aUnitTargetFilter.Hallucination) ; hallucinations come first so they get key 0 real units get key 1
@@ -2596,26 +2682,26 @@ int sort(int* buffer, unsigned int count)
 isInSelection(unitIndex)
 {
 	selectionCount := getSelectionCount()
-	ReadRawMemory(B_SelectionStructure, GameIdentifier, MemDump, selectionCount * S_scStructure + O_scUnitIndex)
+	ReadRawMemory(OffsetsSelectionBase, GameIdentifier, MemDump, selectionCount * OffsetsSelectionUnitSize + OffsetsSelectionUnitOffset)
 	loop % selectionCount
 	{
-		if (unitIndex = numget(MemDump, (A_Index-1) * S_scStructure + O_scUnitIndex, "Int") >> 18)
+		if (unitIndex = numget(MemDump, (A_Index-1) * OffsetsSelectionUnitSize + OffsetsSelectionUnitOffset, "Int") >> 18)
 			return 1
 	}
 	return 0
 }
 
 numGetUnitSelectionObject(ByRef aSelection)
-{	GLOBAL O_scTypeCount, O_scTypeHighlighted, S_scStructure, O_scUnitIndex, GameIdentifier, B_SelectionStructure
+{	GLOBAL OffsetsSelectionTypeCount, OffsetsSelectionHighlightedGroup, OffsetsSelectionUnitSize, OffsetsSelectionUnitOffset, GameIdentifier, OffsetsSelectionBase
 	aSelection := []
 	, selectionCount := getSelectionCount()
-	, ReadRawMemory(B_SelectionStructure, GameIdentifier, MemDump, selectionCount * S_scStructure + O_scUnitIndex)
+	, ReadRawMemory(OffsetsSelectionBase, GameIdentifier, MemDump, selectionCount * OffsetsSelectionUnitSize + OffsetsSelectionUnitOffset)
 	, aSelection["Count"] := numget(MemDump, 0, "Short")
-	, aSelection["Types"] := numget(MemDump, O_scTypeCount, "Short")
-	, aSelection["HighlightedGroup"] := numget(MemDump, O_scTypeHighlighted, "Short")
+	, aSelection["Types"] := numget(MemDump, OffsetsSelectionTypeCount, "Short")
+	, aSelection["HighlightedGroup"] := numget(MemDump, OffsetsSelectionHighlightedGroup, "Short")
 	, aSelection.units := []
 	loop % aSelection["Count"]
-		owner := getUnitOwner(unit := numget(MemDump,(A_Index-1) * S_scStructure + O_scUnitIndex , "Int") >> 18), Type := getUnitType(unit), aSelection.units.insert({"UnitIndex": unit, "Type": Type, "Owner": Owner})
+		owner := getUnitOwner(unit := numget(MemDump,(A_Index-1) * OffsetsSelectionUnitSize + OffsetsSelectionUnitOffset , "Int") >> 18), Type := getUnitType(unit), aSelection.units.insert({"UnitIndex": unit, "Type": Type, "Owner": Owner})
 	return aSelection["Count"]
 }
 ; 0-5 indicates which unit page is currently selected (in game its 1-6)
@@ -2639,47 +2725,50 @@ getMaxPageValue(count := "")
 
 numgetUnitTargetFilter(ByRef Memory, unit)
 {
-	return numget(Memory, Unit * OffsetsUnitStrucSize + O_uTargetFilter, "Int64")
+	return numget(Memory, Unit * Offsets_Unit_StructSize + Offsets_Unit_TargetFilter, "Int64")
 }
 
 getUnitTargetFilter(Unit) ;starts @ 0 i.e. first unit at 0
 {
-	return ReadMemory(B_uStructure + Unit * OffsetsUnitStrucSize + O_uTargetFilter, GameIdentifier, 8)
+	return ReadMemory(B_uStructure + Unit * Offsets_Unit_StructSize + Offsets_Unit_TargetFilter, GameIdentifier, 8)
 }
 
 numgetUnitOwner(ByRef Memory, Unit)
 { global 
-  return numget(Memory, Unit * OffsetsUnitStrucSize + O_uOwner, "Char")  
+  return numget(Memory, Unit * Offsets_Unit_StructSize +  Offsets_Unit_Owner, "Char")  
 }
 
 numgetUnitModelPointer(ByRef Memory, Unit)
-{ global 
-  return numget(Memory, Unit * OffsetsUnitStrucSize + O_uModelPointer, "Int")  
+{  
+  return (numget(Memory, Unit * Offsets_Unit_StructSize + Offsets_Unit_ModelPointer, "UInt")  << 5) & 0xFFFFFFFF
 }
 
-getUnitModelPointer(Unit)
-{ global 
-  return ReadMemory(B_uStructure + Unit * OffsetsUnitStrucSize + O_uModelPointer, GameIdentifier)
+getUnitModelPointer(unit)
+{  
+  return (ReadMemory(aSCOffsets["unitAddress", unit] + Offsets_Unit_ModelPointer, GameIdentifier) << 5) & 0xFFFFFFFF
 }
-
+getUnitModelPointerRaw(unit)
+{  
+  return ReadMemory(aSCOffsets["unitAddress", unit] + Offsets_Unit_ModelPointer, GameIdentifier)
+}
  getGroupedQueensWhichCanInject(ByRef aControlGroup,  CheckMoveState := 0)
- {	GLOBAL aUnitID, O_scTypeCount, O_scTypeHighlighted, S_CtrlGroup, O_scUnitIndex, GameIdentifier, B_CtrlGroupStructure
- 	, OffsetsUnitStrucSize, GameIdentifier, MI_Queen_Group, S_scStructure, aUnitMoveStates
+ {	GLOBAL aUnitID, OffsetsSelectionTypeCount, OffsetsSelectionHighlightedGroup, S_CtrlGroup, OffsetsSelectionUnitOffset, GameIdentifier, B_CtrlGroupStructure
+ 	, Offsets_Unit_StructSize, GameIdentifier, MI_Queen_Group, OffsetsSelectionUnitSize, aUnitMoveStates
 	aControlGroup := []
 	group := MI_Queen_Group
 	groupCount := getControlGroupCount(Group)
 
-	ReadRawMemory(B_CtrlGroupStructure + S_CtrlGroup * Group, GameIdentifier, MemDump, groupCount * S_CtrlGroup + O_scUnitIndex)
+	ReadRawMemory(B_CtrlGroupStructure + S_CtrlGroup * Group, GameIdentifier, MemDump, groupCount * S_CtrlGroup + OffsetsSelectionUnitOffset)
 
 	aControlGroup["UnitCount"]	:= numget(MemDump, 0, "Short")
-	aControlGroup["Types"]	:= numget(MemDump, O_scTypeCount, "Short")
-;	aControlGroup["HighlightedGroup"]	:= numget(MemDump, O_scTypeHighlighted, "Short")
+	aControlGroup["Types"]	:= numget(MemDump, OffsetsSelectionTypeCount, "Short")
+;	aControlGroup["HighlightedGroup"]	:= numget(MemDump, OffsetsSelectionHighlightedGroup, "Short")
 	aControlGroup.Queens := []
 	aControlGroup.AllQueens := []
 
 	loop % groupCount
 	{
-		fingerPrint := numget(MemDump,(A_Index-1) * S_scStructure + O_scUnitIndex , "Int")
+		fingerPrint := numget(MemDump,(A_Index-1) * OffsetsSelectionUnitSize + OffsetsSelectionUnitOffset , "Int")
 		unit := fingerPrint >> 18
 		;if (isUnitDead(unit) || !isUnitLocallyOwned(Unit)) ; as this is being read from control group buffer so dead units can still be included!
 		if getUnitFingerPrint(unit) != fingerPrint || !isUnitLocallyOwned(Unit) || getunittargetfilter(Unit) & aUnitTargetFilter.hidden ; the hight check in isnearhatch() would have prevented any issue as queen is only hidden when inside overlord - not when burrowed
@@ -2714,19 +2803,19 @@ getUnitModelPointer(Unit)
 
 	; CheckMoveState for forced injects
  getSelectedQueensWhichCanInject(ByRef aSelection, CheckMoveState := 0)
- {	GLOBAL aUnitID, O_scTypeCount, O_scTypeHighlighted, S_scStructure, O_scUnitIndex, GameIdentifier, B_SelectionStructure
- 	, OffsetsUnitStrucSize, GameIdentifier, aUnitMoveStates 
+ {	GLOBAL aUnitID, OffsetsSelectionTypeCount, OffsetsSelectionHighlightedGroup, OffsetsSelectionUnitSize, OffsetsSelectionUnitOffset, GameIdentifier, OffsetsSelectionBase
+ 	, Offsets_Unit_StructSize, GameIdentifier, aUnitMoveStates 
 	aSelection := []
 	selectionCount := getSelectionCount()
-	ReadRawMemory(B_SelectionStructure, GameIdentifier, MemDump, selectionCount * S_scStructure + O_scUnitIndex)
+	ReadRawMemory(OffsetsSelectionBase, GameIdentifier, MemDump, selectionCount * OffsetsSelectionUnitSize + OffsetsSelectionUnitOffset)
 	aSelection["SelectedUnitCount"]	:= numget(MemDump, 0, "Short")
-	aSelection["Types"]	:= numget(MemDump, O_scTypeCount, "Short")
-	aSelection["HighlightedGroup"]	:= numget(MemDump, O_scTypeHighlighted, "Short")
+	aSelection["Types"]	:= numget(MemDump, OffsetsSelectionTypeCount, "Short")
+	aSelection["HighlightedGroup"]	:= numget(MemDump, OffsetsSelectionHighlightedGroup, "Short")
 	aSelection.Queens := []
 
 	loop % selectionCount
 	{
-		unit := numget(MemDump,(A_Index-1) * S_scStructure + O_scUnitIndex , "Int") >> 18
+		unit := numget(MemDump,(A_Index-1) * OffsetsSelectionUnitSize + OffsetsSelectionUnitOffset , "Int") >> 18
 		type := getUnitType(unit)
 		if (isUnitLocallyOwned(Unit) && aUnitID["Queen"] = type && ((energy := getUnitEnergy(unit)) >= 25)) 
 		{
@@ -2806,7 +2895,7 @@ isPointNearLineSegmentWithZcheck(linePointA, linePointB, point, maxDistance)
 
  objectGetUnitXYZAndEnergy(unit) ;this will dump just a unit
  {	Local UnitDump
-	ReadRawMemory(B_uStructure + unit * OffsetsUnitStrucSize, GameIdentifier, UnitDump, OffsetsUnitStrucSize)
+	ReadRawMemory(B_uStructure + unit * Offsets_Unit_StructSize, GameIdentifier, UnitDump, Offsets_Unit_StructSize)
 	Local x := numget(UnitDump, O_uX, "int")/4096, y := numget(UnitDump, O_uY, "int")/4096, Local z := numget(UnitDump, O_uZ, "int")/4096
 	Local Energy := numget(UnitDump, O_uEnergy, "int")/4096
 	return { "unit": unit, "X": x, "Y": y, "Z": z, "Energy": energy}
@@ -2814,19 +2903,19 @@ isPointNearLineSegmentWithZcheck(linePointA, linePointB, point, maxDistance)
 
  numGetUnitPositionX(ByRef MemDump, Unit)
  {	global
- 	return numget(MemDump, Unit * OffsetsUnitStrucSize + O_uX, "int")/4096
+ 	return numget(MemDump, Unit * Offsets_Unit_StructSize + O_uX, "int")/4096
  }
  numGetUnitPositionY(ByRef MemDump, Unit)
  {	global
- 	return numget(MemDump, Unit * OffsetsUnitStrucSize + O_uY, "int")/4096
+ 	return numget(MemDump, Unit * Offsets_Unit_StructSize + O_uY, "int")/4096
  }
  numGetUnitPositionZ(ByRef MemDump, Unit)
  {	global
- 	return numget(MemDump, Unit * OffsetsUnitStrucSize + O_uZ, "int")/4096
+ 	return numget(MemDump, Unit * Offsets_Unit_StructSize + O_uZ, "int")/4096
  }
  numGetIsHatchInjectedFromMemDump(ByRef MemDump, Unit)
  {	global ; 1 byte = 18h chrono for protoss structures, 48h when injected for zerg -  10h normal state
- 	return (4 = numget(MemDump, Unit * OffsetsUnitStrucSize + O_uInjectState, "UChar")) ? 1 : 0
+ 	return (4 = numget(MemDump, Unit * Offsets_Unit_StructSize + O_uInjectState, "UChar")) ? 1 : 0
  }
 
 numGetUnitPositionXYZ(ByRef MemDump, Unit)
@@ -2929,11 +3018,9 @@ getSubGroupAliasArray(byRef object)
 
 getUnitSubGroupPriority(unit)	
 {
-	; note - this isnt really the correct pointer still have to << 5 
-	if !aUnitModel[pUnitModel := ReadMemory(B_uStructure + (Unit * OffsetsUnitStrucSize) + O_uModelPointer, GameIdentifier)]
+	if !aUnitModel[pUnitModel := getUnitModelPointer(unit)]
     	getUnitModelInfo(pUnitModel)
   	return aUnitModel[pUnitModel].RealSubGroupPriority	
-;	Return ReadMemory(((ReadMemory(B_uStructure + (unit * OffsetsUnitStrucSize) + O_uModelPointer, GameIdentifier) << 5) & 0xFFFFFFFF) + O_mSubgroupPriority, GameIdentifier, 2)
 }
 
 
@@ -3376,16 +3463,16 @@ GetEBases()
 
 DumpUnitMemory(BYREF MemDump)
 {   
-  return UnitCount := getHighestUnitIndex(), ReadRawMemory(B_uStructure, GameIdentifier, MemDump, UnitCount * OffsetsUnitStrucSize)
+  return UnitCount := getHighestUnitIndex(), ReadRawMemory(B_uStructure, GameIdentifier, MemDump, UnitCount * Offsets_Unit_StructSize)
 }
 class cUnitModelInfo
 {
    __New(pUnitModel) 
-   {  global GameIdentifier, O_mUnitID, O_mMiniMapSize, O_mSubgroupPriority
-      ReadRawMemory((pUnitModel<< 5) & 0xFFFFFFFF, GameIdentifier, uModelData, O_mMiniMapSize+4) ; O_mMiniMapSize - 0x39C + 4 (int) is the highest offset i get from the unitmodel
-      this.Type := numget(uModelData, O_mUnitID, "Short") 
-      this.MiniMapRadius := numget(uModelData, O_mMiniMapSize, "int")/4096
-      this.RealSubGroupPriority := numget(uModelData, O_mSubgroupPriority, "Short")
+   {  global GameIdentifier, Offsets_UnitModel_ID, Offsets_UnitModel_MinimapRadius, Offsets_UnitModel_SubgroupPriority
+      ReadRawMemory(pUnitModel & 0xFFFFFFFF, GameIdentifier, uModelData, Offsets_UnitModel_MinimapRadius+4) ; Offsets_UnitModel_MinimapRadius - 0x39C + 4 (int) is the highest offset i get from the unitmodel
+      this.Type := numget(uModelData, Offsets_UnitModel_ID, "Short") 
+      this.MiniMapRadius := numget(uModelData, Offsets_UnitModel_MinimapRadius, "int")/4096
+      this.RealSubGroupPriority := numget(uModelData, Offsets_UnitModel_SubgroupPriority, "Short")
    }
 }
 
@@ -3924,16 +4011,16 @@ tSpeak(Message, SAPIVol := "", SAPIRate := "")
 ; morphing doesn't change this
 getUnitIndexReusedCount(unitIndex)
 {
-	return readmemory(B_uStructure + OffsetsUnitStrucSize * unitIndex, GameIdentifier, 2) ; +0 Increases when the unit dies
+	return readmemory(B_uStructure + Offsets_Unit_StructSize * unitIndex, GameIdentifier, 2) ; +0 Increases when the unit dies
 }
 
 numGetUnitIndexReusedCount(ByRef MemDump, Unit)
 {	
-	return numget(MemDump, Unit * OffsetsUnitStrucSize, "UShort")
+	return numget(MemDump, Unit * Offsets_Unit_StructSize, "UShort")
 }
 numGetUnitFingerPrint(ByRef MemDump, Unit)
 {	
-	return numget(MemDump, Unit * OffsetsUnitStrucSize, "UInt")
+	return numget(MemDump, Unit * Offsets_Unit_StructSize, "UInt")
 }
 
 ; The unitTimer is updated slower than the gameTick/time. This can cause a time to be out
@@ -4913,16 +5000,16 @@ isTransportUnloading(unit)
 */
 
 getUnitMaxHp(unit)
-{   global B_uStructure, OffsetsUnitStrucSize, O_uModelPointer
-    mp := readMemory(B_uStructure + unit * OffsetsUnitStrucSize + O_uModelPointer, GameIdentifier) << 5 & 0xFFFFFFFF
+{   global B_uStructure, Offsets_Unit_StructSize, Offsets_Unit_ModelPointer
+    mp := getUnitModelPointer(unit)
     addressArray := readMemory(mp + 0xC, GameIdentifier, 4)
     pCurrentModel := readMemory(addressArray + 0x4, GameIdentifier, 4) 		
     return round(readMemory(pCurrentModel + 0x2C, GameIdentifier) / 4096)
 }
 
 getUnitMaxShield(unit)
-{   global B_uStructure, OffsetsUnitStrucSize, O_uModelPointer
-    mp := readMemory(B_uStructure + unit * OffsetsUnitStrucSize + O_uModelPointer, GameIdentifier) << 5 & 0xFFFFFFFF
+{   global B_uStructure, Offsets_Unit_StructSize, Offsets_Unit_ModelPointer
+    mp := getUnitModelPointer(unit)
     addressArray := readMemory(mp + 0xC, GameIdentifier, 4)
     pCurrentModel := readMemory(addressArray + 0x4, GameIdentifier, 4) 		
     return round(readMemory(pCurrentModel + 0xA0, GameIdentifier) / 4096)
@@ -4950,9 +5037,9 @@ getUnitCurrentShields(unit)
 
 getCurrentHpAndShields(unit, byRef result)
 {
-	global B_uStructure, OffsetsUnitStrucSize, O_uModelPointer
+	global B_uStructure, Offsets_Unit_StructSize, Offsets_Unit_ModelPointer
     result := []
-    mp := readMemory(B_uStructure + unit * OffsetsUnitStrucSize + O_uModelPointer, GameIdentifier) << 5 & 0xFFFFFFFF
+    mp := getUnitModelPointer(unit)
     addressArray := readMemory(mp + 0xC, GameIdentifier, 4)
     pCurrentModel := readMemory(addressArray + 0x4, GameIdentifier, 4) 		
     result.health := round(readMemory(pCurrentModel + 0x2C, GameIdentifier) / 4096) - getUnitHpDamage(unit)
@@ -4979,7 +5066,7 @@ getStructureMorphProgress(pAbilities, unitType)
 ; but if also has queued command then need to find the morphing ability
 getUnitMorphTimeOld(unit)
 {
-	p := ReadMemory(B_uStructure + unit * OffsetsUnitStrucSize + O_P_uCmdQueuePointer, GameIdentifier)
+	p := ReadMemory(B_uStructure + unit * Offsets_Unit_StructSize + OffsetsUnitCommandQueuePointer, GameIdentifier)
 	timeRemaining := ReadMemory(p + 0x98, GameIdentifier)
 	totalTime := ReadMemory(p + 0xB4, GameIdentifier)
 	return round((totalTime - timeRemaining)/totalTime, 2)
@@ -5015,7 +5102,7 @@ getUnitMorphTime(unit, unitType, percent := True)
 						 ,	aUnitID.CommandCenter: ["UpgradeToOrbital", "UpgradeToPlanetaryFortress"]}
 	}
 	; target flag is usually 7 for the morphing types
-	if (CmdQueue := ReadMemory(B_uStructure + unit * OffsetsUnitStrucSize + O_P_uCmdQueuePointer, GameIdentifier)) ; points if currently has a command - 0 otherwise
+	if (CmdQueue := ReadMemory(B_uStructure + unit * Offsets_Unit_StructSize + OffsetsUnitCommandQueuePointer, GameIdentifier)) ; points if currently has a command - 0 otherwise
 	{
 		pNextCmd := ReadMemory(CmdQueue, GameIdentifier) ; If & -2 this is really the first command ie  = BaseCmdQueStruct
 		loop 
@@ -5051,7 +5138,7 @@ getUnitMorphTime(unit, unitType, percent := True)
 getBanelingMorphTime(pAbilities)
 {
 	p := pointer(GameIdentifier, findAbilityTypePointer(pAbilities, aUnitID.BanelingCocoon, "MorphZerglingToBaneling"), 0x12c, 0x0)
-	totalTime := ReadMemory(p + 0x68, GameIdentifier)
+	totalTime := ReadMemory(p + 0x80, GameIdentifier)
 	timeRemaining := ReadMemory(p + 0x6c, GameIdentifier)
 	return round((totalTime - timeRemaining)/totalTime, 2)
 }
@@ -5077,7 +5164,7 @@ getArchonMorphTime(pAbilities)
 
 getAddonStatus(pAbilities, unitType, byRef underConstruction := "")
 {
-	STATIC O_IndexParentTypes := 0x18, hasRun := False, aAddonStrings := [], aOffsets := []
+	STATIC hasRun := False, aAddonStrings := [], aOffsets := []
 	if !hasRun 
 	{
 		hasRun := True
@@ -5095,7 +5182,7 @@ getAddonStatus(pAbilities, unitType, byRef underConstruction := "")
 		if readmemory(p + 0x28, GameIdentifier) ; if offset +28 or +2C not 0 addon is present techlab or reactor - both are pointers
 		{
 			if !aOffsets.HasKey(unitType) ; ie CAbilQueue offset = aOffsets[unitType] - should be the same for all 3 types of units
-				aOffsets[unitType] := O_IndexParentTypes + 4 * getCAbilQueueIndex(pAbilities, getAbilitiesCount(pAbilities)) 
+				aOffsets[unitType] := OffSets_UnitAbilities_AbilityPointerIndex + 4 * getCAbilQueueIndex(pAbilities, getAbilitiesCount(pAbilities)) 
 
 			if readmemory(readmemory(pAbilities + aOffsets[unitType], GameIdentifier) + 0x48, GameIdentifier) ; if != 0 reactor present
 				return 1 ; reactor Present
@@ -5119,7 +5206,7 @@ If pointer not 0 then has a (fully built) reactor or techlab
 ; I added the nydusCanal here instead of having another separate function.
 getBuildProgress(pAbilities, type)
 {
-	static O_TotalBuildTime := 0x28, O_TimeRemaining := 0x2C
+	static O_TotalBuildTime := 0x28, OffSets_QueuedUnit_BuildTimeRemaining := 0x2C
 	; + 0x28 = total build time
 	; + 0x2C = Time Remaining
 
@@ -5127,7 +5214,7 @@ getBuildProgress(pAbilities, type)
 	{
 		B_Build := ReadMemory(pBuild, GameIdentifier)
 		totalTime := readmemory(B_Build + O_TotalBuildTime, GameIdentifier)
-		remainingTime := readmemory(B_Build + O_TimeRemaining, GameIdentifier) ; >> 16 to get in game seconds remaining (/16 to get fraction of seconds)
+		remainingTime := readmemory(B_Build + OffSets_QueuedUnit_BuildTimeRemaining, GameIdentifier) ; >> 16 to get in game seconds remaining (/16 to get fraction of seconds)
 		return round((totalTime - remainingTime) / totalTime, 2) ; 0.73
 	}
 	else return 1 ; something went wrong so assume its complete 
@@ -5180,7 +5267,7 @@ getUnitBuff(unit, byRef buffNameOrObject)
 	static aBuffStringOffsets := []
 
 	; If no buffs applied pointer = 0 - so if buff finishes this will change back to 0
-	if !buffArray := ReadMemory(B_uStructure + unit * OffsetsUnitStrucSize + O_uBuffPointer, GameIdentifier)
+	if !buffArray := ReadMemory(B_uStructure + unit * Offsets_Unit_StructSize + O_uBuffPointer, GameIdentifier)
 		return 0
 	; I spent almost 0 time investigating these structures - so there should probably be more pointer checking conditions
 	; and counts
@@ -5231,7 +5318,7 @@ getUnitBuff(unit, byRef buffNameOrObject)
 ; It removes mules (this is address is 0 for non terran races).
 getResourceWorkerCount(unit, player)
 {      
-    if !p := readMemory(B_uStructure + unit * OffsetsUnitStrucSize + O_uBuffPointer, GameIdentifier)
+    if !p := readMemory(B_uStructure + unit * Offsets_Unit_StructSize + O_uBuffPointer, GameIdentifier)
         return -1
     p := readMemory(p+0x4, GameIdentifier)
     if !p := readMemory(p+0x78, GameIdentifier)
@@ -5248,7 +5335,7 @@ getResourceWorkerCount(unit, player)
 ; Returns amount of resource left in a refinery/extractor/assimilator/geyser/mineral patch 
 getRemainingResourceCount(unit)
 {
-    if !p := readMemory( B_uStructure + unit * OffsetsUnitStrucSize + O_uBuffPointer, GameIdentifier)
+    if !p := readMemory( B_uStructure + unit * Offsets_Unit_StructSize + O_uBuffPointer, GameIdentifier)
         return -1
     p := readMemory(p + 0x4, GameIdentifier)
     return readMemory(p + 0x50, GameIdentifier)
@@ -5257,7 +5344,7 @@ getRemainingResourceCount(unit)
 ; This seems to work for hatches, lairs and hives even when building/researching
 getTownHallLarvaCount(unit)
 {
-	if !buffArray := ReadMemory(B_uStructure + unit * OffsetsUnitStrucSize + O_uBuffPointer, GameIdentifier)
+	if !buffArray := ReadMemory(B_uStructure + unit * Offsets_Unit_StructSize + O_uBuffPointer, GameIdentifier)
 		return 0
 	if !p := ReadMemory(buffArray + 0x8, GameIdentifier)
 		return 0
@@ -5280,7 +5367,7 @@ isPhotonOverChargeActive(unit)
 
 unitIndexFromAddress(address)
 {
-	return (address - B_uStructure) / OffsetsUnitStrucSize
+	return (address - B_uStructure) / Offsets_Unit_StructSize
 }
 
 getUnitTargetFilterString(unit)

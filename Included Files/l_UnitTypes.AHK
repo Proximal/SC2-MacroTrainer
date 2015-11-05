@@ -428,3 +428,7 @@ l_UnitTypes =
 	PhotonOverCharge = MothershipCoreApplyPurifyAB ; No quotes. Dirty hack to allow removal of PO from unit panel
 )
 #LTrim, off
+
+; When updating be aware:
+; 1. My work around hacks
+; 2 unit name e.g. swarm host, and thor

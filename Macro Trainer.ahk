@@ -10527,7 +10527,7 @@ swapAbilityPointerFreeze()
 	hwnd := openCloseProcess(GameIdentifier)
 	SuspendProcess(hwnd)
 	unit := getSelectedUnitIndex()
-	abilityPointerAddress := B_uStructure + unit * OffsetsUnitStrucSize + O_P_uAbilityPointer
+	abilityPointerAddress := B_uStructure + unit * OffsetsUnitStrucSize + OffsetsUnitAbilityPointer
 	originalValue := ReadMemory(abilityPointerAddress, GameIdentifier)
 	pAbilities := getUnitAbilityPointer(unit)
 	WriteMemory(abilityPointerAddress, pAbilities, "UInt") 
@@ -10539,22 +10539,7 @@ swapAbilityPointerFreeze()
 }
 
 
-getUnitAbilitiesString(unit)
-{
-	B_AbilityStringPointer := 0xA4 ; string pointers for abilities start here
-	O_IndexParentTypes := 0x18
-	if !pAbilities := getUnitAbilityPointer(unit)
-		return clipboard := "pAbilities = 0"
-	p1 := readmemory(pAbilities, GameIdentifier)
-	s := "pAbilities: " chex(pAbilities) " Unit ID: " unit "`nuStruct: " chex(getunitAddress(unit)) " - " chex(getunitAddress(unit) + OffsetsUnitStrucSize)
-	loop
-	{
-		if (p := ReadMemory( address := p1  +  B_AbilityStringPointer + (A_Index - 1)*4, GameIdentifier))
-			s .= "`n"  A_Index - 1 " | Pointer Address " chex(pAddress := pAbilities + O_IndexParentTypes + (A_Index - 1)*4) " | Pointer Value "  chex(ReadMemory(pAddress, GameIdentifier)) " | "  ReadMemory_Str(ReadMemory(p +4, GameIdentifier), GameIdentifier)
-	} until p = 0
-	msgbox % clipboard := s
-	return s
-}
+
 
 
 ; This is required for some commands to function correctly. 
@@ -13851,26 +13836,11 @@ return
 
 
 
-f2::
-objtree(aSCOffsets)
-msgbox % chex(playerAddress := playerAddress(getLocalPlayerNumber()))
-
-msgbox % getPlayerMinerals() "`n" getLocalPlayerNumber()
-return 
 
 
 
 
 
-
-
-
-
-highestUnitIndexNew()
-{
-	SCBase := getProcessBaseAddress(GameIdentifier)
-	Return ReadMemory(SCBase + 0x1EA2DC0, GameIdentifier)
-}
 
 
 
@@ -14082,17 +14052,258 @@ SC2.AssertAndCrash+3B1A06 - ret 000C
 
 
 */
+
+; SCOffSet 
+
 f1::
 
-msgbox % getPlayerSupply(1) "/" getPlayerSupplyCap(1) 
-msgbox % getLocalPlayerNumber()
-msgbox % chex(playerAddress(getLocalPlayerNumber()))
+
+unit := getSelectedUnitIndex()
+msgbox % type := getUnitType(unit)
+. "`n" getunitname(unit)
 return 
 
+pAbilities := getUnitAbilityPointer(unit)
+msgbox % chex(getunitmodelpointer(unit))
+msgbox % getunitname(unit)
+;getStructureProductionInfo(unit, type, aInfo, totalQueueSize)
+;objtree(aInfo)
+return 
+
+
+msgbox % chex(pAbilities)
+msgbox % getZergProductionStringFromEgg(unit)
+
+getStructureProductionInfo(unit, type, aInfo, totalQueueSize)
+objtree(aInfo)
+msgbox % totalQueueSize
+return 
+
+u := getSelectedUnitIndex()
+msgbox % getunitname(u)
+
+msgbox % chex(getunitmodelpointer(u)) "`n" u
+msgbox % getUnitType(u)
+;msgbox % aUnitName[getUnitType(u)]
+
+
+return 
+f2::
+msgbox % dumpUnitTypes(a)
+clipboard := a
+return 
+
+setformat, IntegerFast, H
+modelAddress := 0x1CB46060
+msgbox % modelAddress + 0xA20
+p := ReadMemory(modelAddress + 0xA20, GameIdentifier)
+msgbox % name := ReadMemory_Str(p + 0x14, GameIdentifier)
+return 
+
+
+
+; 1AF2E0D8
+; 1cb46A80
+/*
+
+pAbilities: CDF72F0 Unit ID: 38
+uStruct: 292D16C8 - 292D18B0
+0 | Pointer Address CDF7308 | Pointer Value 293683C0 | stop
+1 | Pointer Address CDF730C | Pointer Value 29368450 | move
+2 | Pointer Address CDF7310 | Pointer Value C333CB0 | attack
+3 | Pointer Address CDF7314 | Pointer Value C333D40 | Stimpack
+Loop Count: 4	Read Count: 4
+
+pAbilities: 2936C9A8 Unit ID: 36
+uStruct: 292D12F8 - 292D14E0
+0 | Pointer Address 2936C9C0 | Pointer Value 293674D0 | stop
+1 | Pointer Address 2936C9C4 | Pointer Value 29367560 | move
+2 | Pointer Address 2936C9C8 | Pointer Value 293675F0 | Rally
+3 | Pointer Address 2936C9CC | Pointer Value 29367680 | que5
+4 | Pointer Address 2936C9D0 | Pointer Value 29367710 | BuildInProgress
+5 | Pointer Address 2936C9D4 | Pointer Value 293677A0 | BarracksAddOns
+6 | Pointer Address 2936C9D8 | Pointer Value 29367830 | BarracksLiftOff
+7 | Pointer Address 2936C9DC | Pointer Value 293678C0 | BarracksLand
+8 | Pointer Address 2936C9E0 | Pointer Value 29368060 | BarracksTrain
+*/
+
+
+
+dumpUnitTypes(byRef outputString)
+{
+	mem := new _ClassMemory(GameIdentifier) 
+	mp := getunitmodelpointer(0)
+	byte1 := mem.read(mp, "Char")
+	byte2 := mem.read(mp+1, "Char")
+	byte3 := mem.read(mp+2, "Char")
+	byte4 := mem.read(mp+3, "Char")
+	
+	excludeNamesContain = 
+	( join, Comments ltrim
+	ACGluescreenDummy
+	##id##
+	DestructibleCityDebris
+	CollapsibleTerranTower
+	XelNaga_Caverns_
+	ExtendingBridge
+	DestructibleRock
+	UnbuildablePlates
+	CollapsibleRockTower
+	DebrisRamp
+	Shape
+	Destructible
+	)
+	excludeNames = 
+	( join, Comments ltrim
+	Amount
+	AttributeBonus[Armored]
+	GlaiveWurmWeapon
+	Level
+	)
+	modifyNames = 
+	( join, Comments ltrim
+	Changeling
+	Overlord
+	TechLab
+	VespeneGeyser
+	)	
+
+	aIDLookup := [], aDuplicates := [], aNameLookup := [], foundCount := 0
+	modelAddress := mem.baseaddress
+	while (modelAddress := mem.processPatternScan(modelAddress + 0x4,, byte1, byte2, byte3, byte4)) > 0 ; 0x0AEF6258 - same value at +0x0 of every model structure
+	{	
+		p := ReadMemory(modelAddress + 0xA20, GameIdentifier)
+		if (p + 0 = "") ; its not a number - failed read 
+			continue 
+		name := ReadMemory_Str(p + 0x14, GameIdentifier) ; unitName/Revive
+		StringReplace, name, name, /Revive,, All
+
+		pNameDataAddress := ReadMemory(modelAddress + 0xC, GameIdentifier) ; mp + pName_address
+		pNameDataAddress := ReadMemory(pNameDataAddress, GameIdentifier) 
+		NameDataAddress := ReadMemory(pNameDataAddress, GameIdentifier)
+		name2 := substr(ReadMemory_Str(NameDataAddress + 0x20, GameIdentifier), 11) 			
+		if (name = "Changeling" || name2 = "Changeling")
+			name := "Changeling"
+		else if RegExmatch(name, "[^\x20-\x7E]") ; space -> ~ i.e. non english characters / non-string
+			name := name2
+
+		if (name = "")
+			continue
+		if name in %excludeNames%
+			continue
+		if name contains %excludeNamesContain%
+			continue
+
+		modelID := ReadMemory(modelAddress + Offsets_UnitModel_ID, GameIdentifier, 2)
+		if (modelID + 0 = "" || modelID >= 1000) ; **** may need to change this for lotv?
+			continue 
+
+		if aNameLookup.HasKey(name) 
+		{
+			if (modelID = aNameLookup[name]) ; same values / duplicate
+				continue 
+			; else differnt IDs
+			; for changelings and such, want 'aIDLookup[modelID] := name' below to store the ID but not log it as a duplicate here!
+			if name not in %modifyNames%
+			{
+				aDuplicates[name] := modelID 
+				duplicatesPresent := true
+			}
+		}
+		else aNameLookup[name] := modelID
+		aIDLookup[modelID] := name
+		foundCount++
+	}
+	if !foundCount
+		return 0	
+	
+
+	 aRename   := { "Changeling" : ["Changeling", "ChangelingZealot", "ChangelingMarineShield", "ChangelingMarine", "ChangelingZerglingWings", "ChangelingZergling"]
+    			, "TechLab": ["TechLab", "BarracksTechLab", "FactoryTechLab", "StarportTechLab"]
+   				 , "VespeneGeyser": ["VespeneGeyser", "ProtossVespeneGeyser", "VespeneGeyserPretty"]}
+	; There are a few other geysers, but they have unique name i.e. SpacePlatformGeyser, RichVespeneGeyser
+	overlordCount := 0
+	for modelID, name in aIDLookup
+	{
+		if aRename.HasKey(name)
+		{
+			indexKey := aRename[name, "_count"] := round(aRename[name, "_count"]) + 1
+			if aRename[name].HasKey(indexKey)	
+				aIDLookup[modelID] := newName := aRename[name, indexKey]
+			else renameError .= name " Error - new " name " ? modelID: " modelID 
+		}
+		else if (name = "Overlord") ; Second overlord has a higher unit ID and doesn't seem valid
+		{
+			if (++overlordCount = 2)
+				aIDLookup.remove(modelID, "")
+			else if (overlordCount > 2)
+				renameError .= "OverlordCount Error - new Changeling ? modelID: " modelID
+		}
+	}
+	if renameError
+		renameError := "Rename Erros:`n" renameError
+
+	for modelID, name in aIDLookup
+		outputString .= name " = " modelID ",`n"
+
+
+	outputString := Rtrim(outputString, ",`n")
+	outputString .= "`n`ncount: " foundCount "`n`n"
+	outputString .= renameError
+	if duplicatesPresent
+	{
+		outputString .= "`n`n`nDuplicates present:`n"
+		for name, in aDuplicates
+			outputString .= name "`n"
+	}
+
+	outputString .= "Excluded Names Containing: " excludeNamesContain
+				. "`nExcluded Names Matching: " excludeNames
+
+	return foundCount
+}
+
+
+
+getunitNameFromModelAddres(modelAddress)
+{
+	pNameDataAddress := ReadMemory(modelAddress + 0xC, GameIdentifier) ; mp + pName_address
+	, pNameDataAddress := ReadMemory(pNameDataAddress, GameIdentifier) 
+	, NameDataAddress := ReadMemory(pNameDataAddress, GameIdentifier) 
+	
+	return substr(ReadMemory_Str(NameDataAddress + 0x20, GameIdentifier), 11) 	
+}
+f4::
+msgbox % r := chex(0x2AEF962C & -2)
+msgbox % r & 1
+return 
+; 0xFFFFFFFF
 +f9::
 SetPlayerMinerals()
 SetPlayerGas()
 return 
+
+
+
+
+; aSCOffsets["unitAddress", unit]
+; aSCOffsets["playerAddress", player] 
+
+; left refinery fp = 840001
+; right  refinery fp = 880001
+
+/*
+
+ aUnitMoveStates := { Idle: -1  ; ** Note this isn't actually a read in game type/value its just what my function will return if it is idle
+					, Amove: 0 		
+					, Patrol: 1
+					, HoldPosition: 2
+					, Move: 256
+					, Follow: 512
+					, FollowNoAttack: 515} 
+
+
+*/
 
 /*
 O_pTeam
@@ -14111,6 +14322,10 @@ O_pBaseCount
 O_pArmySupply
 O_pArmyMineralSize
 O_pArmyGasSize
+
+P_IdleWorker
+O1_IdleWorker
+O2_IdleWorker
 */
 
 /*
@@ -14171,11 +14386,6 @@ testUnitStructPattern(unitSize := 0x1E8)
 	return byteArray
 }
 
-;306 south 8:30 
-
-
-
-
 
 
 
@@ -14183,261 +14393,61 @@ testUnitStructPattern(unitSize := 0x1E8)
 
 
 /*
-offsets to find 
-
-		;	[Memory Addresses]
-		B_LocalCharacterNameID := base + 0x4FBADF4 ; stored as string Name#123 There are a couple of these, but only one works after SC restart or out of game
-		
-		B_ReplayWatchedPlayer := B_LocalPlayerSlot + 0x1
-		 
-		B_pStructure := base + 0x362BF90 ; 			 
-		S_pStructure := 0xE18
-			 O_pStatus := 0x0
-			 O_pXcam := 0x8
-			 O_pYcam := 0xC	
-			 O_pCamDistance := 0x10 ; 0xA - Dont know if this is correct - E
-			 O_pCamAngle := 0x14
-			 O_pCamRotation := 0x18
-
-			 ; 8 bytes were inserted here
-			 O_pTeam := 0x1C 
-			 O_pType := 0x1D ;same
-			 O_pVictoryStatus := 0x1E
-			 O_pName := 0x64 
-			 
-			 O_pRacePointer := 0x160
-			 O_pColour := 0x1B8
-			 O_pAccountID := 0x218 ; This moved by quite a bit (more than the others) 0x1C0 
-
-			 O_pAPM := 0x5F0 	; Instantaneous
-			 O_pAPMAverage := 0x5F8
-			 O_pEPM := 0x630 	; Instantaneous
-			 O_pEPMAverage := 0x638 	
-
-			 O_pWorkerCount := 0x7E0 ; **Care dont confuse this with HighestWorkerCount
-			 O_pTotalUnitsBuilt := 0x660 ; eg numbers of units made (includes 6 starting scvs) 
-			 O_pWorkersBuilt := 0x7F0 ; number of workers made (includes the 6 at the start of the game)
-			 O_pHighestWorkerCount := 0x808 ; the current highest worker account achieved
-			 O_pBaseCount := 0x850 
-
-			 O_pSupplyCap := 0x8A0		
-			 O_pSupply := 0x8B8 		
-			 O_pMinerals := 0x8F8 
-			 O_pGas := 0x900
-
-			 O_pArmySupply := 0x8D8	 
-			 O_pMineralIncome := 0x978
-			 O_pGasIncome := 0x980
-			 O_pArmyMineralSize := 0xC60 	; there are two (identical?) values for minerals/gas 
-			 O_pArmyGasSize := 0xC88 		; ** care dont use max army gas/mineral size! 
-
-		 P_IdleWorker := base + 0x314B920		
-			 O1_IdleWorker := 0x358
-			 O2_IdleWorker := 0x244 	; tends to always end with this offset if finding via pointer scan
-
-		; 	This can be found via three methods, pattern scan:
-		;	C1 EA 0A B9 00 01 00 00 01 0D ?? ?? ?? ?? F6 D2 A3 ?? ?? ?? ?? F6 C2 01 74 06 01 0D ?? ?? ?? ?? 83 3D ?? ?? ?? ?? 00 56 BE FF FF FF 7F
-		; 	Timer Address = readMemory(patternAddress + 0x1C)
-		; 	It can also be found as there are two (identical?) 4-byte timers next to each other.
-		; 	So do the usual search between times to find the timer value, then search for an 8 byte representation of 
-		;   two timers which have the same value.  GameGetMissionTime() refers to the second (+0x4) of these two timers.
-		;	And via IDA (Function: GameGetMissionTime) (-0x800000 from IDA address)
-
-		 B_Timer := base + 0x357A0D0		
-
-		 B_rStructure := base + 0x02F6C850	; Havent updated as dont use this
-			 S_rStructure := 0x10
-
-		 ; Also be sure to check the pointer in a real game. Ones which appear valid via mapeditor maps may not work.
-		 ; must be 0 when chat box not open yet another menu window is
-		 P_ChatFocus := base + 0x314B920 ;Just when chat box is in focus ; value = True if open. There will be 2 of these.
-			 O1_ChatFocus := 0x394 
-			 O2_ChatFocus := 0x174 		; tends to end with this offset
-
-		 P_MenuFocus := base + 0x5045A6C 	;this is all menus and includes chat box when in focus 
-			 O1_MenuFocus := 0x17C 			; tends to end with this offse
-
-		P_SocialMenu := base + 0x0409B098 ; ???? Havent updated as dont use it
-
-		 B_uCount := base + 0x36AA7E8 	; This is the units alive (and includes missiles) - near B_uHighestIndex (-0x18)		
-		 								; There are two of these values and they only differ the instant a unit dies esp with missle fire (ive used the higher value) - perhaps one updates slightly quicker - dont think i use this offset anymore other than as a value in debugData()
-		 								; Theres another one which excludes structures
-
-		 B_uHighestIndex := base + 0x36AA800  			; This is actually the highest currently alive unit (includes missiles while alive) and starts at 1 NOT 0! i.e. 1 unit alive = 1
-		 B_uStructure := base + 0x36AA840 ; B_uHighestIndex+0x40    			
-		 OffsetsUnitStrucSize := 0x1C0
-			 O_uModelPointer := 0x8
-			 O_uTargetFilter := 0x14
-			 O_uBuildStatus := 0x18		; buildstatus is really part of the 8 bit targ filter!
-			 O_uOwner := 0x2E ; There are 3 owner offsets (0x27, 0x40, 0x41) for changelings owner3 changes to the player it is mimicking
-			 O_XelNagaActive := 0x34 	; xel - dont use as doesnt work all the time
-			; something added in here in vr 2.10		  
-			 O_uX := 0x4C
-			 O_uY := 0x50
-			 O_uZ := 0x54
-			 O_uDestinationX := 0x80
-			 O_uDestinationY := 0x84
-			 O_P_uCmdQueuePointer := 0xD4 ;+4
-			 O_P_uAbilityPointer := 0xDC
-
-			 O_uPoweredState := 0xE0 									
-			 O_uChronoState := 0xE6	; there are other offsets which can be used for chrono/inject state ; pre 210 chrono and inject offsets were the same 
-			 O_uInjectState := 0xE7 ; +5 Weird this was 5 not 4 (and its values changed) chrono state just +4
-			 O_uBuffPointer := 0xEC
-
-
-			 O_uHpDamage := 0x114
-			 O_uShieldDamage := 0x118
-			 O_uEnergy := 0x11c 
-			 O_uTimer := 0x16C ;+4
-			
-		;CommandQueue 	; separate structure
-			 O_cqState := 0x40	
-		
-		; Unit Model Structure	
-		 O_mUnitID := 0x6	
-		 O_mSubgroupPriority := 0x3A8 ;0x398
-		 O_mMiniMapSize := 0x3AC ;0x39C
-		
-		; selection and ctrl groups
-		 B_SelectionStructure := base + 0x1EE9BB8 
-
-		; The structure begins with ctrl group 0
-
-		 B_CtrlGroupStructure := base + 0x3212ED8
-		 S_CtrlGroup := 0x1B60
-		 S_scStructure := 0x4	; Unit Selection & Ctrl Group Structures
-			 O_scTypeCount := 0x2
-			 O_scTypeHighlighted := 0x4
-			 O_scUnitIndex := 0x8
-
-		; gives the select army unit count (i.e. same as in the select army icon) - unit count not supply
-		; dont confuse with similar value which includes army unit counts in production - or if in map editor unit count/index.
-		; Shares a common base with P_IsUserPerformingAction, SelectionPtr, IdleWorkerPtr, ChatFocusPtr, B_UnitCursor, B_CameraMovingViaMouseAtScreenEdge (never realised it was so many derp)
-
-		B_localArmyUnitCount := base + 0x314B920
-			O1_localArmyUnitCount := 0x354
-			O2_localArmyUnitCount := 0x248
-
-		 B_TeamColours := base + 0x314D184 ; 2 when team colours is on, else 0
-		; another one at + 0x4FEDA58
-
-		 P_SelectionPage := base + 0x314B920  	; Tends to end with these offsets. ***theres one other 3 lvl pointer but for a split second (every few second or so) it points to 
-			 O1_SelectionPage := 0x320			; the wrong address! You need to increase CE timer resolution to see this happening! Or better yet use the 'continually perform the pointer scan until stopped' option.
-			 O2_SelectionPage := 0x15C			;this is for the currently selected unit portrait page ie 1-6 in game (really starts at 0-5)
-			 O3_SelectionPage := 0x14C 			;might actually be a 2 or 1 byte value....but works fine as 4
-
-		DeadFilterFlag := 0x0000000200000000	
-		BuriedFilterFlag := 0x0000000010000000
-
-		 B_MapInfo := base + 0x357A010
-			O_FileInfoPointer := 0 
-
-		; at B_MapStruct -0x5C is a pointer which list map file name, map name, description and other stuff
-		 B_MapStruct := base + 0x357A06C		;0x353C3B4 ;0x3534EDC ; 0X024C9E7C 
-			 O_mLeft := B_MapStruct + 0xDC	                                   
-			 O_mBottom := B_MapStruct + 0xE0	                                   
-			 O_mRight := B_MapStruct + 0xE4	    ; MapRight 157.999756 (akilon wastes) after dividing 4096   (647167 before)                  
-			 O_mTop := B_MapStruct + 0xE8	   	; MapTop: 622591 (akilon wastes) before dividing 4096  
-
-		B_camLeft := base + 0x314D8E0
-		B_camBottom := B_camLeft + 0x4
-		B_camRight := B_camBottom + 0x4
-		B_camTop := B_camRight + 0x4
-
-		 aUnitMoveStates := { Idle: -1  ; ** Note this isn't actually a read in game type/value its just what my function will return if it is idle
-							, Amove: 0 		
-							, Patrol: 1
-							, HoldPosition: 2
-							, Move: 256
-							, Follow: 512
-							, FollowNoAttack: 515} ; This is used by unit spell casters such as infestors and High temps which dont have a real attack 
-			
-		B_UnitCursor :=	base + 0x314B920  
-			O1_UnitCursor := 0x2C0	 					
-			O2_UnitCursor := 0x21C 					
-
-	 	; This base can be the same as B_UnitCursor				; If used as 4byte value, will return 256 	there are 2 of these memory addresses
-		 P_IsUserPerformingAction := base + 0x314B920 			; This is a 1byte value and return 1  when user is casting or in is rallying a hatch via gather/rally or is in middle of issuing Amove/patrol command but
-			 O1_IsUserPerformingAction := 0x230 				; if youre searching for a 4byte value in CE offset will be at 0x254 (but really if using it as 1 byte it is 0x255) - but im lazy and use it as a 4byte with my pointer command
-																; also 1 when placing a structure (after structure is selected) or trying to land rax to make a addon Also gives 1 when trying to burrow spore/spine
-																; When searching for 4 byte value this offset will be 0x254 
-																; this address is really really useful!
-																; it is even 0 with a burrowed swarm host selected (unless user click 'y' for rally which is even better)
-
-
-		; This tends to have the same offsets (though there are a few to choose from)
-		 P_IsBuildCardDisplayed := base + 0x315FA34 		; this displays 1 (swarm host) or 0 with units selected - displays 7 when targeting reticle displayed/or placing a building (same thing)
-			 01_IsBuildCardDisplayed := 0x7C 				; **but when either build card is displayed it displays 6 (even when all advanced structures are greyed out)!!!!
-			 02_IsBuildCardDisplayed := 0x74 				; also displays 6 when the toss hallucination card is displayed
-			 03_IsBuildCardDisplayed := 0x398 				; could use this in place of the current 'is user performing action offset'
-	 														; Note: There is another address which has the same info, but when placing a building it will swap between 6 & 7 (not stay at 7)!
-
-
-	 	; There are two chat buffers - One blanks after you press return (to send chat)
-	 	; while the other one keeps the text even after the chat is sent/closed
-	 	; this is the latter
-
-	 	; note there are two of these so make sure pick the right one as there addresses 
-	 	; can go from high to low so the one at the top of CE scan might not be the same one
-	 	; that was at the top last time!
-	 															
-	 	 P_ChatInput := base + 0x0310EDEC 		; ?????? not updated/used currently
-	 		 O1_ChatInput := 0x16C 
-	 		 O2_ChatInput := 0xC
-	 		 O3_ChatInput := 0x278
-	 		 O4_ChatInput := 0x0
-
-
-	;Around this modifier area are other values which contain the logical states
-	;SC2.exe+1FDF7C6 is a 2byte value which contains the state of the numbers 0-9
-	;SC2.exe+1FDF7D0 contains the state F-keys as well as keys like tab, backspace, Ins, left, right etc
-	;SC2.exe+1FDF7C8 (8 bytes) contains the state of most keys eg a-z etc
-
-
-
-												; there are two of these the later 1 is actually the one that affects the game
-												; Also the 1st one, if u hold down a modifier then go out of the game (small window mode)
-												; it will remain 1 even when back in and shift isn't down as moving a unit wont be shift-commanded! so dont use that one
-											  	;shift = 1, ctrl = 2, alt = 4 (and add them together)
-
-															
-		 B_CameraDragScroll := base + 0x308E7A8   			; 1 byte Returns 1 when user is moving camera via DragScroll i.e. mmouse button the main map But not when on the minimap (or if mbutton is held down on the unit panel)
-
-		
-		 B_InputStructure := base + 0x308EAB8  		
-			 B_iMouseButtons := B_InputStructure + 0x0 		; 1 Byte 	MouseButton state 1 for Lbutton,  2 for middle mouse, 4 for rbutton, 8 xbutton1, 16 xbutton2
-			 B_iSpace := B_iMouseButtons + 0x8 				; 1 Bytes
-			 B_iNums := B_iSpace + 0x2  					; 2 Bytes
-			 B_iChars := B_iNums + 0x2 						; 4 Bytes 
-			 B_iTilda := B_iChars + 0x4 					; 1 Byte  (could be 2 bytes)
-			 B_iNonAlphNumChars := B_iTilda + 0x2 			; 2 Bytes - keys: [];',./ Esc Entr \
-			 B_iNonCharKeys := B_iNonAlphNumChars + 0x2 	; 2 Bytes - keys: BS Up Down Left Right Ins Del Hom etc scrl lock pause caps + tab
-			 B_iFkeys := B_iNonCharKeys + 0x2 				; 2 bytes		
-			 B_iModifiers := B_iFkeys + 0x6 				; 1 Byte
-
-
-
-		 B_CameraMovingViaMouseAtScreenEdge := base + 0x314B920  		; Really a 1 byte value value indicates which direction screen will scroll due to mouse at edge of screen
-			 01_CameraMovingViaMouseAtScreenEdge := 0x2C0				; 1 = Diagonal Left/Top 		4 = Left Edge
-			 02_CameraMovingViaMouseAtScreenEdge := 0x20C				; 2 = Top 						5 = Right Edge			
-			 03_CameraMovingViaMouseAtScreenEdge := 0x5A4				; 3 = Diagonal Right/Top 	  	6 = Diagonal Left/ Bot	
-																		; 7 = Bottom Edge 			 	8 = Diagonal Right/Bot 
-																		; Note need to do a pointer scan with max offset > 1200d! Tends to have the same offsets
-		 B_IsGamePaused := base + 0x4F05E8C 						
-
-		 B_FramesPerSecond := base + 0x5008BC4
-		 B_Gamespeed  := base + 0x4F356A8
-
-		; example: D:\My Computer\My Documents\StarCraft II\Accounts\56025555\6-S2-1-34555\Replays\
-		; this works for En, Fr, and Kr languages 
-		 B_ReplayFolder :=  base + 0x4FBC668
-
-
-
-		 B_HorizontalResolution := base + 0x5045520
-		 B_VerticalResolution := B_HorizontalResolution + 0x4
-
-		; 4 byte ints listed in memory: 808 28 1066 290  (at 1920x1080)
-		P_MinimapPosition := base + 0x315FA34
-		O_MinimapPosition := [0x4, 0xE0, 0xD4, 0x25C]
+patch 3.3
+int __stdcall GsNativeImpl_UnitGetPosition(unsigned int a1)
+{
+  int v1; // eax@4
+  signed int v2; // edi@4
+  int result; // eax@5
+  int v4; // eax@6
+  int v5; // edx@6
+  int v6; // esi@6
+  int v7; // ecx@6
+  int v8; // eax@6
+  char v9; // [sp+8h] [bp-114h]@5
+  int v10; // [sp+110h] [bp-Ch]@5
+  char *v11; // [sp+114h] [bp-8h]@5
+  char v12; // [sp+118h] [bp-4h]@5
+  char v13; // [sp+119h] [bp-3h]@5
+ 
+  if ( a1
+    && a1 != -1
+    && a1 >> 18 < g_UnitArrayCount
+    && (v1 = 488 * ((a1 >> 18) & 0xF) + (g_UnitArrayDecrypt ^ g_UnitArray[a1 >> 22] ^ 0x46E134B8),
+        (v2 = a1 != *(_DWORD *)v1 ? 0 : v1) != 0) )
+  {
+    v4 = GsPointCreate();
+    v5 = *(_DWORD *)(v2 + 80);
+    v6 = v4;
+    v7 = ~(*(_DWORD *)(v2 + 84)
+         - dword_1C886E8[((unsigned __int16)v5 ^ (unsigned __int16)(*(_DWORD *)(v2 + 80) >> 12)) & 0xFFF]);
+    v8 = v5 ^ dword_1C886E8[((unsigned __int16)v7 ^ (unsigned __int16)((unsigned int)v7 >> 12)) & 0xFFF];
+    v10 = v8 ^ (v7 ^ v5 ^ dword_1C886E8[((unsigned __int16)v7 ^ (unsigned __int16)((unsigned int)v7 >> 12)) & 0xFFF]) & 0x55555555;
+    v11 = (char *)(v7 ^ (v7 ^ v8) & 0x55555555);
+    GsPointSetPoint(v6 + 12, &v10, 8);
+    result = *(_DWORD *)(v6 + 4);
+    *(_DWORD *)(v6 + 20) = *(_DWORD *)(v2 + 108);
+  }
+  else
+  {
+    CString::ctor(80, 1);
+    CString::ctor(80, 1);
+    CString::ctor(80, 1);
+    v12 = 35;
+    CString::appendUI32(a1 >> 18);
+    v10 = (int)&v12;
+    v11 = &v13;
+    CString::append(&v10);
+    CString::appendUI32(a1 & 0x3FFFF);
+    v10 = (int)"UnitGetPosition";
+    v11 = "";
+    CString::assign(&v10);
+    v10 = (int)"unit";
+    v11 = "";
+    CString::assign(&v10);
+    ErrorGet::ctor_(&v9);
+    sub_93FEF0(&v9);
+    result = 0;
+  }
+  return result;
+}

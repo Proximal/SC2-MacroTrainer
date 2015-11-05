@@ -1131,9 +1131,13 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 
 						if (Type = aUnitId.Egg)
 						{
-							aProduction := getZergProductionFromEgg(unit)				
-							QueuedPriority := aUnitInfo[aProduction.Type, "Priority"], progress :=  aProduction.progress, type := aProduction.Type	
-							count := aProduction.Count
+							;aProduction := getZergProductionFromEgg(unit)				
+							;QueuedPriority := aUnitInfo[aProduction.Type, "Priority"], progress :=  aProduction.progress, type := aProduction.Type	
+							; count := aProduction.Count
+							getStructureProductionInfo(unit, Type, aProduction)
+							, progress :=  aProduction.1.progress, type := aUnitID[aProduction.1.Item]
+							, QueuedPriority := aUnitInfo[type, "Priority"]
+							, count := type = aUnitID.Zergling ? 2 : 1
 						}
 						else if (Type = aUnitID.BanelingCocoon)
 						{
