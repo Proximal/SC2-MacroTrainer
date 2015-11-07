@@ -1040,13 +1040,17 @@ Cast_ChronoStructure(aStructuresToChrono, selectionMode := False)
 		       Continue
 	    	if aStructuresToChrono.HasKey(Type := numgetUnitModelType(numgetUnitModelPointer(MemDump, Unit))) && !numgetIsUnitChronoed(MemDump, unit) && numgetIsUnitPowered(MemDump, unit)
 	    	{
-		    	IF ( type = aUnitID["WarpGate"]) && (cooldown := getWarpGateCooldown(unit))
-					a_WarpgatesOnCoolDown.insert({"Unit": unit, "Cooldown": cooldown})
+		    	IF ( type = aUnitID["WarpGate"]) 
+		    	{
+		    		if cooldown := getWarpGateCooldown(unit, Type) ; else dont crono it
+						a_WarpgatesOnCoolDown.insert({"Unit": unit, "Cooldown": cooldown})
+				}
 				Else IF (type = aUnitID["Gateway"] && isGatewayConvertingToWarpGate(unit))
 						a_gatewaysConvertingToWarpGates.insert(unit) 
-				else
+				else 
 				{	
-					progress := getBuildStats(unit, QueueSize)	; need && QueueSize as if progress reports 0 when idle it will be added to the list
+					getStructureProductionInfo(unit, type, aItems, QueueSize), progress := aItems[1, "progress"]
+					; need && QueueSize as if progress reports 0 when idle it will be added to the list
 					if ( (progress < .95 && QueueSize) || QueueSize > 1) ; as queue size of 1 means theres only 1 item in queue being produced
 						oStructureToChrono.insert({Unit: unit, QueueSize: QueueSize, progress: progress, userOrder: round(aStructuresToChrono[type])})
 				}
@@ -1062,13 +1066,17 @@ Cast_ChronoStructure(aStructuresToChrono, selectionMode := False)
 				continue
 			if aStructuresToChrono.HasKey(unit.Type) && !isUnitChronoed(unit.UnitIndex) && isUnitPowered(unit.UnitIndex)
 			{
-		    	IF (unit.Type = aUnitID["WarpGate"]) && (cooldown := getWarpGateCooldown(unit.UnitIndex))
-					a_WarpgatesOnCoolDown.insert({"Unit": unit.UnitIndex, "Cooldown": cooldown})
+		    	IF (unit.Type = aUnitID["WarpGate"]) 
+		    	{
+		    		if cooldown := getWarpGateCooldown(unit.UnitIndex, unit.Type)
+						a_WarpgatesOnCoolDown.insert({"Unit": unit.UnitIndex, "Cooldown": cooldown})
+				}
 				Else IF (unit.Type = aUnitID["Gateway"] && isGatewayConvertingToWarpGate(unit.UnitIndex))
 					a_gatewaysConvertingToWarpGates.insert(unit.UnitIndex) 
 				else
 				{	
-					progress := getBuildStats(unit.UnitIndex, QueueSize)	; need && QueueSize as if progress reports 0 when idle it will be added to the list
+					getStructureProductionInfo(unit.UnitIndex, unit.Type, aItems, QueueSize), progress := aItems[1, "progress"]	
+					; need && QueueSize as if progress reports 0 when idle it will be added to the list
 					if ( (progress < .95 && QueueSize) || QueueSize > 1) ; as queue size of 1 means theres only 1 item in queue being produced
 						oStructureToChrono.insert({Unit: unit.UnitIndex, QueueSize: QueueSize, progress: progress, userOrder: round(aStructuresToChrono[unit.Type])})
 				}				
@@ -7657,7 +7665,7 @@ delayAutoProduction()
 		if (aLocalPlayer["Race"] = "Terran" && EnableAutoWorkerTerran && (type = aUnitID["OrbitalCommand"] || type = aUnitID["PlanetaryFortress"] || type = aUnitID["CommandCenter"]))
 		|| (aLocalPlayer["Race"] = "Protoss" && EnableAutoWorkerProtoss && type = aUnitID["Nexus"])
 		{
-			getBuildStats(unitIndex, QueueSize)
+			getStructureProductionInfo(unitIndex, type, aItems, QueueSize)		
 			if (QueueSize <= 2) ; so wont toggle timer if cancelling extra queued workers
 			{
 				TmpDisableAutoWorker := True
@@ -7666,7 +7674,7 @@ delayAutoProduction()
 		}
 		else if autoBuild.getRaceFromStructureName(aUnitName[type])	&& autoBuild.isStructureActive(aUnitName[type]) ; getRaceFromStructureName Just checks if its a structure which is handled by autoBuild
 		{
-			getBuildStats(unitIndex, QueueSize)
+			getStructureProductionInfo(unitIndex, type, aItems, QueueSize)
 			if (QueueSize <= 2) ; even if reactor is present this is good. As the repeated esc presses will trigger this if they cancel enough of the units
 			{
 				autoBuild.TmpDisableAutoBuild := True
@@ -7815,10 +7823,9 @@ autoWorkerProductionCheck()
 				}
 				else 
 				{
-					if (object.type = aUnitID["PlanetaryFortress"])
-						progress := getBuildStatsPF(object.unitIndex, QueueSize)
-					else
-						 progress := getBuildStats(object.unitIndex, QueueSize) ; returns build percentage
+					if getStructureProductionInfo(object.unitIndex, object.type, aItems, QueueSize)		
+						progress := aItems[1, "progress"]
+
 					 if (QueueSize = 1)
 					 {
 					 	if (progress >= .97)
@@ -9248,7 +9255,7 @@ quickSelect(aDeselect)
 		}
 		else loop, % DumpUnitMemory(MemDump)
 		{	
-		    if !(numgetUnitTargetFilter(MemDump, unit := A_Index - 1) & DeadFilterFlag) && numgetUnitOwner(MemDump, Unit) = aLocalPlayer["Slot"]
+		    if !(numgetUnitTargetFilter(MemDump, unit := A_Index - 1) & aUnitTargetFilter.Dead) && numgetUnitOwner(MemDump, Unit) = aLocalPlayer["Slot"]
 		    && aLookup.hasKey(numgetUnitModelType(numgetUnitModelPointer(MemDump, Unit)))
 		    {
 		    	unitTypesDoesntExist := False
@@ -9425,34 +9432,7 @@ quickSelect(aDeselect)
 
 
 
-; aSelected can be used to pass an already SORTED selected array
-; if no array, or an empty array is passed then it will retrieve one
-; The first unit to be removed will have the highest unit panel position
 
-findUnitsToRemoveFromArmy(byref aSelected := "", DeselectXelnaga = 1, DeselectPatrolling = 1, DeselectHoldPosition = 0, DeselectFollowing = 0, lTypes = "")
-{ 	global aUnitMoveStates
-	if (!isObject(aSelected) || !aSelected.units.maxIndex())
-		numGetSelectionSorted(aSelected) ; get a sorted array of the selection buffer
-	remove := []
-	for i, unit in aSelected.units
-	{
-		state := getUnitMoveState(unit.unitIndex)
-		if (DeselectXelnaga && isLocalUnitHoldingXelnaga(unit.unitIndex))
-			|| (DeselectPatrolling && state = aUnitMoveStates.Patrol)
-			|| (DeselectHoldPosition && state = aUnitMoveStates.HoldPosition)
-			|| (DeselectFollowing && (state = aUnitMoveStates.Follow || state = aUnitMoveStates.FollowNoAttack)) ;no attack follow is used by spell casters e.g. HTs & infests which dont have and attack
-				remove.insert(unit.unitIndex)
-		else if lTypes  
-		{
-			type := unit.unitId
-			If type in %lTypes%
-				remove.insert(unit.unitIndex)
-		}			
-	}
-	; so unit click loctions are in descending order 
-	reverseArray(remove)
-	return remove
-}
 
 ; returns a simple array with the exact unit portrait location to be clicked
 ; as used by ClickUnitPortrait
@@ -10527,7 +10507,7 @@ swapAbilityPointerFreeze()
 	hwnd := openCloseProcess(GameIdentifier)
 	SuspendProcess(hwnd)
 	unit := getSelectedUnitIndex()
-	abilityPointerAddress := B_uStructure + unit * OffsetsUnitStrucSize + OffsetsUnitAbilityPointer
+	abilityPointerAddress := B_uStructure + unit * OffsetsUnitStrucSize + Offsets_Unit_AbilityPointer
 	originalValue := ReadMemory(abilityPointerAddress, GameIdentifier)
 	pAbilities := getUnitAbilityPointer(unit)
 	WriteMemory(abilityPointerAddress, pAbilities, "UInt") 
@@ -13889,403 +13869,63 @@ SC2.AssertAndCrash+3BE6C1 - C2 0400               - ret 0004
 ; 1446A230
 
 
-/*
-movsx and movzx are special versions of mov which are designed to be used between signed (movsx) and unsigned (movzx) registers of different sizes.
-
-Patch 3.0 - fucntion modifies unit address +4
-SC2.AssertAndCrash+3B1E51 - 8B EC                 - mov ebp,esp
-SC2.AssertAndCrash+3B1E53 - 51                    - push ecx
-SC2.AssertAndCrash+3B1E54 - 8B 55 0C              - mov edx,[ebp+0C] resolved to sc2.exe+1EA4DA0 which stores FFFF0009     eg *dynm 030B4DA0
-SC2.AssertAndCrash+3B1E57 - 0FB7 02               - movzx eax,word ptr [edx] moves the word into eax = 0009 - unit index
-SC2.AssertAndCrash+3B1E5A - 56                    - push esi
-SC2.AssertAndCrash+3B1E5B - 57                    - push edi
-ECX, EDX, ESI all = sc2.exe+1EA4DA0 (02714DA0), EDI = sc2.exe+1EA4DAC
-
-SC2.AssertAndCrash+3B1E5C - 89 4D FC              - mov [ebp-04],ecx - does nothing same value
-SC2.AssertAndCrash+3B1E5F - 8B 4D 08              - mov ecx,[ebp+08]      ecx, [2781B144]
-SC2.AssertAndCrash+3B1E62 - 8B 39                 - mov edi,[ecx]   --> 02714DA0 which equals sc2.exe+1EA4DA0!
-SC2.AssertAndCrash+3B1E64 - C1 EF 12              - shr edi,12      --> 2, 10, F, 13, 4, 12, 15
-SC2.AssertAndCrash+3B1E67 - BE FFFF0000           - mov esi,0000FFFF 02714DA0 (sc2.exe+1EA4DA0) -> 0000FFFF
-SC2.AssertAndCrash+3B1E6C - 81 E7 FF3F0000        - and edi,00003FFF 1B -> 1B
-SC2.AssertAndCrash+3B1E72 - 66 3B C6              - cmp ax,si
-SC2.AssertAndCrash+3B1E75 - 74 57                 - je SC2.AssertAndCrash+3B1ECE
-SC2.AssertAndCrash+3B1E77 - 8B D0                 - mov edx,eax   --> 0009 unit index
-SC2.AssertAndCrash+3B1E79 - C1 EA 03              - shr edx,03
-SC2.AssertAndCrash+3B1E7C - 8D 34 95 C84D0B03     - lea esi,[edx*4+SC2.exe+1EA4DC8]
-SC2.AssertAndCrash+3B1E83 - 0FB7 16               - movzx edx,word ptr [esi] ; LoWord
-SC2.AssertAndCrash+3B1E86 - 0FB7 76 02            - movzx esi,word ptr [esi+02] ; HiWord
-SC2.AssertAndCrash+3B1E8A - 53                    - push ebx
-SC2.AssertAndCrash+3B1E8B - 8B DA                 - mov ebx,edx
-
-SC2.AssertAndCrash+3B1E8D - 81 E3 FF0F0000        - and ebx,00000FFF   ; LoWord ebx=edx
-SC2.AssertAndCrash+3B1E93 - 0FB7 1C 9D 6899A102   - movzx ebx,word ptr [ebx*4+SC2.exe+1809968]
-SC2.AssertAndCrash+3B1E9B - 2B F3                 - sub esi,ebx
-SC2.AssertAndCrash+3B1E9D - 8B DE                 - mov ebx,esi
-SC2.AssertAndCrash+3B1E9F - 81 E3 FF0F0000        - and ebx,00000FFF
-SC2.AssertAndCrash+3B1EA5 - 0FB7 1C 9D 6899A102   - movzx ebx,word ptr [ebx*4+SC2.exe+1809968]
-SC2.AssertAndCrash+3B1EAD - 2B D3                 - sub edx,ebx
-
-SC2.AssertAndCrash+3B1EAF - 83 E0 07              - and eax,07
-SC2.AssertAndCrash+3B1EB2 - 69 C0 EC010000        - imul eax,eax,000001EC
-SC2.AssertAndCrash+3B1EB8 - F7 D2                 - not edx
-SC2.AssertAndCrash+3B1EBA - 66 89 55 08           - mov [ebp+08],dx
-SC2.AssertAndCrash+3B1EBE - 66 89 75 0A           - mov [ebp+0A],si
-SC2.AssertAndCrash+3B1EC2 - 8B 55 08              - mov edx,[ebp+08]
-SC2.AssertAndCrash+3B1EC5 - 66 89 7C 10 06        - mov [eax+edx+06],di   ; eax = unit offset, edx = dynamic unit base; alters value next to unit token / finger print
-SC2.AssertAndCrash+3B1ECA - 8B 55 0C              - mov edx,[ebp+0C]
-SC2.AssertAndCrash+3B1ECD - 5B                    - pop ebx
-SC2.AssertAndCrash+3B1ECE - 66 8B 02              - mov ax,[edx]
-SC2.AssertAndCrash+3B1ED1 - 66 89 41 04           - mov [ecx+04],ax
-SC2.AssertAndCrash+3B1ED5 - B8 FFFF0000           - mov eax,0000FFFF
-SC2.AssertAndCrash+3B1EDA - 66 89 41 06           - mov [ecx+06],ax
-
-
-Same function patch 3.0.1, except
-	SC2.AssertAndCrash+3B1E9B - 2B F3                 - sub esi,ebx 
-was replaced with 
-	SC2.AssertAndCrash+3B199B - 33 F3                 - xor esi,ebx ***
-
-
-SC2.AssertAndCrash+3B1951 - 8B EC                 - mov ebp,esp
-SC2.AssertAndCrash+3B1953 - 51                    - push ecx
-SC2.AssertAndCrash+3B1954 - 8B 55 0C              - mov edx,[ebp+0C]
-SC2.AssertAndCrash+3B1957 - 0FB7 02               - movzx eax,word ptr [edx] ; moves the unit index into eax
-SC2.AssertAndCrash+3B195A - 56                    - push esi
-SC2.AssertAndCrash+3B195B - 57                    - push edi
-SC2.AssertAndCrash+3B195C - 89 4D FC              - mov [ebp-04],ecx
-SC2.AssertAndCrash+3B195F - 8B 4D 08              - mov ecx,[ebp+08]
-SC2.AssertAndCrash+3B1962 - 8B 39                 - mov edi,[ecx]
-SC2.AssertAndCrash+3B1964 - C1 EF 12              - shr edi,12
-SC2.AssertAndCrash+3B1967 - BE FFFF0000           - mov esi,0000FFFF
-SC2.AssertAndCrash+3B196C - 81 E7 FF3F0000        - and edi,00003FFF
-SC2.AssertAndCrash+3B1972 - 66 3B C6              - cmp ax,si
-SC2.AssertAndCrash+3B1975 - 74 57                 - je SC2.AssertAndCrash+3B19CE
-SC2.AssertAndCrash+3B1977 - 8B D0                 - mov edx,eax
-SC2.AssertAndCrash+3B1979 - C1 EA 03              - shr edx,03 
-SC2.AssertAndCrash+3B197C - 8D 34 95 C82DFC01     - lea esi,[edx*4+SC2.exe+1EA2DC8]
-SC2.AssertAndCrash+3B1983 - 0FB7 16               - movzx edx,word ptr [esi]  ; LoWord
-SC2.AssertAndCrash+3B1986 - 0FB7 76 02            - movzx esi,word ptr [esi+02] ; HiWord
-SC2.AssertAndCrash+3B198A - 53                    - push ebx
-SC2.AssertAndCrash+3B198B - 8B DA                 - mov ebx,edx  ; unit index
-SC2.AssertAndCrash+3B198D - 81 E3 FF0F0000        - and ebx,00000FFF ; LoWord ebx=edx
-SC2.AssertAndCrash+3B1993 - 0FB7 1C 9D A8799201   - movzx ebx,word ptr [ebx*4+SC2.exe+18079A8]
-SC2.AssertAndCrash+3B199B - 33 F3                 - xor esi,ebx *** This line replaced sub esi,ebx 
-SC2.AssertAndCrash+3B199D - 8B DE                 - mov ebx,esi
-SC2.AssertAndCrash+3B199F - 81 E3 FF0F0000        - and ebx,00000FFF
-SC2.AssertAndCrash+3B19A5 - 0FB7 1C 9D A8799201   - movzx ebx,word ptr [ebx*4+SC2.exe+18079A8]
-SC2.AssertAndCrash+3B19AD - 2B D3                 - sub edx,ebx
-SC2.AssertAndCrash+3B19AF - 83 E0 07              - and eax,07
-SC2.AssertAndCrash+3B19B2 - 69 C0 EC010000        - imul eax,eax,000001EC
-SC2.AssertAndCrash+3B19B8 - F7 D2                 - not edx
-SC2.AssertAndCrash+3B19BA - 66 89 55 08           - mov [ebp+08],dx
-SC2.AssertAndCrash+3B19BE - 66 89 75 0A           - mov [ebp+0A],si
-SC2.AssertAndCrash+3B19C2 - 8B 55 08              - mov edx,[ebp+08]
-SC2.AssertAndCrash+3B19C5 - 66 89 7C 10 06        - mov [eax+edx+06],di ; eax = unit offset from start of unit block, edx = dynamic unit block address; alters value next to unit token / finger print 
-SC2.AssertAndCrash+3B19CA - 8B 55 0C              - mov edx,[ebp+0C]
-SC2.AssertAndCrash+3B19CD - 5B                    - pop ebx
-
-
-
-SC2.AssertAndCrash+3B1944 - cmovbe edx,ebx
-SC2.AssertAndCrash+3B1947 - mov [esp+08],edx
-SC2.AssertAndCrash+3B194B - jmp SC2.AssertAndCrash+129828
-SC2.AssertAndCrash+3B1950 - push ebp
-SC2.AssertAndCrash+3B1951 - mov ebp,esp
-SC2.AssertAndCrash+3B1953 - push ecx
-SC2.AssertAndCrash+3B1954 - mov edx,[ebp+0C]
-SC2.AssertAndCrash+3B1957 - movzx eax,word ptr [edx]
-SC2.AssertAndCrash+3B195A - push esi
-SC2.AssertAndCrash+3B195B - push edi
-SC2.AssertAndCrash+3B195C - mov [ebp-04],ecx
-SC2.AssertAndCrash+3B195F - mov ecx,[ebp+08]
-SC2.AssertAndCrash+3B1962 - mov edi,[ecx]
-SC2.AssertAndCrash+3B1964 - shr edi,12
-SC2.AssertAndCrash+3B1967 - mov esi,0000FFFF
-SC2.AssertAndCrash+3B196C - and edi,00003FFF
-SC2.AssertAndCrash+3B1972 - cmp ax,si
-SC2.AssertAndCrash+3B1975 - je SC2.AssertAndCrash+3B19CE
-SC2.AssertAndCrash+3B1977 - mov edx,eax
-SC2.AssertAndCrash+3B1979 - shr edx,03
-SC2.AssertAndCrash+3B197C - lea esi,[edx*4+SC2.exe+1EA2DC8]
-SC2.AssertAndCrash+3B1983 - movzx edx,word ptr [esi]
-SC2.AssertAndCrash+3B1986 - movzx esi,word ptr [esi+02]
-SC2.AssertAndCrash+3B198A - push ebx
-SC2.AssertAndCrash+3B198B - mov ebx,edx
-SC2.AssertAndCrash+3B198D - and ebx,00000FFF
-SC2.AssertAndCrash+3B1993 - movzx ebx,word ptr [ebx*4+SC2.exe+18079A8]
-SC2.AssertAndCrash+3B199B - xor esi,ebx
-SC2.AssertAndCrash+3B199D - mov ebx,esi
-SC2.AssertAndCrash+3B199F - and ebx,00000FFF
-SC2.AssertAndCrash+3B19A5 - movzx ebx,word ptr [ebx*4+SC2.exe+18079A8]
-SC2.AssertAndCrash+3B19AD - sub edx,ebx
-SC2.AssertAndCrash+3B19AF - and eax,07
-SC2.AssertAndCrash+3B19B2 - imul eax,eax,000001EC
-SC2.AssertAndCrash+3B19B8 - not edx
-SC2.AssertAndCrash+3B19BA - mov [ebp+08],dx
-SC2.AssertAndCrash+3B19BE - mov [ebp+0A],si
-SC2.AssertAndCrash+3B19C2 - mov edx,[ebp+08]
-SC2.AssertAndCrash+3B19C5 - mov [eax+edx+06],di
-SC2.AssertAndCrash+3B19CA - mov edx,[ebp+0C]
-SC2.AssertAndCrash+3B19CD - pop ebx
-SC2.AssertAndCrash+3B19CE - mov ax,[edx]
-SC2.AssertAndCrash+3B19D1 - mov [ecx+04],ax
-SC2.AssertAndCrash+3B19D5 - mov eax,0000FFFF
-SC2.AssertAndCrash+3B19DA - mov [ecx+06],ax
-SC2.AssertAndCrash+3B19DE - mov [edx],di
-SC2.AssertAndCrash+3B19E1 - pop edi
-SC2.AssertAndCrash+3B19E2 - pop esi
-SC2.AssertAndCrash+3B19E3 - cmp edx,[ebp-04]
-SC2.AssertAndCrash+3B19E6 - je SC2.AssertAndCrash+3B19FD
-SC2.AssertAndCrash+3B19E8 - mov eax,[ecx]
-SC2.AssertAndCrash+3B19EA - mov edx,eax
-SC2.AssertAndCrash+3B19EC - shr edx,12
-SC2.AssertAndCrash+3B19EF - not edx
-SC2.AssertAndCrash+3B19F1 - shl edx,12
-SC2.AssertAndCrash+3B19F4 - and eax,0003FFFF
-SC2.AssertAndCrash+3B19F9 - or edx,eax
-SC2.AssertAndCrash+3B19FB - mov [ecx],edx
-SC2.AssertAndCrash+3B19FD - mov eax,[ebp+10]
-SC2.AssertAndCrash+3B1A00 - inc word ptr [eax]
-SC2.AssertAndCrash+3B1A03 - mov esp,ebp
-SC2.AssertAndCrash+3B1A05 - pop ebp
-SC2.AssertAndCrash+3B1A06 - ret 000C
-
-
-*/
-
 ; SCOffSet 
 
+
+/*
+Changes 
+test warpgate cooldown value
+
+
+*/
+  
 f1::
 
-
 unit := getSelectedUnitIndex()
-msgbox % type := getUnitType(unit)
-. "`n" getunitname(unit)
-return 
-
 pAbilities := getUnitAbilityPointer(unit)
-msgbox % chex(getunitmodelpointer(unit))
-msgbox % getunitname(unit)
-;getStructureProductionInfo(unit, type, aInfo, totalQueueSize)
-;objtree(aInfo)
+type := getUnitType(unit)
+owner := getUnitOwner(unit)
+msgbox % getPhotonOverChargeProgress(unit)
+msgbox % getUnitBuff(unit, a := [])
+objtree(a)
+return 
+msgbox % chex(getUnitAddress(unit))
+msgbox % chex(getUnitAddress(unit)+0x1E8)
 return 
 
 
-msgbox % chex(pAbilities)
-msgbox % getZergProductionStringFromEgg(unit)
-
-getStructureProductionInfo(unit, type, aInfo, totalQueueSize)
-objtree(aInfo)
-msgbox % totalQueueSize
-return 
-
-u := getSelectedUnitIndex()
-msgbox % getunitname(u)
-
-msgbox % chex(getunitmodelpointer(u)) "`n" u
-msgbox % getUnitType(u)
-;msgbox % aUnitName[getUnitType(u)]
 
 
 return 
+
+p  := findAbilityTypePointer(pAbilities, aUnitID["Nexus"], "attackProtossBuilding")
+msgbox % chex(p)
+p := readMemory(p, GameIdentifier)
+msgbox % chex(p)
+return 
+pAbilities := getUnitAbilityPointer(unit)
+msgbox % getUnitBuff(unit, "MothershipCoreApplyPurifyAB")
+return 
+
+
 f2::
-msgbox % dumpUnitTypes(a)
-clipboard := a
-return 
-
-setformat, IntegerFast, H
-modelAddress := 0x1CB46060
-msgbox % modelAddress + 0xA20
-p := ReadMemory(modelAddress + 0xA20, GameIdentifier)
-msgbox % name := ReadMemory_Str(p + 0x14, GameIdentifier)
+unit := getSelectedUnitIndex()
+msgbox % chex(getUnitAddress(unit))
+return
++f2::
+unit := getSelectedUnitIndex()
+getUnitAbilitiesString(unit)
 return 
 
 
-
-; 1AF2E0D8
-; 1cb46A80
-/*
-
-pAbilities: CDF72F0 Unit ID: 38
-uStruct: 292D16C8 - 292D18B0
-0 | Pointer Address CDF7308 | Pointer Value 293683C0 | stop
-1 | Pointer Address CDF730C | Pointer Value 29368450 | move
-2 | Pointer Address CDF7310 | Pointer Value C333CB0 | attack
-3 | Pointer Address CDF7314 | Pointer Value C333D40 | Stimpack
-Loop Count: 4	Read Count: 4
-
-pAbilities: 2936C9A8 Unit ID: 36
-uStruct: 292D12F8 - 292D14E0
-0 | Pointer Address 2936C9C0 | Pointer Value 293674D0 | stop
-1 | Pointer Address 2936C9C4 | Pointer Value 29367560 | move
-2 | Pointer Address 2936C9C8 | Pointer Value 293675F0 | Rally
-3 | Pointer Address 2936C9CC | Pointer Value 29367680 | que5
-4 | Pointer Address 2936C9D0 | Pointer Value 29367710 | BuildInProgress
-5 | Pointer Address 2936C9D4 | Pointer Value 293677A0 | BarracksAddOns
-6 | Pointer Address 2936C9D8 | Pointer Value 29367830 | BarracksLiftOff
-7 | Pointer Address 2936C9DC | Pointer Value 293678C0 | BarracksLand
-8 | Pointer Address 2936C9E0 | Pointer Value 29368060 | BarracksTrain
-*/
-
-
-
-dumpUnitTypes(byRef outputString)
-{
-	mem := new _ClassMemory(GameIdentifier) 
-	mp := getunitmodelpointer(0)
-	byte1 := mem.read(mp, "Char")
-	byte2 := mem.read(mp+1, "Char")
-	byte3 := mem.read(mp+2, "Char")
-	byte4 := mem.read(mp+3, "Char")
-	
-	excludeNamesContain = 
-	( join, Comments ltrim
-	ACGluescreenDummy
-	##id##
-	DestructibleCityDebris
-	CollapsibleTerranTower
-	XelNaga_Caverns_
-	ExtendingBridge
-	DestructibleRock
-	UnbuildablePlates
-	CollapsibleRockTower
-	DebrisRamp
-	Shape
-	Destructible
-	)
-	excludeNames = 
-	( join, Comments ltrim
-	Amount
-	AttributeBonus[Armored]
-	GlaiveWurmWeapon
-	Level
-	)
-	modifyNames = 
-	( join, Comments ltrim
-	Changeling
-	Overlord
-	TechLab
-	VespeneGeyser
-	)	
-
-	aIDLookup := [], aDuplicates := [], aNameLookup := [], foundCount := 0
-	modelAddress := mem.baseaddress
-	while (modelAddress := mem.processPatternScan(modelAddress + 0x4,, byte1, byte2, byte3, byte4)) > 0 ; 0x0AEF6258 - same value at +0x0 of every model structure
-	{	
-		p := ReadMemory(modelAddress + 0xA20, GameIdentifier)
-		if (p + 0 = "") ; its not a number - failed read 
-			continue 
-		name := ReadMemory_Str(p + 0x14, GameIdentifier) ; unitName/Revive
-		StringReplace, name, name, /Revive,, All
-
-		pNameDataAddress := ReadMemory(modelAddress + 0xC, GameIdentifier) ; mp + pName_address
-		pNameDataAddress := ReadMemory(pNameDataAddress, GameIdentifier) 
-		NameDataAddress := ReadMemory(pNameDataAddress, GameIdentifier)
-		name2 := substr(ReadMemory_Str(NameDataAddress + 0x20, GameIdentifier), 11) 			
-		if (name = "Changeling" || name2 = "Changeling")
-			name := "Changeling"
-		else if RegExmatch(name, "[^\x20-\x7E]") ; space -> ~ i.e. non english characters / non-string
-			name := name2
-
-		if (name = "")
-			continue
-		if name in %excludeNames%
-			continue
-		if name contains %excludeNamesContain%
-			continue
-
-		modelID := ReadMemory(modelAddress + Offsets_UnitModel_ID, GameIdentifier, 2)
-		if (modelID + 0 = "" || modelID >= 1000) ; **** may need to change this for lotv?
-			continue 
-
-		if aNameLookup.HasKey(name) 
-		{
-			if (modelID = aNameLookup[name]) ; same values / duplicate
-				continue 
-			; else differnt IDs
-			; for changelings and such, want 'aIDLookup[modelID] := name' below to store the ID but not log it as a duplicate here!
-			if name not in %modifyNames%
-			{
-				aDuplicates[name] := modelID 
-				duplicatesPresent := true
-			}
-		}
-		else aNameLookup[name] := modelID
-		aIDLookup[modelID] := name
-		foundCount++
-	}
-	if !foundCount
-		return 0	
-	
-
-	 aRename   := { "Changeling" : ["Changeling", "ChangelingZealot", "ChangelingMarineShield", "ChangelingMarine", "ChangelingZerglingWings", "ChangelingZergling"]
-    			, "TechLab": ["TechLab", "BarracksTechLab", "FactoryTechLab", "StarportTechLab"]
-   				 , "VespeneGeyser": ["VespeneGeyser", "ProtossVespeneGeyser", "VespeneGeyserPretty"]}
-	; There are a few other geysers, but they have unique name i.e. SpacePlatformGeyser, RichVespeneGeyser
-	overlordCount := 0
-	for modelID, name in aIDLookup
-	{
-		if aRename.HasKey(name)
-		{
-			indexKey := aRename[name, "_count"] := round(aRename[name, "_count"]) + 1
-			if aRename[name].HasKey(indexKey)	
-				aIDLookup[modelID] := newName := aRename[name, indexKey]
-			else renameError .= name " Error - new " name " ? modelID: " modelID 
-		}
-		else if (name = "Overlord") ; Second overlord has a higher unit ID and doesn't seem valid
-		{
-			if (++overlordCount = 2)
-				aIDLookup.remove(modelID, "")
-			else if (overlordCount > 2)
-				renameError .= "OverlordCount Error - new Changeling ? modelID: " modelID
-		}
-	}
-	if renameError
-		renameError := "Rename Erros:`n" renameError
-
-	for modelID, name in aIDLookup
-		outputString .= name " = " modelID ",`n"
-
-
-	outputString := Rtrim(outputString, ",`n")
-	outputString .= "`n`ncount: " foundCount "`n`n"
-	outputString .= renameError
-	if duplicatesPresent
-	{
-		outputString .= "`n`n`nDuplicates present:`n"
-		for name, in aDuplicates
-			outputString .= name "`n"
-	}
-
-	outputString .= "Excluded Names Containing: " excludeNamesContain
-				. "`nExcluded Names Matching: " excludeNames
-
-	return foundCount
-}
-
-
-
-getunitNameFromModelAddres(modelAddress)
-{
-	pNameDataAddress := ReadMemory(modelAddress + 0xC, GameIdentifier) ; mp + pName_address
-	, pNameDataAddress := ReadMemory(pNameDataAddress, GameIdentifier) 
-	, NameDataAddress := ReadMemory(pNameDataAddress, GameIdentifier) 
-	
-	return substr(ReadMemory_Str(NameDataAddress + 0x20, GameIdentifier), 11) 	
-}
-f4::
-msgbox % r := chex(0x2AEF962C & -2)
-msgbox % r & 1
-return 
-; 0xFFFFFFFF
 +f9::
 SetPlayerMinerals()
 SetPlayerGas()
 return 
 
+; to do - check chrono address for a byte value
 
-
-
+;EC
 ; aSCOffsets["unitAddress", unit]
 ; aSCOffsets["playerAddress", player] 
 
@@ -14305,28 +13945,6 @@ return
 
 */
 
-/*
-O_pTeam
-O_pType
-O_pWorkerCount 
-O_pTotalUnitsBuilt 
-O_pWorkersBuilt 
-O_pHighestWorkerCount 
-
- O_pSupplyCap
-O_pSupply
-O_pMinerals
-O_pGas
-O_pBaseCount
-
-O_pArmySupply
-O_pArmyMineralSize
-O_pArmyGasSize
-
-P_IdleWorker
-O1_IdleWorker
-O2_IdleWorker
-*/
 
 /*
 SC2.exe+576B4E6 - 8B 35 70BC8E02        - mov esi,[SC2.exe+188BC70]
@@ -14336,32 +13954,6 @@ SC2.exe+576B4F7 - 81 F6 A510AF6E        - xor esi,6EAF10A5
 SC2.exe+576B4FD - 01 4E 50              - add [esi+50],ecx
 */
 
-
-thread, notimers, true 
-address := 0x00A8ABFC
-testarray := {"unit": 0x00A8ABFC}
-testarray2 := {"unittttttttttttttttttttttttttttttttttttttttttttttttttt": 0x00A8ABFC}
-
-loopcount := 50000
-id := stopwatch()
-loop, %loopcount%
-{
-	v1 := readMemory(address, GameIdentifier)
-}
-time1 := stopwatch(id, -1) / loopcount
-loop, %loopcount%
-{
-	v2 := readMemory(testarray["unit"], GameIdentifier)
-}
-time2 := stopwatch(id, -1) / loopcount
-loop, %loopcount%
-{
-	v3 := readMemory(testarray.unit, GameIdentifier)
-}
-time3 := stopwatch(id, -1) / loopcount
-msgbox % time1 "`n" time2 "`n" time3 
-. "`n" v1 "|" v2 "|" v3
-return 
 
 
 ; B_SelectionStructure := base + 0x1EE9BB8 

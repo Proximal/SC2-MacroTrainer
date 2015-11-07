@@ -329,7 +329,7 @@ drawAlerts(G)
 }
 
 getEnemyUnitsMiniMap(byref aUnitsToDraw)
-{  	global DeadFilterFlag, aMiniMapUnits, aUnitInfo, minimap, HighlightInvisible, HighlightHallucinations
+{  	global aMiniMapUnits, aUnitInfo, minimap, HighlightInvisible, HighlightHallucinations
  	, HostileColourAssist, DrawUnitDestinations, GameType
 
   aUnitsToDraw := [], aUnitsToDraw.Normal := [], aUnitsToDraw.Custom := []
@@ -339,7 +339,7 @@ getEnemyUnitsMiniMap(byref aUnitsToDraw)
      Filter := numget(MemDump, (UnitAddress := (A_Index - 1) * OffsetsUnitStrucSize) + Offsets_Unit_TargetFilter, "Int64")
      ; Hidden e.g. marines in medivac/bunker etc. 
      ; Otherwise these unit colours get drawn over the top - medivac highlight colour is hidden.
-     if (Filter & DeadFilterFlag || Filter & aUnitTargetFilter.Hidden || aMiniMapUnits.Exclude.HasKey(Type := numgetUnitModelType(pUnitModel := numget(MemDump, UnitAddress + O_uModelPointer, "Int"))))
+     if (Filter & aUnitTargetFilter.Dead || Filter & aUnitTargetFilter.Hidden || aMiniMapUnits.Exclude.HasKey(Type := numgetUnitModelType(pUnitModel := numget(MemDump, UnitAddress + O_uModelPointer, "Int"))))
      	Continue
 
      ;if  (aPlayer[Owner, "Team"] <> aLocalPlayer["Team"] && Owner && type >= aUnitID["Colossus"] && !aChangeling.HasKey(type)) 
@@ -576,7 +576,7 @@ aTmpCompleteStructures := []
 loop, % DumpUnitMemory(UBMemDump)
 { 
 	u_iteration := A_Index -1
-	If ((Filter := numgetUnitTargetFilter(UBMemDump, u_iteration)) & DeadFilterFlag
+	If ((Filter := numgetUnitTargetFilter(UBMemDump, u_iteration)) & aUnitTargetFilter.Dead
 		|| !(unit_owner := numgetUnitOwner(UBMemDump, u_iteration))
 		|| (aLocalPlayer["Team"] = aPlayer[unit_owner, "Team"] && unit_owner != aLocalPlayer["Slot"]))
 		Continue

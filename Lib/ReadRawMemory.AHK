@@ -1,8 +1,9 @@
-ReadRawMemory(MADDRESS=0,PROGRAM="", byref Buffer="", BYTES=4)
+ReadRawMemory(MADDRESS=0,PROGRAM="", byref Buffer="", BYTES=4, storeAtOffSset := 0)
 {
    Static OLDPROC, ProcessHandle
 
-   VarSetCapacity(Buffer, BYTES)
+   if !storeAtOffSset
+    VarSetCapacity(Buffer, BYTES)
 
    If (PROGRAM != OLDPROC)
    {
@@ -16,7 +17,7 @@ ReadRawMemory(MADDRESS=0,PROGRAM="", byref Buffer="", BYTES=4)
             ProcessHandle := DllCall("OpenProcess", "Int", 16, "Int", 0, "UInt", pid)   
         }
    }
-    If (ProcessHandle && DllCall("ReadProcessMemory","UInt",ProcessHandle,"UInt",MADDRESS,"Ptr",&Buffer,"UInt",BYTES,"Ptr*",bytesread))
+    If (ProcessHandle && DllCall("ReadProcessMemory","UInt",ProcessHandle,"UInt",MADDRESS,"Ptr",&Buffer+storeAtOffSset,"UInt",BYTES,"Ptr*",bytesread))
         return bytesread
     return !ProcessHandle ? "Handle Closed:" closed : "Fail"
 }

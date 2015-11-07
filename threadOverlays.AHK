@@ -970,7 +970,7 @@ DrawLocalPlayerColourOverlay(ByRef Redraw, UserScale=1,Drag=0)
 
 getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyCurrentUpgrades)
 {
-	GLOBAL DeadFilterFlag, aPlayer, aLocalPlayer, aUnitTargetFilter, aUnitInfo, aMiscUnitPanelInfo, unitPanelDrawLocalPlayer
+	GLOBAL aPlayer, aLocalPlayer, aUnitTargetFilter, aUnitInfo, aMiscUnitPanelInfo, unitPanelDrawLocalPlayer
 	
 	aEnemyUnits := [], aEnemyUnitConstruction := [], aEnemyCurrentUpgrades := [], aMiscUnitPanelInfo := []
 	
@@ -982,7 +982,7 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 	{
 
 	    TargetFilter := numgetUnitTargetFilter(MemDump, unit := A_Index - 1)
-	    if (TargetFilter & DeadFilterFlag || TargetFilter & aUnitTargetFilter.Hallucination)
+	    if (TargetFilter & aUnitTargetFilter.Dead || TargetFilter & aUnitTargetFilter.Hallucination)
 	       Continue
 		owner := numgetUnitOwner(MemDump, Unit) 
 
@@ -1034,7 +1034,7 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 							if (chronoBoosts := floor(numgetUnitEnergy(MemDump, unit)/25))
 								aMiscUnitPanelInfo["chronoBoosts", owner] := round(aMiscUnitPanelInfo["chronoBoosts", owner]) + chronoBoosts 
 							; Don't really need to call isPhotonOverChargeActive()
-							if isPhotonOverChargeActive(unit) && progress := getUnitBuff(unit, "MothershipCoreApplyPurifyAB")
+							if isPhotonOverChargeActive(unit) && progress := getPhotonOverChargeProgress(unit)
 							{
 								aEnemyUnitConstruction[Owner, 50, "MothershipCoreApplyPurifyAB"] := {"progress": progress > aEnemyUnitConstruction[Owner, 50, "MothershipCoreApplyPurifyAB"].Progress
 																								? progress 
@@ -2377,3 +2377,4 @@ checkOverlayPositions()
 	return adjusted
 }
 
+; http://reverseengineering.stackexchange.com/questions/8186/is-it-possible-to-find-static-pointer-with-disassembler

@@ -5,18 +5,18 @@ Global B_LocalCharacterNameID
 , OffsetsSC2Base 
 , B_pStructure
 , S_pStructure
-, O_pStatus
+, Offsets_Player_Status
 , O_pXcam
 , O_pCamDistance
 , O_pCamAngle
 , O_pCamRotation
 , O_pYcam
-, OffsetsPlayerTeam
-, OffsetsPlayerType
+, Offsets_Player_Team
+, Offsets_Player_Type
 , O_pVictoryStatus 
 , O_pName
-, O_pRacePointer
-, O_pColour
+, Offsets_Player_RacePointer
+, Offsets_Player_Colour
 , O_pAccountID
 , O_pAPM
 , O_pEPM
@@ -59,29 +59,37 @@ Global B_LocalCharacterNameID
 , O_uZ
 , O_uDestinationX
 , O_uDestinationY
-, OffsetsUnitCommandQueuePointer
-, OffsetsUnitAbilityPointer
-, O_uPoweredState
-, O_uChronoState
-, O_uInjectState
-, O_uBuffPointer
-, O_uHpDamage
-, O_uShieldDamage
-, O_uEnergy
-, O_uTimer
+, Offsets_Unit_CommandQueuePointer
+, Offsets_Unit_AbilityPointer
+, Offsets_Unit_PoweredState
+, Offsets_Unit_ChronoState
+, Offsets_Unit_InjectState
+, Offsets_Unit_BuffPointer
+, Offsets_Unit_HPDamage
+, Offsets_Unit_ShieldDamage
+, Offsets_Unit_Energy
+, Offsets_Unit_TimeAlive
 
-, Offsets_CommandQueue_State
+, Offsets_QueuedCommand_StringPointer
+, Offsets_QueuedCommand_TargetFingerPrint
+, Offsets_QueuedCommand_TargetX
+, Offsets_QueuedCommand_TargetY
+, Offsets_QueuedCommand_TargetZ
+, Offsets_QueuedCommand_TargetFlags
+, Offsets_QueuedCommand_State
+, Offsets_QueuedCommand_TimeRemaining
+, Offsets_QueuedCommand_TimeRequired
 
-, OffSets_UnitAbilities_ParentByteArrayIndex
-, OffSets_UnitAbilities_AbilityPointerIndex
-, OffSets_UnitAbilities_AbilityStringPointerIndex
+, Offsets_UnitAbilities_ParentByteArrayIndex
+, Offsets_UnitAbilities_AbilityPointerIndex
+, Offsets_UnitAbilities_AbilityStringPointerIndex
 
-, OffSets_CAbilQueue_QueuedCount
-, OffSets_CAbilQueue_QueuedUnitsPointer
+, Offsets_CAbilQueue_QueuedCount
+, Offsets_CAbilQueue_QueuedUnitsPointer
 
-, OffSets_QueuedUnit_StringPointer
-, OffSets_QueuedUnit_BuildTimeTotal
-, OffSets_QueuedUnit_BuildTimeRemaining
+, Offsets_QueuedUnit_StringPointer
+, Offsets_QueuedUnit_BuildTimeTotal
+, Offsets_QueuedUnit_BuildTimeRemaining
 
 , Offsets_UnitModel_ID
 , Offsets_UnitModel_SubgroupPriority
@@ -103,8 +111,7 @@ Global B_LocalCharacterNameID
 , O1_SelectionPage
 , O2_SelectionPage
 , O3_SelectionPage
-, DeadFilterFlag
-, BuriedFilterFlag
+
 , B_MapInfo
 , O_FileInfoPointer
 , B_MapStruct
@@ -208,32 +215,27 @@ loadMemoryAddresses(base, version := "")
 		else versionMatch := false
 		;	[Memory Addresses]
 		B_LocalCharacterNameID := base + 0x4FBADF4 ; stored as string Name#123 There are a couple of these, but only one works after SC restart or out of game
-		; Patch 3.3 bytes changed. 
-		; In game first byte = player number, second byte = player number - 1.
-		; in replay when viewing everyone perspective, both are 10h
-		; when viewing an ai, player number (1st byte), 10h (second byte)
-		; when viewing a player, player number (1st byte), player number -1 (second byte)
+
 
 		; bytes have swapped in patch 3? 
 		;aSCOffsets["LocalPlayerSlot"] := [base + 0x018F5980, 0x18, 0x278, 0x258, 0x3DD] ; patch 3.3 ; note 1byte and has a second 'copy' (ReplayWatchedPlayer) just after +1byte eg LS =16d=10h, hex 1010 (2bytes) & LS =01d = hex 0101
-		
 	 
 		B_pStructure := base + 0x362BF90 ; 			 
 		S_pStructure := 0xE18
-			 O_pStatus := 0x0
+			 Offsets_Player_Status := 0x0
 			 O_pXcam := 0x8 ; same address but obfuscated 
 			 O_pYcam := 0xC	;
 			 O_pCamDistance := 0x10 
 			 O_pCamAngle := 0x14
 			 O_pCamRotation := 0x18
 
-			 OffsetsPlayerTeam := 0x1C ; patch 3.3
-			 OffsetsPlayerType := 0x1D ;patch 3.3
+			 Offsets_Player_Team := 0x1C ; patch 3.3
+			 Offsets_Player_Type := 0x1D ;patch 3.3
 			 O_pVictoryStatus := 0x1E
 			 O_pName := 0x64 
 			 
-			 O_pRacePointer := 0x160
-			 O_pColour := 0xD8   ; patch 3.3
+			 Offsets_Player_RacePointer := 0x5C ; same as old patch - but there was one at 0x160 - not there anymore
+			 Offsets_Player_Colour := 0xD8   ; patch 3.3
 			 O_pAccountID := 0x218 ;  0x1C0 
 
 			 O_pAPM := 0x5F0 	; Instantaneous
@@ -306,52 +308,64 @@ loadMemoryAddresses(base, version := "")
 			 O_uZ := 0x54
 			 O_uDestinationX := 0x80
 			 O_uDestinationY := 0x84
-			 OffsetsUnitCommandQueuePointer := 0xE0 ; p3.3;0xD4
-			 OffsetsUnitAbilityPointer := 0xE8 ; p3.3 ;0xDC
+			 Offsets_Unit_CommandQueuePointer := 0xE0 ; p3.3;0xD4
+			 Offsets_Unit_AbilityPointer := 0xE8 ; p3.3 ;0xDC
 
-			 O_uPoweredState := 0xE0 									
-			 O_uChronoState := 0xE6	; there are other offsets which can be used for chrono/inject state ; pre 210 chrono and inject offsets were the same 
-			 O_uInjectState := 0xE7 ; +5 Weird this was 5 not 4 (and its values changed) chrono state just +4
-			 O_uBuffPointer := 0xEC
+			 Offsets_Unit_PoweredState := 0xF0 ; !!!Note there is also one at +4 - but this changes when chronoed!									
+			 Offsets_Unit_ChronoState := 0x1A1	; there are other offsets which can be used for chrono/inject state ; pre 210 chrono and inject offsets were the same 
+			 Offsets_Unit_InjectState := 0xF7 
+			 Offsets_Unit_BuffPointer := 0x100 ; I think this is correct
 
 
-			 O_uHpDamage := 0x114
-			 O_uShieldDamage := 0x118
-			 O_uEnergy := 0x11c 
-			 O_uTimer := 0x16C ;+4
+			 Offsets_Unit_HPDamage := 0x138
+			 Offsets_Unit_ShieldDamage := 0x13C
+			 Offsets_Unit_Energy := 0x140 
+			 Offsets_Unit_TimeAlive := 0x1A4 
 			
-		;CommandQueue 	; separate structure
-			 Offsets_CommandQueue_State := 0x4C ; p3.3 0x40
+		;CommandQueue 	
+		Offsets_QueuedCommand_StringPointer := 0x20
+		Offsets_QueuedCommand_TargetFingerPrint := 0x28
+		Offsets_QueuedCommand_TargetX := 0x30
+		Offsets_QueuedCommand_TargetY := 0x34
+		Offsets_QueuedCommand_TargetZ := 0x38
+		Offsets_QueuedCommand_TargetFlags := 0x40
+		Offsets_QueuedCommand_State := 0x4C
+		Offsets_QueuedCommand_TimeRemaining := 0xB4
+		Offsets_QueuedCommand_TimeRequired := 0xCC
 
 		; Unit ability structure
-		OffSets_UnitAbilities_ParentByteArrayIndex := 0x4 
-		OffSets_UnitAbilities_AbilityPointerIndex := 0x18	 ; An array of pointers begins here - Pointers to each of the units abilities start here
-		OffSets_UnitAbilities_AbilityStringPointerIndex :=  0xA4 ; and array of string pointers begins here - these match to the OffSets_UnitAbilities_AbilityPointerIndex i.e. string index 0 is the name of ability pointer index 0
+		Offsets_UnitAbilities_ParentByteArrayIndex := 0x4 
+		Offsets_UnitAbilities_AbilityPointerIndex := 0x18	 ; An array of pointers begins here - Pointers to each of the units abilities start here
+		Offsets_UnitAbilities_AbilityStringPointerIndex :=  0xA4 ; and array of string pointers begins here - these match to the Offsets_UnitAbilities_AbilityPointerIndex i.e. string index 0 is the name of ability pointer index 0
 		
-		OffSets_CAbilQueue_QueuedCount := 0x38 ; sc2.x 0x28
-		OffSets_CAbilQueue_QueuedUnitsPointer := 0x44 ; sc2.x 0x34
+		Offsets_CAbilQueue_QueuedCount := 0x38 ; sc2.x 0x28
+		Offsets_CAbilQueue_QueuedUnitsPointer := 0x44 ; sc2.x 0x34
 
 		; Queued unit
-		OffSets_QueuedUnit_BuildTimeTotal := 0x80 ; pre p3.3 OffSets_QueuedUnit_BuildTimeTotal := 0x68
-		OffSets_QueuedUnit_BuildTimeRemaining := 0x84 ; pre p3.3 OffSets_QueuedUnit_BuildTimeRemaining := 0x6C		
-		OffSets_QueuedUnit_StringPointer := 0xF4 ; OffSets_QueuedUnit_StringPointer := 0xD0
-
+		Offsets_QueuedUnit_BuildTimeTotal := 0x80 ; pre p3.3 Offsets_QueuedUnit_BuildTimeTotal := 0x68
+		Offsets_QueuedUnit_BuildTimeRemaining := 0x84 ; pre p3.3 Offsets_QueuedUnit_BuildTimeRemaining := 0x6C		
+		Offsets_QueuedUnit_StringPointer := 0xF4 ; Offsets_QueuedUnit_StringPointer := 0xD0
+		; I dont use these
+		Offsets_QueuedUnit_SpecificID := 0x68
+		Offsets_QueuedUnit_Supply := 0x68
+		Offsets_QueuedUnit_Minerals := 0x8C
+		Offsets_QueuedUnit_Gas := 0x90
 
 		; Unit Model Structure	
-		 Offsets_UnitModel_ID := 0x6 ; p3.3	
-		 Offsets_UnitModel_SubgroupPriority := 0x3CC ; p3.3; 0x3A8 
-		 Offsets_UnitModel_MinimapRadius := 0x3D0 ; p3.3 ;0x3AC ;0x39C
+		Offsets_UnitModel_ID := 0x6 ; p3.3	
+		Offsets_UnitModel_SubgroupPriority := 0x3CC ; p3.3; 0x3A8 
+		Offsets_UnitModel_MinimapRadius := 0x3D0 ; p3.3 ;0x3AC ;0x39C
 		
 		; selection and ctrl groups
-		 OffsetsSelectionBase := base + 0x1EE9BB8 
+		OffsetsSelectionBase := base + 0x1EE9BB8 
 
 		; The structure begins with ctrl group 0
-		 B_CtrlGroupStructure := base + 0x3212ED8
-		 S_CtrlGroup := 0x1B60
-		 OffsetsSelectionUnitSize := 0x4	; Unit Selection & Ctrl Group Structures use same offsets
-			 OffsetsSelectionTypeCount := 0x2
-			 OffsetsSelectionHighlightedGroup := 0x4
-			 OffsetsSelectionUnitOffset := 0x8
+		B_CtrlGroupStructure := base + 0x3212ED8
+		S_CtrlGroup := 0x1B60
+		OffsetsSelectionUnitSize := 0x4	; Unit Selection & Ctrl Group Structures use same offsets
+			OffsetsSelectionTypeCount := 0x2
+			OffsetsSelectionHighlightedGroup := 0x4
+			OffsetsSelectionUnitOffset := 0x8
 
 		; gives the select army unit count (i.e. same as in the select army icon) - unit count not supply
 		; dont confuse with similar value which includes army unit counts in production - or if in map editor unit count/index.
@@ -361,15 +375,15 @@ loadMemoryAddresses(base, version := "")
 			O1_localArmyUnitCount := 0x354
 			O2_localArmyUnitCount := 0x248
 
-		 B_TeamColours := base + 0x314D184 ; 2 when team colours is on, else 0
-		; another one at + 0x4FEDA58
+		 B_TeamColours := base + 0x1B7A174 ; 2 when team colours is on, else 0 (There are two valid addresses for this)
+		 
 
 		 P_SelectionPage := base + 0x314B920  	; Tends to end with these offsets. ***theres one other 3 lvl pointer but for a split second (every few second or so) it points to 
 			 O1_SelectionPage := 0x320			; the wrong address! You need to increase CE timer resolution to see this happening! Or better yet use the 'continually perform the pointer scan until stopped' option.
 			 O2_SelectionPage := 0x15C			;this is for the currently selected unit portrait page ie 1-6 in game (really starts at 0-5)
 			 O3_SelectionPage := 0x14C 			;might actually be a 2 or 1 byte value....but works fine as 4
 
-		DeadFilterFlag := 0x0000000200000000	
+
 		BuriedFilterFlag := 0x0000000010000000
 
 		 B_MapInfo := base + 0x357A010
@@ -473,14 +487,14 @@ loadMemoryAddresses(base, version := "")
 			 03_CameraMovingViaMouseAtScreenEdge := 0x5A4				; 3 = Diagonal Right/Top 	  	6 = Diagonal Left/ Bot	
 																		; 7 = Bottom Edge 			 	8 = Diagonal Right/Bot 
 																		; Note need to do a pointer scan with max offset > 1200d! Tends to have the same offsets
-		 B_IsGamePaused := base + 0x4F05E8C 						
+		B_IsGamePaused := base + 0x4F05E8C 						
 
-		 B_FramesPerSecond := base + 0x5008BC4
-		 B_Gamespeed  := base + 0x4F356A8
+		B_FramesPerSecond := base + 0x5008BC4
+		B_Gamespeed  := base + 0x55E133C
 
 		; example: D:\My Computer\My Documents\StarCraft II\Accounts\56025555\6-S2-1-34555\Replays\
 		; this works for En, Fr, and Kr languages 
-		 B_ReplayFolder :=  base + 0x4FBC668
+		B_ReplayFolder := base + 0x24C8D98 ; p3.0.3
 
 		; Horizontal resolution ; 4 bytes
 		; vertical resolution ; The next 4 bytes immediately after the Horizontal resolution 
@@ -515,7 +529,8 @@ playerAddress(player := 1)
 }
 
 /*
-; Followed what wrote to mins to find function
+; Backtracked what wrote to mins to find this function
+; You need to go up a couple of function calls
 ; EAX = player number
 SC2.AssertAndCrash+375D1D - 75 12                 - jne SC2.AssertAndCrash+375D31 
 SC2.AssertAndCrash+375D1F - 8B 15 3091B502        - mov edx,[SC2.exe+1889130]
@@ -526,18 +541,13 @@ SC2.AssertAndCrash+375D2B - 81 F2 59D34602        - xor edx,SC2.AllowCachingSupp
 ; Its really just xoring a value, but CE fills in the address that coincidentally matches it
 ; 0x0246D359
 SC2.AssertAndCrash+375D2B - 81 F2 59D34602        - xor edx,SC2.exe+227D359
-
-
-
 SC2.AssertAndCrash+375D31 - 8B 0A                 - mov ecx,[edx]
 SC2.AssertAndCrash+375D33 - 8D 04 81              - lea eax,[ecx+eax*4]
 SC2.AssertAndCrash+375D36 - 8B 00                 - mov eax,[eax]
 SC2.AssertAndCrash+375D38 - 33 05 8CC6B502        - xor eax,[SC2.exe+188C68C]
-
 SC2.AssertAndCrash+375D3E - 35 DCBA2B77           - xor eax,ntdll.dll+15BADC
-; The xor operand just happens to match that dll address! 
-; 0x772BBADC 
-
+; The xor operand just happens to match that dll address!  Really just 0x772BBADC
+; returns address (EAX)
 SC2.AssertAndCrash+375D43 - C3                    - ret 
 */
 
@@ -545,15 +555,14 @@ getunitAddress(unitIndex)
 {
 	if aSCOffsets["unitAddress"].HasKey(unitIndex)
 		return aSCOffsets["unitAddress", unitIndex]	
-	eax := unitIndex
-	edx := eax 
-	eax &= 0xF 
-	eax *= Offsets_Unit_StructSize
-	edx >>= 0x4 
-	esi := ReadMemory(edx*4+OffsetsSC2Base+0x1F24848, GameIdentifier)
-	esi ^= ReadMemory(OffsetsSC2Base+0x188BFEC, GameIdentifier)
-	esi ^= 0x46E134B8
-	return aSCOffsets["unitAddress", unitIndex]	 := esi += eax
+	edx := eax := unitIndex
+	, eax &= 0xF 
+	, eax *= Offsets_Unit_StructSize
+	, edx >>= 0x4 
+	, esi := ReadMemory(edx*4+OffsetsSC2Base+0x1F24848, GameIdentifier)
+	, esi ^= ReadMemory(OffsetsSC2Base+0x188BFEC, GameIdentifier)
+	, esi ^= 0x46E134B8
+	return aSCOffsets["unitAddress", unitIndex]	:= esi += eax
 }
 
 
@@ -703,8 +712,8 @@ getTimeFull()
 getGameTickCount()
 {	 
 	r := readMemory(OffsetsSC2Base + 0x188BC70, GameIdentifier)
-	r ^= readMemory(OffsetsSC2Base + 0x1F15DF4, GameIdentifier)
-	r ^= 0x6EAF10A5
+	, r ^= readMemory(OffsetsSC2Base + 0x1F15DF4, GameIdentifier)
+	, r ^= 0x6EAF10A5
 	Return readMemory(r + 0x50, GameIdentifier)
 }
 
@@ -769,7 +778,7 @@ getPlayerWorkerCount(player="")
 { 	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]
-	Return ReadMemory(B_pStructure + Offsets_Player_WorkerCount + player*S_pStructure, GameIdentifier)
+	Return ReadMemory(aSCOffsets["playerAddress", player] + Offsets_Player_WorkerCount, GameIdentifier)
 }
 
 ;  Number of workers made (includes the 6 at the start of the game)
@@ -780,7 +789,7 @@ getPlayerWorkersBuilt(player="")
 { global
 	If (player = "")
 		player := aLocalPlayer["Slot"]
-	Return ReadMemory(B_pStructure + Offsets_Player_WorkersBuilt + player*S_pStructure, GameIdentifier)
+	Return ReadMemory(aSCOffsets["playerAddress", player] + Offsets_Player_WorkersBuilt, GameIdentifier)
 }
 ; Probably not accurate for drones morphing into structures
 getPlayerWorkersLost(player="")
@@ -793,7 +802,7 @@ getPlayerHighestWorkerCount(player="")
 { global
 	If (player = "")
 		player := aLocalPlayer["Slot"]
-	Return ReadMemory(B_pStructure + Offsets_Player_HighestWorkerCount + player*S_pStructure, GameIdentifier)
+	Return ReadMemory(aSCOffsets["playerAddress", player] + Offsets_Player_HighestWorkerCount, GameIdentifier)
 }
 getUnitType(Unit) ;starts @ 0 i.e. first unit at 0
 { global 
@@ -802,8 +811,6 @@ getUnitType(Unit) ;starts @ 0 i.e. first unit at 0
 	if !aUnitModel[pUnitModel]
     	getUnitModelInfo(pUnitModel)
   	return aUnitModel[pUnitModel].Type
-;	Return ReadMemory(((ReadMemory(B_uStructure + (Unit * Offsets_Unit_StructSize) 
-;				+ Offsets_Unit_ModelPointer, GameIdentifier)) << 5) + Offsets_UnitModel_ID, GameIdentifier, 2) ; note the pointer is 4byte, but the unit type is 2byte/word
 }
 
 getUnitName2(unit)
@@ -817,18 +824,35 @@ getUnitName2(unit)
 }
 getUnitName(unitIndex)
 {
-	;mp := ReadMemory(aSCOffsets["unitAddress", unitIndex] + Offsets_Unit_ModelPointer, GameIdentifier) << 5 ; 
-	mp := getUnitModelPointer(unitIndex) ; 
-	, pNameDataAddress := ReadMemory(mp + 0xC, GameIdentifier) ; mp + pName_address
-	, pNameDataAddress := ReadMemory(pNameDataAddress, GameIdentifier) 
-	, NameDataAddress := ReadMemory(pNameDataAddress, GameIdentifier) 
-	return substr(ReadMemory_Str(NameDataAddress + 0x20, GameIdentifier), 11) ; trim Unit/Name/ from Unit/Name/Marine 
+	return unitModelName(getUnitModelPointer(unitIndex))
+}
+getUnitNameAlternate(unitIndex)
+{
+	return unitModelNameAlternate(getUnitModelPointer(unitIndex))
 }
 
+unitModelName(modelAddress)
+{
+	pNameDataAddress := ReadMemory(modelAddress + 0xC, GameIdentifier) ; mp + pName_address
+	, pNameDataAddress := ReadMemory(pNameDataAddress, GameIdentifier) 
+	, NameDataAddress := ReadMemory(pNameDataAddress, GameIdentifier) 
+	return substr(ReadMemory_Str(NameDataAddress + 0x20, GameIdentifier), 11) ; trim Unit/Name/ from Unit/Name/Marine 	
+}
+; Should test if difference between trimming unit/Name and replacing e.g. if some weird models dont have unit/Name
+
+unitModelNameAlternate(modelAddress)
+{
+	p := ReadMemory(modelAddress + 0xA20, GameIdentifier)
+	if (p + 0 = "")
+		return 
+	name := ReadMemory_Str(p + 0x14, GameIdentifier) ; unitName/Revive
+	StringReplace, name, name, /Revive,, All ; Not all names have /Revive suffix - so don't use substr()/TrimRight
+	return name
+}
 
 getUnitOwner(Unit) 
 { 	global
-	Return	ReadMemory(aSCOffsets["unitAddress", unitIndex] +  Offsets_Unit_Owner, GameIdentifier, 1) ; note the 1 to read 1 byte
+	Return	ReadMemory(aSCOffsets["unitAddress", Unit] +  Offsets_Unit_Owner, GameIdentifier, 1) ; note the 1 to read 1 byte
 }
 
 
@@ -852,26 +876,18 @@ getHighestUnitIndex() 	; this is the highest alive units index - note it starts 
 }
 getPlayerName(player) ; start at 0
 {	global
+	return "Player"
 	Return ReadMemory_Str(B_pStructure + O_pName + player*S_pStructure, GameIdentifier) 
 }
 getPlayerRace(player) ; start at 0
-{	global
-	local Race
-	; Race := ReadMemory_Str((B_rStructure + (player-1) * S_rStructure), ,GameIdentifier) ;old easy way
-	Race := ReadMemory_Str(ReadMemory(ReadMemory(B_pStructure + O_pRacePointer + player*S_pStructure, GameIdentifier) + 4, GameIdentifier), GameIdentifier) 
-	If (Race == "Terr")
-		Race := "Terran"
-	Else if (Race == "Prot")
-		Race := "Protoss"
-	Else If (Race == "Zerg")
-		Race := "Zerg"	
-	Else If (Race == "Neut")
-		Race := "Neutral"
-	Else If (Race == "Host")
-		Race := "Hostile"		
-	Else 
-		Race := "Race Error" ; so if it ever gets read out in speech, easily know its just from here and not some other error
-	Return Race
+{	
+	static aLoopUp := {"Terr": "Terran", "Prot": "Protoss", "Zerg": "Zerg", "Neut": "Neutral", "Host": "Hostile"}
+	;  Race := ReadMemory_Str((B_rStructure + (player-1) * S_rStructure), ,GameIdentifier) ;old easy way. Select terran, search for Terr - change race search for Prot or Zerg
+	
+	race := ReadMemory_Str(ReadMemory(ReadMemory(aSCOffsets["playerAddress", player] + Offsets_Player_RacePointer, GameIdentifier) + 4, GameIdentifier), GameIdentifier) 
+	if aLoopUp.HasKey(race)
+		return aLoopUp[race]
+	return "Race Error" ; so if it ever gets read out in speech, easily know its just from here and not some other error
 }
 
 getPlayerType(player := "")
@@ -885,7 +901,7 @@ getPlayerType(player := "")
 							, 6: "Spectator" }
 	If (player = "")
 		player := aLocalPlayer["Slot"]					
-	Return oPlayerType[ReadMemory(aSCOffsets["playerAddress", player] + OffsetsPlayerType, GameIdentifier, 1)]
+	Return oPlayerType[ReadMemory(aSCOffsets["playerAddress", player] + Offsets_Player_Type, GameIdentifier, 1)]
 }
 
 getPlayerVictoryStatus(player)
@@ -894,7 +910,7 @@ getPlayerVictoryStatus(player)
 								, 1: "Victorious" 	
 								, 2: "Defeated"
 								, 3: "Tied" }
-	Return oPlayerStatus[ReadMemory(B_pStructure + O_pVictoryStatus + player * S_pStructure, GameIdentifier, 1)]
+	Return oPlayerStatus[ReadMemory(aSCOffsets["playerAddress", player] + O_pVictoryStatus, GameIdentifier, 1)]
 }
 
 /*
@@ -910,34 +926,20 @@ oPlayerStatus := {	  0: "Unused"
 								, 24: "Left" 
 								, 25: "Active25" }
  all of these values occured while player was still 'active'
-; all are diviseable by 4 after subtracting 1
 ;5 ;9 ;13 ;17 ;33 ;65 ;73 ;81 ;129 ;133 ;137 ;145 ;161 ;193 ;209
 
-unused when a plyer leaves on the replay
-I wonder if the structure is more is just active and left
-
-
-getPlayerActiveStatus(i)
-{	global
-	static oPlayerStatus := {	  0: "Unused"
-								, 1: "Active" 	
-								, 2: "Left"
-								, 3: "Tied" } ; wonder if there is no tied
-
-	Return oPlayerStatus[ mod(ReadMemory((B_pStructure + O_pStatus) + (i-1) * S_pStructure, GameIdentifier, 1), 4) ]
-}
 */
 
 isPlayerActive(player)
 {
-	Return (ReadMemory(aSCOffsets["playerAddress", player], GameIdentifier, 1) & 1)
+	Return ReadMemory(aSCOffsets["playerAddress", player] + Offsets_Player_Status, GameIdentifier, 1) & 1
 }
 
 getPlayerTeam(player="") ;team begins at 0
 {	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]	
-	Return ReadMemory(aSCOffsets["playerAddress", player] + OffsetsPlayerTeam , GameIdentifier, 1)
+	Return ReadMemory(aSCOffsets["playerAddress", player] + Offsets_Player_Team , GameIdentifier, 1)
 }
 getPlayerColour(player)
 {	static aPlayerColour
@@ -948,7 +950,7 @@ getPlayerColour(player)
 		Loop, Parse, Colour_List, |
 			aPlayerColour[a_index - 1] := A_LoopField
 	}
-	Return aPlayerColour[ReadMemory(aSCOffsets["playerAddress", player] + O_pColour, GameIdentifier)]
+	Return aPlayerColour[ReadMemory(aSCOffsets["playerAddress", player] + Offsets_Player_Colour, GameIdentifier)]
 }
 /* Patch 3.3
 SC2.AssertAndCrash+164683 - A1 0CC16702           - mov eax,[SC2.exe+188C10C]
@@ -956,7 +958,15 @@ SC2.AssertAndCrash+164688 - 33 05 F0A99602        - xor eax,[SC2.exe+1B7A9F0]
 SC2.AssertAndCrash+16468E - 35 1BF35324           - xor eax,2453F31B : [6FF78088]
 SC2.AssertAndCrash+164693 - 88 48 0D              - mov [eax+0D],cl
 */
-; 
+; Patch 3.3 bytes changed. 
+; In lobby first byte = 10 second byte = 10
+; In game first byte = player number, second byte = player number - 1.
+; in replay when viewing 'everyone' perspective, both are 10h
+; when viewing an ai, 1st byte = player number,  2nd byte = 10h
+; when viewing a player, 1st byte = player number, 2nd byte = player number -1
+
+; There is a second static 2 byte value, but it only has the correct value during a game
+; 1st byte = slot 2 byte = slot
 getLocalPlayerNumber(byref replayByte := "") ;starts @ 1 (because the first player in the player structure is always player 0 = neutral)
 {	
 	static address
@@ -967,7 +977,7 @@ getLocalPlayerNumber(byref replayByte := "") ;starts @ 1 (because the first play
 		eax ^= 0x2453F31B
 		address := eax += 0x0D 
 	}
-	word := ReadMemory(address, GameIdentifier, 2) ;Local player slot is 1 Byte!! (=1 byte for replay)
+	word := ReadMemory(address, GameIdentifier, 2) ;Local player slot is 1 Byte and 1 byte for replay)
 	Return word & 0xFF, replayByte := word >> 8 
 }
 
@@ -975,25 +985,25 @@ getPlayerBaseCameraCount(player="")
 { 	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]	
-	Return ReadMemory(B_pStructure + Offsets_Player_CompletedTownHalls + player * S_pStructure, GameIdentifier)
+	Return ReadMemory(aSCOffsets["playerAddress", player] + Offsets_Player_CompletedTownHalls, GameIdentifier)
 }
 getPlayerMineralIncome(player="")
 { 	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]	
-	Return ReadMemory(B_pStructure + O_pMineralIncome + player * S_pStructure, GameIdentifier)
+	Return ReadMemory(aSCOffsets["playerAddress", player] + O_pMineralIncome, GameIdentifier)
 }
 getPlayerGasIncome(player="")
 { 	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]	
-	Return ReadMemory(B_pStructure + O_pGasIncome + player * S_pStructure, GameIdentifier)
+	Return ReadMemory(aSCOffsets["playerAddress", player] + O_pGasIncome, GameIdentifier)
 }
 getPlayerArmySupply(player="")
 { 	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]	
-	Return ReadMemory(B_pStructure + Offsets_Player_ArmySupply + player * S_pStructure, GameIdentifier) / 4096
+	Return ReadMemory(aSCOffsets["playerAddress", player] + Offsets_Player_ArmySupply, GameIdentifier) / 4096
 }
 
 ; Note this won't always agree with the replay active forces size.
@@ -1004,21 +1014,21 @@ getPlayerArmySizeMinerals(player="")
 { 	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]	
-	Return ReadMemory(B_pStructure + Offsets_Player_ArmyMineralCost + player * S_pStructure, GameIdentifier)
+	Return ReadMemory(aSCOffsets["playerAddress", player] + Offsets_Player_ArmyMineralCost, GameIdentifier)
 }
 getPlayerArmySizeGas(player="")
 { 	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]	
-	Return ReadMemory(B_pStructure + Offsets_Player_ArmyGasCost + player * S_pStructure, GameIdentifier)
+	Return ReadMemory(aSCOffsets["playerAddress", player] + Offsets_Player_ArmyGasCost, GameIdentifier)
 }
 getPlayerMinerals(player := "")
 { 	
 	;If (player = "")
 	;	player := aLocalPlayer["Slot"]
 	If (player = "")
-		playerAddress := playerAddress(getLocalPlayerNumber())
-	Return ReadMemory(playerAddress + Offsets_Player_Minerals, GameIdentifier)
+		player := aLocalPlayer["Slot"]
+	Return ReadMemory(aSCOffsets["playerAddress", player] + Offsets_Player_Minerals, GameIdentifier)
 }
 getPlayerGas(player="")
 { 	global
@@ -1030,31 +1040,31 @@ getPlayerCameraPositionX(Player="")
 {	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]	
-	Return ReadMemory(B_pStructure + Player*S_pStructure + O_pXcam, GameIdentifier) / 4096
+	Return ReadMemory(aSCOffsets["playerAddress", player] + O_pXcam, GameIdentifier) / 4096
 }
 getPlayerCameraPositionY(Player="")
 {	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]
-		Return ReadMemory(B_pStructure + Player*S_pStructure + O_pYcam, GameIdentifier) / 4096
+		Return ReadMemory(aSCOffsets["playerAddress", player] + O_pYcam, GameIdentifier) / 4096
 }
 getPlayerCameraDistance(Player="")
 {	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]	
-	Return ReadMemory(B_pStructure + Player*S_pStructure + O_pCamDistance, GameIdentifier) / 4096
+	Return ReadMemory(aSCOffsets["playerAddress", player] + O_pCamDistance, GameIdentifier) / 4096
 }
 getPlayerCameraAngle(Player="")
 {	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]	
-	Return ReadMemory(B_pStructure + Player*S_pStructure + O_pCamAngle, GameIdentifier) / 4096
+	Return ReadMemory(aSCOffsets["playerAddress", player] + O_pCamAngle, GameIdentifier) / 4096
 }
 getPlayerCameraRotation(Player="")
 {	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]	
-	Return ReadMemory(B_pStructure + Player*S_pStructure + O_pCamRotation, GameIdentifier) / 4096
+	Return ReadMemory(aSCOffsets["playerAddress", player] + O_pCamRotation, GameIdentifier) / 4096
 }
 
 
@@ -1067,7 +1077,7 @@ getPlayerCurrentAPM(Player="")
 {	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]	
-	Return ReadMemory(B_pStructure + Player*S_pStructure + O_pAPM, GameIdentifier)
+	Return ReadMemory(aSCOffsets["playerAddress", player] + O_pAPM, GameIdentifier)
 }
 
 isUnderConstruction(building) ; starts @ 0 and only for BUILDINGS!
@@ -1076,54 +1086,51 @@ isUnderConstruction(building) ; starts @ 0 and only for BUILDINGS!
 	return getUnitTargetFilter(building) & aUnitTargetFilter.UnderConstruction
 }
 
-isUnitAStructure(unit)
-{	GLOBAL 
-	return getUnitTargetFilter(unit) & aUnitTargetFilter.Structure
-}
 
 getUnitEnergy(unit)
 {	global
-	Return Floor(ReadMemory(B_uStructure + (unit * Offsets_Unit_StructSize) + O_uEnergy, GameIdentifier) / 4096)
+	Return Floor(ReadMemory(aSCOffsets["unitAddress", unit] + Offsets_Unit_Energy, GameIdentifier) / 4096)
 }
 
 getUnitEnergyRaw(unit)
 {	global
-	Return ReadMemory(B_uStructure + (unit * Offsets_Unit_StructSize) + O_uEnergy, GameIdentifier) / 4096
+	Return ReadMemory(aSCOffsets["unitAddress", unit] + Offsets_Unit_Energy, GameIdentifier) / 4096
 }
 
 numgetUnitEnergy(ByRef unitDump, unit)
 {	global
-	Return Floor(numget(unitDump, unit * Offsets_Unit_StructSize + O_uEnergy, "Uint") / 4096)
+	Return Floor(numget(unitDump, unit * Offsets_Unit_StructSize + Offsets_Unit_Energy, "Uint") / 4096)
 }
 
 numgetUnitEnergyRaw(ByRef unitDump, unit)
 {	global
-	Return numget(unitDump, unit * Offsets_Unit_StructSize + O_uEnergy, "Uint") / 4096
+	Return numget(unitDump, unit * Offsets_Unit_StructSize + Offsets_Unit_Energy, "Uint") / 4096
 }
 ; Damage which has been delt to the unit
 ; need to substract max hp in unit to find actual health value/percentage
+; Why am i Flooring these??? 11/2015
 getUnitHpDamage(unit)
 {	global
-	Return Floor(ReadMemory(B_uStructure + (unit * Offsets_Unit_StructSize) + O_uHpDamage, GameIdentifier) / 4096)
+	Return Floor(ReadMemory(aSCOffsets["unitAddress", unit] + Offsets_Unit_HPDamage, GameIdentifier) / 4096)
 }
 
 getUnitShieldDamage(unit)
 {	global
-	Return Floor(ReadMemory(B_uStructure + (unit * Offsets_Unit_StructSize) + O_uShieldDamage, GameIdentifier) / 4096)
+	Return Floor(ReadMemory(aSCOffsets["unitAddress", unit] + Offsets_Unit_ShieldDamage, GameIdentifier) / 4096)
 }
 
 getUnitPositionX(unit)
 {	global
-	Return ReadMemory(B_uStructure + (unit * Offsets_Unit_StructSize) + O_uX, GameIdentifier) /4096
+	Return ReadMemory(aSCOffsets["unitAddress", unit] + O_uX, GameIdentifier) /4096
 }
 getUnitPositionY(unit)
 {	global
-	Return ReadMemory(B_uStructure + (unit * Offsets_Unit_StructSize) + O_uY, GameIdentifier) /4096
+	Return ReadMemory(aSCOffsets["unitAddress", unit]  + O_uY, GameIdentifier) /4096
 }
 
 getUnitPositionZ(unit)
 {	global
-	Return ReadMemory(B_uStructure + (unit * Offsets_Unit_StructSize) + O_uZ, GameIdentifier) /4096
+	Return ReadMemory(aSCOffsets["unitAddress", unit] + O_uZ, GameIdentifier) /4096
 }
 
 
@@ -1138,7 +1145,7 @@ getUnitPositionZ(unit)
 	will = the adress of the first command
 	also, the last bit of the Command ptr (pre &) will be set to 1
 
-;  Offsets_CommandQueue_State := 0x40 = AbilityCommand
+;  Offsets_QueuedCommand_State := 0x40 = AbilityCommand
 ; Nukes offsets/Research
 <Struct Name="QueuedCommand" Size="-1">
 <Member Name="pNextCommand" Type="Unsigned" Size="4" Offset="0"/>
@@ -1176,80 +1183,19 @@ isTransportDropQueued(transportIndex)
 	return 0
 }
 
-; Patrol move can shift queue multiple patrol waypoints/paths but only the current one or first one (if there are other preceding move commands) will be returned.
-; If a another command (move/attack etc) is queued after a multi waypoint patrol, then SC will remove the extra patrol points and add
-; the move command. This function will return all of these correctly. 
-
-getUnitQueuedCommands(unit, byRef aQueuedMovements)
-{
-	static aTargetFlags := { "overrideUnitPositon":  0x1
-							, "unknown02": 0x2
-							, "unknown04": 0x4
-							, "targetIsPoint": 0x8
-							, "targetIsUnit": 0x10
-							, "useUnitPosition": 0x20 }
-	aQueuedMovements := []
-	if (CmdQueue := ReadMemory(aSCOffsets["unitAddress", unit] + OffsetsUnitCommandQueuePointer, GameIdentifier)) ; points if currently has a command - 0 otherwise
-	{
-		pNextCmd := ReadMemory(CmdQueue, GameIdentifier) ; If & -2 this is really the first command ie  = BaseCmdQueStruct
-		loop 
-		{
-			ReadRawMemory(pNextCmd & -2, GameIdentifier, cmdDump, 0x42)
-			, targetFlag := numget(cmdDump, 0x38, "UInt")
-			, state := numget(cmdDump, Offsets_CommandQueue_State, "Short") ; )_cqstate = 0x40
-			, targetUnitIndex := numget(cmdDump, 0x20, "UInt") >> 18 
-			;OrderFlags := numget(cmdDump, 0x3C, "UInt") ; OrderFlags 
-			if !aStringTable.hasKey(pString := numget(cmdDump, 0x18, "UInt"))
-				aStringTable[pString] := ReadMemory_Str(readMemory(pString + 0x4, GameIdentifier), GameIdentifier)
-
-			aQueuedMovements.insert({ "targetX": numget(cmdDump, 0x28, "Int") / 4096
-									, "targetY": numget(cmdDump, 0x2C, "Int") / 4096
-									, "targetZ": numget(cmdDump, 0x30, "Int") / 4096
-									, "ability": aStringTable[pString] 
-									;, "targetFlag" : targetFlag
-									;, "OrderFlags": OrderFlags
-									;, "flagString": CommandFlagsToString(OrderFlags)
-									, "targetIndex": targetUnitIndex
-									, "state": state })
-
-			if (A_Index > 20 || !(targetFlag & aTargetFlags.targetIsPoint || targetFlag & aTargetFlags.targetIsUnit || targetFlag = 7))
-			{
-				; something went wrong or target isnt a point/unit and the targ flag isnt 7 either 
-				aQueuedMovements := []
-				return 0
-			}
-
-		} Until (1 & pNextCmd := numget(cmdDump, 0, "Int"))				; loop until the last/first bit of pNextCmd is set to 1
-		return aQueuedMovements.MaxIndex() 	; interestingly after -2 & pNextCmd (the last one) it should = the first address
-	}
-	else return 0
-}
 ; Queued command structure
-; patch 3.3
-; + 0 pointer to next command
-; +4 = Unit address
-; +0x20 = Ability string pointer
-; +0x28 Target unit finger print 
-; +0x30 - Target X - Pretty Sure
-; +0x34 - Target y - Pretty Sure
-; +0x38 - Target z - Pretty Sure
-; +0x40 = Target Flag ? - think this is correct
-; +0x4C = Ability state  / command ability (2 bytes)
-; +0x4E = Player (1 byte)
+	; Sc 2.0
+	; + 0 pointer to next command
+	; 0x20 targetUnitIndex 	
+	; 0x28 targetX 	
+	; 0x2C targetY 	
+	; 0x30 targetZ 	
+	; 0x18 pString 	
+	; 0x38 targetFlag 	
+	; 0x3C OrderFlags 	
+	; 0x40 state 
 
 
-; Target Flag  Done with a probe
-; 00010000
-; 00011111 1F mvoe to point
-; 00011111 1F Attack Point
-; 01101101 6D attack structure with probe
-; 01101111 6F move to structure 
-; targetIsUnit = 0xA 10b ?
-; targetIsPoint = 0x10 10000b ?
-; This doesnt make sense compared to the old enum, is point was less than isUnit
-
-getUnitQueuedCommandstest(unit, byRef aQueuedMovements)
-{
 /*	
 	static aTargetFlags := { "overrideUnitPositon":  0x1
 							, "unknown02": 0x2
@@ -1258,46 +1204,77 @@ getUnitQueuedCommandstest(unit, byRef aQueuedMovements)
 							, "targetIsUnit": 0x10
 						, "useUnitPosition": 0x20 }
 	*/	
-	static aTargetFlags := { "overrideUnitPositon":  "???"
-							, "unknown02": "???"
-							, "unknown04": "???"
-							, "targetIsPoint": 0x10 ;??
-							, "targetIsUnit": 0xA   ;??
-						, "useUnitPosition": "???" }	
+
+
+	; patch 3.3
+	; + 0 pointer to next command
+	; +4 = Unit address
+	; +0x20 = Ability string pointer
+	; +0x28 Target unit finger print 
+	; +0x30 - Target X - Pretty Sure
+	; +0x34 - Target y - Pretty Sure
+	; +0x38 - Target z - Pretty Sure
+	; +0x40 - Target Flag ? - think this is correct
+	; +0x44 - OrderFlags ?? Havent checked this
+	; +0x4C - Ability state  / command ability (2 bytes)
+	; +0x4E - Player (1 byte)
+
+	; Havent looked for differences between these for various units/commands
+	; 0xB0 - TimeRemaining A 
+	; 0xB4 - TimeRemaining B (slightly higher than A). Im using this atm.
+	; 0xC4 - timeRemaining A
+	; 0xCC - Total Time Required 
+	; 0xD0 - timeRemaining B
+	
+
+	; Target Flag  Done with a probe
+	; 00011111 1F move to point
+	; 00011111 1F Attack move to Point
+	; 00010000  targetIsPoint = 0x10 
+	; 00100000  targetIsUnit = 0x20 
+	; 01101101 6D attack structure with probe
+	; 01101111 6F move to structure 
+
+; Patrol move can shift queue multiple patrol waypoints/paths but only the current one or first one (if there are other preceding move commands) will be returned.
+; If a another command (move/attack etc) is queued after a multi waypoint patrol, then SC will remove the extra patrol points and add
+; the move command. This function will return all of these correctly. 
+
+
+getUnitQueuedCommands(unit, byRef aQueuedMovements)
+{
+	static targetIsPointOrUnit := 0x10 | 0x20 ; point 0x10, unit 0x20
 
 	aQueuedMovements := []
-	setformat, IntegerFast, H
-	if (CmdQueue := ReadMemory(aSCOffsets["unitAddress", unit] + OffsetsUnitCommandQueuePointer, GameIdentifier)) ; points if currently has a command - 0 otherwise
+	if (CmdQueue := ReadMemory(aSCOffsets["unitAddress", unit] + Offsets_Unit_CommandQueuePointer, GameIdentifier)) ; points if currently has a command - 0 otherwise
 	{
 		pNextCmd := ReadMemory(CmdQueue, GameIdentifier) ; If & -2 this is really the first command ie  = BaseCmdQueStruct
 		loop 
 		{
-			;msgbox % "loop " A_index "`n" (clipboard := pNextCmd & -2)
-			ReadRawMemory(pNextCmd & -2, GameIdentifier, cmdDump, Offsets_CommandQueue_State+2)
-			, targetUnitIndex := numget(cmdDump, 0x28, "UInt") >> 18  ; pre p3.3 0x20
-			, targetFlag := numget(cmdDump, 0x40, "UInt") ; pre 3.3 0x38
-			, state := numget(cmdDump, Offsets_CommandQueue_State, "Short") ; _cqstate = 0x40 p3.3 +0x4C
-			;OrderFlags := numget(cmdDump, 0x3C, "UInt") ; OrderFlags 
-			if !aStringTable.hasKey(pString := numget(cmdDump, 0x20, "UInt")) ; pre p3.3 0x18
-				aStringTable[pString] := ReadMemory_Str(readMemory(pString + 0x4, GameIdentifier), GameIdentifier)
+			ReadRawMemory(pNextCmd & -2, GameIdentifier, cmdDump, 0xF4 + 4)
+			, targetFlag := numget(cmdDump, Offsets_QueuedCommand_TargetFlags, "UInt")
 
-			aQueuedMovements.insert({ "targetX": numget(cmdDump, 0x30, "Int") / 4096  ; pre p3.0 0x28
-									, "targetY": numget(cmdDump, 0x34, "Int") / 4096  ; pre p3.0 0x2C
-									, "targetZ": numget(cmdDump, 0x38, "Int") / 4096  ; pre p3.0 0x30
+			;OrderFlags := numget(cmdDump, 0x3C, "UInt") ; OrderFlags 
+			if !aStringTable.hasKey(pString := numget(cmdDump, Offsets_QueuedCommand_StringPointer, "UInt")) 
+				aStringTable[pString] := ReadMemory_Str(readMemory(pString + 0x4, GameIdentifier), GameIdentifier)
+			aQueuedMovements.insert({ "targetX": numget(cmdDump, Offsets_QueuedCommand_TargetX, "UInt") / 4096  
+									, "targetY": numget(cmdDump, Offsets_QueuedCommand_TargetY, "UInt") / 4096  
+									, "targetZ": numget(cmdDump, Offsets_QueuedCommand_TargetZ, "UInt") / 4096 
 									, "ability": aStringTable[pString] 
-									;, "targetFlag" : targetFlag
+									, "targetFlag" : targetFlag
 									;, "OrderFlags": OrderFlags
 									;, "flagString": CommandFlagsToString(OrderFlags)
-									, "targetIndex": targetUnitIndex
-									, "state": state })
-			if (A_Index > 20 || !(targetFlag & aTargetFlags.targetIsPoint || targetFlag & aTargetFlags.targetIsUnit)) ; || targetFlag = 7))
-			{
-				; something went wrong or target isnt a point/unit and the targ flag isnt 7 either 
+									, "targetIndex": numget(cmdDump, Offsets_QueuedCommand_TargetFingerPrint, "UInt") >> 18 
+									, "state": numget(cmdDump, Offsets_QueuedCommand_State, "UShort") 
+									;  These times are raw - need to '/ 65536 (2^16)' to get time in seconds
+									, "timeRemaining": numget(cmdDump, Offsets_QueuedCommand_TimeRemaining, "UInt") 
+									, "timeRequired": numget(cmdDump, Offsets_QueuedCommand_TimeRequired, "UInt") })
+
+			if (A_Index > 20 || !(targetFlag & targetIsPointOrUnit || targetFlag = 0xF)) ; something went wrong or target isnt a point/unit and the targ flag isnt 0xF either 
+			{ 	; target flag is usually 0xF for the morphing types (and units on hold position). In patch 2.x its was 7dec
 				aQueuedMovements := []
 				return 0
 			}
-
-		} Until (1 & pNextCmd := numget(cmdDump, 0, "Int"))				; loop until the last/first bit of pNextCmd is set to 1
+		} Until (1 & pNextCmd := numget(cmdDump, 0, "UInt"))	; loop until the last/first bit of pNextCmd is set to 1
 		return aQueuedMovements.MaxIndex() 	; interestingly after -2 & pNextCmd (the last one) it should = the first address
 	}
 	else return 0
@@ -1364,22 +1341,6 @@ getUnitQueuedCommandString(aQueuedCommandsOrUnitIndex)
 		Sort, s, D`, U
 	return s
 }
-	; when a unit is on hold position the target flag = 7
-	; real movestate/0x40 = 2
-	; unload command movestate = 2
-	; target flag = 15 for drop and for movement
-
-; This is just returns the state, which depends on the ability command (so its kind of wrong by itself)
-getUnitMoveState(unit)
-{	
-	local CmdQueue, BaseCmdQueStruct
-	if (CmdQueue := ReadMemory(B_uStructure + unit * Offsets_Unit_StructSize + OffsetsUnitCommandQueuePointer, GameIdentifier)) ; points if currently has a command - 0 otherwise
-	{
-		BaseCmdQueStruct := ReadMemory(CmdQueue, GameIdentifier) & -2
-		return ReadMemory(BaseCmdQueStruct + Offsets_CommandQueue_State, GameIdentifier, 2) ;current state
-	}
-	else return -1 ;cant return 0 as that could indicate A-move
-}
 
 arePlayerColoursEnabled()
 {	global
@@ -1424,7 +1385,7 @@ isSocialMenuFocused()
 ; contaminate may delay it - havent checked.
 getUnitTimer(unit)
 {	global 
-	return ReadMemory(B_uStructure + unit * Offsets_Unit_StructSize + O_uTimer, GameIdentifier)/4096
+	return ReadMemory(aSCOffsets["unitAddress", unit] + Offsets_Unit_TimeAlive, GameIdentifier)/4096
 }
 
 /*
@@ -1445,8 +1406,6 @@ EBP=08C1B4E4
 EIP=01DFD4C9
 
 */
-
-
 ; 
 ; There can be multiple units on the xelnaga, 1 spot for each of the 16 players
 ; If one player has multiple units holding the xelnaga, only the unit with the highest
@@ -1456,12 +1415,12 @@ EIP=01DFD4C9
 ; these units can be owned by any player
 getUnitsHoldingXelnaga(Xelnaga)
 {
-	p1 := ReadMemory(getUnitAbilityPointer(Xelnaga) + 0x18, GameIdentifier)
-	if (ReadMemory(p1 + 0xC, GameIdentifier) = 227) ; 227 when towerCaptured / 35 when not captured
+	p1 := ReadMemory(getUnitAbilityPointer(Xelnaga) + 0x18, GameIdentifier) ; TowerCapture ability
+	if ReadMemory(p1 + 0xC, GameIdentifier) = 0x3A3 ; 0x3A3 when towerCaptured / 0xA3 when not captured
 	{
 		loop, 16
 		{
-			if (unit := ReadMemory(p1 + (A_Index - 1) * 4 + 0x28 , GameIdentifier))
+			if (unit := ReadMemory(p1 + (A_Index - 1) * 4 + 0x38 , GameIdentifier))
 				units .= unit >> 18 ","
 		}
 		return RTrim(units, ",")
@@ -1479,15 +1438,13 @@ getUnitsHoldingXelnaga(Xelnaga)
 ; returned
 getLocalUnitHoldingXelnaga(Xelnaga)
 {
-	p1 := ReadMemory(getUnitAbilityPointer(Xelnaga) + 0x18, GameIdentifier)
-	; 227 when towerCaptured / 35 when not captured
+	;p1 := ReadMemory(findAbilityTypePointer(getUnitAbilityPointer(Xelnaga), aUnitID["XelNagaTower"], "TowerCapture"), GameIdentifier)	
+	p1 := ReadMemory(getUnitAbilityPointer(Xelnaga) + 0x18, GameIdentifier) ; TowerCapture ability
+	; 0x3A3 when towerCaptured / 0xA3 when not captured
 	; though don't really need to check this, as if local unit isn't on
 	; the tower, then unit/address = 0
-	if (ReadMemory(p1 + 0xC, GameIdentifier) = 227) 
-	{
-		if (unit := ReadMemory(p1 + aLocalPlayer.slot * 4 + 0x28 , GameIdentifier))
-			return unit >> 18 
-	}
+	if ReadMemory(p1 + 0xC, GameIdentifier) = 0x3A3 && (unit := ReadMemory(p1 + aLocalPlayer["slot"] * 4 + 0x38 , GameIdentifier))
+		return unit >> 18 
 	return -1
 }
 
@@ -1582,16 +1539,22 @@ getGameSpeed()
 ; I noticed with this function, it will return 0 when there is less than half a second of cool down left - close enough
 ; should really be finding the pointer by looking up the ability index ID in the byte array.
 ; but im lazy and this works
+; ht = 45s * 65536 =  2949120
+; 44s * 65536 = 2883584
 
-getWarpGateCooldown(WarpGate) ; unitIndex
-{	global B_uStructure, Offsets_Unit_StructSize, OffsetsUnitAbilityPointer, GameIdentifier
-	u_AbilityPointer := B_uStructure + WarpGate * Offsets_Unit_StructSize + OffsetsUnitAbilityPointer
-	ablilty := ReadMemory(u_AbilityPointer, GameIdentifier) & 0xFFFFFFFC
-	p1 := ReadMemory(ablilty + 0x28, GameIdentifier)	; Ability WarpGateTrain
-	if !(p2 := ReadMemory(p1 + 0x1C, GameIdentifier)) ; 0 if it has never warped in a unit
+getWarpGateCooldown(unit, type) ; unitIndex
+{	
+	p := findAbilityTypePointer(getUnitAbilityPointer(unit), type, "WarpGateTrain")
+	p := readmemory(p, GameIdentifier)
+	if !p := readmemory(p + 0x2C, GameIdentifier)
 		return 0
-	p3 := ReadMemory(p2 + 0xC, GameIdentifier)
-	cooldown := ReadMemory(p3 + 0x4, GameIdentifier)
+	pStruct := readmemory(p + 0, GameIdentifier) ; there was another apparently identical pointer at +0x4
+	timeRemaining := readMemory(pStruct + 0xC, GameIdentifier)
+	;totalTime := readMemory(pStruct + 0x10) ; This value remains after cool down complete
+	if (timeRemaining >= 0 && !(timeRemaining >> 31 & 1))
+		return timeRemaining / 65536
+	return 0
+
 	; as found in map editor some warpgates gave -1....but this could just be due to it being in the mapeditor (and was never a gateway...but doubtful)
 	; or i could have just stuffed something up when testing no harm in being safe.
 	; Edit 1/7/14
@@ -1603,11 +1566,9 @@ getWarpGateCooldown(WarpGate) ; unitIndex
 	; so check if the 32 bit is not set (it will never be set when on cooldown - too high)
 	; A better method would be to look for a byte in the WarpGateTrain indicating its on cooldown.
 	; but im tired.
-	if (cooldown >= 0 && !(cooldown >> 31 & 1)) 		
-		return cooldown
-	else return 0
 }
-
+/*
+; Dont use not updated
 getMedivacBoostCooldown(unit)
 {
 	; This is a bit weird. 
@@ -1619,13 +1580,14 @@ getMedivacBoostCooldown(unit)
 	p3 := readmemory(p2+0xc, GameIdentifier)
 	return ReadMemory(p3+0x4, GameIdentifier)
 }
+*/
 
 getUnitAbilityPointer(unit) ;returns a pointer which still needs to be read. The pointer will be different for every unit, but for units of same type when read point to same address
 {	global
-	return ReadMemory(aSCOffsets["unitAddress", unit] + OffsetsUnitAbilityPointer, GameIdentifier) & 0xFFFFFFFC
+	return ReadMemory(aSCOffsets["unitAddress", unit] + Offsets_Unit_AbilityPointer, GameIdentifier) & 0xFFFFFFFC
 }
 
-getUnitAbilitiesString(unit)
+getUnitAbilitiesString(unit, msgbox := True)
 {
 	if !pAbilities := getUnitAbilityPointer(unit)
 		return clipboard := "pAbilities = 0"
@@ -1633,28 +1595,29 @@ getUnitAbilitiesString(unit)
 	s := "pAbilities: " chex(pAbilities) " Unit ID: " unit "`nuStruct: " chex(getunitAddress(unit)) " - " chex(getunitAddress(unit) + Offsets_Unit_StructSize)
 	loop
 	{
-		if (p := ReadMemory( address := p1  +  OffSets_UnitAbilities_AbilityStringPointerIndex + (A_Index - 1)*4, GameIdentifier))
+		if (p := ReadMemory( address := p1  +  Offsets_UnitAbilities_AbilityStringPointerIndex + (A_Index - 1)*4, GameIdentifier))
 		{
-			s .= "`n"  A_Index - 1 " | Pointer Address " chex(pAddress := pAbilities + OffSets_UnitAbilities_AbilityPointerIndex + (A_Index - 1)*4) " | Pointer Value "  chex(ReadMemory(pAddress, GameIdentifier)) " | "  ReadMemory_Str(ReadMemory(p + 4, GameIdentifier), GameIdentifier)
+			s .= "`n"  A_Index - 1 " | Pointer Address " chex(pAddress := pAbilities + Offsets_UnitAbilities_AbilityPointerIndex + (A_Index - 1)*4) "  (+0x" chex(pAddress - pAbilities) ") | Pointer Value "  chex(ReadMemory(pAddress, GameIdentifier)) " | "  ReadMemory_Str(ReadMemory(p + 4, GameIdentifier), GameIdentifier)
 			count++
 		}
 	} until p = 0
 	s .= "`nLoop Count: " count A_TAB "Read Count: " getAbilitiesCount(pAbilities)
-	msgbox % clipboard := s
+	if msgbox
+		msgbox % clipboard := s
 	return s
 }
 
 numgetUnitAbilityPointer(byRef unitDump, unit)
 {
-	return numget(unitDump, unit * Offsets_Unit_StructSize + OffsetsUnitAbilityPointer, "UInt") & 0xFFFFFFFC
+	return numget(unitDump, unit * Offsets_Unit_StructSize + Offsets_Unit_AbilityPointer, "UInt") & 0xFFFFFFFC
 }
-
-; 6144 when stimmed 4096 when not
-isUnitStimed(unit)
-{
-	structure := readmemory(getUnitAbilityPointer(unit) + 0x20, GameIdentifier)
-	return (readmemory(structure + 0x38, GameIdentifier) = 6144) ? 1 : 0
-}
+;
+;;; 6144 when stimmed 4096 when not
+;isUnitStimed(unit)
+;{
+;	structure := readmemory(getUnitAbilityPointer(unit) + 0x20, GameIdentifier)
+;	return (readmemory(structure + 0x38, GameIdentifier) = 6144) ? 1 : 0
+;}
 
 isUnitChronoed(unit)
 {	global	; 1 byte = 18h chrono for protoss structures 10h normal state This is pre patch 2.10
@@ -1664,108 +1627,66 @@ isUnitChronoed(unit)
 			; dont think i have to do the if = 128 check now, but leave it just in case - havent checked 
 			; every building for a default value
 	
-	return 128 = ReadMemory(B_uStructure + unit * Offsets_Unit_StructSize + O_uChronoState, GameIdentifier, 1)	
+	return 24 = ReadMemory(aSCOffsets["unitAddress", unit] + Offsets_Unit_ChronoState, GameIdentifier, 1)	
 }
 
 numgetIsUnitChronoed(byref unitDump, unit)
 {	global	
-	return 128 = numget(unitDump, unit * Offsets_Unit_StructSize + O_uChronoState, "UChar")	
+	return 24 = numget(unitDump, unit * Offsets_Unit_StructSize + Offsets_Unit_ChronoState, "UChar")	
 }
 
 numgetIsUnitPowered(byref unitDump, unit)
 {	global	
-	return 0 = numget(unitDump, unit * Offsets_Unit_StructSize + O_uPoweredState, "UInt")	
+	return 0 = numget(unitDump, unit * Offsets_Unit_StructSize + Offsets_Unit_PoweredState, "UInt")	
+}
+; Returns True for structures which do not require power e.g. nexus, pylons, rocks
+isUnitPowered(unit)
+{
+	return 0 = ReadMemory(aSCOffsets["unitAddress", unit] + Offsets_Unit_PoweredState, GameIdentifier)	
 }
 
-; This whole area (inject/chrono/powered) is some type of bit field.
+; This whole area (inject/chrono/powered) is some type of bit field. Note there are a few this which can indicate chrono/power/inject
+; some may just be parts of points
 
 ; pre patch 2.10
 ; 16 dec / 0x10 when not injected
 ; 48 dec / 0x30 when injected
 ; hatch/lair/hive unit structure + 0xE2 = inject state 
-isHatchInjected(Hatch)
+isHatchInjected(unit)
 {	global	; 1 byte = 18h chrono for protoss structures, 48h when injected for zerg -  10h normal state
-			; this changed in 2.10 - 0 idle 4 for inject (probably dont need the if = 4 check)
-	return 4 = ReadMemory(B_uStructure + Hatch * Offsets_Unit_StructSize + O_uInjectState, GameIdentifier, 1)
+			; this changed in 2.10 - 0 idle 4 for inject 
+	return 2 = ReadMemory(aSCOffsets["unitAddress", unit] + Offsets_Unit_InjectState, GameIdentifier, 1)
 }
-; The byte at O_uPoweredState + 7 changes to 1 when unpowered
-; O_uPoweredState - really a byte or bit field flag address (SC is testing the bytes at this address against multiple values). So there may be other things which change it too!
-; O_uPoweredState = 0 when powered 
+; The byte at Offsets_Unit_PoweredState + 7 changes to 1 when unpowered
+; Offsets_Unit_PoweredState - really a byte or bit field flag address (SC is testing the bytes at this address against multiple values). So there may be other things which change it too!
+; Offsets_Unit_PoweredState = 0 when powered 
 
-; Returns True for structures which do not require power e.g. nexus, pylons, rocks
-isUnitPowered(unit)
-{
-	return 0 = ReadMemory(B_uStructure + unit * Offsets_Unit_StructSize + O_uPoweredState, GameIdentifier)	
-}
 
-isWorkerInProductionOld(unit) ; units can only be t or P, no Z
-{										;state = 1 in prod, 0 not, -1 if doing something else eg flying
-	local state
-	local type := getUnitType(unit)
-	if (type = aUnitID["CommandCenterFlying"] || type = aUnitID["OrbitalCommandFlying"])
-		state := -1
-	else if ( type = aUnitID["Nexus"]) 	; this stuffs up
-	{
-		local p2 := ReadMemory(getUnitAbilityPointer(unit) + 0x24, GameIdentifier)
-		state := ReadMemory(p2 + 0x88, GameIdentifier, 1)
-		if (state = 0x43)	;probe Or mothership	
-			state := 1
-		else 	; idle 0x3
-			state := 0
-	}
-	Else if (type = aUnitID["CommandCenter"])
-	{
-		 state := ReadMemory(getUnitAbilityPointer(unit) + 0x9, GameIdentifier, 1)
-		if (state = 0x12)	;scv in produ
-			state := 1
-		else if (state = 32 || state = 64)	;0x0A = flying 32 ->PF | 64 -> orbital
-			state := -1										; yeah i realise this flying wont e
-		else ; state = 0x76 idle
-			state := 0
-	}
-	Else if  (type =  aUnitID["PlanetaryFortress"])
-	{
-		local p1 := ReadMemory(getUnitAbilityPointer(unit) + 0x5C, GameIdentifier)
-		state := ReadMemory(p1 + 0x28, GameIdentifier, 1) ; This is acutally the queue size
-	}
-	else if (type =  aUnitID["OrbitalCommand"])
-	{
-		state := ReadMemory(getUnitAbilityPointer(unit) + 0x9, GameIdentifier, 1)
-		if (state = 0x11)	;scv
-			state := 1
-		else state := 0 ; 99h  	;else if (state = 0)	;flying
-	}
-	return state
-}
 
- ; returns state which is really the queue size
- ; units can only be t or P town halls, no Z
+
+; returns state which is really the queue size
+; units can only be t or P town halls, no Z
 ; -2 cc/orbital flying
 ; -1 CC moring
 ; 0 No worker
-; +Int workers
+; +Int workers/MSC
 isWorkerInProduction(unit, type := "") 
 {										
-	GLOBAL aUnitID
 	if (type = "")
 		type := getUnitType(unit)
 	if (type = aUnitID["CommandCenterFlying"] || type = aUnitID["OrbitalCommandFlying"])
 		state := -2
 	Else if (type = aUnitID["CommandCenter"] && isCommandCenterMorphing(unit))
 		state := -1
-	else if (type = aUnitID["PlanetaryFortress"]) 
-		getBuildStatsPF(unit, state) ;state = queue size 1 means 1 worker is in production
-	else 
-		getBuildStats(unit, state)
-	return state
+	Else getStructureProductionInfo(unit, type, aItems, state) ; state = queue size 1 means 1 worker is in production. Also counts MSC
 
+	return state
 }
 
 ; state =	0x0A = flying | 32 ->PF | 64 -> orbital
 ; state = 	0x76 idle
 isCommandCenterMorphing(unit)
 {
-	local state
 	state := ReadMemory(getUnitAbilityPointer(unit) + 0x9, GameIdentifier, 1)
 	if (state = 32 )	;	->PF
 		return aUnitID["PlanetaryFortress"]
@@ -1824,7 +1745,7 @@ IsCameraDirectionalKeyScrollActivated()
 	Return ReadMemory(B_iNonCharKeys, GameIdentifier, 1)
 }
 
- 	;1 byte - MouseButton state 1 for Lbutton,  2 for middle mouse, 4 for rbutton - again these can add togther eg lbutton + mbutton = 4
+ ;1 byte - MouseButton state 1 for Lbutton,  2 for middle mouse, 4 for rbutton - again these can add togther eg lbutton + mbutton = 4
 IsMouseButtonActive()
 {	GLOBAL
 	Return ReadMemory(B_iMouseButtons, GameIdentifier, 1)
@@ -1909,22 +1830,7 @@ getSCModState(KeyName)
 		return state & 4
 	else return 0
 }
-; this will only have a temporary affect
-; as sc2 continually poles the modifier states
-; use exact value if you want to write a number
-WriteModifiers(shift := 0, ctrl := 0, alt := 0, ExactValue := 0)
-{
-	LOCAL value 
-	if shift
-		value += 1
-	if ctrl 
-		value += 2 
-	if alt 
-		value += 4
-	if ExactValue
-		value := ExactValue
-	Return WriteMemory(B_iModifiers, GameIdentifier, value,"Char")
-}
+
 
 ; can check if producing by checking queue size via buildstats()
 ; *** note it's safer to check production info
@@ -1970,52 +1876,11 @@ SetPlayerGas(amount := 99999, player := "")
 	Return WriteMemory(aSCOffsets["playerAddress", player] + Offsets_Player_Gas, GameIdentifier, amount, "UInt")   
 }
 
-getBuildStatsPF(unit, byref QueueSize := "",  QueuePosition := 0) ; dirty hack until i can be bothered fixing this function
-{	
-	CAbilQueue := ReadMemory(getUnitAbilityPointer(unit) + 0x5C, GameIdentifier)
-
-	localQueSize := ReadMemory(CAbilQueue + OffSets_CAbilQueue_QueuedCount, GameIdentifier, 1) ; This is actually the queue size
-
-	if IsByRef(QueueSize)
-		QueueSize := localQueSize
-	queuedArray := readmemory(CAbilQueue + OffSets_CAbilQueue_QueuedUnitsPointer, GameIdentifier)
-	B_QueuedUnitInfo := readmemory(queuedArray + 4 * QueuePosition, GameIdentifier)
-
-	if localQueSize
-		return getPercentageUnitCompleted(B_QueuedUnitInfo)
-	else return 0
-}
-
 cHex(dec, useClipboard := True)
 {
 	return useClipboard ? clipboard := substr(dectohex(dec), 3) : substr(dectohex(dec), 3)
 }
 
-getBuildStats(building, byref QueueSize := "", byRef item := "")
-{
-	pAbilities := getUnitAbilityPointer(building)
-	AbilitiesCount := getAbilitiesCount(pAbilities)
-	CAbilQueueIndex := getCAbilQueueIndex(pAbilities, AbilitiesCount)
-
-	B_QueuedUnitInfo := getPointerToQueuedUnitInfo(pAbilities, CAbilQueueIndex, localQueSize)
-
-	if IsByRef(QueueSize)
-		QueueSize := localQueSize
-
-	if IsByRef(item)
-	{
-		if localQueSize
-		{
-			if !aStringTable.hasKey(pString := readMemory(B_QueuedUnitInfo + OffSets_QueuedUnit_StringPointer, GameIdentifier))
-				aStringTable[pString] := ReadMemory_Str(readMemory(pString + 0x4, GameIdentifier), GameIdentifier)
-			item := aStringTable[pString]
-		}
-		else item := ""
-	}
-	if localQueSize
-		return getPercentageUnitCompleted(B_QueuedUnitInfo)
-	else return 0
-}
 
 
 ; this will return 1 or 2 units in production for use in unit panel
@@ -2026,7 +1891,7 @@ getStructureProductionInfo(unit, type, byRef aInfo, byRef totalQueueSize := "", 
 {
 	STATIC aOffsets := []
 
-	aInfo := []
+	aInfo := [], totalQueueSize := 0
 	if (!pAbilities := getUnitAbilityPointer(unit))
 		return 0
 	if !aOffsets.HasKey(type)
@@ -2037,7 +1902,7 @@ getStructureProductionInfo(unit, type, byRef aInfo, byRef totalQueueSize := "", 
 		{
 			CAbilQueueIndex := getCAbilQueueIndex(pAbilities, getAbilitiesCount(pAbilities)) ; CAbilQueueIndex
 			if (CAbilQueueIndex != -1)
-				aOffsets[type] := OffSets_UnitAbilities_AbilityPointerIndex + 4 * CAbilQueueIndex
+				aOffsets[type] := Offsets_UnitAbilities_AbilityPointerIndex + 4 * CAbilQueueIndex
 			else 
 				aOffsets[type] := -1
 		}
@@ -2046,11 +1911,11 @@ getStructureProductionInfo(unit, type, byRef aInfo, byRef totalQueueSize := "", 
 		return 0 ; refinery,reactor, depot, spine, extractor etc
 
 	CAbilQueue := readmemory(pAbilities + aOffsets[type], GameIdentifier)
-	, totalQueueSize := readmemory(CAbilQueue + OffSets_CAbilQueue_QueuedCount, GameIdentifier) ; this is the total real queue size e.g. max 5 on non-reactor, max 8 on reactored 
-	, queuedArray := readmemory(CAbilQueue + OffSets_CAbilQueue_QueuedUnitsPointer, GameIdentifier)
+	, totalQueueSize := readmemory(CAbilQueue + Offsets_CAbilQueue_QueuedCount, GameIdentifier) ; this is the total real queue size e.g. max 5 on non-reactor, max 8 on reactored 
+	, queuedArray := readmemory(CAbilQueue + Offsets_CAbilQueue_QueuedUnitsPointer, GameIdentifier)
 	while (A_Index <= totalQueueSize && B_QueuedUnitInfo := readmemory(queuedArray + 4 * (A_index-1), GameIdentifier) )   ; A_index-1 = queue position ;progress = 0 not being built, but is in queue
 	{
-		if !aStringTable.hasKey(pString := readMemory(B_QueuedUnitInfo + OffSets_QueuedUnit_StringPointer, GameIdentifier))
+		if !aStringTable.hasKey(pString := readMemory(B_QueuedUnitInfo + Offsets_QueuedUnit_StringPointer, GameIdentifier))
 			aStringTable[pString] := ReadMemory_Str(readMemory(pString + 0x4, GameIdentifier), GameIdentifier)
 		item := aStringTable[pString]
 		; progress 0 if hasn't started so don't add it to the list
@@ -2061,18 +1926,19 @@ getStructureProductionInfo(unit, type, byRef aInfo, byRef totalQueueSize := "", 
 	return round(aInfo.maxIndex())
 }
 
-
+; Not updated use getStructureProductionInfo() instead 
 getZergProductionStringFromEgg(eggUnitIndex)
 {
 	p := readmemory(getUnitAbilityPointer(eggUnitIndex) + 0x1C, GameIdentifier)
 	p := readmemory(p + 0x34, GameIdentifier) 		; cAbilQueueUse
 	p := readmemory(p, GameIdentifier) 				; LarvaTrain  - this pointer structure will also have the production time/total
-	p := readmemory(p + 0xf4, GameIdentifier) ; OffSets_QueuedUnit_StringPointer ??
+	p := readmemory(p + 0xf4, GameIdentifier) ; Offsets_QueuedUnit_StringPointer ??
 	if !aStringTable.haskey(pString := readmemory(p, GameIdentifier) ) ; pString
 		return aStringTable[pString] := ReadMemory_Str(readMemory(pString + 0x4, GameIdentifier), GameIdentifier)
 	return aStringTable[pString]
 }
 
+; Not updated use getStructureProductionInfo() instead 
 getZergProductionFromEgg(eggUnitIndex)
 {
 	item := []
@@ -2082,7 +1948,7 @@ getZergProductionFromEgg(eggUnitIndex)
 	, totalTime := readmemory(p + 0x80, GameIdentifier) 	 ; pre p3.0 0x68
 	, timeRemaining := readmemory(p + 0x84, GameIdentifier)  ; pre p3.0 0x6C
 		
-	p := readmemory(p + 0xf4, GameIdentifier) ; OffSets_QueuedUnit_StringPointer??
+	p := readmemory(p + 0xf4, GameIdentifier) ; Offsets_QueuedUnit_StringPointer??
 	if !aStringTable.haskey(pString := readmemory(p, GameIdentifier) ) ; pString
 		aStringTable[pString] := ReadMemory_Str(readMemory(pString + 0x4, GameIdentifier), GameIdentifier)
 	item.Progress := round((totalTime - timeRemaining)/totalTime, 2) 
@@ -2100,25 +1966,6 @@ getZergProductionFromEgg(eggUnitIndex)
 	+0x108 = pString to unit ID e.g. barracks
 */
 
-/*
-	player alerts (stuff on the left hand side of the screen)
-
-01C14C2B - FF 87 18030000  - inc [edi+00000318]
-01C14C31 - 8B 87 18030000  - mov eax,[edi+00000318]
-01C14C37 - 89 B4 87 18030000  - mov [edi+eax*4+00000318],esi <<
-01C14C3E - 85 F6  - test esi,esi
-01C14C40 - 75 1E - jne SC2.AssertAndCrash+116C90
-
-EAX=00000004
-EBX=0000009A
-ECX=00000000
-EDX=0894B6A8
-ESI=22F0F614
-EDI=27270F3C
-ESP=0894B6C0
-EBP=0894B70C
-EIP=01C14C3E
-*/
 
 ; byteArrayDump can be used to pass an already dumped byte array, saving reading it again
 getAbilityIndex(abilityID, abilitiesCount, ByteArrayAddress := "", byRef byteArrayDump := "")
@@ -2146,10 +1993,10 @@ findAbilityTypePointer(pAbilities, unitType, abilityString)
 	p1 := readmemory(pAbilities, GameIdentifier)
 	loop
 	{
-		if (!p := ReadMemory(p1 + OffSets_UnitAbilities_AbilityStringPointerIndex + (A_Index - 1)*4, GameIdentifier))
+		if (!p := ReadMemory(p1 + Offsets_UnitAbilities_AbilityStringPointerIndex + (A_Index - 1)*4, GameIdentifier))
 			return 0
 		if (abilityString = string := ReadMemory_Str(ReadMemory(p + 0x4, GameIdentifier), GameIdentifier))
-			return pAbilities + (aUnitAbilitiesOffsets[unitType, abilityString] := OffSets_UnitAbilities_AbilityPointerIndex + (A_Index - 1)*4)	
+			return pAbilities + (aUnitAbilitiesOffsets[unitType, abilityString] := Offsets_UnitAbilities_AbilityPointerIndex + (A_Index - 1)*4)	
 	} until (A_Index > 100)
 	return  0 ; something went wrong
 }
@@ -2190,14 +2037,14 @@ getStructureRallyPoints(unitIndex, byRef aRallyPoints := "", zergTownHallResourc
 	aRallyPoints := []
 	, pAbilities := getUnitAbilityPointer(unitIndex)
 	, abilitiesCount := getAbilitiesCount(pAbilities)	
-	, ByteArrayAddress := ReadMemory(pAbilities, GameIdentifier) + OffSets_UnitAbilities_ParentByteArrayIndex  ; gets the address of a byte array which contains the ID list of the units abilities
+	, ByteArrayAddress := ReadMemory(pAbilities, GameIdentifier) + Offsets_UnitAbilities_ParentByteArrayIndex  ; gets the address of a byte array which contains the ID list of the units abilities
 	, cAbilRallyIndex := getAbilityIndex(cAbilRally, abilitiesCount, ByteArrayAddress) ;find the position/index of the rally ability in the ID list
 	
 	if (cAbilRallyIndex >= 0)
 	{
-		pCAbillityStruct := readmemory(pAbilities + OffSets_UnitAbilities_AbilityPointerIndex + 4 * cAbilRallyIndex, GameIdentifier)
-		, bRallyStruct := readmemory(pCAbillityStruct + 0x34, GameIdentifier)
-		
+		pCAbillityStruct := readmemory(pAbilities + Offsets_UnitAbilities_AbilityPointerIndex + 4 * cAbilRallyIndex, GameIdentifier)
+		, bRallyStruct := readmemory(pCAbillityStruct + 0x44, GameIdentifier)
+	
 		ReadRawMemory(bRallyStruct + (zergTownHallResourceRally ? 0x74 : 0), GameIdentifier, rallyDump, 0x4 + 0x1C * 4) ; max rally count. Dump entire area - save a mem read
 		if rallyCount := NumGet(rallyDump, 0, "Int")
 		{	
@@ -2209,6 +2056,7 @@ getStructureRallyPoints(unitIndex, byRef aRallyPoints := "", zergTownHallResourc
 									, "unitModelPointer": numget(rallyDump, (A_Index-1) * 0x1C + 0x08, "UInt")
 									, "x": numget(rallyDump, (A_Index-1) * 0x1C + 0xC, "Int") / 4096
 							  		, "y": numget(rallyDump, (A_Index-1) * 0x1C + 0x10, "Int") / 4096 })	
+									; I think there is a z and targetFlag too
 			}
 		}
 		return rallyCount ; self rallied = 0
@@ -2218,54 +2066,42 @@ getStructureRallyPoints(unitIndex, byRef aRallyPoints := "", zergTownHallResourc
 
 getPercentageUnitCompleted(B_QueuedUnitInfo)
 {	
-	TotalTime := ReadMemory(B_QueuedUnitInfo + OffSets_QueuedUnit_BuildTimeTotal, GameIdentifier)
-	RemainingTime := ReadMemory(B_QueuedUnitInfo + OffSets_QueuedUnit_BuildTimeRemaining, GameIdentifier)
+	TotalTime := ReadMemory(B_QueuedUnitInfo + Offsets_QueuedUnit_BuildTimeTotal, GameIdentifier)
+	RemainingTime := ReadMemory(B_QueuedUnitInfo + Offsets_QueuedUnit_BuildTimeRemaining, GameIdentifier)
 	return round( (TotalTime - RemainingTime) / TotalTime, 2) ;return .47 (ie 47%)
 }
 
 ; Production struct sc 2.0x
 ; TypeID = 0x44 (specific to the building type)
+; StructureUnitIndex 0x5E (needs to be shifted)
 ; supply = 0x64
 ; TotalTime = 0x68
 ; RemainingTime  0x6C
 ; Minerals =  0x74
 ; Gas = 0x78
-; StructureUnitIndex 0x5E (needs to be shifted)
+
+; Production struct sc 3.0.3x
+; TypeID = 0x68 (specific to the building type)
+; StructureUnitIndex 0x74 (needs to be shifted)
+; supply = 0x7C
+; TotalTime = 0x80
+; RemainingTime  0x84
+; Minerals =  0x8C
+; Gas = 0x90
+
 
 
 ; returns seconds round to 2 decimal points
 ; returns 0/false if hasnt started
 getTimeUntilUnitCompleted(B_QueuedUnitInfo)
 {
-	TotalTime := ReadMemory(B_QueuedUnitInfo + OffSets_QueuedUnit_BuildTimeTotal, GameIdentifier)
-	RemainingTime := ReadMemory(B_QueuedUnitInfo + OffSets_QueuedUnit_BuildTimeRemaining, GameIdentifier)
+	TotalTime := ReadMemory(B_QueuedUnitInfo + Offsets_QueuedUnit_BuildTimeTotal, GameIdentifier)
+	RemainingTime := ReadMemory(B_QueuedUnitInfo + Offsets_QueuedUnit_BuildTimeRemaining, GameIdentifier)
 	if (TotalTime = RemainingTime) ; hasn't started so don't add it to any lists
 		return 0
 	return round(RemainingTime / 65536, 2) ;return 6.47 
 }
 
-; this doesnt correspond to the unit in production for all structures!
-; 	+0x48 != 0 when reactor present
-getPointerAddressToQueuedUnitInfo(pAbilities, CAbilQueueIndex, byref QueueSize := "")
-{	GLOBAL GameIdentifier
-
-	CAbilQueue := readmemory(pAbilities + OffSets_UnitAbilities_AbilityPointerIndex + 4 * CAbilQueueIndex, GameIdentifier)
-
-	QueueSize := readmemory(CAbilQueue + OffSets_CAbilQueue_QueuedCount, GameIdentifier)
-
-	return queuedArray := readmemory(CAbilQueue + OffSets_CAbilQueue_QueuedUnitsPointer, GameIdentifier)
-}
-
-getPointerToQueuedUnitInfo(pAbilities, CAbilQueueIndex, byref QueueSize := "", QueuePosition := 0)
-{	
-	CAbilQueue := readmemory(pAbilities + OffSets_UnitAbilities_AbilityPointerIndex + 4 * CAbilQueueIndex, GameIdentifier)
-
-	if IsByRef(QueueSize) 
-		QueueSize := readmemory(CAbilQueue + OffSets_CAbilQueue_QueuedCount, GameIdentifier)
-
-	queuedArray := readmemory(CAbilQueue + OffSets_CAbilQueue_QueuedUnitsPointer, GameIdentifier)
-	return readmemory(queuedArray + 4 * QueuePosition, GameIdentifier)
-}
 
 getAbilitiesCount(pAbilities)
 {	GLOBAL GameIdentifier
@@ -2275,7 +2111,7 @@ getAbilitiesCount(pAbilities)
 getCAbilQueueIndex(pAbilities, AbilitiesCount)
 {	GLOBAL GameIdentifier
 	STATIC CAbilQueue := 0x19
-	ByteArrayAddress := ReadMemory(pAbilities, GameIdentifier) + OffSets_UnitAbilities_ParentByteArrayIndex ; sc 2.x 0x3 
+	ByteArrayAddress := ReadMemory(pAbilities, GameIdentifier) + Offsets_UnitAbilities_ParentByteArrayIndex ; sc 2.x 0x3 
 	ReadRawMemory(ByteArrayAddress, GameIdentifier, MemDump, AbilitiesCount)
 	loop % AbilitiesCount
 		if (CAbilQueue = numget(MemDump, A_Index-1, "UChar"))
@@ -2288,7 +2124,7 @@ getAbilListIndex(pAbilities, AbilitiesCount)
 {	GLOBAL GameIdentifier
 	STATIC CAbilQueue := 0x19
 	abilties := []
-	ByteArrayAddress := ReadMemory(pAbilities, GameIdentifier) + OffSets_UnitAbilities_ParentByteArrayIndex 
+	ByteArrayAddress := ReadMemory(pAbilities, GameIdentifier) + Offsets_UnitAbilities_ParentByteArrayIndex 
 	ReadRawMemory(ByteArrayAddress, GameIdentifier, MemDump, AbilitiesCount)
 	loop % AbilitiesCount
 		abilties.insert(CAbilQueue := dectohex(numget(MemDump, A_Index-1, "UChar")))
@@ -2730,7 +2566,7 @@ numgetUnitTargetFilter(ByRef Memory, unit)
 
 getUnitTargetFilter(Unit) ;starts @ 0 i.e. first unit at 0
 {
-	return ReadMemory(B_uStructure + Unit * Offsets_Unit_StructSize + Offsets_Unit_TargetFilter, GameIdentifier, 8)
+	return ReadMemory(aSCOffsets["unitAddress", unit] + Offsets_Unit_TargetFilter, GameIdentifier, 8)
 }
 
 numgetUnitOwner(ByRef Memory, Unit)
@@ -2897,7 +2733,7 @@ isPointNearLineSegmentWithZcheck(linePointA, linePointB, point, maxDistance)
  {	Local UnitDump
 	ReadRawMemory(B_uStructure + unit * Offsets_Unit_StructSize, GameIdentifier, UnitDump, Offsets_Unit_StructSize)
 	Local x := numget(UnitDump, O_uX, "int")/4096, y := numget(UnitDump, O_uY, "int")/4096, Local z := numget(UnitDump, O_uZ, "int")/4096
-	Local Energy := numget(UnitDump, O_uEnergy, "int")/4096
+	Local Energy := numget(UnitDump, Offsets_Unit_Energy, "int")/4096
 	return { "unit": unit, "X": x, "Y": y, "Z": z, "Energy": energy}
  }
 
@@ -2915,7 +2751,7 @@ isPointNearLineSegmentWithZcheck(linePointA, linePointB, point, maxDistance)
  }
  numGetIsHatchInjectedFromMemDump(ByRef MemDump, Unit)
  {	global ; 1 byte = 18h chrono for protoss structures, 48h when injected for zerg -  10h normal state
- 	return (4 = numget(MemDump, Unit * Offsets_Unit_StructSize + O_uInjectState, "UChar")) ? 1 : 0
+ 	return 2 = numget(MemDump, Unit * Offsets_Unit_StructSize + Offsets_Unit_InjectState, "UChar")
  }
 
 numGetUnitPositionXYZ(ByRef MemDump, Unit)
@@ -3023,32 +2859,6 @@ getUnitSubGroupPriority(unit)
   	return aUnitModel[pUnitModel].RealSubGroupPriority	
 }
 
-
-
-setupMiniMapUnitListsOld()
-{	local list, unitlist, ListType, listCount
-	list := "UnitHighlightList1,UnitHighlightList2,UnitHighlightList3,UnitHighlightList4,UnitHighlightList5,UnitHighlightList6,UnitHighlightList7,UnitHighlightExcludeList"
-	Loop, Parse, list, `,
-	{	
-		ListType := A_LoopField
-		Active%ListType% := ""		;clear incase changed via options between games	
-		StringReplace, unitlist, %A_LoopField%, %A_Space%, , All ; Remove Spaces also creates var unitlist				
-		unitlist := Trim(unitlist, " `t , |")	; , or `, both work - remove spaces, tabs and commas
-		loop, parse, unitlist, `,
-			Active%ListType% .= aUnitID[A_LoopField] ","
-		Active%ListType% := RTrim(Active%ListType%, " ,")
-		listCount++
-	}
-	allActiveActiveUnitHighlightLists := ""
-	loop, % listCount - 1 ; remove the 1 count from the UnitHighlightExcludeList
-	{
-		loop, parse, ActiveUnitHighlightList%A_Index%, ","
-			allActiveActiveUnitHighlightLists .= A_LoopField ","
-	}
-	; this will contain all the unit ids
-	allActiveActiveUnitHighlightLists := RTrim(allActiveActiveUnitHighlightLists, " ,")
-	Return
-}
 
 setupMiniMapUnitLists(byRef aMiniMapUnits)
 {	local list, unitlist, ListType
@@ -3440,14 +3250,14 @@ GetEnemyTeamSize()
 }
 
 GetEBases()
-{	global aPlayer, aLocalPlayer, aUnitID, DeadFilterFlag
+{	global aPlayer, aLocalPlayer, aUnitID
 	EnemyBase_i := GetEnemyTeamSize()
 	Unitcount := DumpUnitMemory(MemDump)
 	while (A_Index <= Unitcount)
 	{
 		unit := A_Index - 1
 		TargetFilter := numgetUnitTargetFilter(MemDump, unit)
-		if (TargetFilter & DeadFilterFlag)
+		if (TargetFilter & aUnitTargetFilter.Dead)
 	    	Continue	
 	    pUnitModel := numgetUnitModelPointer(MemDump, Unit)
 	   	Type := numgetUnitModelType(pUnitModel)
@@ -3463,8 +3273,26 @@ GetEBases()
 
 DumpUnitMemory(BYREF MemDump)
 {   
-  return UnitCount := getHighestUnitIndex(), ReadRawMemory(B_uStructure, GameIdentifier, MemDump, UnitCount * Offsets_Unit_StructSize)
+	Offsets_Unit_UnitsPerBlock := 0xF + 1
+
+	unitCount := getHighestUnitIndex()
+	, VarSetCapacity(MemDump, unitCount * Offsets_Unit_StructSize)
+	, unitBlockSize := Offsets_Unit_StructSize * Offsets_Unit_UnitsPerBlock
+	
+	loop, % loopCount := ceil(unitCount / Offsets_Unit_UnitsPerBlock)
+	{
+		if (A_Index = loopCount)
+			unitBlockSize := Mod(unitCount, Offsets_Unit_UnitsPerBlock) * Offsets_Unit_StructSize
+		
+		UnitAtStartOfBlock := (A_Index-1) * Offsets_Unit_UnitsPerBlock
+		, localBufferOffset := UnitAtStartOfBlock * Offsets_Unit_StructSize
+		, ReadRawMemory(getUnitAddress(UnitAtStartOfBlock), GameIdentifier, MemDump, unitBlockSize, localBufferOffset)
+	}
+  	return unitCount
 }
+; 0 - 15
+; 
+
 class cUnitModelInfo
 {
    __New(pUnitModel) 
@@ -3503,7 +3331,7 @@ getUnitModelInfo(pUnitModel)
 
 isUnitDead(unit)
 { 	global 
-	return	getUnitTargetFilter(unit) & DeadFilterFlag
+	return	getUnitTargetFilter(unit) & aUnitTargetFilter.Dead
 }
 
 
@@ -3514,10 +3342,8 @@ isUnitDead(unit)
 SetupUnitIDArray(byref aUnitID, byref aUnitName)
 {
 	#include %A_ScriptDir%\Included Files\l_UnitTypes.AHK
-	if !isobject(aUnitID)
-		aUnitID := []
-	if !isobject(aUnitName)
-		aUnitName := []
+	aUnitID := []
+	aUnitName := []
 	loop, parse, l_UnitTypes, `,
 	{
 		StringSplit, Item , A_LoopField, = 		; Format "Colossus = 38"
@@ -3710,13 +3536,13 @@ Class c_EnemyUnit
 
 ;ParseEnemyUnits(ByRef a_LocalUnits, ByRef a_EnemyUnits, ByRef aPlayer)
 ParseEnemyUnits(ByRef a_EnemyUnits, ByRef aPlayer)
-{ global DeadFilterFlag
+{ 
 	LocalTeam := getPlayerTeam(), a_EnemyUnitsTmp := []
 	While (A_Index <= getHighestUnitIndex())
 	{
 		unit := A_Index -1
 		Filter := getUnitTargetFilter(unit)	
-		If (Filter & DeadFilterFlag) || (type = "Fail")
+		If (Filter & aUnitTargetFilter.Dead) || (type = "Fail")
 			Continue
 		Owner := getUnitOwner(unit)
 		if  (aPlayer[Owner, "Team"] <> LocalTeam AND Owner) 
@@ -5053,6 +4879,7 @@ getCurrentHpAndShields(unit, byRef result)
 ; CommandCentre->Orbital - time remaining
 ; [[[[Ability Struct + 0x34] + 0x10] + 0xD4] + 0x98]
 ; This way is simpler than using the units queued command pointer
+; Not updated/used
 getStructureMorphProgress(pAbilities, unitType)
 {
 ;	pBuildInProgress := findAbilityTypePointer(pAbilities, unitType, "BuildInProgress")
@@ -5064,31 +4891,22 @@ getStructureMorphProgress(pAbilities, unitType)
 ; similar to getStructureBuildProgress
 ; Note, this also works with corruptors -> gg.lords and overlord -> overseer, but not ling -> bane or HTs -> Archon
 ; but if also has queued command then need to find the morphing ability
+; Not updated/used
 getUnitMorphTimeOld(unit)
 {
-	p := ReadMemory(B_uStructure + unit * Offsets_Unit_StructSize + OffsetsUnitCommandQueuePointer, GameIdentifier)
+	p := ReadMemory(B_uStructure + unit * Offsets_Unit_StructSize + Offsets_Unit_CommandQueuePointer, GameIdentifier)
 	timeRemaining := ReadMemory(p + 0x98, GameIdentifier)
 	totalTime := ReadMemory(p + 0xB4, GameIdentifier)
 	return round((totalTime - timeRemaining)/totalTime, 2)
 }
 
-/*
-
- 	MorphToBroodLord 
- 	MorphToOverseer
- 	UpgradeToGreaterSpire
- 	UpgradeToLair
-	UpgradeToHive
-	UpgradeToOrbital
-	UpgradeToPlanetaryFortress
-*/
-
 ; If percent False returns seconds remaining
 ; otherwise returns % complete
-
+; Only use on OverlordCocoon, BroodLordCocoon, Spire, Hatchery, Lair, MothershipCore, CommandCenter
+; Returns percent complete or time remaining (game seconds)
 getUnitMorphTime(unit, unitType, percent := True)
 {
-	static targetIsPoint := 0x8, targetIsUnit := 0x10, hasRun := False, aMorphStrings
+	static hasRun := False, aMorphStrings
 
 	if !hasRun 
 	{
@@ -5101,53 +4919,42 @@ getUnitMorphTime(unit, unitType, percent := True)
 						 ,  aUnitID.MothershipCore: ["MorphToMothership"]
 						 ,	aUnitID.CommandCenter: ["UpgradeToOrbital", "UpgradeToPlanetaryFortress"]}
 	}
-	; target flag is usually 7 for the morphing types
-	if (CmdQueue := ReadMemory(B_uStructure + unit * Offsets_Unit_StructSize + OffsetsUnitCommandQueuePointer, GameIdentifier)) ; points if currently has a command - 0 otherwise
+	if !getUnitQueuedCommands(unit, aCommands)
+		return 0
+	for i, morphString in aMorphStrings[unitType]
 	{
-		pNextCmd := ReadMemory(CmdQueue, GameIdentifier) ; If & -2 this is really the first command ie  = BaseCmdQueStruct
-		loop 
+		for index, command in aCommands
 		{
-			ReadRawMemory(pNextCmd & -2, GameIdentifier, cmdDump, 0xB8)
-			targetFlag := numget(cmdDump, 0x38, "UInt")
-
-			if !aStringTable.hasKey(pString := numget(cmdDump, 0x18, "UInt"))
-				aStringTable[pString] := ReadMemory_Str(readMemory(pString + 0x4, GameIdentifier), GameIdentifier)
-
-			for i, morphString in aMorphStrings[unitType]
-			{
-
-				if (morphString = aStringTable[pString])
-				{
-					timeRemaining := numget(cmdDump, 0x98, "UInt")
-					totalTime := numget(cmdDump, 0xB4, "UInt")			
-					;return round((totalTime - timeRemaining)/totalTime, 2)
-					return round(percent 
-									? (totalTime - timeRemaining)/totalTime 
-									: timeRemaining / 65536 ; 2^16
-								, 2)
-				}
-			}
-
-		} Until (A_Index > 20 || !(targetFlag & targetIsPoint || targetFlag & targetIsUnit || targetFlag = 7)
-			|| 1 & pNextCmd := numget(cmdDump, 0, "Int"))				; loop until the last/first bit of pNextCmd is set to 1
-		; interstingly after -2 & pNextCmd (the last one) it should = the first address
+			if (morphString = command["ability"]) ;  timeRaw / 65536 or 2^16
+				return round(percent ? (command["timeRequired"] - command["timeRemaining"]) / command["timeRequired"] : command["timeRemaining"] / 65536, 2) 
+		}
 	}
-	else return 0
+	return 0
 }
+
+; Time required Raw for baneling = 20s * 65536  = 1310720
+; 19s * 65536 = 1245184
+; Found 4 addresses for time remaining 3 were the same and slightly higher than the 4th
+; There are two differnt timing addresses which both have pointers from the MorphZerglingToBaneling ability structure
+; sc 2.x p := pointer(GameIdentifier, findAbilityTypePointer(pAbilities, aUnitID.BanelingCocoon, "MorphZerglingToBaneling"), 0x12c, 0x0)
+; 	totalTime := ReadMemory(p + 0x80, GameIdentifier)
+;	timeRemaining := ReadMemory(p + 0x6c, GameIdentifier)
 
 getBanelingMorphTime(pAbilities)
 {
-	p := pointer(GameIdentifier, findAbilityTypePointer(pAbilities, aUnitID.BanelingCocoon, "MorphZerglingToBaneling"), 0x12c, 0x0)
+	p := pointer(GameIdentifier, findAbilityTypePointer(pAbilities, aUnitID.BanelingCocoon, "MorphZerglingToBaneling"), 0x164, 0x0)
 	totalTime := ReadMemory(p + 0x80, GameIdentifier)
-	timeRemaining := ReadMemory(p + 0x6c, GameIdentifier)
+	timeRemaining := ReadMemory(p + 0x84, GameIdentifier)
 	return round((totalTime - timeRemaining)/totalTime, 2)
 }
-
+; Merge Time = 12s = 786432
+; 11s = 720896
+; patch 3.0 offsets +0x10
 getArchonMorphTime(pAbilities)
 {
 	pMergeable := readmemory(findAbilityTypePointer(pAbilities, aUnitID.Archon, "Mergeable"), GameIdentifier)
-	totalTime := ReadMemory(pMergeable + 0x28, GameIdentifier)
-	timeRemaining := ReadMemory(pMergeable + 0x2C, GameIdentifier) ; >> 16 to get in game seconds remaining
+	totalTime := ReadMemory(pMergeable + 0x38, GameIdentifier)
+	timeRemaining := ReadMemory(pMergeable + 0x3C, GameIdentifier) ; >> 16 to get in game seconds remaining
 	return round((totalTime - timeRemaining)/totalTime, 2)
 }
 
@@ -5159,7 +4966,7 @@ getArchonMorphTime(pAbilities)
 ;	0  no addons or addon in construction 
 ;
 ;	There are bytes in the addons (eg BarracksAddOns) structure which indicate an addon is under construction 
-;	but not which type it is - but when an addon is underconstruction is position in the unit panel doesn't change!
+;	but not which type it is - but when an addon is underconstruction its position in the unit panel doesn't change!
 ;  	I don't need this info anyway.
 
 getAddonStatus(pAbilities, unitType, byRef underConstruction := "")
@@ -5176,21 +4983,22 @@ getAddonStatus(pAbilities, unitType, byRef underConstruction := "")
 	if aAddonStrings.HasKey(unitType)
 	{
 		p := readmemory(findAbilityTypePointer(pAbilities, unitType, aAddonStrings[unitType]), GameIdentifier)
-		if readmemory(p + 0xC, GameIdentifier, 1) = 0x63
+		
+		if readmemory(p + 0xC, GameIdentifier, 1) = 0xA3 ; 0x23 Idle
 			return 0, underConstruction := True
 
-		if readmemory(p + 0x28, GameIdentifier) ; if offset +28 or +2C not 0 addon is present techlab or reactor - both are pointers
+		if readmemory(p + 0x38, GameIdentifier) ; if offset +38 or +3C not 0 addon is present techlab or reactor 
 		{
 			if !aOffsets.HasKey(unitType) ; ie CAbilQueue offset = aOffsets[unitType] - should be the same for all 3 types of units
-				aOffsets[unitType] := OffSets_UnitAbilities_AbilityPointerIndex + 4 * getCAbilQueueIndex(pAbilities, getAbilitiesCount(pAbilities)) 
-
-			if readmemory(readmemory(pAbilities + aOffsets[unitType], GameIdentifier) + 0x48, GameIdentifier) ; if != 0 reactor present
+				aOffsets[unitType] := Offsets_UnitAbilities_AbilityPointerIndex + 4 * getCAbilQueueIndex(pAbilities, getAbilitiesCount(pAbilities)) 
+			if readmemory(readmemory(pAbilities + aOffsets[unitType], GameIdentifier) + 0x58, GameIdentifier) ; if != 0 reactor present
 				return 1 ; reactor Present
 			return -1 ; techlab present
 		}			
 	}
 	return 0 ; no complete addons
 }
+
 
 /*
 while addon is being constructed, order of buildings doesnt change
@@ -5204,17 +5012,18 @@ If pointer not 0 then has a (fully built) reactor or techlab
 
 ; total build time and Time Remaining are blank if unit exists as part of the map i.e. via the mapeditor 
 ; I added the nydusCanal here instead of having another separate function.
+; This uses the same offsets as getArchonMorphTime() i.e. total time and time remaining, and in path 
+
+; When selecting a fully built unit it returns 1, but if unit existed as part of map (eg map editor) then it returns 0 (i guess it never executed the build ability)
 getBuildProgress(pAbilities, type)
 {
-	static O_TotalBuildTime := 0x28, OffSets_QueuedUnit_BuildTimeRemaining := 0x2C
-	; + 0x28 = total build time
-	; + 0x2C = Time Remaining
+	static O_TotalBuildTime := 0x38, O_BuildTimeRemaining := 0x3C
 
 	if pBuild := findAbilityTypePointer(pAbilities, type, type != aUnitID["NydusCanal"] ? "BuildInProgress" : "BuildinProgressNydusCanal")
 	{
 		B_Build := ReadMemory(pBuild, GameIdentifier)
 		totalTime := readmemory(B_Build + O_TotalBuildTime, GameIdentifier)
-		remainingTime := readmemory(B_Build + OffSets_QueuedUnit_BuildTimeRemaining, GameIdentifier) ; >> 16 to get in game seconds remaining (/16 to get fraction of seconds)
+		remainingTime := readmemory(B_Build + O_BuildTimeRemaining, GameIdentifier) ; >> 16 to get in game seconds remaining (/16 to get fraction of seconds)
 		return round((totalTime - remainingTime) / totalTime, 2) ; 0.73
 	}
 	else return 1 ; something went wrong so assume its complete 
@@ -5226,19 +5035,18 @@ Haven't checked other races - but currently this is only being used to for the s
 warning to check if a depot is actively being built.
 
 BuildInProgress Terran 
-	+ 0xC 	= 0x43 under construction 
-			= 0x63 when incomplete but not actively being constructed by SCV
-			= 0x23 fully built
-	+ 0x5C 	= 1 under construction 
+	+ 0xC 	= 0x123 under construction 
+			= 0x1A3 when incomplete but not actively being constructed by SCV
+			= 0x0A3 fully built
+	+ 0x6C 	= 1 under construction  ; (this increased from 0x5C in sc 2.x)
 			= 0 when incomplete but not actively being constructed by SCV
 			= 0 When complete
 */
 
-
 isBuildInProgressConstructionActive(pAbilities, type)
 {
 	if pBuild := findAbilityTypePointer(pAbilities, type, "BuildInProgress")
-		return ReadMemory(ReadMemory(pBuild, GameIdentifier) + 0x5C, GameIdentifier)
+		return ReadMemory(ReadMemory(pBuild, GameIdentifier) + 0x6C, GameIdentifier)
 	return 1 ; assume true
 }
 
@@ -5261,13 +5069,13 @@ Some buff strings:
 
  This needs more investigation and won't work for all buffs e.g. larva perhaps only timer buffs?
 */
-
+; Hasnt been updated for SC 3.x
 getUnitBuff(unit, byRef buffNameOrObject)
 {
 	static aBuffStringOffsets := []
 
 	; If no buffs applied pointer = 0 - so if buff finishes this will change back to 0
-	if !buffArray := ReadMemory(B_uStructure + unit * Offsets_Unit_StructSize + O_uBuffPointer, GameIdentifier)
+	if !buffArray := ReadMemory(aSCOffsets["unitAddress", unit] + Offsets_Unit_BuffPointer, GameIdentifier)
 		return 0
 	; I spent almost 0 time investigating these structures - so there should probably be more pointer checking conditions
 	; and counts
@@ -5278,6 +5086,7 @@ getUnitBuff(unit, byRef buffNameOrObject)
 	; This is like a list c++ list? if A comes before B and then A expires, B moves back to position A. Like the other SC2 lists
 	buffCount := 0
 
+	;msgbox % chex(buffArray)
 	; loop 20 times max as safety. In case buffs expire during read and this memory area is now used
 	; for something else.
 	while (p := ReadMemory(buffArray + 0x04 + 4*(A_Index-1), GameIdentifier)) && (A_Index < 20) ; 
@@ -5313,38 +5122,63 @@ getUnitBuff(unit, byRef buffNameOrObject)
 	return 0 ; Specified buff not applied/found
 }
 
+
+
+; And this only works on refinery/assimilators/extractors and town halls.
+; This is the values for the little display above geysers/town halls
+; unit should be unitIndex for a refinery or town hall 
+getDisplayedResourceWorker(unit, player := "")
+{  
+    if (!p := readMemory(aSCOffsets["unitAddress", unit]+ 0x130, GameIdentifier))
+    || (!p := readMemory(p + 0x16C, GameIdentifier))
+    || (!p := readMemory(p + 0x2CC, GameIdentifier))
+    || (!p := readMemory(p + 0x10, GameIdentifier))
+        return -1 
+    return readMemory(p + 0x398, GameIdentifier)
+}
+
+
+; To find this, load a team game replay
+; put local worker in and find match value. Then send an team mates worker into the refinery and search for unchanged value
+; careful not to find the value displayed above the refinery!
+
 ; Returns the workers count for refiners, extractors, assimilators, and mineral patchs.
 ; If units are waiting to enter the refinery before it finishes construction, it will include them as well.
 ; It removes mules (this is address is 0 for non terran races).
 getResourceWorkerCount(unit, player)
-{      
-    if !p := readMemory(B_uStructure + unit * Offsets_Unit_StructSize + O_uBuffPointer, GameIdentifier)
+{  
+  
+    if !p := readMemory(aSCOffsets["unitAddress", unit] + Offsets_Unit_BuffPointer, GameIdentifier) ; i think buff pointer is 0x100 patch 3.0.3
         return -1
     p := readMemory(p+0x4, GameIdentifier)
-    if !p := readMemory(p+0x78, GameIdentifier)
+    if !p := readMemory(p+0x6C, GameIdentifier) ; 0x78 pre sc 3.x
         return -1
     ; There is an array of slots here. Each slot has that owners worker count for this resource
     ; Allies with shared control can harvest from refinery too or anyone from a mineral patch
     ; So to get the true total amount of workers, you should loop all positions and sum them
     ; But we would only want local player       
-    workers := readmemory(p + player*0x4, GameIdentifier)
-    mules := readmemory(p + 0x40 + player*0x4, GameIdentifier)
+   	workers := readmemory(p + player*0x4, GameIdentifier)
+   	mules := readmemory(p + 0x40 + player*0x4, GameIdentifier)
     return workers - mules
 }
 
+/*
+Not used/updated
 ; Returns amount of resource left in a refinery/extractor/assimilator/geyser/mineral patch 
 getRemainingResourceCount(unit)
 {
-    if !p := readMemory( B_uStructure + unit * Offsets_Unit_StructSize + O_uBuffPointer, GameIdentifier)
+    if !p := readMemory( B_uStructure + unit * Offsets_Unit_StructSize + Offsets_Unit_BuffPointer, GameIdentifier)
         return -1
     p := readMemory(p + 0x4, GameIdentifier)
     return readMemory(p + 0x50, GameIdentifier)
 }
 
+*/
+
 ; This seems to work for hatches, lairs and hives even when building/researching
 getTownHallLarvaCount(unit)
 {
-	if !buffArray := ReadMemory(B_uStructure + unit * Offsets_Unit_StructSize + O_uBuffPointer, GameIdentifier)
+	if !buffArray := ReadMemory(aSCOffsets["unitAddress", unit] + Offsets_Unit_BuffPointer, GameIdentifier) ; 0x100
 		return 0
 	if !p := ReadMemory(buffArray + 0x8, GameIdentifier)
 		return 0
@@ -5352,16 +5186,32 @@ getTownHallLarvaCount(unit)
 	; At +0x68 is a pointer to an array which stores the unit indexes for the spawned larva (indexes must be >> 18)
 	; If the larva is morphed to an egg, then these may point to the egg, but will be replaced when a new larva spawns
 	; so is not useful in finding unit production associated with a hatch
-	return ReadMemory(p + 0x5C, GameIdentifier)
+	; Note. Re-found this value using CE, not sure if same structure - offsets were similar
+	return ReadMemory(p + 0x6C, GameIdentifier)
 }
+
+; PO lasts 20s, 60 x 65536 = 3932160
+; 59s = 3866624
+
 
 ; Unit must be a nexus else function returns 'true' due to readMemory returning "Fail"
 isPhotonOverChargeActive(unit)
 {	
-	; attackProtossBuilding structure + 0x54 - 1 Active 0 not.
+	; attackProtossBuilding structure + 0x64 - 1 Active 0 not.
 	; Correctly returns 0 For nexus under construction as well (as they will have the same ability structure/addresses).
 	; Check if = 1, in case something went wrong - but it shouldn't if calling for a nexus. 
-	return (1 = ReadMemory(ReadMemory(findAbilityTypePointer(getUnitAbilityPointer(unit), aUnitID["Nexus"], "attackProtossBuilding"), GameIdentifier) + 0x54, GameIdentifier))
+	return 1 = ReadMemory(ReadMemory(findAbilityTypePointer(getUnitAbilityPointer(unit), aUnitID["Nexus"], "attackProtossBuilding"), GameIdentifier) + 0x64, GameIdentifier)
+}
+
+getPhotonOverChargeProgress(unit)
+{
+	p := readMemory(aSCOffsets["unitAddress", unit] + Offsets_Unit_BuffPointer, GameIdentifier)
+	if !p := readMemory(p + 0x8, GameIdentifier) ; not active
+		return 0 
+	struct := readMemory(p + 0x6C, GameIdentifier)
+	, totalTime :=  ReadMemory(struct, GameIdentifier)
+	, remainingTime := ReadMemory(struct + 0x10, GameIdentifier)
+	return round((totalTime - remainingTime) / totalTime, 2)
 }
 
 
@@ -6032,4 +5882,151 @@ HiWord(number)
 mouseWheelRotations(wParam)
 {
 	return wParam > 0x7FFFFFFF ? HiWord(-(~wParam)-1)/120 :  HiWord(wParam)/120 ;get the higher order word & /120 = number of rotations
+}
+
+
+
+
+
+dumpUnitTypes(byRef outputString)
+{
+	outputString := ""
+	mem := new _ClassMemory(GameIdentifier) 
+	mp := getunitmodelpointer(0)
+	byte1 := mem.read(mp, "Char")
+	byte2 := mem.read(mp+1, "Char")
+	byte3 := mem.read(mp+2, "Char")
+	byte4 := mem.read(mp+3, "Char")
+	
+	excludeNamesContaining = 
+	( join, Comments ltrim
+	ACGluescreenDummy
+	##id##
+	DestructibleCityDebris
+	CollapsibleTerranTower
+	XelNaga_Caverns_
+	ExtendingBridge
+	DestructibleRock
+	UnbuildablePlates
+	CollapsibleRockTower
+	DebrisRamp
+	Shape
+	Destructible
+	)
+	excludeNames = 
+	( join, Comments ltrim
+	Amount
+	AttributeBonus[Armored]
+	GlaiveWurmWeapon
+	Level
+	)
+	modifyNames = 
+	( join, Comments ltrim
+	Changeling
+	Overlord
+	TechLab
+	VespeneGeyser
+	)	
+
+	aIDLookup := [], aDuplicates := [], aNameLookup := [], foundCount := 0
+	modelAddress := mem.baseaddress
+	while (modelAddress := mem.processPatternScan(modelAddress + 0x4,, byte1, byte2, byte3, byte4)) > 0 ;  same value at +0x0 of every model structure
+	{	
+
+		name := unitModelNameAlternate(modelAddress)
+		name2 := unitModelName(modelAddress)
+
+		if (name = "Changeling" || name2 = "Changeling")
+			name := "Changeling"
+		else if RegExmatch(name, "[^\x20-\x7E]") ; space -> ~ i.e. non english characters / non-string
+			name := name2
+
+		if (name = "")
+			continue
+		if name in %excludeNames%
+			continue
+		if name contains %excludeNamesContaining%
+			continue
+
+		modelID := ReadMemory(modelAddress + Offsets_UnitModel_ID, GameIdentifier, 2)
+		if (modelID + 0 = "" || modelID >= 1000) ; **** may need to change this for lotv?
+			continue 
+
+		if aNameLookup.HasKey(name) 
+		{
+			if (modelID = aNameLookup[name]) ; same modelID & name values i.e. duplicate
+				continue 
+			; else differnt IDs
+			; for changelings and such, want 'aIDLookup[modelID] := name' below to store the ID but not log it as a duplicate here!
+			if name not in %modifyNames%
+			{
+				aDuplicates[name] := modelID 
+				duplicatesPresent := true
+			}
+		}
+		else aNameLookup[name] := modelID
+
+		aIDLookup[modelID] := name
+		foundCount++
+	}
+	if !foundCount
+		return 0	
+	
+
+	 aRename   := { "Changeling" : 		["Changeling", "ChangelingZealot", "ChangelingMarineShield", "ChangelingMarine", "ChangelingZerglingWings", "ChangelingZergling"]
+    			,   "TechLab": 			["TechLab", "BarracksTechLab", "FactoryTechLab", "StarportTechLab"]
+   				,   "VespeneGeyser": 	["VespeneGeyser", "ProtossVespeneGeyser", "VespeneGeyserPretty"]}
+	; There are a few other geysers, but they have unique name i.e. SpacePlatformGeyser, RichVespeneGeyser
+	overlordCount := 0
+	for modelID, name in aIDLookup
+	{
+		if aRename.HasKey(name)
+		{
+			indexKey := aRename[name, "_count"] := round(aRename[name, "_count"]) + 1
+			if aRename[name].HasKey(indexKey)	
+				aIDLookup[modelID] := newName := aRename[name, indexKey]
+			else renameError .= name " Error - new " name " ? modelID: " modelID 
+		}
+		else if (name = "Overlord") ; Second overlord has a higher unit ID and doesn't seem valid
+		{
+			if (++overlordCount = 2)
+				aIDLookup.remove(modelID, ""), foundCount--
+			else if (overlordCount > 2)
+				renameError .= "OverlordCount Error - new Overlord ? modelID: " modelID
+		}
+	}
+	if renameError
+		renameError := "Rename Errors:`n" renameError
+
+	for modelID, name in aIDLookup
+		outputString .= name " = " modelID ",`n"
+
+
+	outputString := Rtrim(outputString, ",`n")
+	outputString .= "`n`nCount: " foundCount "`n`n"
+	outputString .= renameError
+	if duplicatesPresent
+	{
+		outputString .= "`n`n`nDuplicates present:`n"
+		for name, in aDuplicates
+			outputString .= name "`n"
+	}
+
+	outputString .= "Excluded Names Containing: " excludeNamesContaining
+				. "`nExcluded Names Matching: " excludeNames
+
+	return foundCount
+}
+
+; Use on test map. 
+debugUnitTargetFlags()
+{
+	loop, % getHighestUnitIndex()
+	{
+		unit := A_index - 1 
+		name := getUnitNameAlternate(unit)
+		filters := getUnitTargetFilterString(unit)
+		r .= "`n`n" unit " " name "`n============`n" filters
+	}
+	return ltrim(r, "`n")
 }
