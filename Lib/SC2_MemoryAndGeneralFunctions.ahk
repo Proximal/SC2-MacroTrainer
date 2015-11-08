@@ -34,17 +34,11 @@ Global B_LocalCharacterNameID
 , Offsets_Player_ArmyMineralCost
 , Offsets_Player_ArmyGasCost
 
-, Offsets_IdleWorkerBase
-, Offsets_IdleWorkerOffset1
-, Offsets_IdleWorkerOffset2
+, Offsets_IdleWorkerCountPointer
 , B_Timer
 , B_rStructure
 , S_rStructure
-, P_ChatFocus
-, O1_ChatFocus
-, O2_ChatFocus
-, P_MenuFocus
-, O1_MenuFocus
+, Offsets_ChatFocusPointer
 , P_SocialMenu
 , Offsets_UnitAliveCount
 , Offsets_UnitHighestAliveIndex
@@ -95,18 +89,15 @@ Global B_LocalCharacterNameID
 , Offsets_UnitModel_SubgroupPriority
 , Offsets_UnitModel_MinimapRadius
 
-, OffsetsSelectionBase
-, B_CtrlGroupStructure
-, S_CtrlGroup
-, OffsetsSelectionUnitSize
-, OffsetsSelectionTypeCount
-, OffsetsSelectionHighlightedGroup
-, OffsetsSelectionUnitOffset
+, Offsets_Selection_Base
+, Offsets_Group_ControlGroup0
+, Offsets_Group_ControlGroupSize
+, Offsets_Group_TypeCount
+, Offsets_Group_HighlightedGroup
+, Offsets_Group_UnitOffset
 
-, B_localArmyUnitCount
-, O1_localArmyUnitCount
-, O2_localArmyUnitCount
-, B_TeamColours
+, Offsets_localArmyUnitCountPointer
+, Offsets_TeamColoursEnabled
 , P_SelectionPage
 , O1_SelectionPage
 , O2_SelectionPage
@@ -157,7 +148,7 @@ Global B_LocalCharacterNameID
 , 03_CameraMovingViaMouseAtScreenEdge
 , B_IsGamePaused
 , B_FramesPerSecond
-, B_Gamespeed
+, Offsets_GameSpeed
 , B_ReplayFolder
 , B_HorizontalResolution
 , B_VerticalResolution
@@ -263,9 +254,7 @@ loadMemoryAddresses(base, version := "")
 			 Offsets_Player_ArmyMineralCost := 0xB68 ;p3.3 	; there are two (identical?) values for minerals/gas 
 			 Offsets_Player_ArmyGasCost := 0xB90 ; p3.3 		; ** care dont use max army gas/mineral value! 
 
-		 Offsets_IdleWorkerBase := base + 0x0181A28C ; p3.3
-			 Offsets_IdleWorkerOffset1 := 0x8
-			 Offsets_IdleWorkerOffset2 := 0x134 
+		 Offsets_IdleWorkerCountPointer := [base + 0x0181A28C, 0x8, 0x134]
 
 		; 	This can be found via three methods, pattern scan:
 		;	C1 EA 0A B9 00 01 00 00 01 0D ?? ?? ?? ?? F6 D2 A3 ?? ?? ?? ?? F6 C2 01 74 06 01 0D ?? ?? ?? ?? 83 3D ?? ?? ?? ?? 00 56 BE FF FF FF 7F
@@ -281,13 +270,17 @@ loadMemoryAddresses(base, version := "")
 			 S_rStructure := 0x10
 
 		 ; Also be sure to check the pointer in a real game. Ones which appear valid via mapeditor maps may not work.
-		 ; must be 0 when chat box not open yet another menu window is
-		 P_ChatFocus := base + 0x314B920 ;Just when chat box is in focus ; value = True if open. There will be 2 of these.
-			 O1_ChatFocus := 0x394 
-			 O2_ChatFocus := 0x174 		; tends to end with this offset
+		 ; ***must be 0 when chat box not open yet another menu window is e.g. menu / options!!!!!!!!
+		 ; note (its possible for it to be 1 while menu open - leave the chat box in focus and left click the menu button (on the right))
+		 ; tends to end with the same offset after patches
+		 Offsets_ChatFocusPointer := [base + 0x0181A234, 0x108, 0xE8] ;Just when chat box is in focus ; value = True if open. There will be 2 of these.
+	
 
-		 P_MenuFocus := base + 0x5045A6C 	;this is all menus and includes chat box when in focus 
-			 O1_MenuFocus := 0x17C 			; tends to end with this offse
+		 ; Removed this - using a similar (possibly the same value), but it represents menu depth
+		 ; I.e. Chat in focus + menu open = 2, chat in focus  = 1. Chat not in focus + men open = 1
+		 ; It may have always been this way, and i never realised
+		 ; P_MenuFocus := base + 0x5045A6C 	;this is all menus and includes chat box when in focus (value 1)
+		; 	 O1_MenuFocus := 0x17C 			; tends to end with this offset 
 
 		P_SocialMenu := base + 0x0409B098 ; ???? Havent updated as dont use it
 
@@ -338,13 +331,13 @@ loadMemoryAddresses(base, version := "")
 		Offsets_UnitAbilities_AbilityPointerIndex := 0x18	 ; An array of pointers begins here - Pointers to each of the units abilities start here
 		Offsets_UnitAbilities_AbilityStringPointerIndex :=  0xA4 ; and array of string pointers begins here - these match to the Offsets_UnitAbilities_AbilityPointerIndex i.e. string index 0 is the name of ability pointer index 0
 		
-		Offsets_CAbilQueue_QueuedCount := 0x38 ; sc2.x 0x28
-		Offsets_CAbilQueue_QueuedUnitsPointer := 0x44 ; sc2.x 0x34
+		Offsets_CAbilQueue_QueuedCount := 0x38 
+		Offsets_CAbilQueue_QueuedUnitsPointer := 0x44 
 
 		; Queued unit
-		Offsets_QueuedUnit_BuildTimeTotal := 0x80 ; pre p3.3 Offsets_QueuedUnit_BuildTimeTotal := 0x68
-		Offsets_QueuedUnit_BuildTimeRemaining := 0x84 ; pre p3.3 Offsets_QueuedUnit_BuildTimeRemaining := 0x6C		
-		Offsets_QueuedUnit_StringPointer := 0xF4 ; Offsets_QueuedUnit_StringPointer := 0xD0
+		Offsets_QueuedUnit_BuildTimeTotal := 0x80 
+		Offsets_QueuedUnit_BuildTimeRemaining := 0x84 		
+		Offsets_QueuedUnit_StringPointer := 0xF4 
 		; I dont use these
 		Offsets_QueuedUnit_SpecificID := 0x68
 		Offsets_QueuedUnit_Supply := 0x68
@@ -352,30 +345,28 @@ loadMemoryAddresses(base, version := "")
 		Offsets_QueuedUnit_Gas := 0x90
 
 		; Unit Model Structure	
-		Offsets_UnitModel_ID := 0x6 ; p3.3	
-		Offsets_UnitModel_SubgroupPriority := 0x3CC ; p3.3; 0x3A8 
-		Offsets_UnitModel_MinimapRadius := 0x3D0 ; p3.3 ;0x3AC ;0x39C
+		Offsets_UnitModel_ID := 0x6 
+		Offsets_UnitModel_SubgroupPriority := 0x3CC 
+		Offsets_UnitModel_MinimapRadius := 0x3D0 
 		
-		; selection and ctrl groups
-		OffsetsSelectionBase := base + 0x1EE9BB8 
-
+		
+		Offsets_Selection_Base := base + 0x1EE9BB8 
 		; The structure begins with ctrl group 0
-		B_CtrlGroupStructure := base + 0x3212ED8
-		S_CtrlGroup := 0x1B60
-		OffsetsSelectionUnitSize := 0x4	; Unit Selection & Ctrl Group Structures use same offsets
-			OffsetsSelectionTypeCount := 0x2
-			OffsetsSelectionHighlightedGroup := 0x4
-			OffsetsSelectionUnitOffset := 0x8
+		Offsets_Group_ControlGroup0 := base + 0x1EED278
+		Offsets_Group_ControlGroupSize := 0x1B60
+	; Unit Selection & Ctrl Group Structures use same offsets
+			Offsets_Group_TypeCount := 0x2
+			Offsets_Group_HighlightedGroup := 0x4
+			Offsets_Group_UnitOffset := 0x8
 
 		; gives the select army unit count (i.e. same as in the select army icon) - unit count not supply
 		; dont confuse with similar value which includes army unit counts in production - or if in map editor unit count/index.
 		; Shares a common base with P_IsUserPerformingAction, SelectionPtr, IdleWorkerPtr, ChatFocusPtr, B_UnitCursor, B_CameraMovingViaMouseAtScreenEdge (never realised it was so many derp)
 
-		B_localArmyUnitCount := base + 0x314B920
-			O1_localArmyUnitCount := 0x354
-			O2_localArmyUnitCount := 0x248
+		Offsets_localArmyUnitCountPointer := [base + 0x0181A358, 0x8, 0x138]
 
-		 B_TeamColours := base + 0x1B7A174 ; 2 when team colours is on, else 0 (There are two valid addresses for this)
+
+		 Offsets_TeamColoursEnabled := base + 0x1B7A174 ; 2 when team colours is on, else 0 (There are two valid addresses for this)
 		 
 
 		 P_SelectionPage := base + 0x314B920  	; Tends to end with these offsets. ***theres one other 3 lvl pointer but for a split second (every few second or so) it points to 
@@ -487,10 +478,10 @@ loadMemoryAddresses(base, version := "")
 			 03_CameraMovingViaMouseAtScreenEdge := 0x5A4				; 3 = Diagonal Right/Top 	  	6 = Diagonal Left/ Bot	
 																		; 7 = Bottom Edge 			 	8 = Diagonal Right/Bot 
 																		; Note need to do a pointer scan with max offset > 1200d! Tends to have the same offsets
-		B_IsGamePaused := base + 0x4F05E8C 						
+		B_IsGamePaused := base + 0x1AB3F7C 						
 
 		B_FramesPerSecond := base + 0x5008BC4
-		B_Gamespeed  := base + 0x55E133C
+		Offsets_GameSpeed  := base + 0x55E1330
 
 		; example: D:\My Computer\My Documents\StarCraft II\Accounts\56025555\6-S2-1-34555\Replays\
 		; this works for En, Fr, and Kr languages 
@@ -652,11 +643,11 @@ FingerPrintToIndex(fingerPrint)
 IsInControlGroup(group, unitIndex)
 {
 	count := getControlGroupCount(Group)
-	ReadRawMemory(B_CtrlGroupStructure + S_CtrlGroup * group, GameIdentifier, Memory,  OffsetsSelectionUnitOffset + count * OffsetsSelectionUnitSize)
+	ReadRawMemory(Offsets_Group_ControlGroup0 + Offsets_Group_ControlGroupSize * group, GameIdentifier, Memory,  Offsets_Group_UnitOffset + count * 4)
 	loop, % count 
 	{
-		if NumGet(Memory, OffsetsSelectionUnitOffset + (A_Index - 1) * OffsetsSelectionUnitSize, "UInt") >> 18 = unitIndex
-			return getUnitFingerPrint(unitIndex) = NumGet(Memory, OffsetsSelectionUnitOffset + (A_Index - 1) * OffsetsSelectionUnitSize, "UInt")
+		if NumGet(Memory, Offsets_Group_UnitOffset + (A_Index - 1) * 4, "UInt") >> 18 = unitIndex
+			return getUnitFingerPrint(unitIndex) = NumGet(Memory, Offsets_Group_UnitOffset + (A_Index - 1) * 4, "UInt")
 	}
 	Return 0	
 }
@@ -665,9 +656,9 @@ controlGroupFingerPrints(Group)
 {
 	obj := []
 	count := getControlGroupCount(Group)
-	ReadRawMemory(B_CtrlGroupStructure + S_CtrlGroup * group, GameIdentifier, Memory,  OffsetsSelectionUnitOffset + count * OffsetsSelectionUnitSize)	
+	ReadRawMemory(Offsets_Group_ControlGroup0 + Offsets_Group_ControlGroupSize * group, GameIdentifier, Memory,  Offsets_Group_UnitOffset + count * 4)	
 	loop, % count 
-		obj.insert(NumGet(Memory, OffsetsSelectionUnitOffset + (A_Index - 1) * OffsetsSelectionUnitSize, "UInt"))
+		obj.insert(NumGet(Memory, Offsets_Group_UnitOffset + (A_Index - 1) * 4, "UInt"))
 	return obj
 }
 
@@ -676,27 +667,27 @@ getControlGroupPortraitCount(group)
 	count := 0
 	loop, % bufferCount := numgetControlGroupMemory(controlBuffer, group)
 	{
-		unitIndex := (fingerPrint := NumGet(controlBuffer, (A_Index - 1) * OffsetsSelectionUnitSize, "UInt")) >> 18
+		unitIndex := (fingerPrint := NumGet(controlBuffer, (A_Index - 1) * 4, "UInt")) >> 18
 		if getUnitFingerPrint(unitIndex) = fingerPrint && !(getUnitTargetFilter(unitIndex) & aUnitTargetFilter.Hidden)
 			count++
 	}
 	return count
 }
 
-; Could dump the entire group (S_CtrlGroup). But that seems wasteful 
+; Could dump the entire group (Offsets_Group_ControlGroupSize). But that seems wasteful 
 ; *** care should be taken with this. The base address of the dumped memory
 ; is the selection part of the control group - It does not contain the type or count
 ; so don't use those offsets when using numget() to retrieve indexes****
 numgetControlGroupMemory(BYREF MemDump, group)
 {
 	if count := getControlGroupCount(Group)
-		ReadRawMemory(B_CtrlGroupStructure + S_CtrlGroup * group + OffsetsSelectionUnitOffset, GameIdentifier, MemDump, count * OffsetsSelectionUnitSize)
+		ReadRawMemory(Offsets_Group_ControlGroup0 + Offsets_Group_ControlGroupSize * group + Offsets_Group_UnitOffset, GameIdentifier, MemDump, count * 4)
 	return count
 }
 
 getControlGroupCount(Group)
 {	global
-	Return	ReadMemory(B_CtrlGroupStructure + S_CtrlGroup * Group, GameIdentifier, 2)
+	Return	ReadMemory(Offsets_Group_ControlGroup0 + Offsets_Group_ControlGroupSize * Group, GameIdentifier, 2)
 }	
 
 getTime()
@@ -729,31 +720,31 @@ ReadRawUnit(unit, ByRef Memory)	; dumps the raw memory for one unit
 
 getSelectedUnitIndex(i=0) ;IF Blank just return the first selected unit (at position 0)
 {	global
-	Return ReadMemory(OffsetsSelectionBase + OffsetsSelectionUnitOffset + i * OffsetsSelectionUnitSize, GameIdentifier) >> 18	;how the game does it
-	; returns the same thing ; Return ReadMemory(OffsetsSelectionBase + OffsetsSelectionUnitOffset + i * OffsetsSelectionUnitSize, GameIdentifier, 2) /4
+	Return ReadMemory(Offsets_Selection_Base + Offsets_Group_UnitOffset + i * 4, GameIdentifier) >> 18	;how the game does it
+	; returns the same thing ; Return ReadMemory(Offsets_Selection_Base + Offsets_Group_UnitOffset + i * 4, GameIdentifier, 2) /4
 }
 getSelectedUnitFingerPrint(i=0) ;IF Blank just return the first selected unit (at position 0)
 {	global
-	Return ReadMemory(OffsetsSelectionBase + OffsetsSelectionUnitOffset + i * OffsetsSelectionUnitSize, GameIdentifier) 
-	; returns the same thing ; Return ReadMemory(OffsetsSelectionBase + OffsetsSelectionUnitOffset + i * OffsetsSelectionUnitSize, GameIdentifier, 2) /4
+	Return ReadMemory(Offsets_Selection_Base + Offsets_Group_UnitOffset + i * 4, GameIdentifier) 
+	; returns the same thing ; Return ReadMemory(Offsets_Selection_Base + Offsets_Group_UnitOffset + i * 4, GameIdentifier, 2) /4
 }
 ; begins at 1
 ; Tab/subgroup count
 getSelectionTypeCount()	
 {	global
-	Return	ReadMemory(OffsetsSelectionBase + OffsetsSelectionTypeCount, GameIdentifier, 2)
+	Return	ReadMemory(Offsets_Selection_Base + Offsets_Group_TypeCount, GameIdentifier, 2)
 }
 getSelectionHighlightedGroup()	; begins at 0 
 {	global
-	Return ReadMemory(OffsetsSelectionBase + OffsetsSelectionHighlightedGroup, GameIdentifier, 2)
+	Return ReadMemory(Offsets_Selection_Base + Offsets_Group_HighlightedGroup, GameIdentifier, 2)
 }
 getSelectionCount()
 { 	global 
-	Return ReadMemory(OffsetsSelectionBase, GameIdentifier, 2)
+	Return ReadMemory(Offsets_Selection_Base, GameIdentifier, 2)
 }
 getIdleWorkers()
 {	global 	
-	return pointer(GameIdentifier, Offsets_IdleWorkerBase, Offsets_IdleWorkerOffset1, Offsets_IdleWorkerOffset2)
+	return pointer(GameIdentifier, Offsets_IdleWorkerCountPointer*)
 }
 getPlayerSupply(player="")
 { 	global
@@ -815,8 +806,7 @@ getUnitType(Unit) ;starts @ 0 i.e. first unit at 0
 
 getUnitName2(unit)
 {	global 
-	Return substr(ReadMemory_Str(ReadMemory(ReadMemory(((ReadMemory(B_uStructure + (Unit * Offsets_Unit_StructSize) 
-			+ Offsets_Unit_ModelPointer, GameIdentifier)) << 5) + 0xC, GameIdentifier), GameIdentifier) + 0x29, GameIdentifier), 6)
+	Return substr(ReadMemory_Str(ReadMemory(ReadMemory(((ReadMemory(aSCOffsets["unitAddress", Unit] + Offsets_Unit_ModelPointer, GameIdentifier)) << 5) + 0xC, GameIdentifier), GameIdentifier) + 0x29, GameIdentifier), 6)
 	;	pNameDataAddress := ReadMemory(unit_type + 0x6C, "StarCraft II")
 	;	NameDataAddress  := ReadMemory(pNameDataAddress, "StarCraft II") + 0x29 
 	;	Name := ReadMemory_Str(NameDataAddress, , "StarCraft II")
@@ -1344,14 +1334,14 @@ getUnitQueuedCommandString(aQueuedCommandsOrUnitIndex)
 
 arePlayerColoursEnabled()
 {	global
-	return !ReadMemory(B_TeamColours, GameIdentifier) ; inverse as this is true when player colours are off
+	return !ReadMemory(Offsets_TeamColoursEnabled, GameIdentifier) ; inverse as this is true when player colours are off
 	;Return pointer(GameIdentifier, P_PlayerColours, O1_PlayerColours, O2_PlayerColours) ; this true when they are on
 }
 
 ; give the army unit count (i.e. same as in the select army icon) - unit count not supply
 getArmyUnitCount()
 {
-	return Round(pointer(GameIdentifier, B_localArmyUnitCount, O1_localArmyUnitCount, O2_localArmyUnitCount))
+	return Round(pointer(GameIdentifier, Offsets_localArmyUnitCountPointer*))
 }
 
 isGamePaused()
@@ -1361,14 +1351,27 @@ isGamePaused()
 
 ; Note: This is always true if the user is holding the drag camera button (middle mouse by default)
 
+; In sc 2.xxx - this value was 1 for chat and all menus 
+; Cant seem to find this exact value again
+; In SC 3.xxx this value represents the menu/window depth
+; e.g. have chat in focus the value is one.
+; While the chat is in focus if you then open a menu (left click the menu button)
+; will increment this value to 2.
+; This may in fact be the same offset, but i never previously released you could 
+; get the menu open when the chat was in focus.
 isMenuOpen()
-{ 	global
-	Return  pointer(GameIdentifier, P_MenuFocus, O1_MenuFocus)
+{ 	
+	ecx := readMemory(OffsetsSC2Base + 0x1889A90, GameIdentifier)
+	, ecx ^= readMemory(OffsetsSC2Base + 0x2370A24, GameIdentifier)
+	, ecx ^= 0x8EE43918
+	, ecx += 0x428
+	return readMemory(ecx + 0x1C, GameIdentifier)
+	;Return  pointer(GameIdentifier, P_MenuFocus, O1_MenuFocus)
 }
 
 isChatOpen()
 { 	global
-	Return  pointer(GameIdentifier, P_ChatFocus, O1_ChatFocus, O2_ChatFocus)
+	Return  pointer(GameIdentifier, Offsets_ChatFocusPointer*)
 }
 
 ; True when previous chat box or the social menu has text focus.
@@ -1532,7 +1535,7 @@ getGameSpeed()
 						,	2: "Normal"
 						,	3: "Fast"
 						,	4: "Faster" }
-	return aGameSpeed[ReadMemory(B_Gamespeed, GameIdentifier)]
+	return aGameSpeed[ReadMemory(Offsets_GameSpeed, GameIdentifier)]
 }
 
 
@@ -2171,18 +2174,18 @@ getCharacerInfo(byref returnName := "", byref returnID := "")
 
 ; note ctrl group base address really starts with ctrl group 0 - but the negative offset from ctrl group 1 works fine
 numGetControlGroupObject(Byref oControlGroup, Group)
-{	GLOBAL B_CtrlGroupStructure, S_CtrlGroup, GameIdentifier, OffsetsSelectionUnitSize, OffsetsSelectionUnitOffset
+{	GLOBAL Offsets_Group_ControlGroup0, Offsets_Group_ControlGroupSize, GameIdentifier, 4, Offsets_Group_UnitOffset
 	oControlGroup := []
 	GroupSize := getControlGroupCount(Group)
 
-	ReadRawMemory(B_CtrlGroupStructure + S_CtrlGroup * group, GameIdentifier, MemDump, GroupSize * OffsetsSelectionUnitSize + OffsetsSelectionUnitOffset)
+	ReadRawMemory(Offsets_Group_ControlGroup0 + Offsets_Group_ControlGroupSize * group, GameIdentifier, MemDump, GroupSize * 4 + Offsets_Group_UnitOffset)
 ;	oControlGroup["Count"]	:= numget(MemDump, 0, "Short")
-;	oControlGroup["Types"]	:= numget(MemDump, OffsetsSelectionTypeCount, "Short") ;this will get whats actually in the memory
+;	oControlGroup["Types"]	:= numget(MemDump, Offsets_Group_TypeCount, "Short") ;this will get whats actually in the memory
 	oControlGroup["Count"]	:= oControlGroup["Types"] := 0
 	oControlGroup.units := []
 	loop % numget(MemDump, 0, "Short")
 	{
-		fingerPrint := numget(MemDump,(A_Index-1) * OffsetsSelectionUnitSize + OffsetsSelectionUnitOffset , "Int")
+		fingerPrint := numget(MemDump,(A_Index-1) * 4 + Offsets_Group_UnitOffset , "Int")
 		unit := fingerPrint >> 18
 
 		;if (!isUnitDead(unit) && isUnitLocallyOwned(unit))
@@ -2261,16 +2264,16 @@ numGetSelectionSorted(ByRef aSelection, ReverseOrder := False)
 	global aLocalPlayer
 	aSelection := []
 	, selectionCount := getSelectionCount()
-	, ReadRawMemory(OffsetsSelectionBase, GameIdentifier, MemDump, selectionCount * OffsetsSelectionUnitSize + OffsetsSelectionUnitOffset)
+	, ReadRawMemory(Offsets_Selection_Base, GameIdentifier, MemDump, selectionCount * 4 + Offsets_Group_UnitOffset)
 	, aSelection.Count := numget(MemDump, 0, "Short")
-	, aSelection.Types := numget(MemDump, OffsetsSelectionTypeCount, "Short")
-	, aSelection.HighlightedGroup := numget(MemDump, OffsetsSelectionHighlightedGroup, "Short")
+	, aSelection.Types := numget(MemDump, Offsets_Group_TypeCount, "Short")
+	, aSelection.HighlightedGroup := numget(MemDump, Offsets_Group_HighlightedGroup, "Short")
 	, aStorage := []
 	loop % aSelection.Count
 	{
 		; Use a negative priority so AHKs normal object enumerates them in the correct 
 		; unit panel order (backwards to how they would normally be enumerated)
-		priority := -1 * getUnitSubGroupPriority(unitIndex := numget(MemDump,(A_Index-1) * OffsetsSelectionUnitSize + OffsetsSelectionUnitOffset , "Int") >> 18)
+		priority := -1 * getUnitSubGroupPriority(unitIndex := numget(MemDump,(A_Index-1) * 4 + Offsets_Group_UnitOffset , "Int") >> 18)
 		, subGroupAlias := aUnitSubGroupAlias.hasKey(unitId := getUnitType(unitIndex)) ? aUnitSubGroupAlias[unitId] : unitId 
 		, sIndices .= "," unitIndex
 		, hallucinationOrder := !((filter := getUnitTargetFilter(unitIndex)) & aUnitTargetFilter.Hallucination) ; hallucinations come first so they get key 0 real units get key 1
@@ -2404,13 +2407,13 @@ numGetSelectionSortedTest(ReverseOrder := False)
 	global aLocalPlayer
 	static dllFunction := "d:\My Computer\My Documents\Visual Studio 2010\Projects\fddgf\Debug\fddgf.dll"
 	selectionCount := getSelectionCount()
-	ReadRawMemory(OffsetsSelectionBase, GameIdentifier, MemDump, selectionCount * OffsetsSelectionUnitSize + OffsetsSelectionUnitOffset)
+	ReadRawMemory(Offsets_Selection_Base, GameIdentifier, MemDump, selectionCount * 4 + Offsets_Group_UnitOffset)
 	if !func
 		func := DllCall("GetProcAddress", Ptr, DllCall("LoadLibrary", Str, dllFunction, "Ptr"), AStr, "sortSelection", "Ptr")
 	
 	loop % selectionCount
 	{
-		priority := getUnitSubGroupPriority(unitIndex := numget(MemDump,(A_Index-1) * OffsetsSelectionUnitSize + OffsetsSelectionUnitOffset , "Int") >> 18)
+		priority := getUnitSubGroupPriority(unitIndex := numget(MemDump,(A_Index-1) * 4 + Offsets_Group_UnitOffset , "Int") >> 18)
 		subGroupAlias := aUnitSubGroupAlias.hasKey(unitId := getUnitType(unitIndex)) ? aUnitSubGroupAlias[unitId] : unitId 
 		hallucinationOrder := (getUnitTargetFilter(unitIndex) & aUnitTargetFilter.Hallucination) ; hallucinations come first so they get key 0 real units get key 1
 		testString .= (A_Index != 1 ? "|" : "") priority "," subGroupAlias "," 	hallucinationOrder "," unitIndex				
@@ -2442,16 +2445,16 @@ numGetSelectionSortedMachineCodeTest(ByRef aSelection, byRef aStorage)
 		mCodeF := MCode("1,x86:558BEC83EC0C8B450C5633F6488945F474768B450853578BD6C1E2028D0CB504000000014D0C8D3C888D1C90897DFC8B3F895DF88B1B3BDF7F4675288B7C90048B5C88043BFB7C38751A8B7C900C8B4C880C3BF97F2A750C8B4C90108B550C3B0C907C1C8B55FC8B4DF86A045F8B1A8B318919893283C10483C2044F75EF33F6463B75F472915F5B33C0405EC9C3")
 	aSelection := []
 	, selectionCount := getSelectionCount()
-	, ReadRawMemory(OffsetsSelectionBase, GameIdentifier, MemDump, selectionCount * OffsetsSelectionUnitSize + OffsetsSelectionUnitOffset)
+	, ReadRawMemory(Offsets_Selection_Base, GameIdentifier, MemDump, selectionCount * 4 + Offsets_Group_UnitOffset)
 	, aSelection.Count := numget(MemDump, 0, "Short")
-	, aSelection.Types := numget(MemDump, OffsetsSelectionTypeCount, "Short")
-	, aSelection.HighlightedGroup := numget(MemDump, OffsetsSelectionHighlightedGroup, "Short")
+	, aSelection.Types := numget(MemDump, Offsets_Group_TypeCount, "Short")
+	, aSelection.HighlightedGroup := numget(MemDump, Offsets_Group_HighlightedGroup, "Short")
 	, aStorage := []
 	, aSelection.units := []
 	VarSetCapacity(buffer, aSelection.Count * 16, 0)
 	loop % aSelection.Count
 	{
-		priority := getUnitSubGroupPriority(unitIndex := numget(MemDump,(A_Index-1) * OffsetsSelectionUnitSize + OffsetsSelectionUnitOffset , "Int") >> 18)
+		priority := getUnitSubGroupPriority(unitIndex := numget(MemDump,(A_Index-1) * 4 + Offsets_Group_UnitOffset , "Int") >> 18)
 		subGroupAlias := aUnitSubGroupAlias.hasKey(unitId := getUnitType(unitIndex)) ? aUnitSubGroupAlias[unitId] : unitId 
 		sIndices .= "," unitIndex
 		hallucination := ((filter := getUnitTargetFilter(unitIndex)) & aUnitTargetFilter.Hallucination) ; hallucinations come first so they get key 0 real units get key 1
@@ -2518,26 +2521,26 @@ int sort(int* buffer, unsigned int count)
 isInSelection(unitIndex)
 {
 	selectionCount := getSelectionCount()
-	ReadRawMemory(OffsetsSelectionBase, GameIdentifier, MemDump, selectionCount * OffsetsSelectionUnitSize + OffsetsSelectionUnitOffset)
+	ReadRawMemory(Offsets_Selection_Base, GameIdentifier, MemDump, selectionCount * 4 + Offsets_Group_UnitOffset)
 	loop % selectionCount
 	{
-		if (unitIndex = numget(MemDump, (A_Index-1) * OffsetsSelectionUnitSize + OffsetsSelectionUnitOffset, "Int") >> 18)
+		if (unitIndex = numget(MemDump, (A_Index-1) * 4 + Offsets_Group_UnitOffset, "Int") >> 18)
 			return 1
 	}
 	return 0
 }
 
 numGetUnitSelectionObject(ByRef aSelection)
-{	GLOBAL OffsetsSelectionTypeCount, OffsetsSelectionHighlightedGroup, OffsetsSelectionUnitSize, OffsetsSelectionUnitOffset, GameIdentifier, OffsetsSelectionBase
+{	GLOBAL Offsets_Group_TypeCount, Offsets_Group_HighlightedGroup, 4, Offsets_Group_UnitOffset, GameIdentifier, Offsets_Selection_Base
 	aSelection := []
 	, selectionCount := getSelectionCount()
-	, ReadRawMemory(OffsetsSelectionBase, GameIdentifier, MemDump, selectionCount * OffsetsSelectionUnitSize + OffsetsSelectionUnitOffset)
+	, ReadRawMemory(Offsets_Selection_Base, GameIdentifier, MemDump, selectionCount * 4 + Offsets_Group_UnitOffset)
 	, aSelection["Count"] := numget(MemDump, 0, "Short")
-	, aSelection["Types"] := numget(MemDump, OffsetsSelectionTypeCount, "Short")
-	, aSelection["HighlightedGroup"] := numget(MemDump, OffsetsSelectionHighlightedGroup, "Short")
+	, aSelection["Types"] := numget(MemDump, Offsets_Group_TypeCount, "Short")
+	, aSelection["HighlightedGroup"] := numget(MemDump, Offsets_Group_HighlightedGroup, "Short")
 	, aSelection.units := []
 	loop % aSelection["Count"]
-		owner := getUnitOwner(unit := numget(MemDump,(A_Index-1) * OffsetsSelectionUnitSize + OffsetsSelectionUnitOffset , "Int") >> 18), Type := getUnitType(unit), aSelection.units.insert({"UnitIndex": unit, "Type": Type, "Owner": Owner})
+		owner := getUnitOwner(unit := numget(MemDump,(A_Index-1) * 4 + Offsets_Group_UnitOffset , "Int") >> 18), Type := getUnitType(unit), aSelection.units.insert({"UnitIndex": unit, "Type": Type, "Owner": Owner})
 	return aSelection["Count"]
 }
 ; 0-5 indicates which unit page is currently selected (in game its 1-6)
@@ -2588,23 +2591,23 @@ getUnitModelPointerRaw(unit)
   return ReadMemory(aSCOffsets["unitAddress", unit] + Offsets_Unit_ModelPointer, GameIdentifier)
 }
  getGroupedQueensWhichCanInject(ByRef aControlGroup,  CheckMoveState := 0)
- {	GLOBAL aUnitID, OffsetsSelectionTypeCount, OffsetsSelectionHighlightedGroup, S_CtrlGroup, OffsetsSelectionUnitOffset, GameIdentifier, B_CtrlGroupStructure
- 	, Offsets_Unit_StructSize, GameIdentifier, MI_Queen_Group, OffsetsSelectionUnitSize, aUnitMoveStates
+ {	GLOBAL aUnitID, Offsets_Group_TypeCount, Offsets_Group_HighlightedGroup, Offsets_Group_ControlGroupSize, Offsets_Group_UnitOffset, GameIdentifier, Offsets_Group_ControlGroup0
+ 	, Offsets_Unit_StructSize, GameIdentifier, MI_Queen_Group, 4, aUnitMoveStates
 	aControlGroup := []
 	group := MI_Queen_Group
 	groupCount := getControlGroupCount(Group)
 
-	ReadRawMemory(B_CtrlGroupStructure + S_CtrlGroup * Group, GameIdentifier, MemDump, groupCount * S_CtrlGroup + OffsetsSelectionUnitOffset)
+	ReadRawMemory(Offsets_Group_ControlGroup0 + Offsets_Group_ControlGroupSize * Group, GameIdentifier, MemDump, groupCount * Offsets_Group_ControlGroupSize + Offsets_Group_UnitOffset)
 
 	aControlGroup["UnitCount"]	:= numget(MemDump, 0, "Short")
-	aControlGroup["Types"]	:= numget(MemDump, OffsetsSelectionTypeCount, "Short")
-;	aControlGroup["HighlightedGroup"]	:= numget(MemDump, OffsetsSelectionHighlightedGroup, "Short")
+	aControlGroup["Types"]	:= numget(MemDump, Offsets_Group_TypeCount, "Short")
+;	aControlGroup["HighlightedGroup"]	:= numget(MemDump, Offsets_Group_HighlightedGroup, "Short")
 	aControlGroup.Queens := []
 	aControlGroup.AllQueens := []
 
 	loop % groupCount
 	{
-		fingerPrint := numget(MemDump,(A_Index-1) * OffsetsSelectionUnitSize + OffsetsSelectionUnitOffset , "Int")
+		fingerPrint := numget(MemDump,(A_Index-1) * 4 + Offsets_Group_UnitOffset , "Int")
 		unit := fingerPrint >> 18
 		;if (isUnitDead(unit) || !isUnitLocallyOwned(Unit)) ; as this is being read from control group buffer so dead units can still be included!
 		if getUnitFingerPrint(unit) != fingerPrint || !isUnitLocallyOwned(Unit) || getunittargetfilter(Unit) & aUnitTargetFilter.hidden ; the hight check in isnearhatch() would have prevented any issue as queen is only hidden when inside overlord - not when burrowed
@@ -2639,19 +2642,19 @@ getUnitModelPointerRaw(unit)
 
 	; CheckMoveState for forced injects
  getSelectedQueensWhichCanInject(ByRef aSelection, CheckMoveState := 0)
- {	GLOBAL aUnitID, OffsetsSelectionTypeCount, OffsetsSelectionHighlightedGroup, OffsetsSelectionUnitSize, OffsetsSelectionUnitOffset, GameIdentifier, OffsetsSelectionBase
+ {	GLOBAL aUnitID, Offsets_Group_TypeCount, Offsets_Group_HighlightedGroup, 4, Offsets_Group_UnitOffset, GameIdentifier, Offsets_Selection_Base
  	, Offsets_Unit_StructSize, GameIdentifier, aUnitMoveStates 
 	aSelection := []
 	selectionCount := getSelectionCount()
-	ReadRawMemory(OffsetsSelectionBase, GameIdentifier, MemDump, selectionCount * OffsetsSelectionUnitSize + OffsetsSelectionUnitOffset)
+	ReadRawMemory(Offsets_Selection_Base, GameIdentifier, MemDump, selectionCount * 4 + Offsets_Group_UnitOffset)
 	aSelection["SelectedUnitCount"]	:= numget(MemDump, 0, "Short")
-	aSelection["Types"]	:= numget(MemDump, OffsetsSelectionTypeCount, "Short")
-	aSelection["HighlightedGroup"]	:= numget(MemDump, OffsetsSelectionHighlightedGroup, "Short")
+	aSelection["Types"]	:= numget(MemDump, Offsets_Group_TypeCount, "Short")
+	aSelection["HighlightedGroup"]	:= numget(MemDump, Offsets_Group_HighlightedGroup, "Short")
 	aSelection.Queens := []
 
 	loop % selectionCount
 	{
-		unit := numget(MemDump,(A_Index-1) * OffsetsSelectionUnitSize + OffsetsSelectionUnitOffset , "Int") >> 18
+		unit := numget(MemDump,(A_Index-1) * 4 + Offsets_Group_UnitOffset , "Int") >> 18
 		type := getUnitType(unit)
 		if (isUnitLocallyOwned(Unit) && aUnitID["Queen"] = type && ((energy := getUnitEnergy(unit)) >= 25)) 
 		{
@@ -4183,7 +4186,7 @@ readConfigFile()
 	;[Chrono Boost Gateway/Warpgate]
 	section := "Chrono Boost Gateway/Warpgate"
 	IniRead, CG_control_group, %config_file%, %section%, CG_control_group, 9
-	IniRead, CG_nexus_Ctrlgroup_key, %config_file%, %section%, CG_nexus_Ctrlgroup_key, 4
+	IniRead, CG_nexuOffsets_Group_ControlGroupSize_key, %config_file%, %section%, CG_nexuOffsets_Group_ControlGroupSize_key, 4
 	IniRead, chrono_key, %config_file%, %section%, chrono_key, c
 	IniRead, CG_chrono_remainder, %config_file%, %section%, CG_chrono_remainder, 2
 	IniRead, ChronoBoostSleep, %config_file%, %section%, ChronoBoostSleep, 50
@@ -6029,4 +6032,358 @@ debugUnitTargetFlags()
 		r .= "`n`n" unit " " name "`n============`n" filters
 	}
 	return ltrim(r, "`n")
+}
+
+
+
+SetupUnitIDTestArray(byref aUnitID, byref aUnitName)
+{
+	l_UnitTypes = 
+( comments 
+System_Snapshot_Dummy = 1,
+Ball = 21,
+StereoscopicOptionsUnit = 22,
+Colossus = 23,
+TechLab = 24,
+Reactor = 25,
+InfestorTerran = 27,
+BanelingCocoon = 28,
+Baneling = 29,
+Mothership = 30,
+PointDefenseDrone = 31,
+Changeling = 32,
+ChangelingZealot = 33,
+ChangelingMarineShield = 34,
+ChangelingMarine = 35,
+ChangelingZerglingWings = 36,
+ChangelingZergling = 37,
+CommandCenter = 39,
+SupplyDepot = 40,
+Refinery = 41,
+Barracks = 42,
+EngineeringBay = 43,
+MissileTurret = 44,
+Bunker = 45,
+SensorTower = 46,
+GhostAcademy = 47,
+Factory = 48,
+Starport = 49,
+Armory = 51,
+FusionCore = 52,
+AutoTurret = 53,
+SiegeTankSieged = 54,
+SiegeTank = 55,
+VikingAssault = 56,
+VikingFighter = 57,
+CommandCenterFlying = 58,
+BarracksTechLab = 59,
+BarracksReactor = 60,
+FactoryTechLab = 61,
+FactoryReactor = 62,
+StarportTechLab = 63,
+StarportReactor = 64,
+FactoryFlying = 65,
+StarportFlying = 66,
+SCV = 67,
+BarracksFlying = 68,
+SupplyDepotLowered = 69,
+Marine = 70,
+Reaper = 71,
+Ghost = 72,
+Marauder = 73,
+Thor = 74,
+Hellion = 75,
+Medivac = 76,
+Banshee = 77,
+Raven = 78,
+Battlecruiser = 79,
+Nuke = 80,
+Nexus = 81,
+Pylon = 82,
+Assimilator = 83,
+Gateway = 84,
+Forge = 85,
+FleetBeacon = 86,
+TwilightCouncil = 87,
+PhotonCannon = 88,
+Stargate = 89,
+TemplarArchive = 90,
+DarkShrine = 91,
+RoboticsBay = 92,
+RoboticsFacility = 93,
+CyberneticsCore = 94,
+Zealot = 95,
+Stalker = 96,
+HighTemplar = 97,
+DarkTemplar = 98,
+Sentry = 99,
+Phoenix = 100,
+Carrier = 101,
+VoidRay = 102,
+WarpPrism = 103,
+Observer = 104,
+Immortal = 105,
+Probe = 106,
+Interceptor = 107,
+Hatchery = 108,
+CreepTumor = 109,
+Extractor = 110,
+SpawningPool = 111,
+EvolutionChamber = 112,
+HydraliskDen = 113,
+Spire = 114,
+UltraliskCavern = 115,
+InfestationPit = 116,
+NydusNetwork = 117,
+BanelingNest = 118,
+RoachWarren = 119,
+SpineCrawler = 120,
+SporeCrawler = 121,
+Lair = 122,
+Hive = 123,
+GreaterSpire = 124,
+Egg = 125,
+Drone = 126,
+Zergling = 127,
+Overlord = 128,
+Hydralisk = 129,
+Mutalisk = 130,
+Ultralisk = 131,
+Roach = 132,
+Infestor = 133,
+Corruptor = 134,
+BroodLordCocoon = 135,
+BroodLord = 136,
+BanelingBurrowed = 137,
+DroneBurrowed = 138,
+HydraliskBurrowed = 139,
+RoachBurrowed = 140,
+ZerglingBurrowed = 141,
+InfestorTerranBurrowed = 142,
+RedstoneLavaCritterInjuredBurrowed = 144,
+RedstoneLavaCritter = 145,
+RedstoneLavaCritterInjured = 146,
+QueenBurrowed = 147,
+Queen = 148,
+InfestorBurrowed = 149,
+OverlordCocoon = 150,
+Overseer = 151,
+PlanetaryFortress = 152,
+UltraliskBurrowed = 153,
+OrbitalCommand = 154,
+WarpGate = 155,
+OrbitalCommandFlying = 156,
+ForceField = 157,
+WarpPrismPhasing = 158,
+CreepTumorBurrowed = 159,
+CreepTumorQueen = 160,
+SpineCrawlerUprooted = 161,
+SporeCrawlerUprooted = 162,
+Archon = 163,
+NydusCanal = 164,
+BroodlingEscort = 165,
+RichMineralField = 166,
+XelNagaTower = 168,
+InfestedTerransEgg = 172,
+Larva = 173,
+ReaperPlaceholder = 174,
+NeedleSpinesWeapon = 237,
+CorruptionWeapon = 238,
+InfestedTerransWeapon = 239,
+NeuralParasiteWeapon = 240,
+HunterSeekerWeapon = 242,
+MULE = 243,
+ThorAAWeapon = 245,
+PunisherGrenadesLMWeapon = 246,
+VikingFighterWeapon = 247,
+ATALaserBatteryLMWeapon = 248,
+ATSLaserBatteryLMWeapon = 249,
+LongboltMissileWeapon = 250,
+D8ChargeWeapon = 251,
+YamatoWeapon = 252,
+IonCannonsWeapon = 253,
+AcidSalivaWeapon = 254,
+SpineCrawlerWeapon = 255,
+SporeCrawlerWeapon = 256,
+StalkerWeapon = 260,
+EMP2Weapon = 261,
+BacklashRocketsLMWeapon = 262,
+PhotonCannonWeapon = 263,
+ParasiteSporeWeapon = 264,
+Broodling = 266,
+BroodLordBWeapon = 267,
+AutoTurretReleaseWeapon = 270,
+LarvaReleaseMissile = 271,
+AcidSpinesWeapon = 272,
+FrenzyWeapon = 273,
+ContaminateWeapon = 274,
+BeaconRally = 286,
+BeaconArmy = 287,
+BeaconAttack = 288,
+BeaconDefend = 289,
+BeaconHarass = 290,
+BeaconIdle = 291,
+BeaconAuto = 292,
+BeaconDetect = 293,
+BeaconScout = 294,
+BeaconClaim = 295,
+BeaconExpand = 296,
+BeaconCustom1 = 297,
+BeaconCustom2 = 298,
+BeaconCustom3 = 299,
+BeaconCustom4 = 300,
+Rocks2x2NonConjoined = 305,
+FungalGrowthMissile = 306,
+NeuralParasiteTentacleMissile = 307,
+Beacon_Protoss = 308,
+Beacon_ProtossSmall = 309,
+Beacon_Terran = 310,
+Beacon_TerranSmall = 311,
+Beacon_Zerg = 312,
+Beacon_ZergSmall = 313,
+Lyote = 314,
+CarrionBird = 315,
+KarakMale = 316,
+KarakFemale = 317,
+UrsadakFemaleExotic = 318,
+UrsadakMale = 319,
+UrsadakFemale = 320,
+UrsadakCalf = 321,
+UrsadakMaleExotic = 322,
+UtilityBot = 323,
+CommentatorBot1 = 324,
+CommentatorBot2 = 325,
+CommentatorBot3 = 326,
+CommentatorBot4 = 327,
+Scantipede = 328,
+Dog = 329,
+Sheep = 330,
+Cow = 331,
+InfestedTerransEggPlacement = 332,
+InfestorTerransWeapon = 333,
+MineralField = 334,
+VespeneGeyser = 335,
+ProtossVespeneGeyser = 336,
+RichVespeneGeyser = 337,
+TrafficSignal = 354,
+MengskStatueAlone = 372,
+MengskStatue = 373,
+WolfStatue = 374,
+GlobeStatue = 375,
+Weapon = 376,
+BroodLordWeapon = 378,
+BroodLordAWeapon = 379,
+CreepBlocker1x1 = 380,
+PathingBlocker1x1 = 381,
+PathingBlocker2x2 = 382,
+AutoTestAttackTargetGround = 383,
+AutoTestAttackTargetAir = 384,
+AutoTestAttacker = 385,
+HelperEmitterSelectionArrow = 386,
+MultiKillObject = 387,
+Debris2x2NonConjoined = 467,
+EnemyPathingBlocker1x1 = 468,
+EnemyPathingBlocker2x2 = 469,
+EnemyPathingBlocker4x4 = 470,
+EnemyPathingBlocker8x8 = 471,
+EnemyPathingBlocker16x16 = 472,
+ScopeTest = 473,
+MineralField750 = 476,
+RichMineralField750 = 477,
+HellionTank = 493,
+MothershipCore = 497,
+LocustMP = 501,
+NydusCanalAttacker = 503,
+NydusCanalCreeper = 504,
+SwarmHostBurrowedMP = 505,
+SwarmHostMP = 506,
+Oracle = 507,
+Tempest = 508,
+WarHound = 509,
+WidowMine = 510,
+Viper = 511,
+WidowMineBurrowed = 512,
+LurkerMPEgg = 513,
+LurkerMP = 514,
+LurkerMPBurrowed = 515,
+LurkerDenMP = 516,
+DigesterCreepSprayTargetUnit = 582,
+DigesterCreepSprayUnit = 583,
+NydusCanalAttackerWeapon = 584,
+ViperConsumeStructureWeapon = 585,
+ResourceBlocker = 588,
+TempestWeapon = 589,
+YoinkMissile = 590,
+YoinkVikingAirMissile = 594,
+YoinkVikingGroundMissile = 596,
+YoinkSiegeTankMissile = 598,
+WarHoundWeapon = 600,
+EyeStalkWeapon = 602,
+WidowMineWeapon = 605,
+WidowMineAirWeapon = 606,
+MothershipCoreWeaponWeapon = 607,
+TornadoMissileWeapon = 608,
+TornadoMissileDummyWeapon = 609,
+TalonsMissileWeapon = 610,
+CreepTumorMissile = 611,
+LocustMPEggAMissileWeapon = 612,
+LocustMPEggBMissileWeapon = 613,
+LocustMPWeapon = 614,
+RepulsorCannonWeapon = 616,
+Ice2x2NonConjoined = 624,
+IceProtossCrates = 625,
+ProtossCrates = 626,
+TowerMine = 627,
+PickupPalletGas = 628,
+PickupPalletMinerals = 629,
+PickupScrapSalvage1x1 = 630,
+PickupScrapSalvage2x2 = 631,
+PickupScrapSalvage3x3 = 632,
+RoughTerrain = 633,
+UnbuildableBricksSmallUnit = 634,
+UnbuildableRocksSmallUnit = 637,
+XelNagaHealingShrine = 638,
+InvisibleTargetDummy = 639,
+VespeneGeyserPretty = 640, ; my custom name 
+ThornLizard = 643,
+CleaningBot = 644,
+ProtossSnakeSegmentDemo = 646,
+PhysicsCapsule = 647,
+PhysicsCube = 648,
+PhysicsCylinder = 649,
+PhysicsKnot = 650,
+PhysicsL = 651,
+PhysicsPrimitives = 652,
+PhysicsSphere = 653,
+PhysicsStar = 654,
+CreepBlocker4x4 = 655,
+TestZerg = 664,
+PathingBlockerRadius1 = 665,
+DesertPlanetSearchlight = 686,
+DesertPlanetStreetlight = 687,
+UnbuildableBricksUnit = 688,
+UnbuildableRocksUnit = 689,
+Artosilope = 691,
+Anteplott = 692,
+LabBot = 693,
+Crabeetle = 694,
+LabMineralField = 697,
+LabMineralField750 = 698,
+ThorAP = 714,
+LocustMPFlying = 715,
+ThorAALance = 718,
+OracleWeapon = 719,
+TempestWeaponGround = 720,
+SeekerMissile = 722	
+)
+	aUnitID := []
+	aUnitName := []
+	loop, parse, l_UnitTypes, `,
+	{
+		StringSplit, Item , A_LoopField, = 		; Format "Colossus = 38"
+		name := trim(Item1, " `t `n"), UnitID := trim(Item2, " `t `n")
+		aUnitID[name] := UnitID
+		aUnitName[UnitID] := name
+	}
+	Return
 }
