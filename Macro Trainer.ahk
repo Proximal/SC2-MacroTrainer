@@ -13880,18 +13880,62 @@ SC2.AssertAndCrash+3BE6C1 - C2 0400               - ret 0004
 check for no updated offset names.
 Find out why town hall rally doesnt work
 */
-  
-
+  ; 0067674B
+f1::
 unit := getSelectedUnitIndex()
 pAbilities := getUnitAbilityPointer(unit)
 type := getUnitType(unit)
 owner := getUnitOwner(unit)
-msgbox % isChatOpen()
-return 
 msgbox % chex(getUnitAddress(unit))
 msgbox % chex(getUnitAddress(unit)+0x1E8)
 return 
++f1::
+test()
+return 
 
+f2::
+ScBase := getProcessBaseAddress(GameIdentifier)
+msgbox % chex(ScBase)
+address := 0x0182674B ; Includes SC base ;SC2.AssertAndCrash+4E7EAB
+address -= ScBase 
+IDAAddress := address + 0x400000
+msgbox % chex(IDAAddress)
+return 
+; 53674B
+; 93674B
+test()
+{
+	SetFormat, Integerfast, H
+	unit := getSelectedUnitIndex()
+	unitAddress := getUnitAddress(unit)
+
+	address1 := unitAddress + 80
+	address2 := unitAddress + 84
+
+	v1Value := readMemory(address1, GameIdentifier)
+	v1LoWord := v1Value & 0xFFFF 
+	v1HiBits := v1Value >> 12 
+
+	arrayIndex1 := (v1LoWord ^ v1HiBits) & 0xFFF 
+	arrayValue1 := readMemory(0x18886E8 + arrayIndex1 * 4, GameIdentifier)
+
+	v7 := ~(address2 - arrayValue1)
+	v7LoWord := v7 & 0xFFFF
+	v7HiBits := v7 >> 12
+
+	arrayIndex2 := (v7LoWord ^ v7HiBits) & 0xFFF 
+	arrayValue2 := readMemory(0x18886E8 + arrayIndex2 * 4, GameIdentifier)	
+	
+	v8 := address1 ^ arrayValue2
+
+	;arrayIndex3 := (v7LoWord ^ v7HiBits) & 0xFFF 
+	;arrayValue3 := readMemory(0x18886E8 + arrayIndex1 * 4, GameIdentifier)	
+
+	v10 := v8 ^ (v7^ address1 ^ arrayValue2) & 0x55555555
+	v11 := (v7 ^ (v7 ^ v8) & 0x55555555)
+	ListVars
+	msgbox % v7 
+}
 
 
 
@@ -13907,10 +13951,6 @@ msgbox % getUnitBuff(unit, "MothershipCoreApplyPurifyAB")
 return 
 
 
-f2::
-unit := getSelectedUnitIndex()
-msgbox % chex(getUnitAddress(unit))
-return
 +f2::
 unit := getSelectedUnitIndex()
 getUnitAbilitiesString(unit)
@@ -14065,19 +14105,41 @@ return
         return
     }
 
-/*
-SC2.AssertAndCrash+618D86 - 8B 0D 909AA002        - mov ecx,[SC2.exe+1889A90]
-; Jumps here
-SC2.AssertAndCrash+618DA2 - 33 0D 240A4F03        - xor ecx,[SC2.exe+2370A24]
-SC2.AssertAndCrash+618DA8 - 6A 01                 - push 01
-SC2.AssertAndCrash+618DAA - 81 F1 1839E48E        - xor ecx,8EE43918
-SC2.AssertAndCrash+618DB0 - 81 C1 28040000        - add ecx,00000428
-SC2.AssertAndCrash+618DB6 - E8 75F7FFFF           - call SC2.AssertAndCrash+618530
-	Inside function
-	...
-	SC2.AssertAndCrash+618556 - 89 46 1C              - mov [esi+1C],eax
-	....
-	SC2.AssertAndCrash+618534 - 8B F1                 - mov esi,ecx
 
-*/
+
+
+
+
+
+
+/*
+At game + 0x446A0
+int __usercall GsPointSetPoint@<eax>(void a1@<ebp>, int (a2)(void)@<esi>, int a3, int a4, int a5)
+{
+  return sub_6B629E8(a1, a2, a3, a4, a5);
+}
+int __usercall sub_6B629E8@<eax>(void *a1@<ebp>, int (*a2)(void)@<esi>, int a3, int a4, int a5)
+{
+  int v6; // edx@1
+  int v7; // ecx@1
+  int v8; // edx@1
+  int v9; // ecx@1
+  unsigned int v10; // eax@1
+  unsigned int v11; // eax@1
+  void *retaddr; // [sp+10h] [bp+0h]@1
+ 
+  retaddr = a1;
+  v6 = *(_DWORD *)(a5 + 4);
+  v7 = v6 ^ (v6 ^ *(_DWORD *)a5) & 0x55555555;
+  v11 = (*(_DWORD *)a5 ^ (v6 ^ *(_DWORD *)a5) & 0x55555555)
+      - dword_1C886E8[~((_WORD)v7 + (unsigned __int16)((unsigned int)v7 >> 12)) & 0xFFF];
+  v8 = v7 ^ dword_1C886E8[((*(_WORD *)a5 ^ ((unsigned __int16)v6 ^ *(_WORD *)a5) & 0x5555)
+                         - LOWORD(dword_1C886E8[~((_WORD)v7 + (unsigned __int16)((unsigned int)v7 >> 12)) & 0xFFF])
+                         - (unsigned __int16)(v11 >> 12)) & 0xFFF];
+  v10 = v11 - dword_1C886E8[((_WORD)v8 - (unsigned __int16)((unsigned int)v8 >> 12)) & 0xFFF];
+  v9 = v8 ^ dword_1C886E8[(~(_WORD)v10 - (unsigned __int16)(v10 >> 12)) & 0xFFF];
+  *(_DWORD *)a4 = v10;
+  *(_DWORD *)(a4 + 4) = v9;
+  return a2();
+}
 

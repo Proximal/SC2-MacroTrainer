@@ -103,17 +103,16 @@ Global B_LocalCharacterNameID
 , O2_SelectionPage
 , O3_SelectionPage
 
-, B_MapInfo
-, O_FileInfoPointer
+, Offsets_Map_NamePointer
 , B_MapStruct
 , O_mLeft
 , O_mBottom
 , O_mRight
 , O_mTop
-, B_camLeft
-, B_camBottom
-, B_camRight
-, B_camTop
+, Offsets_Camera_BorderLeft
+, Offsets_Camera_BorderBottom
+, Offsets_Camera_BorderRight
+, Offsets_Camera_BorderTop
 , aUnitMoveStates
 , B_UnitCursor
 , O1_UnitCursor
@@ -377,20 +376,21 @@ loadMemoryAddresses(base, version := "")
 
 		BuriedFilterFlag := 0x0000000010000000
 
-		 B_MapInfo := base + 0x357A010
-			O_FileInfoPointer := 0 
+		Offsets_Map_NamePointer := [base + 0x01F15DB8, 0x2A0] ; The string offset tends to end with this value
 
+		/* Not updated dont use.
 		; at B_MapStruct -0x5C is a pointer which list map file name, map name, description and other stuff
 		 B_MapStruct := base + 0x357A06C		;0x353C3B4 ;0x3534EDC ; 0X024C9E7C 
 			 O_mLeft := B_MapStruct + 0xDC	                                   
 			 O_mBottom := B_MapStruct + 0xE0	                                   
 			 O_mRight := B_MapStruct + 0xE4	    ; MapRight 157.999756 (akilon wastes) after dividing 4096   (647167 before)                  
 			 O_mTop := B_MapStruct + 0xE8	   	; MapTop: 622591 (akilon wastes) before dividing 4096  
-
-		B_camLeft := base + 0x314D8E0
-		B_camBottom := B_camLeft + 0x4
-		B_camRight := B_camBottom + 0x4
-		B_camTop := B_camRight + 0x4
+		*/ 
+		
+		Offsets_Camera_BorderLeft 	:= 	base + 0x1B7A87C        ; 0x314D8E0
+		Offsets_Camera_BorderBottom := 	Offsets_Camera_BorderLeft + 0x4
+		Offsets_Camera_BorderRight 	:= 	Offsets_Camera_BorderLeft + 0x8
+		Offsets_Camera_BorderTop 	:= 	Offsets_Camera_BorderLeft + 0xC
 
 		 aUnitMoveStates := { Idle: -1  ; ** Note this isn't actually a read in game type/value its just what my function will return if it is idle
 							, Amove: 0 		
@@ -398,7 +398,7 @@ loadMemoryAddresses(base, version := "")
 							, HoldPosition: 2
 							, Move: 256
 							, Follow: 512
-							, FollowNoAttack: 515} ; This is used by unit spell casters such as infestors and High temps which dont have a real attack 
+							, FollowNoAttack: 515} ; (ScanMove) This is used by unit spell casters such as infestors and High temps which dont have a real attack 
 			
 		B_UnitCursor :=	base + 0x314B920  
 			O1_UnitCursor := 0x2C0	 					
@@ -597,19 +597,19 @@ getMapPlayableTop()
 }
 getCameraBoundsLeft()
 {
-	return ReadMemory(B_camLeft, GameIdentifier) / 4096
+	return ReadMemory(Offsets_Camera_BorderLeft, GameIdentifier) / 4096
 }
 getCameraBoundsBottom()
 {
-	return ReadMemory(B_camBottom, GameIdentifier) / 4096
+	return ReadMemory(Offsets_Camera_BorderBottom, GameIdentifier) / 4096
 }
 getCameraBoundsRight()
 {
-	return ReadMemory(B_camRight, GameIdentifier) / 4096
+	return ReadMemory(Offsets_Camera_BorderRight, GameIdentifier) / 4096
 }
 getCameraBoundsTop()
 {
-	return ReadMemory(B_camTop, GameIdentifier) / 4096
+	return ReadMemory(Offsets_Camera_BorderTop, GameIdentifier) / 4096
 }
 
 ; 11/12/14
@@ -942,33 +942,45 @@ getPlayerColour(player)
 	}
 	Return aPlayerColour[ReadMemory(aSCOffsets["playerAddress", player] + Offsets_Player_Colour, GameIdentifier)]
 }
-/* Patch 3.3
-SC2.AssertAndCrash+164683 - A1 0CC16702           - mov eax,[SC2.exe+188C10C]
-SC2.AssertAndCrash+164688 - 33 05 F0A99602        - xor eax,[SC2.exe+1B7A9F0]
-SC2.AssertAndCrash+16468E - 35 1BF35324           - xor eax,2453F31B : [6FF78088]
-SC2.AssertAndCrash+164693 - 88 48 0D              - mov [eax+0D],cl
-*/
-; Patch 3.3 bytes changed. 
-; In lobby first byte = 10 second byte = 10
-; In game first byte = player number, second byte = player number - 1.
-; in replay when viewing 'everyone' perspective, both are 10h
-; when viewing an ai, 1st byte = player number,  2nd byte = 10h
-; when viewing a player, 1st byte = player number, 2nd byte = player number -1
+/* 
+Patch 3.0.3
 
-; There is a second static 2 byte value, but it only has the correct value during a game
-; 1st byte = slot 2 byte = slot
-getLocalPlayerNumber(byref replayByte := "") ;starts @ 1 (because the first player in the player structure is always player 0 = neutral)
-{	
-	static address
-	if !address  ; not sure if safe. Havent testesed what happens when regions change - can u even do that now?
+SC2.AssertAndCrash+164910 - 55                    - push ebp
+SC2.AssertAndCrash+164911 - 8B EC                 - mov ebp,esp
+SC2.AssertAndCrash+164913 - 81 EC 500D0000        - sub esp,00000D50
+SC2.AssertAndCrash+164919 - 53                    - push ebx
+SC2.AssertAndCrash+16491A - 56                    - push esi
+SC2.AssertAndCrash+16491B - 8B 35 0CC11B02        - mov esi,[SC2.exe+188C10C]
+SC2.AssertAndCrash+164921 - 33 35 F0A94A02        - xor esi,[SC2.exe+1B7A9F0]
+SC2.AssertAndCrash+164927 - 8A DA                 - mov bl,dl
+SC2.AssertAndCrash+164929 - 81 F6 1BF35324        - xor esi,2453F31B : [DCD00046] - esi + 0xB = address
+....
+...
+SC2.AssertAndCrash+164B18 - 88 46 0B              - mov [esi+0B],al  ; Writes to the player byte
+
+*/
+/*
+ Player Bytes **!!(unaligned!!)***
+ 0x10101010 outside of games
+ 0x00010001 game vs AI 
+ 0x01020102 in a real game it was  (player 2)
+ 0x10101010 Replay everyone 
+ 0x00011010 replay player1 
+ 0x10021010 replay player2 
+ 0xXXXXXXPB (PB = player byte)
+*/
+
+getLocalPlayerNumber()
+{
+	static address 
+	if !address
 	{
-		eax := readMemory(OffsetsSC2Base + 0x188C10C, GameIdentifier)
-		eax ^= readMemory(OffsetsSC2Base + 0x1B7A9F0, GameIdentifier)
-		eax ^= 0x2453F31B
-		address := eax += 0x0D 
+		esi := readMemory(OffsetsSC2Base + 0x188C10C, GameIdentifier)
+		esi ^= readMemory(OffsetsSC2Base + 0x1B7A9F0, GameIdentifier)
+		esi ^= 0x2453F31B
+		address := esi + 0xB
 	}
-	word := ReadMemory(address, GameIdentifier, 2) ;Local player slot is 1 Byte and 1 byte for replay)
-	Return word & 0xFF, replayByte := word >> 8 
+	return readMemory(address, GameIdentifier, 1)
 }
 
 getPlayerBaseCameraCount(player="")
@@ -1096,8 +1108,8 @@ numgetUnitEnergyRaw(ByRef unitDump, unit)
 {	global
 	Return numget(unitDump, unit * Offsets_Unit_StructSize + Offsets_Unit_Energy, "Uint") / 4096
 }
-; Damage which has been delt to the unit
-; need to substract max hp in unit to find actual health value/percentage
+; Damage which has been dealt to the unit
+; need to subtract max hp in unit to find actual health value/percentage
 ; Why am i Flooring these??? 11/2015
 getUnitHpDamage(unit)
 {	global
@@ -3034,8 +3046,10 @@ SetMiniMap(byref minimap)
 
 getMapName()
 {
-	MapFileInfo := readmemory(B_MapInfo + O_FileInfoPointer, GameIdentifier)
-	return ReadMemory_Str(MapFileInfo + 0x2A0, GameIdentifier)
+	MapFileInfo := readmemory(Offsets_Map_NamePointer[1], GameIdentifier)
+	return ReadMemory_Str(MapFileInfo + Offsets_Map_NamePointer[2], GameIdentifier)
+	;MapFileInfo := readmemory(B_MapInfo + O_FileInfoPointer, GameIdentifier)
+	;return ReadMemory_Str(MapFileInfo + 0x2A0, GameIdentifier)
 }
 
 ; Use these functions to get co-ordinates for clicking
