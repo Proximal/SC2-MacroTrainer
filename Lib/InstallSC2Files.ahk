@@ -226,6 +226,7 @@ InstallSC2Files()
 	FileInstall, Included Files\Used_Icons\Units\Zerg\zergling.png, %A_Temp%\UnitPanelMacroTrainer\zergling.png, 1
 	FileInstall, Included Files\Used_Icons\Units\Zerg\LurkerMP.png, %A_Temp%\UnitPanelMacroTrainer\LurkerMP.png, 1
 	FileInstall, Included Files\Used_Icons\Units\Zerg\Ravager.png, %A_Temp%\UnitPanelMacroTrainer\Ravager.png, 1
+	FileInstall, Included Files\Used_Icons\Units\Zerg\OverlordTransport.png, %A_Temp%\UnitPanelMacroTrainer\OverlordTransport.png, 1
 	
 	FileInstall, Included Files\Used_Icons\Upgrades\Protoss\ResearchWarpGate.png, %A_Temp%\UnitPanelMacroTrainer\ResearchWarpGate.png, 1
 	FileInstall, Included Files\Used_Icons\Upgrades\Protoss\ResearchCharge.png, %A_Temp%\UnitPanelMacroTrainer\ResearchCharge.png, 1
@@ -324,6 +325,7 @@ InstallSC2Files()
 	FileInstall, Included Files\Used_Icons\Upgrades\Zerg\zergmissileweapons1.png, %A_Temp%\UnitPanelMacroTrainer\zergmissileweapons1.png, 1
 	FileInstall, Included Files\Used_Icons\Upgrades\Zerg\zergmissileweapons2.png, %A_Temp%\UnitPanelMacroTrainer\zergmissileweapons2.png, 1
 	FileInstall, Included Files\Used_Icons\Upgrades\Zerg\zergmissileweapons3.png, %A_Temp%\UnitPanelMacroTrainer\zergmissileweapons3.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Zerg\MorphToTransportOverlord.png, %A_Temp%\UnitPanelMacroTrainer\MorphToTransportOverlord.png, 1
 
 	; This was previously used by dSpeak() and ResourHackIcons() - These functions are not used any more
 	; Use the Non-MD version so don't need to worry about msvcr100.dll

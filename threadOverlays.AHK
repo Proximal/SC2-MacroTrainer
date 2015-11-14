@@ -173,6 +173,8 @@ gameChange()
 	{
 		; aStringTable and aUnitModel are super global declared in memory and general functions
 		aUnitModel := [], aStringTable := [], MT_CurrentGame := []
+		aSCOffsets["playerAddress"] := new classAddressCachePlayerUnit("playerAddress")
+		aSCOffsets["unitAddress"] := new classAddressCachePlayerUnit("getUnitAddress")
 		if WinActive(GameIdentifier)
 			ReDrawIncome := ReDrawResources := ReDrawArmySize := ReDrawWorker := RedrawUnit := ReDrawIdleWorkers := ReDrawLocalPlayerColour := 1
 		getPlayers(aPlayer, aLocalPlayer, aEnemyAndLocalPlayer)
@@ -975,7 +977,7 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 	aEnemyUnits := [], aEnemyUnitConstruction := [], aEnemyCurrentUpgrades := [], aMiscUnitPanelInfo := []
 	
 	 ; Mothership cant really morph - but might as well add it  inside the MSC section
-	static aUnitMorphingNames := {"Egg": True, "RavagerCocoon": True, "BanelingCocoon": True, "BroodLordCocoon": True, "OverlordCocoon": True, "MothershipCore": True, "Mothership": True }
+	static aUnitMorphingNames := {"Egg": True, "RavagerCocoon": True, "LurkerMPEgg": True, "BanelingCocoon": True, "BroodLordCocoon": True, "OverlordCocoon": True, "TransportOverlordCocoon": True, "MothershipCore": True, "Mothership": True }
 ;	if !aEnemyUnitPriorities	;because having  GLOBAL aEnemyUnitPriorities := [] results in it getting cleared each function run
 ;		aEnemyUnitPriorities := []
 	loop, % Unitcount := DumpUnitMemory(MemDump)
@@ -1144,6 +1146,11 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 							progress := getUnitMorphTime(unit, Type)
 							, QueuedPriority := aUnitInfo[Type := aUnitID["Ravager"], "Priority"], Count := 1
 						}
+						else if (Type = aUnitID["LurkerMPEgg"])
+						{
+							progress := getUnitMorphTime(unit, Type)
+							, QueuedPriority := aUnitInfo[Type := aUnitID["LurkerMP"], "Priority"], Count := 1
+						}
 						else if (Type = aUnitID["BanelingCocoon"])
 						{
 							progress := getBanelingMorphTime(numgetUnitAbilityPointer(MemDump, unit))
@@ -1158,6 +1165,13 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 						{
 							progress := getUnitMorphTime(unit, Type)
 							, QueuedPriority := aUnitInfo[Type := aUnitID.Overseer, "Priority"], Count := 1
+						}
+						else if (Type = aUnitID["TransportOverlordCocoon"])
+						{
+							progress := getUnitMorphTime(unit, Type)
+							, QueuedPriority := aUnitInfo[Type := aUnitID.OverlordTransport, "Priority"], Count := 1
+							aEnemyCurrentUpgrades[Owner, "MorphToTransportOverlord"] := {"progress": (aEnemyCurrentUpgrades[Owner, "MorphToTransportOverlord"].progress > progress ? aEnemyCurrentUpgrades[Owner, "MorphToTransportOverlord"].progress : progress)
+																					, "count": round(aEnemyCurrentUpgrades[Owner, "MorphToTransportOverlord"].count) + 1 }
 						}
 						else if (Type = aUnitId["MothershipCore"] || Type = aUnitId["Mothership"])
 						{
@@ -1184,7 +1198,7 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 	   	}
 	}
 
-	; This is a good method to account for woker count (zerg). I believe I have nailed the tallying method so I will keep using this method.
+	; This is a good method to account for worker count (zerg). I believe I have nailed the tallying method so I will keep using this method.
 	; The other reason is when fucking around in the map editor and you spawn as a race different to the created units you will end
 	; up with two types of workers listed. Perhaps people use this unit panel in custom non-melee games? doubtful. But this could cause a similar issue.
 	
@@ -1237,14 +1251,14 @@ FilterUnits(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aUnitPanelUni
 	STATIC aAddUnits 	:=	{"Terran": {SupplyDepotLowered: "SupplyDepot", WidowMineBurrowed: "WidowMine", CommandCenterFlying: "CommandCenter", OrbitalCommandFlying: "OrbitalCommand"
 										, BarracksFlying: "Barracks", FactoryFlying: "Factory", StarportFlying: "Starport", SiegeTankSieged: "SiegeTank",  ThorHighImpactPayload: "Thor", VikingAssault: "VikingFighter", LiberatorAG: "Liberator"}
 							, "Zerg": {DroneBurrowed: "Drone", ZerglingBurrowed: "Zergling", HydraliskBurrowed: "Hydralisk", UltraliskBurrowed: "Ultralisk", RoachBurrowed: "Roach"
-							, InfestorBurrowed: "Infestor", BanelingBurrowed: "Baneling", QueenBurrowed: "Queen", SporeCrawlerUprooted: "SporeCrawler", SpineCrawlerUprooted: "SpineCrawler"}} 
-							
+							, InfestorBurrowed: "Infestor", BanelingBurrowed: "Baneling", QueenBurrowed: "Queen", SporeCrawlerUprooted: "SporeCrawler", SpineCrawlerUprooted: "SpineCrawler"
+							, LurkerMPBurrowed: "LurkerMP", "RavagerBurrowed": Ravager}} 
 	STATIC aAddConstruction := {"Terran": {BarracksTechLab: "TechLab", BarracksReactor: "Reactor", FactoryTechLab: "TechLab", FactoryReactor: "Reactor", StarportTechLab: "TechLab", StarportReactor: "Reactor"}}
 
 
 	STATIC aUnitOrder := 	{"Terran": ["SCV", "OrbitalCommand", "PlanetaryFortress", "CommandCenter"]
 							, "Protoss": ["Probe", "Nexus"]
-							, "Zerg": ["Drone","Hive","Lair", "Hatchery"]}
+							, "Zerg": ["Drone","Hive","Lair", "Hatchery", "Larva", "Overlord", "OverlordTransport"]}
 
 	STATIC aAddMorphing := {"Zerg": {BanelingCocoon: "Baneling"}}
 	

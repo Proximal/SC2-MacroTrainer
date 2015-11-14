@@ -4966,7 +4966,9 @@ getUnitMorphTime(unit, unitType, percent := True)
 	{
 		hasRun := True 
 		aMorphStrings := { 	aUnitID.OverlordCocoon: ["MorphToOverseer"]
+						 ,	aUnitID.TransportOverlordCocoon: ["MorphToTransportOverlord"]
 						 ,	aUnitID.RavagerCocoon: ["MorphToRavager"]
+						 ,	aUnitID.LurkerMPEgg: ["MorphToLurker"]
 						 ,	aUnitID.BroodLordCocoon: ["MorphToBroodLord"]
 						 ,	aUnitID.Spire: ["UpgradeToGreaterSpire"]
 						 ,  aUnitID.Hatchery: ["UpgradeToLair"]

@@ -3718,15 +3718,15 @@ try
 					Gui, Add, Button, x+5 yp w30 h23 vTest_VOL_All gTest_VOL, Test
 
 		Gui, Add, GroupBox, Xs+171 ys+116 w245 h170, Debugging
-			Gui, Add, Button, % "xp+10 yp+25 GdebugListVars w75 h25 disabled" round(A_IsCompiled),  List Variables
-			Gui, Add, Button, xp+90 yp gDrawSCUIOverlay  w75 h25, SC UI Pos
+			Gui, Add, Button, % "xp+10 yp+20 GdebugListVars w75 h25 disabled" round(A_IsCompiled),  List Variables
+			Gui, Add, Button, xp+90 yp gDrawSCUIOverlay  w75 h20, SC UI Pos
 			Gui, Add, Button, xp yp+30 gPerformPatternScan  w75 h25, Pattern Scan
 			Gui, Add, Button, xp-90 yp  Gg_GetDebugData w75 h25,  Debug Data
 			Gui, Add, Button, xp yp+30  Gg_DebugKey w75 h25,  Key States
 			Gui, Add, Button, xp+90 yp gDebugSCHotkeys  w75 h25, SC Hotkeys
 			Gui, Add, Button, xp-90 yp+30  GdegbugGUIStats vdegbugGUIVar w75 h25, Control Pos
 			Gui, Add, Button, xp+90 yp  gOptionesMenuDebugFiles w75 h25, Debug Files
-			Gui, Add, Button, xp+90 yp  gDumpUnitTypes w75 h25, Dump Unit IDs
+			Gui, Add, Button, xp yp+30  gDumpUnitTypes w75 h25, Dump Unit IDs
 
 
 		Gui, Add, GroupBox, Xs+171 ys+290 w245 h60, Emergency Restart Key
@@ -6221,6 +6221,8 @@ OptionsMenuTree()
 			GUIcontrol, Hide, %visibleTab%
 		GUIcontrol, Show, % visibleTab := aGUITabs[optionText]
 		WinSet, Redraw,, V%ProgramVersion% Settings  ; redrawing whole thing as i noticed very very rarely (when a twitch stream open?) the save/cancel/apply buttons disappear
+		; *** I noticed the redraw falling after display the settings tab 
+		; this was due to a rough new button that slightly extended out past the margins of its parent tab!!	
 	}
 	return 
 } 	
@@ -13910,6 +13912,7 @@ getStructureProductionInfo(unit, type, a, qs)
 msgbox % clipboard := a.1.item
 
 msgbox % getUnitType(unit) "`n" getUnitName(unit) "`n" getUnitNameAlternate(unit)
+	. "`n" aUnitName[type] "`n" getUnitSubGroupPriority(unit)
 return 
 
 msgbox % chex(getUnitAddress(unit))

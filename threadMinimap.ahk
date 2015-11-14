@@ -110,6 +110,8 @@ gameChange(UserSavedAppliedSettings := False)
 		aStringTable := []
 		aMiniMapWarning := [], a_BaseList := [], aGatewayWarnings := [], aCompleteStructures := []
 		aCurrentGameTemp := []
+		aSCOffsets["playerAddress"] := new classAddressCachePlayerUnit("playerAddress")
+		aSCOffsets["unitAddress"] := new classAddressCachePlayerUnit("getUnitAddress")
 		if WinActive(GameIdentifier)
 			ReDrawIncome := ReDrawResources := ReDrawArmySize := ReDrawWorker := RedrawUnit := ReDrawIdleWorkers := ReDrawLocalPlayerColour := 1
 		getPlayers(aPlayer, aLocalPlayer)
