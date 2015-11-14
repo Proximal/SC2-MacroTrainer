@@ -231,10 +231,17 @@ SC2.GetBattlenetAllocator+46D67 - 33 8E 44630100        - xor ecx,[esi+00016344]
 			}
 		}
 	}	
-	B_InputStructure()
+/*
+SC2.exe+1472D - 33 C0                 - xor eax,eax
+SC2.exe+1472F - 89 4E 14              - mov [esi+14],ecx
+SC2.exe+14732 - 89 46 18              - mov [esi+18],eax
+SC2.exe+14735 - 8B 15 24A6C302        - mov edx,[SC2.exe+188A624]
+*/
+
+	Offsets_InputStructure()
 	{
-		if (address := this.mem.modulePatternScan("", 0x33, 0xC9, 0x89, 0x48, 0x18, 0x8B, 0x15, "?", "?", "?", "?")) > 0
-			return this.mem.Read(address + 7)
+		if (address := this.mem.modulePatternScan("", 0x33, 0xC0, 0x89, 0x4E, 0x14, 0x89, 0x46, 0x18, 0x8B, 0x15, "?", "?", "?", "?")) > 0
+			return this.mem.Read(address + 10)
 	}
 /*
 DB ? ? 89 0D ? ? ? ? 89 15 ? ? ? ? 85 C9
@@ -244,9 +251,9 @@ SC2.AssertAndCrash+62C3B4 - 89 15 48527103        - mov [SC2.exe+2375248],edx
 SC2.AssertAndCrash+62C3BA - 85 C9                 - test ecx,ecx
 */	
 
-	B_HorizontalResolution()
+	Offsets_HorizontalResolution()
 	{
-		if (address := this.mem.modulePatternScan("", 0xDB, "?", "?", 0x89, 0x0D, "?", "?", "?", "?", 0x89, 0x15, "?", "?", "?", "?", 0x85, 0xC9)) > 0 ; Second group of ?s isVertical res
+		if (address := this.mem.modulePatternScan("", 0xDB, 0x45, 0xFC, 0x89, 0x0D, "?", "?", "?", "?", 0x89, 0x15, "?", "?", "?", "?", 0x85, 0xC9)) > 0 ; Second group of ?s isVertical res
 			return this.mem.Read(address + 5)
 	}
 	B_localArmyUnitCount()
@@ -296,7 +303,7 @@ SC2.AssertAndCrash+62C3BA - 85 C9                 - test ecx,ecx
 		setformat, IntegerFast, H ;This isn't called from autoExec so don't bother changing it back. Easy way to ensure displayed as hex while using FastMode and not having to do conversions
 		obj := OrderedArray()
 		methods :=	"B_Timer|B_Timer|P_SelectionPage|B_LocalPlayerSlot|P_IdleWorker|P_ChatFocus|P_MenuFocus|Offsets_Selection_Base|Offsets_TeamColoursEnabled|B_MapStruct|B_camLeft|P_IsBuildCardDisplayed"
-				. 	"|B_CameraDragScroll|B_CameraMovingViaMouseAtScreenEdge|Offsets_IsGamePaused|B_FramesPerSecond|Offsets_GameSpeed (must be in game)|B_ReplayFolder|B_InputStructure|B_HorizontalResolution|B_localArmyUnitCount"
+				. 	"|B_CameraDragScroll|B_CameraMovingViaMouseAtScreenEdge|Offsets_IsGamePaused|B_FramesPerSecond|Offsets_GameSpeed (must be in game)|B_ReplayFolder|Offsets_InputStructure|Offsets_HorizontalResolution|B_localArmyUnitCount"
 		loop, parse, methods, |
 			obj[A_LoopField] := this[StrSplit(A_LoopField, A_Space).1]()
 		obj["B_pStructure Copy"] := this.B_pStructureNuke(structureSize), obj["S_pStructure Copy"] := structureSize

@@ -96,10 +96,7 @@ Global B_LocalCharacterNameID
 
 , Offsets_localArmyUnitCountPointer
 , Offsets_TeamColoursEnabled
-, P_SelectionPage
-, O1_SelectionPage
-, O2_SelectionPage
-, O3_SelectionPage
+, Offsets_SelectionPage
 
 , Offsets_Map_NamePointer
 , B_MapStruct
@@ -116,19 +113,15 @@ Global B_LocalCharacterNameID
 , O1_UnitCursor
 , O2_UnitCursor
 
-, P_IsUserPerformingAction
-, O1_IsUserPerformingAction
-, P_IsBuildCardDisplayed
-, 01_IsBuildCardDisplayed
-, 02_IsBuildCardDisplayed
-, 03_IsBuildCardDisplayed
+, Offsets_IsUserPerformingAction
+, Offsets_IsBuildCardDisplayed
 , P_ChatInput
 , O1_ChatInput
 , O2_ChatInput
 , O3_ChatInput
 , O4_ChatInput
 , B_CameraDragScroll
-, B_InputStructure
+, Offsets_InputStructure
 , B_iMouseButtons
 , B_iSpace
 , B_iNums
@@ -139,10 +132,7 @@ Global B_LocalCharacterNameID
 , B_iFkeys
 , B_iModifiers
 
-, B_CameraMovingViaMouseAtScreenEdge
-, 01_CameraMovingViaMouseAtScreenEdge
-, 02_CameraMovingViaMouseAtScreenEdge
-, 03_CameraMovingViaMouseAtScreenEdge
+, Offsets_CameraMovingViaMouseAtScreenEdge
 , Offsets_IsGamePaused
 , B_FramesPerSecond
 , Offsets_GameSpeed
@@ -357,18 +347,18 @@ loadMemoryAddresses(base, version := "")
 
 		; gives the select army unit count (i.e. same as in the select army icon) - unit count not supply
 		; dont confuse with similar value which includes army unit counts in production - or if in map editor unit count/index.
-		; Shares a common base with P_IsUserPerformingAction, SelectionPtr, IdleWorkerPtr, ChatFocusPtr, B_UnitCursor, B_CameraMovingViaMouseAtScreenEdge (never realised it was so many derp)
+		; Shares a common base with Offsets_IsUserPerformingAction, SelectionPtr, IdleWorkerPtr, ChatFocusPtr, B_UnitCursor, Offsets_CameraMovingViaMouseAtScreenEdge (never realised it was so many derp)
 
-		Offsets_localArmyUnitCountPointer := [base + 0x0181A358, 0x8, 0x138]
+		Offsets_localArmyUnitCountPointer := [base + 0x0181C360, 0x8, 0x138] ; ended with these two offsets last two patches 3.0.5
 
 
 		 Offsets_TeamColoursEnabled := base + 0x1B7C144 ; 2 when team colours is on, else 0 (There are two valid addresses for this)
 		 
 
-		 P_SelectionPage := base + 0x314B920  	; Tends to end with these offsets. ***theres one other 3 lvl pointer but for a split second (every few second or so) it points to 
-			 O1_SelectionPage := 0x320			; the wrong address! You need to increase CE timer resolution to see this happening! Or better yet use the 'continually perform the pointer scan until stopped' option.
-			 O2_SelectionPage := 0x15C			;this is for the currently selected unit portrait page ie 1-6 in game (really starts at 0-5)
-			 O3_SelectionPage := 0x14C 			;might actually be a 2 or 1 byte value....but works fine as 4
+		 Offsets_SelectionPage := [base + 0x0181D110, 0x8, 0x70, 0xC0]  	; Tends to end with these offsets. ***theres one other 3 lvl pointer but for a split second (every few second or so) it points to 
+			 				; the wrong address! You need to increase CE timer resolution to see this happening! Or better yet use the 'continually perform the pointer scan until stopped' option.
+			 				;this is for the currently selected unit portrait page ie 1-6 in game (really starts at 0-5)
+							;might actually be a 2 or 1 byte value....but works fine as 4
 
 
 		BuriedFilterFlag := 0x0000000010000000
@@ -402,8 +392,8 @@ loadMemoryAddresses(base, version := "")
 			O2_UnitCursor := 0x21C 					
 
 	 	; This base can be the same as B_UnitCursor				; If used as 4byte value, will return 256 	there are 2 of these memory addresses
-		 P_IsUserPerformingAction := base + 0x314B920 			; This is a 1byte value and return 1  when user is casting or in is rallying a hatch via gather/rally or is in middle of issuing Amove/patrol command but
-			 O1_IsUserPerformingAction := 0x230 				; if youre searching for a 4byte value in CE offset will be at 0x254 (but really if using it as 1 byte it is 0x255) - but im lazy and use it as a 4byte with my pointer command
+		 Offsets_IsUserPerformingAction := [base + 0x024E0CF4, 0x9C]	; This is a 1byte value and return 1  when user is casting or in is rallying a hatch via gather/rally or is in middle of issuing Amove/patrol command but
+												 				; if youre searching for a 4byte value in CE offset will be at 0x254 (but really if using it as 1 byte it is 0x255) - but im lazy and use it as a 4byte with my pointer command
 																; also 1 when placing a structure (after structure is selected) or trying to land rax to make a addon Also gives 1 when trying to burrow spore/spine
 																; When searching for 4 byte value this offset will be 0x254 
 																; this address is really really useful!
@@ -418,11 +408,12 @@ loadMemoryAddresses(base, version := "")
 
 	*/
 		; This tends to have the same offsets (though there are a few to choose from)
-		 P_IsBuildCardDisplayed := base + 0x315FA34 		; this displays 1 (swarm host) or 0 with units selected - displays 7 when targeting reticle displayed/or placing a building (same thing)
-			 01_IsBuildCardDisplayed := 0x7C 				; **but when either build card is displayed it displays 6 (even when all advanced structures are greyed out)!!!!
-			 02_IsBuildCardDisplayed := 0x74 				; also displays 6 when the toss hallucination card is displayed
-			 03_IsBuildCardDisplayed := 0x398 				; could use this in place of the current 'is user performing action offset'
-	 														; Note: There is another address which has the same info, but when placing a building it will swap between 6 & 7 (not stay at 7)!
+		 Offsets_IsBuildCardDisplayed := [base + 0x0181C2F4, 0x8, 0xF4, 0x28C]	
+		 	; this displays 1 (swarm host) or 0 with units selected - displays 7 when targeting reticle displayed/or placing a building (same thing)
+			; **but when either build card is displayed it displays 6 (even when all advanced structures are greyed out)!!!!
+			; also displays 6 when the toss hallucination card is displayed
+			; could use this in place of the current 'is user performing action offset'
+			; Note: There is another address which has the same info, but when placing a building it will swap between 6 & 7 (not stay at 7)!
 
 
 	 	; There are two chat buffers - One blanks after you press return (to send chat)
@@ -453,11 +444,11 @@ loadMemoryAddresses(base, version := "")
 											  	;shift = 1, ctrl = 2, alt = 4 (and add them together)
 
 															
-		 B_CameraDragScroll := base + 0x308E7A8   			; 1 byte Returns 1 when user is moving camera via DragScroll i.e. mmouse button the main map But not when on the minimap (or if mbutton is held down on the unit panel)
+		 B_CameraDragScroll := base + 0x188A314   			; 1 byte Returns 1 when user is moving camera via DragScroll i.e. mmouse button the main map But not when on the minimap (or if mbutton is held down on the unit panel)
 
 		
-		 B_InputStructure := base + 0x308EAB8  		
-			 B_iMouseButtons := B_InputStructure + 0x0 		; 1 Byte 	MouseButton state 1 for Lbutton,  2 for middle mouse, 4 for rbutton, 8 xbutton1, 16 xbutton2
+		 Offsets_InputStructure := base + 0x188A624  		
+			 B_iMouseButtons := Offsets_InputStructure + 0x0 		; 1 Byte 	MouseButton state 1 for Lbutton,  2 for middle mouse, 4 for rbutton, 8 xbutton1, 16 xbutton2
 			 B_iSpace := B_iMouseButtons + 0x8 				; 1 Bytes
 			 B_iNums := B_iSpace + 0x2  					; 2 Bytes
 			 B_iChars := B_iNums + 0x2 						; 4 Bytes 
@@ -469,12 +460,12 @@ loadMemoryAddresses(base, version := "")
 
 
 
-		 B_CameraMovingViaMouseAtScreenEdge := base + 0x314B920  		; Really a 1 byte value value indicates which direction screen will scroll due to mouse at edge of screen
-			 01_CameraMovingViaMouseAtScreenEdge := 0x2C0				; 1 = Diagonal Left/Top 		4 = Left Edge
-			 02_CameraMovingViaMouseAtScreenEdge := 0x20C				; 2 = Top 						5 = Right Edge			
-			 03_CameraMovingViaMouseAtScreenEdge := 0x5A4				; 3 = Diagonal Right/Top 	  	6 = Diagonal Left/ Bot	
-																		; 7 = Bottom Edge 			 	8 = Diagonal Right/Bot 
-																		; Note need to do a pointer scan with max offset > 1200d! Tends to have the same offsets
+		 Offsets_CameraMovingViaMouseAtScreenEdge := [base + 0x01836324, 0x0, 0x2E4, 0x8, 0x688]  		; Really a 1 byte value value indicates which direction screen will scroll due to mouse at edge of screen
+			 				; 1 = Diagonal Left/Top 		4 = Left Edge
+			 				; 2 = Top 						5 = Right Edge			
+			 				; 3 = Diagonal Right/Top 	  	6 = Diagonal Left/ Bot	
+							; 7 = Bottom Edge 			 	8 = Diagonal Right/Bot 
+							; Note need to do a pointer scan with max offset > 1200d! Tends to have the same offsets
 		Offsets_IsGamePaused := base + 0x55E3460 						
 
 		B_FramesPerSecond := base + 0x5008BC4
@@ -1839,7 +1830,7 @@ IsMouseButtonActive()
 
 IsCameraMovingViaMouseAtScreenEdge()
 {	GLOBAL
-	return pointer(GameIdentifier, B_CameraMovingViaMouseAtScreenEdge, 01_CameraMovingViaMouseAtScreenEdge, 02_CameraMovingViaMouseAtScreenEdge, 03_CameraMovingViaMouseAtScreenEdge)
+	return pointer(GameIdentifier, Offsets_CameraMovingViaMouseAtScreenEdge*)
 }
 
 IsKeyDownSC2Input(CheckMouseButtons := False)
@@ -2623,7 +2614,7 @@ numGetUnitSelectionObject(ByRef aSelection)
 ; 0 is displayed when no unit is selected as well as 1 unit (i.e. when the page tabs are not visible)
 getUnitSelectionPage()	
 {	global 	
-	return pointer(GameIdentifier, P_SelectionPage, O1_SelectionPage, O2_SelectionPage, O3_SelectionPage)
+	return pointer(GameIdentifier, Offsets_SelectionPage*)
 }
 ; Starts at 0 - like the SC selection page value
 ; Like SC max of 5 (0-5)
@@ -3769,19 +3760,18 @@ isUserPerformingActionIgnoringCamera()
 ; this gives 256 when reticle/casting cursor is present (includes attacking)
 isCastingReticleActive()
 {	GLOBAL
-	return pointer(GameIdentifier, P_IsUserPerformingAction, O1_IsUserPerformingAction)
+	return pointer(GameIdentifier, Offsets_IsUserPerformingAction*)
 }
 
 ; for the second old pointer
 ; This will return 1 if the basic or advanced building selection card is up (even if all structures greyed out)
 ; This will also return 1 when user is trying to place the structure
 isUserBusyBuilding()	
-{ 	GLOBAL
+{ 	
 	; if 6, it means that either the basic or advanced build cards are displayed - even if all are greyed out (and hence a worker is selected) - give 1 for most other units, but gives 7 for targeting reticle
-	if ( 6 = pointer(GameIdentifier, P_IsBuildCardDisplayed, 01_IsBuildCardDisplayed, 02_IsBuildCardDisplayed, 03_IsBuildCardDisplayed)) 
-		return 1 ; as it seems 6 is only displayed when the worker build cards are up, so don't need to double check with below pointer
+	return 6 = pointer(GameIdentifier, Offsets_IsBuildCardDisplayed*) 
+	; as it seems 6 is only displayed when the worker build cards are up, so don't need to double check with below pointer
 	;	return pointer(GameIdentifier, P_IsUserBuildingWithWorker, 01_IsUserBuildingWithWorker, 02_IsUserBuildingWithWorker, 03_IsUserBuildingWithWorker, 04_IsUserBuildingWithWorker)
-	else return 0
 }
 	
 
@@ -5000,9 +4990,11 @@ getUnitMorphTime(unit, unitType, percent := True)
 
 getBanelingMorphTime(pAbilities)
 {
-	p := pointer(GameIdentifier, findAbilityTypePointer(pAbilities, aUnitID.BanelingCocoon, "MorphZerglingToBaneling"), 0x164, 0x0)
-	totalTime := ReadMemory(p + 0x80, GameIdentifier)
-	timeRemaining := ReadMemory(p + 0x84, GameIdentifier)
+	; In lotv MorphZerglingToBaneling has an additional node with large offsets....  que1 is a cleaner pointer, and totalTime/timerRemaing end in the offsets they did in hots
+	;p := pointer(GameIdentifier, findAbilityTypePointer(pAbilities, aUnitID.BanelingCocoon, "MorphZerglingToBaneling"), 0x164, 0x0)
+	p := pointer(GameIdentifier, findAbilityTypePointer(pAbilities, aUnitID.BanelingCocoon, "que1"), 0x44, 0x0)
+	, totalTime := ReadMemory(p + 0x80, GameIdentifier)
+	, timeRemaining := ReadMemory(p + 0x84, GameIdentifier)
 	return round((totalTime - timeRemaining)/totalTime, 2)
 }
 ; Merge Time = 12s = 786432

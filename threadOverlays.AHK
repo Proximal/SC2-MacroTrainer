@@ -1148,13 +1148,15 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 						}
 						else if (Type = aUnitID["LurkerMPEgg"])
 						{
-							progress := getUnitMorphTime(unit, Type)
-							, QueuedPriority := aUnitInfo[Type := aUnitID["LurkerMP"], "Priority"], Count := 1
+							;progress := getUnitMorphTime(unit, Type)
+							;, QueuedPriority := aUnitInfo[Type := aUnitID["LurkerMP"], "Priority"], Count := 1
+							progress := getUnitMorphTime(unit, Type), count := 1
+							QueuedPriority := priority
 						}
 						else if (Type = aUnitID["BanelingCocoon"])
 						{
 							progress := getBanelingMorphTime(numgetUnitAbilityPointer(MemDump, unit))
-							, QueuedPriority := aUnitInfo[aUnitID.Baneling, "Priority"], Count := 1
+							, QueuedPriority := aUnitInfo[Type, "Priority"], Count := 1
 						}
 						else if (Type = aUnitID["BroodLordCocoon"])
 						{
@@ -1252,15 +1254,16 @@ FilterUnits(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aUnitPanelUni
 										, BarracksFlying: "Barracks", FactoryFlying: "Factory", StarportFlying: "Starport", SiegeTankSieged: "SiegeTank",  ThorHighImpactPayload: "Thor", VikingAssault: "VikingFighter", LiberatorAG: "Liberator"}
 							, "Zerg": {DroneBurrowed: "Drone", ZerglingBurrowed: "Zergling", HydraliskBurrowed: "Hydralisk", UltraliskBurrowed: "Ultralisk", RoachBurrowed: "Roach"
 							, InfestorBurrowed: "Infestor", BanelingBurrowed: "Baneling", QueenBurrowed: "Queen", SporeCrawlerUprooted: "SporeCrawler", SpineCrawlerUprooted: "SpineCrawler"
-							, LurkerMPBurrowed: "LurkerMP", "RavagerBurrowed": Ravager}} 
-	STATIC aAddConstruction := {"Terran": {BarracksTechLab: "TechLab", BarracksReactor: "Reactor", FactoryTechLab: "TechLab", FactoryReactor: "Reactor", StarportTechLab: "TechLab", StarportReactor: "Reactor"}}
+							, LurkerMPBurrowed: "LurkerMP", "RavagerBurrowed": Ravager}
+							, "Protoss": {PylonOvercharge: "Pylon"}} 
+	STATIC aAddConstruction := {"Terran": {BarracksTechLab: "TechLab", BarracksReactor: "Reactor", FactoryTechLab: "TechLab", FactoryReactor: "Reactor", StarportTechLab: "TechLab", StarportReactor: "Reactor"}
+								, "Zerg": {BanelingCocoon: "Baneling", LurkerMPEgg: "LurkerMP"}}
 
 
 	STATIC aUnitOrder := 	{"Terran": ["SCV", "OrbitalCommand", "PlanetaryFortress", "CommandCenter"]
 							, "Protoss": ["Probe", "Nexus"]
 							, "Zerg": ["Drone","Hive","Lair", "Hatchery", "Larva", "Overlord", "OverlordTransport"]}
 
-	STATIC aAddMorphing := {"Zerg": {BanelingCocoon: "Baneling"}}
 	
 	; aUnitPanelUnits is an object which contains the custom filtered (removed) user selected units
 	;	aUnitPanelUnits ----Race
@@ -1354,22 +1357,6 @@ FilterUnits(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aUnitPanelUni
 		}
 
 
-		; this is just so banelings wont show up in
-		for subUnit, mainUnit in aAddMorphing[Race]
-		{
-			subunit := aUnitID[subUnit]
-			subPriority := aUnitInfo[subunit, "Priority"]
-			if (total := priorityObject[subPriority, subunit])
-			{
-				; baneling priority = 16, morphing bane = 1
-				mainUnit := aUnitID[mainUnit]
-				if !priority := aUnitInfo[mainUnit, "Priority"]
-					priority := 16		; just for baneling
-				aEnemyUnitConstruction[owner, Priority, mainUnit] := round(aEnemyUnitConstruction[owner, Priority, mainUnit]) + total
-				priorityObject[subPriority].remove(subunit, "") ; remove the baneling cocoon
-			}
-		}
-
 
 		; It's possible for the priority to be blank for the 'Add units' unit types. As we add the sub unit to the main unit (and there might not be any main units)
 		; This can only occur when the unit panel/program is started mid match and no 'main' units currently exist to have their priorities cached
@@ -1417,7 +1404,7 @@ FilterUnits(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aUnitPanelUni
 	{
 		race := aPlayer[owner, "Race"]	
 
-		for subUnit, mainUnit in aAddConstruction[Race] ; As this point only Terrans will enter this loop. And its only for rectors/techLabs
+		for subUnit, mainUnit in aAddConstruction[Race] ; At this point only Terrans will enter this loop. And its only for rectors/techLabs
 		{
 			subunit := aUnitID[subUnit]
 			subPriority := aUnitInfo[subunit, "Priority"]
