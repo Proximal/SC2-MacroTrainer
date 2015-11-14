@@ -138,6 +138,8 @@ InstallSC2Files()
 	FileInstall, Included Files\Used_Icons\Units\Terran\vikingassault.png, %A_Temp%\UnitPanelMacroTrainer\vikingassault.png, 1
 	FileInstall, Included Files\Used_Icons\Units\Terran\vikingfighter.png, %A_Temp%\UnitPanelMacroTrainer\vikingfighter.png, 1
 	FileInstall, Included Files\Used_Icons\Units\Terran\widowmine.png, %A_Temp%\UnitPanelMacroTrainer\widowmine.png, 1
+	FileInstall, Included Files\Used_Icons\Units\Terran\Cyclone.png, %A_Temp%\UnitPanelMacroTrainer\Cyclone.png, 1
+	FileInstall, Included Files\Used_Icons\Units\Terran\Liberator.png, %A_Temp%\UnitPanelMacroTrainer\Liberator.png, 1
 	FileInstall, Included Files\Used_Icons\Abilities\Protoss\MothershipCoreApplyPurifyAB.png,  %A_Temp%\UnitPanelMacroTrainer\MothershipCoreApplyPurifyAB.png, 1	
 	FileInstall, Included Files\Used_Icons\Buildings\Protoss\assimilator.png,  %A_Temp%\UnitPanelMacroTrainer\assimilator.png, 1
 	FileInstall, Included Files\Used_Icons\Buildings\Protoss\cyberneticscore.png, %A_Temp%\UnitPanelMacroTrainer\cyberneticscore.png, 1
@@ -196,6 +198,8 @@ InstallSC2Files()
 	FileInstall, Included Files\Used_Icons\Buildings\Zerg\spire.png,  %A_Temp%\UnitPanelMacroTrainer\spire.png, 1
 	FileInstall, Included Files\Used_Icons\Buildings\Zerg\sporecrawler.png,  %A_Temp%\UnitPanelMacroTrainer\sporecrawler.png, 1
 	FileInstall, Included Files\Used_Icons\Buildings\Zerg\ultraliskcavern.png,  %A_Temp%\UnitPanelMacroTrainer\ultraliskcavern.png, 1
+	FileInstall, Included Files\Used_Icons\Buildings\Zerg\LurkerDenMP.png,  %A_Temp%\UnitPanelMacroTrainer\LurkerDenMP.png, 1
+	FileInstall, Included Files\Used_Icons\Buildings\Zerg\LurkerDenMP.png,  %A_Temp%\UnitPanelMacroTrainer\UpgradeToLurkerDenMP.png, 1
 	FileInstall, Included Files\Used_Icons\Units\Zerg\baneling.png, %A_Temp%\UnitPanelMacroTrainer\baneling.png, 1
 	FileInstall, Included Files\Used_Icons\Units\Zerg\BanelingCocoon.png, %A_Temp%\UnitPanelMacroTrainer\BanelingCocoon.png, 1
 	FileInstall, Included Files\Used_Icons\Units\Zerg\broodlord.png, %A_Temp%\UnitPanelMacroTrainer\broodlord.png, 1
@@ -216,10 +220,12 @@ InstallSC2Files()
 	FileInstall, Included Files\Used_Icons\Units\Zerg\overseer.png, %A_Temp%\UnitPanelMacroTrainer\overseer.png, 1
 	FileInstall, Included Files\Used_Icons\Units\Zerg\queen.png, %A_Temp%\UnitPanelMacroTrainer\queen.png, 1
 	FileInstall, Included Files\Used_Icons\Units\Zerg\roach.png, %A_Temp%\UnitPanelMacroTrainer\roach.png, 1
-	FileInstall, Included Files\Used_Icons\Units\Zerg\swarmhost.png, %A_Temp%\UnitPanelMacroTrainer\swarmhost.png, 1
+	FileInstall, Included Files\Used_Icons\Units\Zerg\SwarmHostMP.png, %A_Temp%\UnitPanelMacroTrainer\SwarmHostMP.png, 1
 	FileInstall, Included Files\Used_Icons\Units\Zerg\ultralisk.png, %A_Temp%\UnitPanelMacroTrainer\ultralisk.png, 1
 	FileInstall, Included Files\Used_Icons\Units\Zerg\viper.png, %A_Temp%\UnitPanelMacroTrainer\viper.png, 1
 	FileInstall, Included Files\Used_Icons\Units\Zerg\zergling.png, %A_Temp%\UnitPanelMacroTrainer\zergling.png, 1
+	FileInstall, Included Files\Used_Icons\Units\Zerg\LurkerMP.png, %A_Temp%\UnitPanelMacroTrainer\LurkerMP.png, 1
+	FileInstall, Included Files\Used_Icons\Units\Zerg\Ravager.png, %A_Temp%\UnitPanelMacroTrainer\Ravager.png, 1
 	
 	FileInstall, Included Files\Used_Icons\Upgrades\Protoss\ResearchWarpGate.png, %A_Temp%\UnitPanelMacroTrainer\ResearchWarpGate.png, 1
 	FileInstall, Included Files\Used_Icons\Upgrades\Protoss\ResearchCharge.png, %A_Temp%\UnitPanelMacroTrainer\ResearchCharge.png, 1
@@ -245,6 +251,7 @@ InstallSC2Files()
 	FileInstall, Included Files\Used_Icons\Upgrades\Protoss\ResearchGraviticBooster.png, %A_Temp%\UnitPanelMacroTrainer\ResearchGraviticBooster.png, 1
 	FileInstall, Included Files\Used_Icons\Upgrades\Protoss\ResearchGraviticDrive.png, %A_Temp%\UnitPanelMacroTrainer\ResearchGraviticDrive.png, 1
 	FileInstall, Included Files\Used_Icons\Upgrades\Protoss\ResearchInterceptorLaunchSpeedUpgrade.png, %A_Temp%\UnitPanelMacroTrainer\ResearchInterceptorLaunchSpeedUpgrade.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Protoss\AdeptResearchPiercingUpgrade.png, %A_Temp%\UnitPanelMacroTrainer\AdeptResearchPiercingUpgrade.png, 1
 	
 	FileInstall, Included Files\Used_Icons\Upgrades\Terran\ResearchTransformationServos.png, %A_Temp%\UnitPanelMacroTrainer\ResearchTransformationServos.png, 1
 	FileInstall, Included Files\Used_Icons\Upgrades\Terran\ResearchDrillClaws.png, %A_Temp%\UnitPanelMacroTrainer\ResearchDrillClaws.png, 1
@@ -280,8 +287,12 @@ InstallSC2Files()
 	FileInstall, Included Files\Used_Icons\Upgrades\Terran\TerranVehicleAndShipWeaponsLevel1.png, %A_Temp%\UnitPanelMacroTrainer\TerranVehicleAndShipWeaponsLevel1.png, 1
 	FileInstall, Included Files\Used_Icons\Upgrades\Terran\TerranVehicleAndShipWeaponsLevel2.png, %A_Temp%\UnitPanelMacroTrainer\TerranVehicleAndShipWeaponsLevel2.png, 1
 	FileInstall, Included Files\Used_Icons\Upgrades\Terran\TerranVehicleAndShipWeaponsLevel3.png, %A_Temp%\UnitPanelMacroTrainer\TerranVehicleAndShipWeaponsLevel3.png, 1
-
 	FileInstall, Included Files\Used_Icons\Upgrades\Terran\UpgradeBuildingArmorLevel1.png, %A_Temp%\UnitPanelMacroTrainer\UpgradeBuildingArmorLevel1.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Terran\BansheeSpeed.png, %A_Temp%\UnitPanelMacroTrainer\BansheeSpeed.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Terran\CycloneResearchLockOnDamageUpgrade.png, %A_Temp%\UnitPanelMacroTrainer\CycloneResearchLockOnDamageUpgrade.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Terran\ResearchBallisticRange.png, %A_Temp%\UnitPanelMacroTrainer\ResearchBallisticRange.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Terran\ResearchExplosiveShrapnelShells.png, %A_Temp%\UnitPanelMacroTrainer\ResearchExplosiveShrapnelShells.png, 1
+	FileInstall, Included Files\Used_Icons\Upgrades\Terran\ResearchHighCapacityFuelTanks.png, %A_Temp%\UnitPanelMacroTrainer\ResearchHighCapacityFuelTanks.png, 1
 
 	FileInstall, Included Files\Used_Icons\Upgrades\Zerg\EvolveFlyingLocusts.png, %A_Temp%\UnitPanelMacroTrainer\EvolveFlyingLocusts.png, 1
 	FileInstall, Included Files\Used_Icons\Upgrades\Zerg\ResearchLocustLifetimeIncrease.png, %A_Temp%\UnitPanelMacroTrainer\ResearchLocustLifetimeIncrease.png, 1

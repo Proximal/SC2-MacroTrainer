@@ -3726,6 +3726,7 @@ try
 			Gui, Add, Button, xp+90 yp gDebugSCHotkeys  w75 h25, SC Hotkeys
 			Gui, Add, Button, xp-90 yp+30  GdegbugGUIStats vdegbugGUIVar w75 h25, Control Pos
 			Gui, Add, Button, xp+90 yp  gOptionesMenuDebugFiles w75 h25, Debug Files
+			Gui, Add, Button, xp+90 yp  gDumpUnitTypes w75 h25, Dump Unit IDs
 
 
 		Gui, Add, GroupBox, Xs+171 ys+290 w245 h60, Emergency Restart Key
@@ -6139,6 +6140,25 @@ Run, MacroDebug
 msgbox Done.`nFiles located in Directory:`n%A_WorkingDir%\MacroDebug
 return 
 
+DumpUnitTypes:
+if !WinExist(GameIdentifier)
+{
+	msgbox, 0x30, ¯\_(ツ)_/¯, SC needs to be running!, 15
+	return 
+}
+else if !gettime()
+{
+	msgbox, 0x30, ¯\_(ツ)_/¯, You need to be in a SC game/replay!, 15
+	return 	
+}
+IfWinExist, Dump Unit Types Vr: %ProgramVersion%
+	WinClose
+dumpUnitTypes(output)
+Gui, New 
+Gui, Add, Edit, x12 y+10 w1000 h720 hwndHwndEdit readonly -E0x200, %output%
+Gui, Show,, Dump Unit Types Vr: %ProgramVersion%
+selectText(HwndEdit, -1) ; Deselect edit box text
+return
 
 debugFiles()
 {
@@ -12521,7 +12541,7 @@ class autoBuild
 			if (race = "terran")
 				addon := getAddonStatus(getUnitAbilityPointer(unitIndex), aUnitId[structureName], underConstruction)
 			else if (race = "zerg")
-				underConstruction := isHatchLairOrSpireMorphing(unitIndex, aUnitId[structureName]) ; Obviously not really under construction
+				underConstruction := isZergStructureMorphing(unitIndex, aUnitId[structureName]) ; Obviously not really under construction
 
 			if !underConstruction
 			{
@@ -13886,20 +13906,37 @@ unit := getSelectedUnitIndex()
 pAbilities := getUnitAbilityPointer(unit)
 type := getUnitType(unit)
 owner := getUnitOwner(unit)
+getStructureProductionInfo(unit, type, a, qs)
+msgbox % clipboard := a.1.item
+
+msgbox % getUnitType(unit) "`n" getUnitName(unit) "`n" getUnitNameAlternate(unit)
+return 
+
 msgbox % chex(getUnitAddress(unit))
 msgbox % chex(getUnitAddress(unit)+0x1E8)
 return 
 +f1::
-test()
+unit := getSelectedUnitIndex()
+type := getunittype(unit)
+msgbox % isZergStructureMorphing(unit) "`n"
+	. getUnitMorphTime(unit, type)
+msgbox % getUnitQueuedCommands(unit, aCommands)
+objtree(aCommands)
 return 
 
 f2::
-ScBase := getProcessBaseAddress(GameIdentifier)
-msgbox % chex(ScBase)
-address := 0x0182674B ; Includes SC base ;SC2.AssertAndCrash+4E7EAB
-address -= ScBase 
-IDAAddress := address + 0x400000
-msgbox % chex(IDAAddress)
+getUnitAbilitiesString(getSelectedUnitIndex())
+return 
+
+mem := new _ClassMemory(GameIdentifier) ; set when new is used
+foundCount := 0
+address := 0
+while (address := mem.processPatternScan(address,, 0x75, 0x09, 0x8B, 0x45, 0x08, 0x89, 0x86, "?", "?", "?", "?", 0x5E, 0x5D, 0xC2, 0x08, 0x00)) > 0
+{
+	msgbox % chex(address)
+		foundCount++, address++
+}
+msgbox % foundCount
 return 
 ; 53674B
 ; 93674B

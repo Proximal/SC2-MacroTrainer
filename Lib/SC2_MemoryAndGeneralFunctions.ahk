@@ -3,8 +3,6 @@
 Global B_LocalCharacterNameID
 , aSCOffsets
 , OffsetsSC2Base 
-, B_pStructure
-, S_pStructure
 , Offsets_Player_Status
 , O_pXcam
 , O_pCamDistance
@@ -145,12 +143,12 @@ Global B_LocalCharacterNameID
 , 01_CameraMovingViaMouseAtScreenEdge
 , 02_CameraMovingViaMouseAtScreenEdge
 , 03_CameraMovingViaMouseAtScreenEdge
-, B_IsGamePaused
+, Offsets_IsGamePaused
 , B_FramesPerSecond
 , Offsets_GameSpeed
 , B_ReplayFolder
-, B_HorizontalResolution
-, B_VerticalResolution
+, Offsets_HorizontalResolution
+, Offsets_VerticalResolution
 , P_MinimapPosition
 , O_MinimapPosition
 
@@ -210,8 +208,6 @@ loadMemoryAddresses(base, version := "")
 		; bytes have swapped in patch 3? 
 		;aSCOffsets["LocalPlayerSlot"] := [base + 0x018F5980, 0x18, 0x278, 0x258, 0x3DD] ; patch 3.3 ; note 1byte and has a second 'copy' (ReplayWatchedPlayer) just after +1byte eg LS =16d=10h, hex 1010 (2bytes) & LS =01d = hex 0101
 	 
-		B_pStructure := base + 0x362BF90 ; 			 
-		S_pStructure := 0xE18
 			 Offsets_Player_Status := 0x0
 			 O_pXcam := 0x8 ; same address but obfuscated 
 			 O_pYcam := 0xC	;
@@ -288,7 +284,8 @@ loadMemoryAddresses(base, version := "")
 		 								; There are two of these values and they only differ the instant a unit dies esp with missle fire (ive used the higher value) - perhaps one updates slightly quicker - dont think i use this offset anymore other than as a value in debugData()
 		 								; Theres another one which excludes structures
 
-		 Offsets_UnitHighestAliveIndex := base + 0x1F24840  ;p3.3		; This is actually the highest currently alive unit (includes missiles while alive) and starts at 1 NOT 0! i.e. 1 unit alive at index 0 = 1, 1 alive at index 7 = 8 
+		 Offsets_UnitHighestAliveIndex := base + 0x1F268C0 ;0x1F24840 		; This is actually the highest currently alive unit (includes missiles while alive) and starts at 1 NOT 0! i.e. 1 unit alive at index 0 = 1, 1 alive at index 7 = 8 
+
 		; B_uStructure := base + 0x36AA840 ; Offsets_UnitHighestAliveIndex+0x40    			
 		 Offsets_Unit_StructSize := 0x1E8 ; patch 3.3 = 488d
 			 Offsets_Unit_ModelPointer := 0x8 ; p3.3
@@ -349,9 +346,9 @@ loadMemoryAddresses(base, version := "")
 		Offsets_UnitModel_MinimapRadius := 0x3D0 
 		
 		
-		Offsets_Selection_Base := base + 0x1EE9BB8 
+		Offsets_Selection_Base := base + 0x1EEBC08 ;0x1EE9BB8 
 		; The structure begins with ctrl group 0
-		Offsets_Group_ControlGroup0 := base + 0x1EED278
+		Offsets_Group_ControlGroup0 := base + 0x1EEF2C8 ;0x1EED278
 		Offsets_Group_ControlGroupSize := 0x1B60
 	; Unit Selection & Ctrl Group Structures use same offsets
 			Offsets_Group_TypeCount := 0x2
@@ -365,7 +362,7 @@ loadMemoryAddresses(base, version := "")
 		Offsets_localArmyUnitCountPointer := [base + 0x0181A358, 0x8, 0x138]
 
 
-		 Offsets_TeamColoursEnabled := base + 0x1B7A174 ; 2 when team colours is on, else 0 (There are two valid addresses for this)
+		 Offsets_TeamColoursEnabled := base + 0x1B7C144 ; 2 when team colours is on, else 0 (There are two valid addresses for this)
 		 
 
 		 P_SelectionPage := base + 0x314B920  	; Tends to end with these offsets. ***theres one other 3 lvl pointer but for a split second (every few second or so) it points to 
@@ -478,10 +475,10 @@ loadMemoryAddresses(base, version := "")
 			 03_CameraMovingViaMouseAtScreenEdge := 0x5A4				; 3 = Diagonal Right/Top 	  	6 = Diagonal Left/ Bot	
 																		; 7 = Bottom Edge 			 	8 = Diagonal Right/Bot 
 																		; Note need to do a pointer scan with max offset > 1200d! Tends to have the same offsets
-		B_IsGamePaused := base + 0x1AB3F7C 						
+		Offsets_IsGamePaused := base + 0x55E3460 						
 
 		B_FramesPerSecond := base + 0x5008BC4
-		Offsets_GameSpeed  := base + 0x55E1330
+		Offsets_GameSpeed  := base + 0x55E3440
 
 		; example: D:\My Computer\My Documents\StarCraft II\Accounts\56025555\6-S2-1-34555\Replays\
 		; this works for En, Fr, and Kr languages 
@@ -493,8 +490,8 @@ loadMemoryAddresses(base, version := "")
 		; There will be 3 green static addresses (+many non-statics) One of them will change depending on resolution
 		; Can resize in window mode and it will change too
 
-		 B_HorizontalResolution := base + 0x5045520
-		 B_VerticalResolution := B_HorizontalResolution + 0x4
+		 Offsets_HorizontalResolution := base + 0x2375244
+		 Offsets_VerticalResolution := Offsets_HorizontalResolution + 0x4
 
 		; 4 byte ints listed in memory: 808 28 1066 290  (at 1920x1080)
 		P_MinimapPosition := base + 0x315FA34
@@ -504,19 +501,57 @@ loadMemoryAddresses(base, version := "")
 	return versionMatch
 }	
 
+
+/* patch 3.0.5 - what wrote to minerals
+SC2.AssertAndCrash+378306 - 8B 15 C8B0C202        - mov edx,[SC2.exe+188B0C8]
+SC2.AssertAndCrash+37830C - 33 15 B8982B03        - xor edx,[SC2.exe+1F198B8]
+SC2.AssertAndCrash+378312 - 81 F2 F8ED2C41        - xor edx,412CEDF8
+SC2.AssertAndCrash+378318 - 8B 0A                 - mov ecx,[edx]
+SC2.AssertAndCrash+37831A - 8D 0C 81              - lea ecx,[ecx+eax*4]
+SC2.AssertAndCrash+37831D - 0FB7 01               - movzx eax,word ptr [ecx]
+SC2.AssertAndCrash+378320 - 0FB7 49 02            - movzx ecx,word ptr [ecx+02]
+
+SC2.AssertAndCrash+378324 - 8B D0                 - mov edx,eax
+SC2.AssertAndCrash+378326 - 81 E2 FF0F0000        - and edx,00000FFF
+SC2.AssertAndCrash+37832C - 0FB7 14 95 A8A6C202   - movzx edx,word ptr [edx*4+SC2.exe+188A6A8]
+
+SC2.AssertAndCrash+378334 - 2B CA                 - sub ecx,edx
+SC2.AssertAndCrash+378336 - F7 D1                 - not ecx
+SC2.AssertAndCrash+378338 - 0FB7 C9               - movzx ecx,cx
+SC2.AssertAndCrash+37833B - 8B D1                 - mov edx,ecx
+SC2.AssertAndCrash+37833D - 81 E2 FF0F0000        - and edx,00000FFF
+SC2.AssertAndCrash+378343 - 0FB7 14 95 A8A6C202   - movzx edx,word ptr [edx*4+SC2.exe+188A6A8]
+SC2.AssertAndCrash+37834B - 2B C2                 - sub eax,edx
+SC2.AssertAndCrash+37834D - F7 D0                 - not eax
+SC2.AssertAndCrash+37834F - 66 89 45 FC           - mov [ebp-04],ax
+SC2.AssertAndCrash+378353 - 66 89 4D FE           - mov [ebp-02],cx
+SC2.AssertAndCrash+378357 - 8B 45 FC              - mov eax,[ebp-04] - address
+*/
+
 playerAddress(player := 1)
 {
 	if aSCOffsets["playerAddress"].HasKey(player) ; need to check has, key as this func is called internally when it doesnt --> loop
-		return aSCOffsets["playerAddress", player]
-	eax := player
-	edx := ReadMemory(OffsetsSC2Base+0x1889130, GameIdentifier)
-	edx ^= ReadMemory(OffsetsSC2Base+0x1F17828, GameIdentifier)
-	edx ^=  0x0246D359 ;   xor edx,SC2.AllowCachingSupported+AB3119 ** ; Just a value not really an address
-	ecx := ReadMemory(edx, GameIdentifier)
-	eax := ecx + eax * 4 
-	eax := ReadMemory(EAX, GameIdentifier)
-	eax ^= ReadMemory(OffsetsSC2Base+0x188C68C, GameIdentifier)
-	return aSCOffsets["playerAddress", player] := eax ^= 0x772BBADC 
+		return aSCOffsets["playerAddress", player]	
+	edx := readmemory(OffsetsSC2Base + 0x188B0C8, GameIdentifier)
+	, edx ^= readmemory(OffsetsSC2Base + 0x1F198B8, GameIdentifier)
+	, edx ^= 0x412CEDF8
+	, ecx := readmemory(edx, GameIdentifier)
+	, ecx := ecx + player * 4
+	, dword := readmemory(ecx, GameIdentifier)
+	, eax := dword & 0xFFFF 
+	, ecx := dword >> 16
+	, edx := eax 
+	, edx &= 0xFFF 
+	, edx := readmemory(OffsetsSC2Base + 0x188A6A8 + edx * 4, GameIdentifier)
+	, ecx -= edx 
+	, ecx := ~ecx
+	, ecx &= 0xFFFF 
+	, edx := ecx 
+	, edx &= 0xFFF 
+	, edx := readmemory(edx*4 + OffsetsSC2Base + 0x188A6A8, GameIdentifier, 2)
+	, eax -= edx 
+	, eax := ~eax 
+	return aSCOffsets["playerAddress", player] := (eax & 0xFFFF) | (ecx & 0xFFFF) << 16
 }
 
 /*
@@ -542,6 +577,20 @@ SC2.AssertAndCrash+375D3E - 35 DCBA2B77           - xor eax,ntdll.dll+15BADC
 SC2.AssertAndCrash+375D43 - C3                    - ret 
 */
 
+
+/*
+3.0.5
+What wrote to unit fingerprint
+SC2.AssertAndCrash+3C0925 - 8B D0                 - mov edx,eax - eax = unit index
+SC2.AssertAndCrash+3C0927 - 83 E0 0F              - and eax,0F
+SC2.AssertAndCrash+3C092A - 69 C0 E8010000        - imul eax,eax,000001E8
+SC2.AssertAndCrash+3C0930 - C1 EA 04              - shr edx,04
+SC2.AssertAndCrash+3C0933 - 8B 34 95 C868DA02     - mov esi,[edx*4+SC2.exe+1F268C8]
+SC2.AssertAndCrash+3C093A - 33 35 60DC7002        - xor esi,[SC2.exe+188DC60]
+SC2.AssertAndCrash+3C0940 - 81 F6 0F9D0003        - xor esi,SC2.exe+2189D0F
+SC2.AssertAndCrash+3C0946 - 03 F0                 - add esi,eax
+*/
+
 getunitAddress(unitIndex)
 {
 	if aSCOffsets["unitAddress"].HasKey(unitIndex)
@@ -549,10 +598,10 @@ getunitAddress(unitIndex)
 	edx := eax := unitIndex
 	, eax &= 0xF 
 	, eax *= Offsets_Unit_StructSize
-	, edx >>= 0x4 
-	, esi := ReadMemory(edx*4+OffsetsSC2Base+0x1F24848, GameIdentifier)
-	, esi ^= ReadMemory(OffsetsSC2Base+0x188BFEC, GameIdentifier)
-	, esi ^= 0x46E134B8
+	, edx >>= 4
+	, esi := readMemory(edx * 4 + OffsetsSC2Base + 0x1F268C8, GameIdentifier)
+	, esi ^= readMemory(OffsetsSC2Base + 0x188DC60, GameIdentifier)
+	, esi ^= 0x03009D0F
 	return aSCOffsets["unitAddress", unitIndex]	:= esi += eax
 }
 
@@ -699,12 +748,20 @@ getTimeFull()
 {	global 
 	Return getGameTickCount()/4096
 }
-
+; There are two commands that access this address, one is very easy to backtrack (mov eax, [eax])
+; Only the addresses/values (not logic) changed from 3.0.3 to 3.0.5
+/* 3.0.5
+SC2.AssertAndCrash+3580C0 - A1 C8CFC202           - mov eax,[SC2.exe+188CFC8]
+SC2.AssertAndCrash+3580C5 - 33 05 447E2B03        - xor eax,[SC2.exe+1F17E44]
+SC2.AssertAndCrash+3580CB - 35 F7273BD6           - xor eax,D63B27F7
+SC2.AssertAndCrash+3580D0 - 83 C0 50              - add eax,50
+SC2.AssertAndCrash+3580D3 - C3                    - ret 
+*/
 getGameTickCount()
 {	 
-	r := readMemory(OffsetsSC2Base + 0x188BC70, GameIdentifier)
-	, r ^= readMemory(OffsetsSC2Base + 0x1F15DF4, GameIdentifier)
-	, r ^= 0x6EAF10A5
+	r := readMemory(OffsetsSC2Base + 0x188CFC8, GameIdentifier)
+	, r ^= readMemory(OffsetsSC2Base + 0x1F17E44, GameIdentifier)
+	, r ^= 0xD63B27F7
 	Return readMemory(r + 0x50, GameIdentifier)
 }
 
@@ -867,7 +924,7 @@ getHighestUnitIndex() 	; this is the highest alive units index - note it starts 
 getPlayerName(player) ; start at 0
 {	global
 	return "Player"
-	Return ReadMemory_Str(B_pStructure + O_pName + player*S_pStructure, GameIdentifier) 
+	Return ReadMemory_Str(aSCOffsets["playerAddress", player] + O_pName, GameIdentifier) 
 }
 getPlayerRace(player) ; start at 0
 {	
@@ -970,15 +1027,21 @@ SC2.AssertAndCrash+164B18 - 88 46 0B              - mov [esi+0B],al  ; Writes to
  0xXXXXXXPB (PB = player byte)
 */
 
+; 3.0.5 logic didn't change, but numbers and registers did esi --> eax
+;SC2.AssertAndCrash+164713 - A1 E4C8AE01           - mov eax,[SC2.exe+188C8E4]
+;SC2.AssertAndCrash+164718 - 33 05 C0C9DD01        - xor eax,[SC2.exe+1B7C9C0]
+;SC2.AssertAndCrash+16471E - 35 DA034845           - xor eax,454803DA
+
+
 getLocalPlayerNumber()
 {
 	static address 
 	if !address
 	{
-		esi := readMemory(OffsetsSC2Base + 0x188C10C, GameIdentifier)
-		esi ^= readMemory(OffsetsSC2Base + 0x1B7A9F0, GameIdentifier)
-		esi ^= 0x2453F31B
-		address := esi + 0xB
+		eax := readMemory(OffsetsSC2Base + 0x188C8E4, GameIdentifier)
+		eax ^= readMemory(OffsetsSC2Base + 0x1B7C9C0, GameIdentifier)
+		eax ^= 0x454803DA
+		address := eax + 0xB
 	}
 	return readMemory(address, GameIdentifier, 1)
 }
@@ -1358,7 +1421,7 @@ getArmyUnitCount()
 
 isGamePaused()
 {	global
-	Return ReadMemory(B_IsGamePaused, GameIdentifier)
+	Return ReadMemory(Offsets_IsGamePaused, GameIdentifier)
 }
 
 ; Note: This is always true if the user is holding the drag camera button (middle mouse by default)
@@ -1711,7 +1774,7 @@ isCommandCenterMorphing(unit)
 }
 
 
-isHatchLairOrSpireMorphing(unit, type := 0)
+isZergStructureMorphing(unit, type := 0)
 {
 			/*
 			hatchery
@@ -1725,7 +1788,6 @@ isHatchLairOrSpireMorphing(unit, type := 0)
 			9 / 0x9 when going to lair
 			17 /0x11 when going to hive
 			*/
-	local state
 	if !type
 		type := getUnitType(unit)
 	state := ReadMemory(getUnitAbilityPointer(unit) + 0x8, GameIdentifier, 1)
@@ -1735,6 +1797,8 @@ isHatchLairOrSpireMorphing(unit, type := 0)
 		return aUnitID["Hive"]
 	else if (state = 4 && type = aUnitID["Spire"])
 		return aUnitID["GreaterSpire"]
+	else if (state = 8 && type = aUnitID["HydraliskDen"])
+		return aUnitID["LurkerDenMP"]
 	return 0
 }
 
@@ -2149,11 +2213,11 @@ getAbilListIndex(pAbilities, AbilitiesCount)
 ; These values are stored right next to each other, so to quickly find the correct ones again search for an 8byte value
 SC2HorizontalResolution()
 {	GLOBAL
-	return  ReadMemory(B_HorizontalResolution, GameIdentifier)
+	return  ReadMemory(Offsets_HorizontalResolution, GameIdentifier)
 }
 SC2VerticalResolution()
 {	GLOBAL
-	return  ReadMemory(B_VerticalResolution, GameIdentifier)
+	return  ReadMemory(Offsets_VerticalResolution, GameIdentifier)
 }
 
 
@@ -3437,12 +3501,12 @@ CreatepBitmaps(byref a_pBitmap, aUnitID, MatrixColour := "")
 		for colour, matrix in MatrixColour
 		{
 			a_pBitmap[A_loopfield, "RaceFlatColour", colour] := Gdip_CreateBitmap(Width, Height)
-			G2 := Gdip_GraphicsFromImage(a_pBitmap[A_loopfield, "RaceFlatColour", colour])
+			, G2 := Gdip_GraphicsFromImage(a_pBitmap[A_loopfield, "RaceFlatColour", colour])
 			; These two shouldn't be required as not drawing shapes or altering size (but leave them just incase)
-			Gdip_SetSmoothingMode(G2, 4)
-			Gdip_SetInterpolationMode(G2, 7)	
-			Gdip_DrawImage(G2, a_pBitmap[A_loopfield,"RaceFlat"], "", "", "", "", "", "", "", "", matrix)
-			Gdip_DeleteGraphics(G2)
+			, Gdip_SetSmoothingMode(G2, 4)
+			, Gdip_SetInterpolationMode(G2, 7)	
+			, Gdip_DrawImage(G2, a_pBitmap[A_loopfield,"RaceFlat"], "", "", "", "", "", "", "", "", matrix)
+			, Gdip_DeleteGraphics(G2)
 		}
 	}
 	Loop, %A_Temp%\UnitPanelMacroTrainer\*.png
@@ -3494,8 +3558,8 @@ getPlayers(byref aPlayer, byref aLocalPlayer, byref aEnemyAndLocalPlayer := "")
 	; can get weird things if 16 (but filtering them for nonplayers)
 	Loop, 16	
 	{
-		slot := A_Index - 1
-		if getPlayerName(slot) = "" ;empty slot custom games?
+		
+		if getPlayerName(slot := A_Index - 1) = "" ;empty slot custom games?
 		|| IsInList(getPlayerType(slot), "None", "Neutral", "Hostile", "Referee", "Spectator")
 			Continue
 		aPlayer.insert(slot, new c_Player(slot) )  ; insert at player index so can call using player slot number as the key (slot number = key) 
@@ -3538,35 +3602,7 @@ class c_Player
 	}
 } 
 
-Class c_EnemyUnit
-{
-	__New(unit) 
-	{	
-		this.Radius := getMiniMapRadius(Unit)
-		this.Owner := getUnitOwner(Unit)
-		this.Type := getUnitType(Unit)
-		this.X := getUnitPositionX(unit)
-		this.Y := getUnitPositionY(unit)
-		this.TargetFilter := getUnitTargetFilter(Unit)	
-	}
-}
 
-;ParseEnemyUnits(ByRef a_LocalUnits, ByRef a_EnemyUnits, ByRef aPlayer)
-ParseEnemyUnits(ByRef a_EnemyUnits, ByRef aPlayer)
-{ 
-	LocalTeam := getPlayerTeam(), a_EnemyUnitsTmp := []
-	While (A_Index <= getHighestUnitIndex())
-	{
-		unit := A_Index -1
-		Filter := getUnitTargetFilter(unit)	
-		If (Filter & aUnitTargetFilter.Dead) || (type = "Fail")
-			Continue
-		Owner := getUnitOwner(unit)
-		if  (aPlayer[Owner, "Team"] <> LocalTeam AND Owner) 
-			a_EnemyUnitsTmp[Unit] := new c_EnemyUnit(Unit)
-	}
-	a_EnemyUnits := a_EnemyUnitsTmp
-}
 
 ; returns longest player name (string length) in enemy team and can include the local player for overlays
 getLongestPlayerName(aPlayer, includeLocalPlayer := False)
@@ -3889,11 +3925,12 @@ performUpgradeDetection(unitID, unitIndex, owner, fingerPrint)
 	aSpecialUnits := {aUnitID.Hatchery: "UpgradeToLair"
 					, aUnitID.Lair: "UpgradeToHive"
 					, aUnitID.Spire: "UpgradeToGreaterSpire"
+					, aUnitID.HydraliskDen: "UpgradeToLurkerDenMP"
 					, aUnitID.MothershipCore: "MorphToMothership"}
 
 	if (time <= 10 && aWarned := [])
 		return 
-	if aUpgradeAlerts.alertLookUp[gameType].Haskey(aSpecialUnits[unitID]) && isHatchLairOrSpireMorphing(unitIndex, unitID)
+	if aUpgradeAlerts.alertLookUp[gameType].Haskey(aSpecialUnits[unitID]) && isZergStructureMorphing(unitIndex, unitID)
 	{
 		aInfo := [], aInfo[1, "Item"] := aSpecialUnits[unitID]
 		, aInfo[1, "Progress"] := getUnitMorphTime(unitIndex, unitID, False)
@@ -4929,10 +4966,12 @@ getUnitMorphTime(unit, unitType, percent := True)
 	{
 		hasRun := True 
 		aMorphStrings := { 	aUnitID.OverlordCocoon: ["MorphToOverseer"]
+						 ,	aUnitID.RavagerCocoon: ["MorphToRavager"]
 						 ,	aUnitID.BroodLordCocoon: ["MorphToBroodLord"]
 						 ,	aUnitID.Spire: ["UpgradeToGreaterSpire"]
 						 ,  aUnitID.Hatchery: ["UpgradeToLair"]
 						 ,	aUnitID.Lair: ["UpgradeToHive"]
+						 ,	aUnitID.HydraliskDen: ["UpgradeToLurkerDenMP"]
 						 ,  aUnitID.MothershipCore: ["MorphToMothership"]
 						 ,	aUnitID.CommandCenter: ["UpgradeToOrbital", "UpgradeToPlanetaryFortress"]}
 	}
@@ -5162,6 +5201,7 @@ getDisplayedResourceWorker(unit, player := "")
 ; Returns the workers count for refiners, extractors, assimilators, and mineral patchs.
 ; If units are waiting to enter the refinery before it finishes construction, it will include them as well.
 ; It removes mules (this is address is 0 for non terran races).
+; Unit is geyser or mineral patch
 getResourceWorkerCount(unit, player)
 {  
   
@@ -5175,7 +5215,7 @@ getResourceWorkerCount(unit, player)
     ; So to get the true total amount of workers, you should loop all positions and sum them
     ; But we would only want local player       
    	workers := readmemory(p + player*0x4, GameIdentifier)
-   	mules := readmemory(p + 0x40 + player*0x4, GameIdentifier)
+   	, mules := readmemory(p + 0x40 + player*0x4, GameIdentifier)
     return workers - mules
 }
 
@@ -5708,33 +5748,43 @@ iniReadUpgradeAlerts()
 
 class upgradeDefinitions
 {
-	static aUpgradeUserTitle := { Terran: { StarportTechLab: {ResearchBansheeCloak: "CloakingField", ResearchMedivacEnergyUpgrade: "CaduceusReactor", ResearchDurableMaterials: "DurableMaterials", ResearchRavenEnergyUpgrade: "CorvidReactor"}
+	static aUpgradeUserTitle :=  upgradeDefinitions.initialiseUserTitles() ; expression too long
+	static _ahack := upgradeDefinitions.initialiseVars()
+
+	initialiseUserTitles()
+	{
+		aUpgradeUserTitle := []
+		aUpgradeUserTitle.Terran := { StarportTechLab: {ResearchBansheeCloak: "CloakingField", ResearchMedivacEnergyUpgrade: "CaduceusReactor", ResearchDurableMaterials: "DurableMaterials", ResearchRavenEnergyUpgrade: "CorvidReactor", ResearchHighCapacityFuelTanks: "HighCapacityFuelTanks", ResearchExplosiveShrapnelShells: "ExplosiveShrapnelShells", BansheeSpeed: "HyperflightRotors", ResearchBallisticRange: "AdvancedBallistics" }
 									, FusionCore: {ResearchBattlecruiserEnergyUpgrade: "BehemothReactor", ResearchBattlecruiserSpecializations: "WeaponRefit"}
 									, GhostAcademy: {ResearchPersonalCloaking: "PersonalCloaking"} ;, ResearchGhostEnergyUpgrade: ""
 									, BarracksTechLab: {ResearchShieldWall: "CombatShield", Stimpack: "Stimpack", ResearchPunisherGrenades: "ConcussiveShells"}
-									, FactoryTechLab: {ResearchDrillClaws: "DrillingClaws", ResearchHighCapacityBarrels: "InfernalPre-Igniter"} ;, ;ResearchTransformationServos: ""
-									, Armory: { TerranVehicleAndShipPlatingLevel1: "VehicleAndShipPlatingLevel1", TerranVehicleAndShipPlatingLevel2: "VehicleAndShipPlatingLevel2", TerranVehicleAndShipPlatingLevel3: "VehicleAndShipPlatingLevel3", TerranVehicleAndShipWeaponsLevel1: "VehicleAndShipWeaponsLevel1", TerranVehicleAndShipWeaponsLevel2: "VehicleAndShipWeaponsLevel2", TerranVehicleAndShipWeaponsLevel3: "VehicleAndShipWeaponsLevel3"} ;, TerranVehicleWeaponsLevel1: "";, TerranVehicleWeaponsLevel2: "";, TerranVehicleWeaponsLevel3: "";, TerranShipWeaponsLevel1: "";, TerranShipWeaponsLevel2: "";, TerranShipWeaponsLevel3: ""
+									, FactoryTechLab: {ResearchDrillClaws: "DrillingClaws", ResearchHighCapacityBarrels: "InfernalPre-Igniter", CycloneResearchLockOnDamageUpgrade: " Mag-FieldAccelerator"} ;, ;ResearchTransformationServos: ""
+									, Armory: {TerranVehicleWeaponsLevel1: "VehicleWeaponsLevel1", TerranVehicleWeaponsLevel2: "VehicleWeaponsLevel2", TerranVehicleWeaponsLevel3: "VehicleWeaponsLevel3", TerranShipWeaponsLevel1: "ShipWeaponsLevel1", TerranShipWeaponsLevel2: "ShipWeaponsLevel2", TerranShipWeaponsLevel3: "ShipWeaponsLevel3", TerranVehicleAndShipPlatingLevel1: "VehicleAndShipPlatingLevel1", TerranVehicleAndShipPlatingLevel2: "VehicleAndShipPlatingLevel2", TerranVehicleAndShipPlatingLevel3: "VehicleAndShipPlatingLevel3", TerranVehicleAndShipWeaponsLevel1: "VehicleAndShipWeaponsLevel1", TerranVehicleAndShipWeaponsLevel2: "VehicleAndShipWeaponsLevel2", TerranVehicleAndShipWeaponsLevel3: "VehicleAndShipWeaponsLevel3"} ;, TerranVehicleWeaponsLevel1: "";, TerranVehicleWeaponsLevel2: "";, TerranVehicleWeaponsLevel3: "";, TerranShipWeaponsLevel1: "";, TerranShipWeaponsLevel2: "";, TerranShipWeaponsLevel3: ""
 									, EngineeringBay: {TerranInfantryArmorLevel1: "InfantryArmorLevel1", TerranInfantryArmorLevel2: "InfantryArmorLevel2", TerranInfantryArmorLevel3: "InfantryArmorLevel3", TerranInfantryWeaponsLevel1: "InfantryWeaponsLevel1", TerranInfantryWeaponsLevel2: "InfantryWeaponsLevel2", TerranInfantryWeaponsLevel3: "InfantryWeaponsLevel3", ResearchNeosteelFrame: "NeosteelFrame", ResearchHiSecAutoTracking: "Hi-SecAutoTracking", UpgradeBuildingArmorLevel1: "StructureArmor"}}						
-						, Protoss:	{ FleetBeacon: {PhoenixRangeUpgrade: "AnionPulse-Crystals", ResearchInterceptorLaunchSpeedUpgrade: "GravitonCatapult"}
+	
+	aUpgradeUserTitle.Protoss :=	{ FleetBeacon: {PhoenixRangeUpgrade: "AnionPulse-Crystals", ResearchInterceptorLaunchSpeedUpgrade: "GravitonCatapult"}
 									, Forge: {ProtossGroundWeaponsLevel1: "GroundWeaponsLevel1", ProtossGroundWeaponsLevel2: "GroundWeaponsLevel2", ProtossGroundWeaponsLevel3: "GroundWeaponsLevel3", ProtossGroundArmorLevel1: "GroundArmorLevel1", ProtossGroundArmorLevel2: "GroundArmorLevel2", ProtossGroundArmorLevel3: "GroundArmorLevel3", ProtossShieldsLevel1: "ShieldsLevel1", ProtossShieldsLevel2: "ShieldsLevel2", ProtossShieldsLevel3: "ShieldsLevel3"}
 									, RoboticsBay: {ResearchExtendedThermalLance: "ExtendedThermalLance", ResearchGraviticBooster: "GraviticBoosters", ResearchGraviticDrive: "GraviticDrive"}
 									, TemplarArchive: {ResearchPsiStorm: "PsionicStorm"}
 									, MothershipCore: {MorphToMothership: "UpgradeToMothership"}
 									, CyberneticsCore: {ResearchWarpGate: "WarpGate", ProtossAirWeaponsLevel1: "AirWeaponsLevel1", ProtossAirWeaponsLevel2: "AirWeaponsLevel2", ProtossAirWeaponsLevel3: "AirWeaponsLevel3", ProtossAirArmorLevel1: "AirArmorLevel1", ProtossAirArmorLevel2: "AirArmorLevel2", ProtossAirArmorLevel3: "AirArmorLevel3"}
-									, TwilightCouncil: {ResearchCharge: "Charge", ResearchStalkerTeleport: "Blink"}}
-						, Zerg:	{BanelingNest: {EvolveCentrificalHooks: "CentrifugalHooks"}
+									, TwilightCouncil: {ResearchCharge: "Charge", ResearchStalkerTeleport: "Blink", AdeptResearchPiercingUpgrade: "ResonatingGlaives"}}
+
+		aUpgradeUserTitle.Zerg :=	{BanelingNest: {EvolveCentrificalHooks: "CentrifugalHooks"}
 									, InfestationPit: {EvolveInfestorEnergyUpgrade: "PathogenGlands", ResearchNeuralParasite: "NeuralParasite", EvolveFlyingLocusts: "FlyingLocusts"} ;, ResearchLocustLifetimeIncrease: ""
 									, UltraliskCavern: {EvolveChitinousPlating: "ChitinousPlating"}
 									, RoachWarren: {EvolveGlialRegeneration: "GlialReconstitution", EvolveTunnelingClaws: "TunnelingClaws"}
 									, Hatchery: {overlordspeed: "PneumatizedCarapace", ResearchBurrow: "Burrow", UpgradeToLair: "MutateLair"}
 									, Lair: {overlordspeed: "PneumatizedCarapace", ResearchBurrow: "Burrow", EvolveVentralSacks: "VentralSacks", UpgradeToHive: "MutateHive"}									
 									, Hive: {overlordspeed: "PneumatizedCarapace", ResearchBurrow: "Burrow", EvolveVentralSacks: "VentralSacks"}
-									, HydraliskDen: {hydraliskspeed: "GroovedSpines", MuscularAugments: "MuscularAugments"}
+									, HydraliskDen: {hydraliskspeed: "GroovedSpines", MuscularAugments: "MuscularAugments", UpgradeToLurkerDenMP: "MutateLurkerDen"}
+									, LurkerDenMP: {MuscularAugments: "MuscularAugments"}
 									, SpawningPool: {zerglingmovementspeed: "MetabolicBoost", zerglingattackspeed: "AdrenalGlands"}
 									, Spire: {zergflyerarmor1: "FlyerCarapaceLevel1", zergflyerarmor2: "FlyerCarapaceLevel2", zergflyerarmor3: "FlyerCarapaceLevel3", zergflyerattack1: "FlyerAttacksLevel1", zergflyerattack2: "FlyerAttacksLevel2", zergflyerattack3: "FlyerAttacksLevel3", UpgradeToGreaterSpire: "MutateGreaterSpire"}
 									, GreaterSpire: {zergflyerarmor1: "FlyerCarapaceLevel1", zergflyerarmor2: "FlyerCarapaceLevel2", zergflyerarmor3: "FlyerCarapaceLevel3", zergflyerattack1: "FlyerAttacksLevel1", zergflyerattack2: "FlyerAttacksLevel2", zergflyerattack3: "FlyerAttacksLevel3"}
-									, EvolutionChamber: {zerggroundarmor1: "GroundCarapaceLevel1", zerggroundarmor2: "GroundCarapaceLevel2", zerggroundarmor3: "GroundCarapaceLevel3", zergmeleeweapons1: "MeleeAttacksLevel1", zergmeleeweapons2: "MeleeAttacksLevel2", zergmeleeweapons3: "MeleeAttacksLevel3", zergmissileweapons1: "MissileAttacksLevel1", zergmissileweapons2: "MissileAttacksLevel2", zergmissileweapons3: "MissileAttacksLevel3" }}}
-	static _ahack := upgradeDefinitions.initialiseVars()
+									, EvolutionChamber: {zerggroundarmor1: "GroundCarapaceLevel1", zerggroundarmor2: "GroundCarapaceLevel2", zerggroundarmor3: "GroundCarapaceLevel3", zergmeleeweapons1: "MeleeAttacksLevel1", zergmeleeweapons2: "MeleeAttacksLevel2", zergmeleeweapons3: "MeleeAttacksLevel3", zergmissileweapons1: "MissileAttacksLevel1", zergmissileweapons2: "MissileAttacksLevel2", zergmissileweapons3: "MissileAttacksLevel3" }}	
+		return aUpgradeUserTitle
+	}
 
 	initialiseVars()
 	{
@@ -5942,6 +5992,7 @@ dumpUnitTypes(byRef outputString)
 	Changeling
 	Overlord
 	TechLab
+	Pylon
 	VespeneGeyser
 	)	
 
@@ -5992,8 +6043,9 @@ dumpUnitTypes(byRef outputString)
 
 	 aRename   := { "Changeling" : 		["Changeling", "ChangelingZealot", "ChangelingMarineShield", "ChangelingMarine", "ChangelingZerglingWings", "ChangelingZergling"]
     			,   "TechLab": 			["TechLab", "BarracksTechLab", "FactoryTechLab", "StarportTechLab"]
-   				,   "VespeneGeyser": 	["VespeneGeyser", "ProtossVespeneGeyser", "VespeneGeyserPretty"]}
-	; There are a few other geysers, but they have unique name i.e. SpacePlatformGeyser, RichVespeneGeyser
+    			,   "Pylon": 			["Pylon", "PylonOvercharge"]
+   				,   "VespeneGeyser": 	["VespeneGeyser", "VespeneGeyserSpacePlatform", "VespeneGeyserProtoss", "VespeneGeyserPurifier", "VespeneGeyserShakuras"]}
+	; There is another geyser, but it has a unique name i.e. RichVespeneGeyser
 	overlordCount := 0
 	for modelID, name in aIDLookup
 	{
@@ -6002,14 +6054,14 @@ dumpUnitTypes(byRef outputString)
 			indexKey := aRename[name, "_count"] := round(aRename[name, "_count"]) + 1
 			if aRename[name].HasKey(indexKey)	
 				aIDLookup[modelID] := newName := aRename[name, indexKey]
-			else renameError .= name " Error - new " name " ? modelID: " modelID 
+			else renameError .= name " Error - new " name " ? modelID: " modelID "`n"
 		}
 		else if (name = "Overlord") ; Second overlord has a higher unit ID and doesn't seem valid
 		{
 			if (++overlordCount = 2)
 				aIDLookup.remove(modelID, ""), foundCount--
 			else if (overlordCount > 2)
-				renameError .= "OverlordCount Error - new Overlord ? modelID: " modelID
+				renameError .= "OverlordCount Error - new Overlord ? modelID: " modelID "`n"
 		}
 	}
 	if renameError
@@ -6050,354 +6102,3 @@ debugUnitTargetFlags()
 
 
 
-SetupUnitIDTestArray(byref aUnitID, byref aUnitName)
-{
-	l_UnitTypes = 
-( comments 
-System_Snapshot_Dummy = 1,
-Ball = 21,
-StereoscopicOptionsUnit = 22,
-Colossus = 23,
-TechLab = 24,
-Reactor = 25,
-InfestorTerran = 27,
-BanelingCocoon = 28,
-Baneling = 29,
-Mothership = 30,
-PointDefenseDrone = 31,
-Changeling = 32,
-ChangelingZealot = 33,
-ChangelingMarineShield = 34,
-ChangelingMarine = 35,
-ChangelingZerglingWings = 36,
-ChangelingZergling = 37,
-CommandCenter = 39,
-SupplyDepot = 40,
-Refinery = 41,
-Barracks = 42,
-EngineeringBay = 43,
-MissileTurret = 44,
-Bunker = 45,
-SensorTower = 46,
-GhostAcademy = 47,
-Factory = 48,
-Starport = 49,
-Armory = 51,
-FusionCore = 52,
-AutoTurret = 53,
-SiegeTankSieged = 54,
-SiegeTank = 55,
-VikingAssault = 56,
-VikingFighter = 57,
-CommandCenterFlying = 58,
-BarracksTechLab = 59,
-BarracksReactor = 60,
-FactoryTechLab = 61,
-FactoryReactor = 62,
-StarportTechLab = 63,
-StarportReactor = 64,
-FactoryFlying = 65,
-StarportFlying = 66,
-SCV = 67,
-BarracksFlying = 68,
-SupplyDepotLowered = 69,
-Marine = 70,
-Reaper = 71,
-Ghost = 72,
-Marauder = 73,
-Thor = 74,
-Hellion = 75,
-Medivac = 76,
-Banshee = 77,
-Raven = 78,
-Battlecruiser = 79,
-Nuke = 80,
-Nexus = 81,
-Pylon = 82,
-Assimilator = 83,
-Gateway = 84,
-Forge = 85,
-FleetBeacon = 86,
-TwilightCouncil = 87,
-PhotonCannon = 88,
-Stargate = 89,
-TemplarArchive = 90,
-DarkShrine = 91,
-RoboticsBay = 92,
-RoboticsFacility = 93,
-CyberneticsCore = 94,
-Zealot = 95,
-Stalker = 96,
-HighTemplar = 97,
-DarkTemplar = 98,
-Sentry = 99,
-Phoenix = 100,
-Carrier = 101,
-VoidRay = 102,
-WarpPrism = 103,
-Observer = 104,
-Immortal = 105,
-Probe = 106,
-Interceptor = 107,
-Hatchery = 108,
-CreepTumor = 109,
-Extractor = 110,
-SpawningPool = 111,
-EvolutionChamber = 112,
-HydraliskDen = 113,
-Spire = 114,
-UltraliskCavern = 115,
-InfestationPit = 116,
-NydusNetwork = 117,
-BanelingNest = 118,
-RoachWarren = 119,
-SpineCrawler = 120,
-SporeCrawler = 121,
-Lair = 122,
-Hive = 123,
-GreaterSpire = 124,
-Egg = 125,
-Drone = 126,
-Zergling = 127,
-Overlord = 128,
-Hydralisk = 129,
-Mutalisk = 130,
-Ultralisk = 131,
-Roach = 132,
-Infestor = 133,
-Corruptor = 134,
-BroodLordCocoon = 135,
-BroodLord = 136,
-BanelingBurrowed = 137,
-DroneBurrowed = 138,
-HydraliskBurrowed = 139,
-RoachBurrowed = 140,
-ZerglingBurrowed = 141,
-InfestorTerranBurrowed = 142,
-RedstoneLavaCritterInjuredBurrowed = 144,
-RedstoneLavaCritter = 145,
-RedstoneLavaCritterInjured = 146,
-QueenBurrowed = 147,
-Queen = 148,
-InfestorBurrowed = 149,
-OverlordCocoon = 150,
-Overseer = 151,
-PlanetaryFortress = 152,
-UltraliskBurrowed = 153,
-OrbitalCommand = 154,
-WarpGate = 155,
-OrbitalCommandFlying = 156,
-ForceField = 157,
-WarpPrismPhasing = 158,
-CreepTumorBurrowed = 159,
-CreepTumorQueen = 160,
-SpineCrawlerUprooted = 161,
-SporeCrawlerUprooted = 162,
-Archon = 163,
-NydusCanal = 164,
-BroodlingEscort = 165,
-RichMineralField = 166,
-XelNagaTower = 168,
-InfestedTerransEgg = 172,
-Larva = 173,
-ReaperPlaceholder = 174,
-NeedleSpinesWeapon = 237,
-CorruptionWeapon = 238,
-InfestedTerransWeapon = 239,
-NeuralParasiteWeapon = 240,
-HunterSeekerWeapon = 242,
-MULE = 243,
-ThorAAWeapon = 245,
-PunisherGrenadesLMWeapon = 246,
-VikingFighterWeapon = 247,
-ATALaserBatteryLMWeapon = 248,
-ATSLaserBatteryLMWeapon = 249,
-LongboltMissileWeapon = 250,
-D8ChargeWeapon = 251,
-YamatoWeapon = 252,
-IonCannonsWeapon = 253,
-AcidSalivaWeapon = 254,
-SpineCrawlerWeapon = 255,
-SporeCrawlerWeapon = 256,
-StalkerWeapon = 260,
-EMP2Weapon = 261,
-BacklashRocketsLMWeapon = 262,
-PhotonCannonWeapon = 263,
-ParasiteSporeWeapon = 264,
-Broodling = 266,
-BroodLordBWeapon = 267,
-AutoTurretReleaseWeapon = 270,
-LarvaReleaseMissile = 271,
-AcidSpinesWeapon = 272,
-FrenzyWeapon = 273,
-ContaminateWeapon = 274,
-BeaconRally = 286,
-BeaconArmy = 287,
-BeaconAttack = 288,
-BeaconDefend = 289,
-BeaconHarass = 290,
-BeaconIdle = 291,
-BeaconAuto = 292,
-BeaconDetect = 293,
-BeaconScout = 294,
-BeaconClaim = 295,
-BeaconExpand = 296,
-BeaconCustom1 = 297,
-BeaconCustom2 = 298,
-BeaconCustom3 = 299,
-BeaconCustom4 = 300,
-Rocks2x2NonConjoined = 305,
-FungalGrowthMissile = 306,
-NeuralParasiteTentacleMissile = 307,
-Beacon_Protoss = 308,
-Beacon_ProtossSmall = 309,
-Beacon_Terran = 310,
-Beacon_TerranSmall = 311,
-Beacon_Zerg = 312,
-Beacon_ZergSmall = 313,
-Lyote = 314,
-CarrionBird = 315,
-KarakMale = 316,
-KarakFemale = 317,
-UrsadakFemaleExotic = 318,
-UrsadakMale = 319,
-UrsadakFemale = 320,
-UrsadakCalf = 321,
-UrsadakMaleExotic = 322,
-UtilityBot = 323,
-CommentatorBot1 = 324,
-CommentatorBot2 = 325,
-CommentatorBot3 = 326,
-CommentatorBot4 = 327,
-Scantipede = 328,
-Dog = 329,
-Sheep = 330,
-Cow = 331,
-InfestedTerransEggPlacement = 332,
-InfestorTerransWeapon = 333,
-MineralField = 334,
-VespeneGeyser = 335,
-ProtossVespeneGeyser = 336,
-RichVespeneGeyser = 337,
-TrafficSignal = 354,
-MengskStatueAlone = 372,
-MengskStatue = 373,
-WolfStatue = 374,
-GlobeStatue = 375,
-Weapon = 376,
-BroodLordWeapon = 378,
-BroodLordAWeapon = 379,
-CreepBlocker1x1 = 380,
-PathingBlocker1x1 = 381,
-PathingBlocker2x2 = 382,
-AutoTestAttackTargetGround = 383,
-AutoTestAttackTargetAir = 384,
-AutoTestAttacker = 385,
-HelperEmitterSelectionArrow = 386,
-MultiKillObject = 387,
-Debris2x2NonConjoined = 467,
-EnemyPathingBlocker1x1 = 468,
-EnemyPathingBlocker2x2 = 469,
-EnemyPathingBlocker4x4 = 470,
-EnemyPathingBlocker8x8 = 471,
-EnemyPathingBlocker16x16 = 472,
-ScopeTest = 473,
-MineralField750 = 476,
-RichMineralField750 = 477,
-HellionTank = 493,
-MothershipCore = 497,
-LocustMP = 501,
-NydusCanalAttacker = 503,
-NydusCanalCreeper = 504,
-SwarmHostBurrowedMP = 505,
-SwarmHostMP = 506,
-Oracle = 507,
-Tempest = 508,
-WarHound = 509,
-WidowMine = 510,
-Viper = 511,
-WidowMineBurrowed = 512,
-LurkerMPEgg = 513,
-LurkerMP = 514,
-LurkerMPBurrowed = 515,
-LurkerDenMP = 516,
-DigesterCreepSprayTargetUnit = 582,
-DigesterCreepSprayUnit = 583,
-NydusCanalAttackerWeapon = 584,
-ViperConsumeStructureWeapon = 585,
-ResourceBlocker = 588,
-TempestWeapon = 589,
-YoinkMissile = 590,
-YoinkVikingAirMissile = 594,
-YoinkVikingGroundMissile = 596,
-YoinkSiegeTankMissile = 598,
-WarHoundWeapon = 600,
-EyeStalkWeapon = 602,
-WidowMineWeapon = 605,
-WidowMineAirWeapon = 606,
-MothershipCoreWeaponWeapon = 607,
-TornadoMissileWeapon = 608,
-TornadoMissileDummyWeapon = 609,
-TalonsMissileWeapon = 610,
-CreepTumorMissile = 611,
-LocustMPEggAMissileWeapon = 612,
-LocustMPEggBMissileWeapon = 613,
-LocustMPWeapon = 614,
-RepulsorCannonWeapon = 616,
-Ice2x2NonConjoined = 624,
-IceProtossCrates = 625,
-ProtossCrates = 626,
-TowerMine = 627,
-PickupPalletGas = 628,
-PickupPalletMinerals = 629,
-PickupScrapSalvage1x1 = 630,
-PickupScrapSalvage2x2 = 631,
-PickupScrapSalvage3x3 = 632,
-RoughTerrain = 633,
-UnbuildableBricksSmallUnit = 634,
-UnbuildableRocksSmallUnit = 637,
-XelNagaHealingShrine = 638,
-InvisibleTargetDummy = 639,
-VespeneGeyserPretty = 640, ; my custom name 
-ThornLizard = 643,
-CleaningBot = 644,
-ProtossSnakeSegmentDemo = 646,
-PhysicsCapsule = 647,
-PhysicsCube = 648,
-PhysicsCylinder = 649,
-PhysicsKnot = 650,
-PhysicsL = 651,
-PhysicsPrimitives = 652,
-PhysicsSphere = 653,
-PhysicsStar = 654,
-CreepBlocker4x4 = 655,
-TestZerg = 664,
-PathingBlockerRadius1 = 665,
-DesertPlanetSearchlight = 686,
-DesertPlanetStreetlight = 687,
-UnbuildableBricksUnit = 688,
-UnbuildableRocksUnit = 689,
-Artosilope = 691,
-Anteplott = 692,
-LabBot = 693,
-Crabeetle = 694,
-LabMineralField = 697,
-LabMineralField750 = 698,
-ThorAP = 714,
-LocustMPFlying = 715,
-ThorAALance = 718,
-OracleWeapon = 719,
-TempestWeaponGround = 720,
-SeekerMissile = 722	
-)
-	aUnitID := []
-	aUnitName := []
-	loop, parse, l_UnitTypes, `,
-	{
-		StringSplit, Item , A_LoopField, = 		; Format "Colossus = 38"
-		name := trim(Item1, " `t `n"), UnitID := trim(Item2, " `t `n")
-		aUnitID[name] := UnitID
-		aUnitName[UnitID] := name
-	}
-	Return
-}

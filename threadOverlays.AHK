@@ -975,7 +975,7 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 	aEnemyUnits := [], aEnemyUnitConstruction := [], aEnemyCurrentUpgrades := [], aMiscUnitPanelInfo := []
 	
 	 ; Mothership cant really morph - but might as well add it  inside the MSC section
-	static aUnitMorphingNames := {"Egg": True, "BanelingCocoon": True, "BroodLordCocoon": True, "OverlordCocoon": True, "MothershipCore": True, "Mothership": True }
+	static aUnitMorphingNames := {"Egg": True, "RavagerCocoon": True, "BanelingCocoon": True, "BroodLordCocoon": True, "OverlordCocoon": True, "MothershipCore": True, "Mothership": True }
 ;	if !aEnemyUnitPriorities	;because having  GLOBAL aEnemyUnitPriorities := [] results in it getting cleared each function run
 ;		aEnemyUnitPriorities := []
 	loop, % Unitcount := DumpUnitMemory(MemDump)
@@ -1109,7 +1109,7 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 						}
 					}
 					; hatchery, lair, and hive have the same priority - 2, so just use the hatches priority as it had to already exist 
-					else if (Type = aUnitID["Hatchery"] || Type = aUnitID["Lair"] || Type = aUnitID["Spire"]) && MorphingType := isHatchLairOrSpireMorphing(unit, Type)
+					else if (Type = aUnitID["Hatchery"] || Type = aUnitID["Lair"] || Type = aUnitID["Spire"] || Type = aUnitID["HydraliskDen"]) && MorphingType := isZergStructureMorphing(unit, Type)
 					{
 						aUnitInfo[MorphingType, "isStructure"] := True
 						progress := getUnitMorphTime(unit, type)
@@ -1128,8 +1128,8 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 				{
 					if aUnitMorphingNames.HasKey(aUnitName[type])
 					{
-
-						if (Type = aUnitId.Egg)
+						; Replace this with a function call one day
+						if (Type = aUnitId["Egg"])
 						{
 							;aProduction := getZergProductionFromEgg(unit)				
 							;QueuedPriority := aUnitInfo[aProduction.Type, "Priority"], progress :=  aProduction.progress, type := aProduction.Type	
@@ -1139,33 +1139,38 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 							, QueuedPriority := aUnitInfo[type, "Priority"]
 							, count := type = aUnitID.Zergling ? 2 : 1
 						}
-						else if (Type = aUnitID.BanelingCocoon)
+						else if (Type = aUnitID["RavagerCocoon"])
+						{
+							progress := getUnitMorphTime(unit, Type)
+							, QueuedPriority := aUnitInfo[Type := aUnitID["Ravager"], "Priority"], Count := 1
+						}
+						else if (Type = aUnitID["BanelingCocoon"])
 						{
 							progress := getBanelingMorphTime(numgetUnitAbilityPointer(MemDump, unit))
-							QueuedPriority := aUnitInfo[aUnitID.Baneling, "Priority"], Count := 1
+							, QueuedPriority := aUnitInfo[aUnitID.Baneling, "Priority"], Count := 1
 						}
-						else if (Type = aUnitID.BroodLordCocoon)
+						else if (Type = aUnitID["BroodLordCocoon"])
 						{
 							progress := getUnitMorphTime(unit, Type)
-							QueuedPriority := aUnitInfo[Type := aUnitID.BroodLord, "Priority"], Count := 1
+							, QueuedPriority := aUnitInfo[Type := aUnitID.BroodLord, "Priority"], Count := 1
 						}
-						else if (Type = aUnitID.OverlordCocoon)
+						else if (Type = aUnitID["OverlordCocoon"])
 						{
 							progress := getUnitMorphTime(unit, Type)
-							QueuedPriority := aUnitInfo[Type := aUnitID.Overseer, "Priority"], Count := 1
+							, QueuedPriority := aUnitInfo[Type := aUnitID.Overseer, "Priority"], Count := 1
 						}
-						else if (Type = aUnitId.MothershipCore || Type = aUnitId.Mothership)
+						else if (Type = aUnitId["MothershipCore"] || Type = aUnitId["Mothership"])
 						{
 							if isMotherShipCoreMorphing(unit)
 							{
 								progress := getUnitMorphTime(unit, Type)
-								QueuedPriority := aUnitInfo[Type, "Priority"], Count := 1, Type := aUnitID.Mothership
+								, QueuedPriority := aUnitInfo[Type, "Priority"], Count := 1, Type := aUnitID.Mothership
 							}
 							else 
 							{
 								aMiscUnitPanelInfo["MotherShipEnergy", owner] := getUnitEnergy(unit)
 								; Since only can have 1 mothership[core] could have just used the 'count' to store the energy
-								aEnemyUnits[Owner, Priority, Type] := round(aEnemyUnits[Owner, Priority, Type]) + 1 ; ? aEnemyUnits[Owner, Priority, Type] + 1 : 1
+								, aEnemyUnits[Owner, Priority, Type] := round(aEnemyUnits[Owner, Priority, Type]) + 1 ; ? aEnemyUnits[Owner, Priority, Type] + 1 : 1
 								continue
 							}
 						}							
@@ -1197,12 +1202,14 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 	;		}
 	;	}
 	;}
-
+	;objtree(aEnemyUnits)
+	;objtree(aEnemyUnitConstruction, "aEnemyUnitConstruction")
+	;msgbox 
 
 	Return
 }
 
-; need to fix templar /dt count when morohing in an archon
+; need to fix templar /dt count when morphing in an archon
 
 
 /*
@@ -1228,7 +1235,7 @@ FilterUnits(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aUnitPanelUni
 							, "Zerg": ["CreepTumorBurrowed","Broodling","Locust"]}
 
 	STATIC aAddUnits 	:=	{"Terran": {SupplyDepotLowered: "SupplyDepot", WidowMineBurrowed: "WidowMine", CommandCenterFlying: "CommandCenter", OrbitalCommandFlying: "OrbitalCommand"
-										, BarracksFlying: "Barracks", FactoryFlying: "Factory", StarportFlying: "Starport", SiegeTankSieged: "SiegeTank",  ThorHighImpactPayload: "Thor", VikingAssault: "VikingFighter"}
+										, BarracksFlying: "Barracks", FactoryFlying: "Factory", StarportFlying: "Starport", SiegeTankSieged: "SiegeTank",  ThorHighImpactPayload: "Thor", VikingAssault: "VikingFighter", LiberatorAG: "Liberator"}
 							, "Zerg": {DroneBurrowed: "Drone", ZerglingBurrowed: "Zergling", HydraliskBurrowed: "Hydralisk", UltraliskBurrowed: "Ultralisk", RoachBurrowed: "Roach"
 							, InfestorBurrowed: "Infestor", BanelingBurrowed: "Baneling", QueenBurrowed: "Queen", SporeCrawlerUprooted: "SporeCrawler", SpineCrawlerUprooted: "SpineCrawler"}} 
 							
@@ -2010,7 +2017,7 @@ getLocalUpgrades(byRef aUpgrades, percentMode)
 	    if aMorphingStructures.HasKey(Type)
 	    {
 	    	if (Type = aUnitID["CommandCenter"] && MorphingType := isCommandCenterMorphing(unit))
-	    	|| ((Type = aUnitID["Hatchery"] || Type = aUnitID["Lair"] || Type = aUnitID["Spire"]) && (MorphingType := isHatchLairOrSpireMorphing(unit, Type)))
+	    	|| ((Type = aUnitID["Hatchery"] || Type = aUnitID["Lair"] || Type = aUnitID["Spire"] || Type = aUnitID["HydraliskDen"]) && (MorphingType := isZergStructureMorphing(unit, Type)))
 	    	{
 	    		progress := getUnitMorphTime(unit, type, percentMode)
 	    		name := aUnitName[MorphingType]	 

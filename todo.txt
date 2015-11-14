@@ -1,0 +1,63 @@
+
+ unit detection
+	 need to account for overlord drops
+	 ravenger
+
+include new units in hasShields()
+
+fix old geyser and mineral references
+
+add new units to the various (options menu) selectable unit types
+
+combine new units/upgrades correctly in unit tab
+
+install new unit pictures
+
+correct time for upgrades / town hall stats
+
+Adept
+Disruptor
+
+Cyclone
+Liberator
+LiberatorAG
+
+Ravager
+Lurker
+
+
+
+
+SwarmHostBurrowedMP
+SwarmHostMP
+
+LurkerMPBurrowed
+LurkerDenMP
+LurkerMPEgg
+
+PylonOvercharge
+
+*btn-upgrade-terran*.dds
+
+aUnitID.HydraliskDen: ["UpgradeToLurkerDenMP"]
+
+New Upgrades
+
+StarportTech
+
+ResearchHighCapacityFuelTanks
+ResearchExplosiveShrapnelShells
+BansheeSpeed 	Hyperflight Rotors
+ResearchBallisticRange
+
+rax tech lab
+CycloneResearchLockOnDamageUpgrade
+
+twilight
+AdeptResearchPiercingUpgrade
+ResonatingGlaives
+
+
+Find real dds files for and fix the sizes of the current ones
+resonatingGlaives 
+ResearchBallisticRange
