@@ -3036,7 +3036,7 @@ l_UnitNamesQuickSelectProtoss := "Colossus|Mothership|Zealot|Stalker|HighTemplar
 l_UnitNamesQuickSelectZerg := "InfestorTerran|BanelingCocoon|Baneling|Zergling|Hydralisk|Mutalisk|Ultralisk|Roach|Infestor|Corruptor|BroodLordCocoon|BroodLord|BanelingBurrowed|HydraliskBurrowed|RoachBurrowed|ZerglingBurrowed|InfestorTerranBurrowed|InfestorBurrowed|OverlordCocoon|Overseer|UltraliskBurrowed|SwarmHostBurrowedMP|SwarmHostMP|Viper|Queen|QueenBurrowed|Drone|DroneBurrowed|Overlord|Changeling|ChangelingZealot|ChangelingMarineShield|ChangelingMarine|ChangelingZerglingWings|ChangelingZergling"
 
 l_UnitPanelTerran := "Cyclone|Liberator|TechLab|Reactor|PointDefenseDrone|CommandCenter|SupplyDepot|Refinery|Barracks|EngineeringBay|MissileTurret|Bunker|SensorTower|GhostAcademy|Factory|Starport|Armory|FusionCore|AutoTurret|SiegeTank|VikingFighter|SCV|Marine|Reaper|Ghost|Marauder|Thor|ThorHighImpactPayload|Hellion|Medivac|Banshee|Raven|Battlecruiser|Nuke|PlanetaryFortress|OrbitalCommand|MULE|HellBat|WidowMine"
-l_UnitPanelZerg := "Ravager|LurkerMP|LurkerDenMP|BanelingCocoon|Baneling|Changeling|Hatchery|CreepTumor|Extractor|SpawningPool|EvolutionChamber|HydraliskDen|Spire|UltraliskCavern|InfestationPit|NydusNetwork|BanelingNest|RoachWarren|SpineCrawler|SporeCrawler|Lair|Hive|GreaterSpire|Egg|Drone|Zergling|Overlord|Hydralisk|Mutalisk|Ultralisk|Roach|Infestor|Corruptor|BroodLordCocoon|BroodLord|Queen|OverlordCocoon|Overseer|NydusCanal|Larva|SwarmHostMP|Viper"
+l_UnitPanelZerg := "OverlordTransport|Ravager|LurkerMP|LurkerDenMP|BanelingCocoon|Baneling|Changeling|Hatchery|CreepTumor|Extractor|SpawningPool|EvolutionChamber|HydraliskDen|Spire|UltraliskCavern|InfestationPit|NydusNetwork|BanelingNest|RoachWarren|SpineCrawler|SporeCrawler|Lair|Hive|GreaterSpire|Egg|Drone|Zergling|Overlord|Hydralisk|Mutalisk|Ultralisk|Roach|Infestor|Corruptor|BroodLordCocoon|BroodLord|Queen|OverlordCocoon|Overseer|NydusCanal|Larva|SwarmHostMP|Viper"
 l_UnitPanelProtoss := "Adept|Disruptor|Colossus|Mothership|Nexus|Pylon|Assimilator|Gateway|Forge|FleetBeacon|TwilightCouncil|PhotonCannon|Stargate|TemplarArchive|DarkShrine|RoboticsBay|RoboticsFacility|CyberneticsCore|Zealot|Stalker|HighTemplar|DarkTemplar|Sentry|Phoenix|Carrier|VoidRay|WarpPrism|Observer|Immortal|Probe|WarpGate|WarpPrismPhasing|Archon|MothershipCore|Oracle|Tempest"
 
 aUnitLists := [], aUnitLists["All"] := []
@@ -13902,7 +13902,7 @@ check for no updated offset names.
 Find out why town hall rally doesnt work
 */
   ; 0067674B
-f1::
+;f1::
 unit := getSelectedUnitIndex()
 pAbilities := getUnitAbilityPointer(unit)
 type := getUnitType(unit)
@@ -13930,7 +13930,15 @@ objtree(aCommands)
 return 
 
 f2::
-getUnitAbilitiesString(getSelectedUnitIndex())
+unit := getSelectedUnitIndex()
+type := getUnitType(unit)
+msgbox % getUnitSubGroupPriority(getSelectedUnitIndex()) "`n" type "`n"
+;msgbox % chex(getUnitModelPointer(getSelectedUnitIndex()))
+;getUnitAbilitiesString(getSelectedUnitIndex())
+return 
+
+
+
 return 
 msgbox % chex(Offsets_InputStructure)
 mem := new _ClassMemory(GameIdentifier) ; set when new is used
@@ -14184,4 +14192,9 @@ int __usercall sub_6B629E8@<eax>(void *a1@<ebp>, int (*a2)(void)@<esi>, int a3, 
   *(_DWORD *)(a4 + 4) = v9;
   return a2();
 }
+
+
+*/
+
+
 

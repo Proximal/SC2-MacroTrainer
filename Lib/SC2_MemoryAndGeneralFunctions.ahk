@@ -83,6 +83,7 @@ Global B_LocalCharacterNameID
 , Offsets_QueuedUnit_BuildTimeTotal
 , Offsets_QueuedUnit_BuildTimeRemaining
 
+, Offsets_UnitModel_BasePtr
 , Offsets_UnitModel_ID
 , Offsets_UnitModel_SubgroupPriority
 , Offsets_UnitModel_MinimapRadius
@@ -330,12 +331,23 @@ loadMemoryAddresses(base, version := "")
 		Offsets_QueuedUnit_Minerals := 0x8C
 		Offsets_QueuedUnit_Gas := 0x90
 
-		; Unit Model Structure	
+		; Unit Model Structure
+		; In LotV, there is a pointer at unitModel + 8, that points to a structure containing
+		; all the unit information - the info/value offsets didnt change from hots 3.0 -> lotv
+		; in hots, this information was just in the base unit model structure 
+		; ** ****
+		; UnitModel_ID is in both structures i.e. unit model and the [unitModel + 8] structure,
+		; But its not identical for all units. 
+		; For OverlordTransport and TransportoverlordCocoon the unit id at [[unitModel + 8] +6] is wrong
+		; but the priority is correct. The correct minimarpRadius is in the base structure
+		; The get unit names still seem to work too (using the base unit model struct)	
 		Offsets_UnitModel_ID := 0x6 
+		Offsets_UnitModel_BasePtr := 0x8 
 		Offsets_UnitModel_SubgroupPriority := 0x3CC 
 		Offsets_UnitModel_MinimapRadius := 0x3D0 
 		
-		
+		; subgroup +0x8 + 0x3CC
+		; radius := 3D0
 		Offsets_Selection_Base := base + 0x1EEBC08 ;0x1EE9BB8 
 		; The structure begins with ctrl group 0
 		Offsets_Group_ControlGroup0 := base + 0x1EEF2C8 ;0x1EED278
@@ -3345,7 +3357,7 @@ GetEBases()
 
 DumpUnitMemory(BYREF MemDump)
 {   
-	Offsets_Unit_UnitsPerBlock := 0xF + 1
+	static Offsets_Unit_UnitsPerBlock := 0xF + 1
 
 	unitCount := getHighestUnitIndex()
 	, VarSetCapacity(MemDump, unitCount * Offsets_Unit_StructSize)
@@ -3353,8 +3365,8 @@ DumpUnitMemory(BYREF MemDump)
 	
 	loop, % loopCount := ceil(unitCount / Offsets_Unit_UnitsPerBlock)
 	{
-		if (A_Index = loopCount)
-			unitBlockSize := Mod(unitCount, Offsets_Unit_UnitsPerBlock) * Offsets_Unit_StructSize
+		if (A_Index = loopCount && remainingUnits := Mod(unitCount, Offsets_Unit_UnitsPerBlock)) ; *** The mod check here is very important!  If unit count = 16, then mod(16,16) = 0 and it will miss units!. Hence cant just do unitBlockSize := Mod(unitCount, Offsets_Unit_UnitsPerBlock) * Offsets_Unit_StructSize
+			unitBlockSize := remainingUnits * Offsets_Unit_StructSize
 		
 		UnitAtStartOfBlock := (A_Index-1) * Offsets_Unit_UnitsPerBlock
 		, localBufferOffset := UnitAtStartOfBlock * Offsets_Unit_StructSize
@@ -3365,14 +3377,43 @@ DumpUnitMemory(BYREF MemDump)
 ; 0 - 15
 ; 
 
+
+; selection order
+; overseer, overlord, transportOverlord, overseerCoccon, tansportOverlordcocoon
+; ctrl + shift clicking an overlord will remove transportOverlords, but not tansportOverlordcocoons
 class cUnitModelInfo
 {
+	; For OverlordTransport, TransportOverlordCocoon the IDs in the ptr structure are wrong 
+	; For overcharged pylon, the ptr structure holds the ID for pylon i.e. the base model
+	; the minimap size is correct in both, but the subgroup priority is incorrect in both
+	; 						pylon 		overcharedPylon
+	; ptr priority 			2 			26	 
+	; ptr radius 			4096 		4096
+	; ptr id 				pylon 		pylon
+	;
+	; Base priority	 		26 			26
+	; Base radius	 		4096 		4096
+	; base id 				pylon 		overcharedPylon	
    __New(pUnitModel) 
-   {  global GameIdentifier, Offsets_UnitModel_ID, Offsets_UnitModel_MinimapRadius, Offsets_UnitModel_SubgroupPriority
-      ReadRawMemory(pUnitModel & 0xFFFFFFFF, GameIdentifier, uModelData, Offsets_UnitModel_MinimapRadius+4) ; Offsets_UnitModel_MinimapRadius - 0x39C + 4 (int) is the highest offset i get from the unitmodel
-      this.Type := numget(uModelData, Offsets_UnitModel_ID, "Short") 
-      this.MiniMapRadius := numget(uModelData, Offsets_UnitModel_MinimapRadius, "int")/4096
-      this.RealSubGroupPriority := numget(uModelData, Offsets_UnitModel_SubgroupPriority, "Short")
+   {  
+   		baseType := readMemory(pUnitModel + Offsets_UnitModel_ID, GameIdentifier, 2)
+   		if aUnitID["OverlordTransport"] = baseType || aUnitID["TransportOverlordCocoon"] = baseType
+   		{
+   			this.Type := baseType
+   			, this.MiniMapRadius := 1 ;4096/4096 - same as overlord
+   			if aUnitID["TransportOverlordCocoon"] = baseType
+   			; Need to test this with overseerCoccon
+   				this.RealSubGroupPriority := 9.9 ; so if sorting selection, it will be overseer, overlord, OverlordTransport, TransportOverlordCocoon
+   			else this.RealSubGroupPriority := 10 ; same as overlord
+
+   		}
+   		else 
+   		{
+			ReadRawMemory(readMemory(pUnitModel + Offsets_UnitModel_BasePtr, GameIdentifier), GameIdentifier, uModelData, Offsets_UnitModel_MinimapRadius+4) ; Offsets_UnitModel_MinimapRadius - 0x39C + 4 (int) is the highest offset i get from the unitmodel
+			, this.Type := numget(uModelData, Offsets_UnitModel_ID, "UShort") 
+			, this.MiniMapRadius := numget(uModelData, Offsets_UnitModel_MinimapRadius, "UInt")/4096
+			, this.RealSubGroupPriority := numget(uModelData, Offsets_UnitModel_SubgroupPriority, "UShort")
+		}
    }
 }
 
@@ -5949,7 +5990,7 @@ mouseWheelRotations(wParam)
 
 
 
-dumpUnitTypes(byRef outputString)
+dumpUnitTypes(byRef outputString, exclude := False)
 {
 	outputString := ""
 	mem := new _ClassMemory(GameIdentifier) 
@@ -5958,29 +5999,31 @@ dumpUnitTypes(byRef outputString)
 	byte2 := mem.read(mp+1, "Char")
 	byte3 := mem.read(mp+2, "Char")
 	byte4 := mem.read(mp+3, "Char")
-	
-	excludeNamesContaining = 
-	( join, Comments ltrim
-	ACGluescreenDummy
-	##id##
-	DestructibleCityDebris
-	CollapsibleTerranTower
-	XelNaga_Caverns_
-	ExtendingBridge
-	DestructibleRock
-	UnbuildablePlates
-	CollapsibleRockTower
-	DebrisRamp
-	Shape
-	Destructible
-	)
-	excludeNames = 
-	( join, Comments ltrim
-	Amount
-	AttributeBonus[Armored]
-	GlaiveWurmWeapon
-	Level
-	)
+	if exclude
+	{
+		excludeNamesContaining = 
+		( join, Comments ltrim
+		ACGluescreenDummy
+		##id##
+		DestructibleCityDebris
+		CollapsibleTerranTower
+		XelNaga_Caverns_
+		ExtendingBridge
+		DestructibleRock
+		UnbuildablePlates
+		CollapsibleRockTower
+		DebrisRamp
+		Shape
+		Destructible
+		)
+		excludeNames = 
+		( join, Comments ltrim
+		Amount
+		AttributeBonus[Armored]
+		GlaiveWurmWeapon
+		Level
+		)
+	}
 	modifyNames = 
 	( join, Comments ltrim
 	Changeling

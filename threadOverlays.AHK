@@ -977,7 +977,7 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 	aEnemyUnits := [], aEnemyUnitConstruction := [], aEnemyCurrentUpgrades := [], aMiscUnitPanelInfo := []
 	
 	 ; Mothership cant really morph - but might as well add it  inside the MSC section
-	static aUnitMorphingNames := {"Egg": True, "RavagerCocoon": True, "LurkerMPEgg": True, "BanelingCocoon": True, "BroodLordCocoon": True, "OverlordCocoon": True, "TransportOverlordCocoon": True, "MothershipCore": True, "Mothership": True }
+	static aUnitMorphingNames := {"Egg": True, "RavagerCocoon": True, "LurkerMPEgg": True, "BanelingCocoon": True, "BroodLordCocoon": "BroodLord", "OverlordCocoon": "BroodLord", "TransportOverlordCocoon": True, "MothershipCore": True, "Mothership": True }
 ;	if !aEnemyUnitPriorities	;because having  GLOBAL aEnemyUnitPriorities := [] results in it getting cleared each function run
 ;		aEnemyUnitPriorities := []
 	loop, % Unitcount := DumpUnitMemory(MemDump)
@@ -1114,13 +1114,13 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 					else if (Type = aUnitID["Hatchery"] || Type = aUnitID["Lair"] || Type = aUnitID["Spire"] || Type = aUnitID["HydraliskDen"]) && MorphingType := isZergStructureMorphing(unit, Type)
 					{
 						aUnitInfo[MorphingType, "isStructure"] := True
-						progress := getUnitMorphTime(unit, type)
+						, progress := getUnitMorphTime(unit, type)
 						
-						aEnemyUnitConstruction[Owner, Priority, MorphingType] := {"progress": (aEnemyUnitConstruction[Owner, Priority, MorphingType].progress > progress ? aEnemyUnitConstruction[Owner, Priority, MorphingType].progress : progress)
+						, aEnemyUnitConstruction[Owner, Priority, MorphingType] := {"progress": (aEnemyUnitConstruction[Owner, Priority, MorphingType].progress > progress ? aEnemyUnitConstruction[Owner, Priority, MorphingType].progress : progress)
 																					, "count": round(aEnemyUnitConstruction[Owner, Priority, MorphingType].count) + 1 }
 
 						; I think its better to still count the unit as a hatch as well as a morph type
-						aEnemyUnits[Owner, Priority, Type] := round(aEnemyUnits[Owner, Priority, Type]) + 1 ; as its already a hatch/lair
+						, aEnemyUnits[Owner, Priority, Type] := round(aEnemyUnits[Owner, Priority, Type]) + 1 ; as its already a hatch/lair
 					}
 
 					else
@@ -1134,53 +1134,19 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 						if (Type = aUnitId["Egg"])
 						{
 							;aProduction := getZergProductionFromEgg(unit)				
-							;QueuedPriority := aUnitInfo[aProduction.Type, "Priority"], progress :=  aProduction.progress, type := aProduction.Type	
+							;Priority := aUnitInfo[aProduction.Type, "Priority"], progress :=  aProduction.progress, type := aProduction.Type	
 							; count := aProduction.Count
 							getStructureProductionInfo(unit, Type, aProduction)
 							, progress :=  aProduction.1.progress, type := aUnitID[aProduction.1.Item]
-							, QueuedPriority := aUnitInfo[type, "Priority"]
+							, Priority := aUnitInfo[type, "Priority"]
 							, count := type = aUnitID.Zergling ? 2 : 1
-						}
-						else if (Type = aUnitID["RavagerCocoon"])
-						{
-							progress := getUnitMorphTime(unit, Type)
-							, QueuedPriority := aUnitInfo[Type := aUnitID["Ravager"], "Priority"], Count := 1
-						}
-						else if (Type = aUnitID["LurkerMPEgg"])
-						{
-							;progress := getUnitMorphTime(unit, Type)
-							;, QueuedPriority := aUnitInfo[Type := aUnitID["LurkerMP"], "Priority"], Count := 1
-							progress := getUnitMorphTime(unit, Type), count := 1
-							QueuedPriority := priority
-						}
-						else if (Type = aUnitID["BanelingCocoon"])
-						{
-							progress := getBanelingMorphTime(numgetUnitAbilityPointer(MemDump, unit))
-							, QueuedPriority := aUnitInfo[Type, "Priority"], Count := 1
-						}
-						else if (Type = aUnitID["BroodLordCocoon"])
-						{
-							progress := getUnitMorphTime(unit, Type)
-							, QueuedPriority := aUnitInfo[Type := aUnitID.BroodLord, "Priority"], Count := 1
-						}
-						else if (Type = aUnitID["OverlordCocoon"])
-						{
-							progress := getUnitMorphTime(unit, Type)
-							, QueuedPriority := aUnitInfo[Type := aUnitID.Overseer, "Priority"], Count := 1
-						}
-						else if (Type = aUnitID["TransportOverlordCocoon"])
-						{
-							progress := getUnitMorphTime(unit, Type)
-							, QueuedPriority := aUnitInfo[Type := aUnitID.OverlordTransport, "Priority"], Count := 1
-							aEnemyCurrentUpgrades[Owner, "MorphToTransportOverlord"] := {"progress": (aEnemyCurrentUpgrades[Owner, "MorphToTransportOverlord"].progress > progress ? aEnemyCurrentUpgrades[Owner, "MorphToTransportOverlord"].progress : progress)
-																					, "count": round(aEnemyCurrentUpgrades[Owner, "MorphToTransportOverlord"].count) + 1 }
 						}
 						else if (Type = aUnitId["MothershipCore"] || Type = aUnitId["Mothership"])
 						{
 							if isMotherShipCoreMorphing(unit)
 							{
 								progress := getUnitMorphTime(unit, Type)
-								, QueuedPriority := aUnitInfo[Type, "Priority"], Count := 1, Type := aUnitID.Mothership
+								, Count := 1, Type := aUnitID["Mothership"]
 							}
 							else 
 							{
@@ -1189,9 +1155,21 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 								, aEnemyUnits[Owner, Priority, Type] := round(aEnemyUnits[Owner, Priority, Type]) + 1 ; ? aEnemyUnits[Owner, Priority, Type] + 1 : 1
 								continue
 							}
-						}							
-						aEnemyUnitConstruction[Owner, QueuedPriority, Type] := {"progress": (aEnemyUnitConstruction[Owner, QueuedPriority, Type].progress > progress ? aEnemyUnitConstruction[Owner, QueuedPriority, Type].progress : progress)
-																					, "count": round(aEnemyUnitConstruction[Owner, QueuedPriority, Type].count) + Count} 						
+						}
+						else if (Type = aUnitID["BanelingCocoon"])
+							progress := getBanelingMorphTime(numgetUnitAbilityPointer(MemDump, unit)), Count := 1					
+						else 
+						{ ; Takes care of RavagerCocoon, TransportOverlordCocoon, LurkerMPEgg, BroodLordCocoon, OverlordCocoon
+							progress := getUnitMorphTime(unit, Type), count := 1
+							;if aUnitID["TransportOverlordCocoon"] = Type
+							;{
+							;	aEnemyCurrentUpgrades[Owner, "MorphToTransportOverlord"] := {"progress": (aEnemyCurrentUpgrades[Owner, "MorphToTransportOverlord"].progress > progress ? aEnemyCurrentUpgrades[Owner, "MorphToTransportOverlord"].progress : progress)
+							;	, "count": round(aEnemyCurrentUpgrades[Owner, "MorphToTransportOverlord"].count) + 1 }
+							;}
+						}						
+					
+						aEnemyUnitConstruction[Owner, Priority, Type] := {"progress": (aEnemyUnitConstruction[Owner, Priority, Type].progress > progress ? aEnemyUnitConstruction[Owner, Priority, Type].progress : progress)
+																					, "count": round(aEnemyUnitConstruction[Owner, Priority, Type].count) + Count} 						
 					}
 					else
 						aEnemyUnits[Owner, Priority, Type] := round(aEnemyUnits[Owner, Priority, Type]) + 1 ; ? aEnemyUnits[Owner, Priority, Type] + 1 : 1
@@ -1224,7 +1202,7 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 
 	Return
 }
-
+f1:: objtree(aEnemyUnits), objtree(aEnemyUnitConstruction, "aEnemyUnitConstruction")
 ; need to fix templar /dt count when morphing in an archon
 
 
@@ -1239,9 +1217,8 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 ; an easier way to do this would just to create an array containg an object of each unit
 ; each unit object would then have type, owner, priorty property
 ; and it could then be sorted by each property in turn to get the order correct
-; but tipple sorting an array would take 'considerable' time, at least relative to not sorthing it
+; but triple sorting an array would take 'considerable' time, at least relative to not sorting it
 ; so i would rather do it without sorting the array
-
 
 FilterUnits(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aUnitPanelUnits)	;care have used aUnitID everywhere else!!
 {	global aUnitInfo
@@ -1257,14 +1234,13 @@ FilterUnits(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aUnitPanelUni
 							, LurkerMPBurrowed: "LurkerMP", "RavagerBurrowed": Ravager}
 							, "Protoss": {PylonOvercharge: "Pylon"}} 
 	STATIC aAddConstruction := {"Terran": {BarracksTechLab: "TechLab", BarracksReactor: "Reactor", FactoryTechLab: "TechLab", FactoryReactor: "Reactor", StarportTechLab: "TechLab", StarportReactor: "Reactor"}
-								, "Zerg": {BanelingCocoon: "Baneling", LurkerMPEgg: "LurkerMP"}}
+								, "Zerg": {BanelingCocoon: "Baneling", LurkerMPEgg: "LurkerMP", RavagerCocoon: "Ravager", BroodLordCocoon: "BroodLord", OverlordCocoon: "Overseer", TransportOverlordCocoon: "OverlordTransport"}}
 
-
+	static aSpecialUnits 	:= {Baneling: "BanelingCocoon", LurkerMP: "LurkerMPEgg", Ravager: "RavagerCocoon", BroodLord: "BroodLordCocoon", Overseer: "OverlordCocoon", OverlordTransport: "TransportOverlordCocoon"}
 	STATIC aUnitOrder := 	{"Terran": ["SCV", "OrbitalCommand", "PlanetaryFortress", "CommandCenter"]
 							, "Protoss": ["Probe", "Nexus"]
 							, "Zerg": ["Drone","Hive","Lair", "Hatchery", "Larva", "Overlord", "OverlordTransport"]}
 
-	
 	; aUnitPanelUnits is an object which contains the custom filtered (removed) user selected units
 	;	aUnitPanelUnits ----Race
 	;						|------- FilteredCompleted
@@ -1327,8 +1303,8 @@ FilterUnits(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aUnitPanelUni
 		for index, removeUnit in aRemovedUnits[race]
 		{
 			removeUnit := aUnitID[removeUnit]
-			priority := aUnitInfo[removeUnit, "Priority"]
-			priorityObject[priority].remove(removeUnit, "")
+			, priority := aUnitInfo[removeUnit, "Priority"]
+			, priorityObject[priority].remove(removeUnit, "")
 		}
 
 		for subUnit, mainUnit in aAddUnits[Race]
@@ -1389,9 +1365,9 @@ FilterUnits(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aUnitPanelUni
 			if (count := priorityObject[aUnitInfo[aUnitID[unit], "Priority"], aUnitID[unit]])
 			{
 				index := 0 - aUnitOrder[race].maxindex() + A_index ; hence so the first unit in array eg SCV will be on the left - last unit will have priority 0
-			 	priorityObject[index, aUnitID[unit]] := count 		;change priority to fake ones - so that Obital is on far left, followed by
-			 	priority := aUnitInfo[aUnitID[unit], "Priority"]		; PF and then CC
-			 	priorityObject[priority].remove(aUnitID[unit], "")	
+			 	, priorityObject[index, aUnitID[unit]] := count 		;change priority to fake ones - so that Obital is on far left, followed by
+			 	, priority := aUnitInfo[aUnitID[unit], "Priority"]		; PF and then CC
+			 	, priorityObject[priority].remove(aUnitID[unit], "")	
 			}
 		}		
 
@@ -1404,14 +1380,32 @@ FilterUnits(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aUnitPanelUni
 	{
 		race := aPlayer[owner, "Race"]	
 
+		; Place this here before adding the units
+		for index, removeUnit in aUnitPanelUnits[race, "FilteredUnderConstruction"]
+		{
+			; We are drawing broods cocoons as broods and bling cocoons as banes, so this allows us to remove
+			; them as they are still passed to function using their real (brood cocoon) unit priorities 
+			if aSpecialUnits.HasKey(removeUnit)
+				removeUnit := aSpecialUnits[removeUnit]
+			
+			removeUnit := aUnitID[removeUnit]
+			, priority := aUnitInfo[removeUnit, "Priority"]
+			; This is a dirty hack for the poton overcharge listed in 'Under Construction'
+			; Since unitID for PhotonOverCharge is a string -> "MothershipCoreApplyPurifyAB", can't use object.remove(intKey, "")
+			; so use just .remove(key) - it won't alter the values of the other Int Keys
+			if removeUnit is not integer 
+				priorityObject[priority].remove(removeUnit)
+			else priorityObject[priority].remove(removeUnit, "")
+		}
+
 		for subUnit, mainUnit in aAddConstruction[Race] ; At this point only Terrans will enter this loop. And its only for rectors/techLabs
 		{
 			subunit := aUnitID[subUnit]
-			subPriority := aUnitInfo[subunit, "Priority"]
+			, subPriority := aUnitInfo[subunit, "Priority"]
 			if (total := priorityObject[subPriority, subunit, "Count"])
 			{
 				subProgress := priorityObject[subPriority, subunit, "progress"]
-				mainUnit := aUnitID[mainUnit]
+				, mainUnit := aUnitID[mainUnit]
 				if !priority := aUnitInfo[mainUnit, "Priority"]
 					priority := subPriority		;take a chance, hopefully they will have same priority can cause issues
 
@@ -1431,32 +1425,22 @@ FilterUnits(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aUnitPanelUni
 				else 
 				{
 					priorityObject[priority, mainUnit, "Count"] := total
-					priorityObject[priority, mainUnit, "progress"] := subProgress
+					, priorityObject[priority, mainUnit, "progress"] := subProgress
 				}
 				priorityObject[subPriority].remove(subunit, "")
-				aEnemyUnitConstruction[Owner, "TotalCount"] -= total 	;these counts still seem to be out, but works for zerg?
+				, aEnemyUnitConstruction[Owner, "TotalCount"] -= total 	;these counts still seem to be out, but works for zerg?
 			}		
 		}
 
-		for index, removeUnit in aUnitPanelUnits[race, "FilteredUnderConstruction"]
-		{
-			removeUnit := aUnitID[removeUnit]
-			priority := aUnitInfo[removeUnit, "Priority"]
-			; This is a dirty hack for the poton overchar listed in 'Under Construction'
-			; Since unitID for PhotonOverCharge is a string -> "MothershipCoreApplyPurifyAB", can't use object.remove(intKey, "")
-			; so use just .remove(key) - it won't alter the values of the other Int Keys
-			if removeUnit is not integer 
-				priorityObject[priority].remove(removeUnit)
-			else priorityObject[priority].remove(removeUnit, "")
-		}
+
 	
 		for index, unit in aUnitOrder[race]		;this will ensure the change in priority matches the changes made above to make the order correct, so they can be added together.
 			if (count := priorityObject[aUnitInfo[aUnitID[unit], "Priority"], aUnitID[unit]].count)
 			{
 				index := 0 - aUnitOrder[race].maxindex() + A_index ; hence so the first unit in array eg SCV will be on the left - last unit will have priority 0
-			 	priorityObject[index, aUnitID[unit]] :=  priorityObject[aUnitInfo[aUnitID[unit], "Priority"], aUnitID[unit]] 			;change priority to fake ones - so that Obital is on far left, followed by
-			 	priority := aUnitInfo[aUnitID[unit], "Priority"]		; PF and then CC
-			 	priorityObject[priority].remove(aUnitID[unit], "")	
+			 	, priorityObject[index, aUnitID[unit]] :=  priorityObject[aUnitInfo[aUnitID[unit], "Priority"], aUnitID[unit]] 			;change priority to fake ones - so that Obital is on far left, followed by
+			 	, priority := aUnitInfo[aUnitID[unit], "Priority"]		; PF and then CC
+			 	, priorityObject[priority].remove(aUnitID[unit], "")	
 			}	
 	}
 	return
@@ -1650,15 +1634,14 @@ DrawUnitOverlay(ByRef Redraw, UserScale = 1, PlayerIdentifier = 0, Drag = 0)
 							, Gdip_FillRectangle(G, pProgressBrush, DestX + 5 * UserScale *.5, floor(DestY+Height + 5 * UserScale *.5), Width*progress - progress * 10 * UserScale *.5, Height/16)
 							, Gdip_SetSmoothingMode(G, 4)
 						}
-							aEnemyUnitConstruction[slot_number, priority].remove(unit, "")
+						aEnemyUnitConstruction[slot_number, priority].remove(unit, "")
 					}
 
 					if SplitUnitPanel
 					{
 						if aUnitInfo[unit, "isStructure"] 
 							maxStructureDestX += (Width+5*UserScale)
-						else 
-							maxUnitDestX += (Width+5*UserScale)	
+						else maxUnitDestX += (Width+5*UserScale)	
 					}
 					else DestX += (Width+5*UserScale)
 				}
