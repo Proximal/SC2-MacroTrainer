@@ -178,6 +178,7 @@ InstallSC2Files()
 	FileInstall, Included Files\Used_Icons\Units\Protoss\WarpPrismPhasing.png, %A_Temp%\UnitPanelMacroTrainer\WarpPrismPhasing.png, 1
 	FileInstall, Included Files\Used_Icons\Units\Protoss\zealot.png, %A_Temp%\UnitPanelMacroTrainer\zealot.png, 1
 	FileInstall, Included Files\Used_Icons\Units\Protoss\Disruptor.png, %A_Temp%\UnitPanelMacroTrainer\Disruptor.png, 1
+	FileInstall, Included Files\Used_Icons\Units\Protoss\Adept.png, %A_Temp%\UnitPanelMacroTrainer\Adept.png, 1
 	FileInstall, Included Files\Used_Icons\Buildings\Zerg\banelingnest.png,  %A_Temp%\UnitPanelMacroTrainer\banelingnest.png, 1
 	FileInstall, Included Files\Used_Icons\Buildings\Zerg\creeptumor.png,  %A_Temp%\UnitPanelMacroTrainer\creeptumor.png, 1
 	FileInstall, Included Files\Used_Icons\Buildings\Zerg\evolutionchamber.png,  %A_Temp%\UnitPanelMacroTrainer\evolutionchamber.png, 1

@@ -253,21 +253,24 @@ class SC2Keys
 			Marine/Barracks						|a 					|m					|m 					|CommandButton00				|Commands 				|Marine/Barracks
 			Reaper/Barracks						|r 					|p					|e 					|CommandButton01				|Commands 				|Reaper/Barracks
 			Marauder/Barracks		 			|d					|u					|f					|CommandButton02				|Commands 				|Marauder/Barracks
-			Ghost/Barracks						|g  				|g					|g 					|CommandButton03				|Commands 				|Ghost/Barracks
+			Ghost/Barracks						|g  				|g					|g 					|CommandButton03				|Commands 				|Ghost/Barracks			
 			Hellion/Factory						|e 					|h					|v 					|CommandButton00				|Commands 				|Hellion/Factory
 			WidowMine/Factory					|d 					|u					|d 					|CommandButton01				|Commands 				|WidowMine/Factory
 			SiegeTank/Factory					|s 					|i					|t 					|CommandButton02				|Commands 				|SiegeTank/Factory
-			HellionTank/Factory					|r 					|p					|h	 				|CommandButton03				|Commands 				|HellionTank/Factory
-			Thor/Factory						|t 					|d					|g 					|CommandButton04				|Commands 				|Thor/Factory
+			Cyclone/Factory						|n 					|n					|n 					|CommandButton03				|Commands 				|BuildCyclone/Factory
+			HellionTank/Factory					|r 					|p					|h	 				|CommandButton05				|Commands 				|HellionTank/Factory
+			Thor/Factory						|t 					|o					|g 					|CommandButton06				|Commands 				|Thor/Factory			
 			VikingFighter/Starport				|v	 				|k					|w 					|CommandButton00				|Commands 				|VikingFighter/Starport
 			Medivac/Starport					|d 					|m					|d 					|CommandButton01				|Commands 				|Medivac/Starport
-			Raven/Starport						|r 					|v					|v 					|CommandButton02				|Commands 				|Raven/Starport
-			Banshee/Starport					|e 					|n					|e 					|CommandButton03				|Commands 				|Banshee/Starport
-			Battlecruiser/Starport 				|b 					|b					|b 					|CommandButton04				|Commands 				|Battlecruiser/Starport
-			Probe/Nexus 						|e 					|p 					|p 					|CommandButton00				|Commands 				|Probe/Nexus
+			Liberator/Starport					|n 					|i					|n 					|CommandButton02				|Commands 				|Liberator/Starport
+			Raven/Starport						|r 					|v					|v 					|CommandButton03				|Commands 				|Raven/Starport
+			Banshee/Starport					|e 					|n					|e 					|CommandButton04				|Commands 				|Banshee/Starport
+			Battlecruiser/Starport 				|b 					|b					|b 					|CommandButton05				|Commands 				|Battlecruiser/Starport
+			Probe/Nexus 						|e 					|p 					|p 					|CommandButton00				|Commands 				|Probe/Nexus			
 			Zealot		  						|z 					|o					|z 					|CommandButton00				|Commands 				|Zealot 				; Gateway units lack the /structure
 			Sentry 		  						|e 					|n					|e 					|CommandButton01				|Commands 				|Sentry 				; SC has a menu for both gateway & warpgate
 			Stalker 	  						|s 					|l					|d 					|CommandButton02				|Commands 				|Stalker 				; But it doesn't seem like you can change them individually
+			Adept								|s 					|l					|d 					|CommandButton03				|Commands 				|WarpInAdept/Gateway	 				
 			HighTemplar 						|t 					|h					|t 					|CommandButton05				|Commands 				|HighTemplar
 			DarkTemplar 						|d 					|k					|k 					|CommandButton06				|Commands 				|DarkTemplar
 			Phoenix/Stargate					|x 					|p					|e 					|CommandButton00				|Commands 				|Phoenix/Stargate
@@ -279,6 +282,7 @@ class SC2Keys
 			WarpPrism/RoboticsFacility			|a 					|p					|s 					|CommandButton01				|Commands 				|WarpPrism/RoboticsFacility
 			Immortal/RoboticsFacility			|i 					|i					|i 					|CommandButton02				|Commands 				|Immortal/RoboticsFacility
 			Colossus/RoboticsFacility			|c 					|l					|v 					|CommandButton03				|Commands 				|Colossus/RoboticsFacility
+			Disruptor/RoboticsFacility			|d 					|r					|u 					|CommandButton04				|Commands 				|WarpinDisruptor/RoboticsFacility
 			Queen 								|q 					|u					|e 					|CommandButton01				|Commands 				|Queen 		; SC only allows same key for hatch/lair/hive
 			UpgradeToWarpGate/Gateway 			|g 					|g					|g 					|CommandButton10				|Commands 				|UpgradeToWarpGate/Gateway 		
 			; The key 'BunkerUnloadAll' is shared between bunkers, medivacs, warp prisms, and overlords.

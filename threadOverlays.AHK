@@ -991,12 +991,12 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 	    if  (aPlayer[Owner, "Team"] != aLocalPlayer["Team"] && Owner) || (unitPanelDrawLocalPlayer && owner = aLocalPlayer["slot"]) ;|| Owner
 	    {
 	    	pUnitModel := numgetUnitModelPointer(MemDump, Unit)
-	    	Type := numgetUnitModelType(pUnitModel)
+	    	, Type := getUnitModelType(pUnitModel)
 
 	    	if  (Type < aUnitID["Colossus"]) ; First 'real' unit
 				continue	
 			if (!Priority := aUnitInfo[Type, "Priority"]) ; faster than reading the priority each time - this is splitting hairs!!!
-				aUnitInfo[Type, "Priority"] := Priority := numgetUnitModelPriority(pUnitModel)
+				aUnitInfo[Type, "Priority"] := Priority := getUnitModelPriority(pUnitModel)
 
 			if (aUnitInfo[Type, "isStructure"] = "")
 				aUnitInfo[Type, "isStructure"] := TargetFilter & aUnitTargetFilter.Structure
@@ -1172,7 +1172,11 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 																					, "count": round(aEnemyUnitConstruction[Owner, Priority, Type].count) + Count} 						
 					}
 					else
+					{
+						if aUnitID["Overlord"] = type && aUnitID["OverlordTransport"] = getUnitModelAlternateType(pUnitModel)
+							Type := aUnitID["OverlordTransport"], Priority := getUnitModelPriority(pUnitModel)
 						aEnemyUnits[Owner, Priority, Type] := round(aEnemyUnits[Owner, Priority, Type]) + 1 ; ? aEnemyUnits[Owner, Priority, Type] + 1 : 1
+					}
 				}
 			}
 	   	}
@@ -1202,7 +1206,7 @@ getEnemyUnitCount(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aEnemyC
 
 	Return
 }
-f1:: objtree(aEnemyUnits), objtree(aEnemyUnitConstruction, "aEnemyUnitConstruction")
+
 ; need to fix templar /dt count when morphing in an archon
 
 
@@ -1435,13 +1439,16 @@ FilterUnits(byref aEnemyUnits, byref aEnemyUnitConstruction, byref aUnitPanelUni
 
 	
 		for index, unit in aUnitOrder[race]		;this will ensure the change in priority matches the changes made above to make the order correct, so they can be added together.
-			if (count := priorityObject[aUnitInfo[aUnitID[unit], "Priority"], aUnitID[unit]].count)
+		{	
+			type := aUnitID[unit]
+			if (count := priorityObject[aUnitInfo[type, "Priority"], type, "count"])
 			{
 				index := 0 - aUnitOrder[race].maxindex() + A_index ; hence so the first unit in array eg SCV will be on the left - last unit will have priority 0
-			 	, priorityObject[index, aUnitID[unit]] :=  priorityObject[aUnitInfo[aUnitID[unit], "Priority"], aUnitID[unit]] 			;change priority to fake ones - so that Obital is on far left, followed by
-			 	, priority := aUnitInfo[aUnitID[unit], "Priority"]		; PF and then CC
-			 	, priorityObject[priority].remove(aUnitID[unit], "")	
+			 	, priorityObject[index, type] :=  priorityObject[aUnitInfo[type, "Priority"], type] 			;change priority to fake ones - so that Obital is on far left, followed by
+			 	, priority := aUnitInfo[type, "Priority"]		; PF and then CC
+			 	, priorityObject[priority].remove(type, "")	
 			}	
+		}
 	}
 	return
 }
@@ -1996,7 +2003,7 @@ getLocalUpgrades(byRef aUpgrades, percentMode)
 	{
 	    if (numgetUnitTargetFilter(MemDump, unit := A_Index - 1) & deadOrUnderConstruction)
 	    || numgetUnitOwner(MemDump, Unit) != aLocalPlayer["Slot"]
-	    || !aUpgradeStructures.HasKey(Type := numgetUnitModelType(numgetUnitModelPointer(MemDump, Unit)))
+	    || !aUpgradeStructures.HasKey(Type := getUnitModelType(numgetUnitModelPointer(MemDump, Unit)))
 	       Continue
 	    if aMorphingStructures.HasKey(Type)
 	    {

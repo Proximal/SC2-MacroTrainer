@@ -280,17 +280,18 @@ class autoBuildGameGUI
 		if AutoBuildGUIAutoWorkerToggle
 		{ 
 			this.addItems("SCV")
-			this.pushItemRight(2)
+			this.pushItemRight(3)
 		}
-		else this.pushItemRight(3, Gdip_GetImageWidth(a_pBitmap[aUnitID["SCV"]]) * .75) ; So the pause Icon is on the far right
+		else this.pushItemRight(4, Gdip_GetImageWidth(a_pBitmap[aUnitID["SCV"]]) * .75) ; So the pause Icon is on the far right
 		this.addItems("OffButton")
 		this.addItems("pauseButton")
 		this.pushDownLine()
 		this.addItems("marine", "marauder", "reaper", "ghost")
 		this.pushDownLine()
-		this.addItems("hellion", "siegetank", "thor", "hellbat", "widowMine")
+		;this.addItems("hellion", "siegetank", "thor", "hellbat", "widowMine")
+		this.addItems("hellion", "widowMine", "siegetank", "cyclone", "hellbat", "thor")
 		this.pushDownLine()
-		this.addItems("vikingfighter", "medivac", "banshee", "raven", "battlecruiser")
+		this.addItems("vikingfighter", "medivac", "liberator", "raven", "banshee", "battlecruiser")
 	}
 	fillProtoss()
 	{
@@ -298,15 +299,16 @@ class autoBuildGameGUI
 		if AutoBuildGUIAutoWorkerToggle
 		{ 
 			this.addItems("Probe")
-			this.pushItemRight(2)
+			this.pushItemRight(3)
 		}
-		else this.pushItemRight(3, Gdip_GetImageWidth(a_pBitmap[aUnitID["Probe"]]) * .75)
+		else this.pushItemRight(4, Gdip_GetImageWidth(a_pBitmap[aUnitID["Probe"]]) * .75)
 		this.addItems("OffButton")
 		this.addItems("pauseButton")
 		this.pushDownLine()
-		this.addItems("zealot", "sentry", "stalker", "hightemplar", "darktemplar")
+		;this.addItems("zealot", "sentry", "stalker", "hightemplar", "darktemplar")
+		this.addItems("zealot", "sentry", "stalker", "adept", "hightemplar", "darktemplar")
 		this.pushDownLine()
-		this.addItems("observer", "warpPrism", "immortal", "colossus")
+		this.addItems("observer", "warpPrism", "immortal", "colossus", "disruptor")
 		this.pushDownLine()
 		this.addItems("phoenix", "oracle", "voidray", "tempest", "carrier")
 	}	

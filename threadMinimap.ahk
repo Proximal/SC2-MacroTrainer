@@ -341,7 +341,7 @@ getEnemyUnitsMiniMap(byref aUnitsToDraw)
      Filter := numget(MemDump, (UnitAddress := (A_Index - 1) * OffsetsUnitStrucSize) + Offsets_Unit_TargetFilter, "Int64")
      ; Hidden e.g. marines in medivac/bunker etc. 
      ; Otherwise these unit colours get drawn over the top - medivac highlight colour is hidden.
-     if (Filter & aUnitTargetFilter.Dead || Filter & aUnitTargetFilter.Hidden || aMiniMapUnits.Exclude.HasKey(Type := numgetUnitModelType(pUnitModel := numget(MemDump, UnitAddress + O_uModelPointer, "Int"))))
+     if (Filter & aUnitTargetFilter.Dead || Filter & aUnitTargetFilter.Hidden || aMiniMapUnits.Exclude.HasKey(Type := getUnitModelType(pUnitModel := numget(MemDump, UnitAddress + O_uModelPointer, "Int"))))
      	Continue
 
      ;if  (aPlayer[Owner, "Team"] <> aLocalPlayer["Team"] && Owner && type >= aUnitID["Colossus"] && !aChangeling.HasKey(type)) 
@@ -350,7 +350,7 @@ getEnemyUnitsMiniMap(byref aUnitsToDraw)
      if (aPlayer[owner := numget(MemDump, UnitAddress + O_uOwner, "Char"), "Team"] != aLocalPlayer["Team"] && Owner && type >= aUnitID["Colossus"])  ; This changeling check is no longer required as reading the first unit owner now (not the third)
      {
           if (!Radius := aUnitInfo[Type, "Radius"])
-              Radius := aUnitInfo[Type, "Radius"] := numgetUnitModelMiniMapRadius(pUnitModel)
+              Radius := aUnitInfo[Type, "Radius"] := getUnitModelMiniMapRadius(pUnitModel)
 
          if (Radius < minimap.UnitMinimumRadius) ; probes and such
            	Radius := minimap.UnitMinimumRadius
@@ -583,7 +583,7 @@ loop, % DumpUnitMemory(UBMemDump)
 		|| (aLocalPlayer["Team"] = aPlayer[unit_owner, "Team"] && unit_owner != aLocalPlayer["Slot"]))
 		Continue
 	; so these units are alive, and either local or enemy units (and not neutral player 0)
-	unit_type := numgetUnitModelType(numgetUnitModelPointer(UBMemDump, u_iteration))
+	unit_type := getUnitModelType(numgetUnitModelPointer(UBMemDump, u_iteration))
 	if  (unit_type < aUnitID["Colossus"]) ; First 'real' unit
 		continue	
 

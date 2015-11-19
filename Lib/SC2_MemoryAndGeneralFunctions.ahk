@@ -345,9 +345,7 @@ loadMemoryAddresses(base, version := "")
 		Offsets_UnitModel_BasePtr := 0x8 
 		Offsets_UnitModel_SubgroupPriority := 0x3CC 
 		Offsets_UnitModel_MinimapRadius := 0x3D0 
-		
-		; subgroup +0x8 + 0x3CC
-		; radius := 3D0
+
 		Offsets_Selection_Base := base + 0x1EEBC08 ;0x1EE9BB8 
 		; The structure begins with ctrl group 0
 		Offsets_Group_ControlGroup0 := base + 0x1EEF2C8 ;0x1EED278
@@ -371,9 +369,6 @@ loadMemoryAddresses(base, version := "")
 			 				; the wrong address! You need to increase CE timer resolution to see this happening! Or better yet use the 'continually perform the pointer scan until stopped' option.
 			 				;this is for the currently selected unit portrait page ie 1-6 in game (really starts at 0-5)
 							;might actually be a 2 or 1 byte value....but works fine as 4
-
-
-		BuriedFilterFlag := 0x0000000010000000
 
 		Offsets_Map_NamePointer := [base + 0x01F15DB8, 0x2A0] ; The string offset tends to end with this value
 
@@ -485,7 +480,7 @@ loadMemoryAddresses(base, version := "")
 
 		; example: D:\My Computer\My Documents\StarCraft II\Accounts\56025555\6-S2-1-34555\Replays\
 		; this works for En, Fr, and Kr languages 
-		B_ReplayFolder := base + 0x24C8D98 ; p3.0.3
+		B_ReplayFolder := base + 0x24CAE18 ; p3.0.3
 
 		; Horizontal resolution ; 4 bytes
 		; vertical resolution ; The next 4 bytes immediately after the Horizontal resolution 
@@ -726,6 +721,24 @@ getControlGroupPortraitCount(group)
 	return count
 }
 
+getStructureCountInGroup(group, unitID, byRef aUnitIndexs)
+{
+	count := 0, aUnitIndexs := []
+	groupSize := getControlGroupCount(Group)
+	ReadRawMemory(Offsets_Group_ControlGroup0 + Offsets_Group_ControlGroupSize * group, GameIdentifier, Memory,  Offsets_Group_UnitOffset + groupSize *  4)
+	loop, % groupSize 
+	{
+		fingerPrint := NumGet(Memory, Offsets_Group_UnitOffset + (A_Index - 1) *  4, "UInt")
+		, unitIndex := fingerPrint >> 18
+		if getUnitType(unitIndex) = unitId 
+		&& fingerPrint = getUnitFingerPrint(unitIndex)
+		&& getUnitOwner(unitIndex) = aLocalPlayer.slot ; dont really need this line. Could remove it to allow production out of an allys buildings (after they left)
+		&& !(getunittargetfilter(unitIndex) & (aUnitTargetFilter.Dead | aUnitTargetFilter.UnderConstruction))	
+			count++, aUnitIndexs.insert(unitIndex)
+	}	
+	return count
+}
+
 ; Could dump the entire group (Offsets_Group_ControlGroupSize). But that seems wasteful 
 ; *** care should be taken with this. The base address of the dumped memory
 ; is the selection part of the control group - It does not contain the type or count
@@ -856,13 +869,19 @@ getPlayerHighestWorkerCount(player="")
 	Return ReadMemory(aSCOffsets["playerAddress", player] + Offsets_Player_HighestWorkerCount, GameIdentifier)
 }
 getUnitType(Unit) ;starts @ 0 i.e. first unit at 0
-{ global 
-
-	LOCAL pUnitModel := getUnitModelPointer(unit)
-	if !aUnitModel[pUnitModel]
+{ 
+	if !aUnitModel[pUnitModel := getUnitModelPointer(unit)]
     	getUnitModelInfo(pUnitModel)
-  	return aUnitModel[pUnitModel].Type
+  	return aUnitModel[pUnitModel, "Type"]
 }
+
+getUnitAlternateType(Unit)
+{ 
+	if !aUnitModel[pUnitModel := getUnitModelPointer(unit)]
+    	getUnitModelInfo(pUnitModel)
+  	return aUnitModel[pUnitModel, "AlternateType"]
+}
+
 
 getUnitName2(unit)
 {	global 
@@ -908,11 +927,9 @@ getUnitOwner(Unit)
 
 getMiniMapRadius(Unit)
 {	
-	LOCAL pUnitModel := getUnitModelPointer(unit)
-	if !aUnitModel[pUnitModel]
+	if !aUnitModel[pUnitModel := getUnitModelPointer(unit)]
     	getUnitModelInfo(pUnitModel)
-  	return aUnitModel[pUnitModel].MiniMapRadius	
-	;Return ReadMemory(((ReadMemory(B_uStructure + (unit * Offsets_Unit_StructSize) + Offsets_Unit_ModelPointer, GameIdentifier) << 5) & 0xFFFFFFFF) + Offsets_UnitModel_MinimapRadius, GameIdentifier) /4096
+  	return aUnitModel[pUnitModel, "MiniMapRadius"]	
 }
 
 getUnitCount()
@@ -1437,18 +1454,59 @@ isGamePaused()
 ; will increment this value to 2.
 ; This may in fact be the same offset, but i never previously released you could 
 ; get the menu open when the chat was in focus.
+/*
+SC2.AssertAndCrash+1CB8FD - 0FB7 0D A42A7203      - movzx ecx,word ptr [SC2.exe+2372AA4]
+SC2.AssertAndCrash+1CB904 - 0FB7 05 A62A7203      - movzx eax,word ptr [SC2.exe+2372AA6]
+SC2.AssertAndCrash+1CB90B - 66 89 45 FC           - mov [ebp-04],ax
+SC2.AssertAndCrash+1CB90F - 8B D1                 - mov edx,ecx
+SC2.AssertAndCrash+1CB911 - 81 E2 FF0F0000        - and edx,00000FFF
+SC2.AssertAndCrash+1CB917 - 0FB7 04 95 A8A6C302   - movzx eax,word ptr [edx*4+SC2.exe+188A6A8]
+SC2.AssertAndCrash+1CB91F - 8B 55 FC              - mov edx,[ebp-04]
+SC2.AssertAndCrash+1CB922 - 2B D0                 - sub edx,eax
+SC2.AssertAndCrash+1CB924 - F7 D2                 - not edx
+SC2.AssertAndCrash+1CB926 - 0FB7 C2               - movzx eax,dx
+SC2.AssertAndCrash+1CB929 - 89 45 FC              - mov [ebp-04],eax
+SC2.AssertAndCrash+1CB92C - 25 FF0F0000           - and eax,00000FFF
+SC2.AssertAndCrash+1CB931 - 0FB7 04 85 A8A6C302   - movzx eax,word ptr [eax*4+SC2.exe+188A6A8]
+SC2.AssertAndCrash+1CB939 - 03 C1                 - add eax,ecx
+SC2.AssertAndCrash+1CB93B - 66 89 45 F8           - mov [ebp-08],ax
+SC2.AssertAndCrash+1CB93F - 0FB7 45 FC            - movzx eax,word ptr [ebp-04]
+SC2.AssertAndCrash+1CB943 - 66 89 45 FA           - mov [ebp-06],ax
+SC2.AssertAndCrash+1CB947 - 8B 4D F8              - mov ecx,[ebp-08]
+SC2.AssertAndCrash+1CB94A - 6A 01                 - push 01
+SC2.AssertAndCrash+1CB94C - 81 C1 28040000        - add ecx,00000428
+func call
+	....
+	esi = ecx
+	01A18266 - 89 46 1C  - mov [esi+1C],eax
+*/
+
+ ; Check if the address changes
 isMenuOpen()
 { 	
-	ecx := readMemory(OffsetsSC2Base + 0x1889A90, GameIdentifier)
-	, ecx ^= readMemory(OffsetsSC2Base + 0x2370A24, GameIdentifier)
-	, ecx ^= 0x8EE43918
-	, ecx += 0x428
+	eax := readMemory(OffsetsSC2Base + 0x2372AA4, GameIdentifier)
+	, ecx := eax & 0xFFFF 
+	, eax >>= 16 
+	, ebpM4 := eax
+	, edx := ecx 
+	, edx &= 0xFFF 
+	, eax := readMemory(edx * 4 + OffsetsSC2Base + 0x188A6A8, GameIdentifier, 2)
+	, edx := ebpM4
+	, edx -= eax	
+	, edx := ~edx 
+	, eax := edx & 0xFFFF
+	, ebpM4 := eax 
+	, eax &= 0xFFF
+	, eax := readMemory(OffsetsSC2Base + 0x188A6A8 + eax * 4, GameIdentifier, 2)
+	, eax += ecx
+	, ecx := (ebpM4 << 16 | eax & 0xFFFF) + 0x428
 	return readMemory(ecx + 0x1C, GameIdentifier)
 	;Return  pointer(GameIdentifier, P_MenuFocus, O1_MenuFocus)
 }
 
 isChatOpen()
-{ 	global
+{ 	
+	return 0
 	Return  pointer(GameIdentifier, Offsets_ChatFocusPointer*)
 }
 
@@ -2893,14 +2951,14 @@ commonUnitObject(baseType := True)
 	if baseType
 	{
 		return {"Terran": {SupplyDepotLowered: "SupplyDepot", WidowMineBurrowed: "WidowMine", CommandCenterFlying: "CommandCenter", OrbitalCommandFlying: "OrbitalCommand"
-											, BarracksFlying: "Barracks", FactoryFlying: "Factory", StarportFlying: "Starport", SiegeTankSieged: "SiegeTank",  ThorHighImpactPayload: "Thor", VikingAssault: "VikingFighter"}
+											, BarracksFlying: "Barracks", FactoryFlying: "Factory", StarportFlying: "Starport", SiegeTankSieged: "SiegeTank",  ThorHighImpactPayload: "Thor", VikingAssault: "VikingFighter", LiberatorAG: "Liberator"}
 								, "Zerg": {DroneBurrowed: "Drone", ZerglingBurrowed: "Zergling", HydraliskBurrowed: "Hydralisk", UltraliskBurrowed: "Ultralisk", RoachBurrowed: "Roach"
 								, InfestorBurrowed: "Infestor", BanelingBurrowed: "Baneling", QueenBurrowed: "Queen", SporeCrawlerUprooted: "SporeCrawler", SpineCrawlerUprooted: "SpineCrawler"}} 
 	}
 	else 
 	{
 		return	{"Terran": {SupplyDepot: "SupplyDepotLowered", WidowMine: "WidowMineBurrowed", CommandCenter: "CommandCenterFlying", OrbitalCommand: "OrbitalCommandFlying"
-										, Barracks: "BarracksFlying", Factory: "FactoryFlying", Starport: "StarportFlying", SiegeTank: "SiegeTankSieged",  Thor: "ThorHighImpactPayload", VikingFighter: "VikingAssault"}
+										, Barracks: "BarracksFlying", Factory: "FactoryFlying", Starport: "StarportFlying", SiegeTank: "SiegeTankSieged",  Thor: "ThorHighImpactPayload", VikingFighter: "VikingAssault", LiberatorAG: "Liberator"}
 							, "Zerg": {Drone: "DroneBurrowed", Zergling: "ZerglingBurrowed", Hydralisk: "HydraliskBurrowed", Ultralisk: "UltraliskBurrowed", Roach: "RoachBurrowed"										
 							, Infestor: "InfestorBurrowed", Baneling: "BanelingBurrowed", Queen: "QueenBurrowed", SporeCrawler: "SporeCrawlerUprooted", SpineCrawler: "SpineCrawlerUprooted"}}
 	}
@@ -2930,7 +2988,8 @@ getSubGroupAliasArray(byRef object)
        		 , aUnitID.ChangelingMarineShield: aUnitID.Changeling 
        		 , aUnitID.ChangelingMarine: aUnitID.Changeling 
        		 , aUnitID.ChangelingZerglingWings: aUnitID.Changeling 
-       		 , aUnitID.ChangelingZergling: aUnitID.Changeling}
+       		 , aUnitID.ChangelingZergling: aUnitID.Changeling
+       		 , aUnitID.OverlordTransport: aUnitID.Overlord}
 	return       		 
 }
 
@@ -2938,7 +2997,7 @@ getUnitSubGroupPriority(unit)
 {
 	if !aUnitModel[pUnitModel := getUnitModelPointer(unit)]
     	getUnitModelInfo(pUnitModel)
-  	return aUnitModel[pUnitModel].RealSubGroupPriority	
+  	return aUnitModel[pUnitModel, "RealSubGroupPriority"]	
 }
 
 
@@ -3344,7 +3403,7 @@ GetEBases()
 		if (TargetFilter & aUnitTargetFilter.Dead)
 	    	Continue	
 	    pUnitModel := numgetUnitModelPointer(MemDump, Unit)
-	   	Type := numgetUnitModelType(pUnitModel)
+	   	Type := getUnitModelType(pUnitModel)
 	   	owner := numgetUnitOwner(MemDump, Unit) 
 		IF (( type = aUnitID["Nexus"] ) OR ( type = aUnitID["CommandCenter"] ) OR ( type = aUnitID["Hatchery"] )) AND (aPlayer[Owner, "Team"] <> aLocalPlayer["Team"])
 		{
@@ -3379,8 +3438,8 @@ DumpUnitMemory(BYREF MemDump)
 
 
 ; selection order
-; overseer, overlord, transportOverlord, overseerCoccon, tansportOverlordcocoon
-; ctrl + shift clicking an overlord will remove transportOverlords, but not tansportOverlordcocoons
+; overseer, overlord, OverlordTransport, overseerCoccon, tansportOverlordcocoon
+; ctrl + shift clicking an overlord will remove OverlordTransport, but not tansportOverlordcocoons
 class cUnitModelInfo
 {
 	; For OverlordTransport, TransportOverlordCocoon the IDs in the ptr structure are wrong 
@@ -3396,55 +3455,63 @@ class cUnitModelInfo
 	; base id 				pylon 		overcharedPylon	
    __New(pUnitModel) 
    {  
-   		baseType := readMemory(pUnitModel + Offsets_UnitModel_ID, GameIdentifier, 2)
-   		if aUnitID["OverlordTransport"] = baseType || aUnitID["TransportOverlordCocoon"] = baseType
-   		{
-   			this.Type := baseType
-   			, this.MiniMapRadius := 1 ;4096/4096 - same as overlord
-   			if aUnitID["TransportOverlordCocoon"] = baseType
-   			; Need to test this with overseerCoccon
-   				this.RealSubGroupPriority := 9.9 ; so if sorting selection, it will be overseer, overlord, OverlordTransport, TransportOverlordCocoon
-   			else this.RealSubGroupPriority := 10 ; same as overlord
+		
+		ReadRawMemory(pUnitModel, GameIdentifier, uModelData, Offsets_UnitModel_MinimapRadius+4) ; Offsets_UnitModel_MinimapRadius - 0x39C + 4 (int) is the highest offset i get from the unitmodel
+		, this.Type := numget(uModelData, Offsets_UnitModel_ID, "UShort") 
+		, this.MiniMapRadius := numget(uModelData, Offsets_UnitModel_MinimapRadius, "UInt")/4096
+		, this.RealSubGroupPriority := numget(uModelData, Offsets_UnitModel_SubgroupPriority, "UShort")
+		, ptr := readMemory(pUnitModel + Offsets_UnitModel_BasePtr, GameIdentifier)
+		, this.AlternateType := readMemory(ptr + Offsets_UnitModel_ID, GameIdentifier, 2)
 
-   		}
-   		else 
-   		{
-			ReadRawMemory(readMemory(pUnitModel + Offsets_UnitModel_BasePtr, GameIdentifier), GameIdentifier, uModelData, Offsets_UnitModel_MinimapRadius+4) ; Offsets_UnitModel_MinimapRadius - 0x39C + 4 (int) is the highest offset i get from the unitmodel
-			, this.Type := numget(uModelData, Offsets_UnitModel_ID, "UShort") 
-			, this.MiniMapRadius := numget(uModelData, Offsets_UnitModel_MinimapRadius, "UInt")/4096
-			, this.RealSubGroupPriority := numget(uModelData, Offsets_UnitModel_SubgroupPriority, "UShort")
+		if this.AlternateType = aUnitID["TransportOverlordCocoon"]
+		{
+			this.RealSubGroupPriority := 0 
+			, this.Type := aUnitID["TransportOverlordCocoon"]	
+			, this.AlternateType := aUnitID["Overlord"]
 		}
-   }
+		else if this.AlternateType = aUnitID["OverlordTransport"]
+		{
+			this.AlternateType := aUnitID["Overlord"]
+			, this.Type := aUnitID["OverlordTransport"]			
+			, this.RealSubGroupPriority := 1
+		}
+      }
 }
 
-numgetUnitModelType(pUnitModel)
-{  global aUnitModel
+getUnitModelType(pUnitModel)
+{  
    if !aUnitModel[pUnitModel]
       getUnitModelInfo(pUnitModel)
-   return aUnitModel[pUnitModel].Type
+   return aUnitModel[pUnitModel, "Type"]
 }
-numgetUnitModelMiniMapRadius(pUnitModel)
-{  global aUnitModel
+getUnitModelAlternateType(pUnitModel)
+{  
    if !aUnitModel[pUnitModel]
       getUnitModelInfo(pUnitModel)
-   return aUnitModel[pUnitModel].MiniMapRadius
+   return aUnitModel[pUnitModel, "AlternateType"]
 }
-numgetUnitModelPriority(pUnitModel)
-{  global aUnitModel
+getUnitModelMiniMapRadius(pUnitModel)
+{ 
    if !aUnitModel[pUnitModel]
       getUnitModelInfo(pUnitModel)
-   return aUnitModel[pUnitModel].RealSubGroupPriority
+   return aUnitModel[pUnitModel, "MiniMapRadius"]
+}
+getUnitModelPriority(pUnitModel)
+{  
+   if !aUnitModel[pUnitModel]
+      getUnitModelInfo(pUnitModel)
+   return aUnitModel[pUnitModel, "RealSubGroupPriority"]
 }
 
 getUnitModelInfo(pUnitModel)
-{  global aUnitModel
+{ 
    aUnitModel[pUnitModel] := new cUnitModelInfo(pUnitModel)
    return
 }
 
 isUnitDead(unit)
-{ 	global 
-	return	getUnitTargetFilter(unit) & aUnitTargetFilter.Dead
+{ 	 
+	return	getUnitTargetFilter(unit) & aUnitTargetFilter["Dead"]
 }
 
 
@@ -4061,6 +4128,9 @@ doUnitDetection(unit, type, owner, unitUsedCount, mode = "")
 	}
 	else If (Mode = "Save")
 	{
+		global thisThreadTitle
+		If !A_IsCompiled && !FileExist(config_file)
+			msgbox % thisThreadTitle
 		Iniwrite, % SerDes(Alert_TimedOut), %config_file%, Resume Warnings, Alert_TimedOut		
 		Iniwrite, % SerDes(Alerted_Buildings), %config_file%, Resume Warnings, Alerted_Buildings		
 		Iniwrite, % SerDes(Alerted_Buildings_Base), %config_file%, Resume Warnings, Alerted_Buildings_Base		
@@ -4861,40 +4931,33 @@ getCursorUnitType(byRef unitIndex := "")
 	Transport Structure (includes bunker too)
 
 	Base = readmemory(getUnitAbilityPointer(unit) + 0x24)
-	+ 0x0C Current state, idle (3), load, unload(259)
+	+ 0x0C Current state, idle (35), loading (163), unloading (1059)
 			Clicking one unit portrait to unload doesn't change it, nor does clicking another portrait after it finishes unloading the previous unit
 			clicking (and shift+clicking) two or more does (as does unload all)
-	+ 0x20 	Memory Address of the unit in the unit structure
-	+ 0x28 	Currently queued/loaded unit count eg 2 marines + hellbat = 3
+			Changes to loading when loading/moving towards units to be loaded
+	+ 0x10  	Memory Address of the unit in the unit structure
+	+ 0x38  	Currently queued/loaded unit count eg 2 marines + hellbat = 3
 			This includes units queued up to be loaded.
 				E.g. click medivac and shift click onto 4 marines, value = 1 (even though is empty)
 				the value remains current cargo + 1 until units begin loading
 				select 4 marines and then click onto medivac, value = 4 (even though is empty)
-	+ 0x3c 	Total units loaded (accumulative) 4bytes
-	+ 0x40 	Total units unloaded
+				If repeat above, but shift way point the marines, value doesnt change until marines start the final queued command to move to (load into) the medivac
+	+ 0x4C  	Total units loaded (accumulative) 4bytes
+	+ 0x50  	Total units unloaded
 		(current loaded units = their deltas)
-	+ 0x44 	UnloadTimer	Counts down to 0 (resets and occurs for each unit being unloaded)
-
-	static aStates := {"loading": 67 ; 3 + 64d/0x40
-					, "loading": 35  ; changes just before units begin loading
-					, "unloading": 259 ;  3 + 256d	} 
-
+	+ 0x54  	UnloadTimer	Counts down to 0 (resets and occurs for each unit being unloaded)
 */
 
 ; Returns unit count inside a transport eg 2 marines + hellbat = 3
+; workers for medivacs, warp prisms, overlords, and bunkers
 getCargoCount(unit, byRef isUnloading := "")
 {
-	transportStructure := readmemory(getUnitAbilityPointer(unit) + 0x24, GameIdentifier)
-	totalLoaded := readmemory(transportStructure + 0x3C, GameIdentifier)
-	totalUnloaded := readmemory(transportStructure + 0x40, GameIdentifier)
-	isUnloading := readmemory(transportStructure + 0x0C, GameIdentifier) = 259 
+	pTransportStructure := readmemory(getUnitAbilityPointer(unit) + 0x24, GameIdentifier) ; MedivacTransport, OverlordTransport, WarpPrismTransport, and BunkerTransport are all at same offset
+	, ReadRawMemory(pTransportStructure, GameIdentifier, buffer, 0x50 + 4)
+	, isUnloading := NumGet(buffer, 0x0C, "UInt") = 1059 
+	, totalLoaded := NumGet(buffer, 0x4C, "UInt")
+	, totalUnloaded := NumGet(buffer, 0x50, "UInt")
 	return totalLoaded - totalUnloaded
-}
-
-isTransportUnloading(unit)
-{
-	transportStructure := readmemory(getUnitAbilityPointer(unit) + 0x24, GameIdentifier)
-	return readmemory(transportStructure + 0x0C, GameIdentifier) = 259 ? 1 : 0
 }
 
 
@@ -4911,18 +4974,18 @@ isTransportUnloading(unit)
 */
 
 getUnitMaxHp(unit)
-{   global B_uStructure, Offsets_Unit_StructSize, Offsets_Unit_ModelPointer
+{   
     mp := getUnitModelPointer(unit)
-    addressArray := readMemory(mp + 0xC, GameIdentifier, 4)
-    pCurrentModel := readMemory(addressArray + 0x4, GameIdentifier, 4) 		
+    , addressArray := readMemory(mp + 0xC, GameIdentifier, 4)
+    , pCurrentModel := readMemory(addressArray + 0x4, GameIdentifier, 4) 		
     return round(readMemory(pCurrentModel + 0x2C, GameIdentifier) / 4096)
 }
 
 getUnitMaxShield(unit)
-{   global B_uStructure, Offsets_Unit_StructSize, Offsets_Unit_ModelPointer
+{   
     mp := getUnitModelPointer(unit)
-    addressArray := readMemory(mp + 0xC, GameIdentifier, 4)
-    pCurrentModel := readMemory(addressArray + 0x4, GameIdentifier, 4) 		
+    , addressArray := readMemory(mp + 0xC, GameIdentifier, 4)
+    , pCurrentModel := readMemory(addressArray + 0x4, GameIdentifier, 4) 		
     return round(readMemory(pCurrentModel + 0xA0, GameIdentifier) / 4096)
 }
 
@@ -4944,19 +5007,6 @@ getUnitPercentShield(unit)
 getUnitCurrentShields(unit)
 {
 	return getUnitMaxShield(unit) - getUnitShieldDamage(unit)
-}
-
-getCurrentHpAndShields(unit, byRef result)
-{
-	global B_uStructure, Offsets_Unit_StructSize, Offsets_Unit_ModelPointer
-    result := []
-    mp := getUnitModelPointer(unit)
-    addressArray := readMemory(mp + 0xC, GameIdentifier, 4)
-    pCurrentModel := readMemory(addressArray + 0x4, GameIdentifier, 4) 		
-    result.health := round(readMemory(pCurrentModel + 0x2C, GameIdentifier) / 4096) - getUnitHpDamage(unit)
-    result.shields :=  round(readMemory(pCurrentModel + 0xA0, GameIdentifier) / 4096) - getUnitShieldDamage(unit)
-    result.unitIndex := unit 
-    return
 }
 
 
@@ -5306,11 +5356,6 @@ getPhotonOverChargeProgress(unit)
 	return round((totalTime - remainingTime) / totalTime, 2)
 }
 
-
-unitIndexFromAddress(address)
-{
-	return (address - B_uStructure) / Offsets_Unit_StructSize
-}
 
 getUnitTargetFilterString(unit)
 {
@@ -5990,7 +6035,7 @@ mouseWheelRotations(wParam)
 
 
 
-dumpUnitTypes(byRef outputString, exclude := False)
+dumpUnitTypes(byRef outputString, exclude := True)
 {
 	outputString := ""
 	mem := new _ClassMemory(GameIdentifier) 

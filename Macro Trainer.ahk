@@ -1038,7 +1038,7 @@ Cast_ChronoStructure(aStructuresToChrono, selectionMode := False)
 			if isTargetDead(TargetFilter := numgetUnitTargetFilter(MemDump, unit)) || !isOwnerLocal(numgetUnitOwner(MemDump, Unit))
 			|| isTargetUnderConstruction(TargetFilter)
 		       Continue
-	    	if aStructuresToChrono.HasKey(Type := numgetUnitModelType(numgetUnitModelPointer(MemDump, Unit))) && !numgetIsUnitChronoed(MemDump, unit) && numgetIsUnitPowered(MemDump, unit)
+	    	if aStructuresToChrono.HasKey(Type := getUnitModelType(numgetUnitModelPointer(MemDump, Unit))) && !numgetIsUnitChronoed(MemDump, unit) && numgetIsUnitPowered(MemDump, unit)
 	    	{
 		    	IF ( type = aUnitID["WarpGate"]) 
 		    	{
@@ -6152,7 +6152,10 @@ else if !gettime()
 }
 IfWinExist, Dump Unit Types Vr: %ProgramVersion%
 	WinClose
-dumpUnitTypes(output)
+msgbox, 4, Unit IDs, Omit some useless units?, 10 
+IfMsgBox Yes
+	dumpUnitTypes(output, True)
+else dumpUnitTypes(output, False)
 Gui, New 
 Gui, Add, Edit, x12 y+10 w1000 h720 hwndHwndEdit readonly -E0x200, %output%
 Gui, Show,, Dump Unit Types Vr: %ProgramVersion%
@@ -7490,7 +7493,7 @@ getBuildingList(F_building_var*)
 	    if isTargetDead(TargetFilter := numgetUnitTargetFilter(MemDump, unit)) || !isOwnerLocal(owner := numgetUnitOwner(MemDump, Unit))
 	       Continue
 	    pUnitModel := numgetUnitModelPointer(MemDump, Unit)
-	    Type := numgetUnitModelType(pUnitModel)
+	    Type := getUnitModelType(pUnitModel)
 	    For index, building_type in F_building_var
 		{	
 			IF (type = building_type && !isTargetUnderConstruction(TargetFilter))
@@ -7813,7 +7816,7 @@ autoWorkerProductionCheck()
 				; this is for terran, so if build cc inside base, wont build up to 60 workers even though 2 bases, but just 1 mining
 				for index, geyser in aResourceLocations.geysers
 				{
-					if isUnitNearUnit(geyser, object, 7.9) ; 7.9 also compares z but for 1 map unit ; so if the base is within 8 map units it counts. It seems geysers are generally no more than 7 or 7.5 away
+					if 1 || isUnitNearUnit(geyser, object, 7.9) ; 7.9 also compares z but for 1 map unit ; so if the base is within 8 map units it counts. It seems geysers are generally no more than 7 or 7.5 away
 					{
 						Basecount++ ; for calculating max workers per base
 						nearGeyser := True
@@ -7944,7 +7947,7 @@ autoWorkerProductionCheck()
 				TargetFilter := numgetUnitTargetFilter(MemDump, unit := A_Index - 1)
 				if (TargetFilter & aUnitTargetFilter.Dead 
 				|| numgetUnitOwner(MemDump, Unit) != aLocalPlayer["Slot"]
-				|| numgetUnitModelType(numgetUnitModelPointer(MemDump, Unit)) != aUnitID["Barracks"])
+				|| getUnitModelType(numgetUnitModelPointer(MemDump, Unit)) != aUnitID["Barracks"])
 			    	Continue
 
 			    if !(TargetFilter & aUnitTargetFilter.UnderConstruction)
@@ -8249,25 +8252,6 @@ return
 */
 
 
-/*
-
-getZergProduction(EggUnitIndex)
-{
-	pAbilities := getUnitAbilityPointer(EggUnitIndex)
-	base := readmemory(pAbilities + 0x20, GameIdentifier)
-	p := readmemory(base - 0x48, GameIdentifier)
-	p := readmemory(p, GameIdentifier)
-	p := readmemory(p + 0xf4, GameIdentifier)
-	p := readmemory(p, GameIdentifier)
-	p := readmemory(p+4, GameIdentifier)
-	s := ReadMemory_Str(p, GameIdentifier)
-	msgbox % chex(p) " " s
-	return
-
-}
-
-
-*/
 
 isSelectionGroupable(ByRef oSelection)
 {	GLOBAl aLocalPlayer
@@ -8710,23 +8694,6 @@ disableAllHotkeys()
 	return 
 }
 
-getCamCenteredUnit(UnitList) ; |delimited ** ; needs a minimum of 70+ ms to update cam location
-{
-	CamX := getPlayerCameraPositionX(), CamY := getPlayerCameraPositionY()
-	loop, parse, UnitList, |
-	{
-		delta := Abs(CamX-getUnitPositionX(A_loopfield)) + Abs(CamY-getUnitPositionY(A_loopfield))
-		if (delta < delta_closest || A_index = 1)
-		{
-			delta_closest := delta
-			unit_closest := A_loopfield
-		}
-	}
-	StringReplace, UnitList, UnitList,|%unit_closest%
-	if !ErrorLevel ;none found
-		StringReplace, UnitList, UnitList,%unit_closest%|	
-	return unit_closest
-}
 
 castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendWhileBlocked("^" CG_control_group)
 {	global
@@ -9070,7 +9037,7 @@ restoreSelection(controlGroup, selectionPage, highlightedTab)
  		if isTargetDead(TargetFilter := numgetUnitTargetFilter(MemDump, unit)) || !isOwnerLocal(numgetUnitOwner(MemDump, Unit)) || isTargetUnderConstruction(TargetFilter) 
 	       Continue
 	    pUnitModel := numgetUnitModelPointer(MemDump, Unit)
-	    Type := numgetUnitModelType(pUnitModel)
+	    Type := getUnitModelType(pUnitModel)
 	
 		IF (type = aUnitID["Hatchery"] || type = aUnitID["Lair"] || type = aUnitID["Hive"])
 		{
@@ -9277,7 +9244,7 @@ quickSelect(aDeselect)
 		else loop, % DumpUnitMemory(MemDump)
 		{	
 		    if !(numgetUnitTargetFilter(MemDump, unit := A_Index - 1) & aUnitTargetFilter.Dead) && numgetUnitOwner(MemDump, Unit) = aLocalPlayer["Slot"]
-		    && aLookup.hasKey(numgetUnitModelType(numgetUnitModelPointer(MemDump, Unit)))
+		    && aLookup.hasKey(getUnitModelType(numgetUnitModelPointer(MemDump, Unit)))
 		    {
 		    	unitTypesDoesntExist := False
 		    	break
@@ -10155,7 +10122,7 @@ getMapInfoMineralsAndGeysers()
 		TargetFilter := numgetUnitTargetFilter(MemDump, unit)
 		if isTargetDead(TargetFilter) 
 			continue
-		type := numgetUnitModelType(numgetUnitModelPointer(MemDump, unit))
+		type := getUnitModelType(numgetUnitModelPointer(MemDump, unit))
 
     	IF ( type = aUnitID["MineralField"] || type = aUnitID["RichMineralField"] )
     		resources.minerals[unit] := numGetUnitPositionXYZ(MemDump, unit)
@@ -12007,9 +11974,9 @@ class autoBuild
 	}
 	getRaceFromUnitName(unitName)
 	{
-		if unitName in marine,reaper,marauder,ghost,hellion,widowMine,siegeTank,hellBat,thor,VikingFighter,Medivac,Raven,Banshee,Battlecruiser,Barracks,Factory,Starport
+		if unitName in marine,reaper,marauder,ghost,hellion,widowMine,siegeTank,Cyclone,hellBat,thor,VikingFighter,Medivac,Liberator,Raven,Banshee,Battlecruiser,Barracks,Factory,Starport
 			return "Terran"
-		if unitName in Zealot,Sentry,Stalker,HighTemplar,DarkTemplar,Phoenix,Oracle,VoidRay,Tempest,Carrier,Observer,WarpPrism,Immortal,Colossus,Gateway,Stargate,RoboticsFacility
+		if unitName in Zealot,Sentry,Stalker,Adept,HighTemplar,DarkTemplar,Phoenix,Oracle,VoidRay,Tempest,Carrier,Observer,WarpPrism,Immortal,Colossus,Disruptor,Gateway,Stargate,RoboticsFacility
 			return "Protoss"	
 		if unitName in Queen,Hatchery,Lair,Hive
 			return "Zerg"		
@@ -12017,8 +11984,8 @@ class autoBuild
 	}
 	getProducibleUnits()
 	{
-		terran := "Marine,Reaper,Marauder,Ghost,Hellion,WidowMine,SiegeTank,HellBat,Thor,VikingFighter,Medivac,Raven,Banshee,Battlecruiser"
-		protoss := "Zealot,Sentry,Stalker,HighTemplar,DarkTemplar,Phoenix,Oracle,VoidRay,Tempest,Carrier,Observer,WarpPrism,Immortal,Colossus"
+		terran := "Marine,Reaper,Marauder,Ghost,Hellion,WidowMine,SiegeTank,Cyclone,HellBat,Thor,VikingFighter,Medivac,Liberator,Raven,Banshee,Battlecruiser"
+		protoss := "Zealot,Sentry,Stalker,Adept,HighTemplar,DarkTemplar,Phoenix,Oracle,VoidRay,Tempest,Carrier,Observer,WarpPrism,Immortal,Colossus,Disruptor"
 		return obj := [], obj.terran := StrSplit(terran, ","), obj.protoss := StrSplit(protoss, ","), obj.zerg := ["Queen"]	
 	}
 	; don't pass queen to this function
@@ -12026,15 +11993,15 @@ class autoBuild
 	{
 		if unitName in marine,reaper,marauder,ghost
 			return "barracks"
-		if unitName in hellion,widowMine,siegeTank,hellBat,thor
+		if unitName in hellion,widowMine,siegeTank,hellBat,thor,Cyclone
 			return "factory"
-		if unitName in VikingFighter,Medivac,Raven,Banshee,Battlecruiser
+		if unitName in VikingFighter,Medivac,Liberator,Raven,Banshee,Battlecruiser
 			return "starport"
-		if unitName in Zealot,Sentry,Stalker,HighTemplar,DarkTemplar
+		if unitName in Zealot,Sentry,Stalker,Adept,HighTemplar,DarkTemplar
 			return "Gateway"	
 		if unitName in Phoenix,Oracle,VoidRay,Tempest,Carrier
 			return "Stargate"		
-		if unitName in Observer,WarpPrism,Immortal,Colossus
+		if unitName in Observer,WarpPrism,Immortal,Colossus,Disruptor
 			return "RoboticsFacility"	
 		return
 	}
@@ -12050,10 +12017,12 @@ class autoBuild
 			hellion 		|0 			|100 		|0 			|2 			| 					|Hellion/Factory 				|Factory
 			widowMine 		|0 			|75 		|25			|2 			| 					|WidowMine/Factory 				|Factory
 			siegeTank 		|1 			|150 		|125		|3 			| 					|SiegeTank/Factory 				|Factory
+			Cyclone 		|1 			|150 		|150		|3 			| 					|Cyclone/Factory				|Factory
 			hellBat 		|0 			|100 		|0 			|2			|Armory				|HellionTank/Factory 			|Factory
 			thor 			|1 			|300 		|200 		|6			|Armory				|Thor/Factory 					|Factory
 			VikingFighter 	|0 			|150 		|75 		|2			|					|VikingFighter/Starport 		|Starport
 			Medivac 	 	|0 			|100 		|100 		|2			|					|Medivac/Starport 				|Starport
+			Liberator 	 	|0 			|150 		|150 		|3			|					|Liberator/Starport				|Starport
 			Raven 	 		|1 			|100 		|200 		|2			|					|Raven/Starport 				|Starport
 			Banshee  		|1 			|150 		|100 		|3			|					|Banshee/Starport 				|Starport
 			Battlecruiser	|1 			|400 		|300 		|6			|FusionCore			|Battlecruiser/Starport			|Starport
@@ -12064,6 +12033,7 @@ class autoBuild
 			Zealot 			|0 			|100 		|0 			|2 			|					|Zealot 		 				|Gateway
 			Sentry 			|0 			|50 		|100 		|2 			|CyberneticsCore	|Sentry			 				|Gateway
 			Stalker			|0 			|125 		|50 		|2 			|CyberneticsCore	|Stalker		 				|Gateway
+			Adept			|0 			|100 		|25 		|2 			|CyberneticsCore	|Adept		 					|Gateway
 			HighTemplar		|0 			|50 		|150 		|2 			|TemplarArchive		|HighTemplar	 				|Gateway
 			DarkTemplar		|0 			|125 		|125 		|2 			|DarkShrine			|DarkTemplar	 				|Gateway
 			Phoenix			|0 			|250 		|100 		|2 			|					|Phoenix/Stargate 				|Stargate
@@ -12075,6 +12045,7 @@ class autoBuild
 			WarpPrism		|0 			|200 		|0 			|2 			|					|WarpPrism/RoboticsFacility 	|RoboticsFacility
 			Immortal		|0 			|250 		|100 		|4 			|					|Immortal/RoboticsFacility 		|RoboticsFacility
 			Colossus		|0 			|300 		|200 		|6 			|RoboticsBay		|Colossus/RoboticsFacility 		|RoboticsFacility
+			Disruptor		|0 			|150 		|150 		|3 			|RoboticsBay		|Disruptor/RoboticsFacility 	|RoboticsFacility
 		)"
 
 		unitTableZerg := "
@@ -12266,6 +12237,7 @@ class autoBuild
 			return		
 		if !this.canPerformBuild()
 			return
+
 		; In case autoWorker interrupted the above function and made something
 		; However auto-worker doesn't currently set this value.
 		; Perhaps should set function specific values, otherwise they could delay each other by the full specified amounts
@@ -12287,7 +12259,8 @@ class autoBuild
 		; This is an ordered array, so iterates the structures in the order that they would occur in the selection panel. e.g. rax -> factory -> starport
 		; This will reduce number of tabs required and also don't have to worry about tabbing past the end (although thats easy to deal with anyway)
 		if isGamePaused() || isMenuOpen() ;chat is 0 when  menu is in focus
-			return ;as let the timer continue to check
+			return ;as let the timer continue to check	
+
 		for buildingName, item in buildObj
 		{
 			if item.autoBuild && (buildObj[buildingName].buildString := this.buildFromStructure(buildingName, item.group, item.units, race)) != ""
@@ -12392,7 +12365,7 @@ class autoBuild
 
 	buildFromStructure(structure, group, obj, race)
 	{
-		if this.getStructureCountInGroup(group, aUnitID[structure], aUnitIndexs) && this.productionStatus(aUnitIndexs, structure, nonTechLabs, techLabs, race)
+		if getStructureCountInGroup(group, aUnitID[structure], aUnitIndexs) && this.productionStatus(aUnitIndexs, structure, nonTechLabs, techLabs, race)
 		{	
 			if !this.getEnabledUnits(obj, aTechLabUnits, aNonTechLabUnits)
 				return
@@ -12518,10 +12491,10 @@ class autoBuild
 	{
 		count := 0, aUnitIndexs := []
 		groupSize := getControlGroupCount(Group)
-		ReadRawMemory(B_CtrlGroupStructure + S_CtrlGroup * group, GameIdentifier, Memory,  O_scUnitIndex + groupSize * S_scStructure)
+		ReadRawMemory(Offsets_Group_ControlGroup0 + Offsets_Group_ControlGroupSize * group, GameIdentifier, Memory,  Offsets_Group_UnitOffset + groupSize *  4)
 		loop, % groupSize 
 		{
-			fingerPrint := NumGet(Memory, O_scUnitIndex + (A_Index - 1) * S_scStructure, "UInt")
+			fingerPrint := NumGet(Memory, Offsets_Group_UnitOffset + (A_Index - 1) *  4, "UInt")
 			, unitIndex := fingerPrint >> 18
 			if getUnitType(unitIndex) = unitId 
 			&& fingerPrint = getUnitFingerPrint(unitIndex)
@@ -12725,7 +12698,7 @@ getHarvestersMiningGas(geyserStructureIndex, byref aFoundIndexes, byRef underCon
 	{
 		if (aUnitTargetFilter.Dead & numgetUnitTargetFilter(MemDump, unit := A_Index - 1)) 
 		|| aLocalPlayer.Slot != numgetUnitOwner(MemDump, Unit)
-		|| harvesterID != numgetUnitModelType(numgetUnitModelPointer(MemDump, Unit))
+		|| harvesterID != getUnitModelType(numgetUnitModelPointer(MemDump, Unit))
 	       Continue
 	   	getUnitQueuedCommands(unit, aCommands)
 		for index, command in aCommands
@@ -12733,7 +12706,7 @@ getHarvestersMiningGas(geyserStructureIndex, byref aFoundIndexes, byRef underCon
 			if command.ability = ability
 			&& (command.targetIndex = geyserStructureIndex ; harvester heading towards the geyser in question
 				|| (aLocalPlayer.Slot = numgetUnitOwner(MemDump, command.targetIndex) ; this part checks if harvester is on the return trip from the geyser in question.
-					&& aTownHallLookup[aLocalPlayer.Race].hasKey(numgetUnitModelType(numgetUnitModelPointer(MemDump, command.targetIndex))) ; Target is a townhall i.e. harvester mining minerals or gas and is returning to town hall
+					&& aTownHallLookup[aLocalPlayer.Race].hasKey(getUnitModelType(numgetUnitModelPointer(MemDump, command.targetIndex))) ; Target is a townhall i.e. harvester mining minerals or gas and is returning to town hall
 					&& isUnitNearUnit(aGeyserStructurePos, aTownHallPos := numGetUnitPositionXYZ(MemDump, command.targetIndex), 9) ; so town hall is next to refinery
 					&& isPointNearLineSegmentWithZcheck(aGeyserStructurePos, aTownHallPos, numGetUnitPositionXYZ(MemDump, unit), .5))) ; harvester is within .9 map unit of the straight line connecting the refinery to the townhall (this wont work if there is an obstruction and the worker has to move path around it)
 			{ 																														; 1 (and .9) is too big and a unit returning minerals from a patch adjacent to the refinery will count (when its at the CC end of the line)
@@ -12748,7 +12721,7 @@ getHarvestersMiningGas(geyserStructureIndex, byref aFoundIndexes, byRef underCon
 			;else if (underConstruction) ; This determines if the SCV is constructing the refinery and if it's going to harvest gas from it when its done.
 			else if command.ability = "TerranBuild"  ; Edit: Due to the half a second after finishing building the SCV still doesnt register as mining gas - so always perform this check even if refinery is finished
 			&& aCommands.MaxIndex() = index  ; Else it is queued to go elsewhere when it finishes construction
-			&& (type := numgetUnitModelType(numgetUnitModelPointer(MemDump, command.targetIndex))) ; The target index is the actual geyser and not the refinery
+			&& (type := getUnitModelType(numgetUnitModelPointer(MemDump, command.targetIndex))) ; The target index is the actual geyser and not the refinery
 			&& (type = aUnitId.VespeneGeyser || type = aUnitId.SpacePlatformGeyser || type = aUnitId.RichVespeneGeyser || type = aUnitId.ProtossVespeneGeyser || type = aUnitId.VespeneGeyserPretty)
 			&& isUnitNearUnit(aGeyserStructurePos, numGetUnitPositionXYZ(MemDump, command.targetIndex), 1)
 				count++, aFoundIndexes[unit] := True
@@ -12943,12 +12916,13 @@ getPortraitsFromIndexes(aIndexLookUp, byRef oSelection := "", isReversed := Fals
 selectionBufferFromGroup(byRef predictedSelection, group)
 {
 	count := 0
-	bufferCount := numgetControlGroupMemory(controlBuffer, group)
-	VarSetCapacity(predictedSelection, bufferCount * 4)
+	, bufferCount := numgetControlGroupMemory(controlBuffer, group)
+	, VarSetCapacity(predictedSelection, bufferCount * 4)
+	, targetFlags := aUnitTargetFilter["Hidden"] | aUnitTargetFilter["Dead"]
 	loop, % bufferCount
 	{
-		unitIndex := (fingerPrint := NumGet(controlBuffer, (A_Index - 1) * S_scStructure, "UInt")) >> 18
-		if getUnitFingerPrint(unitIndex) = fingerPrint && !(getUnitTargetFilter(unitIndex) & aUnitTargetFilter.Hidden)
+		unitIndex := (fingerPrint := NumGet(controlBuffer, (A_Index - 1) *  4, "UInt")) >> 18
+		if getUnitFingerPrint(unitIndex) = fingerPrint && !(getUnitTargetFilter(unitIndex) & targetFlags)
 			NumPut(fingerPrint, predictedSelection, 4 * count++, "UInt")
 	}
 	return count * 4 ; size of filled buffer	
@@ -12970,7 +12944,7 @@ compareSelections(byRef predictedSelection, size, timeOut := 60)
 	{
 		if (count = selectionCount := getSelectionCount())
 		{
-			ReadRawMemory(B_SelectionStructure + O_scUnitIndex, GameIdentifier, MemDump, selectionCount * S_scStructure)
+			ReadRawMemory(Offsets_Selection_Base + Offsets_Group_UnitOffset, GameIdentifier, MemDump, selectionCount *  4)
 			if DllCall("ntdll\RtlCompareMemory", "Ptr", &predictedSelection, "Ptr", &MemDump, "Ptr", size) = size
 				return A_Index, stopwatch(timer)
 		}
@@ -12994,7 +12968,7 @@ invokeControlGroup(group, timeout := 35)
 selectionToGroup(byRef predictedGroup)
 {
 	selectionCount := getSelectionCount()
-	ReadRawMemory(B_SelectionStructure, GameIdentifier, predictedGroup, selectionCount * S_scStructure + O_scUnitIndex)
+	ReadRawMemory(Offsets_Selection_Base, GameIdentifier, predictedGroup, selectionCount * 4 + Offsets_Group_UnitOffset)
 	return selectionCount * 4
 }
 compareGroupToBuffer(byRef predictedGroup, size, group)
@@ -13770,7 +13744,7 @@ findClosestNexus(mothershipIndex, byRef minimapX, byRef minimapY)
 	loop, % DumpUnitMemory(MemDump)
 	{
 		if !isTargetDead(TargetFilter := numgetUnitTargetFilter(MemDump, unitIndex := A_Index - 1)) && aLocalPlayer["Slot"] = numgetUnitOwner(MemDump, unitIndex)
-		&& !(TargetFilter & aUnitTargetFilter["UnderConstruction"]) && aUnitID["Nexus"] = numgetUnitModelType(numgetUnitModelPointer(MemDump, unitIndex)) 
+		&& !(TargetFilter & aUnitTargetFilter["UnderConstruction"]) && aUnitID["Nexus"] = getUnitModelType(numgetUnitModelPointer(MemDump, unitIndex)) 
 		    count++, aNexi.insert({"unitIndex": unitIndex,  "x": numGetUnitPositionX(MemDump, unitIndex), "y": numGetUnitPositionY(MemDump, unitIndex)})
 	} until count = baseCount
 	if !aNexi.MaxIndex()
@@ -13920,7 +13894,7 @@ return
 msgbox % chex(getUnitAddress(unit))
 msgbox % chex(getUnitAddress(unit)+0x1E8)
 return 
-+f1::
+;+f1::
 unit := getSelectedUnitIndex()
 type := getunittype(unit)
 msgbox % isZergStructureMorphing(unit) "`n"
@@ -13929,17 +13903,43 @@ msgbox % getUnitQueuedCommands(unit, aCommands)
 objtree(aCommands)
 return 
 
-f2::
+;f2::
 unit := getSelectedUnitIndex()
 type := getUnitType(unit)
-msgbox % getUnitSubGroupPriority(getSelectedUnitIndex()) "`n" type "`n"
+;msgbox % getUnitSubGroupPriority(getSelectedUnitIndex()) "`n" type "`n"
 ;msgbox % chex(getUnitModelPointer(getSelectedUnitIndex()))
-;getUnitAbilitiesString(getSelectedUnitIndex())
+getUnitAbilitiesString(getSelectedUnitIndex())
+return 
+
+;f1::
+msgbox % chex(getUnitModelPointer(getSelectedUnitIndex()))
+return 
+
+;!f1::
+;msgbox % chex(getUnitModelPointer(getSelectedUnitIndex()))
+
+unit := getSelectedUnitIndex()
+
+
+
+WriteMemory(getUnitModelPointer(unit)  + Offsets_UnitModel_SubgroupPriority, GameIdentifier, 100, "UInt")
+msgbox % readMemory(getUnitModelPointer(unit)  + Offsets_UnitModel_SubgroupPriority, GameIdentifier)
 return 
 
 
 
+
+msgbox % clipboard := getUnitName(unit)
+
+. "`n" "altType " getUnitAlternateType(unit)
+. "`ntype " getUnitType(unit)
+. "`nsubgroup " getUnitSubGroupPriority(unit)
+. "`nindex " unit
 return 
+
+
+
+
 msgbox % chex(Offsets_InputStructure)
 mem := new _ClassMemory(GameIdentifier) ; set when new is used
 foundCount := 0
@@ -14001,13 +14001,13 @@ msgbox % getUnitBuff(unit, "MothershipCoreApplyPurifyAB")
 return 
 
 
-+f2::
+;+f2::
 unit := getSelectedUnitIndex()
 getUnitAbilitiesString(unit)
 return 
 
 
-+f9::
+;+f9::
 SetPlayerMinerals()
 SetPlayerGas()
 return 
@@ -14198,3 +14198,8 @@ int __usercall sub_6B629E8@<eax>(void *a1@<ebp>, int (*a2)(void)@<esi>, int a3, 
 
 
 
+f1::
+unit := getSelectedUnitIndex()
+msgbox % chex(Offsets_Group_UnitOffset + Offsets_Group_ControlGroup0 + Offsets_Group_ControlGroupSize * 7)
+msgbox % chex(Offsets_Selection_Base + Offsets_Group_UnitOffset)
+return 
