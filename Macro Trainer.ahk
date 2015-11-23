@@ -10495,7 +10495,7 @@ swapAbilityPointerFreeze()
 	hwnd := openCloseProcess(GameIdentifier)
 	SuspendProcess(hwnd)
 	unit := getSelectedUnitIndex()
-	abilityPointerAddress := B_uStructure + unit * OffsetsUnitStrucSize + Offsets_Unit_AbilityPointer
+	abilityPointerAddress := B_uStructure + unit * Offsets_Unit_StructSize + Offsets_Unit_AbilityPointer
 	originalValue := ReadMemory(abilityPointerAddress, GameIdentifier)
 	pAbilities := getUnitAbilityPointer(unit)
 	WriteMemory(abilityPointerAddress, pAbilities, "UInt") 
@@ -12487,23 +12487,7 @@ class autoBuild
 		return count
 	}
 
-	getStructureCountInGroup(group, unitID, byRef aUnitIndexs)
-	{
-		count := 0, aUnitIndexs := []
-		groupSize := getControlGroupCount(Group)
-		ReadRawMemory(Offsets_Group_ControlGroup0 + Offsets_Group_ControlGroupSize * group, GameIdentifier, Memory,  Offsets_Group_UnitOffset + groupSize *  4)
-		loop, % groupSize 
-		{
-			fingerPrint := NumGet(Memory, Offsets_Group_UnitOffset + (A_Index - 1) *  4, "UInt")
-			, unitIndex := fingerPrint >> 18
-			if getUnitType(unitIndex) = unitId 
-			&& fingerPrint = getUnitFingerPrint(unitIndex)
-			&& getUnitOwner(unitIndex) = aLocalPlayer.slot ; dont really need this line. Could remove it to allow production out of an allys buildings (after they left)
-			&& !(getunittargetfilter(unitIndex) & (aUnitTargetFilter.Dead | aUnitTargetFilter.UnderConstruction))	
-				count++, aUnitIndexs.insert(unitIndex)
-		}	
-		return count
-	}
+
 
 	; returns total available production slot count
 	; and sets the slot count for tech labs and non techlabs (which includes reactors)
@@ -13951,95 +13935,45 @@ while (address := mem.processPatternScan(address,,  0xDB, "?", "?", 0x89, 0x0D, 
 }
 msgbox % foundCount
 return 
-; 53674B
-; 93674B
-test()
-{
-	SetFormat, Integerfast, H
-	unit := getSelectedUnitIndex()
-	unitAddress := getUnitAddress(unit)
-
-	address1 := unitAddress + 80
-	address2 := unitAddress + 84
-
-	v1Value := readMemory(address1, GameIdentifier)
-	v1LoWord := v1Value & 0xFFFF 
-	v1HiBits := v1Value >> 12 
-
-	arrayIndex1 := (v1LoWord ^ v1HiBits) & 0xFFF 
-	arrayValue1 := readMemory(0x18886E8 + arrayIndex1 * 4, GameIdentifier)
-
-	v7 := ~(address2 - arrayValue1)
-	v7LoWord := v7 & 0xFFFF
-	v7HiBits := v7 >> 12
-
-	arrayIndex2 := (v7LoWord ^ v7HiBits) & 0xFFF 
-	arrayValue2 := readMemory(0x18886E8 + arrayIndex2 * 4, GameIdentifier)	
-	
-	v8 := address1 ^ arrayValue2
-
-	;arrayIndex3 := (v7LoWord ^ v7HiBits) & 0xFFF 
-	;arrayValue3 := readMemory(0x18886E8 + arrayIndex1 * 4, GameIdentifier)	
-
-	v10 := v8 ^ (v7^ address1 ^ arrayValue2) & 0x55555555
-	v11 := (v7 ^ (v7 ^ v8) & 0x55555555)
-	ListVars
-	msgbox % v7 
-}
-
-
-
-return 
-
-p  := findAbilityTypePointer(pAbilities, aUnitID["Nexus"], "attackProtossBuilding")
-msgbox % chex(p)
-p := readMemory(p, GameIdentifier)
-msgbox % chex(p)
-return 
-pAbilities := getUnitAbilityPointer(unit)
-msgbox % getUnitBuff(unit, "MothershipCoreApplyPurifyAB")
-return 
-
-
-;+f2::
+f1::
 unit := getSelectedUnitIndex()
-getUnitAbilitiesString(unit)
+msgbox % chex(getUnitAddress(unit)+0x50)
+getUnitQueuedCommands(unit, a)
+objtree(a)
+return 
+
+f2::
+unit := getSelectedUnitIndex()
+msgbox % chex(getUnitAddress(1)+0x50)
+objtree(getunitposition(1))
 return 
 
 
++f1::
+test123()
+return 
+
+test123()
+{
+  loop, % DumpUnitMemory(MemDump)
+  {
+    Filter := numget(MemDump, (UnitAddress := (A_Index - 1) * Offsets_Unit_StructSize) + Offsets_Unit_TargetFilter, "Int64")
+     ; Hidden e.g. marines in medivac/bunker etc. 
+     ; Otherwise these unit colours get drawn over the top - medivac highlight colour is hidden.
+     msgbox % UnitAddress + Offsets_Unit_ModelPointer
+    pUnitModel := numget(MemDump, UnitAddress + Offsets_Unit_ModelPointer, "Int")
+    Type := getUnitModelType(pUnitModel)
+    listvars 
+    msgbox 
+  
+
+    }
+}
 ;+f9::
 SetPlayerMinerals()
 SetPlayerGas()
 return 
 
-;EC
-; aSCOffsets["unitAddress", unit]
-; aSCOffsets["playerAddress", player] 
-
-; left refinery fp = 840001
-; right  refinery fp = 880001
-
-/*
-
- aUnitMoveStates := { Idle: -1  ; ** Note this isn't actually a read in game type/value its just what my function will return if it is idle
-					, Amove: 0 		
-					, Patrol: 1
-					, HoldPosition: 2
-					, Move: 256
-					, Follow: 512
-					, FollowNoAttack: 515} 
-
-
-*/
-
-
-/*
-SC2.exe+576B4E6 - 8B 35 70BC8E02        - mov esi,[SC2.exe+188BC70]
-SC2.exe+576B4EC - 33 35 F45DF702        - xor esi,[SC2.exe+1F15DF4]
-SC2.exe+576B4F2 - B9 00010000           - mov ecx,00000100
-SC2.exe+576B4F7 - 81 F6 A510AF6E        - xor esi,6EAF10A5
-SC2.exe+576B4FD - 01 4E 50              - add [esi+50],ecx
-*/
 
 
 
@@ -14133,28 +14067,6 @@ int __stdcall GsNativeImpl_UnitGetPosition(unsigned int a1)
 
 */
 
-p := MCode("1,x86:B8FFFF0000C3")
-msgbox % chex(DllCall(p,  "cdecl int"))
-return 
-
-
-
-     MCode(mcode)
-    {
-        static e := {1:4, 2:1}, c := (A_PtrSize=8) ? "x64" : "x86"
-        if !regexmatch(mcode, "^([0-9]+),(" c ":|.*?," c ":)([^,]+)", m)
-            return
-        if !DllCall("crypt32\CryptStringToBinary", "str", m3, "uint", 0, "uint", e[m1], "ptr", 0, "uint*", s, "ptr", 0, "ptr", 0)
-            return
-        p := DllCall("GlobalAlloc", "uint", 0, "ptr", s, "ptr")
-        if (c="x64")
-            DllCall("VirtualProtect", "ptr", p, "ptr", s, "uint", 0x40, "uint*", op)
-        if DllCall("crypt32\CryptStringToBinary", "str", m3, "uint", 0, "uint", e[m1], "ptr", p, "uint*", s, "ptr", 0, "ptr", 0)
-            return p
-        DllCall("GlobalFree", "ptr", p)
-        return
-    }
-
 
 
 
@@ -14197,9 +14109,51 @@ int __usercall sub_6B629E8@<eax>(void *a1@<ebp>, int (*a2)(void)@<esi>, int a3, 
 */
 
 
-
+/*
 f1::
 unit := getSelectedUnitIndex()
 msgbox % chex(Offsets_Group_UnitOffset + Offsets_Group_ControlGroup0 + Offsets_Group_ControlGroupSize * 7)
 msgbox % chex(Offsets_Selection_Base + Offsets_Group_UnitOffset)
 return 
+
+*/
+
+testUnitPos(unit := 0)
+{
+	;SetFormat, integerfast, H
+	unit := getSelectedUnitIndex()
+	unitAddress := aSCOffsets["unitAddress", unit]
+	ecx := readMemory(unitAddress + 0x50, GameIdentifier)
+	ebx := readMemory(unitAddress + 0x54, GameIdentifier)
+	eax := ecx 
+	edx := ecx + 0x338EE103 
+	eax >>= 0x0C 
+	eax ^= edx 
+	eax &= 0xFFF 
+	ebx -= readMemory(eax * 4 + OffsetsSC2Base + 0x188A6A8, GameIdentifier)
+; SC2.AssertAndCrash+4F1B5B - C7 85 ECFEFFFF 00000000 - mov [ebp-00000114],00000000
+	ebx := ~ebx 
+	edx := ebx 
+	eax := ebx 
+	eax := ~eax 
+	edx >>= 0x0C 
+	eax -= edx 
+	eax &= 0xFFF 
+	ecx -= readMemory(eax * 4 + OffsetsSC2Base + 0x188A6A8, GameIdentifier)
+	; SC2.AssertAndCrash+4F1B7E - 8B 86 9C000000        - mov eax,[esi+0000009C]
+	edx := ebx
+	edx ^= ecx 
+	edi := ebx 
+	edi ^= ecx 
+	edx &= 0x55555555
+	edx ^= ecx 
+	xPos := edx / 4096 
+	; SC2.AssertAndCrash+4F1B94 - 8B 8E 98000000        - mov ecx,[esi+00000098] ; Xpos edx
+
+	edi &= 0x55555555
+	edi ^= ebx 
+	yPos := edi / 4096
+
+	msgbox % xPos " " yPos
+	return 
+}

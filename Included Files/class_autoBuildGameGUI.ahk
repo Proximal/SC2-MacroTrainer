@@ -305,7 +305,6 @@ class autoBuildGameGUI
 		this.addItems("OffButton")
 		this.addItems("pauseButton")
 		this.pushDownLine()
-		;this.addItems("zealot", "sentry", "stalker", "hightemplar", "darktemplar")
 		this.addItems("zealot", "sentry", "stalker", "adept", "hightemplar", "darktemplar")
 		this.pushDownLine()
 		this.addItems("observer", "warpPrism", "immortal", "colossus", "disruptor")

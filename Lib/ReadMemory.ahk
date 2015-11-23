@@ -57,3 +57,8 @@ pointer(game, address, offsets*)
         address := ReadMemory(address, game) + offset 
   Return ReadMemory(address, game)
 }
+
+pointerAddress(game, address, aOffsets*)
+{
+    return  aOffsets.Remove() + pointer(game, address, aOffsets*) ; remove the highest key so can use pointer() to find final memory address (minus the last offset)       
+}

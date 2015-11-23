@@ -336,30 +336,36 @@ getEnemyUnitsMiniMap(byref aUnitsToDraw)
 
   aUnitsToDraw := [], aUnitsToDraw.Normal := [], aUnitsToDraw.Custom := []
   , PlayerColours := arePlayerColoursEnabled()
+
   loop, % DumpUnitMemory(MemDump)
   {
-     Filter := numget(MemDump, (UnitAddress := (A_Index - 1) * OffsetsUnitStrucSize) + Offsets_Unit_TargetFilter, "Int64")
+     Filter := numget(MemDump, (UnitAddress := (A_Index - 1) * Offsets_Unit_StructSize) + Offsets_Unit_TargetFilter, "Int64")
      ; Hidden e.g. marines in medivac/bunker etc. 
      ; Otherwise these unit colours get drawn over the top - medivac highlight colour is hidden.
-     if (Filter & aUnitTargetFilter.Dead || Filter & aUnitTargetFilter.Hidden || aMiniMapUnits.Exclude.HasKey(Type := getUnitModelType(pUnitModel := numget(MemDump, UnitAddress + O_uModelPointer, "Int"))))
+     if (Filter & aUnitTargetFilter.Dead 
+     || Filter & aUnitTargetFilter.Hidden 
+     || aMiniMapUnits.Exclude.HasKey(Type := getUnitModelType(pUnitModel := ((numget(MemDump, UnitAddress + Offsets_Unit_ModelPointer, "UInt") << 5) & 0xFFFFFFFF))))
      	Continue
 
      ;if  (aPlayer[Owner, "Team"] <> aLocalPlayer["Team"] && Owner && type >= aUnitID["Colossus"] && !aChangeling.HasKey(type)) 
      ;|| (aChangeling.HasKey(type) && aPlayer[Owner, "Team"] = aLocalPlayer["Team"] ) ; as a changeling owner becomes whoever it is mimicking - its team also becomes theirs
-     
-     if (aPlayer[owner := numget(MemDump, UnitAddress + O_uOwner, "Char"), "Team"] != aLocalPlayer["Team"] && Owner && type >= aUnitID["Colossus"])  ; This changeling check is no longer required as reading the first unit owner now (not the third)
+
+     if (aPlayer[owner := numget(MemDump, UnitAddress + Offsets_Unit_Owner, "UChar"), "Team"] != aLocalPlayer["Team"] && Owner && type >= aUnitID["Colossus"])  ; This changeling check is no longer required as reading the first unit owner now (not the third)
+     || 1
      {
           if (!Radius := aUnitInfo[Type, "Radius"])
-              Radius := aUnitInfo[Type, "Radius"] := getUnitModelMiniMapRadius(pUnitModel)
+            Radius := aUnitInfo[Type, "Radius"] := getUnitModelMiniMapRadius(pUnitModel)
 
          if (Radius < minimap.UnitMinimumRadius) ; probes and such
            	Radius := minimap.UnitMinimumRadius
 
-	       x := numget(MemDump, UnitAddress + O_uX, "int")/4096
-           , y := numget(MemDump, UnitAddress + O_uY, "int")/4096
+           point := getUnitPosition(A_index-1)
+           x := point["x"], y := point["y"]
            , customFlag := True
 	      , mapToRelativeMinimapPos(x, y) ; don't round them. As fraction might be important when subtracting scaled width in draw/fill rectangle
 
+	   ;   msgbox % point["x"] ", " point["y"]
+	    ;  . "`n" x ", " y
            if (HighlightHallucinations && Filter & aUnitTargetFilter.Hallucination) ; have here so even if non-halluc unit type has custom colour highlight, it will be drawn using halluc colour
            	  Colour := "UnitHighlightHallucinationsColour"
            else if aMiniMapUnits.Highlight.HasKey(type)

@@ -46,9 +46,9 @@ Global B_LocalCharacterNameID
 , Offsets_Unit_TargetFilter
 ;, O_XelNagaActive
 ,  Offsets_Unit_Owner
-, O_uX
-, O_uY
-, O_uZ
+, Offsets_Unit_PositionX
+, Offsets_Unit_PositionY
+, Offsets_Unit_PositionZ
 , O_uDestinationX
 , O_uDestinationY
 , Offsets_Unit_CommandQueuePointer
@@ -140,8 +140,7 @@ Global B_LocalCharacterNameID
 , B_ReplayFolder
 , Offsets_HorizontalResolution
 , Offsets_VerticalResolution
-, P_MinimapPosition
-, O_MinimapPosition
+, Offsets_MinimapPosition
 
 global aUnitModel := []
 , aStringTable := []
@@ -175,6 +174,7 @@ loadMemoryAddresses(base, version := "")
 	aSCOffsets := []
 	aSCOffsets["playerAddress"] := new classAddressCachePlayerUnit("playerAddress")
 	aSCOffsets["unitAddress"] := new classAddressCachePlayerUnit("getUnitAddress")
+	aSCOffsets["unitPoint"] := new classAddressCachePlayerUnit("getUnitPosition")
 
 	if 0
 	{
@@ -283,9 +283,9 @@ loadMemoryAddresses(base, version := "")
 			 Offsets_Unit_TargetFilter := 0x14 ; p3.3
 			 Offsets_Unit_Owner := 0x2E ; p3.3 ; There are 3 owner offsets (0x27, 0x40, 0x41) for changelings owner3 changes to the player it is mimicking
 			; O_XelNagaActive := 0x34 	; xel - dont use as doesnt work all the time
-			 O_uX := 0x4C
-			 O_uY := 0x50
-			 O_uZ := 0x54
+			 Offsets_Unit_PositionX := 0x50
+			 Offsets_Unit_PositionY := 0x54
+			 Offsets_Unit_PositionZ := 0x58
 			 O_uDestinationX := 0x80
 			 O_uDestinationY := 0x84
 			 Offsets_Unit_CommandQueuePointer := 0xE0 ; p3.3;0xD4
@@ -370,7 +370,7 @@ loadMemoryAddresses(base, version := "")
 			 				;this is for the currently selected unit portrait page ie 1-6 in game (really starts at 0-5)
 							;might actually be a 2 or 1 byte value....but works fine as 4
 
-		Offsets_Map_NamePointer := [base + 0x01F15DB8, 0x2A0] ; The string offset tends to end with this value
+		Offsets_Map_NamePointer := [base + 0x01F17E08, 0x2A0] ; The string offset tends to end with this value
 
 		/* Not updated dont use.
 		; at B_MapStruct -0x5C is a pointer which list map file name, map name, description and other stuff
@@ -381,7 +381,7 @@ loadMemoryAddresses(base, version := "")
 			 O_mTop := B_MapStruct + 0xE8	   	; MapTop: 622591 (akilon wastes) before dividing 4096  
 		*/ 
 		
-		Offsets_Camera_BorderLeft 	:= 	base + 0x1B7A87C        ; 0x314D8E0
+		Offsets_Camera_BorderLeft 	:= 	base + 0x1B7C84C        
 		Offsets_Camera_BorderBottom := 	Offsets_Camera_BorderLeft + 0x4
 		Offsets_Camera_BorderRight 	:= 	Offsets_Camera_BorderLeft + 0x8
 		Offsets_Camera_BorderTop 	:= 	Offsets_Camera_BorderLeft + 0xC
@@ -492,8 +492,7 @@ loadMemoryAddresses(base, version := "")
 		 Offsets_VerticalResolution := Offsets_HorizontalResolution + 0x4
 
 		; 4 byte ints listed in memory: 808 28 1066 290  (at 1920x1080)
-		P_MinimapPosition := base + 0x315FA34
-		O_MinimapPosition := [0x4, 0xE0, 0xD4, 0x25C]
+		Offsets_MinimapPosition := [base + 0x023765E0, 0x24, 0x0, 0x178, 0xC]
 
 	}
 	return versionMatch
@@ -528,7 +527,7 @@ SC2.AssertAndCrash+378357 - 8B 45 FC              - mov eax,[ebp-04] - address
 
 playerAddress(player := 1)
 {
-	if aSCOffsets["playerAddress"].HasKey(player) ; need to check has, key as this func is called internally when it doesnt --> loop
+	if aSCOffsets["playerAddress"].HasKey(player) ; need to check hasKe,y as this func is called internally when it doesnt --> loop
 		return aSCOffsets["playerAddress", player]	
 	edx := readmemory(OffsetsSC2Base + 0x188B0C8, GameIdentifier)
 	, edx ^= readmemory(OffsetsSC2Base + 0x1F198B8, GameIdentifier)
@@ -698,6 +697,23 @@ IsInControlGroup(group, unitIndex)
 	}
 	Return 0	
 }
+getStructureCountInGroup(group, unitID, byRef aUnitIndexs)
+{
+	count := 0, aUnitIndexs := []
+	groupSize := getControlGroupCount(Group)
+	ReadRawMemory(Offsets_Group_ControlGroup0 + Offsets_Group_ControlGroupSize * group, GameIdentifier, Memory,  Offsets_Group_UnitOffset + groupSize *  4)
+	loop, % groupSize 
+	{
+		fingerPrint := NumGet(Memory, Offsets_Group_UnitOffset + (A_Index - 1) *  4, "UInt")
+		, unitIndex := fingerPrint >> 18
+		if getUnitType(unitIndex) = unitId 
+		&& fingerPrint = getUnitFingerPrint(unitIndex)
+		&& getUnitOwner(unitIndex) = aLocalPlayer.slot ; dont really need this line. Could remove it to allow production out of an allys buildings (after they left)
+		&& !(getunittargetfilter(unitIndex) & (aUnitTargetFilter.Dead | aUnitTargetFilter.UnderConstruction))	
+			count++, aUnitIndexs.insert(unitIndex)
+	}	
+	return count
+}
 
 controlGroupFingerPrints(Group)
 {
@@ -718,24 +734,6 @@ getControlGroupPortraitCount(group)
 		if getUnitFingerPrint(unitIndex) = fingerPrint && !(getUnitTargetFilter(unitIndex) & aUnitTargetFilter.Hidden)
 			count++
 	}
-	return count
-}
-
-getStructureCountInGroup(group, unitID, byRef aUnitIndexs)
-{
-	count := 0, aUnitIndexs := []
-	groupSize := getControlGroupCount(Group)
-	ReadRawMemory(Offsets_Group_ControlGroup0 + Offsets_Group_ControlGroupSize * group, GameIdentifier, Memory,  Offsets_Group_UnitOffset + groupSize *  4)
-	loop, % groupSize 
-	{
-		fingerPrint := NumGet(Memory, Offsets_Group_UnitOffset + (A_Index - 1) *  4, "UInt")
-		, unitIndex := fingerPrint >> 18
-		if getUnitType(unitIndex) = unitId 
-		&& fingerPrint = getUnitFingerPrint(unitIndex)
-		&& getUnitOwner(unitIndex) = aLocalPlayer.slot ; dont really need this line. Could remove it to allow production out of an allys buildings (after they left)
-		&& !(getunittargetfilter(unitIndex) & (aUnitTargetFilter.Dead | aUnitTargetFilter.UnderConstruction))	
-			count++, aUnitIndexs.insert(unitIndex)
-	}	
 	return count
 }
 
@@ -1206,16 +1204,114 @@ getUnitShieldDamage(unit)
 
 getUnitPositionX(unit)
 {	global
-	Return ReadMemory(aSCOffsets["unitAddress", unit] + O_uX, GameIdentifier) /4096
+	Return ReadMemory(aSCOffsets["unitAddress", unit] + Offsets_Unit_PositionX, GameIdentifier) /4096
 }
 getUnitPositionY(unit)
 {	global
-	Return ReadMemory(aSCOffsets["unitAddress", unit]  + O_uY, GameIdentifier) /4096
+	Return ReadMemory(aSCOffsets["unitAddress", unit]  + Offsets_Unit_PositionY, GameIdentifier) /4096
 }
 
 getUnitPositionZ(unit)
 {	global
-	Return ReadMemory(aSCOffsets["unitAddress", unit] + O_uZ, GameIdentifier) /4096
+	Return ReadMemory(aSCOffsets["unitAddress", unit] + Offsets_Unit_PositionZ, GameIdentifier) /4096
+}
+
+; I think there is an array of map cells containing the data, but I cant be bothered optimising/chaching this any more
+; it seems like the encrypted values in the unit struct relate to each other, so im not sure how to go about this without more research
+getUnitPosition(unit)
+{
+	ReadRawMemory(aSCOffsets["unitAddress", unit] + Offsets_Unit_PositionX, GameIdentifier, buffer, 0xC)
+	, ecx := NumGet(buffer, 0, "UInt") ; xpos value
+	, ebx := NumGet(buffer, 4, "UInt") ; ypos value 
+	
+	; I could try it the other way (probably more efficient), have to test performance of AHK arrays with many keys
+	; e.g. aSCOffsets["Point"].HasKey(encrpted X Value) && aSCOffsets["Point", encrpted X Value].HasKey(encrpted y Value)
+	if aSCOffsets["unitPoint"].HasKey(unit)
+	&& ecx = aSCOffsets["unitPoint", unit, "encX"]
+	&& ebx = aSCOffsets["unitPoint", unit, "encY"]
+		return aSCOffsets["unitPoint", unit] ; unit hasnt moved
+	aSCOffsets["unitPoint", unit, "encX"]	:= ecx
+	, aSCOffsets["unitPoint", unit, "encY"]	:= ebx	
+	, aSCOffsets["unitPoint", unit, "z"] := NumGet(buffer, 8, "UInt") / 4096
+	, eax := ecx 
+	, edx := ecx + 0x338EE103 
+	, eax >>= 0x0C 
+	, eax ^= edx 
+	, eax &= 0xFFF 
+	, ebx -= readMemory(eax * 4 + OffsetsSC2Base + 0x188A6A8, GameIdentifier)
+	, ebx := ~ebx 
+	, edx := ebx 
+	, eax := ebx 
+	, eax := ~eax 
+	, edx >>= 0x0C 
+	, eax -= edx 
+	, eax &= 0xFFF 
+	, ecx -= readMemory(eax * 4 + OffsetsSC2Base + 0x188A6A8, GameIdentifier)
+	, edx := ebx
+	, edx ^= ecx 
+	, edi := ebx 
+	, edi ^= ecx 
+	, edx &= 0x55555555
+	, edx ^= ecx 
+	, aSCOffsets["unitPoint", unit, "x"] := edx / 4096 
+	, edi &= 0x55555555
+	, edi ^= ebx 
+	, aSCOffsets["unitPoint", unit, "y"] := edi / 4096
+	return aSCOffsets["unitPoint", unit]
+}
+
+/*
+
+SC2.GetBattlenetAllocator+2234E4 - EB 3B                 - jmp SC2.GetBattlenetAllocator+223521
+SC2.GetBattlenetAllocator+2234E6 - 8B 4F 08              - mov ecx,[edi+08] ; Access encrypted X in queued command
+SC2.GetBattlenetAllocator+2234E9 - 8B 57 0C              - mov edx,[edi+0C] ; Access encrypted Y in queued command
+SC2.GetBattlenetAllocator+2234EC - 8B 77 10              - mov esi,[edi+10] ; Access encrypted Z in queued command
+SC2.GetBattlenetAllocator+2234EF - 8D 81 11EC2631        - lea eax,[ecx+3126EC11]
+SC2.GetBattlenetAllocator+2234F5 - C1 E9 0C              - shr ecx,0C
+SC2.GetBattlenetAllocator+2234F8 - 33 C1                 - xor eax,ecx
+SC2.GetBattlenetAllocator+2234FA - 25 FF0F0000           - and eax,00000FFF
+SC2.GetBattlenetAllocator+2234FF - 2B 14 85 A8A69802     - sub edx,[eax*4+SC2.exe+188A6A8]
+SC2.GetBattlenetAllocator+223506 - 8B C2                 - mov eax,edx
+SC2.GetBattlenetAllocator+223508 - C1 E8 0C              - shr eax,0C
+SC2.GetBattlenetAllocator+22350B - 03 C2                 - add eax,edx
+SC2.GetBattlenetAllocator+22350D - F7 D0                 - not eax
+SC2.GetBattlenetAllocator+22350F - 25 FF0F0000           - and eax,00000FFF
+SC2.GetBattlenetAllocator+223514 - 2B 34 85 A8A69802     - sub esi,[eax*4+SC2.exe+188A6A8]
+SC2.GetBattlenetAllocator+22351B - 89 55 FC              - mov [ebp-04],edx ; store real value
+SC2.GetBattlenetAllocator+22351E - 89 75 F8              - mov [ebp-08],esi ; store real value
+SC2.GetBattlenetAllocator+223521 - 8B 45 08              - mov eax,[ebp+08]
+SC2.GetBattlenetAllocator+223524 - 8D 4D F8              - lea ecx,[ebp-08]
+SC2.GetBattlenetAllocator+223527 - 8B 11                 - mov edx,[ecx]
+SC2.GetBattlenetAllocator+223529 - 8B 49 04              - mov ecx,[ecx+04]
+SC2.GetBattlenetAllocator+22352C - 5F                    - pop edi
+SC2.GetBattlenetAllocator+22352D - 89 10                 - mov [eax],edx
+SC2.GetBattlenetAllocator+22352F - 89 48 04              - mov [eax+04],ecx
+SC2.GetBattlenetAllocator+223532 - 5E                    - pop esi
+SC2.GetBattlenetAllocator+223533 - 8B E5                 - mov esp,ebp
+SC2.GetBattlenetAllocator+223535 - 5D                    - pop ebp
+SC2.GetBattlenetAllocator+223536 - C2 0400               - ret 0004
+No idea how to access z Value
+*/
+
+convertQueuedPoint(byRef x, byRef y, byRef z := "")
+{
+	ecx := x 
+	, edx := y 
+	, esi := z 
+	, eax := ecx + 0x3126EC11
+	, ecx >>= 0x0C 
+	, eax ^= ecx 
+	, eax &= 0xFFF 
+	, edx -= readMemory(eax * 4 + OffsetsSC2Base + 0x188A6A8, GameIdentifier)
+	, eax := edx
+	, eax >>= 0x0C 
+	, eax += edx 
+	, eax := ~eax 
+	, eax &= 0xFFF 
+	, esi -= readMemory(eax * 4 + OffsetsSC2Base + 0x188A6A8, GameIdentifier)
+	, x := esi/4096
+	, y := edx/4096
+	return 
 }
 
 
@@ -1341,13 +1437,17 @@ getUnitQueuedCommands(unit, byRef aQueuedMovements)
 			;OrderFlags := numget(cmdDump, 0x3C, "UInt") ; OrderFlags 
 			if !aStringTable.hasKey(pString := numget(cmdDump, Offsets_QueuedCommand_StringPointer, "UInt")) 
 				aStringTable[pString] := ReadMemory_Str(readMemory(pString + 0x4, GameIdentifier), GameIdentifier)
-			aQueuedMovements.insert({ "targetX": numget(cmdDump, Offsets_QueuedCommand_TargetX, "UInt") / 4096  
-									, "targetY": numget(cmdDump, Offsets_QueuedCommand_TargetY, "UInt") / 4096  
-									, "targetZ": numget(cmdDump, Offsets_QueuedCommand_TargetZ, "UInt") / 4096 
+			convertQueuedPoint(x := numget(cmdDump, Offsets_QueuedCommand_TargetX, "UInt") 
+				, y := numget(cmdDump, Offsets_QueuedCommand_TargetY, "UInt")
+				, z := numget(cmdDump, Offsets_QueuedCommand_TargetZ, "UInt")  )
+			aQueuedMovements.insert({ "targetX": x
+									, "targetY": y  
+									, "targetZ": z  
 									, "ability": aStringTable[pString] 
 									, "targetFlag" : targetFlag
 									;, "OrderFlags": OrderFlags
 									;, "flagString": CommandFlagsToString(OrderFlags)
+									, "Address": chex(pNextCmd & -2)
 									, "targetIndex": numget(cmdDump, Offsets_QueuedCommand_TargetFingerPrint, "UInt") >> 18 
 									, "state": numget(cmdDump, Offsets_QueuedCommand_State, "UShort") 
 									;  These times are raw - need to '/ 65536 (2^16)' to get time in seconds
@@ -2872,22 +2972,22 @@ isPointNearLineSegmentWithZcheck(linePointA, linePointB, point, maxDistance)
  objectGetUnitXYZAndEnergy(unit) ;this will dump just a unit
  {	Local UnitDump
 	ReadRawMemory(B_uStructure + unit * Offsets_Unit_StructSize, GameIdentifier, UnitDump, Offsets_Unit_StructSize)
-	Local x := numget(UnitDump, O_uX, "int")/4096, y := numget(UnitDump, O_uY, "int")/4096, Local z := numget(UnitDump, O_uZ, "int")/4096
+	Local x := numget(UnitDump, Offsets_Unit_PositionX, "int")/4096, y := numget(UnitDump, Offsets_Unit_PositionY, "int")/4096, Local z := numget(UnitDump, Offsets_Unit_PositionZ, "int")/4096
 	Local Energy := numget(UnitDump, Offsets_Unit_Energy, "int")/4096
 	return { "unit": unit, "X": x, "Y": y, "Z": z, "Energy": energy}
  }
 
  numGetUnitPositionX(ByRef MemDump, Unit)
  {	global
- 	return numget(MemDump, Unit * Offsets_Unit_StructSize + O_uX, "int")/4096
+ 	return numget(MemDump, Unit * Offsets_Unit_StructSize + Offsets_Unit_PositionX, "int")/4096
  }
  numGetUnitPositionY(ByRef MemDump, Unit)
  {	global
- 	return numget(MemDump, Unit * Offsets_Unit_StructSize + O_uY, "int")/4096
+ 	return numget(MemDump, Unit * Offsets_Unit_StructSize + Offsets_Unit_PositionY, "int")/4096
  }
  numGetUnitPositionZ(ByRef MemDump, Unit)
  {	global
- 	return numget(MemDump, Unit * Offsets_Unit_StructSize + O_uZ, "int")/4096
+ 	return numget(MemDump, Unit * Offsets_Unit_StructSize + Offsets_Unit_PositionZ, "int")/4096
  }
  numGetIsHatchInjectedFromMemDump(ByRef MemDump, Unit)
  {	global ; 1 byte = 18h chrono for protoss structures, 48h when injected for zerg -  10h normal state
@@ -3072,6 +3172,9 @@ All scales as recorded at 1920x1080
 
 ; Takes ~ 0.21 ms
 
+; Need to fix this code.
+; Much of the mess was added due to trying to fix/work-around the increased DPI bug....which turned out to be something completely different
+
 SetMiniMap(byref minimap)
 {	
 	; minimap is a super global (though here it is a local)
@@ -3172,8 +3275,7 @@ SetMiniMap(byref minimap)
 
 getMapName()
 {
-	MapFileInfo := readmemory(Offsets_Map_NamePointer[1], GameIdentifier)
-	return ReadMemory_Str(MapFileInfo + Offsets_Map_NamePointer[2], GameIdentifier)
+	return ReadMemory_Str(pointerAddress(GameIdentifier, Offsets_Map_NamePointer*), GameIdentifier)
 	;MapFileInfo := readmemory(B_MapInfo + O_FileInfoPointer, GameIdentifier)
 	;return ReadMemory_Str(MapFileInfo + 0x2A0, GameIdentifier)
 }
@@ -3419,21 +3521,20 @@ DumpUnitMemory(BYREF MemDump)
 	static Offsets_Unit_UnitsPerBlock := 0xF + 1
 
 	unitCount := getHighestUnitIndex()
-	, VarSetCapacity(MemDump, unitCount * Offsets_Unit_StructSize)
+	, VarSetCapacity(MemDump, unitCount * Offsets_Unit_StructSize, 0)
 	, unitBlockSize := Offsets_Unit_StructSize * Offsets_Unit_UnitsPerBlock
 	
 	loop, % loopCount := ceil(unitCount / Offsets_Unit_UnitsPerBlock)
 	{
 		if (A_Index = loopCount && remainingUnits := Mod(unitCount, Offsets_Unit_UnitsPerBlock)) ; *** The mod check here is very important!  If unit count = 16, then mod(16,16) = 0 and it will miss units!. Hence cant just do unitBlockSize := Mod(unitCount, Offsets_Unit_UnitsPerBlock) * Offsets_Unit_StructSize
 			unitBlockSize := remainingUnits * Offsets_Unit_StructSize
-		
 		UnitAtStartOfBlock := (A_Index-1) * Offsets_Unit_UnitsPerBlock
 		, localBufferOffset := UnitAtStartOfBlock * Offsets_Unit_StructSize
 		, ReadRawMemory(getUnitAddress(UnitAtStartOfBlock), GameIdentifier, MemDump, unitBlockSize, localBufferOffset)
 	}
   	return unitCount
 }
-; 0 - 15
+; 0 - 15 
 ; 
 
 
@@ -5914,7 +6015,7 @@ class upgradeDefinitions
 		return this._aStructuresFromRace[race]
 	}
 }
-; 4 byte ints listed in memory: 808 28 1066 290  (at 1920x1080)
+; 4 byte ints listed in memory: 808 28 1066 290  (at 1920x1080)  CE GroupScan: 4:808 4:28 4:1066 4:290 
 ; an 8 byte value 4578435137564 (first two ints)
 ; These are the coordinates of the minimap UI borders
 ; relative to the SC client area (doesn't include the SC window frame)
@@ -5928,31 +6029,31 @@ class upgradeDefinitions
 
 minimapLocation(byRef left, byRef right, byRef bottom, byRef top)
 {
-	static 	o_Top := 0x1C, o_left := 0x20, o_Bottom := 0x24, o_Right := 0x28
-	p := pointer(GameIdentifier, P_MinimapPosition, O_MinimapPosition*)
-	, left := ReadMemory(p + o_left, GameIdentifier)
-	, right := ReadMemory(p + o_Right, GameIdentifier)
-	, bottom := ReadMemory(p + o_Bottom, GameIdentifier)
-	, top := ReadMemory(p + o_Top, GameIdentifier)
+	p := pointerAddress(GameIdentifier, Offsets_MinimapPosition*)
+	, ReadRawMemory(p, GameIdentifier, buffer, 0x10)
+	, top := NumGet(buffer, 0x0, "UInt")
+	, left := NumGet(buffer, 0x4, "UInt")
+	, bottom := NumGet(buffer, 0x8, "UInt")
+	, right := NumGet(buffer, 0xC, "UInt")
 	return 
 }
 
 ; There are two sets of coordiantes, one directly after the other. I have not observed any differences between the two.
 ; However, two users (German and Chinese) reported that the minimap isn't aligned correctly.
 ; I was previously using the minimap top value from the second set of values (the rest was from the first)
+; These issues were due to DPI scaling 
 minimapLocationDebug()
 {
-	static 	o_Top := 0x1C, o_left := 0x20, o_Bottom := 0x24, o_Right := 0x28
-
-	p := pointer(GameIdentifier, P_MinimapPosition, O_MinimapPosition*)
-	, left := ReadMemory(p + o_left, GameIdentifier)
-	, right := ReadMemory(p + o_Right, GameIdentifier)
-	, bottom := ReadMemory(p + o_Bottom, GameIdentifier)
-	, top := ReadMemory(p + o_Top, GameIdentifier)
-	, left2 := ReadMemory(p + 0x10 + o_left, GameIdentifier)
-	, right2 := ReadMemory(p + 0x10 + o_Right, GameIdentifier)
-	, bottom2 := ReadMemory(p + 0x10 + o_Bottom, GameIdentifier)
-	, top2 := ReadMemory(p  + 0x10 + o_Top, GameIdentifier) ; Can be different Forbidden sanctuary 
+	p := pointerAddress(GameIdentifier, Offsets_MinimapPosition*)
+	, ReadRawMemory(p, GameIdentifier, buffer, 2 * 0x10)
+	, top := NumGet(buffer, 0x0, "UInt")
+	, left := NumGet(buffer, 0x4, "UInt")
+	, bottom := NumGet(buffer, 0x8, "UInt")
+	, right := NumGet(buffer, 0xC, "UInt")
+	, top2 := NumGet(buffer, 0x0 + 0x10, "UInt") ; Can be different Forbidden sanctuary 
+	, left2 := NumGet(buffer, 0x4 + 0x10, "UInt")
+	, bottom2 := NumGet(buffer, 0x8 + 0x10, "UInt")
+	, right2 := NumGet(buffer, 0xC + 0x10, "UInt")
 
 	return "Left: " left "`nRight: " right "`nBottom: " bottom "`nTop: " top "`n"
 		.  "Left2: " left2 "`nRight2: " right2 "`nBottom2: " bottom2 "`nTop2: " top2 "`n"
