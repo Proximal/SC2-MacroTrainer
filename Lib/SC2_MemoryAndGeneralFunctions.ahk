@@ -110,9 +110,6 @@ Global B_LocalCharacterNameID
 , Offsets_Camera_BorderRight
 , Offsets_Camera_BorderTop
 , aUnitMoveStates
-, B_UnitCursor
-, O1_UnitCursor
-, O2_UnitCursor
 
 , Offsets_IsUserPerformingAction
 , Offsets_IsBuildCardDisplayed
@@ -240,7 +237,7 @@ loadMemoryAddresses(base, version := "")
 			 Offsets_Player_ArmyMineralCost := 0xB68 ;p3.3 	; there are two (identical?) values for minerals/gas 
 			 Offsets_Player_ArmyGasCost := 0xB90 ; p3.3 		; ** care dont use max army gas/mineral value! 
 
-		 Offsets_IdleWorkerCountPointer := [base + 0x0181A28C, 0x8, 0x134]
+		 Offsets_IdleWorkerCountPointer := [base + 0x0181C294, 0x8, 0x134]
 
 		; 	This can be found via three methods, pattern scan:
 		;	C1 EA 0A B9 00 01 00 00 01 0D ?? ?? ?? ?? F6 D2 A3 ?? ?? ?? ?? F6 C2 01 74 06 01 0D ?? ?? ?? ?? 83 3D ?? ?? ?? ?? 00 56 BE FF FF FF 7F
@@ -394,9 +391,7 @@ loadMemoryAddresses(base, version := "")
 							, Follow: 512
 							, FollowNoAttack: 515} ; (ScanMove) This is used by unit spell casters such as infestors and High temps which dont have a real attack 
 			
-		B_UnitCursor :=	base + 0x314B920  
-			O1_UnitCursor := 0x2C0	 					
-			O2_UnitCursor := 0x21C 					
+			
 
 	 	; This base can be the same as B_UnitCursor				; If used as 4byte value, will return 256 	there are 2 of these memory addresses
 		 Offsets_IsUserPerformingAction := [base + 0x024E0CF4, 0x9C]	; This is a 1byte value and return 1  when user is casting or in is rallying a hatch via gather/rally or is in middle of issuing Amove/patrol command but
@@ -1202,20 +1197,6 @@ getUnitShieldDamage(unit)
 	Return Floor(ReadMemory(aSCOffsets["unitAddress", unit] + Offsets_Unit_ShieldDamage, GameIdentifier) / 4096)
 }
 
-getUnitPositionX(unit)
-{	global
-	Return ReadMemory(aSCOffsets["unitAddress", unit] + Offsets_Unit_PositionX, GameIdentifier) /4096
-}
-getUnitPositionY(unit)
-{	global
-	Return ReadMemory(aSCOffsets["unitAddress", unit]  + Offsets_Unit_PositionY, GameIdentifier) /4096
-}
-
-getUnitPositionZ(unit)
-{	global
-	Return ReadMemory(aSCOffsets["unitAddress", unit] + Offsets_Unit_PositionZ, GameIdentifier) /4096
-}
-
 ; I think there is an array of map cells containing the data, but I cant be bothered optimising/chaching this any more
 ; it seems like the encrypted values in the unit struct relate to each other, so im not sure how to go about this without more research
 getUnitPosition(unit)
@@ -1233,6 +1214,47 @@ getUnitPosition(unit)
 	aSCOffsets["unitPoint", unit, "encX"]	:= ecx
 	, aSCOffsets["unitPoint", unit, "encY"]	:= ebx	
 	, aSCOffsets["unitPoint", unit, "z"] := NumGet(buffer, 8, "UInt") / 4096
+	, eax := ecx 
+	, edx := ecx + 0x338EE103 
+	, eax >>= 0x0C 
+	, eax ^= edx 
+	, eax &= 0xFFF 
+	, ebx -= readMemory(eax * 4 + OffsetsSC2Base + 0x188A6A8, GameIdentifier)
+	, ebx := ~ebx 
+	, edx := ebx 
+	, eax := ebx 
+	, eax := ~eax 
+	, edx >>= 0x0C 
+	, eax -= edx 
+	, eax &= 0xFFF 
+	, ecx -= readMemory(eax * 4 + OffsetsSC2Base + 0x188A6A8, GameIdentifier)
+	, edx := ebx
+	, edx ^= ecx 
+	, edi := ebx 
+	, edi ^= ecx 
+	, edx &= 0x55555555
+	, edx ^= ecx 
+	, aSCOffsets["unitPoint", unit, "x"] := edx / 4096 
+	, edi &= 0x55555555
+	, edi ^= ebx 
+	, aSCOffsets["unitPoint", unit, "y"] := edi / 4096
+	return aSCOffsets["unitPoint", unit]
+}
+numgetUnitPosition(byRef unitDump, unit)
+{
+	ecx := numget(unitDump, unit * Offsets_Unit_StructSize + Offsets_Unit_PositionX, "UInt") 
+	, ebx := numget(unitDump, unit * Offsets_Unit_StructSize + Offsets_Unit_PositionY, "UInt") 
+	
+	; I could try it the other way (probably more efficient), have to test performance of AHK arrays with many keys
+	; e.g. aSCOffsets["Point"].HasKey(encrpted X Value) && aSCOffsets["Point", encrpted X Value].HasKey(encrpted y Value)
+	if aSCOffsets["unitPoint"].HasKey(unit)
+	&& ecx = aSCOffsets["unitPoint", unit, "encX"]
+	&& ebx = aSCOffsets["unitPoint", unit, "encY"]
+		return aSCOffsets["unitPoint", unit] ; unit hasnt moved
+
+	aSCOffsets["unitPoint", unit, "encX"] := ecx
+	, aSCOffsets["unitPoint", unit, "encY"]	:= ebx	
+	. aSCOffsets["unitPoint", unit, "z"] := numget(unitDump, unit * Offsets_Unit_StructSize + Offsets_Unit_PositionZ, "UInt") / 4096
 	, eax := ecx 
 	, edx := ecx + 0x338EE103 
 	, eax >>= 0x0C 
@@ -1447,7 +1469,7 @@ getUnitQueuedCommands(unit, byRef aQueuedMovements)
 									, "targetFlag" : targetFlag
 									;, "OrderFlags": OrderFlags
 									;, "flagString": CommandFlagsToString(OrderFlags)
-									, "Address": chex(pNextCmd & -2)
+									;, "Address": chex(pNextCmd & -2)
 									, "targetIndex": numget(cmdDump, Offsets_QueuedCommand_TargetFingerPrint, "UInt") >> 18 
 									, "state": numget(cmdDump, Offsets_QueuedCommand_State, "UShort") 
 									;  These times are raw - need to '/ 65536 (2^16)' to get time in seconds
@@ -2290,7 +2312,8 @@ getStructureRallyPoints(unitIndex, byRef aRallyPoints := "", zergTownHallResourc
 		{	
 			;ReadRawMemory(bRallyStruct, GameIdentifier, rallyDump, 0x14 + 0x1C * rallyCount)
 			while (A_Index <= rallyCount)
-			{
+			{	
+				; I currently don't use the X,Y values, so im not going to bother converting them from their lotv encrypted form
 				aRallyPoints.insert({ "fingerPrint": fingerPrint := numget(rallyDump, (A_Index-1) * 0x1C + 0x04, "UInt")
 									, "unitIndex": fingerPrint >> 18
 									, "unitModelPointer": numget(rallyDump, (A_Index-1) * 0x1C + 0x08, "UInt")
@@ -2338,8 +2361,8 @@ getTimeUntilUnitCompleted(B_QueuedUnitInfo)
 	TotalTime := ReadMemory(B_QueuedUnitInfo + Offsets_QueuedUnit_BuildTimeTotal, GameIdentifier)
 	RemainingTime := ReadMemory(B_QueuedUnitInfo + Offsets_QueuedUnit_BuildTimeRemaining, GameIdentifier)
 	if (TotalTime = RemainingTime) ; hasn't started so don't add it to any lists
-		return 0
-	return round(RemainingTime / 65536, 2) ;return 6.47 
+		return 0	
+	return round(RemainingTime / 65536, 2) ; in WOL/HOts
 }
 
 
@@ -2428,12 +2451,13 @@ numGetControlGroupObject(Byref oControlGroup, Group)
 		;if (!isUnitDead(unit) && isUnitLocallyOwned(unit))
 		if getUnitFingerPrint(unit) = fingerPrint && isUnitLocallyOwned(unit) && !(getunittargetfilter(Unit) & aUnitTargetFilter.hidden)
 		{
-			oControlGroup.units.insert({ "UnitIndex": unit
+			point := getUnitPosition(unit)
+			, oControlGroup.units.insert({ "UnitIndex": unit
 										, "Type": Type := getUnitType(unit)
 										, "Energy": getUnitEnergy(unit)
-										, "x": getUnitPositionX(unit)
-										, "y": getUnitPositionY(unit)
-										, "z": getUnitPositionZ(unit)}) ;note the object is unitS not unit!!!
+										, "x": point["x"]
+										, "y": point["y"]
+										, "z": point["z"]}) ;note the object is unitS not unit!!!
 			oControlGroup["Count"]++
 			if Type not in %typeList%
 			{
@@ -2970,38 +2994,19 @@ isPointNearLineSegmentWithZcheck(linePointA, linePointB, point, maxDistance)
 }
 
  objectGetUnitXYZAndEnergy(unit) ;this will dump just a unit
- {	Local UnitDump
-	ReadRawMemory(B_uStructure + unit * Offsets_Unit_StructSize, GameIdentifier, UnitDump, Offsets_Unit_StructSize)
-	Local x := numget(UnitDump, Offsets_Unit_PositionX, "int")/4096, y := numget(UnitDump, Offsets_Unit_PositionY, "int")/4096, Local z := numget(UnitDump, Offsets_Unit_PositionZ, "int")/4096
-	Local Energy := numget(UnitDump, Offsets_Unit_Energy, "int")/4096
-	return { "unit": unit, "X": x, "Y": y, "Z": z, "Energy": energy}
+ {	
+ 	obj := getUnitPosition(unit)
+ 	, obj["Energy"] := getUnitEnergyRaw(unit)
+ 	, obj["unit"] := unit
+	return obj
  }
 
- numGetUnitPositionX(ByRef MemDump, Unit)
- {	global
- 	return numget(MemDump, Unit * Offsets_Unit_StructSize + Offsets_Unit_PositionX, "int")/4096
- }
- numGetUnitPositionY(ByRef MemDump, Unit)
- {	global
- 	return numget(MemDump, Unit * Offsets_Unit_StructSize + Offsets_Unit_PositionY, "int")/4096
- }
- numGetUnitPositionZ(ByRef MemDump, Unit)
- {	global
- 	return numget(MemDump, Unit * Offsets_Unit_StructSize + Offsets_Unit_PositionZ, "int")/4096
- }
  numGetIsHatchInjectedFromMemDump(ByRef MemDump, Unit)
  {	global ; 1 byte = 18h chrono for protoss structures, 48h when injected for zerg -  10h normal state
  	return 2 = numget(MemDump, Unit * Offsets_Unit_StructSize + Offsets_Unit_InjectState, "UChar")
  }
 
-numGetUnitPositionXYZ(ByRef MemDump, Unit)
-{	
-	position := []
-	, position.x := numGetUnitPositionX(MemDump, Unit)
-	, position.y := numGetUnitPositionY(MemDump, Unit)
-	, position.z := numGetUnitPositionZ(MemDump, Unit)
-	return position
-}
+
 
 SortUnitsByAge(unitlist="", units*)
 {
@@ -3284,7 +3289,8 @@ getMapName()
 ; Not for drawing on the minimap
 getUnitMinimapPos(Unit, ByRef  x, ByRef y) ; Note redounded as mouse clicks dont round decimals e.g. 10.9 = 10
 {
-	mapToMinimapPos(x := getUnitPositionX(Unit), y := getUnitPositionY(Unit))
+	point := getUnitPosition(unit), x := point["x"], y := point["y"]
+	, mapToMinimapPos(x, y)
 	, x := round(x), y := round(y)
 }
 ; x, y should be rounded for mouse clicks and for drawing.
@@ -3301,7 +3307,8 @@ mapToMinimapPos(ByRef  X, ByRef  Y)
 ; Use these two functions to draw items on the minimap
 getUnitRelativeMinimapPos(Unit, ByRef  x, ByRef y) ; Note raounded as mouse clicks dont round decimals e.g. 10.9 = 10
 {
-	mapToRelativeMinimapPos(x := getUnitPositionX(Unit), y := getUnitPositionY(Unit))
+	point := getUnitPosition(unit), x := point["x"], y := point["y"]
+	, mapToRelativeMinimapPos(x, y)
 	, x := round(x), y := round(y)
 }
 
@@ -3317,7 +3324,8 @@ mapToRelativeMinimapPos(ByRef  X, ByRef  Y)
 ; Couldn't seem to get it to work with client or window
 getUnitScreenMinimapPos(Unit, ByRef  x, ByRef y) ; Note redounded as mouse clicks dont round decimals e.g. 10.9 = 10
 {
-	mapToRelativeMinimapPos(x := getUnitPositionX(Unit), y := getUnitPositionY(Unit))
+	point := getUnitPosition(unit), x := point["x"], y := point["y"]
+	, mapToRelativeMinimapPos(x, y)
 	, x := round(x)+minimap.VSLeft, y := round(y) + minimap.VSTop
 }
 
@@ -3576,6 +3584,33 @@ class cUnitModelInfo
 			, this.Type := aUnitID["OverlordTransport"]			
 			, this.RealSubGroupPriority := 1
 		}
+		if this.Type = aUnitID["MineralField"]	
+		|| this.Type = aUnitID["RichMineralField"]	
+		|| this.Type = aUnitID["MineralField750"]	
+		|| this.Type = aUnitID["RichMineralField750"]	
+		|| this.Type = aUnitID["LabMineralField"]	
+		|| this.Type = aUnitID["LabMineralField750"]	
+		|| this.Type = aUnitID["PurifierMineralField"]	
+		|| this.Type = aUnitID["PurifierMineralField750"]	
+		|| this.Type = aUnitID["PurifierRichMineralField"]	
+		|| this.Type = aUnitID["PurifierRichMineralField750"]	
+			this.CommonType := aUnitID["MineralField"]		
+		else if this.Type = aUnitID["VespeneGeyser"]	
+		|| this.Type = aUnitID["VespeneGeyserSpacePlatform"]	
+		|| this.Type = aUnitID["RichVespeneGeyser"]	
+		|| this.Type = aUnitID["VespeneGeyserProtoss"]	
+		|| this.Type = aUnitID["VespeneGeyserPurifier"]	
+		|| this.Type = aUnitID["VespeneGeyserShakuras"]	
+			this.CommonType := aUnitID["VespeneGeyser"]
+		else if this.Type = aUnitID["SupplyDepot"]	
+		|| this.Type = aUnitID["SupplyDepotLowered"]	
+		|| this.Type = aUnitID["Pylon"]	
+		|| this.Type = aUnitID["PylonOvercharge"]	
+		|| this.Type = aUnitID["Overlord"]	
+		|| this.Type = aUnitID["OverlordCocoon"]	
+		|| this.Type = aUnitID["TransportOverlordCocoon"]	
+		|| this.Type = aUnitID["OverlordTransport"]	
+			this.CommonType := aUnitID["SupplyDepot"]	
       }
 }
 
@@ -3584,6 +3619,12 @@ getUnitModelType(pUnitModel)
    if !aUnitModel[pUnitModel]
       getUnitModelInfo(pUnitModel)
    return aUnitModel[pUnitModel, "Type"]
+}
+getUnitModelCommonType(pUnitModel)
+{  
+   if !aUnitModel[pUnitModel]
+      getUnitModelInfo(pUnitModel)
+   return aUnitModel[pUnitModel, "CommonType"]
 }
 getUnitModelAlternateType(pUnitModel)
 {  
@@ -5010,13 +5051,23 @@ stripModifiers(pressedKey)
 	return pressedKey
 }
 
-; This returns -1 when no unit is under the cursor
+/* This was difficult to track - lots of possibilities. 
+This one was easiest, but still passed via stack (EBP + 8)
+SC2.AssertAndCrash+1EDAD9 - A1 88B0E101           - mov eax,[SC2.exe+1B7B088]
+SC2.AssertAndCrash+1EDADE - 8B 88 940A0000        - mov ecx,[eax+00000A94]
+SC2.AssertAndCrash+1EDAE4 - 81 C1 5CAE0000        - add ecx,0000AE5C
+SC2.AssertAndCrash+1EDAEA - 51                    - push ecx
+.......
+SC2.GetBattlenetAllocator+224644 - 8B 57 08       - mov edx,[edi+08]
 
+*/
+
+; This returns -1 when no unit is under the cursor
 getCursorUnit()
 {
-	p1 := readMemory(B_UnitCursor, GameIdentifier)
-	p2 := readMemory(p1 + O1_UnitCursor, GameIdentifier)
-	if (index := readMemory(p2 + O2_UnitCursor, GameIdentifier))
+	eax := readmemory(OffsetsSC2Base + 0x1B7B088, GameIdentifier)
+	, ecx := readmemory(eax + 0x0A94, GameIdentifier) + 0xAE64 ; (added 0000AE5C + 8)
+	if (index := readMemory(ecx, GameIdentifier))
 		return index >> 18
 	return -1
 }
@@ -5525,7 +5576,7 @@ formatSeconds(seconds)
     FormatTime, mss, %time%, m:ss
     return lTrim(seconds//3600 ":" mss, "0:") 
 }
-
+/*
 gameToRealSeconds(gameSeconds)
 {
 	static aFactor := { Slower: 1.66
@@ -5535,6 +5586,18 @@ gameToRealSeconds(gameSeconds)
 					,	Faster: .725 }
 	return  gameSeconds * aFactor[getGameSpeed()]
 }
+*/
+gameToRealSeconds(gameSeconds)
+{
+	static aFactor := { Slower: 1.66
+					,	Slow: 1.25
+					,	Normal: 1.00
+					,	Fast: .8175
+					,	Faster: .715 } ; Faster is correct in lotv
+	return  gameSeconds * aFactor[getGameSpeed()]
+}
+
+
 ; It would be much simpler to use the ' Gui MiniMapOverlay:+LastFoundExist' and  'IfWinNotExist'
 ; rather than tracking drawing states in a variable. But this seems to work fine and I cbf changing it.
 

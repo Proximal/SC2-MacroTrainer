@@ -60,5 +60,5 @@ pointer(game, address, offsets*)
 
 pointerAddress(game, address, aOffsets*)
 {
-    return  aOffsets.Remove() + pointer(game, address, aOffsets*) ; remove the highest key so can use pointer() to find final memory address (minus the last offset)       
+    return aOffsets.Remove() + pointer(game, address, aOffsets*) ; remove the highest key so can use pointer() to find final memory address (minus the last offset)       
 }

@@ -112,6 +112,7 @@ gameChange(UserSavedAppliedSettings := False)
 		aCurrentGameTemp := []
 		aSCOffsets["playerAddress"] := new classAddressCachePlayerUnit("playerAddress")
 		aSCOffsets["unitAddress"] := new classAddressCachePlayerUnit("getUnitAddress")
+		aSCOffsets["unitPoint"] := new classAddressCachePlayerUnit("getUnitPosition")
 		if WinActive(GameIdentifier)
 			ReDrawIncome := ReDrawResources := ReDrawArmySize := ReDrawWorker := RedrawUnit := ReDrawIdleWorkers := ReDrawLocalPlayerColour := 1
 		getPlayers(aPlayer, aLocalPlayer)
@@ -351,7 +352,6 @@ getEnemyUnitsMiniMap(byref aUnitsToDraw)
      ;|| (aChangeling.HasKey(type) && aPlayer[Owner, "Team"] = aLocalPlayer["Team"] ) ; as a changeling owner becomes whoever it is mimicking - its team also becomes theirs
 
      if (aPlayer[owner := numget(MemDump, UnitAddress + Offsets_Unit_Owner, "UChar"), "Team"] != aLocalPlayer["Team"] && Owner && type >= aUnitID["Colossus"])  ; This changeling check is no longer required as reading the first unit owner now (not the third)
-     || 1
      {
           if (!Radius := aUnitInfo[Type, "Radius"])
             Radius := aUnitInfo[Type, "Radius"] := getUnitModelMiniMapRadius(pUnitModel)
@@ -359,7 +359,7 @@ getEnemyUnitsMiniMap(byref aUnitsToDraw)
          if (Radius < minimap.UnitMinimumRadius) ; probes and such
            	Radius := minimap.UnitMinimumRadius
 
-           point := getUnitPosition(A_index-1)
+           point := numgetUnitPosition(MemDump, A_index-1)
            x := point["x"], y := point["y"]
            , customFlag := True
 	      , mapToRelativeMinimapPos(x, y) ; don't round them. As fraction might be important when subtracting scaled width in draw/fill rectangle

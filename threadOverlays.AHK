@@ -175,6 +175,7 @@ gameChange()
 		aUnitModel := [], aStringTable := [], MT_CurrentGame := []
 		aSCOffsets["playerAddress"] := new classAddressCachePlayerUnit("playerAddress")
 		aSCOffsets["unitAddress"] := new classAddressCachePlayerUnit("getUnitAddress")
+		aSCOffsets["unitPoint"] := new classAddressCachePlayerUnit("getUnitPosition")
 		if WinActive(GameIdentifier)
 			ReDrawIncome := ReDrawResources := ReDrawArmySize := ReDrawWorker := RedrawUnit := ReDrawIdleWorkers := ReDrawLocalPlayerColour := 1
 		getPlayers(aPlayer, aLocalPlayer, aEnemyAndLocalPlayer)
@@ -1872,7 +1873,7 @@ DrawMacroTownHallOverlay(ByRef Redraw, UserScale=1, Drag=0)
 	{
 		loop, % numgetControlGroupMemory(MemDump, A_Index - 1)
 		{
-			if !aCheckedUnits.HasKey((unit := NumGet(MemDump, (A_Index - 1) * S_scStructure, "UInt") >> 18))
+			if !aCheckedUnits.HasKey((unit := NumGet(MemDump, (A_Index - 1) * 4, "UInt") >> 18))
 			&& aTownHalls.HasKey(type := getUnitType(unit))
 			&& isUnitLocallyOwned(unit) && !(getUnitTargetFilter(unit) & (aUnitTargetFilter.Dead | aUnitTargetFilter.UnderConstruction))
 			{
@@ -2011,6 +2012,8 @@ getLocalUpgrades(byRef aUpgrades, percentMode)
 	    	|| ((Type = aUnitID["Hatchery"] || Type = aUnitID["Lair"] || Type = aUnitID["Spire"] || Type = aUnitID["HydraliskDen"]) && (MorphingType := isZergStructureMorphing(unit, Type)))
 	    	{
 	    		progress := getUnitMorphTime(unit, type, percentMode)
+	    		if !percentMode
+	    			progress := gameToRealSeconds(progress)
 	    		name := aUnitName[MorphingType]	 
 	    		aMorphing[name] := {Name: name, Progress: percentMode 
 	    															? (aMorphing[name].progress > progress ? aMorphing[name].progress : progress)
@@ -2033,8 +2036,10 @@ getLocalUpgrades(byRef aUpgrades, percentMode)
 				if a_pBitmap.haskey(aProduction.Item) 
 				{
 					aUpgradesHasItems := True
-					name := aProduction.Item
+					name := aProduction.Item			
 					progress := aProduction.progress
+					if !percentMode
+		    			progress := gameToRealSeconds(progress)	
 					; Need to have the progress check as can 'research' multiple nukes simultaneously 
 	    			aUpgrades[name] := {Name: name, Progress: percentMode 
 	    															? (aUpgrades[name].progress > progress ? aUpgrades[name].progress : progress)

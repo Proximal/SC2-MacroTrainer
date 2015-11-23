@@ -877,6 +877,7 @@ Else if (time > 0.4 && !isInMatch) && (getLocalPlayerNumber() != 16 || debugGame
 	aResourceLocations := []
 	aSCOffsets["playerAddress"] := new classAddressCachePlayerUnit("playerAddress")
 	aSCOffsets["unitAddress"] := new classAddressCachePlayerUnit("getUnitAddress")
+	aSCOffsets["unitPoint"] := new classAddressCachePlayerUnit("getUnitPosition")
 	global aStringTable := []
 	global aXelnagas := [] ; global cant come after command expressions
 	global MT_CurrentGame := []	; This is a variable which from now on will store
@@ -7324,176 +7325,15 @@ class TwoPanelSelection_LV
 		return LV_GetCount() ;
 	}
 
-local_minerals(ByRef Return_Base_index, SortBy="Index") ;Returns a list of [Uints] index position for minerals And optionaly the [unit] index for the local base
-{	;	Nexus = 90 CommandCenter = 48 Hatchery = 117
-	;sc2_unit_count := getUnitCount()		;can put the count outside the loop for this
-	While (A_Index <= getHighestUnitIndex()) 
-	{
-		unit := A_Index - 1
-		type := getUnitType(unit)
-		IF isUnitLocallyOwned(unit)
-		AND ( type = 90 OR type = 48 OR type = 117 )
-			Base_loc_index := unit	;
-		Else IF type = 253 ; 253 = Normal Mineral patch
-			MineraList .= unit "|"  ; x|x|
-	}
-	MineraList := SubStr(MineraList, 1, -1)	;remove the trailing |
-	loop, parse, MineraList, | 
-	{
-		IF areUnitsNearEachOther( A_LoopField, Base_loc_index, 8, 8) ; 1 if near
-			Result .= A_LoopField "|"
-	}
-	MineraList := RTrim(Result, "| ")
-	If (SortBy = "Distance")
-		MineraList := sortUnitsByDistance(Base_loc_index, MineraList) 
-	IF IsByRef(Return_Base_index)
-		Return_Base_index := Base_loc_index
-	Return MineraList
-}
 
-sortUnitsByDistance(Base, unitlist="", units*)
-{ 	; accepts a "|" delimeter list, OR a variadic list
-	List := []		;used to sort mineral patches by closest
-	if unitlist		;but still doesnt find the 3 relative closest patches
-	{				;probably due to where 'nexus' is - look at this later.
-		units := []	;actually unit x,y seems to be from the centre of the unit.
-		loop, parse, unitlist, |
-			units[A_index] := A_LoopField
-	}	
-	for index, unit in units
-	{
-		Base_x := getUnitPositionX(Base), Base_y := getUnitPositionY(Base)
-		unit_x := getUnitPositionX(unit), unit_y := getUnitPositionY(unit)
-		List[A_Index] := {Unit:unit,Distance:Abs(Base_x - unit_x) + Abs(Base_y - unit_y)}	
-	}
-	bubbleSort2DArray(List, "Distance")
-	For index, obj in List
-		SortedList .= List[index].Unit "|"
-	return RTrim(SortedList, "|")
-} 
-
-SortUnitsByMapOrder(unitlist="", units*)
-{ 	; accepts a "|" delimeter list, OR a variadic list
-	List := []		;used to sort mineral patches by from left to right, or top to bottom
-	if unitlist		
-	{			
-		units := []
-		loop, parse, unitlist, |
-			units[A_index] := A_LoopField
-	}	
-	for index, unit in units
-		List[A_Index] := {Unit:unit, X: getUnitPositionX(unit), Y: getUnitPositionY(unit)}	
-
-	bubbleSort2DArray(List, "X") ;3rd param def 1 OR ascending
-	For index, obj in List
-	{
-		If (index = List.minindex())
-			X_Min := List[index].X
-		If (index = List.MaxIndex())
-			X_Max := List[index].X
-	}
-	bubbleSort2DArray(List, "Y")
-	For index, obj in List
-	{
-		If (index = List.minindex())
-			Y_Min := List[index].Y
-		If (index = List.MaxIndex())
-			Y_Max := List[index].Y
-	}		 
-	If (X_Delta := Abs(X_Max-X_Min)) > (Y_Delta := Abs(Y_Max-Y_Min))
-	{
-		bubbleSort2DArray(List, "X")
-		For index, obj in List
-			SortedList .= List[index].Unit "|"
-	}
-	else 
-	{
-		bubbleSort2DArray(List, "Y")
-		For index, obj in List
-			SortedList .= List[index].Unit "|"	
-	}
-	return RTrim(SortedList, "|")
-} 
-
-
-areUnitsNearEachOther(unit1, unit2, x_max_dist = "", y_max_dist = "", compareZ = 1)
-{
-	if !(x_max_dist || y_max_dist)
-		Return "One max distance is required!"
-	Else If  !y_max_dist
-		y_max_dist := x_max_dist
-	Else x_max_dist := y_max_dist
-
-	x_dist := Abs(getUnitPositionX(unit1) - getUnitPositionX(unit2))
-	y_dist := Abs(getUnitPositionY(unit1) - getUnitPositionY(unit2))																									
-																								; there is a substantial difference in height even on 'flat ground' - using a max value of 1 should give decent results
-	Return Result := (x_dist > x_max_dist) || (y_dist > y_max_dist) || (compareZ && Abs(getUnitPositionZ(unit1) - getUnitPositionZ(unit2)) > 1) ? 0 : 1 ; 0 Not near
-}
-
-
-
-
-
-Get_Bmap_pixel(u_array_index_number, ByRef Xvar, ByRef Yvar)
-{
-local u_x, u_y, tx, ty
-
-	P_Xcam := getPlayerCameraPositionX()
-	P_Ycam := getPlayerCameraPositionY() + (7142/4096)
-
-	u_x := getUnitPositionX(u_array_index_number)
-	u_y := getUnitPositionY(u_array_index_number)
-
-
-	X_Bmap_conv := 950/(61954/4096)  ; pixel/map_X
-	if (u_x >= P_Xcam)
-	{
-		u_x := u_x - P_Xcam 	; Hence relative to camera
-		tx := u_x * X_Bmap_conv
-		tx := 960 + tx
-	}
-	Else
-	{
-		u_x := P_Xcam  - u_x
-		tx := u_x * X_Bmap_conv
-		tx := 960 - tx
-	}
-
-	if (u_y >= P_Ycam)
-	{
-	;	SoundPlay *-1
-		u_y := u_y - P_Ycam
-	;	Y_Bmap_conv_T := 375/(41661/4096)		 ; (for top)
-	;	Y_Bmap_conv := (375/7.89) *.7
-	;	Y_Bmap_conv := (u_y/(41661/4096)) *	375/(41661/4096) *1.3
-		Y_Bmap_conv :=  375/ (10.17114 - (5.6 + (u_y/(41661/4096)))*.1)
-
-		ty := u_y * Y_Bmap_conv	
-		ty := 375 - ty
-	}
-	Else
-	{
-		u_y := P_Ycam - u_y
-		Y_Bmap_conv := 375/ (7.89 - (5.6 - (u_y/(22976/4096)) *	3.5 ))
-		ty := u_y * Y_Bmap_conv	
-		ty := 375 + ty
-	}
-	If IsByRef(Xvar)
-		Xvar := Round(tx)
-	IF IsByRef(Yvar)
-		Yvar := Round(ty)
-	if (Xvar < 15 || Xvar > A_ScreenWidth-15) || (Yvar < 15) ; the mouse will push on/move the screen 
-		Return 1
-}
 getBuildingList(F_building_var*)	
 { 
 	loop, % DumpUnitMemory(MemDump)
 	{
 		unit := A_Index - 1
 	    if isTargetDead(TargetFilter := numgetUnitTargetFilter(MemDump, unit)) || !isOwnerLocal(owner := numgetUnitOwner(MemDump, Unit))
-	       Continue
-	    pUnitModel := numgetUnitModelPointer(MemDump, Unit)
-	    Type := getUnitModelType(pUnitModel)
+	       Continue	    
+	    Type := getUnitModelType(pUnitModel := numgetUnitModelPointer(MemDump, Unit))
 	    For index, building_type in F_building_var
 		{	
 			IF (type = building_type && !isTargetUnderConstruction(TargetFilter))
@@ -7508,19 +7348,14 @@ getBuildingList(F_building_var*)
 
 isTargetDead(TargetFilter)
 {	global aUnitTargetFilter
-	return TargetFilter & aUnitTargetFilter.Dead
+	return TargetFilter & aUnitTargetFilter["Dead"]
 }
 
 isTargetUnderConstruction(TargetFilter)
 {	global aUnitTargetFilter
-	return TargetFilter & aUnitTargetFilter.UnderConstruction
+	return TargetFilter & aUnitTargetFilter["UnderConstruction"]
 }
 
-; Note Currently used!
-isUserCastingOrBuilding()	;note auto casting e.g. swarm host will always activate this. There are separate bool values indicating buildings at certain spells
-{	global
-	return pointer(GameIdentifier, P_IsUserCasting, O1_IsUserCasting, O2_IsUserCasting, O3_IsUserCasting, O4_IsUserCasting)
-}
 
 
 filterSlectionTypeByEnergy(EnergyFilter="", F_utype*) ;Returns the [Unit] index number
@@ -7816,7 +7651,7 @@ autoWorkerProductionCheck()
 				; this is for terran, so if build cc inside base, wont build up to 60 workers even though 2 bases, but just 1 mining
 				for index, geyser in aResourceLocations.geysers
 				{
-					if 1 || isUnitNearUnit(geyser, object, 7.9) ; 7.9 also compares z but for 1 map unit ; so if the base is within 8 map units it counts. It seems geysers are generally no more than 7 or 7.5 away
+					if isUnitNearUnit(geyser, object, 7.9) ; 7.9 also compares z but for 1 map unit ; so if the base is within 8 map units it counts. It seems geysers are generally no more than 7 or 7.5 away
 					{
 						Basecount++ ; for calculating max workers per base
 						nearGeyser := True
@@ -9041,12 +8876,13 @@ restoreSelection(controlGroup, selectionPage, highlightedTab)
 	
 		IF (type = aUnitID["Hatchery"] || type = aUnitID["Lair"] || type = aUnitID["Hive"])
 		{
-			MiniMapX := x := numGetUnitPositionX(MemDump, Unit)
-			MiniMapY := y := numGetUnitPositionY(MemDump, Unit)
-			z :=  numGetUnitPositionZ(MemDump, Unit)
-			mapToMinimapPos(MiniMapX, MiniMapY)
-			isInjected := numGetIsHatchInjectedFromMemDump(MemDump, Unit)
-			Object.insert( {  "Unit": unit 
+			point := numgetUnitPosition(MemDump, unit)
+			, MiniMapX := x := point["x"]
+			, MiniMapY := y := point["y"]
+			, z :=  point["z"]
+			, mapToMinimapPos(MiniMapX, MiniMapY)
+			, isInjected := numGetIsHatchInjectedFromMemDump(MemDump, Unit)
+			, Object.insert( {  "Unit": unit 
 							, "x": x
 							, "y": y
 							, "z": z
@@ -9866,8 +9702,6 @@ debugData()
 	. A_Tab "Chronoed: " isUnitChronoed(unit) "`n"
 	. A_Tab "Mmap Radius: " getMiniMapRadius(unit) "`n" 
 	. A_Tab "Energy: " getUnitEnergy(unit) "`n" 
-	. A_Tab "PosZ Round: " round(getUnitPositionZ(unit), 1) "`n"
-	. A_tab "PosZ : " getUnitPositionZ(unit) "`n"
 	. "Map: `n"
 	. A_Tab "Map Left: " getMapLeft() "`n"
 	. A_Tab "Map Right: " getMapRight() "`n"
@@ -10113,23 +9947,19 @@ SplitUnits()
 
 ; This is used by the auto worker macro to check if a real one, or a extra/macro one
 getMapInfoMineralsAndGeysers() 
-{ 	GLOBAL aUnitID
+{ 
 	resources := [], resources.minerals := [], resources.geysers := []
 	
 	loop, % DumpUnitMemory(MemDump)
 	{
-		unit := A_Index - 1
-		TargetFilter := numgetUnitTargetFilter(MemDump, unit)
-		if isTargetDead(TargetFilter) 
+		if aUnitTargetFilter["Dead"] & numgetUnitTargetFilter(MemDump, unit := A_Index - 1)
 			continue
-		type := getUnitModelType(numgetUnitModelPointer(MemDump, unit))
+		commonType := getUnitModelCommonType(numgetUnitModelPointer(MemDump, unit))
 
-    	IF ( type = aUnitID["MineralField"] || type = aUnitID["RichMineralField"] )
-    		resources.minerals[unit] := numGetUnitPositionXYZ(MemDump, unit)
-    	Else If ( type = aUnitID["VespeneGeyser"] || type = aUnitID["ProtossVespeneGeyser"]  
-    	|| type = aUnitID["SpacePlatformGeyser"] || type = aUnitID["RichVespeneGeyser"] 
-    	|| type = aUnitID["VespeneGeyserPretty"])
-			resources.geysers[unit] := numGetUnitPositionXYZ(MemDump, unit)
+    	IF aUnitID["MineralField"] = commonType
+    		resources.minerals[unit] := numgetUnitPosition(MemDump, unit)
+    	Else If aUnitID["VespeneGeyser"] = commonType
+			resources.geysers[unit] := numgetUnitPosition(MemDump, unit)
 	}
 	return resources
 }
@@ -11017,22 +10847,7 @@ width = 38
 height = 18
 */
 
-isUnitInView(unit)
-{
-	uX := getUnitPositionX(unit)
-	, uY := getUnitPositiony(unit)
-	, cX := getPlayerCameraPositionX()
-	, cY := getPlayerCameraPositionY()
-	; (ABS(cX - ux) <= 18
-		x := cx - ux
-		y := cY - uY
-	if (y >= -12 && y <= 7) && (x >= -18 && x <= 18) 
-		r := 1
-	else 
-		r := 0
-	;	clipboard .= "`n" R
-	Return r
-}
+
 
 ; force will release any logically down key
 ; which would be useful if a key is stuck and its a hotkey as well, so it
@@ -12677,7 +12492,7 @@ getHarvestersMiningGas(geyserStructureIndex, byref aFoundIndexes, byRef underCon
 	unitCount := DumpUnitMemory(MemDump)
 
 	underConstruction := numgetUnitTargetFilter(MemDump, geyserStructureIndex) & aUnitTargetFilter.underConstruction
-	aGeyserStructurePos := numGetUnitPositionXYZ(MemDump, geyserStructureIndex)
+	aGeyserStructurePos := numgetUnitPosition(MemDump, geyserStructureIndex)
 	loop, % unitCount
 	{
 		if (aUnitTargetFilter.Dead & numgetUnitTargetFilter(MemDump, unit := A_Index - 1)) 
@@ -12691,8 +12506,8 @@ getHarvestersMiningGas(geyserStructureIndex, byref aFoundIndexes, byRef underCon
 			&& (command.targetIndex = geyserStructureIndex ; harvester heading towards the geyser in question
 				|| (aLocalPlayer.Slot = numgetUnitOwner(MemDump, command.targetIndex) ; this part checks if harvester is on the return trip from the geyser in question.
 					&& aTownHallLookup[aLocalPlayer.Race].hasKey(getUnitModelType(numgetUnitModelPointer(MemDump, command.targetIndex))) ; Target is a townhall i.e. harvester mining minerals or gas and is returning to town hall
-					&& isUnitNearUnit(aGeyserStructurePos, aTownHallPos := numGetUnitPositionXYZ(MemDump, command.targetIndex), 9) ; so town hall is next to refinery
-					&& isPointNearLineSegmentWithZcheck(aGeyserStructurePos, aTownHallPos, numGetUnitPositionXYZ(MemDump, unit), .5))) ; harvester is within .9 map unit of the straight line connecting the refinery to the townhall (this wont work if there is an obstruction and the worker has to move path around it)
+					&& isUnitNearUnit(aGeyserStructurePos, aTownHallPos := numgetUnitPosition(MemDump, command.targetIndex), 9) ; so town hall is next to refinery
+					&& isPointNearLineSegmentWithZcheck(aGeyserStructurePos, aTownHallPos, numgetUnitPosition(MemDump, unit), .5))) ; harvester is within .9 map unit of the straight line connecting the refinery to the townhall (this wont work if there is an obstruction and the worker has to move path around it)
 			{ 																														; 1 (and .9) is too big and a unit returning minerals from a patch adjacent to the refinery will count (when its at the CC end of the line)
 																																	; This is the main reason for getting 2 instead of 3 sent to a geyser. A mineral mining harvester is 'accidentally' considered to be mining gas. I think its better to lower this value (which could result in selected mining harvester being sent to to their own geyser resulting in under saturation)
 																																	; as this is less likely and will not occur if the player doesnt initially select these gas mining workers - whereas which higher values it can cause issues when selecting mineral mining workers.
@@ -12707,7 +12522,7 @@ getHarvestersMiningGas(geyserStructureIndex, byref aFoundIndexes, byRef underCon
 			&& aCommands.MaxIndex() = index  ; Else it is queued to go elsewhere when it finishes construction
 			&& (type := getUnitModelType(numgetUnitModelPointer(MemDump, command.targetIndex))) ; The target index is the actual geyser and not the refinery
 			&& (type = aUnitId.VespeneGeyser || type = aUnitId.SpacePlatformGeyser || type = aUnitId.RichVespeneGeyser || type = aUnitId.ProtossVespeneGeyser || type = aUnitId.VespeneGeyserPretty)
-			&& isUnitNearUnit(aGeyserStructurePos, numGetUnitPositionXYZ(MemDump, command.targetIndex), 1)
+			&& isUnitNearUnit(aGeyserStructurePos, numgetUnitPosition(MemDump, command.targetIndex), 1)
 				count++, aFoundIndexes[unit] := True
 		}
 	 }
@@ -13728,12 +13543,16 @@ findClosestNexus(mothershipIndex, byRef minimapX, byRef minimapY)
 	loop, % DumpUnitMemory(MemDump)
 	{
 		if !isTargetDead(TargetFilter := numgetUnitTargetFilter(MemDump, unitIndex := A_Index - 1)) && aLocalPlayer["Slot"] = numgetUnitOwner(MemDump, unitIndex)
-		&& !(TargetFilter & aUnitTargetFilter["UnderConstruction"]) && aUnitID["Nexus"] = getUnitModelType(numgetUnitModelPointer(MemDump, unitIndex)) 
-		    count++, aNexi.insert({"unitIndex": unitIndex,  "x": numGetUnitPositionX(MemDump, unitIndex), "y": numGetUnitPositionY(MemDump, unitIndex)})
+		&& !(TargetFilter & aUnitTargetFilter["UnderConstruction"]) && aUnitID["Nexus"] = getUnitModelType(numgetUnitModelPointer(MemDump, unitIndex))
+		{ 
+			point := numgetUnitPosition(MemDump, unitIndex)
+		    , count++, aNexi.insert({"unitIndex": unitIndex,  "x": point["x"], "y": point["y"]})
+		}
 	} until count = baseCount
 	if !aNexi.MaxIndex()
 		return false 
-	mothershipX := numGetUnitPositionX(MemDump, mothershipIndex), mothershipY :=  numGetUnitPositionY(MemDump, mothershipIndex)
+	point := numgetUnitPosition(MemDump, mothershipIndex)
+	, mothershipX := point["x"], mothershipY := point["y"]
 	for i, nexus in aNexi
 	{
 		distance := (mothershipX - nexus.x)**2 + (mothershipY - nexus.y)**2 ; don't need the actual distance, so no need to squareRoot
@@ -13792,16 +13611,6 @@ return
 
 
 ; Target filter +14
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -13887,43 +13696,6 @@ msgbox % getUnitQueuedCommands(unit, aCommands)
 objtree(aCommands)
 return 
 
-;f2::
-unit := getSelectedUnitIndex()
-type := getUnitType(unit)
-;msgbox % getUnitSubGroupPriority(getSelectedUnitIndex()) "`n" type "`n"
-;msgbox % chex(getUnitModelPointer(getSelectedUnitIndex()))
-getUnitAbilitiesString(getSelectedUnitIndex())
-return 
-
-;f1::
-msgbox % chex(getUnitModelPointer(getSelectedUnitIndex()))
-return 
-
-;!f1::
-;msgbox % chex(getUnitModelPointer(getSelectedUnitIndex()))
-
-unit := getSelectedUnitIndex()
-
-
-
-WriteMemory(getUnitModelPointer(unit)  + Offsets_UnitModel_SubgroupPriority, GameIdentifier, 100, "UInt")
-msgbox % readMemory(getUnitModelPointer(unit)  + Offsets_UnitModel_SubgroupPriority, GameIdentifier)
-return 
-
-
-
-
-msgbox % clipboard := getUnitName(unit)
-
-. "`n" "altType " getUnitAlternateType(unit)
-. "`ntype " getUnitType(unit)
-. "`nsubgroup " getUnitSubGroupPriority(unit)
-. "`nindex " unit
-return 
-
-
-
-
 msgbox % chex(Offsets_InputStructure)
 mem := new _ClassMemory(GameIdentifier) ; set when new is used
 foundCount := 0
@@ -13935,44 +13707,29 @@ while (address := mem.processPatternScan(address,,  0xDB, "?", "?", 0x89, 0x0D, 
 }
 msgbox % foundCount
 return 
+
+
 f1::
-unit := getSelectedUnitIndex()
-msgbox % chex(getUnitAddress(unit)+0x50)
-getUnitQueuedCommands(unit, a)
-objtree(a)
+msgbox % getCursorUnit()
 return 
 
-f2::
-unit := getSelectedUnitIndex()
-msgbox % chex(getUnitAddress(1)+0x50)
-objtree(getunitposition(1))
-return 
+/*
+SC2.AssertAndCrash+1EDAD9 - A1 88B0E101           - mov eax,[SC2.exe+1B7B088]
+SC2.AssertAndCrash+1EDADE - 8B 88 940A0000        - mov ecx,[eax+00000A94]
+SC2.AssertAndCrash+1EDAE4 - 81 C1 5CAE0000        - add ecx,0000AE5C
+SC2.AssertAndCrash+1EDAEA - 51                    - push ecx
+*/
 
-
-+f1::
-test123()
-return 
-
-test123()
+testabc()
 {
-  loop, % DumpUnitMemory(MemDump)
-  {
-    Filter := numget(MemDump, (UnitAddress := (A_Index - 1) * Offsets_Unit_StructSize) + Offsets_Unit_TargetFilter, "Int64")
-     ; Hidden e.g. marines in medivac/bunker etc. 
-     ; Otherwise these unit colours get drawn over the top - medivac highlight colour is hidden.
-     msgbox % UnitAddress + Offsets_Unit_ModelPointer
-    pUnitModel := numget(MemDump, UnitAddress + Offsets_Unit_ModelPointer, "Int")
-    Type := getUnitModelType(pUnitModel)
-    listvars 
-    msgbox 
-  
-
-    }
+	eax := readmemory(OffsetsSC2Base + 0x1B7B088, GameIdentifier)
+	, ecx := readmemory(eax + 0x0A94, GameIdentifier) + 0xAE5C + 0x8
+	msgbox % chex(ecx)
 }
-;+f9::
-SetPlayerMinerals()
-SetPlayerGas()
-return 
+
+
+
+
 
 
 
@@ -14003,157 +13760,3 @@ testUnitStructPattern(unitSize := 0x1E8)
 
 
 
-
-
-/*
-patch 3.3
-int __stdcall GsNativeImpl_UnitGetPosition(unsigned int a1)
-{
-  int v1; // eax@4
-  signed int v2; // edi@4
-  int result; // eax@5
-  int v4; // eax@6
-  int v5; // edx@6
-  int v6; // esi@6
-  int v7; // ecx@6
-  int v8; // eax@6
-  char v9; // [sp+8h] [bp-114h]@5
-  int v10; // [sp+110h] [bp-Ch]@5
-  char *v11; // [sp+114h] [bp-8h]@5
-  char v12; // [sp+118h] [bp-4h]@5
-  char v13; // [sp+119h] [bp-3h]@5
- 
-  if ( a1
-    && a1 != -1
-    && a1 >> 18 < g_UnitArrayCount
-    && (v1 = 488 * ((a1 >> 18) & 0xF) + (g_UnitArrayDecrypt ^ g_UnitArray[a1 >> 22] ^ 0x46E134B8),
-        (v2 = a1 != *(_DWORD *)v1 ? 0 : v1) != 0) )
-  {
-    v4 = GsPointCreate();
-    v5 = *(_DWORD *)(v2 + 80);
-    v6 = v4;
-    v7 = ~(*(_DWORD *)(v2 + 84)
-         - dword_1C886E8[((unsigned __int16)v5 ^ (unsigned __int16)(*(_DWORD *)(v2 + 80) >> 12)) & 0xFFF]);
-    v8 = v5 ^ dword_1C886E8[((unsigned __int16)v7 ^ (unsigned __int16)((unsigned int)v7 >> 12)) & 0xFFF];
-    v10 = v8 ^ (v7 ^ v5 ^ dword_1C886E8[((unsigned __int16)v7 ^ (unsigned __int16)((unsigned int)v7 >> 12)) & 0xFFF]) & 0x55555555;
-    v11 = (char *)(v7 ^ (v7 ^ v8) & 0x55555555);
-    GsPointSetPoint(v6 + 12, &v10, 8);
-    result = *(_DWORD *)(v6 + 4);
-    *(_DWORD *)(v6 + 20) = *(_DWORD *)(v2 + 108);
-  }
-  else
-  {
-    CString::ctor(80, 1);
-    CString::ctor(80, 1);
-    CString::ctor(80, 1);
-    v12 = 35;
-    CString::appendUI32(a1 >> 18);
-    v10 = (int)&v12;
-    v11 = &v13;
-    CString::append(&v10);
-    CString::appendUI32(a1 & 0x3FFFF);
-    v10 = (int)"UnitGetPosition";
-    v11 = "";
-    CString::assign(&v10);
-    v10 = (int)"unit";
-    v11 = "";
-    CString::assign(&v10);
-    ErrorGet::ctor_(&v9);
-    sub_93FEF0(&v9);
-    result = 0;
-  }
-  return result;
-}
-
-*/
-
-
-
-
-
-
-
-
-/*
-At game + 0x446A0
-int __usercall GsPointSetPoint@<eax>(void a1@<ebp>, int (a2)(void)@<esi>, int a3, int a4, int a5)
-{
-  return sub_6B629E8(a1, a2, a3, a4, a5);
-}
-int __usercall sub_6B629E8@<eax>(void *a1@<ebp>, int (*a2)(void)@<esi>, int a3, int a4, int a5)
-{
-  int v6; // edx@1
-  int v7; // ecx@1
-  int v8; // edx@1
-  int v9; // ecx@1
-  unsigned int v10; // eax@1
-  unsigned int v11; // eax@1
-  void *retaddr; // [sp+10h] [bp+0h]@1
- 
-  retaddr = a1;
-  v6 = *(_DWORD *)(a5 + 4);
-  v7 = v6 ^ (v6 ^ *(_DWORD *)a5) & 0x55555555;
-  v11 = (*(_DWORD *)a5 ^ (v6 ^ *(_DWORD *)a5) & 0x55555555)
-      - dword_1C886E8[~((_WORD)v7 + (unsigned __int16)((unsigned int)v7 >> 12)) & 0xFFF];
-  v8 = v7 ^ dword_1C886E8[((*(_WORD *)a5 ^ ((unsigned __int16)v6 ^ *(_WORD *)a5) & 0x5555)
-                         - LOWORD(dword_1C886E8[~((_WORD)v7 + (unsigned __int16)((unsigned int)v7 >> 12)) & 0xFFF])
-                         - (unsigned __int16)(v11 >> 12)) & 0xFFF];
-  v10 = v11 - dword_1C886E8[((_WORD)v8 - (unsigned __int16)((unsigned int)v8 >> 12)) & 0xFFF];
-  v9 = v8 ^ dword_1C886E8[(~(_WORD)v10 - (unsigned __int16)(v10 >> 12)) & 0xFFF];
-  *(_DWORD *)a4 = v10;
-  *(_DWORD *)(a4 + 4) = v9;
-  return a2();
-}
-
-
-*/
-
-
-/*
-f1::
-unit := getSelectedUnitIndex()
-msgbox % chex(Offsets_Group_UnitOffset + Offsets_Group_ControlGroup0 + Offsets_Group_ControlGroupSize * 7)
-msgbox % chex(Offsets_Selection_Base + Offsets_Group_UnitOffset)
-return 
-
-*/
-
-testUnitPos(unit := 0)
-{
-	;SetFormat, integerfast, H
-	unit := getSelectedUnitIndex()
-	unitAddress := aSCOffsets["unitAddress", unit]
-	ecx := readMemory(unitAddress + 0x50, GameIdentifier)
-	ebx := readMemory(unitAddress + 0x54, GameIdentifier)
-	eax := ecx 
-	edx := ecx + 0x338EE103 
-	eax >>= 0x0C 
-	eax ^= edx 
-	eax &= 0xFFF 
-	ebx -= readMemory(eax * 4 + OffsetsSC2Base + 0x188A6A8, GameIdentifier)
-; SC2.AssertAndCrash+4F1B5B - C7 85 ECFEFFFF 00000000 - mov [ebp-00000114],00000000
-	ebx := ~ebx 
-	edx := ebx 
-	eax := ebx 
-	eax := ~eax 
-	edx >>= 0x0C 
-	eax -= edx 
-	eax &= 0xFFF 
-	ecx -= readMemory(eax * 4 + OffsetsSC2Base + 0x188A6A8, GameIdentifier)
-	; SC2.AssertAndCrash+4F1B7E - 8B 86 9C000000        - mov eax,[esi+0000009C]
-	edx := ebx
-	edx ^= ecx 
-	edi := ebx 
-	edi ^= ecx 
-	edx &= 0x55555555
-	edx ^= ecx 
-	xPos := edx / 4096 
-	; SC2.AssertAndCrash+4F1B94 - 8B 8E 98000000        - mov ecx,[esi+00000098] ; Xpos edx
-
-	edi &= 0x55555555
-	edi ^= ebx 
-	yPos := edi / 4096
-
-	msgbox % xPos " " yPos
-	return 
-}
