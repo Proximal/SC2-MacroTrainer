@@ -173,9 +173,7 @@ gameChange()
 	{
 		; aStringTable and aUnitModel are super global declared in memory and general functions
 		aUnitModel := [], aStringTable := [], MT_CurrentGame := []
-		aSCOffsets["playerAddress"] := new classAddressCachePlayerUnit("playerAddress")
-		aSCOffsets["unitAddress"] := new classAddressCachePlayerUnit("getUnitAddress")
-		aSCOffsets["unitPoint"] := new classAddressCachePlayerUnit("getUnitPosition")
+		clearCachedAddresses()
 		if WinActive(GameIdentifier)
 			ReDrawIncome := ReDrawResources := ReDrawArmySize := ReDrawWorker := RedrawUnit := ReDrawIdleWorkers := ReDrawLocalPlayerColour := 1
 		getPlayers(aPlayer, aLocalPlayer, aEnemyAndLocalPlayer)

@@ -875,9 +875,7 @@ Else if (time > 0.4 && !isInMatch) && (getLocalPlayerNumber() != 16 || debugGame
 	isInMatch := true
 	AW_MaxWorkersReached := TmpDisableAutoWorker := 0
 	aResourceLocations := []
-	aSCOffsets["playerAddress"] := new classAddressCachePlayerUnit("playerAddress")
-	aSCOffsets["unitAddress"] := new classAddressCachePlayerUnit("getUnitAddress")
-	aSCOffsets["unitPoint"] := new classAddressCachePlayerUnit("getUnitPosition")
+	clearCachedAddresses()
 	global aStringTable := []
 	global aXelnagas := [] ; global cant come after command expressions
 	global MT_CurrentGame := []	; This is a variable which from now on will store
@@ -10180,142 +10178,6 @@ in strcuture pointed by p1
 */
 
 
-; converts the unit data (extracted from SC2 MPQ files) into an AHK object
-/*
-ParseUnitData(aUnitName)
-{
-	unitData := [], UnitName := 0
-	FileInstall, Included Files\UnitData.xml, %A_Temp%\UnitData.xml, 1
-	x := new XML(A_Temp "\UnitData.xml")
-	CUnits := x.selectNodes("//*")
-	
-	loop % CUnits.length 
-	{
-		nn := CUnits.item(A_Index-1)
-		if (nn.nodename = "CUnit")
-		{
-			if (!UnitExists && ID)
-				unitData.insert(UnitName, unit)
-
-			unit := []
-			unit.UnitName := UnitName := nn.getAttribute("id")
-			ID := aUnitName[UnitName]
-		;	msgbox % ID " " UnitName
-			UnitExists := unitData[ID] ; adding/overwriting data
-			continue
-		}
-		; Array items are added to
-		if ID
-		{
-			if UnitExists
-				unitData[UnitName, nn.nodename] := nn.getAttribute("value")
-			else 
-				unit[nn.nodename] := nn.getAttribute("value")
-		}
-	}
-	if (!UnitExists && ID) ; for the last cUnit 
-		unitData.insert(UnitName, unit)	
-	return unitData
-}
-	
-
-class SC2
-{
-    static  Pi := 4 * Atan(1) ; 3.141592653589793
-          , cY
-          , rotMSin, rotMCos
-          , cZ,  FoVM
-          , ScreenAspectRatio
-          , ViewportAspectRatio
-
-
-
-          initialiseStaticVariables()
-          {
-              this.cy := 34 * Sin(17 * this.Pi / 90)
-            , this.rotMSin := Sin(17 * this.Pi / 90)
-            , this.rotMCos := Cos(17 * this.Pi / 90)
-            , this.cZ := 34 * Cos(17 * this.Pi / 90)
-            , this.FoVM := Tan(27.8 * this.Pi / 180)
-            , this.ScreenAspectRatio := A_ScreenWidth / (A_ScreenHeight * 0.81)
-            , this.ViewportAspectRatio := 16 / (9 * 0.81)
-            return
-          }
-
-          getScreenPosition(uX, uY, uZ := 0, verticalSkew := 0.99)
-          {
-          	result := []
-          	if !this.cy
-          		this.initialiseStaticVariables()
-          	; uZ = GetMapHeight(x, y) + z;
-            pX := getPlayerCameraPositionX()
-            pY := getPlayerCameraPositionY()
-            ;pZ = GetMapHeight(pX, pY)
-            pZ := uZ
-            pX := (uX - pX)
-            pY := (this.cY + uY - pY)
-            pZ := (this.cZ + uZ - pZ)
-            dX := -pX
-            dY := -this.rotMCos * pY - this.rotMSin * pZ
-            dZ := -this.rotMSin * pY + this.rotMCos * pZ           
-            bX := dX / (this.FoVM * dZ)
-            bY := -(dY / (this.FoVM * dZ))   
-          	bX := (((bX * (A_ScreenHeight / A_ScreenWidth) * this.ViewportAspectRatio * 0.978) + 1) * 0xFFFF / 2)
-
-     ;      ListVars
-     ;      pause 
-     ;       if (bX < 0 || bX > 0xFFFF) 
-      ;      	return 
-            result.x := bX
-            bY := (((bY * this.ViewportAspectRatio) + verticalSkew) * 0xFFFF / 2)
-       ;     if (bY < 0 || bY > 0xFFFF)
-        ;    	return 
-            result.y := bY 
-            ;if (IsInViewport(result))
-                return result
-            return     
-          }
-
-} 
-
-
-O_IndexParentTypes := 0x18
-unit := getSelectedUnitIndex()
-pAbilities := getUnitAbilityPointer(unit)
-abilitiesCount := getAbilitiesCount(pAbilities)	
-ByteArrayAddress := ReadMemory(pAbilities, GameIdentifier) + 0x3  
-if (-1 = AbilBuildIndex := getAbilityIndex(0xC, abilitiesCount, ByteArrayAddress))
-	AbilBuildIndex := 0
-
-pBuildStructure := readmemory(pAbilities + O_IndexParentTypes + 4 * AbilBuildIndex, GameIdentifier)
-;pBuildStructure := readmemory(pAbilities + 0x18, GameIdentifier) ;supply depot just at +18
-;	msgbox % chex(pBuildStructure)
-totalTime := readmemory(pBuildStructure + 0x28, GameIdentifier)
-remainingTime := readmemory(pBuildStructure + 0x2C, GameIdentifier)
-msgbox % (totalTime - remainingTime) / totalTime
-
-RETURN
-
-;msgbox % AbilBuildIndex
-;msgbox % ReadMemory(ByteArrayAddress + 0x7, GameIdentifier, 1)
-
-
-
-unit := getSelectedUnitIndex()
-type := getUnitType(unit)
-pAbilities := getUnitAbilityPointer(unit)
-
-msgbox %  getSelectedUnitIndex() "`n| " getunittargetfilter(unit) & aUnitTargetFilter.UnderConstruction
-
-return 
-
-
-
-getUnitAbilitiesString(unit)
-msgbox % getArchonMorphTime(pAbilities)
-
-return 
-*/
 
 
 
@@ -13697,10 +13559,11 @@ objtree(aCommands)
 return 
 
 msgbox % chex(Offsets_InputStructure)
+
 mem := new _ClassMemory(GameIdentifier) ; set when new is used
 foundCount := 0
 address := 0
-while (address := mem.processPatternScan(address,,  0xDB, "?", "?", 0x89, 0x0D, "?", "?", "?", "?", 0x89, 0x15, "?", "?", "?", "?", 0x85, 0xC9)) > 0
+while (address := mem.processPatternScan(address,,  0x83, "?", "?", 0x69, "?", "?", "?", "?", "?", 0xC1, "?", 0x4)) > 0
 {
 	msgbox % chex(address)
 		foundCount++, address++
@@ -13710,25 +13573,13 @@ return
 
 
 f1::
-msgbox % getCursorUnit()
+msgbox % chex(playeraddress(1))
 return 
 
-/*
-SC2.AssertAndCrash+1EDAD9 - A1 88B0E101           - mov eax,[SC2.exe+1B7B088]
-SC2.AssertAndCrash+1EDADE - 8B 88 940A0000        - mov ecx,[eax+00000A94]
-SC2.AssertAndCrash+1EDAE4 - 81 C1 5CAE0000        - add ecx,0000AE5C
-SC2.AssertAndCrash+1EDAEA - 51                    - push ecx
-*/
-
-testabc()
-{
-	eax := readmemory(OffsetsSC2Base + 0x1B7B088, GameIdentifier)
-	, ecx := readmemory(eax + 0x0A94, GameIdentifier) + 0xAE5C + 0x8
-	msgbox % chex(ecx)
-}
-
-
-
+f2::
+objtree(getunitposition(getSelectedUnitIndex()))
+getPlayerCameraPosition(1)
+return 
 
 
 

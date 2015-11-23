@@ -165,13 +165,18 @@ class classAddressCachePlayerUnit
     }  
 }
 
+clearCachedAddresses()
+{
+	aSCOffsets["playerAddress"] := new classAddressCachePlayerUnit("playerAddress")
+	aSCOffsets["unitAddress"] := new classAddressCachePlayerUnit("getUnitAddress")
+	aSCOffsets["unitPoint"] := new classAddressCachePlayerUnit("getUnitPosition")	
+}
+
 loadMemoryAddresses(base, version := "")
 {
 	OffsetsSC2Base := base
 	aSCOffsets := []
-	aSCOffsets["playerAddress"] := new classAddressCachePlayerUnit("playerAddress")
-	aSCOffsets["unitAddress"] := new classAddressCachePlayerUnit("getUnitAddress")
-	aSCOffsets["unitPoint"] := new classAddressCachePlayerUnit("getUnitPosition")
+	clearCachedAddresses()
 
 	if 0
 	{
@@ -256,7 +261,7 @@ loadMemoryAddresses(base, version := "")
 		 ; ***must be 0 when chat box not open yet another menu window is e.g. menu / options!!!!!!!!
 		 ; note (its possible for it to be 1 while menu open - leave the chat box in focus and left click the menu button (on the right))
 		 ; tends to end with the same offset after patches
-		 Offsets_ChatFocusPointer := [base + 0x0181A234, 0x108, 0xE8] ;Just when chat box is in focus ; value = True if open. There will be 2 of these.
+		 Offsets_ChatFocusPointer := [base + 0x0181C274, 0x58, 0xE8] ;Just when chat box is in focus ; value = True if open. There will be 2 of these.
 	
 
 		 ; Removed this - using a similar (possibly the same value), but it represents menu depth
@@ -359,10 +364,10 @@ loadMemoryAddresses(base, version := "")
 		Offsets_localArmyUnitCountPointer := [base + 0x0181C360, 0x8, 0x138] ; ended with these two offsets last two patches 3.0.5
 
 
-		 Offsets_TeamColoursEnabled := base + 0x1B7C144 ; 2 when team colours is on, else 0 (There are two valid addresses for this)
+		Offsets_TeamColoursEnabled := base + 0x1B7C144 ; 2 when team colours is on, else 0 (There are two valid addresses for this)
 		 
 
-		 Offsets_SelectionPage := [base + 0x0181D110, 0x8, 0x70, 0xC0]  	; Tends to end with these offsets. ***theres one other 3 lvl pointer but for a split second (every few second or so) it points to 
+		Offsets_SelectionPage := [base + 0x0181D110, 0x8, 0x70, 0xC0]  	; Tends to end with these offsets. ***theres one other 3 lvl pointer but for a split second (every few second or so) it points to 
 			 				; the wrong address! You need to increase CE timer resolution to see this happening! Or better yet use the 'continually perform the pointer scan until stopped' option.
 			 				;this is for the currently selected unit portrait page ie 1-6 in game (really starts at 0-5)
 							;might actually be a 2 or 1 byte value....but works fine as 4
@@ -775,9 +780,8 @@ getGameTickCount()
 }
 
 ReadRawUnit(unit, ByRef Memory)	; dumps the raw memory for one unit
-{	GLOBAL
-	ReadRawMemory(B_uStructure + unit * Offsets_Unit_StructSize, GameIdentifier, Memory, Offsets_Unit_StructSize)
-	return
+{	
+	ReadRawMemory(aSCOffsets["unitAddress", unit], GameIdentifier, Memory, Offsets_Unit_StructSize)
 }
 
 ; Always check selection count before using this to iterate the selection buffer
@@ -936,7 +940,7 @@ getHighestUnitIndex() 	; this is the highest alive units index - note it starts 
 }
 getPlayerName(player) ; start at 0
 {	global
-	return "Player"
+	return "Player " player
 	Return ReadMemory_Str(aSCOffsets["playerAddress", player] + O_pName, GameIdentifier) 
 }
 getPlayerRace(player) ; start at 0
@@ -1314,13 +1318,10 @@ SC2.GetBattlenetAllocator+223535 - 5D                    - pop ebp
 SC2.GetBattlenetAllocator+223536 - C2 0400               - ret 0004
 No idea how to access z Value
 */
-
-convertQueuedPoint(byRef x, byRef y, byRef z := "")
+; ecx := x - edx := y -  esi := z (at least what the offsets used to contain)
+convertQueuedPoint(byRef ecx, byRef edx, byRef esi)
 {
-	ecx := x 
-	, edx := y 
-	, esi := z 
-	, eax := ecx + 0x3126EC11
+	eax := ecx + 0x3126EC11
 	, ecx >>= 0x0C 
 	, eax ^= ecx 
 	, eax &= 0xFFF 
@@ -1335,6 +1336,55 @@ convertQueuedPoint(byRef x, byRef y, byRef z := "")
 	, y := edx/4096
 	return 
 }
+
+
+getPlayerCameraPosition(player := "")
+{
+	aCamera := []
+	, ReadRawMemory(aSCOffsets["playerAddress", player = "" ? aLocalPlayer["slot"] : player], GameIdentifier, buffer, O_pCamRotation + 4)
+	, edx := NumGet(buffer, O_pXcam, "UInt")
+	, esi := NumGet(buffer, O_pYcam, "UInt")
+	, aCamera["Angle"] := NumGet(buffer, O_pCamAngle, "UInt") / 4096
+
+	, eax := edx
+	, eax >>= 0x0C 
+	, eax += edx 
+	, eax &= 0xFFF 
+	, esi -= readMemory(eax * 4 + OffsetsSC2Base + 0x188A6A8, GameIdentifier)
+	, esi := ~esi 
+	, ecx := esi
+    , ecx >>= 0x0C     
+    , eax := esi 
+    , eax -= ecx 
+    , eax := ~eax 
+    , eax &= 0xFFF 
+    , eax := readMemory(eax * 4 + OffsetsSC2Base + 0x188A6A8, GameIdentifier)
+    , eax += edx 
+    , ecx := eax 
+    , ecx >>= 0x0C 
+    , ecx += eax 
+    , ecx &= 0xFFF
+ 	, edx := readMemory(ecx * 4 + OffsetsSC2Base + 0x188A6A8, GameIdentifier)
+ 	, edx ^= esi 
+ 	, ecx := edx
+ 	, ecx >>= 0x0C 
+ 	, ecx += edx 
+ 	, ecx &= 0xFFF 
+ 	, eax -= readMemory(ecx * 4 + OffsetsSC2Base + 0x188A6A8, GameIdentifier)
+ 	, eax := ~eax 
+ 	, esi := eax 
+ 	, esi ^= edx 
+ 	, esi &= 0x55555555
+ 	, esi ^= eax 
+ 	, eax ^= edx 
+ 	, eax &= 0x55555555
+ 	, eax ^= edx
+ 	, aCamera["x"] := esi / 4096
+ 	, aCamera["y"] := eax /4096
+	return aCamera
+}
+
+
 
 
 /*
@@ -1628,7 +1678,6 @@ isMenuOpen()
 
 isChatOpen()
 { 	
-	return 0
 	Return  pointer(GameIdentifier, Offsets_ChatFocusPointer*)
 }
 
@@ -2860,8 +2909,8 @@ getUnitModelPointerRaw(unit)
 
 	ReadRawMemory(Offsets_Group_ControlGroup0 + Offsets_Group_ControlGroupSize * Group, GameIdentifier, MemDump, groupCount * Offsets_Group_ControlGroupSize + Offsets_Group_UnitOffset)
 
-	aControlGroup["UnitCount"]	:= numget(MemDump, 0, "Short")
-	aControlGroup["Types"]	:= numget(MemDump, Offsets_Group_TypeCount, "Short")
+	aControlGroup["UnitCount"]	:= numget(MemDump, 0, "UShort")
+	aControlGroup["Types"]	:= numget(MemDump, Offsets_Group_TypeCount, "UShort")
 ;	aControlGroup["HighlightedGroup"]	:= numget(MemDump, Offsets_Group_HighlightedGroup, "Short")
 	aControlGroup.Queens := []
 	aControlGroup.AllQueens := []
@@ -2908,9 +2957,9 @@ getUnitModelPointerRaw(unit)
 	aSelection := []
 	selectionCount := getSelectionCount()
 	ReadRawMemory(Offsets_Selection_Base, GameIdentifier, MemDump, selectionCount * 4 + Offsets_Group_UnitOffset)
-	aSelection["SelectedUnitCount"]	:= numget(MemDump, 0, "Short")
-	aSelection["Types"]	:= numget(MemDump, Offsets_Group_TypeCount, "Short")
-	aSelection["HighlightedGroup"]	:= numget(MemDump, Offsets_Group_HighlightedGroup, "Short")
+	aSelection["SelectedUnitCount"]	:= numget(MemDump, 0, "UShort")
+	aSelection["Types"]	:= numget(MemDump, Offsets_Group_TypeCount, "UShort")
+	aSelection["HighlightedGroup"]	:= numget(MemDump, Offsets_Group_HighlightedGroup, "UShort")
 	aSelection.Queens := []
 
 	loop % selectionCount
@@ -3031,25 +3080,6 @@ getBaseCamIndex() ; begins at 0
 	return pointer(GameIdentifier, B_CurrentBaseCam, P1_CurrentBaseCam)
 }
 
-SortBasesByBaseCam(BaseList, CurrentHatchCam)
-{
-	BaseList := SortUnitsByAge(BaseList)	;getBaseCameraCount()
-	loop, parse, BaseList, |
-		if (A_loopfield <> CurrentHatchCam)
-			if CurrentIndex
-				list .= A_LoopField "|"
-			else
-				LoList .= A_LoopField "|"
-		else 
-		{
-			CurrentIndex := A_index
-			list .= A_LoopField "|"
-		}
-
-	if LoList
-		list := list LoList 
-	return RTrim(list, "|")
-}
 
 commonUnitObject(baseType := True)
 {

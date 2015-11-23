@@ -17,25 +17,20 @@ correct time for upgrades / town hall stats
 
 Adept
 Disruptor
-
 Cyclone
 Liberator
 LiberatorAG
-
 Ravager
-Lurker
-
-
-
-
-SwarmHostBurrowedMP
-SwarmHostMP
+LurkerMP
 
 LurkerMPBurrowed
 LurkerDenMP
 LurkerMPEgg
+SwarmHostBurrowedMP
+SwarmHostMP
 
-PylonOvercharge
+PylonOvercharge 		(supply and unit panel)
+
 
 *btn-upgrade-terran*.dds
 
@@ -61,3 +56,10 @@ ResonatingGlaives
 Find real dds files for and fix the sizes of the current ones
 resonatingGlaives 
 ResearchBallisticRange
+
+
+Find EPM APM
+check base camera count 
+
+test address changes:
+	localPlayerNumber

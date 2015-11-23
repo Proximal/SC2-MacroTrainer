@@ -45,18 +45,21 @@ class _ClassSCPatternScan
 		if (address := this.mem.modulePatternScan("", 0xA1, "?", "?", "?", "?", 0x8B, 0x90, "?", "?", "?", "?", 0x8B, 0x88, "?", "?", "?", "?", 0x8B, 0x45, 0x08)) > 0
 			return this.mem.Read(address+1)
 	}
-	Offsets_UnitHighestAliveIndex(byRef sizeUnitStructure := "") ;S_uStructure
+	Offsets_UnitHighestAliveIndex(byRef sizeUnitStructure := "", byRef unitAllocationSize := "")
 	{
-		sizeUnitStructure := ""
-		if (address := this.mem.modulePatternScan("",  0x8B, 0x1D, "?", "?", "?", "?", 0x83, 0xC3, "?", 0xC1, 0xEB, 0x04, 0x03, 0xDB, 0x03, 0xDB, 0x8B, 0xC3)) > 0
-			return  this.mem.Read(address + 2)
+		sizeUnitStructure := unitAllocationSize := ""
+		if (address := this.mem.modulePatternScan("",  0x8B, 0x1D, "?", "?", "?", "?", 0x83, 0xC3, "?", 0xC1, 0xEB, 0x04, 0x03, 0xDB, 0x03, 0xDB, 0x8B, 0xC3)) <= 0
+			return 
+		highestAliveAddress := this.mem.Read(address + 2)
+		; The below code is inlined  everywhere
+		if (address := this.mem.processPatternScan(address,, 0x83, "?", "?", 0x69, "?", "?", "?", "?", "?", 0xC1, "?", 0x4)) > 0
+		{
+			unitAllocationSize := this.mem.Read(address + 2, "UChar")
+			, sizeUnitStructure := this.mem.Read(address + 5)		 
+		}
+		return highestAliveAddress
 	}
-	B_uStructure(byRef sizeUnitStructure := "")
-	{
-		sizeUnitStructure := ""
-		if (address := this.mem.modulePatternScan("",  0x73, 0x33, 0x69, 0xC0, "?", "?", "?", "?", 0x05, "?", "?", "?", "?", 0x33, 0xC9, 0x3B, 0x10, 0x0F, 0x95, 0xC1)) > 0
-			return this.mem.Read(address + 9), sizeUnitStructure := this.mem.Read(address + 4)
-	}
+
 	/* Local selection buffer
 	SC2.AssertAndCrash+22AC1A - 0F84 C4020000         - je SC2.AssertAndCrash+22AEE4
 	SC2.AssertAndCrash+22AC20 - 53                    - push ebx
@@ -123,10 +126,10 @@ class _ClassSCPatternScan
 		if (address := this.mem.modulePatternScan("", 0x8B, 0x16, 0x89, 0x15, "?", "?", "?", "?", 0x8B, 0x46, 0x04, 0xA3)) > 0
 			return this.mem.Read(address + 4)
 	}
-	P_IsUserPerformingAction(byRef B_UnitCursor := "")
+	P_IsUserPerformingAction()
 	{
 		if (address := this.mem.modulePatternScan("", 0x83, 0x3D, "?", "?", "?", "?", 0x00, 0x74, 0x0F, 0x80, 0x3D, "?", "?", "?", "?", 0x00, 0x74, 0x06)) > 0
-			return this.mem.Read(address + 2), B_UnitCursor := this.mem.Read(address + 2) ; Change this ** theyre the same
+			return this.mem.Read(address + 2)
 	}
 	P_IsBuildCardDisplayed()
 	{
@@ -308,11 +311,11 @@ SC2.AssertAndCrash+62C3BA - 85 C9                 - test ecx,ecx
 			obj[A_LoopField] := this[StrSplit(A_LoopField, A_Space).1]()
 		obj["B_pStructure Copy"] := this.B_pStructureNuke(structureSize), obj["S_pStructure Copy"] := structureSize
 		obj["B_pStructure"] := this.B_pStructure(structureSize), obj["S_pStructure"] := structureSize
-		obj["Offsets_UnitHighestAliveIndex"] := this.Offsets_UnitHighestAliveIndex()
-		obj["B_uStructure"] := this.B_uStructure(structureSize), obj["S_uStructure"] := structureSize
+		obj["Offsets_UnitHighestAliveIndex"] := this.Offsets_UnitHighestAliveIndex(structureSize, unitsPerBlock)
+		, obj["Offsets_Unit_StructSize"] := structureSize, obj["unitsPerBlock"] := unitsPerBlock
 		obj["Offsets_Group_ControlGroup0"] := this.Offsets_Group_ControlGroup0(offset), obj["Offsets_Selection_Base Copy"] := offset
 		obj["Offsets_Group_ControlGroupSize"] := this.Offsets_Group_ControlGroupSize(offset), obj["Offsets_Group_ControlGroup0 Copy"] := offset
-		obj["P_IsUserPerformingAction"] := this.P_IsUserPerformingAction(unitUnderCursor), obj["B_UnitCursor"] := unitUnderCursor		
+		obj["P_IsUserPerformingAction"] := this.P_IsUserPerformingAction()	
 		array := []
 		for k, v in obj
 		{
