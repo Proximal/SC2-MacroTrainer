@@ -60,6 +60,26 @@ ResearchBallisticRange
 
 Find EPM APM
 check base camera count 
+army cost 
+mineral income
 
 test address changes:
 	localPlayerNumber
+
+minimap player Camera 
+
+test upgrade detection
+
+Add overlord for upgrade detection
+
+Overlord drops
+
+
+
+Warn Users:
+Game time issues
+quick select wont differentiate transport overlords from normal overlords
+townhall rally toss
+chrono boost toss
+
+fix autobuild GUI

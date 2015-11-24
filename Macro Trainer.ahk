@@ -10105,6 +10105,7 @@ castSelectLoadedTransport()
 		aLookup[aUnitID.WarpPrism] := True 
 		aLookup[aUnitID.WarpPrismPhasing] := True 
 		aLookup[aUnitID.overlord] := True 
+		;aLookup[aUnitID.OverlordTransport] := True 
 
 		; When deselecting via ^+ need to account for subgroup alias, e.g. for terran landed vikings and hellbats
 		; burrowed mines won't cause an issue, as they came after the medivac in the selection panel.
@@ -10856,7 +10857,8 @@ unloadAllTransports(hotkeySuffix)
 	else if aLocalPlayer.Race = "Protoss" && ((!aSelection.TabPositions.HasKey(aUnitID.WarpPrism) || aSelection.TabPositions[aUnitID.WarpPrism] != aSelection.HighlightedGroup)
 	&& (!aSelection.TabPositions.HasKey(aUnitID.WarpPrismPhasing) || aSelection.TabPositions[aUnitID.WarpPrismPhasing] != aSelection.HighlightedGroup))
 		return
-	else if aLocalPlayer.Race = "Zerg" && (!aSelection.TabPositions.HasKey(aUnitID.overlord) || aSelection.TabPositions[aUnitID.overlord] != aSelection.HighlightedGroup)
+	;else if aLocalPlayer.Race = "Zerg" && (!aSelection.TabPositions.HasKey(aUnitID.overlord) || aSelection.TabPositions[aUnitID.overlord] != aSelection.HighlightedGroup)
+	else if aLocalPlayer.Race = "Zerg" && (!aSelection.TabPositions.HasKey(aUnitID.OverlordTransport) || aSelection.TabPositions[aUnitID.OverlordTransport] != aSelection.HighlightedGroup)
 		return
 
 	tempGroup := getLocalRaceStorageGroup()
@@ -10895,7 +10897,7 @@ unloadAllTransports(hotkeySuffix)
 				
 				if !aUnloaded.HasKey(unit.UnitIndex) && isUnitLocallyOwned(unit.unitIndex)
 				&& ((type := getUnitType(unit.unitIndex)) = aUnitId.Medivac
-				|| type = aUnitID.WarpPrism || type = aUnitID.WarpPrismPhasing || type = aUnitID.overlord)
+				|| type = aUnitID.WarpPrism || type = aUnitID.WarpPrismPhasing || type = aUnitID.OverlordTransport)
 				&& getCargoCount(unit.UnitIndex, isUnloading) && !isUnloading
 				{
 					aUnloaded[unit.UnitIndex] := True
@@ -12365,7 +12367,7 @@ getHarvestersMiningGas(geyserStructureIndex, byref aFoundIndexes, byRef underCon
 	   	getUnitQueuedCommands(unit, aCommands)
 		for index, command in aCommands
 		{
-			if command.ability = ability
+			if command["ability"] = ability
 			&& (command.targetIndex = geyserStructureIndex ; harvester heading towards the geyser in question
 				|| (aLocalPlayer.Slot = numgetUnitOwner(MemDump, command.targetIndex) ; this part checks if harvester is on the return trip from the geyser in question.
 					&& aTownHallLookup[aLocalPlayer.Race].hasKey(getUnitModelType(numgetUnitModelPointer(MemDump, command.targetIndex))) ; Target is a townhall i.e. harvester mining minerals or gas and is returning to town hall
@@ -12381,10 +12383,10 @@ getHarvestersMiningGas(geyserStructureIndex, byref aFoundIndexes, byRef underCon
 				break
 			}
 			;else if (underConstruction) ; This determines if the SCV is constructing the refinery and if it's going to harvest gas from it when its done.
-			else if command.ability = "TerranBuild"  ; Edit: Due to the half a second after finishing building the SCV still doesnt register as mining gas - so always perform this check even if refinery is finished
+			else if command["ability"] = "TerranBuild"  ; Edit: Due to the half a second after finishing building the SCV still doesnt register as mining gas - so always perform this check even if refinery is finished
 			&& aCommands.MaxIndex() = index  ; Else it is queued to go elsewhere when it finishes construction
-			&& (type := getUnitModelType(numgetUnitModelPointer(MemDump, command.targetIndex))) ; The target index is the actual geyser and not the refinery
-			&& (type = aUnitId.VespeneGeyser || type = aUnitId.SpacePlatformGeyser || type = aUnitId.RichVespeneGeyser || type = aUnitId.ProtossVespeneGeyser || type = aUnitId.VespeneGeyserPretty)
+			&& (aUnitID["VespeneGeyser"] = getUnitModelCommonType(numgetUnitModelPointer(MemDump, command["targetIndex"]))  ; The target index is the actual geyser and not the refinery
+				|| geyserType = getUnitModelType(numgetUnitModelPointer(MemDump, command["targetIndex"]))) ; This takes care of the constructing SCV being right (or shift+right) clicked onto the refinery its constructing i.e. the target index changes from a geyser to a refinery as its waypointed to it. It even works if you shift click som ground else where then shift click the refinery
 			&& isUnitNearUnit(aGeyserStructurePos, numgetUnitPosition(MemDump, command.targetIndex), 1)
 				count++, aFoundIndexes[unit] := True
 		}
@@ -13573,13 +13575,6 @@ msgbox % foundCount
 return 
 
 
-f1::
-msgbox % testAddress()
-. "`n" getTime()
-. "`n" formatSeconds(getTime())
-. "`n" gameToRealSeconds(getTime())
-return
-
 
 objtree(getunitposition(getSelectedUnitIndex()))
 objtree(getPlayerCameraPosition(1), "cam")
@@ -13614,12 +13609,3 @@ testUnitStructPattern(unitSize := 0x1E8)
 
 
 
-
-testAddress()
-{
-		r := readMemory(OffsetsSC2Base + 0x188CFC8, GameIdentifier)
-	, r ^= readMemory(OffsetsSC2Base + 0x1F17E44, GameIdentifier)
-	, r ^= 0xD63B27F7
-	, r += 0x50 
-	return chex(r)
-}

@@ -262,7 +262,8 @@ loadMemoryAddresses(base, version := "")
 		 ; ***must be 0 when chat box not open yet another menu window is e.g. menu / options!!!!!!!!
 		 ; note (its possible for it to be 1 while menu open - leave the chat box in focus and left click the menu button (on the right))
 		 ; tends to end with the same offset after patches
-		 Offsets_ChatFocusPointer := [base + 0x0181C274, 0x58, 0xE8] ;Just when chat box is in focus ; value = True if open. There will be 2 of these.
+		 ; **** In lotv there was only 1 real valid pointer - the other ones (which appeared valid) sometimes failed during a match!
+		 Offsets_ChatFocusPointer := [base + 0x024E0CF4, 0x1DC, 0xE8] ;Just when chat box is in focus ; value = True if open. There will be 2 of these.
 	
 
 		 ; Removed this - using a similar (possibly the same value), but it represents menu depth
@@ -756,13 +757,15 @@ getControlGroupCount(Group)
 
 getTime()
 {	 
-	Return Round(getGameTickCount()/4096, 1)
+	Return Round(getGameTickCount()/4096, 1) 
 }
 
 getTimeFull()
 {
 	Return getGameTickCount()/4096
 }
+
+
 ; There are two commands that access this address, one is very easy to backtrack (mov eax, [eax])
 ; Only the addresses/values (not logic) changed from 3.0.3 to 3.0.5
 /* 3.0.5
@@ -772,17 +775,66 @@ SC2.AssertAndCrash+3580CB - 35 F7273BD6           - xor eax,D63B27F7
 SC2.AssertAndCrash+3580D0 - 83 C0 50              - add eax,50
 SC2.AssertAndCrash+3580D3 - C3                    - ret 
 */
+; This behaves differently to hots
+
+; This is some type of timing structure - nearby are:
+; 2 identical timers getMissionTimer()?
+; 1 value corresponding to in-game displayed time (/4096) - no conversion required
+; 1 unknown timer
+; 1 copy of the current game speed
+; 2 other values that change on the first tick after a game speed change
+; One of these values appears to be the modifier used to convert time
+; e.g.
+; 426 slower 	426/256 = 1.664
+; 320 slow   	320/256 = 1.25
+; 256 norm 		256/256 = 1  (the speed values were based around)
+; 213 fast 		213/256 = 0.832
+; 182 faster 	182/256 = 0.711
+
+; This is a core game structure with other info too!
+; When converting these timer back to displayed game time, they will be wrong if the game speed changes during a match
+
 getGameTickCount()
 {	 
-	static r 
-	if !r 
+	static p 
+	if !p 
 	{
-	r := readMemory(OffsetsSC2Base + 0x188CFC8, GameIdentifier)
-	, r ^= readMemory(OffsetsSC2Base + 0x1F17E44, GameIdentifier)
-	, r ^= 0xD63B27F7
+		p := readMemory(OffsetsSC2Base + 0x188CFC8, GameIdentifier)
+		, p ^= readMemory(OffsetsSC2Base + 0x1F17E44, GameIdentifier)
+		, p ^= 0xD63B27F7
+		, p += 0x50 ; gameMissionTimer() is actually + 0x54, but these two are identical
 	}
-	Return readMemory(r + 0x50, GameIdentifier)
+	Return readMemory(p, GameIdentifier)
 }
+
+; Convert the specified number of seconds to h:m:s format.
+; removes leading 0's and ':'
+; seconds is not zero padded when 0 hours and 0 minutes
+; 9 seconds = 9
+; 61 second = 1:01
+formatSeconds(seconds)  
+{
+	seconds := ceil(seconds) 
+    time = 19990101  ; *Midnight* of an arbitrary date.
+    time += %seconds%, seconds
+    FormatTime, mss, %time%, m:ss
+    return lTrim(seconds//3600 ":" mss, "0:") 
+}
+
+; Used to convert production times (or time remaining) to real seconds
+gameToRealSeconds(gameSeconds)
+{
+	static aFactor := { Slower: 1.664
+					,	Slow: 1.25
+					,	Normal: 1
+					,	Fast: .832 
+					,	Faster: .711 } 
+			, lastTick := 0, speed 
+	if (A_tickcount - lastTick >= 50)
+		speed := getGameSpeed(), lastTick := A_tickcount
+	return gameSeconds * aFactor[speed]
+}
+
 
 ReadRawUnit(unit, ByRef Memory)	; dumps the raw memory for one unit
 {	
@@ -2173,7 +2225,7 @@ getStructureProductionInfo(unit, type, byRef aInfo, byRef totalQueueSize := "", 
 		item := aStringTable[pString]
 		; progress 0 if hasn't started so don't add it to the list
 		if progress := percent ? getPercentageUnitCompleted(B_QueuedUnitInfo) : getTimeUntilUnitCompleted(B_QueuedUnitInfo)  ; 0.0 will be seen as false but doesnt really matter
-			aInfo.insert({ "Item": item, "progress": progress})
+			aInfo.insert({ "Item": item, "progress": progress, "total": getBuildTime(B_QueuedUnitInfo)})
 		else break ; unit with highest complete percent is ALWAYS first in this queuedArray
 	} 
 	return round(aInfo.maxIndex())
@@ -2356,6 +2408,11 @@ getTimeUntilUnitCompleted(B_QueuedUnitInfo)
 	return round(RemainingTime / 65536, 2) ; in WOL/HOts
 }
 
+getBuildTime(B_QueuedUnitInfo)
+{
+	TotalTime := ReadMemory(B_QueuedUnitInfo + Offsets_QueuedUnit_BuildTimeTotal, GameIdentifier)
+	return TotalTime / 65536, 2
+}
 
 getAbilitiesCount(pAbilities)
 {	GLOBAL GameIdentifier
@@ -4124,7 +4181,7 @@ numGetUnitFingerPrint(ByRef MemDump, Unit)
 getTimeAtUnitConstruction(unit)
 {
 	; round to help account for different update intervals of the two timers. Round to nearest Integer!!
-	return (seconds := round(getTimeFull() - getUnitTimer(unit))) < 0 ? 0 : seconds ; getTime() is rounded to 1 decimal, so protect against small negative numbers. This shouldn't be required when calling getTimeFUll(), but doesn't hurt
+	return (seconds := round(gameToRealSeconds(getTimeFull() - getUnitTimer(unit)))) < 0 ? 0 : seconds ; getTime() is rounded to 1 decimal, so protect against small negative numbers. This shouldn't be required when calling getTimeFUll(), but doesn't hurt
 }
 
 ; Do a obj.parentLookUp[gametype].HasKeys(unitID) before calling
@@ -5410,7 +5467,7 @@ getDisplayedResourceWorker(unit, player := "")
 ; Returns the workers count for refiners, extractors, assimilators, and mineral patchs.
 ; If units are waiting to enter the refinery before it finishes construction, it will include them as well.
 ; It removes mules (this is address is 0 for non terran races).
-; Unit is geyser or mineral patch
+; Unit is refinery or mineral patch
 getResourceWorkerCount(unit, player)
 {  
   
@@ -5534,41 +5591,6 @@ log(text, logFile := "log.txt")
 	FileAppend, %text%`n, %logFile%
 	return 
 }
-
-; Convert the specified number of seconds to h:m:s format.
-; removes leading 0's and ':'
-; seconds is not zero padded when 0 hours and 0 minutes
-; 9 seconds = 9
-; 61 second = 1:01
-formatSeconds(seconds)  
-{
-	seconds := ceil(seconds) 
-    time = 19990101  ; *Midnight* of an arbitrary date.
-    time += %seconds%, seconds
-    FormatTime, mss, %time%, m:ss
-    return lTrim(seconds//3600 ":" mss, "0:") 
-}
-/*
-gameToRealSeconds(gameSeconds)
-{
-	static aFactor := { Slower: 1.66
-					,	Slow: 1.25
-					,	Normal: 1.00
-					,	Fast: .8275
-					,	Faster: .725 }
-	return  gameSeconds * aFactor[getGameSpeed()]
-}
-*/
-gameToRealSeconds(gameSeconds)
-{
-	static aFactor := { Slower: 1.66
-					,	Slow: 1.25
-					,	Normal: 1.00
-					,	Fast: .8175
-					,	Faster: .715 } ; Faster is correct in lotv
-	return  gameSeconds * aFactor[getGameSpeed()]
-}
-
 
 ; It would be much simpler to use the ' Gui MiniMapOverlay:+LastFoundExist' and  'IfWinNotExist'
 ; rather than tracking drawing states in a variable. But this seems to work fine and I cbf changing it.
