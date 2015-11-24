@@ -510,9 +510,10 @@ drawPlayerCameras(pGraphics)
 		&& isPlayerActive(slotNumber) 
 		&& aPlayer[slotNumber].Type != "Computer") ; As AI don't move the camera
 		{
-			angle := getPlayerCameraAngle(slotNumber)
-			, xCenter := getPlayerCameraPositionX(slotNumber)
-			, yCenter := getPlayerCameraPositionY(slotNumber)
+			aCamera := getPlayerCameraPosition(slotNumber)
+			, angle := aCamera["angle"]
+			, xCenter := aCamera["x"]
+			, yCenter := aCamera["y"]
 			, mapToRelativeMinimapPos(xCenter, yCenter)
 
 			, x1 := xCenter - (19/1920*A_ScreenWidth/minimap.MapPlayableWidth * minimap.VSPlayableWidth) * (angle/maxAngle)**2

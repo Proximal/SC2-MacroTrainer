@@ -8113,7 +8113,8 @@ selectGroup(group, preSleep := -1, postSleep := 2)
 
 ClickMinimapPlayerView()
 {
-	mapToMinimapPos(x := getPlayerCameraPositionX(), y := getPlayerCameraPositionY())
+	cam := getPlayerCameraPosition()
+	mapToMinimapPos(x := cam["x"], y := cam["y"])
 	input.pClick(x, y)
 	return
 }
@@ -13573,12 +13574,15 @@ return
 
 
 f1::
-msgbox % chex(playeraddress(1))
-return 
+msgbox % testAddress()
+. "`n" getTime()
+. "`n" formatSeconds(getTime())
+. "`n" gameToRealSeconds(getTime())
+return
 
-f2::
+
 objtree(getunitposition(getSelectedUnitIndex()))
-getPlayerCameraPosition(1)
+objtree(getPlayerCameraPosition(1), "cam")
 return 
 
 
@@ -13611,3 +13615,11 @@ testUnitStructPattern(unitSize := 0x1E8)
 
 
 
+testAddress()
+{
+		r := readMemory(OffsetsSC2Base + 0x188CFC8, GameIdentifier)
+	, r ^= readMemory(OffsetsSC2Base + 0x1F17E44, GameIdentifier)
+	, r ^= 0xD63B27F7
+	, r += 0x50 
+	return chex(r)
+}

@@ -4,11 +4,11 @@ Global B_LocalCharacterNameID
 , aSCOffsets
 , OffsetsSC2Base 
 , Offsets_Player_Status
-, O_pXcam
-, O_pCamDistance
-, O_pCamAngle
-, O_pCamRotation
-, O_pYcam
+, Offsets_Player_CameraPositionX
+, Offsets_Player_CameraDistance
+, Offsets_Player_CameraAngle
+, Offsets_Player_CameraRotation
+, Offsets_Player_CameraPositionY
 , Offsets_Player_Team
 , Offsets_Player_Type
 , O_pVictoryStatus 
@@ -16,8 +16,8 @@ Global B_LocalCharacterNameID
 , Offsets_Player_RacePointer
 , Offsets_Player_Colour
 , O_pAccountID
-, O_pAPM
-, O_pEPM
+, Offsets_Player_APMCurrent
+, Offsets_Player_EPMCurrent
 , Offsets_Player_WorkerCount
 , Offsets_Player_WorkersBuilt
 , Offsets_Player_HighestWorkerCount
@@ -27,8 +27,8 @@ Global B_LocalCharacterNameID
 , Offsets_Player_Minerals
 , Offsets_Player_Gas
 , Offsets_Player_ArmySupply
-, O_pMineralIncome
-, O_pGasIncome
+, Offsets_Player_MineralIncome
+, Offsets_Player_GasIncome
 , Offsets_Player_ArmyMineralCost
 , Offsets_Player_ArmyGasCost
 
@@ -202,14 +202,14 @@ loadMemoryAddresses(base, version := "")
 		;aSCOffsets["LocalPlayerSlot"] := [base + 0x018F5980, 0x18, 0x278, 0x258, 0x3DD] ; patch 3.3 ; note 1byte and has a second 'copy' (ReplayWatchedPlayer) just after +1byte eg LS =16d=10h, hex 1010 (2bytes) & LS =01d = hex 0101
 	 
 			 Offsets_Player_Status := 0x0
-			 O_pXcam := 0x8 ; same address but obfuscated 
-			 O_pYcam := 0xC	;
-			 O_pCamDistance := 0x10 
-			 O_pCamAngle := 0x14
-			 O_pCamRotation := 0x18
+			 Offsets_Player_CameraPositionX := 0x8 ; same address but obfuscated 
+			 Offsets_Player_CameraPositionY := 0xC	;
+			 Offsets_Player_CameraDistance := 0x10 
+			 Offsets_Player_CameraAngle := 0x14
+			 Offsets_Player_CameraRotation := 0x18
 
-			 Offsets_Player_Team := 0x1C ; patch 3.3
-			 Offsets_Player_Type := 0x1D ;patch 3.3
+			 Offsets_Player_Team := 0x1C 
+			 Offsets_Player_Type := 0x1D 
 			 O_pVictoryStatus := 0x1E
 			 O_pName := 0x64 
 			 
@@ -217,30 +217,31 @@ loadMemoryAddresses(base, version := "")
 			 Offsets_Player_Colour := 0xD8   ; patch 3.3
 			 O_pAccountID := 0x218 ;  0x1C0 
 
-			 O_pAPM := 0x5F0 	; Instantaneous
-			 O_pAPMAverage := 0x5F8
-			 O_pEPM := 0x630 	; Instantaneous
-			 O_pEPMAverage := 0x638 	
-;568
-			 Offsets_Player_WorkerCountAll := 0x5C8 ; p3.3 ; This includes workers currently in production!
-			 Offsets_Player_WorkerCount := 0x6E8 ; p3.3 ; **Care dont confuse this with HighestWorkerCount (or worker count + production above)
-			 Offsets_Player_CurrentTotalUnits := 0x5B0 ; p3.3 ;  current number of units (includes 6 starting scvs/units) doesn't include structures.  Increments on unit completion.
-			 Offsets_Player_TotalUnitsBuilt := 0x568 	; p3.3 	Units built, doesn't include structures. Increments on unit completion.					
-			 							; There are a couple of other similar values, one is probably highest current unit count achieved.
-			 Offsets_Player_WorkersBuilt := 0x710 ; p3.3 ; number of workers made (includes the 6 at the start of the game) increases on worker completion
-			 Offsets_Player_HighestWorkerCount := 0x868 ; p3.3 ; the current highest worker account achieved (increases on worker completion - providing its more workers than previous highest value)
-			 Offsets_Player_CompletedTownHalls := 0x758 ; p3.3 ; Completed townHall count 
+			 Offsets_Player_APMCurrent := 0x4F8	; Instantaneous (I only use this one out of the 4)
+			 Offsets_Player_APMAverage := 0x500
+			 Offsets_Player_EPMCurrent := 0x538 ; Instantaneous
+			 Offsets_Player_EPMAverage := 0x540 	
 
-			 Offsets_Player_SupplyCap := 0x7A8 ; p3.3	
-			 Offsets_Player_Supply := 0x7C0 ; p3.3 		
-			 Offsets_Player_Minerals := 0x800 ; p3.3 
-			 Offsets_Player_Gas := 0x808 ; p3.3 
+			 Offsets_Player_TotalUnitsBuilt := 0x568 	; Units built, doesn't include structures. Increments on unit completion.					
+			 											; There are a couple of other similar values, one is probably highest current unit count achieved.
+			 Offsets_Player_CurrentTotalUnits := 0x5B0 ;  current number of units (includes 6 starting scvs/units) doesn't include structures.  Increments on unit completion.
+			 Offsets_Player_WorkerCountAll := 0x5C8 ; This includes workers currently in production!
+			 Offsets_Player_WorkerCount := 0x6E8 ; **Care dont confuse this with HighestWorkerCount (or worker count + production above)
+			 Offsets_Player_WorkersBuilt := 0x6F8 ; number of workers made (includes the 6 at the start of the game) increases on worker completion
+			 Offsets_Player_CompletedTownHalls := 0x758 ; Completed townHall count 
+			 Offsets_Player_HighestWorkerCount := 0x710 ;???? the current highest worker account achieved (increases on worker completion - providing its more workers than previous highest value)
+			 
 
-			 Offsets_Player_ArmySupply := 0x7E0 ; p3.3	 
-			 O_pMineralIncome := 0x978
-			 O_pGasIncome := 0x980
-			 Offsets_Player_ArmyMineralCost := 0xB68 ;p3.3 	; there are two (identical?) values for minerals/gas 
-			 Offsets_Player_ArmyGasCost := 0xB90 ; p3.3 		; ** care dont use max army gas/mineral value! 
+			 Offsets_Player_SupplyCap := 0x7A8 
+			 Offsets_Player_Supply := 0x7C0		
+			 Offsets_Player_Minerals := 0x800
+			 Offsets_Player_Gas := 0x808 
+
+			 Offsets_Player_ArmySupply := 0x7E0 	 
+			 Offsets_Player_MineralIncome := 0x880  
+			 Offsets_Player_GasIncome := 0x888
+			 Offsets_Player_ArmyMineralCost := 0xB68 ; there are two (identical?) values for minerals/gas 
+			 Offsets_Player_ArmyGasCost := 0xB90 ; ** care dont use max army gas/mineral value! 
 
 		 Offsets_IdleWorkerCountPointer := [base + 0x0181C294, 0x8, 0x134]
 
@@ -759,7 +760,7 @@ getTime()
 }
 
 getTimeFull()
-{	global 
+{
 	Return getGameTickCount()/4096
 }
 ; There are two commands that access this address, one is very easy to backtrack (mov eax, [eax])
@@ -773,9 +774,13 @@ SC2.AssertAndCrash+3580D3 - C3                    - ret
 */
 getGameTickCount()
 {	 
+	static r 
+	if !r 
+	{
 	r := readMemory(OffsetsSC2Base + 0x188CFC8, GameIdentifier)
 	, r ^= readMemory(OffsetsSC2Base + 0x1F17E44, GameIdentifier)
 	, r ^= 0xD63B27F7
+	}
 	Return readMemory(r + 0x50, GameIdentifier)
 }
 
@@ -860,7 +865,7 @@ getPlayerWorkersLost(player="")
 	return getPlayerWorkersBuilt() - getPlayerWorkerCount()
 }
 getPlayerHighestWorkerCount(player="")
-{ global
+{ 
 	If (player = "")
 		player := aLocalPlayer["Slot"]
 	Return ReadMemory(aSCOffsets["playerAddress", player] + Offsets_Player_HighestWorkerCount, GameIdentifier)
@@ -1073,13 +1078,13 @@ getPlayerMineralIncome(player="")
 { 	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]	
-	Return ReadMemory(aSCOffsets["playerAddress", player] + O_pMineralIncome, GameIdentifier)
+	Return ReadMemory(aSCOffsets["playerAddress", player] + Offsets_Player_MineralIncome, GameIdentifier)
 }
 getPlayerGasIncome(player="")
 { 	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]	
-	Return ReadMemory(aSCOffsets["playerAddress", player] + O_pGasIncome, GameIdentifier)
+	Return ReadMemory(aSCOffsets["playerAddress", player] + Offsets_Player_GasIncome, GameIdentifier)
 }
 getPlayerArmySupply(player="")
 { 	global
@@ -1122,31 +1127,31 @@ getPlayerCameraPositionX(Player="")
 {	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]	
-	Return ReadMemory(aSCOffsets["playerAddress", player] + O_pXcam, GameIdentifier) / 4096
+	Return ReadMemory(aSCOffsets["playerAddress", player] + Offsets_Player_CameraPositionX, GameIdentifier) / 4096
 }
 getPlayerCameraPositionY(Player="")
 {	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]
-		Return ReadMemory(aSCOffsets["playerAddress", player] + O_pYcam, GameIdentifier) / 4096
+		Return ReadMemory(aSCOffsets["playerAddress", player] + Offsets_Player_CameraPositionY, GameIdentifier) / 4096
 }
 getPlayerCameraDistance(Player="")
 {	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]	
-	Return ReadMemory(aSCOffsets["playerAddress", player] + O_pCamDistance, GameIdentifier) / 4096
+	Return ReadMemory(aSCOffsets["playerAddress", player] + Offsets_Player_CameraDistance, GameIdentifier) / 4096
 }
 getPlayerCameraAngle(Player="")
 {	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]	
-	Return ReadMemory(aSCOffsets["playerAddress", player] + O_pCamAngle, GameIdentifier) / 4096
+	Return ReadMemory(aSCOffsets["playerAddress", player] + Offsets_Player_CameraAngle, GameIdentifier) / 4096
 }
 getPlayerCameraRotation(Player="")
 {	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]	
-	Return ReadMemory(aSCOffsets["playerAddress", player] + O_pCamRotation, GameIdentifier) / 4096
+	Return ReadMemory(aSCOffsets["playerAddress", player] + Offsets_Player_CameraRotation, GameIdentifier) / 4096
 }
 
 
@@ -1159,7 +1164,7 @@ getPlayerCurrentAPM(Player="")
 {	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]	
-	Return ReadMemory(aSCOffsets["playerAddress", player] + O_pAPM, GameIdentifier)
+	Return ReadMemory(aSCOffsets["playerAddress", player] + Offsets_Player_APMCurrent, GameIdentifier)
 }
 
 isUnderConstruction(building) ; starts @ 0 and only for BUILDINGS!
@@ -1215,32 +1220,18 @@ getUnitPosition(unit)
 	&& ecx = aSCOffsets["unitPoint", unit, "encX"]
 	&& ebx = aSCOffsets["unitPoint", unit, "encY"]
 		return aSCOffsets["unitPoint", unit] ; unit hasnt moved
-	aSCOffsets["unitPoint", unit, "encX"]	:= ecx
+	
+	aSCOffsets["unitPoint", unit, "encX"] := ecx
 	, aSCOffsets["unitPoint", unit, "encY"]	:= ebx	
 	, aSCOffsets["unitPoint", unit, "z"] := NumGet(buffer, 8, "UInt") / 4096
-	, eax := ecx 
 	, edx := ecx + 0x338EE103 
-	, eax >>= 0x0C 
-	, eax ^= edx 
-	, eax &= 0xFFF 
-	, ebx -= readMemory(eax * 4 + OffsetsSC2Base + 0x188A6A8, GameIdentifier)
-	, ebx := ~ebx 
-	, edx := ebx 
-	, eax := ebx 
-	, eax := ~eax 
-	, edx >>= 0x0C 
-	, eax -= edx 
-	, eax &= 0xFFF 
+	, eax := ((ecx >> 0x0C) ^ edx) & 0xFFF
+	, eax := ~(edx := ebx := ~(ebx - readMemory(eax * 4 + OffsetsSC2Base + 0x188A6A8, GameIdentifier))) 
+	, eax := (eax - (edx >>= 0x0C)) & 0xFFF
 	, ecx -= readMemory(eax * 4 + OffsetsSC2Base + 0x188A6A8, GameIdentifier)
-	, edx := ebx
-	, edx ^= ecx 
-	, edi := ebx 
-	, edi ^= ecx 
-	, edx &= 0x55555555
-	, edx ^= ecx 
+	, edx := ((ebx ^ ecx) & 0x55555555) ^ ecx
 	, aSCOffsets["unitPoint", unit, "x"] := edx / 4096 
-	, edi &= 0x55555555
-	, edi ^= ebx 
+	, edi := ((ebx ^ ecx) & 0x55555555) ^ ebx
 	, aSCOffsets["unitPoint", unit, "y"] := edi / 4096
 	return aSCOffsets["unitPoint", unit]
 }
@@ -1258,30 +1249,15 @@ numgetUnitPosition(byRef unitDump, unit)
 
 	aSCOffsets["unitPoint", unit, "encX"] := ecx
 	, aSCOffsets["unitPoint", unit, "encY"]	:= ebx	
-	. aSCOffsets["unitPoint", unit, "z"] := numget(unitDump, unit * Offsets_Unit_StructSize + Offsets_Unit_PositionZ, "UInt") / 4096
-	, eax := ecx 
+	, aSCOffsets["unitPoint", unit, "z"] := NumGet(buffer, 8, "UInt") / 4096
 	, edx := ecx + 0x338EE103 
-	, eax >>= 0x0C 
-	, eax ^= edx 
-	, eax &= 0xFFF 
-	, ebx -= readMemory(eax * 4 + OffsetsSC2Base + 0x188A6A8, GameIdentifier)
-	, ebx := ~ebx 
-	, edx := ebx 
-	, eax := ebx 
-	, eax := ~eax 
-	, edx >>= 0x0C 
-	, eax -= edx 
-	, eax &= 0xFFF 
+	, eax := ((ecx >> 0x0C) ^ edx) & 0xFFF
+	, eax := ~(edx := ebx := ~(ebx - readMemory(eax * 4 + OffsetsSC2Base + 0x188A6A8, GameIdentifier))) 
+	, eax := (eax - (edx >>= 0x0C)) & 0xFFF
 	, ecx -= readMemory(eax * 4 + OffsetsSC2Base + 0x188A6A8, GameIdentifier)
-	, edx := ebx
-	, edx ^= ecx 
-	, edi := ebx 
-	, edi ^= ecx 
-	, edx &= 0x55555555
-	, edx ^= ecx 
+	, edx := ((ebx ^ ecx) & 0x55555555) ^ ecx
 	, aSCOffsets["unitPoint", unit, "x"] := edx / 4096 
-	, edi &= 0x55555555
-	, edi ^= ebx 
+	, edi := ((ebx ^ ecx) & 0x55555555) ^ ebx
 	, aSCOffsets["unitPoint", unit, "y"] := edi / 4096
 	return aSCOffsets["unitPoint", unit]
 }
@@ -1319,69 +1295,35 @@ SC2.GetBattlenetAllocator+223536 - C2 0400               - ret 0004
 No idea how to access z Value
 */
 ; ecx := x - edx := y -  esi := z (at least what the offsets used to contain)
-convertQueuedPoint(byRef ecx, byRef edx, byRef esi)
+convertQueuedPoint(byRef x, byRef y, byRef z)
 {
-	eax := ecx + 0x3126EC11
-	, ecx >>= 0x0C 
-	, eax ^= ecx 
-	, eax &= 0xFFF 
-	, edx -= readMemory(eax * 4 + OffsetsSC2Base + 0x188A6A8, GameIdentifier)
-	, eax := edx
-	, eax >>= 0x0C 
-	, eax += edx 
-	, eax := ~eax 
-	, eax &= 0xFFF 
-	, esi -= readMemory(eax * 4 + OffsetsSC2Base + 0x188A6A8, GameIdentifier)
+	eax := ((x + 0x3126EC11) ^ (x >> 0x0C)) & 0xFFF
+	, eax := (~(((edx :=  y - readMemory(eax * 4 + OffsetsSC2Base + 0x188A6A8, GameIdentifier)) >> 0x0C) + edx)) & 0xFFF
+	, esi := z - readMemory(eax * 4 + OffsetsSC2Base + 0x188A6A8, GameIdentifier)
 	, x := esi/4096
 	, y := edx/4096
 	return 
 }
 
 
+; Using compounded expressions time  = 0.021ms vs 0.026ms (expanded)
 getPlayerCameraPosition(player := "")
 {
-	aCamera := []
-	, ReadRawMemory(aSCOffsets["playerAddress", player = "" ? aLocalPlayer["slot"] : player], GameIdentifier, buffer, O_pCamRotation + 4)
-	, edx := NumGet(buffer, O_pXcam, "UInt")
-	, esi := NumGet(buffer, O_pYcam, "UInt")
-	, aCamera["Angle"] := NumGet(buffer, O_pCamAngle, "UInt") / 4096
-
-	, eax := edx
-	, eax >>= 0x0C 
-	, eax += edx 
-	, eax &= 0xFFF 
+	return aCamera := []
+	, ReadRawMemory(aSCOffsets["playerAddress", player = "" ? aLocalPlayer["slot"] : player], GameIdentifier, buffer, Offsets_Player_CameraRotation + 4)
+	, edx := NumGet(buffer, Offsets_Player_CameraPositionX, "UInt")
+	, esi := NumGet(buffer, Offsets_Player_CameraPositionY, "UInt")
+	, aCamera["angle"] := NumGet(buffer, Offsets_Player_CameraAngle, "UInt") / 4096
+	, eax := ((edx >> 0x0C) + edx) & 0xFFF
 	, esi -= readMemory(eax * 4 + OffsetsSC2Base + 0x188A6A8, GameIdentifier)
-	, esi := ~esi 
-	, ecx := esi
-    , ecx >>= 0x0C     
-    , eax := esi 
-    , eax -= ecx 
-    , eax := ~eax 
-    , eax &= 0xFFF 
-    , eax := readMemory(eax * 4 + OffsetsSC2Base + 0x188A6A8, GameIdentifier)
-    , eax += edx 
-    , ecx := eax 
-    , ecx >>= 0x0C 
-    , ecx += eax 
-    , ecx &= 0xFFF
- 	, edx := readMemory(ecx * 4 + OffsetsSC2Base + 0x188A6A8, GameIdentifier)
- 	, edx ^= esi 
- 	, ecx := edx
- 	, ecx >>= 0x0C 
- 	, ecx += edx 
- 	, ecx &= 0xFFF 
- 	, eax -= readMemory(ecx * 4 + OffsetsSC2Base + 0x188A6A8, GameIdentifier)
- 	, eax := ~eax 
- 	, esi := eax 
- 	, esi ^= edx 
- 	, esi &= 0x55555555
- 	, esi ^= eax 
- 	, eax ^= edx 
- 	, eax &= 0x55555555
- 	, eax ^= edx
+	, ecx := (esi := ~esi) >> 0x0C     
+    , eax := (~(esi - ecx)) & 0xFFF
+    , ecx := (((eax := readMemory(eax * 4 + OffsetsSC2Base + 0x188A6A8, GameIdentifier) + edx) >> 0x0C) + eax) & 0xFFF
+ 	, ecx := (((edx := readMemory(ecx * 4 + OffsetsSC2Base + 0x188A6A8, GameIdentifier) ^ esi) >> 0x0C) + edx) & 0xFFF
+ 	, esi := (((eax := ~(eax - readMemory(ecx * 4 + OffsetsSC2Base + 0x188A6A8, GameIdentifier))) ^ edx) & 0x55555555) ^ eax
+ 	, eax := ((eax ^ edx) & 0x55555555) ^ edx
  	, aCamera["x"] := esi / 4096
- 	, aCamera["y"] := eax /4096
-	return aCamera
+ 	, aCamera["y"] := eax / 4096
 }
 
 
