@@ -2330,7 +2330,8 @@ if FileExist(config_file) ; the file exists lets read the ini settings
 		FileCopy, %config_file%, %old_backup_DIR%\v%read_version%_%config_file%, 1 ;ie 1 = overwrite
 		Filemove, Macro Trainer V%read_version%.exe, %old_backup_DIR%\Macro Trainer V%read_version%.exe, 1 ;ie 1 = overwrite		
 		FileInstall, MT_Config.ini, %config_file%, 1 ; 1 overwrites
-		Gosub, ini_settings_write ;to write back users old settings
+		if (read_version > 3.2) ; Use included ini file if prev trainer is <= 3.2
+			Gosub, ini_settings_write ;to write back users old settings
 		;Gosub, pre_startup ; Read the ini settings again - this updates the 'read version' and also helps with Control group 'ERROR' variable 
 		program.Info.IsUpdating := 0
 		readConfigFile()
@@ -3717,7 +3718,7 @@ try
 
 		Gui, Add, GroupBox, Xs+171 ys+116 w245 h170, Debugging
 			Gui, Add, Button, % "xp+10 yp+20 GdebugListVars w75 h25 disabled" round(A_IsCompiled),  List Variables
-			Gui, Add, Button, xp+90 yp gDrawSCUIOverlay  w75 h20, SC UI Pos
+			Gui, Add, Button, xp+90 yp gDrawSCUIOverlay  w75 h25, SC UI Pos
 			Gui, Add, Button, xp yp+30 gPerformPatternScan  w75 h25, Pattern Scan
 			Gui, Add, Button, xp-90 yp  Gg_GetDebugData w75 h25,  Debug Data
 			Gui, Add, Button, xp yp+30  Gg_DebugKey w75 h25,  Key States
@@ -7405,7 +7406,7 @@ Edit_AG:	;AutoGroup and Unit include/exclude come here
 		else 
 			list := "l_UnitNames" Race
 	}
-	msgbox % list 
+
 	list := %list%
 
 	IfInString, A_GuiControl, UnitHighlight
@@ -8871,7 +8872,7 @@ restoreSelection(controlGroup, selectionPage, highlightedTab)
  		if isTargetDead(TargetFilter := numgetUnitTargetFilter(MemDump, unit)) || !isOwnerLocal(numgetUnitOwner(MemDump, Unit)) || isTargetUnderConstruction(TargetFilter) 
 	       Continue
 	    pUnitModel := numgetUnitModelPointer(MemDump, Unit)
-	    Type := getUnitModelType(pUnitModel)
+	    , Type := getUnitModelType(pUnitModel)
 	
 		IF (type = aUnitID["Hatchery"] || type = aUnitID["Lair"] || type = aUnitID["Hive"])
 		{
@@ -11015,7 +11016,8 @@ autoBuildQuotaGUI()
                 Gui, Add, UpDown, Range-1-200 vAutoBuild%name%cap, % aAutoBuildQuota[name] = "" ? -1 : aAutoBuildQuota[name]
         }
     }
-    Gui, add, groupbox, xs yp+30 w400 h100, About 
+  ;  Gui, add, groupbox, xs yp+30 w400 h100, About 
+    Gui, add, groupbox, x+10 y+-45 w280 h125, About 
     Gui, Add, text, xp+10 yp+25 wp-20,
     ( LTrim
         Limits the unit count to the specified number. -1 results in uncapped production. 
@@ -13427,185 +13429,4 @@ findClosestNexus(mothershipIndex, byRef minimapX, byRef minimapY)
 	return True, mapToMinimapPos(minimapX, minimapY)
 }
 
-
-
-
-
-/*
-
-f4::
-;MouseGetPos, x, y
-;tooltip, %x%
-input.pSend("{click R}")
-return
-
-
-
-return 
-
-
-f2::
-setminimap(a)
-objtree(a)
-return 
-
-+f1::
-CoordMode, Mouse, Screen
-getUnitScreenMinimapPos(getSelectedUnitIndex(), x, y)
-
-click, %x%, %y%
-;click, 500, 760
-return
-getUnitMinimapPos(getSelectedUnitIndex(), x, y)
-input.pclick(x, y)
-return 
-
-ins::
-critical 
-CoordMode, Mouse, Screen
-MouseGetPos, x, y 
-tooltip, %x%`, %y% 
-return 
-
-*/
-		; 4 byte ints listed in memory: 808 28 1066 290  (at 1920x1080)
-
-; 5886
-
-
-
-
-; Target filter +14
-
-
-
-
-; 0x12D0000
-
-
-/* Unit Address function 3.0 (called when unit fingerprint changes)
-SC2.AssertAndCrash+3BE670 - 55                    - push ebp
-SC2.AssertAndCrash+3BE671 - 8B EC                 - mov ebp,esp
-SC2.AssertAndCrash+3BE673 - 56                    - push esi
-SC2.AssertAndCrash+3BE674 - 57                    - push edi
-SC2.AssertAndCrash+3BE675 - 8B F9                 - mov edi,ecx
-SC2.AssertAndCrash+3BE677 - 0FB7 47 04            - movzx eax,word ptr [edi+04] ; Moves the unit index (stored in a static address)
-SC2.AssertAndCrash+3BE67B - 8D 4F 04              - lea ecx,[edi+04]
-SC2.AssertAndCrash+3BE67E - BA FFFF0000           - mov edx,0000FFFF
-SC2.AssertAndCrash+3BE683 - 66 3B C2              - cmp ax,dx
-SC2.AssertAndCrash+3BE686 - 74 3C                 - je SC2.AssertAndCrash+3BE6C4
-SC2.AssertAndCrash+3BE688 - 8B D0                 - mov edx,eax
-SC2.AssertAndCrash+3BE68A - 83 E0 0F              - and eax,0F
-SC2.AssertAndCrash+3BE68D - 69 C0 E8010000        - imul eax,eax,000001E8
-SC2.AssertAndCrash+3BE693 - C1 EA 04              - shr edx,04
-SC2.AssertAndCrash+3BE696 - 8B 34 95 4848A402     - mov esi,[edx*4+SC2.exe+1F24848]
-SC2.AssertAndCrash+3BE69D - 33 35 ECBF3A02        - xor esi,[SC2.exe+188BFEC]
-SC2.AssertAndCrash+3BE6A3 - 81 F6 B834E146        - xor esi,46E134B8
-SC2.AssertAndCrash+3BE6A9 - 03 F0                 - add esi,eax ; esi = address
-SC2.AssertAndCrash+3BE6AB - 8D 47 10              - lea eax,[edi+10]
-SC2.AssertAndCrash+3BE6AE - 50                    - push eax
-SC2.AssertAndCrash+3BE6AF - 51                    - push ecx
-SC2.AssertAndCrash+3BE6B0 - 56                    - push esi
-SC2.AssertAndCrash+3BE6B1 - 8B CF                 - mov ecx,edi
-SC2.AssertAndCrash+3BE6B3 - E8 88E6FFFF           - call SC2.AssertAndCrash+3BCD40
-SC2.AssertAndCrash+3BE6B8 - 85 F6                 - test esi,esi
-SC2.AssertAndCrash+3BE6BA - 74 08                 - je SC2.AssertAndCrash+3BE6C4
-SC2.AssertAndCrash+3BE6BC - 5F                    - pop edi
-SC2.AssertAndCrash+3BE6BD - 8B C6                 - mov eax,esi
-SC2.AssertAndCrash+3BE6BF - 5E                    - pop esi
-SC2.AssertAndCrash+3BE6C0 - 5D                    - pop ebp
-SC2.AssertAndCrash+3BE6C1 - C2 0400               - ret 0004
-*/ 
-
-; DX lower 16b of EDX
-; 
-; 1446A230
-
-
-; SCOffSet 
-
-
-/*
-; to do - check chrono address for a byte value  and test warpgate cool down more
-; When minimap is working, check if locusts and flying locusts are displayed
-; check if locusts and flying locusts are removed from the unit panel
-; Time to available scan doesnt work
-check for no updated offset names.
-Find out why town hall rally doesnt work
-*/
-  ; 0067674B
-;f1::
-unit := getSelectedUnitIndex()
-pAbilities := getUnitAbilityPointer(unit)
-type := getUnitType(unit)
-owner := getUnitOwner(unit)
-msgbox % chex(getUnitAbilityPointer(unit))
-;getStructureProductionInfo(unit, type, a, qs)
-;getUnitQueuedCommands(unit, a)
-;objtree(a)
-;msgbox % clipboard := a.1.item
-msgbox % getBanelingMorphTime(getUnitAbilityPointer(unit))
-;msgbox % getUnitType(unit) "`n" getUnitName(unit) "`n" getUnitNameAlternate(unit)
-;	. "`n" aUnitName[type] "`n" getUnitSubGroupPriority(unit)
-return 
-
-msgbox % chex(getUnitAddress(unit))
-msgbox % chex(getUnitAddress(unit)+0x1E8)
-return 
-;+f1::
-unit := getSelectedUnitIndex()
-type := getunittype(unit)
-msgbox % isZergStructureMorphing(unit) "`n"
-	. getUnitMorphTime(unit, type)
-msgbox % getUnitQueuedCommands(unit, aCommands)
-objtree(aCommands)
-return 
-
-msgbox % chex(Offsets_InputStructure)
-
-mem := new _ClassMemory(GameIdentifier) ; set when new is used
-foundCount := 0
-address := 0
-while (address := mem.processPatternScan(address,,  0x83, "?", "?", 0x69, "?", "?", "?", "?", "?", 0xC1, "?", 0x4)) > 0
-{
-	msgbox % chex(address)
-		foundCount++, address++
-}
-msgbox % foundCount
-return 
-
-
-
-objtree(getunitposition(getSelectedUnitIndex()))
-objtree(getPlayerCameraPosition(1), "cam")
-return 
-
-
-
-
-
-; B_SelectionStructure := base + 0x1EE9BB8 
-;f9::
-bytePattern := testUnitStructPattern()
-mem := new _ClassMemory(GameIdentifier) 
-msgbox % chex(mem.processPatternScan(mem.baseaddress,, bytePattern*))
-return 
-
-; find the first units in the dynamic structure
-; only for units that have not died
-testUnitStructPattern(unitSize := 0x1E8)
-{
-	byteArray := []
-	byteArray.insert(01), byteArray.insert(00), byteArray.insert(00),	byteArray.insert(00) ; unit 1
-	loop, % unitSize - 4
-		byteArray.insert("?")
-	byteArray.insert(01), byteArray.insert(00), byteArray.insert(04),	byteArray.insert(00) ; unit 2
-	loop, % unitSize - 4
-		byteArray.insert("?")
-	byteArray.insert(01), byteArray.insert(00), byteArray.insert(08),	byteArray.insert(00) ; unit 3
-	return byteArray
-}
-
-
-
-
+; 10336

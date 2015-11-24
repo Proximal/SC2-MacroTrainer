@@ -187,10 +187,11 @@ loadMemoryAddresses(base, version := "")
 		; These versions have matching offsets
 		; !version in case the findVersion function stuffs up and returns 0/blank, thereby just assume match with latest offsets
 		; Also worker threads do not pass the client verison
-		if (version = "2.1.11.36281") 
-			versionMatch := "2.1.11.36281"		
-		else if (version = "2.1.12.36657" || !version) 
-			versionMatch := "2.1.12.36657"		
+		;if (version = "2.1.11.36281") 
+		;	versionMatch := "2.1.11.36281"		
+		;else if (version = "2.1.12.36657" || !version) 
+		if (version = "3.0.5.39117" || !version) 
+			versionMatch := "3.0.5.39117"		
 		;else if version in 2.1.9.34644
 		;	 versionMatch := version
 		else versionMatch := false
@@ -1260,6 +1261,9 @@ getUnitShieldDamage(unit)
 
 ; I think there is an array of map cells containing the data, but I cant be bothered optimising/chaching this any more
 ; it seems like the encrypted values in the unit struct relate to each other, so im not sure how to go about this without more research
+
+; *** Be careful of altering the returned object and having that info persisting in the base obj
+; this caused a bug with the injects
 getUnitPosition(unit)
 {
 	ReadRawMemory(aSCOffsets["unitAddress", unit] + Offsets_Unit_PositionX, GameIdentifier, buffer, 0xC)
@@ -1301,7 +1305,7 @@ numgetUnitPosition(byRef unitDump, unit)
 
 	aSCOffsets["unitPoint", unit, "encX"] := ecx
 	, aSCOffsets["unitPoint", unit, "encY"]	:= ebx	
-	, aSCOffsets["unitPoint", unit, "z"] := NumGet(buffer, 8, "UInt") / 4096
+	, aSCOffsets["unitPoint", unit, "z"] := numget(unitDump, unit * Offsets_Unit_StructSize + Offsets_Unit_PositionZ, "UInt")  / 4096
 	, edx := ecx + 0x338EE103 
 	, eax := ((ecx >> 0x0C) ^ edx) & 0xFFF
 	, eax := ~(edx := ebx := ~(ebx - readMemory(eax * 4 + OffsetsSC2Base + 0x188A6A8, GameIdentifier))) 
@@ -2932,7 +2936,7 @@ getUnitModelPointerRaw(unit)
 			; so queen is not moving/patrolling/a-moving ; also if user right clicks queen to catsh, that would put her on a never ending follow command
 			; QueenBuild = make creepTumour (or on way to making it) - state = 0
 			if (energy := getUnitEnergy(unit) >= 25)
-			{
+			{				
 				if CheckMoveState
 				{
 					commandString := getUnitQueuedCommandString(unit)
@@ -2943,7 +2947,6 @@ getUnitModelPointerRaw(unit)
 				else aControlGroup.Queens.insert(objectGetUnitXYZAndEnergy(unit)), aControlGroup.Queens[aControlGroup.Queens.MaxIndex(), "Type"] := Type
 			}
 		}
-
 	} 																																					
 	aControlGroup["QueenCount"] := round(aControlGroup.Queens.maxIndex()) ; as "SelectedUnitCount" will contain total selected queens + other units in group
 	return 	aControlGroup.Queens.maxindex()
@@ -3043,7 +3046,7 @@ isPointNearLineSegmentWithZcheck(linePointA, linePointB, point, maxDistance)
 
  objectGetUnitXYZAndEnergy(unit) ;this will dump just a unit
  {	
- 	obj := getUnitPosition(unit)
+ 	obj := getUnitPosition(unit).Clone() ; Important to clone it otherwise if store info in obj, really storing it in the base/cached obj --> inject bug as obj.injected property persisted
  	, obj["Energy"] := getUnitEnergyRaw(unit)
  	, obj["unit"] := unit
 	return obj
@@ -4299,9 +4302,6 @@ doUnitDetection(unit, type, owner, unitUsedCount, mode = "")
 	}
 	else If (Mode = "Save")
 	{
-		global thisThreadTitle
-		If !A_IsCompiled && !FileExist(config_file)
-			msgbox % thisThreadTitle
 		Iniwrite, % SerDes(Alert_TimedOut), %config_file%, Resume Warnings, Alert_TimedOut		
 		Iniwrite, % SerDes(Alerted_Buildings), %config_file%, Resume Warnings, Alerted_Buildings		
 		Iniwrite, % SerDes(Alerted_Buildings_Base), %config_file%, Resume Warnings, Alerted_Buildings_Base		
