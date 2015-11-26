@@ -1932,23 +1932,26 @@ numgetUnitAbilityPointer(byRef unitDump, unit)
 ;}
 
 isUnitChronoed(unit)
-{	global	; 1 byte = 18h chrono for protoss structures 10h normal state This is pre patch 2.10
+{			; 1 byte = 18h chrono for protoss structures 10h normal state This is pre patch 2.10
 			; pre 210 i used the same offset to check injects and chrono state
 			; now this has changed
 			; post 210 seems its 0 when idle and 128 when chronoed 
 			; dont think i have to do the if = 128 check now, but leave it just in case - havent checked 
 			; every building for a default value
-	
-	return 24 = ReadMemory(aSCOffsets["unitAddress", unit] + Offsets_Unit_ChronoState, GameIdentifier, 1)	
+			; lotv 18 d chrono
+
+	state := ReadMemory(aSCOffsets["unitAddress", unit] + Offsets_Unit_ChronoState, GameIdentifier, 1)	
+	return 24 = state || 18 = state ; 24 hots, 18 lotv (both 16 when idle)
 }
 
 numgetIsUnitChronoed(byref unitDump, unit)
-{	global	
-	return 24 = numget(unitDump, unit * Offsets_Unit_StructSize + Offsets_Unit_ChronoState, "UChar")	
+{	
+	state := numget(unitDump, unit * Offsets_Unit_StructSize + Offsets_Unit_ChronoState, "UChar")	
+	return 24 = state || 18 = state ; 24 hots, 18 lotv	
 }
 
 numgetIsUnitPowered(byref unitDump, unit)
-{	global	
+{		
 	return 0 = numget(unitDump, unit * Offsets_Unit_StructSize + Offsets_Unit_PoweredState, "UInt")	
 }
 ; Returns True for structures which do not require power e.g. nexus, pylons, rocks
@@ -2167,6 +2170,26 @@ converting back to gateway
 warpgate 
 +0x04 = 0x54 
 +0x08 = 0x54 
+
+hots expansion
+gateway
++0x04 = 0x2F 
++0x08 = 0x2F 
+
+gateway with unit in production
++0x04 = 0x2F 
++0x08 = 0xF 
+
+converting to warpgate
++0x04 = 0x2F 
++0x08 = 0x21 ****
+
+converting back to gateway
++0x04 = 0x54 
++0x08 = 0x40 
+
+
+
 */
 
 ; can check if producing by checking queue size via buildstats()
@@ -2178,11 +2201,12 @@ warpgate
 isGatewayProducingOrConvertingToWarpGate(Gateway)
 { 
 	state := readmemory(getUnitAbilityPointer(Gateway) + 0x8, GameIdentifier, 1)
-	return state = 0x0F || state = 0
+	return state = 0x0F || state = 0 || state = 0x21 
 }
 isGatewayConvertingToWarpGate(Gateway)
 { 
-	return 0 = readmemory(getUnitAbilityPointer(Gateway) + 0x8, GameIdentifier, 1)
+	state := readmemory(getUnitAbilityPointer(Gateway) + 0x8, GameIdentifier, 1)
+	return state = 0 || state = 0x21 
 }
 
 SetPlayerMinerals(amount := 99999, player := "")

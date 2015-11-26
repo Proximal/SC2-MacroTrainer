@@ -156,6 +156,7 @@ InstallSC2Files()
 	FileInstall, Included Files\Used_Icons\Buildings\Protoss\TemplarArchive.png,  %A_Temp%\UnitPanelMacroTrainer\TemplarArchive.png, 1
 	FileInstall, Included Files\Used_Icons\Buildings\Protoss\twilightcouncil.png,  %A_Temp%\UnitPanelMacroTrainer\twilightcouncil.png, 1
 	FileInstall, Included Files\Used_Icons\Buildings\Protoss\warpgate.png,  %A_Temp%\UnitPanelMacroTrainer\warpgate.png, 1
+	FileInstall, Included Files\Used_Icons\Buildings\Protoss\OracleStasisTrap.png, %A_Temp%\UnitPanelMacroTrainer\OracleStasisTrap.png, 1
 	FileInstall, Included Files\Used_Icons\Units\Protoss\archon.png, %A_Temp%\UnitPanelMacroTrainer\archon.png, 1
 	FileInstall, Included Files\Used_Icons\Units\Protoss\carrier.png, %A_Temp%\UnitPanelMacroTrainer\carrier.png, 1
 	FileInstall, Included Files\Used_Icons\Units\Protoss\colossus.png, %A_Temp%\UnitPanelMacroTrainer\colossus.png, 1
