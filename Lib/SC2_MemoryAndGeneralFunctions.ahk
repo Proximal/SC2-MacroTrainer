@@ -1269,7 +1269,10 @@ getUnitPosition(unit)
 	ReadRawMemory(aSCOffsets["unitAddress", unit] + Offsets_Unit_PositionX, GameIdentifier, buffer, 0xC)
 	, ecx := NumGet(buffer, 0, "UInt") ; xpos value
 	, ebx := NumGet(buffer, 4, "UInt") ; ypos value 
-	
+	, aSCOffsets["unitPoint", unit, "z"] := NumGet(buffer, 8, "UInt") / 4096
+	; Have to update Z position on every call, otherwise if say a floating CC lands, it could be stuck with
+	; the flying Z value, as just prior to it landing it has the same x/y encrypted values. This caused a bug in the auto worker.
+
 	; I could try it the other way (probably more efficient), have to test performance of AHK arrays with many keys
 	; e.g. aSCOffsets["Point"].HasKey(encrpted X Value) && aSCOffsets["Point", encrpted X Value].HasKey(encrpted y Value)
 	if aSCOffsets["unitPoint"].HasKey(unit)
@@ -1278,8 +1281,7 @@ getUnitPosition(unit)
 		return aSCOffsets["unitPoint", unit] ; unit hasnt moved
 	
 	aSCOffsets["unitPoint", unit, "encX"] := ecx
-	, aSCOffsets["unitPoint", unit, "encY"]	:= ebx	
-	, aSCOffsets["unitPoint", unit, "z"] := NumGet(buffer, 8, "UInt") / 4096
+	, aSCOffsets["unitPoint", unit, "encY"]	:= ebx		
 	, edx := ecx + 0x338EE103 
 	, eax := ((ecx >> 0x0C) ^ edx) & 0xFFF
 	, eax := ~(edx := ebx := ~(ebx - readMemory(eax * 4 + OffsetsSC2Base + 0x188A6A8, GameIdentifier))) 
@@ -1295,7 +1297,10 @@ numgetUnitPosition(byRef unitDump, unit)
 {
 	ecx := numget(unitDump, unit * Offsets_Unit_StructSize + Offsets_Unit_PositionX, "UInt") 
 	, ebx := numget(unitDump, unit * Offsets_Unit_StructSize + Offsets_Unit_PositionY, "UInt") 
-	
+	, aSCOffsets["unitPoint", unit, "z"] := numget(unitDump, unit * Offsets_Unit_StructSize + Offsets_Unit_PositionZ, "UInt")  / 4096
+	; Have to update Z position on every call, otherwise if say a floating CC lands, it could be stuck with
+	; the flying Z value, as just prior to it landing it has the same x/y encrypted values. This caused a bug in the auto worker.
+
 	; I could try it the other way (probably more efficient), have to test performance of AHK arrays with many keys
 	; e.g. aSCOffsets["Point"].HasKey(encrpted X Value) && aSCOffsets["Point", encrpted X Value].HasKey(encrpted y Value)
 	if aSCOffsets["unitPoint"].HasKey(unit)
@@ -1305,7 +1310,6 @@ numgetUnitPosition(byRef unitDump, unit)
 
 	aSCOffsets["unitPoint", unit, "encX"] := ecx
 	, aSCOffsets["unitPoint", unit, "encY"]	:= ebx	
-	, aSCOffsets["unitPoint", unit, "z"] := numget(unitDump, unit * Offsets_Unit_StructSize + Offsets_Unit_PositionZ, "UInt")  / 4096
 	, edx := ecx + 0x338EE103 
 	, eax := ((ecx >> 0x0C) ^ edx) & 0xFFF
 	, eax := ~(edx := ebx := ~(ebx - readMemory(eax * 4 + OffsetsSC2Base + 0x188A6A8, GameIdentifier))) 
@@ -2140,6 +2144,30 @@ getSCModState(KeyName)
 	else return 0
 }
 
+/*
+LotV 3.0.5
+Ability structure
+
+gateway
++0x04 = 0x2F 
++0x08 = 0x2F 
+
+gateway with unit in production
++0x04 = 0x2F 
++0x08 = 0xF 
+
+converting to warpgate
++0x04 = 0x54 
++0x08 = 0
+
+converting back to gateway
++0x04 = 0x54 
++0x08 = 0x40 
+
+warpgate 
++0x04 = 0x54 
++0x08 = 0x54 
+*/
 
 ; can check if producing by checking queue size via buildstats()
 ; *** note it's safer to check production info
@@ -2149,27 +2177,12 @@ getSCModState(KeyName)
 ; I think perhaps this value gets bitwise-| with a contaminate value. CBF checking atm.
 isGatewayProducingOrConvertingToWarpGate(Gateway)
 { 
-;	gateway 
-;	ability pointer + 0x8 
-;	0x2F Idle
-;	0x0F building unit
-;	0x21 when converting to warpgate
-;	0x40 when converting back to gateway from warpgate
-; 	note there is a byte at +0x4 which indicates the previous state of the gateway/warpgate while morphing
-
-	GLOBAL GameIdentifier
 	state := readmemory(getUnitAbilityPointer(Gateway) + 0x8, GameIdentifier, 1)
-	if (state = 0x0F || state = 0x21)
-		return 1
-	else return 0
+	return state = 0x0F || state = 0
 }
 isGatewayConvertingToWarpGate(Gateway)
 { 
-	GLOBAL GameIdentifier
-	state := readmemory(getUnitAbilityPointer(Gateway) + 0x8, GameIdentifier, 1)
-	if (state = 0x21)
-		return 1
-	else return 0
+	return 0 = readmemory(getUnitAbilityPointer(Gateway) + 0x8, GameIdentifier, 1)
 }
 
 SetPlayerMinerals(amount := 99999, player := "")
@@ -2495,7 +2508,7 @@ numGetControlGroupObject(Byref oControlGroup, Group)
 ;	oControlGroup["Types"]	:= numget(MemDump, Offsets_Group_TypeCount, "Short") ;this will get whats actually in the memory
 	oControlGroup["Count"]	:= oControlGroup["Types"] := 0
 	oControlGroup.units := []
-	loop % numget(MemDump, 0, "Short")
+	loop % numget(MemDump, 0, "UShort")
 	{
 		fingerPrint := numget(MemDump,(A_Index-1) * 4 + Offsets_Group_UnitOffset , "Int")
 		unit := fingerPrint >> 18
