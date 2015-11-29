@@ -428,10 +428,11 @@ http://support.microsoft.com/kb/311221
 DrawIdleWorkersOverlay(ByRef Redraw, UserScale=1,Drag=0, expand=1)
 {	global aLocalPlayer, GameIdentifier, config_file, IdleWorkersOverlayX, IdleWorkersOverlayY, a_pBitmap, overlayIdleWorkerTransparency, idleWorkerOverlayThreshold, BackgroundIdleWorkersOverlay
 	static Font := "Arial", overlayCreated, hwnd1, DragPrevious := 0				
-
+	
 	DestX := DestY := 0
 	; idleWorkerOverlayThreshold min value is 1 (so hidden when 0 idle workers)
-	if (idleWorkerOverlayThreshold > idleCount := getIdleWorkers())
+	; could be called outside of game to kill it, so dont check worker count
+	if (Redraw != -1 && idleWorkerOverlayThreshold > idleCount := getIdleWorkers())
 		Redraw := -1 
 
 	if !modifyOverlay("idleWorkersOverlay", Redraw, overlayCreated, Drag, DragPrevious, idleWorkersOverlayX, idleWorkersOverlayY, 400, 400, hwnd1)

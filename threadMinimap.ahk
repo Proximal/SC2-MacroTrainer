@@ -333,66 +333,78 @@ getEnemyUnitsMiniMap(byref aUnitsToDraw)
 {  	global aMiniMapUnits, aUnitInfo, minimap, HighlightInvisible, HighlightHallucinations
  	, HostileColourAssist, DrawUnitDestinations, GameType
 
-  aUnitsToDraw := [], aUnitsToDraw.Normal := [], aUnitsToDraw.Custom := []
-  , PlayerColours := arePlayerColoursEnabled()
+	aUnitsToDraw := [], aUnitsToDraw.Normal := [], aUnitsToDraw.Custom := []
+	, PlayerColours := arePlayerColoursEnabled()
+	, mapLeft := minimap.MapLeft
+	, mapRight := minimap.MapRight
+	, mapTop := minimap.MapTop
+	, mapBottom := minimap.MapBottom
 
-  loop, % DumpUnitMemory(MemDump)
-  {
-     Filter := numget(MemDump, (UnitAddress := (A_Index - 1) * Offsets_Unit_StructSize) + Offsets_Unit_TargetFilter, "Int64")
+	loop, % DumpUnitMemory(MemDump)
+	{
+		Filter := numget(MemDump, (UnitAddress := (A_Index - 1) * Offsets_Unit_StructSize) + Offsets_Unit_TargetFilter, "Int64")
      ; Hidden e.g. marines in medivac/bunker etc. 
      ; Otherwise these unit colours get drawn over the top - medivac highlight colour is hidden.
-     if (Filter & aUnitTargetFilter.Dead 
-     || Filter & aUnitTargetFilter.Hidden 
-     || aMiniMapUnits.Exclude.HasKey(Type := getUnitModelType(pUnitModel := ((numget(MemDump, UnitAddress + Offsets_Unit_ModelPointer, "UInt") << 5) & 0xFFFFFFFF))))
-     	Continue
-
-     ;if  (aPlayer[Owner, "Team"] <> aLocalPlayer["Team"] && Owner && type >= aUnitID["Colossus"] && !aChangeling.HasKey(type)) 
+		if (Filter & aUnitTargetFilter["Dead"]
+		|| Filter & aUnitTargetFilter["Hidden"]
+		|| aMiniMapUnits.Exclude.HasKey(Type := getUnitModelType(pUnitModel := ((numget(MemDump, UnitAddress + Offsets_Unit_ModelPointer, "UInt") << 5) & 0xFFFFFFFF))))
+		|| aPlayer[owner := numget(MemDump, UnitAddress + Offsets_Unit_Owner, "UChar"), "Team"] = aLocalPlayer["Team"]
+		|| !Owner || type < aUnitID["Colossus"]
+			Continue
+     ;if  (aPlayer[Owner, "Team"] <> aLocalPlayer["Team"] && Owner && type >= aUnitID["Colossus"] && !aChangeling.HasKey(type))  ; This changeling check is no longer required as reading the first unit owner now (not the third)
      ;|| (aChangeling.HasKey(type) && aPlayer[Owner, "Team"] = aLocalPlayer["Team"] ) ; as a changeling owner becomes whoever it is mimicking - its team also becomes theirs
+		
+		if (!Radius := aUnitInfo[Type, "Radius"])
+		    Radius := aUnitInfo[Type, "Radius"] := getUnitModelMiniMapRadius(pUnitModel)
 
-     if (aPlayer[owner := numget(MemDump, UnitAddress + Offsets_Unit_Owner, "UChar"), "Team"] != aLocalPlayer["Team"] && Owner && type >= aUnitID["Colossus"])  ; This changeling check is no longer required as reading the first unit owner now (not the third)
-     {
-          if (!Radius := aUnitInfo[Type, "Radius"])
-            Radius := aUnitInfo[Type, "Radius"] := getUnitModelMiniMapRadius(pUnitModel)
+		if (Radius < minimap.UnitMinimumRadius) ; probes and such
+			Radius := minimap.UnitMinimumRadius
 
-         if (Radius < minimap.UnitMinimumRadius) ; probes and such
-           	Radius := minimap.UnitMinimumRadius
+        point := numgetUnitPosition(MemDump, A_index-1)
+        , x := point["x"], y := point["y"]
 
-           point := numgetUnitPosition(MemDump, A_index-1)
-           x := point["x"], y := point["y"]
-           , customFlag := True
-	      , mapToRelativeMinimapPos(x, y) ; don't round them. As fraction might be important when subtracting scaled width in draw/fill rectangle
+        ; Sometimes in lotv unit position is wrong - perhaps my function is wrong, or 
+        ; the second encrypted key is read after the first one changes.
+        ; Rather than simply not drawing the item, could check of this error in getunitPosition()
+        ; and return the units previous position.
+        if (x < mapLeft || x > mapRight || y < MapBottom || y > MapTop)
+        	continue
+        customFlag := True
+	    , mapToRelativeMinimapPos(x, y) ; don't round them. As fraction might be important when subtracting scaled width in draw/fill rectangle
 
-	   ;   msgbox % point["x"] ", " point["y"]
-	    ;  . "`n" x ", " y
-           if (HighlightHallucinations && Filter & aUnitTargetFilter.Hallucination) ; have here so even if non-halluc unit type has custom colour highlight, it will be drawn using halluc colour
-           	  Colour := "UnitHighlightHallucinationsColour"
-           else if aMiniMapUnits.Highlight.HasKey(type)
-          	Colour := aMiniMapUnits.Highlight[type]
-           Else if (HighlightInvisible && Filter & aUnitTargetFilter.Cloaked) ; this will include burrowed units (so dont need to check their flags)
-           	  Colour := "UnitHighlightInvisibleColour" 				; Have this at bot so if an invis unit has a custom highlight it will be drawn with that colour
-           Else if PlayerColours
-              Colour := aPlayer[Owner, "Colour"], customFlag := False
-           Else Colour := "Red", customFlag := False
+		if (HighlightHallucinations && Filter & aUnitTargetFilter.Hallucination) ; have here so even if non-halluc unit type has custom colour highlight, it will be drawn using halluc colour
+			Colour := "UnitHighlightHallucinationsColour"
+		else if aMiniMapUnits.Highlight.HasKey(type)
+			Colour := aMiniMapUnits.Highlight[type]
+		Else if (HighlightInvisible && Filter & aUnitTargetFilter.Cloaked) ; this will include burrowed units (so dont need to check their flags)
+			Colour := "UnitHighlightInvisibleColour" 				; Have this at bot so if an invis unit has a custom highlight it will be drawn with that colour
+		Else if PlayerColours
+		  	Colour := aPlayer[Owner, "Colour"], customFlag := False
+		Else Colour := "Red", customFlag := False
 
-           if (HostileColourAssist && GameType != "1v1")
-           {
-	           unitName := aUnitName[type]
-	           if unitName in CommandCenter,CommandCenterFlying,OrbitalCommand,PlanetaryFortress,Nexus,Hatchery,Lair,Hive
-	          		Colour := aPlayer[Owner, "Colour"], customFlag := True
-	       }
-	       	if DrawUnitDestinations
-	       		getUnitQueuedCommands(A_Index - 1, QueuedCommands)
-          	if customFlag
-           		aUnitsToDraw.Custom.insert({"X": x, "Y": y, "Colour": Colour, "Radius": Radius, unit: A_index -1, "queuedCommands": QueuedCommands})  
-           	else aUnitsToDraw.Normal.insert({"X": x, "Y": y, "Colour": Colour, "Radius": Radius, unit: A_index -1, "queuedCommands": QueuedCommands})  
-     }
-  }
-  Return
+      	if (HostileColourAssist && GameType != "1v1")
+      	{
+           unitName := aUnitName[type]
+           if unitName in CommandCenter,CommandCenterFlying,OrbitalCommand,PlanetaryFortress,Nexus,Hatchery,Lair,Hive
+          		Colour := aPlayer[Owner, "Colour"], customFlag := True
+       	}
+       	if DrawUnitDestinations
+       		getUnitQueuedCommands(A_Index - 1, QueuedCommands)
+      	if customFlag
+       		aUnitsToDraw.Custom.insert({"X": x, "Y": y, "Colour": Colour, "Radius": Radius, unit: A_index -1, "queuedCommands": QueuedCommands})  
+       	else aUnitsToDraw.Normal.insert({"X": x, "Y": y, "Colour": Colour, "Radius": Radius, unit: A_index -1, "queuedCommands": QueuedCommands})  
+ 	
+ 	}
+  	Return
 }
 
 drawUnitDestinations(pGraphics, byRef aUnitsToDraw, byRef aSpecialAlerts)
 {	
 	aSpecialAlerts := [] ; so nukes are not obstructed by unit being drawn over the top
+  , mapLeft := minimap.MapLeft
+  , mapRight := minimap.MapRight
+  , mapTop := minimap.MapTop
+  , mapBottom := minimap.MapBottom
 	loop, 2 ; Using a 2x loop should be faster than an another for loop on top
 	{
 		for indexOuter, unit in (A_Index = 1 ? aUnitsToDraw.Normal : aUnitsToDraw.Custom)
@@ -432,15 +444,19 @@ drawUnitDestinations(pGraphics, byRef aUnitsToDraw, byRef aSpecialAlerts)
 				}
 				else colour := "Green"
 
-				; some commands will have x,y,z targets of 0 (causing them to be drawn off the map)
-				if !command.targetX
-					break
+				; some commands will have x,y,z targets of 0 (causing them to be drawn off the map) so check !targetx e.g. structure morph
+				; Technically, it would be better to filter by command type - as it's possible for a command target to have a valid position 0 - but ive never seen a ladder map 
+				; where that is possible
+				; In wol/hots this worked fine, but i think in lotv, safer to check bounds
+				if (!command["targetX"] || command["targetX"] < mapLeft || command["targetX"]  > mapRight 
+				|| !command["targetY"]  || command["targetY"] < MapBottom || command["targetY"] > MapTop)
+        			break
+
 				if (indexQueued = unit.QueuedCommands.MinIndex())
 					x := unit.x, y := unit.y 	
-				Else 
-					x := targetX, y := targetY
+				Else x := targetX, y := targetY
 				mapToRelativeMinimapPos(targetX := command.targetX, targetY := command.targetY)	
-				Gdip_DrawLine(pGraphics, a_pPens[colour], x, y, targetX, targetY)
+				, Gdip_DrawLine(pGraphics, a_pPens[colour], x, y, targetX, targetY)
 			}
 		}
 	}

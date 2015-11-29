@@ -11,38 +11,39 @@
 ; and other people should just use that.
 ; Its in lib\classmemory.ahk
 
-ReadMemory(MADDRESS=0,PROGRAM="",BYTES=4)
+; Use if-else ladder with return marginally faster than a type/size lookup array, but only since 4 bytes is first, and most values are 4 bytes
+; Faster to have if ProcessHandle && DLLCall("RPM") rather than use ! and have a single ladder
+ReadMemory(address := 0, program := "", bytes := 4)
 {
-   Static OLDPROC, ProcessHandle
+    Static prevProgram, ProcessHandle
    
-   ; keep buffer a local variable, rather than static so that it is 
-   ; quasi thread safe. 
-   VarSetCapacity(buffer, BYTES) 
-   If (PROGRAM != OLDPROC)
-   {
+    ; keep buffer a local variable, rather than static so that it is 
+    ; quasi thread safe. 
+    If (program != prevProgram), VarSetCapacity(buffer, bytes) 
+    {
         if ProcessHandle
-          closed := DllCall("CloseHandle", "UInt", ProcessHandle), ProcessHandle := 0, OLDPROC := ""
-        if PROGRAM
+            closed := DllCall("CloseHandle", "Ptr", ProcessHandle), ProcessHandle := 0, prevProgram := ""
+        if program
         {
-            WinGet, pid, pid, % OLDPROC := PROGRAM
+            WinGet, pid, pid, % prevProgram := program
             if !pid 
-               return "Process Doesn't Exist", OLDPROC := "" ;blank OLDPROC so subsequent calls will work if process does exist
-            ProcessHandle := DllCall("OpenProcess", "Int", 16, "Int", 0, "UInt", pid)   
+                return "Process Doesn't Exist", prevProgram := "" ;blank prevProgram so subsequent calls will work if process does exist
+            ProcessHandle := DllCall("OpenProcess", "Int", 16, "Int", 0, "UInt", pid, "Ptr")   
         }
         else return 
-   }
-   
-   If !(ProcessHandle && DllCall("ReadProcessMemory", "UInt", ProcessHandle, "UInt", MADDRESS, "Ptr", &buffer, "UInt", BYTES, "Ptr", 0))
-      return !ProcessHandle ? "Handle Closed: " closed : "Fail"
-   else if (BYTES = 4)
-      Type := "UInt"
-   else if (BYTES = 2)
-      Type := "UShort"         
-   else if (BYTES = 1)
-      Type := "UChar"
-   else 
-      Type := "Int64"
-   return numget(buffer, 0, Type)
+    }
+    
+    If (ProcessHandle && DllCall("ReadProcessMemory", "Ptr", ProcessHandle, "Ptr", address, "Ptr", &buffer, "Ptr", bytes, "Ptr", 0))
+    {
+        if (bytes = 4)
+            return numget(buffer, 0, "UInt")
+        else if (bytes = 2)
+            return numget(buffer, 0, "UShort")      
+        else if (bytes = 1)
+            return numget(buffer, 0, "UChar")   
+        else return numget(buffer, 0, "Int64") 
+    }
+    else return ProcessHandle ? "Fail" : "Handle Closed: " closed
 }
 
 ; Can pass an array of offsets by using *
@@ -55,7 +56,7 @@ pointer(game, address, offsets*)
 { 
     For index, offset in offsets
         address := ReadMemory(address, game) + offset 
-  Return ReadMemory(address, game)
+    Return ReadMemory(address, game)
 }
 
 pointerAddress(game, address, aOffsets*)

@@ -169,7 +169,7 @@ clearCachedAddresses()
 {
 	aSCOffsets["playerAddress"] := new classAddressCachePlayerUnit("playerAddress")
 	aSCOffsets["unitAddress"] := new classAddressCachePlayerUnit("getUnitAddress")
-	aSCOffsets["unitPoint"] := new classAddressCachePlayerUnit("getUnitPosition")	
+	aSCOffsets["unitPoint"] := new classAddressCachePlayerUnit("getUnitPosition")
 }
 
 loadMemoryAddresses(base, version := "")
@@ -244,7 +244,8 @@ loadMemoryAddresses(base, version := "")
 			 Offsets_Player_ArmyMineralCost := 0xB68 ; there are two (identical?) values for minerals/gas 
 			 Offsets_Player_ArmyGasCost := 0xB90 ; ** care dont use max army gas/mineral value! 
 
-		 Offsets_IdleWorkerCountPointer := [base + 0x0181C294, 0x8, 0x134]
+		; Be very careful of pointers which are invalid for a split second!
+		Offsets_IdleWorkerCountPointer := [base + 0x0181C360, 0x8, 0x48, 0x134]
 
 		; 	This can be found via three methods, pattern scan:
 		;	C1 EA 0A B9 00 01 00 00 01 0D ?? ?? ?? ?? F6 D2 A3 ?? ?? ?? ?? F6 C2 01 74 06 01 0D ?? ?? ?? ?? 83 3D ?? ?? ?? ?? 00 56 BE FF FF FF 7F
@@ -370,7 +371,7 @@ loadMemoryAddresses(base, version := "")
 		Offsets_TeamColoursEnabled := base + 0x1B7C144 ; 2 when team colours is on, else 0 (There are two valid addresses for this)
 		 
 
-		Offsets_SelectionPage := [base + 0x0181D110, 0x8, 0x70, 0xC0]  	; Tends to end with these offsets. ***theres one other 3 lvl pointer but for a split second (every few second or so) it points to 
+		Offsets_SelectionPage := [base + 0x0181D110, 0x8, 0xD8, 0xC8]  	; Tends to end with these offsets. ***theres one other 3 lvl pointer but for a split second (every few second or so) it points to 
 			 				; the wrong address! You need to increase CE timer resolution to see this happening! Or better yet use the 'continually perform the pointer scan until stopped' option.
 			 				;this is for the currently selected unit portrait page ie 1-6 in game (really starts at 0-5)
 							;might actually be a 2 or 1 byte value....but works fine as 4
@@ -871,7 +872,7 @@ getSelectionCount()
 	Return ReadMemory(Offsets_Selection_Base, GameIdentifier, 2)
 }
 getIdleWorkers()
-{	global 	
+{	
 	return pointer(GameIdentifier, Offsets_IdleWorkerCountPointer*)
 }
 getPlayerSupply(player="")
@@ -1264,6 +1265,7 @@ getUnitShieldDamage(unit)
 
 ; *** Be careful of altering the returned object and having that info persisting in the base obj
 ; this caused a bug with the injects
+; This isnt perfect noticed a probe had a negative map position for a split second. perhaps in the middle of updating the encrypted keys
 getUnitPosition(unit)
 {
 	ReadRawMemory(aSCOffsets["unitAddress", unit] + Offsets_Unit_PositionX, GameIdentifier, buffer, 0xC)
@@ -1293,6 +1295,7 @@ getUnitPosition(unit)
 	, aSCOffsets["unitPoint", unit, "y"] := edi / 4096
 	return aSCOffsets["unitPoint", unit]
 }
+
 numgetUnitPosition(byRef unitDump, unit)
 {
 	ecx := numget(unitDump, unit * Offsets_Unit_StructSize + Offsets_Unit_PositionX, "UInt") 
@@ -1355,6 +1358,7 @@ SC2.GetBattlenetAllocator+223536 - C2 0400               - ret 0004
 No idea how to access z Value
 */
 ; ecx := x - edx := y -  esi := z (at least what the offsets used to contain)
+; This isnt perfect i noticed it stuffed up on 1 map a few times. Units with 0 target, which should have had something
 convertQueuedPoint(byRef x, byRef y, byRef z)
 {
 	eax := ((x + 0x3126EC11) ^ (x >> 0x0C)) & 0xFFF
@@ -1517,6 +1521,9 @@ getUnitQueuedCommands(unit, byRef aQueuedMovements)
 			aQueuedMovements.insert({ "targetX": x
 									, "targetY": y  
 									, "targetZ": z  
+									;, "targetXRaw": numget(cmdDump, Offsets_QueuedCommand_TargetX, "UInt") 
+									;, "targetYRaw": numget(cmdDump, Offsets_QueuedCommand_TargetY, "UInt")
+									;, "targetzRaw": numget(cmdDump, Offsets_QueuedCommand_TargetZ, "UInt") 
 									, "ability": aStringTable[pString] 
 									, "targetFlag" : targetFlag
 									;, "OrderFlags": OrderFlags
@@ -2615,9 +2622,9 @@ numGetSelectionSorted(ByRef aSelection, ReverseOrder := False)
 	aSelection := []
 	, selectionCount := getSelectionCount()
 	, ReadRawMemory(Offsets_Selection_Base, GameIdentifier, MemDump, selectionCount * 4 + Offsets_Group_UnitOffset)
-	, aSelection.Count := numget(MemDump, 0, "Short")
-	, aSelection.Types := numget(MemDump, Offsets_Group_TypeCount, "Short")
-	, aSelection.HighlightedGroup := numget(MemDump, Offsets_Group_HighlightedGroup, "Short")
+	, aSelection.Count := numget(MemDump, 0, "UShort")
+	, aSelection.Types := numget(MemDump, Offsets_Group_TypeCount, "UShort")
+	, aSelection.HighlightedGroup := numget(MemDump, Offsets_Group_HighlightedGroup, "UShort")
 	, aStorage := []
 	loop % aSelection.Count
 	{
@@ -6123,8 +6130,7 @@ class upgradeDefinitions
 
 minimapLocation(byRef left, byRef right, byRef bottom, byRef top)
 {
-	p := pointerAddress(GameIdentifier, Offsets_MinimapPosition*)
-	, ReadRawMemory(p, GameIdentifier, buffer, 0x10)
+	 ReadRawMemory( pointerAddress(GameIdentifier, Offsets_MinimapPosition*), GameIdentifier, buffer, 0x10)
 	, top := NumGet(buffer, 0x0, "UInt")
 	, left := NumGet(buffer, 0x4, "UInt")
 	, bottom := NumGet(buffer, 0x8, "UInt")
@@ -6138,8 +6144,7 @@ minimapLocation(byRef left, byRef right, byRef bottom, byRef top)
 ; These issues were due to DPI scaling 
 minimapLocationDebug()
 {
-	p := pointerAddress(GameIdentifier, Offsets_MinimapPosition*)
-	, ReadRawMemory(p, GameIdentifier, buffer, 2 * 0x10)
+	ReadRawMemory(pointerAddress(GameIdentifier, Offsets_MinimapPosition*), GameIdentifier, buffer, 2 * 0x10)
 	, top := NumGet(buffer, 0x0, "UInt")
 	, left := NumGet(buffer, 0x4, "UInt")
 	, bottom := NumGet(buffer, 0x8, "UInt")

@@ -1959,7 +1959,7 @@ monitorGameWindow(initialise := False)
 	aspectRatio := getClientAspectRatio(x, y, w, h, trueAspectRatio)
 	style := GameWindowStyle()
 	if (initialise 
-	|| ((g_aGameWindow.X != x || g_aGameWindow.Y != y || g_aGameWindow.Width != w || g_aGameWindow.Height != h || g_aGameWindow.style != style) && !(GetKeyState("LButton") ||GetKeyState("RButton"))))
+	|| ((g_aGameWindow.X != x || g_aGameWindow.Y != y || g_aGameWindow.Width != w || g_aGameWindow.Height != h || g_aGameWindow.style != style) && !(GetKeyState("LButton") || GetKeyState("RButton"))))
 	{
 		if (style = "Windowed")
 			systemWindowEdgeSize(leftFrameWidth, topFrameHeight, bottomFrameHeight)
@@ -8028,29 +8028,7 @@ autoWorkerProductionCheck()
 }
 
 
-; Used for Reversing SC
-openCloseProcess(programOrHandle := "", Close := False)
-{
-	if close 
-		return DllCall("CloseHandle","UInt",programOrHandle)
-	else 
-	{
-		WinGet, pid, pid, % programOrHandle
-		return DllCall("OpenProcess","Int",0x0800,"Int",0,"UInt",pid)
-	}
-}
 
-; Used for RE
-SuspendProcess(hProcess)
-{
-	return DllCall("ntdll\NtSuspendProcess","uint",hProcess)
-}
-
-; Used for RE
-ResumeProcess(hProcess)
-{
-	return DllCall("ntdll\NtResumeProcess","uint",hProcess)
-}
 
 
 
@@ -10201,6 +10179,28 @@ swapAbilityPointerFreeze()
 	return 
 }
 
+openCloseProcess(programOrHandle := "", Close := False)
+{
+    if close 
+        return DllCall("CloseHandle","UInt",programOrHandle)
+    else 
+    {
+        WinGet, pid, pid, % programOrHandle
+        return DllCall("OpenProcess","Int",0x0800,"Int",0,"UInt",pid)
+    }
+}
+
+; Used for RE
+SuspendProcess(hProcess)
+{
+    return DllCall("ntdll\NtSuspendProcess","uint",hProcess)
+}
+
+; Used for RE
+ResumeProcess(hProcess)
+{
+    return DllCall("ntdll\NtResumeProcess","uint",hProcess)
+}
 
 
 
@@ -13428,7 +13428,3 @@ findClosestNexus(mothershipIndex, byRef minimapX, byRef minimapY)
 	}
 	return True, mapToMinimapPos(minimapX, minimapY)
 }
-
-; 10336
-
-
