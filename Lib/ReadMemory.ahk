@@ -27,7 +27,7 @@ ReadMemory(address := 0, program := "", bytes := 4)
         {
             WinGet, pid, pid, % prevProgram := program
             if !pid 
-                return "Process Doesn't Exist", prevProgram := "" ;blank prevProgram so subsequent calls will work if process does exist
+                return "Process Doesn't Exist or Not 32-Bit Client.", prevProgram := "" ;blank prevProgram so subsequent calls will work if process does exist
             ProcessHandle := DllCall("OpenProcess", "Int", 16, "Int", 0, "UInt", pid, "Ptr")   
         }
         else return 

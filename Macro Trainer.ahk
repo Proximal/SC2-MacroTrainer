@@ -905,7 +905,7 @@ Else if (time > 0.4 && !isInMatch) && (getLocalPlayerNumber() != 16 || debugGame
 	sleep, -1
 
 	SetMiniMap(minimap) ; Used for clicking - not just drawing
-	monitorGameWindow(True) ; initialise the current size of the windo
+	monitorGameWindow(True) ; initialise the current size of the window
 	; If I was using the minerals for anything, then if this was called again due to just settings being changed/restart (minerals would have been used up)
 	aResourceLocations := getMapInfoMineralsAndGeysers() 
 	if WinActive(GameIdentifier)
@@ -1942,14 +1942,15 @@ return
 ; minmap being updated really slowly (as you need to wait for the minimap memory values to change)
 monitorMinimapPosition()
 {
-	static aPrev := []
-	minimapLocation(left, right, bottom, top)
-	if aPrev.left != left || aPrev.right != right || aPrev.bottom != bottom || aPrev.top != top 
-	{
-		aPrev.left := left, aPrev.right := right, aPrev.bottom := bottom, aPrev.top := top
-		aThreads.MiniMap.ahkPostFunction("updateMinimapPosition")
-		SetMiniMap(minimap)	
-	}
+	static prevLeft, prevRight, prevBottom, prevTop
+
+	if minimapLocation(left, right, bottom, top) ; True on RPM error (extremely rare or doesn't occur with a good pointer)
+	|| (prevLeft = left && prevRight = right && prevBottom = bottom && prevTop = top) 
+		return 
+
+	prevLeft := left, prevRight := right, prevBottom := bottom, prevTop := top
+	, aThreads.MiniMap.ahkPostFunction("updateMinimapPosition")
+	, SetMiniMap(minimap)	
 	return
 }
 
@@ -13428,3 +13429,11 @@ findClosestNexus(mothershipIndex, byRef minimapX, byRef minimapY)
 	}
 	return True, mapToMinimapPos(minimapX, minimapY)
 }
+
+
+
+
+
+
+
+

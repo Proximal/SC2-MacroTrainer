@@ -367,6 +367,7 @@ getEnemyUnitsMiniMap(byref aUnitsToDraw)
         ; the second encrypted key is read after the first one changes.
         ; Rather than simply not drawing the item, could check of this error in getunitPosition()
         ; and return the units previous position.
+        ; Should investigate more what caused this... new unit just finished, read in-between key change etc
         if (x < mapLeft || x > mapRight || y < MapBottom || y > MapTop)
         	continue
         customFlag := True

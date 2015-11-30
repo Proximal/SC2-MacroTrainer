@@ -496,7 +496,11 @@ loadMemoryAddresses(base, version := "")
 		 Offsets_VerticalResolution := Offsets_HorizontalResolution + 0x4
 
 		; 4 byte ints listed in memory: 808 28 1066 290  (at 1920x1080)
-		Offsets_MinimapPosition := [base + 0x023765E0, 0x24, 0x0, 0x178, 0xC]
+		; Be extremely careful with this on. CE 'scan until stopped' wasnt able to filter out a bad pointer
+		; after 1 minute of scanning. It took 2 goes before it removed it!
+		; There was another one that failed after ~5 min in my scanner
+		; The pointer below was didn't fail even after 1 hour
+		Offsets_MinimapPosition := [base + 0x023765B4, 0x30, 0x0, 0x178, 0xC]
 
 	}
 	return versionMatch
@@ -590,6 +594,10 @@ SC2.AssertAndCrash+3C0933 - 8B 34 95 C868DA02     - mov esi,[edx*4+SC2.exe+1F268
 SC2.AssertAndCrash+3C093A - 33 35 60DC7002        - xor esi,[SC2.exe+188DC60]
 SC2.AssertAndCrash+3C0940 - 81 F6 0F9D0003        - xor esi,SC2.exe+2189D0F
 SC2.AssertAndCrash+3C0946 - 03 F0                 - add esi,eax
+
+	return aSCOffsets["unitAddress", unitIndex]	:= (unitIndex &= 0xF) * Offsets_Unit_StructSize
+			+ ( readMemory((unitIndex >> 4) * 4 + OffsetsSC2Base + 0x1F268C8, GameIdentifier)
+				^ readMemory(OffsetsSC2Base + 0x188DC60, GameIdentifier) ) ^ 0x03009D0F
 */
 
 getunitAddress(unitIndex)
@@ -6130,19 +6138,26 @@ class upgradeDefinitions
 
 minimapLocation(byRef left, byRef right, byRef bottom, byRef top)
 {
-	 ReadRawMemory( pointerAddress(GameIdentifier, Offsets_MinimapPosition*), GameIdentifier, buffer, 0x10)
-	, top := NumGet(buffer, 0x0, "UInt")
+	; Some pointers fail after ~5-10 mins of reading, although super unlikely this will
+	; prevent the minimap being briefly moved. I say briefly, as it should correct itself quickly once the pointer starts working again
+	if A_LastError
+		DllCall("SetLastError", "UInt", 0)
+	ReadRawMemory(pointerAddress(GameIdentifier, Offsets_MinimapPosition*), GameIdentifier, buffer, 0x10)
+	if (A_LastError != 0) ; eg 299 
+		return True
+
+	top := NumGet(buffer, 0x0, "UInt")
 	, left := NumGet(buffer, 0x4, "UInt")
 	, bottom := NumGet(buffer, 0x8, "UInt")
 	, right := NumGet(buffer, 0xC, "UInt")
-	return 
+	return
 }
 
 ; There are two sets of coordiantes, one directly after the other. I have not observed any differences between the two.
 ; However, two users (German and Chinese) reported that the minimap isn't aligned correctly.
 ; I was previously using the minimap top value from the second set of values (the rest was from the first)
 ; These issues were due to DPI scaling 
-minimapLocationDebug()
+minimapLocationDebug(byRef left := "", byRef right := "", byRef bottom := "", byRef top := "", byRef left2 := "", byRef right2 := "", byRef bottom2 := "", byRef top2 := "")
 {
 	ReadRawMemory(pointerAddress(GameIdentifier, Offsets_MinimapPosition*), GameIdentifier, buffer, 2 * 0x10)
 	, top := NumGet(buffer, 0x0, "UInt")
@@ -6384,3 +6399,68 @@ debugUnitTargetFlags()
 
 
 
+
+; Continually tests a pointer to check its validity
+; checkAddress - 	If true, checks the final memory address equals the address passed via the value parameter
+; 					If false, checks if the value stored at final memory address equals the value passed via the value parameter
+; value - Contains either the value stored at the final memory address, or the actual address of the final memory address 
+
+pointerTest(checkAddress, value, pointerAddress, offsets*)
+{
+	msgbox starting pointer scan
+	gameBase := getProcessBaseAddress(GameIdentifier)
+	loop
+	{
+		iteration++
+		address := pointerAddress
+	    For index, offset in offsets
+	    {
+	    	DllCall("SetLastError", "UInt", 0)
+	    	prevAddress := address
+	        address := ReadMemory(address, GameIdentifier) + offset 
+	        if (address < gameBase || A_LastError != 0)
+	        {
+	        	msgbox 4, Pointer error
+	        		, % ( str := "Pointer error`n"
+	        		. "Iteration: " iteration
+	        		. "`nIndex: " index
+	        		.  "`nAddress: " dectoHex(prevAddress)
+	        		.  "`nResult: " dectoHex(address)
+	        		. "`nLastError: " A_LastError)
+	        		. "`n`nCopy to clipboard?"
+	    		IfMsgBox Yes
+	    			clipboard := str
+	        }
+	    }
+	    DllCall("SetLastError", "UInt", 0)
+	   	if (checkAddress && address != value || A_LastError != 0)
+	   	{
+	   		msgbox 4, Pointer error
+	    		, % (str := "Pointer error - Final Address mismatch`n"
+	    		. "Iteration: " iteration
+	    		. "`nExpected: " dectoHex(value)
+	    		.  "`nFinal Address: " dectoHex(address)	
+	    		.  "`nPrev Address: " dectoHex(prevAddress)
+	    		. "`nLastError: " A_LastError)
+	    		. "`n`nCopy to clipboard?"
+	    	IfMsgBox Yes
+	    		clipboard := str
+	   	}
+	   else if (!checkAddress && value != (readValue := ReadMemory(address, GameIdentifier)))
+	   || A_LastError != 0
+	   	{
+	   		msgbox 4, Pointer error
+	    		, % (str := "Pointer error - Final value mismatch`n"
+	    		. "Iteration: " iteration
+	    		. "`nExpected: " dectoHex(value)
+	    		. "`nRead: " dectoHex(readValue)
+	    		.  "`nFinal Address: " dectoHex(address)	
+	    		.  "`nPrev Address: " dectoHex(prevAddress)	   		
+	    		. "`nLastError: " A_LastError)
+	    		. "`n`nCopy to clipboard?"
+	    	IfMsgBox Yes
+	    		clipboard := str	    		
+	   	}
+	}
+	return 
+}
