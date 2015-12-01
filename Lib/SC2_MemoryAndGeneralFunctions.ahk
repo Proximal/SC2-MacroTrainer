@@ -2443,14 +2443,15 @@ getPercentageUnitCompleted(B_QueuedUnitInfo)
 ; Gas = 0x78
 
 ; Production struct sc 3.0.3x
-; TypeID = 0x68 (specific to the building type)
-; StructureUnitIndex 0x74 (needs to be shifted)
-; supply = 0x7C
-; TotalTime = 0x80
-; RemainingTime  0x84
-; Minerals =  0x8C
-; Gas = 0x90
-
+; 0x50	char 	queued item type 	(0 index - specific to structure) ; One of these is incorrect too lazy to check / test 
+; 0x68 			queued item type 	(0 index - specific to structure) ; One of these is incorrect too lazy to check / test 
+; 0x74 	dword 	structure FP  
+; 0x7C 	dword 	supply 
+; 0x80 	dword 	TotalTime 
+; 0x84 	dword 	RemainingTime  
+; 0x8C 	dword 	Minerals  
+; 0x90 	dword 	Gas
+; 0xF4   	ptr 	pString queued item name
 
 
 ; returns seconds round to 2 decimal points
