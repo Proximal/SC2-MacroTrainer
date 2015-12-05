@@ -1,6 +1,9 @@
 ﻿/*
+    5/12/2015 - version 2.2
+        - Added the useFileNameAsKey option to getModules(). When enabled, the module's file name is used as the key to the module object i.e. an associative array.
+        - Added setSeDebugPrivilege() method.
     10/10/15 - version 2.1
-        - Optimised the pointer() method
+        - Optimised the pointer() method.
         - Corrected some DLLCall types (the previous types would still work fine)
     06/08/15 - version 2.0
         -   Fixed an issue with getProcessBaseAddress() on 32 bit OS systems.
@@ -287,7 +290,7 @@ class _ClassMemory
 
     version()
     {
-        return 2.1
+        return 2.2
     }   
 
     findPID(program, windowMatchMode := "3")
@@ -660,6 +663,32 @@ class _ClassMemory
         return -1 ; not found
     }
 
+    ; SeDebugPrivileges is required to read/write memory in some programs.
+    ; This only needs to be called once when the script starts,
+    ; regardless of the number of programs being read (or if the target programs restart)
+    ; Call this before attempting to call any other methods in this class 
+    ; i.e. call _ClassMemory.setSeDebugPrivilege() at the very start of the script.
+
+    setSeDebugPrivilege(enable := True)
+    {
+        h := DllCall("OpenProcess", "UInt", 0x0400, "Int", false, "UInt", DllCall("GetCurrentProcessId"), "Ptr")
+        ; Open an adjustable access token with this process (TOKEN_ADJUST_PRIVILEGES = 32)
+        DllCall("Advapi32.dll\OpenProcessToken", "Ptr", h, "UInt", 32, "PtrP", t)
+        VarSetCapacity(ti, 16, 0)  ; structure of privileges
+        NumPut(1, ti, 0, "UInt")  ; one entry in the privileges array...
+        ; Retrieves the locally unique identifier of the debug privilege:
+        DllCall("Advapi32.dll\LookupPrivilegeValue", "Ptr", 0, "Str", "SeDebugPrivilege", "Int64P", luid)
+        NumPut(luid, ti, 4, "Int64")
+        if enable
+            NumPut(2, ti, 12, "UInt")  ; enable this privilege: SE_PRIVILEGE_ENABLED = 2
+        ; Update the privileges of this process with the new access token:
+        r := DllCall("Advapi32.dll\AdjustTokenPrivileges", "Ptr", t, "Int", false, "Ptr", &ti, "UInt", 0, "Ptr", 0, "Ptr", 0)
+        DllCall("CloseHandle", "Ptr", t)  ; close this access token handle to save memory
+        DllCall("CloseHandle", "Ptr", h)  ; close this process handle to save memory
+        return r
+    }
+
+
     ; Method:  isTargetProcess64Bit(PID, hProcess := "", currentHandleAccess := "")
     ;          Determines if a process is 64 bit.
     ; Parameters:
@@ -723,12 +752,13 @@ class _ClassMemory
     ; Parameters:
     ;   aModules            An unquoted variable name. The loaded modules of the process are stored in this variable as an array of objects.
     ;                       Each object in this array has the following keys: Name, lpBaseOfDll, SizeOfImage, and EntryPoint. 
+    ;   useFileNameAsKey    When true, the file name e.g. GDI32.dll is used as the lookup key for each module object.
     ; Return Values:
     ;   Positive integer    The size of the aModules array. (Success)
     ;   -3                  EnumProcessModulesEx failed.
     ;   -4                  The AHK script is 32 bit and you are trying to access the modules of a 64 bit target process.
 
-    getModules(byRef aModules)
+    getModules(byRef aModules, useFileNameAsKey := False)
     {
         if (A_PtrSize = 4 && this.IsTarget64bit)
             return -4 ; AHK is 32bit and target process is 64 bit, this function wont work     
@@ -739,7 +769,12 @@ class _ClassMemory
         {
             this.GetModuleInformation(hModule := numget(lphModule, (A_index - 1) * A_PtrSize), aModuleInfo)
             aModuleInfo.Name := this.GetModuleFileNameEx(hModule)
-            aModules.insert(aModuleInfo)
+            filePath := aModuleInfo.Name
+            SplitPath, filePath, fileName
+            aModuleInfo.fileName := fileName
+            if useFileNameAsKey
+                aModules[fileName] := aModuleInfo
+            else aModules.insert(aModuleInfo)
         }
         return round(aModules.MaxIndex())        
     }

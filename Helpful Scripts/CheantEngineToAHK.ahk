@@ -10,6 +10,19 @@ SC2.AssertAndCrash+378318 - 8B 0A                 - mov ecx,[edx]
 SC2.AssertAndCrash+37831A - 8D 0C 81              - lea ecx,[ecx+eax*4]
 SC2.AssertAndCrash+37831D - 0FB7 01               - movzx eax,word ptr [ecx]
 SC2.AssertAndCrash+378320 - 0FB7 49 02            - movzx ecx,word ptr [ecx+02]
+SC2.AssertAndCrash+378320 - 0FB7 49 02            - movzx ecx,word ptr [ecx+02]
+)
+
+ExampleInput =
+(
+SC2.AssertAndCrash+378306 - 8B 15 C8B0C202        - mov edx,[ax]
+SC2.AssertAndCrash+37830C - 33 15 B8982B03        - xor edx,[SC2.exe+1F198B8]
+SC2.AssertAndCrash+378312 - 81 F2 F8ED2C41        - xor edx,412CEDF8
+SC2.AssertAndCrash+378318 - 8B 0A                 - mov ecx,[edx]
+SC2.AssertAndCrash+37831A - 8D 0C 81              - lea ecx,[ecx+eax*4]
+SC2.AssertAndCrash+37831D - 0FB7 01               - movzx eax,word ptr [ecx]
+SC2.AssertAndCrash+378320 - 0FB7 49 02            - movzx ecx,word ptr [ecx+02]
+SC2.AssertAndCrash+378320 - 0FB7 49 02            - movzx ecx,word ptr [ecx+02]
 )
 
 gui, add, text, xm ym, Cheat Engine Code:
@@ -20,6 +33,10 @@ gui, add, edit, xm w600 h300 vOutputAHK, This script is only meant to facilitate
 Gui, show,, CE to AHK
 return 
 
+guiClose:
+exitapp 
+return 
+
 Convert:
 gui, Submit, NoHide 
 input := trim(InputCE, A_tab A_space)
@@ -28,27 +45,12 @@ return
 
 class ASMToAHK
 {
-    16BitRegisters := "AX,CX,DX,BX,SP,BP,SI,DI"
-    8BitLowReigsters := "AL,CL,DL,BL,SL,BL,SL,DL"
-    8BitHighReigsters := "AH,CH,DH,BH,SH,BH,SH,DH"
+    static 16BitRegisters := "ax,cx,dx,bx,sp,bp,si,di"
+    static 8BitLowReigsters := "al,cl,dl,bl"
+    static 8BitHighReigsters := "ah,ch,dh,bh"
 
     movzx(a, b, c*)
     {
-        if b in % this.16BitRegisters
-        {
-            b := "e" b ; AX -> EAX
-            return a " := " b " & 0xFFFF" 
-        }
-        else if b in % this.8BitLowReigsters
-        {
-            b := "e" substr(b, 1, 1) "x" ; AL -> EAX
-            return a " := " b " & 0xFF" ; 0 - 8 bits
-        }
-        else if b in % this.8BitHighReigsters
-        {
-            b := "e" substr(b, 1, 1) "x" ; AH -> EAX
-            return a " := (" b " >> 8 ) & 0xFF"  ; 8-16 bits
-        }
         return this.mov(a, b)
     }
     readMem(addressExpr, bytes := 4)
@@ -57,24 +59,11 @@ class ASMToAHK
             return "readMemory(" addressExpr ", GameIdentifier)"
         return "readMemory(" addressExpr ", GameIdentifier, " bytes ")"
     }
-    mov(a, b)
+    mov(a, b, convertedRegister := "")
     {
-        if b in % this.16BitRegisters
-        {
-            b := "e" b ; AX -> EAX
-            return a " |= " b " & 0xFFFF" 
-        }
-        else if b in % this.8BitLowReigsters
-        {
-            b := "e" substr(b, 1, 1) "x" ; AL -> EAX
-            return a " |= " b " & 0xFF" ; 0 - 8 bits
-        }
-        else if b in % this.8BitHighReigsters
-        {
-            b := "e" substr(b, 1, 1) "x" ; AH -> EAX
-            return a " |= (" b " >> 8 ) & 0xFF"  ; 8-16 bits
-        }
-        return a " := " b
+        if convertedRegister ; Due to bug in AHK, cant define method as   mov(a, b, c*), then use c.convertedRegister (named parameter) when passing parameters as an array (it works with function calls, but not object methods) - so give 'convertedRegister' a key value of 3
+            return a " |= " b 
+        return a " := " b 
     }
     ; Faster to use an actual variable than an object
     push(operand, c*)
@@ -178,19 +167,28 @@ class ASMToAHK
     }
     AlterOperands(command, aOperands)
     {
-        for i, operand in aOperands
-        {
-            if (i = 1)
-                continue 
-            if RegExMatch(operand, "\[(.*)\]", out) ; word ptr [SC2.exe+2372AA4] -> SC2.exe+2372AA4 (out1)
-            {
-                if (command = "lea")
-                    aOperands[i] := out1
-                else if InStr(operand, "word ptr")
-                    aOperands[i] := this.readMem(out1, 2)
-                else aOperands[i]  := this.readMem(out1, 4)
-            }
+        for i, register in StrSplit(this.16BitRegisters, ",")
+            aOperands.2 := RegExReplace(aOperands.2, "\b(" register ")", "e$1 & 0xFFFF", foundCound), foundCound ? aOperands.3 := True : "" ; .3 = convertedRegister
+        for i, register in StrSplit(this.8BitLowReigsters, ",")
+            aOperands.2 := RegExReplace(aOperands.2, "\b(" register ")", "e" SubStr(register, 1, 1) "x & 0xFF"), foundCound ? aOperands.3 := True : "" ; .3 = convertedRegister
+        for i, register in StrSplit(this.8BitHighReigsters, ",")
+            aOperands.2 := RegExReplace(aOperands.2, "\b(" register ")", "(e" SubStr(register, 1, 1) "x >> 8) & 0xFF"), foundCound ? aOperands.3 := True : "" ; .3 = convertedRegister    
+
+        if instr(aOperands.2, "+") && !instr(aOperands.2, "[") 
+        {  ; Only noticed CE stuff this up with XOR
+            ;SC2.AssertAndCrash+375D3E - 35 DCBA2B77     - xor eax,ntdll.dll+15BADC 
+            realAddress := "," this.reverseBytes(strsplit(asm, A_Space).2) ; reverse DCBA2B77
+            code := RegExReplace(code, ",(.*)", realAddress) ; replace ,ntdll.dll+15BADC  with , 772BBADC 
         }
+
+        if RegExMatch(aOperands.2, "\[(.*)\]", out) ; word ptr [SC2.exe+2372AA4] -> SC2.exe+2372AA4 (out1)
+        {
+            if (command = "lea")
+                aOperands.2 := out1
+            else if InStr(aOperands.2, "word ptr")
+                aOperands.2 := this.readMem(out1, 2)
+            else aOperands.2  := this.readMem(out1, 4)
+        }   
     }
     reverseBytes(str)
     {
@@ -200,15 +198,7 @@ class ASMToAHK
         return r
     }   
     ReplaceRegistersAndAlter(code, asm)
-    {
-        aOperands := this.splitCode(code, command)
-        if instr(aOperands.2, "+") && !instr(aOperands.2, "[") 
-        {  ; Only noticed CE stuff this up with XOR
-            ;SC2.AssertAndCrash+375D3E - 35 DCBA2B77     - xor eax,ntdll.dll+15BADC 
-            realAddress := "," this.reverseBytes(strsplit(asm, A_Space).2) ; reverse DCBA2B77
-            code := RegExReplace(code, ",(.*)", realAddress) ; replace ,ntdll.dll+15BADC  with , 772BBADC 
-        }
-        
+    {       
        ; for i, register in ["eax", "ebx", "ecx", "edx", "esi", "edi", "esp", "ebp"]
         if instr(code, "SC2.exe" "+") 
             StringReplace, code, code, SC2.exe+,  OffsetsSC2Base+, All
@@ -217,7 +207,6 @@ class ASMToAHK
         StringReplace, code, code, +, %A_space%+%a_space%, All
         StringReplace, code, code, *, %A_space%*%a_space%, All
         StringReplace, code, code, -, %A_space%-%a_space%, All
-
         return code
     }
     addHexPrefix(byRef operand)
@@ -225,16 +214,7 @@ class ASMToAHK
         operand := RegExReplace(operand, "([0-9A-F]+)", "0x$1") ; only caps hex - prevents edx being replaced
         return operand        
     }
-    convertSourceOperand(byRef operand, instruction := "")
-    {
-        static aWordRegisters := ["ax", "bx","cx","dx","si","di"]
-        if instr(operand, this.dllName "+") 
-            StringReplace, operand, operand, % this.dllName "+",  "dllBaseAddress+", All
-        operand := RegExReplace(operand, "([0-9A-F]+)", "0x$1") ; only caps hex - prevents edx being replaced
-        for i, wordRegister in aWordRegisters
-            operand := RegExReplace(operand, "\b" wordRegister, "e$1 & 0xFFFF")
-        return operand
-    }
+
 
 }
 

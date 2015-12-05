@@ -182,7 +182,7 @@ global a_pBitmap ; Used by the autoBUild In game GUI
 
 input.winTitle := GameIdentifier
 ; For some reason this has to come before Gdip_Startup() for reliability 
-DllCall("RegisterShellHookWindow", UInt, getScriptHandle())
+DllCall("RegisterShellHookWindow", "UInt", getScriptHandle())
 
 pToken := Gdip_Startup()
 Global aUnitID, aUnitName, aUnitSubGroupAlias, aUnitTargetFilter
@@ -211,12 +211,12 @@ SetProgramWaveVolume(programVolume)
 ;	systems while running with admin privileges 
 ; 	this has a 'process wide' scope (tested it, and it seems to mean what it says i.e. 
 ;	it reverts on closing)
-
-if A_OSVersion in WIN_8,WIN_7,WIN_VISTA
-{  
+; Just do it for all OS
+;if A_OSVersion in WIN_8,WIN_7,WIN_VISTA
+;{  
 	DllCall("ChangeWindowMessageFilter", uint, 0x49, uint, 1) 	; WM_COPYGLOBALDATA 1 allows message to be received 
 	DllCall("ChangeWindowMessageFilter", uint, 0x233, uint, 1) 	; WM_DROPFILES
-}
+;}
 
 ;-----------------------
 ;	Startup
@@ -288,7 +288,7 @@ If !errorlevel
 }
 else MT_CurrentInstance.SCWasRunning := True
 Process, wait, %GameExe%	
-	
+
 ; 	waits for starcraft to exist
 ; 	give time for SC2 to fully launch. This may be required on slower or stressed computers
 ;	to give time for the  window to fully launch and activate to allow the
@@ -13429,11 +13429,6 @@ findClosestNexus(mothershipIndex, byRef minimapX, byRef minimapY)
 	}
 	return True, mapToMinimapPos(minimapX, minimapY)
 }
-
-
-
-
-
 
 
 
