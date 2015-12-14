@@ -296,7 +296,9 @@ loop
 	Process, wait, SC2_x64.exe, .5 ; wait half a second for 64 client
 	if ErrorLevel
 	{
-		Msgbox, The 64-bit SC client is not supported!`nPlease run the 32-bit client.`n`nThe program will now exit.
+		Msgbox, 1, 64 Bit SC Client Detected, The 64-bit SC client is not supported!`n`nPlease run the 32-bit SC client.`nPress OK to open a URL illustrating how this is done.`n`nThe program will now exit.
+		ifmsgbox, OK
+			gosub, B_HelpFile
 		exitapp 
 		return	
 	}	
@@ -3863,10 +3865,10 @@ try
 	for i, race in ["Terran", "Protoss", "Zerg"]
 	{
 		Gui, Tab, %race%
-		Gui, Add, Checkbox, % "section X+15 Y+25 vAG_Enable_" race " checked" round(aAutoGroup[race, "Enable"]), Enable ; round it because it could be null
+		Gui, Add, Checkbox, % "section X+15 Y+20 vAG_Enable_" race " checked" round(aAutoGroup[race, "Enable"]), Enable ; round it because it could be null
 		if (race = "Zerg")
-			Gui, Add, Checkbox, x+20 yp vAG_TreatZergEggsAsProducedUnit checked%AG_TreatZergEggsAsProducedUnit%, Treat eggs as units they are producing
-		Gui, add, text, xs-5 y+25, Group
+			Gui, Add, Checkbox, y+10 vAG_TreatZergEggsAsProducedUnit checked%AG_TreatZergEggsAsProducedUnit%, Group eggs by the units they are producing
+		Gui, add, text, xs-5 ys+50, Group
 		loop, 10
 		{				
 			Gui, add, text, xs+5 y+15, % group := mod(A_Index, 10)
@@ -3917,13 +3919,12 @@ try
 		Gui, Add, Edit, Number Right x+20 yp-2 w45 vTT_AGBufferDelay 
 		Gui, Add, UpDown,  Range40-200 vAGBufferDelay , %AGBufferDelay%
 	
-	
 	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vRestrictGroup_TAB, Terran|Protoss|Zerg|Delays|Info
 	for i, race in ["Terran", "Protoss", "Zerg"]
 	{
 		Gui, Tab, %race%
-		Gui, Add, Checkbox, % "section X+15  Y+25 vRestrictGroupEnable" race "  checked" round(aRestrictGroup[race, "GlobalEnable"]) , Enable ; round to protect against null
-		Gui, add, text, xs-5 y+25, Group
+		Gui, Add, Checkbox, % "section X+15  Y+20 vRestrictGroupEnable" race "  checked" round(aRestrictGroup[race, "GlobalEnable"]) , Enable ; round to protect against null
+		Gui, add, text, xs-5 ys+50, Group
 		loop, 10 
 		{
 			group := Mod(A_Index, 10)
@@ -4981,7 +4982,7 @@ AutomationTerranCameraGroup_TT := AutomationProtossCameraGroup_TT := AutomationZ
 		#FindPixelColour_TT := "This sets the pixel colour for your exact system."
 		AM_MiniMap_PixelVariance_TT := TT_AM_MiniMap_PixelVariance_TT := "A match will result if  a pixel's colour lies within the +/- variance range.`n`nThis is a percent value 0-100%"
 		TT_AGDelay_TT := AG_Delay_TT := "The program will wait this period of time before adding the selected units to a control group.`nUse this if you want the function to look more 'human'.`n`nNote: Values greater than 0 probably the increase likelihood of miss-grouping units (especially on slow computers or during large battles with high APM)."
-		AG_TreatZergEggsAsProducedUnit_TT := "When enabled, an egg is treated as if it is the unit type being produced. This allows eggs to be auto-grouped by the units they are producing.`nFor example, if roaches are set to be auto grouped, selecting one or more eggs which are all producing roaches will result in the eggs being auto grouped."
+		AG_TreatZergEggsAsProducedUnit_TT := "When enabled, an egg is treated as if it is the unit type being produced.`nFor example, if roaches are set to be auto grouped, selecting one or more eggs which are all producing roaches will result in the eggs being auto grouped."
 		TT_AGKeyReleaseDelay_TT := AGKeyReleaseDelay_TT := "An auto-group attempt will not occur until no key events (messages) have occurred for this amount of time."
 				. "`n`nThis helps increase the robustness of the function."
 				. "`nIf incorrect groupings are occurring try increasing this value."
@@ -9581,8 +9582,7 @@ clickUnitPortraitsDemo(aUnitPortraitLocations, Modifers := "+")
 }
 
 debugData()
-{ 	global aPlayer, O_mTop, GameIdentifier
-	, A_UnitGroupSettings, aLocalPlayer, aUnitName
+{ 	global aPlayer, O_mTop, GameIdentifier, A_UnitGroupSettings, aLocalPlayer, aUnitName
 	
 	Player := getLocalPlayerNumber()
 	
@@ -9592,6 +9592,7 @@ debugData()
 	process, exist, %GameExe%
 	if (pid := ErrorLevel)
 	{
+		SCClientType := "32 Bit Client."
 		windowStyle := GameWindowStyle()
 		aspectRatio := getClientAspectRatio(x, y, w, h, trueAspectRatio)
 		SCWindwowString := "SC2 Res (mem): " SC2HorizontalResolution() "x" SC2VerticalResolution() "`n"
@@ -9602,6 +9603,11 @@ debugData()
 	else 
 		SCWindwowString := "SC not running.`n"
 
+	if !SCClientType
+	{
+		Process, exist, SC2_x64.exe
+		SCClientType := ErrorLevel ? "64 Bit Client." : "Client not found."
+	}
 
 	isSCRunning := pid
 	isInGame := isSCRunning && (getLocalPlayerNumber() != 16)
@@ -9647,6 +9653,7 @@ debugData()
 	. "SC PID: " pid "`n"
 	. "SC Vr.: " getProcessFileVersion(GameExe) "`n"
 	. "SC Base.: " dectohex(getProcessBaseAddress(GameIdentifier)) "`n"
+	. "SC Bitness: " SCClientType "`n"
 	. "===========================================`n"
 	.	"Minimap Location: (Memory)`n" 
 	.	minimapSting
@@ -13450,87 +13457,6 @@ findClosestNexus(mothershipIndex, byRef minimapX, byRef minimapY)
 	return True, mapToMinimapPos(minimapX, minimapY)
 }
 
-
-
-f1::
-;objtree(aAutoGroup)
-thread, NoTimers, True 
-loopCount := 10000
-CurrentlySelected := "", VarSetCapacity(CurrentlySelected, 0), activeList := controlGroup := "", foundUngroupedUnit := False
-SID := stopwatch()
-loop, % loopCount
-{
-	numGetUnitSelectionObject(oSelection, 0 && aLocalPlayer["Race"] = "Zerg") ; With 68 eggs selected - convert to eggs = 1.3 ms - No convert = .5 ms
-	for index, Unit in oSelection["Units"]
-	{		
-		If (aLocalPlayer["Slot"] != unit["owner"])
-			return 
-		if !activeList, type := unit["type"], CurrentlySelected .= "," unit["unitIndex"]
-		{
-			For Player_Ctrl_Group, ID_List in aAutoGroup[aLocalPlayer["race"], "UnitIDs"]	;check the array - player_ctrl_group = key 1,2,3 etc, ID_List is the value
-			{
-				if type in %ID_List%
-				{
-					activeList := ID_List, aGroupedUnits := unitsInControlGroup(controlGroup := Player_Ctrl_Group)	
-					break		
-				}				
-			}
-			if !activeList ; unit isnt in one of the lists
-				return 
-		}
-		
-		if type not in %activeList%
-			return 
-		else if (!foundUngroupedUnit && !aGroupedUnits.HasKey(unit["unitIndex"]))
-			foundUngroupedUnit := True
-	}
-}
-t1 := stopwatch(SID)
-CurrentlySelected := "", VarSetCapacity(CurrentlySelected, 0), activeList := controlGroup := "", foundUngroupedUnit := False
-SID := stopwatch()
-loop, % loopCount
-{
-	numGetUnitSelectionObject(oSelection, 0 && aLocalPlayer["Race"] = "Zerg") ; With 68 eggs selected - convert to eggs = 1.3 ms - No convert = .5 ms
-	for index, Unit in oSelection["Units"]
-	{		
-		If (aLocalPlayer["Slot"] != unit["owner"])
-			return 
-		if !activeList, type := unit["type"], CurrentlySelected .= "," unit["unitIndex"]
-		{
-			For Player_Ctrl_Group, ID_List in aAutoGroup[aLocalPlayer["race"], "UnitIDs"]	;check the array - player_ctrl_group = key 1,2,3 etc, ID_List is the value
-			{
-				if type in %ID_List%
-				{
-					activeList := ID_List, aGroupedUnits := unitsInControlGroup(controlGroup := Player_Ctrl_Group)	
-					break		
-				}				
-			}
-			if !activeList ; unit isnt in one of the lists
-				return 
-		}
-		
-		if type not in %activeList%
-			return 
-		else if !foundUngroupedUnit && !objHasKey(aGroupedUnits, unit["unitIndex"])
-			foundUngroupedUnit := True
-	}
-}
-t2 := stopwatch(SID)
-
-msgbox % clipboard := t1  "  " t1/loopCount
-. "`n" t2 "  " t2/loopCount
-. "`n"
-return 
-
-/*
-10651.824967  1.065182
-10263.544358  1.026354
-10537.751990  1.053775
-10277.459209  1.027746
-
-
-9804.310861  0.980431
-10049.897541  1.004990
 
 
 
