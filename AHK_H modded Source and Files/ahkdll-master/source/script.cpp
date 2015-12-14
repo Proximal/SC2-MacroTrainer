@@ -17738,7 +17738,7 @@ __forceinline ResultType Line::Perform() // As of 2/9/2009, __forceinline() redu
 		if (   (toggle = ConvertOnOff(ARG1, NEUTRAL)) != NEUTRAL   )
 			g.DetectHiddenText = (toggle == TOGGLED_ON);
 		return OK;
-	case ACT_BLOCKINPUT:
+	case ACT_BLOCKINPUT: 
 		switch (toggle = ConvertBlockInput(ARG1))
 		{
 		case TOGGLED_ON:
@@ -17766,7 +17766,7 @@ __forceinline ResultType Line::Perform() // As of 2/9/2009, __forceinline() redu
 		}
 		return OK;
 
-	case ACT_MTBLOCKINPUT:
+	case ACT_MTBLOCKINPUT: // MT_Stuff**
 	switch (ConvertMTBlockInput(ARG1))
 	{
 		case TOGGLED_ON:

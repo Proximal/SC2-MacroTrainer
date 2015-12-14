@@ -181,6 +181,7 @@ GLOBAL GameExe := "SC2.exe"
 global a_pBitmap ; Used by the autoBUild In game GUI
 
 input.winTitle := GameIdentifier
+
 ; For some reason this has to come before Gdip_Startup() for reliability 
 DllCall("RegisterShellHookWindow", "UInt", getScriptHandle())
 
@@ -287,7 +288,20 @@ If !errorlevel
 		run, % switcherExePath(), % StarcraftInstallPath(), UseErrorLevel
 }
 else MT_CurrentInstance.SCWasRunning := True
-Process, wait, %GameExe%	
+loop 
+{
+	Process, wait, %GameExe%, .5 ; wait half a second
+	if ErrorLevel
+		break 
+	Process, wait, SC2_x64.exe, .5 ; wait half a second for 64 client
+	if ErrorLevel
+	{
+		Msgbox, The 64-bit SC client is not supported!`nPlease run the 32-bit client.`n`nThe program will now exit.
+		exitapp 
+		return	
+	}	
+}
+
 
 ; 	waits for starcraft to exist
 ; 	give time for SC2 to fully launch. This may be required on slower or stressed computers
@@ -298,6 +312,7 @@ Process, wait, %GameExe%
 if !MT_CurrentInstance.SCWasRunning
 	sleep 2000 
 WinWait, %GameIdentifier%
+
 while (!(B_SC2Process := getProcessBaseAddress(GameIdentifier)) || B_SC2Process < 0)		;using just the window title could cause problems if a folder had the same name e.g. sc2 folder
 	sleep 400				; required to prevent memory read error - Handle closed: error 		
 SC2hWnd := WinExist(GameIdentifier)
@@ -1143,7 +1158,7 @@ Return
 ; Old 0.14 /1.56
 
 AutoGroup()
-{ 	global aAutoGroup, GameIdentifier, AGBufferDelay, AGKeyReleaseDelay
+{ 	global aAutoGroup, GameIdentifier, AGBufferDelay, AGKeyReleaseDelay, AG_TreatZergEggsAsProducedUnit
 
 	; needed to ensure the function running again while it is still running
 	;  as can arrive here from AutoGroupIdle or Auto_Group
@@ -1155,7 +1170,7 @@ AutoGroup()
 	; I guess it would be possible if the unit died between type and isincontrolGroup
 	; and the new different unit with same index was selected - but this be very very rare
 
-	numGetUnitSelectionObject(oSelection)
+	numGetUnitSelectionObject(oSelection, AG_TreatZergEggsAsProducedUnit && aLocalPlayer["Race"] = "Zerg")
 	for index, Unit in oSelection.Units
 	{		
 		If (aLocalPlayer.Slot != unit.owner)
@@ -3849,6 +3864,8 @@ try
 	{
 		Gui, Tab, %race%
 		Gui, Add, Checkbox, % "section X+15 Y+25 vAG_Enable_" race " checked" round(aAutoGroup[race, "Enable"]), Enable ; round it because it could be null
+		if (race = "Zerg")
+			Gui, Add, Checkbox, x+20 yp vAG_TreatZergEggsAsProducedUnit checked%AG_TreatZergEggsAsProducedUnit%, Treat eggs as units they are producing
 		Gui, add, text, xs-5 y+25, Group
 		loop, 10
 		{				
@@ -4964,6 +4981,7 @@ AutomationTerranCameraGroup_TT := AutomationProtossCameraGroup_TT := AutomationZ
 		#FindPixelColour_TT := "This sets the pixel colour for your exact system."
 		AM_MiniMap_PixelVariance_TT := TT_AM_MiniMap_PixelVariance_TT := "A match will result if  a pixel's colour lies within the +/- variance range.`n`nThis is a percent value 0-100%"
 		TT_AGDelay_TT := AG_Delay_TT := "The program will wait this period of time before adding the selected units to a control group.`nUse this if you want the function to look more 'human'.`n`nNote: Values greater than 0 probably the increase likelihood of miss-grouping units (especially on slow computers or during large battles with high APM)."
+		AG_TreatZergEggsAsProducedUnit_TT := "When enabled, an egg is treated as if it is the unit type being produced. This allows eggs to be auto-grouped by the units they are producing.`nFor example, if roaches are set to be auto grouped, selecting one or more eggs which are all producing roaches will result in the eggs being auto grouped."
 		TT_AGKeyReleaseDelay_TT := AGKeyReleaseDelay_TT := "An auto-group attempt will not occur until no key events (messages) have occurred for this amount of time."
 				. "`n`nThis helps increase the robustness of the function."
 				. "`nIf incorrect groupings are occurring try increasing this value."
@@ -12902,7 +12920,7 @@ iniReadRestrictGrouping()
 
 iniReadAutoGrouping()
 {
-	global AGBufferDelay, AGKeyReleaseDelay
+	global AGBufferDelay, AGKeyReleaseDelay, AG_TreatZergEggsAsProducedUnit
 	
 	aAutoGroup := [] ; clear it
 	section := "Auto Control Group"	
@@ -12936,13 +12954,14 @@ iniReadAutoGrouping()
 	}
 	IniRead, AGBufferDelay, %config_file%, %section%, AGBufferDelay, 50
 	IniRead, AGKeyReleaseDelay, %config_file%, %section%, AGKeyReleaseDelay, 60
+	IniRead, AG_TreatZergEggsAsProducedUnit, %config_file%, %section%, AG_TreatZergEggsAsProducedUnit, 0
 
 	return aAutoGroup
 }
 
 iniWriteAndUpdateAutoGrouping(OptionsSave, aAutoGroupCurrent)
 {
-	global AGBufferDelay, AGKeyReleaseDelay
+	global AGBufferDelay, AGKeyReleaseDelay, AG_TreatZergEggsAsProducedUnit
 
 	aAutoGroup := []
 	if !OptionsSave
@@ -12984,6 +13003,7 @@ iniWriteAndUpdateAutoGrouping(OptionsSave, aAutoGroupCurrent)
 	}
 	IniWrite, %AGBufferDelay%, %config_file%, %section%, AGBufferDelay
 	IniWrite, %AGKeyReleaseDelay%, %config_file%, %section%, AGKeyReleaseDelay
+	IniWrite, %AG_TreatZergEggsAsProducedUnit%, %config_file%, %section%, AG_TreatZergEggsAsProducedUnit
 
 	return aAutoGroup
 }
@@ -13431,4 +13451,16 @@ findClosestNexus(mothershipIndex, byRef minimapX, byRef minimapY)
 }
 
 
+/*
+f1::
+numGetUnitSelectionObject(a, True)
+objtree(a)
+unit := getSelectedUnitIndex()
+objtree(getZergProductionFromEgg(unit))
+return 
 
+/*
+27F2F450
+FBD999B0
+
+4EC66F3D

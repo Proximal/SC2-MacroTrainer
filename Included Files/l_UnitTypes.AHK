@@ -344,7 +344,9 @@ ThorHighImpactPayload = 719,
 ThorAP = 719,
 Cyclone = 720,
 LocustMPFlying = 721,
+WarpInDisruptor = 722, ; For when its being produced in the robo
 Disruptor = 722,
+WarpInAdept = 723, ; This is the build string when an adept is being made in a gateway (an actual gateway - i.e. not being warped in, but is produced)
 Adept = 723,
 AiurLightBridgeNE8Out = 724,
 AiurLightBridgeNE8 = 725,
@@ -467,6 +469,8 @@ SeekerMissile = 722
 
 /*
 Make sure to check add the work arounds on changes
+WarpInDisruptor --> Disruptor ; when being made in a robo
+WarpInAdept --> Adept, ; This is the build string when an adept is being made in a gateway (an actual gateway - i.e. not being warped in, but is produced)
 ThorHighImpactPayload --> ThorAP
 HellBat --> HellionTank
 SwarmHostBurrowed -- > SwarmHostBurrowedMP

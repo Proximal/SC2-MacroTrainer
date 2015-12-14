@@ -2287,34 +2287,33 @@ getStructureProductionInfo(unit, type, byRef aInfo, byRef totalQueueSize := "", 
 	return round(aInfo.maxIndex())
 }
 
-; Not updated use getStructureProductionInfo() instead 
+; Can use getStructureProductionInfo() instead 
 getZergProductionStringFromEgg(eggUnitIndex)
 {
 	p := readmemory(getUnitAbilityPointer(eggUnitIndex) + 0x1C, GameIdentifier)
-	p := readmemory(p + 0x34, GameIdentifier) 		; cAbilQueueUse
-	p := readmemory(p, GameIdentifier) 				; LarvaTrain  - this pointer structure will also have the production time/total
-	p := readmemory(p + 0xf4, GameIdentifier) ; Offsets_QueuedUnit_StringPointer ??
-	if !aStringTable.haskey(pString := readmemory(p, GameIdentifier) ) ; pString
+	, p := readmemory(p + 0x44, GameIdentifier) 		; cAbilQueueUse   - was 0x34 in Hots 3.0
+	, p := readmemory(p, GameIdentifier) 				; LarvaTrain  - this pointer structure will also have the production time/total
+	
+	if !aStringTable.haskey(pString := readmemory(p + 0xf4, GameIdentifier)) ;  Offsets_QueuedUnit_StringPointer ??
 		return aStringTable[pString] := ReadMemory_Str(readMemory(pString + 0x4, GameIdentifier), GameIdentifier)
 	return aStringTable[pString]
 }
 
-; Not updated use getStructureProductionInfo() instead 
+; Can use getStructureProductionInfo() instead 
 getZergProductionFromEgg(eggUnitIndex)
 {
 	item := []
 	, p := readmemory(getUnitAbilityPointer(eggUnitIndex) + 0x1C, GameIdentifier)
-	, p := readmemory(p + 0x34, GameIdentifier) 		; cAbilQueueUse
+	, p := readmemory(p + 0x44, GameIdentifier) 		; cAbilQueueUse
 	, p := readmemory(p, GameIdentifier) 				; LarvaTrain  - this pointer structure will also have the production time/total
 	, totalTime := readmemory(p + 0x80, GameIdentifier) 	 ; pre p3.0 0x68
 	, timeRemaining := readmemory(p + 0x84, GameIdentifier)  ; pre p3.0 0x6C
 		
-	p := readmemory(p + 0xf4, GameIdentifier) ; Offsets_QueuedUnit_StringPointer??
-	if !aStringTable.haskey(pString := readmemory(p, GameIdentifier) ) ; pString
+	if !aStringTable.haskey(pString := readmemory(p + 0xf4, GameIdentifier)) ;  Offsets_QueuedUnit_StringPointer ??
 		aStringTable[pString] := ReadMemory_Str(readMemory(pString + 0x4, GameIdentifier), GameIdentifier)
-	item.Progress := round((totalTime - timeRemaining)/totalTime, 2) 
-	, item.Type := aUnitID[(item.Item := aStringTable[pString])] 
-	, item.Count := item.Type = aUnitID.Zergling ? 2 : 1
+	item["Progress"] := round((totalTime - timeRemaining)/totalTime, 2) 
+	, item["Type"] := aUnitID[(item["Item"] := aStringTable[pString])] 
+	, item["Count"] := item["Type"] = aUnitID["Zergling"] ? 2 : 1
 	return item
 }
 
@@ -2550,7 +2549,7 @@ numGetControlGroupObject(Byref oControlGroup, Group)
 	oControlGroup.units := []
 	loop % numget(MemDump, 0, "UShort")
 	{
-		fingerPrint := numget(MemDump,(A_Index-1) * 4 + Offsets_Group_UnitOffset , "Int")
+		fingerPrint := numget(MemDump,(A_Index-1) * 4 + Offsets_Group_UnitOffset , "UInt")
 		unit := fingerPrint >> 18
 
 		;if (!isUnitDead(unit) && isUnitLocallyOwned(unit))
@@ -2887,26 +2886,31 @@ int sort(int* buffer, unsigned int count)
 isInSelection(unitIndex)
 {
 	selectionCount := getSelectionCount()
-	ReadRawMemory(Offsets_Selection_Base, GameIdentifier, MemDump, selectionCount * 4 + Offsets_Group_UnitOffset)
+	, ReadRawMemory(Offsets_Selection_Base, GameIdentifier, MemDump, selectionCount * 4 + Offsets_Group_UnitOffset)
 	loop % selectionCount
 	{
-		if (unitIndex = numget(MemDump, (A_Index-1) * 4 + Offsets_Group_UnitOffset, "Int") >> 18)
+		if (unitIndex = numget(MemDump, (A_Index-1) * 4 + Offsets_Group_UnitOffset, "UInt") >> 18)
 			return 1
 	}
 	return 0
 }
-
-numGetUnitSelectionObject(ByRef aSelection)
-{	GLOBAL Offsets_Group_TypeCount, Offsets_Group_HighlightedGroup, 4, Offsets_Group_UnitOffset, GameIdentifier, Offsets_Selection_Base
+; convertEggs changes an egg's ID to that of the unit type it's producing.
+numGetUnitSelectionObject(ByRef aSelection, convertEggs := False)
+{	GLOBAL Offsets_Group_TypeCount, Offsets_Group_HighlightedGroup, Offsets_Group_UnitOffset, GameIdentifier, Offsets_Selection_Base
+	
 	aSelection := []
-	, selectionCount := getSelectionCount()
-	, ReadRawMemory(Offsets_Selection_Base, GameIdentifier, MemDump, selectionCount * 4 + Offsets_Group_UnitOffset)
-	, aSelection["Count"] := numget(MemDump, 0, "Short")
-	, aSelection["Types"] := numget(MemDump, Offsets_Group_TypeCount, "Short")
-	, aSelection["HighlightedGroup"] := numget(MemDump, Offsets_Group_HighlightedGroup, "Short")
-	, aSelection.units := []
+	, ReadRawMemory(Offsets_Selection_Base, GameIdentifier, MemDump, getSelectionCount() * 4 + Offsets_Group_UnitOffset)
+	, aSelection["Count"] := numget(MemDump, 0, "UShort")
+	, aSelection["Types"] := numget(MemDump, Offsets_Group_TypeCount, "UShort")
+	, aSelection["HighlightedGroup"] := numget(MemDump, Offsets_Group_HighlightedGroup, "UShort")
+	, aSelection["units"] := []
 	loop % aSelection["Count"]
-		owner := getUnitOwner(unit := numget(MemDump,(A_Index-1) * 4 + Offsets_Group_UnitOffset , "Int") >> 18), Type := getUnitType(unit), aSelection.units.insert({"UnitIndex": unit, "Type": Type, "Owner": Owner})
+	{
+		owner := getUnitOwner(unit := numget(MemDump,(A_Index-1) * 4 + Offsets_Group_UnitOffset , "UInt") >> 18)
+		, Type := getUnitType(unit)
+		, convertEggs && type = aUnitID["Egg"] ? type := aUnitID[getZergProductionStringFromEgg(unit)] : ""
+		, aSelection["units"].insert({"UnitIndex": unit, "Type": Type, "Owner": Owner})
+	}
 	return aSelection["Count"]
 }
 ; 0-5 indicates which unit page is currently selected (in game its 1-6)
@@ -2958,7 +2962,7 @@ getUnitModelPointerRaw(unit)
 }
  getGroupedQueensWhichCanInject(ByRef aControlGroup,  CheckMoveState := 0)
  {	GLOBAL aUnitID, Offsets_Group_TypeCount, Offsets_Group_HighlightedGroup, Offsets_Group_ControlGroupSize, Offsets_Group_UnitOffset, GameIdentifier, Offsets_Group_ControlGroup0
- 	, Offsets_Unit_StructSize, GameIdentifier, MI_Queen_Group, 4, aUnitMoveStates
+ 	, Offsets_Unit_StructSize, GameIdentifier, MI_Queen_Group, aUnitMoveStates
 	aControlGroup := []
 	group := MI_Queen_Group
 	groupCount := getControlGroupCount(Group)
@@ -3007,7 +3011,7 @@ getUnitModelPointerRaw(unit)
 
 	; CheckMoveState for forced injects
  getSelectedQueensWhichCanInject(ByRef aSelection, CheckMoveState := 0)
- {	GLOBAL aUnitID, Offsets_Group_TypeCount, Offsets_Group_HighlightedGroup, 4, Offsets_Group_UnitOffset, GameIdentifier, Offsets_Selection_Base
+ {	GLOBAL aUnitID, Offsets_Group_TypeCount, Offsets_Group_HighlightedGroup, Offsets_Group_UnitOffset, GameIdentifier, Offsets_Selection_Base
  	, Offsets_Unit_StructSize, GameIdentifier, aUnitMoveStates 
 	aSelection := []
 	selectionCount := getSelectionCount()
