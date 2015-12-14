@@ -698,10 +698,22 @@ FingerPrintToIndex(fingerPrint)
 	return fingerPrint >> 18
 }
 
+; Returns aUnits[unitIndex] := fingerPrint
+; Doesn't check if still exist!
+unitsInControlGroup(group)
+{
+	aUnits := []
+	, count := getControlGroupCount(Group)
+	, ReadRawMemory(Offsets_Group_ControlGroup0 + Offsets_Group_ControlGroupSize * group, GameIdentifier, Memory,  Offsets_Group_UnitOffset + count * 4)
+	loop, % count 
+		aUnits[(fingerPrint := NumGet(Memory, Offsets_Group_UnitOffset + (A_Index - 1) * 4, "UInt")) >> 18] := fingerPrint
+	return aUnits
+}
+
 IsInControlGroup(group, unitIndex)
 {
 	count := getControlGroupCount(Group)
-	ReadRawMemory(Offsets_Group_ControlGroup0 + Offsets_Group_ControlGroupSize * group, GameIdentifier, Memory,  Offsets_Group_UnitOffset + count * 4)
+	, ReadRawMemory(Offsets_Group_ControlGroup0 + Offsets_Group_ControlGroupSize * group, GameIdentifier, Memory,  Offsets_Group_UnitOffset + count * 4)
 	loop, % count 
 	{
 		if NumGet(Memory, Offsets_Group_UnitOffset + (A_Index - 1) * 4, "UInt") >> 18 = unitIndex
@@ -2895,6 +2907,7 @@ isInSelection(unitIndex)
 	return 0
 }
 ; convertEggs changes an egg's ID to that of the unit type it's producing.
+; With 68 eggs selected - convert to eggs = 1.3 ms - No convert = .5 ms
 numGetUnitSelectionObject(ByRef aSelection, convertEggs := False)
 {	GLOBAL Offsets_Group_TypeCount, Offsets_Group_HighlightedGroup, Offsets_Group_UnitOffset, GameIdentifier, Offsets_Selection_Base
 	

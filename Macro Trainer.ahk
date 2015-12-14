@@ -1170,19 +1170,19 @@ AutoGroup()
 	; I guess it would be possible if the unit died between type and isincontrolGroup
 	; and the new different unit with same index was selected - but this be very very rare
 
-	numGetUnitSelectionObject(oSelection, AG_TreatZergEggsAsProducedUnit && aLocalPlayer["Race"] = "Zerg")
-	for index, Unit in oSelection.Units
+	; When converting to eggs (68 eggs selected) this func call + loop  takes 2.5 ms vs 1.6 ms when not converting
+	numGetUnitSelectionObject(oSelection, AG_TreatZergEggsAsProducedUnit && aLocalPlayer["Race"] = "Zerg") ; With 68 eggs selected - convert to eggs = 1.3 ms - No convert = .5 ms
+	for index, Unit in oSelection["Units"]
 	{		
-		If (aLocalPlayer.Slot != unit.owner)
+		If (aLocalPlayer["Slot"] != unit["owner"])
 			return 
-		type := unit.type, CurrentlySelected .= "," unit.UnitIndex
-		if !activeList
+		if !activeList, type := unit["type"], CurrentlySelected .= "," unit["unitIndex"]
 		{
-			For Player_Ctrl_Group, ID_List in aAutoGroup[aLocalPlayer.race, "UnitIDs"]	;check the array - player_ctrl_group = key 1,2,3 etc, ID_List is the value
+			For Player_Ctrl_Group, ID_List in aAutoGroup[aLocalPlayer["race"], "UnitIDs"]	;check the array - player_ctrl_group = key 1,2,3 etc, ID_List is the value
 			{
 				if type in %ID_List%
 				{
-					activeList := ID_List, activeGroup := Player_Ctrl_Group	
+					activeList := ID_List, aGroupedUnits := unitsInControlGroup(controlGroup := Player_Ctrl_Group)	
 					break		
 				}				
 			}
@@ -1191,11 +1191,11 @@ AutoGroup()
 		}
 		if type not in %activeList%
 			return 
-		else if (controlGroup = "" && !isInControlGroup(activeGroup, unit.unitIndex))
-			controlGroup := activeGroup
+		else if !foundUngroupedUnit && !objHasKey(aGroupedUnits, unit["unitIndex"])
+			foundUngroupedUnit := True
 	}
 
-	if (controlGroup != "") && WinActive(GameIdentifier) && !isGamePaused() ; note != "" as there is group 0!
+	if (foundUngroupedUnit) && WinActive(GameIdentifier) && !isGamePaused() ; note != "" as there is group 0!
 	&& !isMenuOpen() && A_mtTimeIdle >= AGKeyReleaseDelay 
 	&& !(getkeystate("Shift", "P") && getkeystate("Control", "P") && getkeystate("Alt", "P")
 	&& getkeystate("LWin", "P") && getkeystate("RWin", "P"))
@@ -1205,8 +1205,8 @@ AutoGroup()
 		setLowLevelInputHooks(True)
 		input.pReleaseKeys(True)
 		dSleep(AGBufferDelay)
-		numGetUnitSelectionObject(oSelection)
-		for index, Unit in oSelection.Units
+		numGetUnitSelectionObject(oSelection) ; just comparing indexes, so no need to convert egg (faster)
+		for index, Unit in oSelection["Units"]
 			PostDelaySelected .= "," unit.UnitIndex
 
 		if (CurrentlySelected = PostDelaySelected)
@@ -13451,16 +13451,93 @@ findClosestNexus(mothershipIndex, byRef minimapX, byRef minimapY)
 }
 
 
-/*
+
 f1::
-numGetUnitSelectionObject(a, True)
-objtree(a)
-unit := getSelectedUnitIndex()
-objtree(getZergProductionFromEgg(unit))
+;objtree(aAutoGroup)
+thread, NoTimers, True 
+loopCount := 10000
+CurrentlySelected := "", VarSetCapacity(CurrentlySelected, 0), activeList := controlGroup := "", foundUngroupedUnit := False
+SID := stopwatch()
+loop, % loopCount
+{
+	numGetUnitSelectionObject(oSelection, 0 && aLocalPlayer["Race"] = "Zerg") ; With 68 eggs selected - convert to eggs = 1.3 ms - No convert = .5 ms
+	for index, Unit in oSelection["Units"]
+	{		
+		If (aLocalPlayer["Slot"] != unit["owner"])
+			return 
+		if !activeList, type := unit["type"], CurrentlySelected .= "," unit["unitIndex"]
+		{
+			For Player_Ctrl_Group, ID_List in aAutoGroup[aLocalPlayer["race"], "UnitIDs"]	;check the array - player_ctrl_group = key 1,2,3 etc, ID_List is the value
+			{
+				if type in %ID_List%
+				{
+					activeList := ID_List, aGroupedUnits := unitsInControlGroup(controlGroup := Player_Ctrl_Group)	
+					break		
+				}				
+			}
+			if !activeList ; unit isnt in one of the lists
+				return 
+		}
+		
+		if type not in %activeList%
+			return 
+		else if (!foundUngroupedUnit && !aGroupedUnits.HasKey(unit["unitIndex"]))
+			foundUngroupedUnit := True
+	}
+}
+t1 := stopwatch(SID)
+CurrentlySelected := "", VarSetCapacity(CurrentlySelected, 0), activeList := controlGroup := "", foundUngroupedUnit := False
+SID := stopwatch()
+loop, % loopCount
+{
+	numGetUnitSelectionObject(oSelection, 0 && aLocalPlayer["Race"] = "Zerg") ; With 68 eggs selected - convert to eggs = 1.3 ms - No convert = .5 ms
+	for index, Unit in oSelection["Units"]
+	{		
+		If (aLocalPlayer["Slot"] != unit["owner"])
+			return 
+		if !activeList, type := unit["type"], CurrentlySelected .= "," unit["unitIndex"]
+		{
+			For Player_Ctrl_Group, ID_List in aAutoGroup[aLocalPlayer["race"], "UnitIDs"]	;check the array - player_ctrl_group = key 1,2,3 etc, ID_List is the value
+			{
+				if type in %ID_List%
+				{
+					activeList := ID_List, aGroupedUnits := unitsInControlGroup(controlGroup := Player_Ctrl_Group)	
+					break		
+				}				
+			}
+			if !activeList ; unit isnt in one of the lists
+				return 
+		}
+		
+		if type not in %activeList%
+			return 
+		else if !foundUngroupedUnit && !objHasKey(aGroupedUnits, unit["unitIndex"])
+			foundUngroupedUnit := True
+	}
+}
+t2 := stopwatch(SID)
+
+msgbox % clipboard := t1  "  " t1/loopCount
+. "`n" t2 "  " t2/loopCount
+. "`n"
 return 
 
 /*
-27F2F450
-FBD999B0
+10651.824967  1.065182
+10263.544358  1.026354
+10537.751990  1.053775
+10277.459209  1.027746
 
-4EC66F3D
+
+9804.310861  0.980431
+10049.897541  1.004990
+
+
+
+
+
+
+
+
+
+
