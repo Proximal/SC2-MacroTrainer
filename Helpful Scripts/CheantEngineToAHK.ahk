@@ -15,19 +15,39 @@ SC2.AssertAndCrash+378320 - 0FB7 49 02            - movzx ecx,word ptr [ecx+02]
 
 ExampleInput =
 (
-SC2.AssertAndCrash+378306 - 8B 15 C8B0C202        - mov edx,[ax]
-SC2.AssertAndCrash+37830C - 33 15 B8982B03        - xor edx,[SC2.exe+1F198B8]
-SC2.AssertAndCrash+378312 - 81 F2 F8ED2C41        - xor edx,412CEDF8
-SC2.AssertAndCrash+378318 - 8B 0A                 - mov ecx,[edx]
-SC2.AssertAndCrash+37831A - 8D 0C 81              - lea ecx,[ecx+eax*4]
-SC2.AssertAndCrash+37831D - 0FB7 01               - movzx eax,word ptr [ecx]
-SC2.AssertAndCrash+378320 - 0FB7 49 02            - movzx ecx,word ptr [ecx+02]
-SC2.AssertAndCrash+378320 - 0FB7 49 02            - movzx ecx,word ptr [ecx+02]
+SC2.AssertAndCrash+4E81E4 - 8B 53 54              - mov edx,[ebx+54]
+SC2.AssertAndCrash+4E81E7 - 56                    - push esi
+SC2.AssertAndCrash+4E81E8 - 8B 73 50              - mov esi,[ebx+50]
+SC2.AssertAndCrash+4E81EB - 57                    - push edi
+SC2.AssertAndCrash+4E81EC - 8B FE                 - mov edi,esi
+SC2.AssertAndCrash+4E81EE - 8B C6                 - mov eax,esi
+SC2.AssertAndCrash+4E81F0 - F7 D0                 - not eax
+SC2.AssertAndCrash+4E81F2 - C1 EF 0C              - shr edi,0C
+SC2.AssertAndCrash+4E81F5 - 2B C7                 - sub eax,edi
+SC2.AssertAndCrash+4E81F7 - 25 FF0F0000           - and eax,00000FFF
+SC2.AssertAndCrash+4E81FC - 2B 14 85 E8369801     - sub edx,[eax*4+SC2.exe+19436E8]
+SC2.AssertAndCrash+4E8203 - 8B C2                 - mov eax,edx
+SC2.AssertAndCrash+4E8205 - C1 E8 0C              - shr eax,0C
+SC2.AssertAndCrash+4E8208 - 8B FA                 - mov edi,edx
+SC2.AssertAndCrash+4E820A - F7 D7                 - not edi
+SC2.AssertAndCrash+4E820C - 03 C7                 - add eax,edi
+SC2.AssertAndCrash+4E820E - 25 FF0F0000           - and eax,00000FFF
+SC2.AssertAndCrash+4E8213 - 8B 04 85 E8369801     - mov eax,[eax*4+SC2.exe+19436E8]
+SC2.AssertAndCrash+4E821A - 03 C6                 - add eax,esi
+SC2.AssertAndCrash+4E821C - 8B F0                 - mov esi,eax
+SC2.AssertAndCrash+4E821E - 33 F2                 - xor esi,edx
+SC2.AssertAndCrash+4E8220 - 81 E6 55555555        - and esi,55555555
+SC2.AssertAndCrash+4E8226 - 33 F0                 - xor esi,eax
+SC2.AssertAndCrash+4E8228 - 33 C2                 - xor eax,edx
+SC2.AssertAndCrash+4E822A - 25 55555555           - and eax,55555555
+SC2.AssertAndCrash+4E822F - 33 C2                 - xor eax,edx
+
 )
 
 gui, add, text, xm ym, Cheat Engine Code:
 gui, add, edit, xm w600 h300 vInputCE, %ExampleInput%
 gui, add, button, % "xp+" ((600//2)-60//2) " y+10 w60 h40 gConvert", Convert
+gui, add, checkbox, x+50 yp vInsertCommas, Insert Commas?
 gui, add, text, xm y+0, Output:
 gui, add, edit, xm w600 h300 vOutputAHK, This script is only meant to facilitate the conversion of ASM to AHK.`nThe output must be checked and corrected.`nI do not want to use slow objects or memory buffers, so many things are not supported!
 Gui, show,, CE to AHK
@@ -40,7 +60,10 @@ return
 Convert:
 gui, Submit, NoHide 
 input := trim(InputCE, A_tab A_space)
-GuiControl,, OutputAHK, % ASMToAHK.parseASM(input)
+ouput := ASMToAHK.parseASM(input)
+if !InsertCommas
+    StringReplace, ouput, ouput, `n`,,`n, All
+GuiControl,, OutputAHK, %ouput%
 return 
 
 class ASMToAHK
@@ -116,7 +139,7 @@ class ASMToAHK
     }
     isValidInstruction(command)
     {
-        if command in mov,movzx,push,pop,shr,shl,and,xor,not,lea,sub,imul,je,jne
+        if command in mov,movzx,push,pop,shr,shl,and,xor,not,lea,add,sub,imul,je,jne
             return true
         return false
     }
@@ -156,7 +179,7 @@ class ASMToAHK
             if !this.isValidInstruction(command)
             || (command = "je" || command = "jne")
             {
-                s .= "; " parsedLine " Attention!`n`n"
+                r .= "; " parsedLine " Attention!`n`n"
                 continue
             }
 

@@ -190,8 +190,8 @@ loadMemoryAddresses(base, version := "")
 		;if (version = "2.1.11.36281") 
 		;	versionMatch := "2.1.11.36281"		
 		;else if (version = "2.1.12.36657" || !version) 
-		if (version = "3.0.5.39117" || !version) 
-			versionMatch := "3.0.5.39117"		
+		if (version = "3.1.0.39576" || !version) 
+			versionMatch := "3.1.0.39576"		
 		;else if version in 2.1.9.34644
 		;	 versionMatch := version
 		else versionMatch := false
@@ -223,9 +223,11 @@ loadMemoryAddresses(base, version := "")
 			 Offsets_Player_EPMCurrent := 0x538 ; Instantaneous
 			 Offsets_Player_EPMAverage := 0x540 	
 
+			 ; Not used
 			 Offsets_Player_TotalUnitsBuilt := 0x568 	; Units built, doesn't include structures. Increments on unit completion.					
-			 											; There are a couple of other similar values, one is probably highest current unit count achieved.
+			 ; Not used									; There are a couple of other similar values, one is probably highest current unit count achieved.
 			 Offsets_Player_CurrentTotalUnits := 0x5B0 ;  current number of units (includes 6 starting scvs/units) doesn't include structures.  Increments on unit completion.
+			; Not used	
 			 Offsets_Player_WorkerCountAll := 0x5C8 ; This includes workers currently in production!
 			 Offsets_Player_WorkerCount := 0x6E8 ; **Care dont confuse this with HighestWorkerCount (or worker count + production above)
 			 Offsets_Player_WorkersBuilt := 0x6F8 ; number of workers made (includes the 6 at the start of the game) increases on worker completion
@@ -245,7 +247,7 @@ loadMemoryAddresses(base, version := "")
 			 Offsets_Player_ArmyGasCost := 0xB90 ; ** care dont use max army gas/mineral value! 
 
 		; Be very careful of pointers which are invalid for a split second!
-		Offsets_IdleWorkerCountPointer := [base + 0x0181C360, 0x8, 0x48, 0x134]
+		Offsets_IdleWorkerCountPointer := [base + 0x018FE340, 0x8, 0x40, 0x140] ; [base + 0x0181C360, 0x8, 0x48, 0x134]
 
 		; 	This can be found via three methods, pattern scan:
 		;	C1 EA 0A B9 00 01 00 00 01 0D ?? ?? ?? ?? F6 D2 A3 ?? ?? ?? ?? F6 C2 01 74 06 01 0D ?? ?? ?? ?? 83 3D ?? ?? ?? ?? 00 56 BE FF FF FF 7F
@@ -265,7 +267,8 @@ loadMemoryAddresses(base, version := "")
 		 ; note (its possible for it to be 1 while menu open - leave the chat box in focus and left click the menu button (on the right))
 		 ; tends to end with the same offset after patches
 		 ; **** In lotv there was only 1 real valid pointer - the other ones (which appeared valid) sometimes failed during a match!
-		 Offsets_ChatFocusPointer := [base + 0x024E0CF4, 0x1DC, 0xE8] ;Just when chat box is in focus ; value = True if open. There will be 2 of these.
+		 ;Just when chat box is in focus ; value = True if open. There will be 2 of these.
+		 Offsets_ChatFocusPointer := [base + 0x025A0654, 0x1DC, 0xF4] ; [base + 0x024E0CF4, 0x1DC, 0xE8] 
 	
 
 		 ; Removed this - using a similar (possibly the same value), but it represents menu depth
@@ -276,12 +279,13 @@ loadMemoryAddresses(base, version := "")
 
 		P_SocialMenu := base + 0x0409B098 ; ???? Havent updated as dont use it
 
+		;To do
 		Offsets_UnitAliveCount := base + 0x1821CC0 ;p3.3	; No longer near Offsets_UnitHighestAliveIndex
 		 								; This is the units alive (and includes missiles) - near Offsets_UnitHighestAliveIndex (-0x18)		
 		 								; There are two of these values and they only differ the instant a unit dies esp with missle fire (ive used the higher value) - perhaps one updates slightly quicker - dont think i use this offset anymore other than as a value in debugData()
 		 								; Theres another one which excludes structures
 
-		 Offsets_UnitHighestAliveIndex := base + 0x1F268C0 ;0x1F24840 		; This is actually the highest currently alive unit (includes missiles while alive) and starts at 1 NOT 0! i.e. 1 unit alive at index 0 = 1, 1 alive at index 7 = 8 
+		 Offsets_UnitHighestAliveIndex := base + 0x1FE5780 ;	; This is actually the highest currently alive unit (includes missiles while alive) and starts at 1 NOT 0! i.e. 1 unit alive at index 0 = 1, 1 alive at index 7 = 8 
 
 		; B_uStructure := base + 0x36AA840 ; Offsets_UnitHighestAliveIndex+0x40    			
 		 Offsets_Unit_StructSize := 0x1E8 ; patch 3.3 = 488d
@@ -352,9 +356,9 @@ loadMemoryAddresses(base, version := "")
 		Offsets_UnitModel_SubgroupPriority := 0x3CC 
 		Offsets_UnitModel_MinimapRadius := 0x3D0 
 
-		Offsets_Selection_Base := base + 0x1EEBC08 ;0x1EE9BB8 
+		Offsets_Selection_Base := base + 0x1FA57A8 ;0x1EEBC08 ;0x1EE9BB8 
 		; The structure begins with ctrl group 0
-		Offsets_Group_ControlGroup0 := base + 0x1EEF2C8 ;0x1EED278
+		Offsets_Group_ControlGroup0 := base + 0x1FA8E68 ;0x1EEF2C8 ;0x1EED278
 		Offsets_Group_ControlGroupSize := 0x1B60
 	; Unit Selection & Ctrl Group Structures use same offsets
 			Offsets_Group_TypeCount := 0x2
@@ -365,18 +369,18 @@ loadMemoryAddresses(base, version := "")
 		; dont confuse with similar value which includes army unit counts in production - or if in map editor unit count/index.
 		; Shares a common base with Offsets_IsUserPerformingAction, SelectionPtr, IdleWorkerPtr, ChatFocusPtr, B_UnitCursor, Offsets_CameraMovingViaMouseAtScreenEdge (never realised it was so many derp)
 
-		Offsets_localArmyUnitCountPointer := [base + 0x0181C360, 0x8, 0x138] ; ended with these two offsets last two patches 3.0.5
+		Offsets_localArmyUnitCountPointer := [base + 0x018FE340, 0x8, 0x144] ; ended with these two offsets last two patches 3.0.5. 3.0.5->3.1 0x8,0x138->0x8,0x144
 
 
-		Offsets_TeamColoursEnabled := base + 0x1B7C144 ; 2 when team colours is on, else 0 (There are two valid addresses for this)
+		Offsets_TeamColoursEnabled := base + 0x1C35CFC ; 2 when team colours is on, else 0 (There are two valid addresses for this)
 		 
-
-		Offsets_SelectionPage := [base + 0x0181D110, 0x8, 0xD8, 0xC8]  	; Tends to end with these offsets. ***theres one other 3 lvl pointer but for a split second (every few second or so) it points to 
+		
+		Offsets_SelectionPage := [base + 0x018FF124, 0x8, 0xE4, 0xD4]  	; Tends to end with these offsets. ***theres one other 3 lvl pointer but for a split second (every few second or so) it points to 
 			 				; the wrong address! You need to increase CE timer resolution to see this happening! Or better yet use the 'continually perform the pointer scan until stopped' option.
 			 				;this is for the currently selected unit portrait page ie 1-6 in game (really starts at 0-5)
 							;might actually be a 2 or 1 byte value....but works fine as 4
 
-		Offsets_Map_NamePointer := [base + 0x01F17E08, 0x2A0] ; The string offset tends to end with this value
+		Offsets_Map_NamePointer := [base + 0x01FD74D8, 0x2A0] ; The string offset tends to end with this value
 
 		/* Not updated dont use.
 		; at B_MapStruct -0x5C is a pointer which list map file name, map name, description and other stuff
@@ -387,7 +391,7 @@ loadMemoryAddresses(base, version := "")
 			 O_mTop := B_MapStruct + 0xE8	   	; MapTop: 622591 (akilon wastes) before dividing 4096  
 		*/ 
 		
-		Offsets_Camera_BorderLeft 	:= 	base + 0x1B7C84C        
+		Offsets_Camera_BorderLeft 	:= 	base + 0x1C36404 ;0x1B7C84C        
 		Offsets_Camera_BorderBottom := 	Offsets_Camera_BorderLeft + 0x4
 		Offsets_Camera_BorderRight 	:= 	Offsets_Camera_BorderLeft + 0x8
 		Offsets_Camera_BorderTop 	:= 	Offsets_Camera_BorderLeft + 0xC
@@ -401,9 +405,9 @@ loadMemoryAddresses(base, version := "")
 							, FollowNoAttack: 515} ; (ScanMove) This is used by unit spell casters such as infestors and High temps which dont have a real attack 
 			
 			
-
+		; Ended with same offset last patch
 	 	; This base can be the same as B_UnitCursor				; If used as 4byte value, will return 256 	there are 2 of these memory addresses
-		 Offsets_IsUserPerformingAction := [base + 0x024E0CF4, 0x9C]	; This is a 1byte value and return 1  when user is casting or in is rallying a hatch via gather/rally or is in middle of issuing Amove/patrol command but
+		 Offsets_IsUserPerformingAction := [base + 0x025A0654, 0x9C]	; This is a 1byte value and return 1  when user is casting or in is rallying a hatch via gather/rally or is in middle of issuing Amove/patrol command but
 												 				; if youre searching for a 4byte value in CE offset will be at 0x254 (but really if using it as 1 byte it is 0x255) - but im lazy and use it as a 4byte with my pointer command
 																; also 1 when placing a structure (after structure is selected) or trying to land rax to make a addon Also gives 1 when trying to burrow spore/spine
 																; When searching for 4 byte value this offset will be 0x254 
@@ -419,7 +423,7 @@ loadMemoryAddresses(base, version := "")
 
 	*/
 		; This tends to have the same offsets (though there are a few to choose from)
-		 Offsets_IsBuildCardDisplayed := [base + 0x0181C2F4, 0x8, 0xF4, 0x28C]	
+		 Offsets_IsBuildCardDisplayed := [base + 0x018FF128, 0x8, 0x100, 0x298]	
 		 	; this displays 1 (swarm host) or 0 with units selected - displays 7 when targeting reticle displayed/or placing a building (same thing)
 			; **but when either build card is displayed it displays 6 (even when all advanced structures are greyed out)!!!!
 			; also displays 6 when the toss hallucination card is displayed
@@ -454,11 +458,12 @@ loadMemoryAddresses(base, version := "")
 												; it will remain 1 even when back in and shift isn't down as moving a unit wont be shift-commanded! so dont use that one
 											  	;shift = 1, ctrl = 2, alt = 4 (and add them together)
 
-															
-		 B_CameraDragScroll := base + 0x188A314   			; 1 byte Returns 1 when user is moving camera via DragScroll i.e. mmouse button the main map But not when on the minimap (or if mbutton is held down on the unit panel)
-
+														
+		 B_CameraDragScroll := base + 0x1943354   			; 1 byte Returns 1 when user is moving camera via DragScroll i.e. mmouse button the main map But not when on the minimap (or if mbutton is held down on the unit panel)
+		 ; SImilar value - 1byte, 1 when holding mbutton on main map, but also 1 for mbutton move on minimap, or left hold move on the minimap.
+		 ; probable better to use this one in the future
 		
-		 Offsets_InputStructure := base + 0x188A624  		
+		 Offsets_InputStructure := base + 0x1943664  		
 			 B_iMouseButtons := Offsets_InputStructure + 0x0 		; 1 Byte 	MouseButton state 1 for Lbutton,  2 for middle mouse, 4 for rbutton, 8 xbutton1, 16 xbutton2
 			 B_iSpace := B_iMouseButtons + 0x8 				; 1 Bytes
 			 B_iNums := B_iSpace + 0x2  					; 2 Bytes
@@ -470,21 +475,21 @@ loadMemoryAddresses(base, version := "")
 			 B_iModifiers := B_iFkeys + 0x6 				; 1 Byte
 
 
-
-		 Offsets_CameraMovingViaMouseAtScreenEdge := [base + 0x01836324, 0x0, 0x2E4, 0x8, 0x688]  		; Really a 1 byte value value indicates which direction screen will scroll due to mouse at edge of screen
+		; ends with these offsets		
+		Offsets_CameraMovingViaMouseAtScreenEdge := [base + 0x0191AF5C, 0x0, 0x2E4, 0x8, 0x688]  		; Really a 1 byte value value indicates which direction screen will scroll due to mouse at edge of screen
 			 				; 1 = Diagonal Left/Top 		4 = Left Edge
 			 				; 2 = Top 						5 = Right Edge			
 			 				; 3 = Diagonal Right/Top 	  	6 = Diagonal Left/ Bot	
 							; 7 = Bottom Edge 			 	8 = Diagonal Right/Bot 
 							; Note need to do a pointer scan with max offset > 1200d! Tends to have the same offsets
-		Offsets_IsGamePaused := base + 0x55E3460 						
+		Offsets_IsGamePaused := base + 0x56A3510 						
 
 		B_FramesPerSecond := base + 0x5008BC4
-		Offsets_GameSpeed  := base + 0x55E3440
-
+		Offsets_GameSpeed  := base + 0x56A34F0
+		;To do
 		; example: D:\My Computer\My Documents\StarCraft II\Accounts\56025555\6-S2-1-34555\Replays\
 		; this works for En, Fr, and Kr languages 
-		B_ReplayFolder := base + 0x24CAE18 ; p3.0.3
+		B_ReplayFolder := base + 0x258A720 ; p3.0.3
 
 		; Horizontal resolution ; 4 bytes
 		; vertical resolution ; The next 4 bytes immediately after the Horizontal resolution 
@@ -492,7 +497,7 @@ loadMemoryAddresses(base, version := "")
 		; There will be 3 green static addresses (+many non-statics) One of them will change depending on resolution
 		; Can resize in window mode and it will change too
 
-		 Offsets_HorizontalResolution := base + 0x2375244
+		 Offsets_HorizontalResolution := base + 0x2433A68 
 		 Offsets_VerticalResolution := Offsets_HorizontalResolution + 0x4
 
 		; 4 byte ints listed in memory: 808 28 1066 290  (at 1920x1080)
@@ -500,7 +505,7 @@ loadMemoryAddresses(base, version := "")
 		; after 1 minute of scanning. It took 2 goes before it removed it!
 		; There was another one that failed after ~5 min in my scanner
 		; The pointer below was didn't fail even after 1 hour
-		Offsets_MinimapPosition := [base + 0x023765B4, 0x30, 0x0, 0x178, 0xC]
+		Offsets_MinimapPosition := [base + 0x02435E54, 0x30, 0x0, 0x184, 0xC]
 
 	}
 	return versionMatch
@@ -531,12 +536,7 @@ SC2.AssertAndCrash+37834D - F7 D0                 - not eax
 SC2.AssertAndCrash+37834F - 66 89 45 FC           - mov [ebp-04],ax
 SC2.AssertAndCrash+378353 - 66 89 4D FE           - mov [ebp-02],cx
 SC2.AssertAndCrash+378357 - 8B 45 FC              - mov eax,[ebp-04] - address
-*/
-
-playerAddress(player := 1)
-{
-	if aSCOffsets["playerAddress"].HasKey(player) ; need to check hasKe,y as this func is called internally when it doesnt --> loop
-		return aSCOffsets["playerAddress", player]	
+	
 	edx := readmemory(OffsetsSC2Base + 0x188B0C8, GameIdentifier)
 	, edx ^= readmemory(OffsetsSC2Base + 0x1F198B8, GameIdentifier)
 	, edx ^= 0x412CEDF8
@@ -557,6 +557,53 @@ playerAddress(player := 1)
 	, eax -= edx 
 	, eax := ~eax 
 	return aSCOffsets["playerAddress", player] := (eax & 0xFFFF) | (ecx & 0xFFFF) << 16
+
+
+3.1 
+SC2.AssertAndCrash+3B350F - 0FB6 C1               - movzx eax,cl ; eax = player
+SC2.AssertAndCrash+3B3512 - 85 D2                 - test edx,edx
+SC2.AssertAndCrash+3B3514 - 75 12                 - jne SC2.AssertAndCrash+3B3528
+SC2.AssertAndCrash+3B3516 - 8B 15 A8421E02        - mov edx,[SC2.exe+19442A8]
+SC2.AssertAndCrash+3B351C - 33 15 D08F8702        - xor edx,[SC2.exe+1FD8FD0]
+SC2.AssertAndCrash+3B3522 - 81 F2 F23219C7        - xor edx,C71932F2
+SC2.AssertAndCrash+3B3528 - 8B 0A                 - mov ecx,[edx]
+SC2.AssertAndCrash+3B352A - 0FB7 14 81            - movzx edx,word ptr [ecx+eax*4]
+SC2.AssertAndCrash+3B352E - 8D 04 81              - lea eax,[ecx+eax*4]
+SC2.AssertAndCrash+3B3531 - 0FB7 40 02            - movzx eax,word ptr [eax+02]
+SC2.AssertAndCrash+3B3535 - 8B CA                 - mov ecx,edx
+SC2.AssertAndCrash+3B3537 - 81 E1 FF0F0000        - and ecx,00000FFF
+SC2.AssertAndCrash+3B353D - 0FB7 0C 8D E8361E02   - movzx ecx,word ptr [ecx*4+SC2.exe+19436E8]
+SC2.AssertAndCrash+3B3545 - 03 C1                 - add eax,ecx
+SC2.AssertAndCrash+3B3547 - 8B C8                 - mov ecx,eax
+SC2.AssertAndCrash+3B3549 - 81 E1 FF0F0000        - and ecx,00000FFF
+SC2.AssertAndCrash+3B354F - 0FB7 0C 8D E8361E02   - movzx ecx,word ptr [ecx*4+SC2.exe+19436E8]
+SC2.AssertAndCrash+3B3557 - 33 CA                 - xor ecx,edx
+SC2.AssertAndCrash+3B3559 - 66 89 4D FC           - mov [ebp-04],cx
+SC2.AssertAndCrash+3B355D - 66 89 45 FE           - mov [ebp-02],ax
+SC2.AssertAndCrash+3B3561 - 8B 45 FC              - mov eax,[ebp-04]
+SC2.AssertAndCrash+3B3564 - 8B E5                 - mov esp,ebp
+SC2.AssertAndCrash+3B3566 - 5D                    - pop ebp
+SC2.AssertAndCrash+3B3567 - C3                    - ret 
+*/
+
+playerAddress(player := 1)
+{
+	if aSCOffsets["playerAddress"].HasKey(player) ; need to check hasKe,y as this func is called internally when it doesnt --> loop
+		return aSCOffsets["playerAddress", player]	
+	edx := readMemory(OffsetsSC2Base + 0x19442A8, GameIdentifier) 
+		^ readMemory(OffsetsSC2Base + 0x1FD8FD0, GameIdentifier) ^ 0xC71932F2
+	, ecx := readMemory(edx, GameIdentifier)
+	, edx := (dword := readMemory(ecx + player * 0x4, GameIdentifier)) & 0xFFFF
+	, eax := dword >> 16
+	, ecx := edx
+	, ecx &= 0xFFF
+	, ecx := readMemory(ecx * 0x4 + OffsetsSC2Base + 0x19436E8, GameIdentifier, 2)
+	, eax += ecx
+	, ecx := eax
+	, ecx &= 0xFFF
+	, ecx := readMemory(ecx * 0x4 + OffsetsSC2Base + 0x19436E8, GameIdentifier, 2)
+	, ecx ^= edx
+	return aSCOffsets["playerAddress", player] := (eax & 0xFFFF) << 16 | ecx & 0xFFFF
 }
 
 /*
@@ -598,10 +645,7 @@ SC2.AssertAndCrash+3C0946 - 03 F0                 - add esi,eax
 	return aSCOffsets["unitAddress", unitIndex]	:= (unitIndex &= 0xF) * Offsets_Unit_StructSize
 			+ ( readMemory((unitIndex >> 4) * 4 + OffsetsSC2Base + 0x1F268C8, GameIdentifier)
 				^ readMemory(OffsetsSC2Base + 0x188DC60, GameIdentifier) ) ^ 0x03009D0F
-*/
-
-getunitAddress(unitIndex)
-{
+	or 
 	if aSCOffsets["unitAddress"].HasKey(unitIndex)
 		return aSCOffsets["unitAddress", unitIndex]	
 	edx := eax := unitIndex
@@ -612,6 +656,49 @@ getunitAddress(unitIndex)
 	, esi ^= readMemory(OffsetsSC2Base + 0x188DC60, GameIdentifier)
 	, esi ^= 0x03009D0F
 	return aSCOffsets["unitAddress", unitIndex]	:= esi += eax
+
+3.1 - tracked what accessed shield damage
+
+SC2.AssertAndCrash+141CF9 - 8B CF                 - mov ecx,edi ; edi = FingerPrint
+SC2.AssertAndCrash+141CFB - C1 E9 12              - shr ecx,12
+SC2.AssertAndCrash+141CFE - 3B 0D 84571E02        - cmp ecx,[SC2.exe+1FE5784] ; compare to 4
+SC2.AssertAndCrash+141D04 - 73 EC                 - jae SC2.AssertAndCrash+141CF2
+SC2.AssertAndCrash+141D06 - 8B C1                 - mov eax,ecx
+SC2.AssertAndCrash+141D08 - C1 E9 04              - shr ecx,04
+SC2.AssertAndCrash+141D0B - 8D 14 8D 88571E02     - lea edx,[ecx*4+SC2.exe+1FE5788]
+SC2.AssertAndCrash+141D12 - 0FB7 0A               - movzx ecx,word ptr [edx]
+SC2.AssertAndCrash+141D15 - 0FB7 52 02            - movzx edx,word ptr [edx+02]
+SC2.AssertAndCrash+141D19 - 56                    - push esi
+SC2.AssertAndCrash+141D1A - 8B F1                 - mov esi,ecx
+SC2.AssertAndCrash+141D1C - 81 E6 FF0F0000        - and esi,00000FFF
+SC2.AssertAndCrash+141D22 - 0FB7 34 B5 E836B401   - movzx esi,word ptr [esi*4+SC2.exe+19436E8]
+SC2.AssertAndCrash+141D2A - 2B D6                 - sub edx,esi
+SC2.AssertAndCrash+141D2C - 83 E0 0F              - and eax,0F
+SC2.AssertAndCrash+141D2F - 8B F2                 - mov esi,edx
+SC2.AssertAndCrash+141D31 - 69 C0 E8010000        - imul eax,eax,000001E8
+SC2.AssertAndCrash+141D37 - 81 E6 FF0F0000        - and esi,00000FFF
+SC2.AssertAndCrash+141D3D - 0FB7 34 B5 E836B401   - movzx esi,word ptr [esi*4+SC2.exe+19436E8]
+SC2.AssertAndCrash+141D45 - 2B CE                 - sub ecx,esi
+SC2.AssertAndCrash+141D47 - F7 D1                 - not ecx
+SC2.AssertAndCrash+141D49 - 66 89 4D 08           - mov [ebp+08],cx
+SC2.AssertAndCrash+141D4D - 66 89 55 0A           - mov [ebp+0A],dx
+SC2.AssertAndCrash+141D51 - 03 45 08              - add eax,[ebp+08] ;eax = address
+SC2.AssertAndCrash+141D54 - 33 C9                 - xor ecx,ecx
+SC2.AssertAndCrash+141D56 - 3B 38                 - cmp edi,[eax]
+
+*/
+
+getunitAddress(unitIndex)
+{
+	if aSCOffsets["unitAddress"].HasKey(unitIndex)
+		return aSCOffsets["unitAddress", unitIndex]	
+	eax := ecx := unitIndex
+ 	, esi := ecx := (dword := readMemory((ecx >> 4) * 0x4 + OffsetsSC2Base + 0x1FE5788, GameIdentifier, 4)) & 0xFFFF
+ 	, edx := dword >> 16
+	, esi := edx -= readMemory((esi & 0xFFF) * 0x4 + OffsetsSC2Base + 0x19436E8, GameIdentifier, 2)
+	, ecx := ~(ecx - readMemory((esi & 0xFFF) * 0x4 + OffsetsSC2Base + 0x19436E8, GameIdentifier, 2))
+	, eax := (eax & 0x0F) * 0x1E8 + (((edx & 0xFFFF) << 16) | (ecx & 0xFFFF))
+	return aSCOffsets["unitAddress", unitIndex]	:= eax
 }
 
 
@@ -796,14 +883,20 @@ SC2.AssertAndCrash+3580C5 - 33 05 447E2B03        - xor eax,[SC2.exe+1F17E44]
 SC2.AssertAndCrash+3580CB - 35 F7273BD6           - xor eax,D63B27F7
 SC2.AssertAndCrash+3580D0 - 83 C0 50              - add eax,50
 SC2.AssertAndCrash+3580D3 - C3                    - ret 
+
+3.1
+SC2.AssertAndCrash+38ED80 - A1 205E8F02           - mov eax,[SC2.exe+1945E20]
+SC2.AssertAndCrash+38ED85 - 33 05 1475F802        - xor eax,[SC2.exe+1FD7514]
+SC2.AssertAndCrash+38ED8B - 35 661A6729           - xor eax,29671A66 : [00000000]
+SC2.AssertAndCrash+38ED90 - 83 C0 50              - add eax,50
 */
 ; This behaves differently to hots
 
 ; This is some type of timing structure - nearby are:
-; 2 identical timers getMissionTimer()?
+; 2 identical timers getMissionTimer()? - will match displayed time when launched at normal speed
 ; 1 value corresponding to in-game displayed time (/4096) - no conversion required
 ; 1 unknown timer
-; 1 copy of the current game speed
+; 1 copy of the current game speed ; if paused, this doesnt change until the game is unpaused!
 ; 2 other values that change on the first tick after a game speed change
 ; One of these values appears to be the modifier used to convert time
 ; e.g.
@@ -816,14 +909,16 @@ SC2.AssertAndCrash+3580D3 - C3                    - ret
 ; This is a core game structure with other info too!
 ; When converting these timer back to displayed game time, they will be wrong if the game speed changes during a match
 
+; search for two identical 4byte values next to each other when the map launches with normal gamespeed.
+
 getGameTickCount()
 {	 
 	static p 
 	if !p 
 	{
-		p := readMemory(OffsetsSC2Base + 0x188CFC8, GameIdentifier)
-		, p ^= readMemory(OffsetsSC2Base + 0x1F17E44, GameIdentifier)
-		, p ^= 0xD63B27F7
+		p := readMemory(OffsetsSC2Base + 0x1945E20, GameIdentifier)
+		, p ^= readMemory(OffsetsSC2Base + 0x1FD7514, GameIdentifier)
+		, p ^= 0x29671A66
 		, p += 0x50 ; gameMissionTimer() is actually + 0x54, but these two are identical
 	}
 	Return readMemory(p, GameIdentifier)
@@ -895,13 +990,49 @@ getIdleWorkers()
 {	
 	return pointer(GameIdentifier, Offsets_IdleWorkerCountPointer*)
 }
+
+decryptPlayerValue(propertyAddress)
+{
+	; ecx := propertyAddress
+	; ; // skipped stuff  Attention!
+	; This is repeated below
+	;eax := OffsetsSC2Base + 0x1C626B0
+	;edx := ecx    ; 0xEDX = player struc enc mins
+	;edx -= eax
+	;esi := readMemory(edx  + eax, GameIdentifier) ; Get value from player struc (min enc)
+	; ; // skipped stuff  Attention!
+	ReadRawMemory(propertyAddress, GameIdentifier, buffer, 0x8)
+	, esi := numget(buffer, 0, "UInt") ; Get value from player struc (min enc)
+	, edx := numget(buffer, 4, "UInt")
+	, ecx := esi
+	, eax := esi + 0x455E48F5
+	, ecx >>= 0x0C
+	, eax ^= ecx
+	, eax &= 0xFFF
+	, edx += readMemory(eax * 0x4 + OffsetsSC2Base + 0x19436E8, GameIdentifier)
+	, edx &= 0xFFFFFFFF ; added to prevent overflow past 32 bit
+	, ecx := edx
+	, ecx >>= 0x0C
+	, eax := edx
+	, eax -= ecx
+	, eax := ~eax
+	, eax &= 0xFFF
+	, eax := readMemory(eax * 0x4 + OffsetsSC2Base + 0x19436E8, GameIdentifier) ;esi and eax are almost same number
+	, eax ^= esi
+	, esi := eax
+	return esi ^= edx ; 0xCurrent mineral count 0xESI
+ ;esi &= 0x55555555 ; this changes the value
+}
+
 getPlayerSupply(player="")
 { 	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]
-	Return round(ReadMemory(aSCOffsets["playerAddress", player] + Offsets_Player_Supply, GameIdentifier)  / 4096)		
+	Return round(decryptPlayerValue(aSCOffsets["playerAddress", player] + Offsets_Player_Supply) / 4096)		
+	;Return round(ReadMemory(aSCOffsets["playerAddress", player] + Offsets_Player_Supply, GameIdentifier)  / 4096)		
 	; Round Returns 0 when memory returns Fail
 }
+
 getPlayerSupplyCap(player := "")
 { 	
 	if (SupplyCap := getPlayerSupplyCapTotal(player)) > 200	; as this will actually report the amount of supply built i.e. can be more than 200
@@ -912,13 +1043,15 @@ getPlayerSupplyCapTotal(player="")
 { 	GLOBAL 
 	If (player = "")
 		player := aLocalPlayer["Slot"]	
-	Return round(ReadMemory(aSCOffsets["playerAddress", player] + Offsets_Player_SupplyCap, GameIdentifier)  / 4096)
+	Return round(decryptPlayerValue(aSCOffsets["playerAddress", player] + Offsets_Player_SupplyCap) / 4096)
+	;Return round(ReadMemory(aSCOffsets["playerAddress", player] + Offsets_Player_SupplyCap, GameIdentifier)  / 4096)
 }
 getPlayerWorkerCount(player="")
 { 	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]
-	Return ReadMemory(aSCOffsets["playerAddress", player] + Offsets_Player_WorkerCount, GameIdentifier)
+	Return decryptPlayerValue(aSCOffsets["playerAddress", player] + Offsets_Player_WorkerCount)
+	;Return ReadMemory(aSCOffsets["playerAddress", player] + Offsets_Player_WorkerCount, GameIdentifier)
 }
 
 ;  Number of workers made (includes the 6 at the start of the game)
@@ -929,7 +1062,8 @@ getPlayerWorkersBuilt(player="")
 { global
 	If (player = "")
 		player := aLocalPlayer["Slot"]
-	Return ReadMemory(aSCOffsets["playerAddress", player] + Offsets_Player_WorkersBuilt, GameIdentifier)
+	Return decryptPlayerValue(aSCOffsets["playerAddress", player] + Offsets_Player_WorkersBuilt)
+	;Return ReadMemory(aSCOffsets["playerAddress", player] + Offsets_Player_WorkersBuilt, GameIdentifier)
 }
 ; Probably not accurate for drones morphing into structures
 getPlayerWorkersLost(player="")
@@ -942,7 +1076,8 @@ getPlayerHighestWorkerCount(player="")
 { 
 	If (player = "")
 		player := aLocalPlayer["Slot"]
-	Return ReadMemory(aSCOffsets["playerAddress", player] + Offsets_Player_HighestWorkerCount, GameIdentifier)
+	Return decryptPlayerValue(aSCOffsets["playerAddress", player] + Offsets_Player_HighestWorkerCount)
+	;Return ReadMemory(aSCOffsets["playerAddress", player] + Offsets_Player_HighestWorkerCount, GameIdentifier)
 }
 getUnitType(Unit) ;starts @ 0 i.e. first unit at 0
 { 
@@ -1128,15 +1263,23 @@ SC2.AssertAndCrash+164B18 - 88 46 0B              - mov [esi+0B],al  ; Writes to
 ;SC2.AssertAndCrash+164718 - 33 05 C0C9DD01        - xor eax,[SC2.exe+1B7C9C0]
 ;SC2.AssertAndCrash+16471E - 35 DA034845           - xor eax,454803DA
 
+/*
+
+SC2.AssertAndCrash+16AAE6 - 8B 0D 84715B02        - mov ecx,[SC2.exe+1947184]
+SC2.AssertAndCrash+16AAEC - 33 0D 78658A02        - xor ecx,[SC2.exe+1C36578]
+SC2.AssertAndCrash+16AAF2 - 8A 55 08              - mov dl,[ebp+08]
+SC2.AssertAndCrash+16AAF5 - 81 F1 7EE83F84        - xor ecx,843FE87E
+SC2.AssertAndCrash+16AAFB - 88 51 0E              - mov [ecx+0E],dl ; Replay watching person byte
+*/
 
 getLocalPlayerNumber()
 {
 	static address 
 	if !address
 	{
-		eax := readMemory(OffsetsSC2Base + 0x188C8E4, GameIdentifier)
-		eax ^= readMemory(OffsetsSC2Base + 0x1B7C9C0, GameIdentifier)
-		eax ^= 0x454803DA
+		eax := readMemory(OffsetsSC2Base + 0x1947184, GameIdentifier)
+		eax ^= readMemory(OffsetsSC2Base + 0x1C36578, GameIdentifier)
+		eax ^= 0x843FE87E
 		address := eax + 0xB
 	}
 	return readMemory(address, GameIdentifier, 1)
@@ -1146,25 +1289,29 @@ getPlayerBaseCameraCount(player="")
 { 	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]	
-	Return ReadMemory(aSCOffsets["playerAddress", player] + Offsets_Player_CompletedTownHalls, GameIdentifier)
+	Return decryptPlayerValue(aSCOffsets["playerAddress", player] + Offsets_Player_CompletedTownHalls)
+;	Return ReadMemory(aSCOffsets["playerAddress", player] + Offsets_Player_CompletedTownHalls, GameIdentifier)
 }
 getPlayerMineralIncome(player="")
 { 	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]	
-	Return ReadMemory(aSCOffsets["playerAddress", player] + Offsets_Player_MineralIncome, GameIdentifier)
+	Return decryptPlayerValue(aSCOffsets["playerAddress", player] + Offsets_Player_MineralIncome)
+	;Return ReadMemory(aSCOffsets["playerAddress", player] + Offsets_Player_MineralIncome, GameIdentifier)
 }
 getPlayerGasIncome(player="")
 { 	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]	
-	Return ReadMemory(aSCOffsets["playerAddress", player] + Offsets_Player_GasIncome, GameIdentifier)
+	Return decryptPlayerValue(aSCOffsets["playerAddress", player] + Offsets_Player_GasIncome)
+	;Return ReadMemory(aSCOffsets["playerAddress", player] + Offsets_Player_GasIncome, GameIdentifier)
 }
 getPlayerArmySupply(player="")
 { 	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]	
-	Return ReadMemory(aSCOffsets["playerAddress", player] + Offsets_Player_ArmySupply, GameIdentifier) / 4096
+	Return decryptPlayerValue(aSCOffsets["playerAddress", player] + Offsets_Player_ArmySupply) / 4096
+	;Return ReadMemory(aSCOffsets["playerAddress", player] + Offsets_Player_ArmySupply, GameIdentifier) / 4096
 }
 
 ; Note this won't always agree with the replay active forces size.
@@ -1175,13 +1322,15 @@ getPlayerArmySizeMinerals(player="")
 { 	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]	
-	Return ReadMemory(aSCOffsets["playerAddress", player] + Offsets_Player_ArmyMineralCost, GameIdentifier)
+	Return decryptPlayerValue(aSCOffsets["playerAddress", player] + Offsets_Player_ArmyMineralCost)
+;	Return ReadMemory(aSCOffsets["playerAddress", player] + Offsets_Player_ArmyMineralCost, GameIdentifier)
 }
 getPlayerArmySizeGas(player="")
 { 	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]	
-	Return ReadMemory(aSCOffsets["playerAddress", player] + Offsets_Player_ArmyGasCost, GameIdentifier)
+	Return decryptPlayerValue(aSCOffsets["playerAddress", player] + Offsets_Player_ArmyGasCost)
+	;Return ReadMemory(aSCOffsets["playerAddress", player] + Offsets_Player_ArmyGasCost, GameIdentifier)
 }
 getPlayerMinerals(player := "")
 { 	
@@ -1189,13 +1338,15 @@ getPlayerMinerals(player := "")
 	;	player := aLocalPlayer["Slot"]
 	If (player = "")
 		player := aLocalPlayer["Slot"]
-	Return ReadMemory(aSCOffsets["playerAddress", player] + Offsets_Player_Minerals, GameIdentifier)
+	Return decryptPlayerValue(aSCOffsets["playerAddress", player] + Offsets_Player_Minerals)
+	;Return ReadMemory(aSCOffsets["playerAddress", player] + Offsets_Player_Minerals, GameIdentifier)
 }
 getPlayerGas(player="")
 { 	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]	
-	Return ReadMemory(aSCOffsets["playerAddress", player] + Offsets_Player_Gas, GameIdentifier)
+	Return decryptPlayerValue(aSCOffsets["playerAddress", player] + Offsets_Player_Gas)
+	;Return ReadMemory(aSCOffsets["playerAddress", player] + Offsets_Player_Gas, GameIdentifier)
 }
 getPlayerCameraPositionX(Player="")
 {	global
@@ -1238,7 +1389,8 @@ getPlayerCurrentAPM(Player="")
 {	global
 	If (player = "")
 		player := aLocalPlayer["Slot"]	
-	Return ReadMemory(aSCOffsets["playerAddress", player] + Offsets_Player_APMCurrent, GameIdentifier)
+	Return decryptPlayerValue(aSCOffsets["playerAddress", player] + Offsets_Player_APMCurrent)
+	;Return ReadMemory(aSCOffsets["playerAddress", player] + Offsets_Player_APMCurrent, GameIdentifier)
 }
 
 isUnderConstruction(building) ; starts @ 0 and only for BUILDINGS!
@@ -1280,28 +1432,7 @@ getUnitShieldDamage(unit)
 	Return Floor(ReadMemory(aSCOffsets["unitAddress", unit] + Offsets_Unit_ShieldDamage, GameIdentifier) / 4096)
 }
 
-; I think there is an array of map cells containing the data, but I cant be bothered optimising/chaching this any more
-; it seems like the encrypted values in the unit struct relate to each other, so im not sure how to go about this without more research
-
-; *** Be careful of altering the returned object and having that info persisting in the base obj
-; this caused a bug with the injects
-; This isnt perfect noticed a probe had a negative map position for a split second. perhaps in the middle of updating the encrypted keys
-getUnitPosition(unit)
-{
-	ReadRawMemory(aSCOffsets["unitAddress", unit] + Offsets_Unit_PositionX, GameIdentifier, buffer, 0xC)
-	, ecx := NumGet(buffer, 0, "UInt") ; xpos value
-	, ebx := NumGet(buffer, 4, "UInt") ; ypos value 
-	, aSCOffsets["unitPoint", unit, "z"] := NumGet(buffer, 8, "UInt") / 4096
-	; Have to update Z position on every call, otherwise if say a floating CC lands, it could be stuck with
-	; the flying Z value, as just prior to it landing it has the same x/y encrypted values. This caused a bug in the auto worker.
-
-	; I could try it the other way (probably more efficient), have to test performance of AHK arrays with many keys
-	; e.g. aSCOffsets["Point"].HasKey(encrpted X Value) && aSCOffsets["Point", encrpted X Value].HasKey(encrpted y Value)
-	if aSCOffsets["unitPoint"].HasKey(unit)
-	&& ecx = aSCOffsets["unitPoint", unit, "encX"]
-	&& ebx = aSCOffsets["unitPoint", unit, "encY"]
-		return aSCOffsets["unitPoint", unit] ; unit hasnt moved
-	
+/*
 	aSCOffsets["unitPoint", unit, "encX"] := ecx
 	, aSCOffsets["unitPoint", unit, "encY"]	:= ebx		
 	, edx := ecx + 0x338EE103 
@@ -1313,13 +1444,64 @@ getUnitPosition(unit)
 	, aSCOffsets["unitPoint", unit, "x"] := edx / 4096 
 	, edi := ((ebx ^ ecx) & 0x55555555) ^ ebx
 	, aSCOffsets["unitPoint", unit, "y"] := edi / 4096
+*/
+
+; I think there is an array of map cells containing the data, but I cant be bothered optimising/chaching this any more
+; it seems like the encrypted values in the unit struct relate to each other, so im not sure how to go about this without more research
+
+; *** Be careful of altering the returned object and having that info persisting in the base obj
+; this caused a bug with the injects
+; This isnt perfect noticed a probe had a negative map position for a split second. perhaps in the middle of updating the encrypted keys
+getUnitPosition(unit)
+{
+	ReadRawMemory(aSCOffsets["unitAddress", unit] + Offsets_Unit_PositionX, GameIdentifier, buffer, 0xC)
+	, esi := NumGet(buffer, 0, "UInt") ; xpos value
+	, edx := NumGet(buffer, 4, "UInt") ; ypos value 
+	, aSCOffsets["unitPoint", unit, "z"] := NumGet(buffer, 8, "UInt") / 4096
+	; Have to update Z position on every call, otherwise if say a floating CC lands, it could be stuck with
+	; the flying Z value, as just prior to it landing it has the same x/y encrypted values. This caused a bug in the auto worker.
+
+	; I could try it the other way (probably more efficient), have to test performance of AHK arrays with many keys
+	; e.g. aSCOffsets["Point"].HasKey(encrpted X Value) && aSCOffsets["Point", encrpted X Value].HasKey(encrpted y Value)
+	if aSCOffsets["unitPoint"].HasKey(unit)
+	&& esi = aSCOffsets["unitPoint", unit, "encX"]
+	&& edx = aSCOffsets["unitPoint", unit, "encY"]
+		return aSCOffsets["unitPoint", unit] ; unit hasnt moved
+	
+	aSCOffsets["unitPoint", unit, "encX"] := esi
+	, aSCOffsets["unitPoint", unit, "encY"]	:= edx	
+	, edi := esi
+	, eax := esi
+	, eax := ~eax
+	, edi >>= 0x0C
+	, eax -= edi
+	, eax &= 0x00000FFF
+	, edx -= readMemory(eax * 0x4 + OffsetsSC2Base + 0x19436E8, GameIdentifier)
+	, eax := edx
+	, eax >>= 0x0C
+	, edi := edx
+	, edi := ~edi
+	, eax += edi
+	, eax &= 0x00000FFF
+	, eax := readMemory(eax * 0x4 + OffsetsSC2Base + 0x19436E8, GameIdentifier)
+	, eax += esi ; ESI is so large it exceeds the dword and wraps - but AHK uses int64
+	, eax &= 0xFFFFFFFF ; added this line.
+	, esi := eax
+	, esi ^= edx
+	, esi &= 0x55555555
+	, esi ^= eax
+	, eax ^= edx
+	, eax &= 0x55555555
+	, eax ^= edx
+	, aSCOffsets["unitPoint", unit, "x"] := esi / 4096 
+	, aSCOffsets["unitPoint", unit, "y"] := eax / 4096
 	return aSCOffsets["unitPoint", unit]
 }
 
 numgetUnitPosition(byRef unitDump, unit)
 {
-	ecx := numget(unitDump, unit * Offsets_Unit_StructSize + Offsets_Unit_PositionX, "UInt") 
-	, ebx := numget(unitDump, unit * Offsets_Unit_StructSize + Offsets_Unit_PositionY, "UInt") 
+	esi := numget(unitDump, unit * Offsets_Unit_StructSize + Offsets_Unit_PositionX, "UInt") 
+	, edx := numget(unitDump, unit * Offsets_Unit_StructSize + Offsets_Unit_PositionY, "UInt") 
 	, aSCOffsets["unitPoint", unit, "z"] := numget(unitDump, unit * Offsets_Unit_StructSize + Offsets_Unit_PositionZ, "UInt")  / 4096
 	; Have to update Z position on every call, otherwise if say a floating CC lands, it could be stuck with
 	; the flying Z value, as just prior to it landing it has the same x/y encrypted values. This caused a bug in the auto worker.
@@ -1327,21 +1509,37 @@ numgetUnitPosition(byRef unitDump, unit)
 	; I could try it the other way (probably more efficient), have to test performance of AHK arrays with many keys
 	; e.g. aSCOffsets["Point"].HasKey(encrpted X Value) && aSCOffsets["Point", encrpted X Value].HasKey(encrpted y Value)
 	if aSCOffsets["unitPoint"].HasKey(unit)
-	&& ecx = aSCOffsets["unitPoint", unit, "encX"]
-	&& ebx = aSCOffsets["unitPoint", unit, "encY"]
+	&& esi = aSCOffsets["unitPoint", unit, "encX"]
+	&& edx = aSCOffsets["unitPoint", unit, "encY"]
 		return aSCOffsets["unitPoint", unit] ; unit hasnt moved
-
-	aSCOffsets["unitPoint", unit, "encX"] := ecx
-	, aSCOffsets["unitPoint", unit, "encY"]	:= ebx	
-	, edx := ecx + 0x338EE103 
-	, eax := ((ecx >> 0x0C) ^ edx) & 0xFFF
-	, eax := ~(edx := ebx := ~(ebx - readMemory(eax * 4 + OffsetsSC2Base + 0x188A6A8, GameIdentifier))) 
-	, eax := (eax - (edx >>= 0x0C)) & 0xFFF
-	, ecx -= readMemory(eax * 4 + OffsetsSC2Base + 0x188A6A8, GameIdentifier)
-	, edx := ((ebx ^ ecx) & 0x55555555) ^ ecx
-	, aSCOffsets["unitPoint", unit, "x"] := edx / 4096 
-	, edi := ((ebx ^ ecx) & 0x55555555) ^ ebx
-	, aSCOffsets["unitPoint", unit, "y"] := edi / 4096
+	
+	aSCOffsets["unitPoint", unit, "encX"] := esi
+	, aSCOffsets["unitPoint", unit, "encY"]	:= edx	
+	, edi := esi
+	, eax := esi
+	, eax := ~eax
+	, edi >>= 0x0C
+	, eax -= edi
+	, eax &= 0x00000FFF
+	, edx -= readMemory(eax * 0x4 + OffsetsSC2Base + 0x19436E8, GameIdentifier)
+	, eax := edx
+	, eax >>= 0x0C
+	, edi := edx
+	, edi := ~edi
+	, eax += edi
+	, eax &= 0x00000FFF
+	, eax := readMemory(eax * 0x4 + OffsetsSC2Base + 0x19436E8, GameIdentifier)
+	, eax += esi ; ESI is so large it exceeds the dword and wraps - but AHK uses int64
+	, eax &= 0xFFFFFFFF ; added this line.
+	, esi := eax
+	, esi ^= edx
+	, esi &= 0x55555555
+	, esi ^= eax
+	, eax ^= edx
+	, eax &= 0x55555555
+	, eax ^= edx
+	, aSCOffsets["unitPoint", unit, "x"] := esi / 4096 
+	, aSCOffsets["unitPoint", unit, "y"] := eax / 4096
 	return aSCOffsets["unitPoint", unit]
 }
 
@@ -1375,20 +1573,48 @@ SC2.GetBattlenetAllocator+223532 - 5E                    - pop esi
 SC2.GetBattlenetAllocator+223533 - 8B E5                 - mov esp,ebp
 SC2.GetBattlenetAllocator+223535 - 5D                    - pop ebp
 SC2.GetBattlenetAllocator+223536 - C2 0400               - ret 0004
-No idea how to access z Value
+No idea how to access z Value - perhaps this code is for minimap?
+
+3.1
+SC2.GetBattlenetAllocator+2742A8 - 8B 4F 08              - mov ecx,[edi+08] ; enc x 
+SC2.GetBattlenetAllocator+2742AB - 8B 57 0C              - mov edx,[edi+0C] ; enc y
+SC2.GetBattlenetAllocator+2742AE - 8B 77 10              - mov esi,[edi+10] ; enc z
+SC2.GetBattlenetAllocator+2742B1 - 8B C1                 - mov eax,ecx
+SC2.GetBattlenetAllocator+2742B3 - C1 E8 0C              - shr eax,0C
+SC2.GetBattlenetAllocator+2742B6 - F7 D1                 - not ecx
+SC2.GetBattlenetAllocator+2742B8 - 03 C1                 - add eax,ecx
+SC2.GetBattlenetAllocator+2742BA - 25 FF0F0000           - and eax,00000FFF
+SC2.GetBattlenetAllocator+2742BF - 2B 14 85 E8368F02     - sub edx,[eax*4+SC2.exe+19436E8]
+SC2.GetBattlenetAllocator+2742C6 - 8B CA                 - mov ecx,edx
+SC2.GetBattlenetAllocator+2742C8 - C1 E9 0C              - shr ecx,0C
+SC2.GetBattlenetAllocator+2742CB - 8D 82 9D99063E        - lea eax,[edx+3E06999D]
+SC2.GetBattlenetAllocator+2742D1 - 33 C1                 - xor eax,ecx
+SC2.GetBattlenetAllocator+2742D3 - 25 FF0F0000           - and eax,00000FFF
+SC2.GetBattlenetAllocator+2742D8 - 2B 34 85 E8368F02     - sub esi,[eax*4+SC2.exe+19436E8]
+SC2.GetBattlenetAllocator+2742DF - 89 55 FC              - mov [ebp-04],edx ; y pos
+SC2.GetBattlenetAllocator+2742E2 - 89 75 F8              - mov [ebp-08],esi ; x pos
+SC2.GetBattlenetAllocator+2742E5 - 8B 45 08              - mov eax,[ebp+08]
+SC2.GetBattlenetAllocator+2742E8 - 8D 4D F8              - lea ecx,[ebp-08]
+SC2.GetBattlenetAllocator+2742EB - 8B 11                 - mov edx,[ecx]
+SC2.GetBattlenetAllocator+2742ED - 8B 49 04              - mov ecx,[ecx+04]
+SC2.GetBattlenetAllocator+2742F0 - 5F                    - pop edi
+SC2.GetBattlenetAllocator+2742F1 - 89 10                 - mov [eax],edx
+SC2.GetBattlenetAllocator+2742F3 - 89 48 04              - mov [eax+04],ecx
+SC2.GetBattlenetAllocator+2742F6 - 5E                    - pop esi
+SC2.GetBattlenetAllocator+2742F7 - 8B E5                 - mov esp,ebp
+SC2.GetBattlenetAllocator+2742F9 - 5D                    - pop ebp
+SC2.GetBattlenetAllocator+2742FA - C2 0400               - ret 0004
 */
 ; ecx := x - edx := y -  esi := z (at least what the offsets used to contain)
 ; This isnt perfect i noticed it stuffed up on 1 map a few times. Units with 0 target, which should have had something
 convertQueuedPoint(byRef x, byRef y, byRef z)
 {
-	eax := ((x + 0x3126EC11) ^ (x >> 0x0C)) & 0xFFF
-	, eax := (~(((edx :=  y - readMemory(eax * 4 + OffsetsSC2Base + 0x188A6A8, GameIdentifier)) >> 0x0C) + edx)) & 0xFFF
-	, esi := z - readMemory(eax * 4 + OffsetsSC2Base + 0x188A6A8, GameIdentifier)
+	ecx := edx := y - readMemory((eax := ((x >> 0x0C) + ~x) & 0xFFF) * 0x4 + OffsetsSC2Base + 0x19436E8, GameIdentifier)
+	, esi := z - readMemory((((edx + 0x3E06999D) ^ (ecx >> 0x0C)) & 0xFFF) * 0x4 + OffsetsSC2Base + 0x19436E8, GameIdentifier)
 	, x := esi/4096
 	, y := edx/4096
 	return 
 }
-
 
 ; Using compounded expressions time  = 0.021ms vs 0.026ms (expanded)
 getPlayerCameraPosition(player := "")
@@ -1396,16 +1622,45 @@ getPlayerCameraPosition(player := "")
 	return aCamera := []
 	, ReadRawMemory(aSCOffsets["playerAddress", player = "" ? aLocalPlayer["slot"] : player], GameIdentifier, buffer, Offsets_Player_CameraRotation + 4)
 	, edx := NumGet(buffer, Offsets_Player_CameraPositionX, "UInt")
-	, esi := NumGet(buffer, Offsets_Player_CameraPositionY, "UInt")
-	, aCamera["angle"] := NumGet(buffer, Offsets_Player_CameraAngle, "UInt") / 4096
-	, eax := ((edx >> 0x0C) + edx) & 0xFFF
-	, esi -= readMemory(eax * 4 + OffsetsSC2Base + 0x188A6A8, GameIdentifier)
-	, ecx := (esi := ~esi) >> 0x0C     
-    , eax := (~(esi - ecx)) & 0xFFF
-    , ecx := (((eax := readMemory(eax * 4 + OffsetsSC2Base + 0x188A6A8, GameIdentifier) + edx) >> 0x0C) + eax) & 0xFFF
- 	, ecx := (((edx := readMemory(ecx * 4 + OffsetsSC2Base + 0x188A6A8, GameIdentifier) ^ esi) >> 0x0C) + edx) & 0xFFF
- 	, esi := (((eax := ~(eax - readMemory(ecx * 4 + OffsetsSC2Base + 0x188A6A8, GameIdentifier))) ^ edx) & 0x55555555) ^ eax
- 	, eax := ((eax ^ edx) & 0x55555555) ^ edx
+	, ecx := NumGet(buffer, Offsets_Player_CameraPositionY, "UInt")
+	, aCamera["angle"] := NumGet(buffer, Offsets_Player_CameraAngle, "UInt") / 4096	
+	, esi := edx
+	, esi >>= 0x0C
+	, eax := edx
+	, eax -= esi
+	, eax := ~eax
+	, eax &= 0x00000FFF
+	, ecx -= readMemory(eax * 0x4 + OffsetsSC2Base + 0x19436E8, GameIdentifier)
+	, ecx := ~ecx
+	, eax := ecx
+	, eax >>= 0x0C
+	, eax += ecx
+	, eax := ~eax
+	, eax &= 0x00000FFF
+	, eax := readMemory(eax * 0x4 + OffsetsSC2Base + 0x19436E8, GameIdentifier)
+	, eax += edx
+	, edx := eax
+	, esi := eax
+	, esi := ~esi
+	, edx >>= 0x0C
+	, edx += esi
+	, edx &= 0x00000FFF
+	, ecx -= readMemory(edx * 0x4 + OffsetsSC2Base + 0x19436E8, GameIdentifier)
+	, ecx := ~ecx
+	, esi := ecx
+	, esi >>= 0x0C
+	, edx := ecx + 0x33BEE69F
+	, edx ^= esi
+	, edx &= 0x00000FFF
+	, eax -= readMemory(edx * 0x4 + OffsetsSC2Base + 0x19436E8, GameIdentifier)
+	, eax := ~eax
+	, esi := eax
+	, esi ^= ecx
+	, esi &= 0x55555555
+	, esi ^= eax ; esi = y cam pos
+	, eax ^= ecx 
+	, eax &= 0x55555555
+	, eax ^= ecx 
  	, aCamera["x"] := esi / 4096
  	, aCamera["y"] := eax / 4096
 }
@@ -1531,14 +1786,14 @@ getUnitQueuedCommands(unit, byRef aQueuedMovements)
 		{
 			ReadRawMemory(pNextCmd & -2, GameIdentifier, cmdDump, 0xF4 + 4)
 			, targetFlag := numget(cmdDump, Offsets_QueuedCommand_TargetFlags, "UInt")
-
 			;OrderFlags := numget(cmdDump, 0x3C, "UInt") ; OrderFlags 
-			if !aStringTable.hasKey(pString := numget(cmdDump, Offsets_QueuedCommand_StringPointer, "UInt")) 
+			if !objHasKey(aStringTable, pString := numget(cmdDump, Offsets_QueuedCommand_StringPointer, "UInt")) 
 				aStringTable[pString] := ReadMemory_Str(readMemory(pString + 0x4, GameIdentifier), GameIdentifier)
 			convertQueuedPoint(x := numget(cmdDump, Offsets_QueuedCommand_TargetX, "UInt") 
-				, y := numget(cmdDump, Offsets_QueuedCommand_TargetY, "UInt")
-				, z := numget(cmdDump, Offsets_QueuedCommand_TargetZ, "UInt")  )
-			aQueuedMovements.insert({ "targetX": x
+			, y := numget(cmdDump, Offsets_QueuedCommand_TargetY, "UInt")
+			, z := numget(cmdDump, Offsets_QueuedCommand_TargetZ, "UInt")  )
+			, objInsert(aQueuedMovements
+				                 , 	{ "targetX": x
 									, "targetY": y  
 									, "targetZ": z  
 									;, "targetXRaw": numget(cmdDump, Offsets_QueuedCommand_TargetX, "UInt") 
@@ -1555,7 +1810,7 @@ getUnitQueuedCommands(unit, byRef aQueuedMovements)
 									, "timeRemaining": numget(cmdDump, Offsets_QueuedCommand_TimeRemaining, "UInt") 
 									, "timeRequired": numget(cmdDump, Offsets_QueuedCommand_TimeRequired, "UInt") })
 
-			if (A_Index > 20 || !(targetFlag & targetIsPointOrUnit || targetFlag = 0xF)) ; something went wrong or target isnt a point/unit and the targ flag isnt 0xF either 
+			if (A_Index > 32 || !(targetFlag & targetIsPointOrUnit || targetFlag = 0xF)) ;  Max Queued command length increased in lotv - now 32; something went wrong or target isnt a point/unit and the targ flag isnt 0xF either
 			{ 	; target flag is usually 0xF for the morphing types (and units on hold position). In patch 2.x its was 7dec
 				aQueuedMovements := []
 				return 0
@@ -1680,27 +1935,56 @@ func call
 	....
 	esi = ecx
 	01A18266 - 89 46 1C  - mov [esi+1C],eax
+
+	SC 3.1  - The actual instructions change a little bit when SC is restarted, but addresses and logic remains the same
+SC2.AssertAndCrash+665E27 - C7 45 08 01000000     - mov [ebp-04],00000001
+
+SC2.AssertAndCrash+665FB3 - 0FB7 05 240B5902      - movzx eax,word ptr [SC2.exe+2430B24]
+SC2.AssertAndCrash+665FBA - 0FB7 0D 260B5902      - movzx ecx,word ptr [SC2.exe+2430B26]
+SC2.AssertAndCrash+665FC1 - 8B D0                 - mov edx,eax
+SC2.AssertAndCrash+665FC3 - 66 89 4D FC           - mov [ebp-04],cx
+SC2.AssertAndCrash+665FC7 - 8B 4D FC              - mov ecx,[ebp-04]
+SC2.AssertAndCrash+665FCA - 81 E2 FF0F0000        - and edx,00000FFF
+SC2.AssertAndCrash+665FD0 - 0FB7 14 95 E836AA01   - movzx edx,word ptr [edx*4+SC2.exe+19436E8]
+SC2.AssertAndCrash+665FD8 - 33 CA                 - xor ecx,edx
+SC2.AssertAndCrash+665FDA - 89 4D FC              - mov [ebp-04],ecx
+SC2.AssertAndCrash+665FDD - 81 E1 FF0F0000        - and ecx,00000FFF
+SC2.AssertAndCrash+665FE3 - 0FB7 0C 8D E836AA01   - movzx ecx,word ptr [ecx*4+SC2.exe+19436E8]
+SC2.AssertAndCrash+665FEB - 2B C1                 - sub eax,ecx
+SC2.AssertAndCrash+665FED - F7 D0                 - not eax
+SC2.AssertAndCrash+665FEF - 66 89 45 F8           - mov [ebp-08],ax
+SC2.AssertAndCrash+665FF3 - 0FB7 45 FC            - movzx eax,word ptr [ebp-04]
+SC2.AssertAndCrash+665FF7 - 66 89 45 FA           - mov [ebp-06],ax
+SC2.AssertAndCrash+665FFB - 8B 4D F8              - mov ecx,[ebp-08]
+SC2.AssertAndCrash+665FFE - 6A 01                 - push 01
+SC2.AssertAndCrash+666000 - 81 C1 C4040000        - add ecx,000004C4
+SC2.AssertAndCrash+666006 - E8 65F5FFFF           - call SC2.AssertAndCrash+665570
+	....
+	SC2.AssertAndCrash+665574 - 8B F1                 - mov esi,ecx
+	SC2.AssertAndCrash+665596 - 89 46 1C              - mov [esi+1C],eax
 */
+
 
  ; Check if the address changes
 isMenuOpen()
 { 	
-	eax := readMemory(OffsetsSC2Base + 0x2372AA4, GameIdentifier)
-	, ecx := eax & 0xFFFF 
-	, eax >>= 16 
-	, ebpM4 := eax
-	, edx := ecx 
-	, edx &= 0xFFF 
-	, eax := readMemory(edx * 4 + OffsetsSC2Base + 0x188A6A8, GameIdentifier, 2)
-	, edx := ebpM4
-	, edx -= eax	
-	, edx := ~edx 
-	, eax := edx & 0xFFFF
-	, ebpM4 := eax 
-	, eax &= 0xFFF
-	, eax := readMemory(OffsetsSC2Base + 0x188A6A8 + eax * 4, GameIdentifier, 2)
-	, eax += ecx
-	, ecx := (ebpM4 << 16 | eax & 0xFFFF) + 0x428
+	; ebpP8 := 1
+	 eax := readMemory(OffsetsSC2Base + 0x2430B24, GameIdentifier)
+	 , edx := eax >> 16
+	 , eax &= 0xFFFF
+	 , ecx := eax
+	 , ecx &= 0x00000FFF
+	 , ebpP8 := edx & 0xFFFF
+	 , edx := readMemory(ecx * 0x4 + OffsetsSC2Base + 0x19436E8, GameIdentifier, 2)
+	 , ecx := ebpP8
+	 , ecx ^= edx
+	 , edx := ecx & 0xFFFF
+	 , ecx &= 0x00000FFF
+	 , ecx := readMemory(ecx * 0x4 + OffsetsSC2Base + 0x19436E8, GameIdentifier, 2)
+	 , eax -= ecx
+	 , eax := ~eax
+	 , ecx := ((edx & 0xFFFF) << 16) | (eax & 0xFFFF)
+	 , ecx += 0x000004C4
 	return readMemory(ecx + 0x1C, GameIdentifier)
 	;Return  pointer(GameIdentifier, P_MenuFocus, O1_MenuFocus)
 }
@@ -1743,7 +2027,6 @@ EDI=08C1B94C
 ESP=08C1B4B4
 EBP=08C1B4E4
 EIP=01DFD4C9
-
 */
 ; 
 ; There can be multiple units on the xelnaga, 1 spot for each of the 16 players
@@ -2974,8 +3257,8 @@ getUnitModelPointerRaw(unit)
   return ReadMemory(aSCOffsets["unitAddress", unit] + Offsets_Unit_ModelPointer, GameIdentifier)
 }
  getGroupedQueensWhichCanInject(ByRef aControlGroup,  CheckMoveState := 0)
- {	GLOBAL aUnitID, Offsets_Group_TypeCount, Offsets_Group_HighlightedGroup, Offsets_Group_ControlGroupSize, Offsets_Group_UnitOffset, GameIdentifier, Offsets_Group_ControlGroup0
- 	, Offsets_Unit_StructSize, GameIdentifier, MI_Queen_Group, aUnitMoveStates
+ {	GLOBAL 	 MI_Queen_Group, aUnitMoveStates
+
 	aControlGroup := []
 	group := MI_Queen_Group
 	groupCount := getControlGroupCount(Group)
@@ -3023,7 +3306,7 @@ getUnitModelPointerRaw(unit)
  }
 
 	; CheckMoveState for forced injects
- getSelectedQueensWhichCanInject(ByRef aSelection, CheckMoveState := 0)
+ getSelectedQueensWhichCanInject(ByRef aSelection := "", CheckMoveState := 0)
  {	GLOBAL aUnitID, Offsets_Group_TypeCount, Offsets_Group_HighlightedGroup, Offsets_Group_UnitOffset, GameIdentifier, Offsets_Selection_Base
  	, Offsets_Unit_StructSize, GameIdentifier, aUnitMoveStates 
 	aSelection := []
@@ -3037,14 +3320,12 @@ getUnitModelPointerRaw(unit)
 	loop % selectionCount
 	{
 		unit := numget(MemDump,(A_Index-1) * 4 + Offsets_Group_UnitOffset , "Int") >> 18
-		type := getUnitType(unit)
-		if (isUnitLocallyOwned(Unit) && aUnitID["Queen"] = type && ((energy := getUnitEnergy(unit)) >= 25)) 
+		if (isUnitLocallyOwned(Unit) && aUnitID["Queen"] = (type := getUnitType(unit)) && ((energy := getUnitEnergy(unit)) >= 25)) 
 		{
 			if CheckMoveState
 			{
 				commandString := getUnitQueuedCommandString(unit)
-				if !(InStr(commandString, "Patrol") || InStr(commandString, "Move") || InStr(commandString, "Attack")
-				|| InStr(commandString, "QueenBuild") || InStr(commandString, "Transfusion"))		
+				if commandString not contains Patrol,Move,Attack,QueenBuild,Transfusion
 					aSelection.Queens.insert(objectGetUnitXYZAndEnergy(unit)), aSelection.Queens[aSelection.Queens.MaxIndex(), "Type"] := Type
 			}
 			else 
@@ -5159,13 +5440,19 @@ SC2.AssertAndCrash+1EDAEA - 51                    - push ecx
 .......
 SC2.GetBattlenetAllocator+224644 - 8B 57 08       - mov edx,[edi+08]
 
+
+3.1
+SC2.AssertAndCrash+1F5759 - A1 384CC302           - mov eax,[SC2.exe+1C34C38]
+SC2.AssertAndCrash+1F575E - 8B 88 A00A0000        - mov ecx,[eax+00000AA0]
+SC2.AssertAndCrash+1F5764 - 81 C1 CCAC0000        - add ecx,0000ACCC
+SC2.GetBattlenetAllocator+275894 - 8B 57 08              - mov edx,[edi+08]
 */
 
 ; This returns -1 when no unit is under the cursor
 getCursorUnit()
 {
-	eax := readmemory(OffsetsSC2Base + 0x1B7B088, GameIdentifier)
-	, ecx := readmemory(eax + 0x0A94, GameIdentifier) + 0xAE64 ; (added 0000AE5C + 8)
+	eax := readmemory(OffsetsSC2Base + 0x1C34C38, GameIdentifier)
+	, ecx := readmemory(eax + 0x0AA0, GameIdentifier) + 0xACD4 ; added the 8
 	if (index := readMemory(ecx, GameIdentifier))
 		return index >> 18
 	return -1

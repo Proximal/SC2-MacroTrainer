@@ -329,10 +329,8 @@ if (!versionMatch && clientVersion && A_IsCompiled) ; clientVersion check if tru
 	{
 		IniWrite, %clientVersion%, %config_file%, clientVersionWarning, clientVersionWarning
 		msgbox, % 48 + 4096, Version Mismatch, % "Current Client Version: " clientVersion
-			. "`n`nMacro Trainer does not support this SC version and may function incorrectly."
-			. "`n`nTry playing a game against an AI to see if it works. (Use a standard ladder map)"
-			. "`nAlternatively, from the options menu click Settings --> Pattern Scan. If all the cells are green then the program will probably work."
-			. "`n`nAn update will be released shortly."
+			. "`n`nMacro Trainer does not support this SC version."
+			. "`n`nAn update will hopefully be released within a few days."
 			, 20 ; timeout 
 	}
 }
@@ -1471,8 +1469,8 @@ Cast_DisableInject:
 cast_inject:
 	If (isGamePaused() || isMenuOpen())
 		return ;as let the timer continue to check during auto injects
-		;menu is always 1 regardless if chat is up
-		;chat is 0 when  menu is in focus
+		;menu is always true regardless if chat is up when a menu is open
+		;chat is usually 0 when  menu is in focus (depends on how menu was opened)
 	Thread, NoTimers, true  ;cant use critical with input buffer, as prevents hotkey threads launching and hence tracking input				
 	;input.hookBlock(True, True)
 	MTBlockInput, On
@@ -8810,6 +8808,289 @@ castInjectLarva(Method := "Backspace", ForceInject := 0, sleepTime := 80)	;SendW
 	return
 }
 
+castMinimapInject(ForceInject, sleepTime := 80)
+{
+	global MI_Queen_Group ; incomplete
+	; this function is called only after validating a queen is nearby a hatch - prevent temporary unit grouping when it cant perform an inject
+	if ForceInject
+		sleepTime := 0
+
+	; there could be an issue here with the selection buffer not being updated (should sleep for 10ms)
+
+	oHatcheries := [] 
+	BaseCount := 
+	oSelection := []
+	MissedHatcheries := []
+																	
+	; use check the ctrl group, rather than the selection buffer, then wont have to sleep for selection buffer
+	; getSelectedQueensWhichCanInject(oSelection, ForceInject)) 
+	
+	; there is an issue with multi injects causing patrolling queens to inject.
+	; its because im not removing patrolling queens from the inject group for an auto inject
+	; so while moving between hatches to do a multi inject, this queen will be seen as able to inject so cause 
+	; injects to occur by other queens on next run through of the timer.
+
+	If !getGroupedQueensWhichCanInject(oSelection, ForceInject) ; this wont fetch burrowed queens!! so dont have to do a check below - as burrowed queens can make cameramove when clicking their hatch
+	|| !zergGetHatcheriesToInject(oHatcheries := [])	 ; Global used to check if successful without having to iterate again. And it will update the list of hatches when using fully automated injects (which is checked to determine when to call this function)
+		return
+	
+	if (ForceInject || Inject_RestoreSelection)
+		input.pSend(SC2Keys.key("ControlGroupAssign" AutomationZergCtrlGroup)), stopWatchCtrlID := stopwatch()
+
+	if !ForceInject && Inject_RestoreSelection && InjectGroupingDelay > 0
+		sleep % ceil(InjectGroupingDelay * rand(1, Inject_SleepVariance))
+
+	input.pSend(SC2Keys.key("ControlGroupRecall" MI_Queen_Group))
+	dsleep(20)
+
+	if ForceInject
+	{
+		removedCount := 0
+		; some queens shouldnt inject and this deselects them from the selection panel
+		; this will remove queens which are patrolling or laying a tumour or doing other things
+		; as since they are in the ctrl group if they are closer than a queen who should be doing the inject
+		; then they will do the inject instead! Queens without enough energy to inject are ignored. 
+
+		if (oSelection.Queens.MaxIndex() != oSelection.AllQueens.MaxIndex())
+		{
+			for index, groupedQueens in oSelection.AllQueens
+			{
+				flag := False
+				for index, injectingQueens in oSelection.Queens
+				{
+					if (groupedQueens.unit = injectingQueens.unit)
+					{
+						flag := True
+						break 
+					}
+				}
+				if !flag
+					lRemoveQueens .= groupedQueens.unit ",", removedCount++	
+			}
+			if (lRemoveQueens := SubStr(lRemoveQueens, 1, -1))
+			{
+				selectionCount := getSelectionCount()
+				ClickSelectUnitsPortriat(lRemoveQueens, "+")
+				clickSelectionPage(1) ; This causes the camera to jump when use minimal interface in SC advanced hack
+				while (getSelectionCount() != selectionCount - removedCount && A_Index <= 20)
+					dSleep(1)
+				dsleep(5)
+			}
+		}
+	}
+
+	For Index, CurrentHatch in oHatcheries
+	{
+		FoundQueen := 0
+		if CurrentHatch.isInjected || (InjectConserveQueenEnergy && CurrentHatch.LarvaCount >= 19) 
+			continue
+		For Index, Queen in oSelection.Queens
+		{
+			if Queen.HasInjected 
+				continue
+				; Just looking through the code now... dont know why isInControlGroup and Queen energy are checked
+			; They should be always true...., perhaps a copy and paste from old code which used a different method
+			if (isQueenNearHatch(Queen, CurrentHatch, MI_QueenDistance) && Queen.Energy >= 25) ; previously queen type here (unit id/tpye) doesnt seem to work! weird
+			{
+				FoundQueen := CurrentHatch.NearbyQueen := Queen.HasInjected := 1 																		
+				input.pSend(SC2Keys.key("QueenSpawnLarva"))
+				click_x := CurrentHatch.MiniMapX, click_y := CurrentHatch.MiniMapY
+				Input.pClick(click_x, click_y)
+				if sleepTime
+					sleep % ceil(sleepTime * rand(1, Inject_SleepVariance)) ; eg rand(1, 1.XXXX) as the second parameter will always have a decimal point, dont have to worry about it returning just full integers eg 1 or 2 or 3
+				Queen.Energy -= 25	
+				injectedHatches++
+				if (ForceInject && injectedHatches >= FInjectHatchMaxHatches)
+					break, 2
+				Break
+			}
+			else CurrentHatch.NearbyQueen := 0
+		}
+		if !FoundQueen
+			MissedHatcheries.insert(CurrentHatch)
+	}
+;	/* ; THIS Is trying to do multi injects 
+	; just realised that can only do one multi inject per inject round
+	; i.e. one queen can inject multiple hatcheries 
+	; Could do more using the {click 0, 0} trick
+	if (MissedHatcheries.maxindex() && CanQueenMultiInject)
+	{
+		QueenMultiInjects := []
+		For Index, Queen in oSelection.Queens
+		{
+			For Index, CurrentHatch in MissedHatcheries 
+			{
+				if (ForceInject && injectedHatches >= FInjectHatchMaxHatches)
+					break, 2							
+				if isQueenNearHatch(Queen, CurrentHatch, MI_QueenDistance) && Queen.Energy >= 25
+				{
+					if !isobject(QueenMultiInjects[Queen.unit])
+						QueenMultiInjects[Queen.unit] := []
+					QueenMultiInjects[Queen.unit].insert(CurrentHatch)
+					Queen.Energy -= 25
+					injectedHatches++
+				}
+				if Queen.Energy < 25
+					break
+			}
+		}
+
+		For QueenIndex, QueenObject in QueenMultiInjects
+		{
+			for index, CurrentHatch in QueenObject
+			{
+				if (index = QueenObject.MinIndex())
+				{
+					ClickSelectUnitsPortriat(QueenIndex) 
+					while (getSelectionCount() != 1 && A_Index <= 15)
+						dSleep(1) 
+					dSleep(2) 
+				}
+				input.pSend(SC2Keys.key("QueenSpawnLarva")) ;always need to send this, otherwise might left click minimap for somereason
+				click_x := CurrentHatch.MiniMapX, click_y := CurrentHatch.MiniMapY
+				input.psend("+{click " click_x ", " click_y "}")
+				if sleepTime
+					sleep % ceil(sleepTime * rand(1, Inject_SleepVariance))
+
+				if (index = QueenObject.maxIndex())
+				{
+					break, 2
+					; cant do multi inject on more than one hatch as sending the queen ctrl group key
+					; more than 1 within a second (even after other buttons) will cause the camera to jump/focus
+					; on the queens
+					; could send another ctrl group then the queen group key or the {click 0, 0}
+
+					;input.pSend(MI_Queen_Group)
+					;dSleep(8) 
+				}				
+			}
+		}					
+	}
+
+}
+
+castBackspaceCtrlGroupInject(sleepTime := 80)
+{
+	global oHatcheries, Inject_RestoreSelection, AutomationZergCtrlGroup, InjectGroupingDelay, Inject_SleepVariance
+	, Inject_RestoreScreenLocation, AutomationZergCameraGroup, MI_Queen_Group
+
+
+	oHatcheries := [] ; Global used to check if successfuly without having to iterate again
+	oSelection := []
+	baseCount := zergGetHatcheriesToInject(oHatcheries)
+    For Index, CurrentHatch in oHatcheries 	; so (for the most part) the inject order should match the basecamera order - though there are more rules than just age
+    	CurrentHatch.Age := getUnitTimer(CurrentHatch.unit)
+    bubbleSort2DArray(oHatcheries, "Age", 0) ; 0 = descending
+    if !getGroupedQueensWhichCanInject(oSelection, False) || !baseCount  ; this wont fetch burrowed queens!! so dont have to do a check below - as burrowed queens can make cameramove when clicking their hatch
+    	return 
+
+	HighlightedGroup := getSelectionHighlightedGroup()
+	selectionPage := getUnitSelectionPage()
+	if Inject_RestoreSelection
+	{
+		input.pSend(SC2Keys.key("ControlGroupAssign" AutomationZergCtrlGroup)), stopWatchCtrlID := stopwatch()
+		if (InjectGroupingDelay > 0)
+			sleep % ceil(InjectGroupingDelay * rand(1, Inject_SleepVariance))
+	}
+	if Inject_RestoreScreenLocation
+		input.pSend(SC2Keys.key("CameraSave" AutomationZergCameraGroup))
+	input.pSend(SC2Keys.key("ControlGroupRecall" MI_Queen_Group))
+	For Index, CurrentHatch in oHatcheries
+	{
+		if sleepTime
+			sleep % ceil( (sleepTime/2) * rand(1, Inject_SleepVariance)) 
+;		send {click Left %click_x%, %click_y%}
+		Input.pClick(CurrentHatch.MiniMapX, CurrentHatch.MiniMapY)
+		if sleepTime
+			sleep % ceil( (sleepTime/2) * rand(1, Inject_SleepVariance))
+		if CurrentHatch.isInjected || (InjectConserveQueenEnergy && CurrentHatch.LarvaCount >= 19) 
+			continue
+		For Index, Queen in oSelection.Queens
+		{
+			if isQueenNearHatch(Queen, CurrentHatch, MI_QueenDistance)
+			{
+				CurrentHatch.NearbyQueen := 1 																		
+				input.pSend(SC2Keys.key("QueenSpawnLarva"))
+				Input.pClick(CurrentHatch.MiniMapX, CurrentHatch.MiniMapY)
+				oSelection.Queens.Remove(Index) ; this queen wont inject again
+				Break
+			}
+			else CurrentHatch.NearbyQueen := 0
+		}
+	}
+	if Inject_RestoreScreenLocation
+	{
+		sleep % ceil(BackspaceRestoreCameraDelay* rand(1, Inject_SleepVariance)) ; so this will actually mean the inject will sleep longer than user specified, but make it look a bit more real
+		input.pSend(SC2Keys.key("CameraView" AutomationZergCameraGroup)) 										
+	}
+	if (Inject_RestoreSelection)
+	{
+		elapsedTimeGrouping := stopwatch(stopWatchCtrlID)	
+		if (elapsedTimeGrouping < 20)
+			dSleep(ceil(20 - elapsedTimeGrouping))
+		if (InjectGroupingDelay > 0)
+			sleep % ceil(InjectGroupingDelay * rand(1, Inject_SleepVariance))
+		restoreSelection(AutomationZergCtrlGroup, selectionPage, HighlightedGroup)
+	}
+	return
+}
+
+castBackspaceInject(sleepTime := 80)
+{
+	global Inject_RestoreSelection, AutomationZergCtrlGroup, InjectGroupingDelay, Inject_SleepVariance
+	, Inject_RestoreScreenLocation, AutomationZergCameraGroup, drag_origin, MI_Queen_Group
+	; 	Note: When a queen has inadequate energy for an inject, after pressing the inject larvae key nothing will actually happen 
+	;	so the subsequent left click on the hatch will actually select the hatch (as the spell wasn't cast)
+	;	this was what part of the reason queens were sometimes being cancelled
+	
+	HighlightedGroup := getSelectionHighlightedGroup()
+	selectionPage := getUnitSelectionPage()
+	if !getPlayerBaseCameraCount()
+		return
+	if Inject_RestoreSelection
+	{
+		input.pSend(SC2Keys.key("ControlGroupAssign" AutomationZergCtrlGroup)), stopWatchCtrlID := stopwatch()
+		if (InjectGroupingDelay > 0)
+			sleep % ceil(InjectGroupingDelay * rand(1, Inject_SleepVariance))
+	}
+	if Inject_RestoreScreenLocation
+		input.pSend(SC2Keys.key("CameraSave" AutomationZergCameraGroup))
+	if drag_origin in Right,R
+		Dx1 := g_aGameWindow.ClientAreaWidth-25, Dy1 := 45, Dx2 := 35, Dy2 := g_aGameWindow.ClientAreaHeight-240	
+	Else ;left origin
+		Dx1 := 25, Dy1 := 25, Dx2 := g_aGameWindow.ClientAreaWidth-40, Dy2 := g_aGameWindow.ClientAreaHeight-240
+	loop, % getPlayerBaseCameraCount()	
+	{
+		;have to think about macro hatch though. Due to not using Shift - must have 2 queens if hatches are on same screen,
+		; as it will inject only 1 (it will go to 1 hatch, then get the order to go the other before injecting the 1st)		
+		input.pSend(SC2Keys.key("TownCamera"))
+		sleep % ceil( (sleepTime/2) * rand(1, Inject_SleepVariance))	;need a sleep somerwhere around here to prevent walkabouts...sc2 not registerings box drag?
+		if isCastingReticleActive() ; i.e. cast larva
+			input.pSend(SC2Keys.key("Cancel")) ; (deselects queen larva) (useful on an already injected hatch) 
+		input.pSend("{click D " Dx1 " " Dy1 "}{Click U " Dx2 " " Dy2 "}")
+		sleep % ceil( (sleepTime/2) * rand(1, Inject_SleepVariance))
+		if !getSelectedQueensWhichCanInject(, False)
+			continue 
+		input.pSend(SC2Keys.key("QueenSpawnLarva"))							
+		Input.pClick(g_aGameWindow.ClientAreaWidth/2, g_aGameWindow.ClientAreaHeight/2)			
+	}	
+	if Inject_RestoreScreenLocation
+	{
+		sleep % ceil( BackspaceRestoreCameraDelay * rand(1, Inject_SleepVariance))	; so this will actually mean the inject will sleep longer than user specified, but make it look a bit more real
+		input.pSend(SC2Keys.key("CameraView" AutomationZergCameraGroup))										
+	}
+	if (Inject_RestoreSelection)
+	{
+		elapsedTimeGrouping := stopwatch(stopWatchCtrlID)	
+		if (elapsedTimeGrouping < 20)
+			dSleep(ceil(20 - elapsedTimeGrouping))
+		if (InjectGroupingDelay > 0)
+			sleep % ceil(InjectGroupingDelay * rand(1, Inject_SleepVariance))
+		restoreSelection(AutomationZergCtrlGroup, selectionPage, HighlightedGroup)
+	}
+	return
+}
+
 /*
 f1::
 sleep 500
@@ -8862,7 +9143,7 @@ restoreSelection(controlGroup, selectionPage, highlightedTab)
 
 ; Always return all hatches/lairs/hives. As this is used to monitor all of them until in the fully auto-injects, the function is called again.
  zergGetHatcheriesToInject(byref Object)
- { 	global aUnitID, InjectConserveQueenEnergy
+ { 	 
  	Object := [], MT_CurrentGame.LastHatchCheckTick := A_TickCount
  	loop, % DumpUnitMemory(MemDump)
  	{
@@ -8881,11 +9162,8 @@ restoreSelection(controlGroup, selectionPage, highlightedTab)
 			, mapToMinimapPos(MiniMapX, MiniMapY)
 			, isInjected := numGetIsHatchInjectedFromMemDump(MemDump, Unit)
 			, Object.insert( {  "Unit": unit 
-							, "x": x
-							, "y": y
-							, "z": z
-							, "MiniMapX": MiniMapX
-							, "MiniMapY": MiniMapY
+							, "x": x, "y": y, "z": z
+							, "MiniMapX": MiniMapX, "MiniMapY": MiniMapY
 							, "isInjected": isInjected
 							, "LarvaCount": round(getTownHallLarvaCount(unit)) } ) ; Rounding isn't necessary as I believe this function should always work
 		}		
@@ -13459,6 +13737,59 @@ findClosestNexus(mothershipIndex, byRef minimapX, byRef minimapY)
 
 
 
+f1::
+uberLocalResources()
+msgbox done
+return 
+
+
+; Look around SC2.AssertAndCrash+3C7471
+uberLocalResources()
+{
+ eax := edi := 99999 ; resources
+ eax ^= ebx := 0
+ eax &= 0x55555555
+ eax ^= ebx
+ ecx := eax
+ ecx >>= 0x0C
+ esi := eax
+ esi -= ecx
+ edx := edi
+ edx ^= ebx
+ esi := ~esi
+ esi &= 0x00000FFF
+ edx &= 0x55555555
+ edx ^= edi
+ edx ^= readMemory(esi * 0x4 + OffsetsSC2Base + 0x19436E8, GameIdentifier)
+ ecx := edx
+ ecx >>= 0x0C
+ esi := edx + 0x455E48F5
+ esi ^= ecx
+ esi &= 0x00000FFF
+ eax -= readMemory(esi * 0x4 + OffsetsSC2Base + 0x19436E8, GameIdentifier)
+ ecx := playeraddress(1)  
+ ; mins
+ WriteMemory(ecx + 0x800, GameIdentifier, edx, "UInt")
+ WriteMemory(ecx + 0x800 + 4, GameIdentifier, eax, "UInt")
+; gas
+ WriteMemory(ecx + 0x808, GameIdentifier, edx, "UInt")
+ WriteMemory(ecx + 0x808 + 4, GameIdentifier, eax, "UInt")
+}
+
+
+godMode(Enable := True)
+{
+	address := (readMemory(OffsetsSC2Base + 0x1947028, GameIdentifier) ^ readMemory(OffsetsSC2Base + 0x211DEC0, GameIdentifier) ^ 0x90E6D165) 
+ 	+ 7 * 4
+ 	msgbox % dectohex(address)
+ 	return 
+
+ 	WriteMemory(address, GameIdentifier, Enable ? 2 : 0, "UInt")
+}
+
+/*
+9F2A3C49
+2068108B
 
 
 
@@ -13466,4 +13797,8 @@ findClosestNexus(mothershipIndex, byRef minimapX, byRef minimapY)
 
 
 
-
+SC2.AssertAndCrash+455CAA - A1 28708102           - mov eax,[SC2.exe+1947028]
+SC2.AssertAndCrash+455CAF - 33 05 C0DEFE0W2        - xor eax,[SC2.exe+211DEC0]
+SC2.AssertAndCrash+455CB7 - 35 65D1E690           - xor eax,90E6D165
+SC2.AssertAndCrash+455CBC - 8D 04 B0              - lea eax,[eax+esi*4] ; ESI = 7 for got mode. An array of cheat addresses?
+SC2.AssertAndCrash+455CC0 - 31 10                 - xor [eax],edx ; write 2/0 to god mode address EAX
