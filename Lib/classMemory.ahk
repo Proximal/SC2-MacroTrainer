@@ -1,4 +1,6 @@
 ﻿/*
+    25/12/2015 - version 2.3
+        - Virtual protect (MCode()) is now called for 32 bit scripts. Previously the function would fail when DEP was enabled for all applications.
     5/12/2015 - version 2.2
         - Added the useFileNameAsKey option to getModules(). When enabled, the module's file name is used as the key to the module object i.e. an associative array.
         - Added setSeDebugPrivilege() method.
@@ -290,7 +292,7 @@ class _ClassMemory
 
     version()
     {
-        return 2.2
+        return 2.3
     }   
 
     findPID(program, windowMatchMode := "3")
@@ -1133,8 +1135,8 @@ class _ClassMemory
         if !DllCall("crypt32\CryptStringToBinary", "str", m3, "uint", 0, "uint", e[m1], "ptr", 0, "uint*", s, "ptr", 0, "ptr", 0)
             return
         p := DllCall("GlobalAlloc", "uint", 0, "ptr", s, "ptr")
-        if (c="x64")
-            DllCall("VirtualProtect", "ptr", p, "ptr", s, "uint", 0x40, "uint*", op)
+        ; if (c="x64") ; Virtual protect must always be enabled for both 32 and 64 bit. If DEP is set to all applications (not just systems), then this is required
+        DllCall("VirtualProtect", "ptr", p, "ptr", s, "uint", 0x40, "uint*", op)
         if DllCall("crypt32\CryptStringToBinary", "str", m3, "uint", 0, "uint", e[m1], "ptr", p, "uint*", s, "ptr", 0, "ptr", 0)
             return p
         DllCall("GlobalFree", "ptr", p)
