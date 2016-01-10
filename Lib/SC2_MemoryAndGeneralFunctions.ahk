@@ -212,6 +212,7 @@ loadMemoryAddresses(base, version := "")
 			 Offsets_Player_Team := 0x1C 
 			 Offsets_Player_Type := 0x1D 
 			 O_pVictoryStatus := 0x1E
+			 ; Slot Number 0x22 (1 byte)
 			 O_pName := 0x64 
 			 
 			 Offsets_Player_RacePointer := 0x5C ; same as old patch - but there was one at 0x160 - not there anymore
@@ -1020,7 +1021,7 @@ decryptPlayerValue(propertyAddress)
 	, eax := readMemory(eax * 0x4 + OffsetsSC2Base + 0x19436E8, GameIdentifier) ;esi and eax are almost same number
 	, eax ^= esi
 	, esi := eax
-	return esi ^= edx ; 0xCurrent mineral count 0xESI
+	return esi ^= edx ; Current mineral count 0xESI
  ;esi &= 0x55555555 ; this changes the value
 }
 
@@ -1152,11 +1153,31 @@ getHighestUnitIndex() 	; this is the highest alive units index - note it starts 
 {	global				; if 1 unit is alive it will return 1 (NOT 0)
 	Return ReadMemory(Offsets_UnitHighestAliveIndex, GameIdentifier)	
 }
+
+
+; Galaxy get name
+;char *__thiscall sub_80FA80(int this) ; this = player address
+;{
+;  return (char *)&unk_23E0690 + 88 * *(_BYTE *)(this + 34);
+;}
+
+; **Search for hex 40 01 00 00 [hex value for player name]  -> ASCII looks like @ [0x01] [null/0x00] [null/0x00] playersName
+; This will reveal 3 static addresses - these 3 addresses are all part of the same structure. 
+; **The player names are present 3 times, but the galaxy function used to get the player name
+; **uses the third set of names!
+
+; ** If this returns null, player isn't included in match/player object - so functions will fail!
+; ** remember this for when the function changes))
+; Player names are in static memory
 getPlayerName(player) ; start at 0
-{	global
-	return "Player " player
-	Return ReadMemory_Str(aSCOffsets["playerAddress", player] + O_pName, GameIdentifier) 
+{	
+	;return "Player " player
+	; This is probably just the slot number field in the player object
+	;index := ReadMemory(aSCOffsets["playerAddress", player] + 0x22, GameIdentifier, 1) ; str address = OffsetsSC2Base + 0x1FE0690 + index * 0x58 + 0x8
+	Return ReadMemory_Str(OffsetsSC2Base + 0x1FE0690 + player * 0x58 + 0x8, GameIdentifier)  
+	; OffsetsSC2Base + 0x1FE0690 + offset * 0x58 gives the address of SC2 player name (its in static memory!!) - but there are random/null bytes at the start, so +0x8
 }
+
 getPlayerRace(player) ; start at 0
 {	
 	static aLoopUp := {"Terr": "Terran", "Prot": "Protoss", "Zerg": "Zerg", "Neut": "Neutral", "Host": "Hostile"}
@@ -1452,6 +1473,7 @@ getUnitShieldDamage(unit)
 ; *** Be careful of altering the returned object and having that info persisting in the base obj
 ; this caused a bug with the injects
 ; This isnt perfect noticed a probe had a negative map position for a split second. perhaps in the middle of updating the encrypted keys
+; Or perhaps i stuffed up the ASM e.g. let overflow instead of limiting to 32 bit value
 getUnitPosition(unit)
 {
 	ReadRawMemory(aSCOffsets["unitAddress", unit] + Offsets_Unit_PositionX, GameIdentifier, buffer, 0xC)
@@ -2523,14 +2545,44 @@ SetPlayerMinerals(amount := 99999, player := "")
 { 	global
 	If (player = "")
 		player := getLocalPlayerNumber()
-	Return WriteMemory(aSCOffsets["playerAddress", player]  + Offsets_Player_Minerals, GameIdentifier, amount, "UInt")   	 
+	Return writePlayerResource(aSCOffsets["playerAddress", player] + Offsets_Player_Minerals)     	 	 
 }
 SetPlayerGas(amount := 99999, player := "")
 { 	global
 	If (player = "")
 		player := getLocalPlayerNumber()
-	Return WriteMemory(aSCOffsets["playerAddress", player] + Offsets_Player_Gas, GameIdentifier, amount, "UInt")   
+	Return writePlayerResource(aSCOffsets["playerAddress", player] + Offsets_Player_Gas)   
 }
+
+; eg player minerals / gas
+; Look around SC2.AssertAndCrash+3C7471
+writePlayerResource(propertyAddress)
+{
+	 eax := edi := 99999 ; resources
+	 eax ^= ebx := 0
+	 eax &= 0x55555555
+	 eax ^= ebx
+	 ecx := eax
+	 ecx >>= 0x0C
+	 esi := eax
+	 esi -= ecx
+	 edx := edi
+	 edx ^= ebx
+	 esi := ~esi
+	 esi &= 0x00000FFF
+	 edx &= 0x55555555
+	 edx ^= edi
+	 edx ^= readMemory(esi * 0x4 + OffsetsSC2Base + 0x19436E8, GameIdentifier)
+	 ecx := edx
+	 ecx >>= 0x0C
+	 esi := edx + 0x455E48F5
+	 esi ^= ecx
+	 esi &= 0x00000FFF
+	 eax -= readMemory(esi * 0x4 + OffsetsSC2Base + 0x19436E8, GameIdentifier)
+	 WriteMemory(propertyAddress, GameIdentifier, edx, "UInt")
+	 WriteMemory(propertyAddress + 4, GameIdentifier, eax, "UInt")
+}
+
 
 cHex(dec, useClipboard := True)
 {
@@ -4779,7 +4831,7 @@ updateUnitFilterLists()
 	}
 }
 
-readConfigFile()
+readConfigFile(threadTitle := "")
 {
 	Global 
 	;[Version]
@@ -5011,6 +5063,9 @@ readConfigFile()
 	section := "Volume"
 	IniRead, speech_volume, %config_file%, %section%, speech, 100
 	IniRead, programVolume, %config_file%, %section%, program, 100
+	IniRead, TTSVoice, %config_file%, %section%, TTSVoice, %A_Space%
+	if (threadTitle = "main") ; read set only when program starts up. On options save/apply main thread calls the function itself
+		aThreads.Speech.ahkPostFunction("changeVoice", TTSVoice)
 	; theres an iniwrite volume in the exit routine
 
 	;[Warnings]-----sets the audio warning
@@ -6768,4 +6823,33 @@ pointerTest(checkAddress, value, pointerAddress, offsets*)
 	   	}
 	}
 	return 
+}
+
+; For use with drop downlist 
+; if the inisaved voice exists it will be double piped 
+; otherwise the default voice is double piped
+installedVoices(iniSavedVoice := "")
+{
+	try SAPI := ComObjCreate("SAPI.SpVoice")
+	catch 
+		return
+	try currentVoiceName := SAPI.voice.GetAttribute("Name")
+	try voiceCount := SAPI.GetVoices.Count
+	catch 
+		return
+	voices := "|" ; This (left start pipe) makes it a little safer to use string replace - but its so extremely unlikely anyway for it to find a match
+	Loop, %voiceCount% 
+	{
+		name := ""
+		try name := SAPI.GetVoices.Item(A_Index-1).GetAttribute("Name")
+		catch 
+			continue 
+		voices .= name "|" 
+		if (name = iniSavedVoice && name != "")
+			iniSavedVoiceExists := True
+	}
+	if iniSavedVoiceExists
+		StringReplace, voices, voices, |%iniSavedVoice%|, |%iniSavedVoice%||
+	else StringReplace, voices, voices, |%currentVoiceName%|, |%currentVoiceName%||
+	return LTrim(voices, "|") 
 }

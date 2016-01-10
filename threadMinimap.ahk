@@ -339,39 +339,34 @@ getEnemyUnitsMiniMap(byref aUnitsToDraw)
 	, mapRight := minimap.MapRight
 	, mapTop := minimap.MapTop
 	, mapBottom := minimap.MapBottom
-
+	, excludeFilter := aUnitTargetFilter["Dead"] | aUnitTargetFilter["Hidden"]
 	loop, % DumpUnitMemory(MemDump)
 	{
-		Filter := numget(MemDump, (UnitAddress := (A_Index - 1) * Offsets_Unit_StructSize) + Offsets_Unit_TargetFilter, "Int64")
-     ; Hidden e.g. marines in medivac/bunker etc. 
-     ; Otherwise these unit colours get drawn over the top - medivac highlight colour is hidden.
-		if (Filter & aUnitTargetFilter["Dead"]
-		|| Filter & aUnitTargetFilter["Hidden"]
-		|| aMiniMapUnits.Exclude.HasKey(Type := getUnitModelType(pUnitModel := ((numget(MemDump, UnitAddress + Offsets_Unit_ModelPointer, "UInt") << 5) & 0xFFFFFFFF))))
+		
+      	; Hidden e.g. marines in medivac/bunker etc. 
+     	; Otherwise these unit colours get drawn over the top - medivac highlight colour is hidden.
+		if (excludeFilter & (Filter := numget(MemDump, (UnitAddress := (A_Index - 1) * Offsets_Unit_StructSize) + Offsets_Unit_TargetFilter, "Int64")))
+		|| aMiniMapUnits.Exclude.HasKey(Type := getUnitModelType(pUnitModel := ((numget(MemDump, UnitAddress + Offsets_Unit_ModelPointer, "UInt") << 5) & 0xFFFFFFFF)))
 		|| aPlayer[owner := numget(MemDump, UnitAddress + Offsets_Unit_Owner, "UChar"), "Team"] = aLocalPlayer["Team"]
 		|| !Owner || type < aUnitID["Colossus"]
+		|| !(point := numgetUnitPosition(MemDump, A_index-1)) ; Just to allow it as part of expression
+		|| (x := point["x"]) < mapLeft || x > mapRight || (y := point["y"]) < MapBottom || y > MapTop
 			Continue
-     ;if  (aPlayer[Owner, "Team"] <> aLocalPlayer["Team"] && Owner && type >= aUnitID["Colossus"] && !aChangeling.HasKey(type))  ; This changeling check is no longer required as reading the first unit owner now (not the third)
-     ;|| (aChangeling.HasKey(type) && aPlayer[Owner, "Team"] = aLocalPlayer["Team"] ) ; as a changeling owner becomes whoever it is mimicking - its team also becomes theirs
+        ; Sometimes in lotv unit position is wrong - perhaps my function is wrong, or 
+        ; the second encrypted key is read after the first one changes.
+        ; Rather than simply not drawing the item, could check of this error in getunitPosition()
+        ; and return the units previous position.
+        ; Should investigate more what caused this... new unit just finished, read in-between key change etc
+        ; ** I was probably fucking up the algorithm, and allowing a variable to exceed the 32 bit register it was emulating
+        customFlag := True
+	    , mapToRelativeMinimapPos(x, y) ; don't round them. As fraction might be important when subtracting scaled width in draw/fill rectangle
+
 		
 		if (!Radius := aUnitInfo[Type, "Radius"])
 		    Radius := aUnitInfo[Type, "Radius"] := getUnitModelMiniMapRadius(pUnitModel)
 
 		if (Radius < minimap.UnitMinimumRadius) ; probes and such
 			Radius := minimap.UnitMinimumRadius
-
-        point := numgetUnitPosition(MemDump, A_index-1)
-        , x := point["x"], y := point["y"]
-
-        ; Sometimes in lotv unit position is wrong - perhaps my function is wrong, or 
-        ; the second encrypted key is read after the first one changes.
-        ; Rather than simply not drawing the item, could check of this error in getunitPosition()
-        ; and return the units previous position.
-        ; Should investigate more what caused this... new unit just finished, read in-between key change etc
-        if (x < mapLeft || x > mapRight || y < MapBottom || y > MapTop)
-        	continue
-        customFlag := True
-	    , mapToRelativeMinimapPos(x, y) ; don't round them. As fraction might be important when subtracting scaled width in draw/fill rectangle
 
 		if (HighlightHallucinations && Filter & aUnitTargetFilter.Hallucination) ; have here so even if non-halluc unit type has custom colour highlight, it will be drawn using halluc colour
 			Colour := "UnitHighlightHallucinationsColour"

@@ -89,6 +89,15 @@ generateSpeechScript()
             }        
             return
         }
+        changeVoice(voiceName)
+        {
+            if (voiceName = "") ; default iniValue is null
+                return 
+            try obj := SAPI.GetVoices("Name=" voiceName)
+            try if obj.count
+                try SAPI.Voice := obj.Item(0)
+        }
+        
         ; Major issue to be aware of. Cant use ahkH ahkFunction - must use ahkPostFunction
         ; otherwise will cause an unknown com error 
 

@@ -1,6 +1,8 @@
 ﻿#NoEnv  ; Recommended for performance and compatibility with future AutoHotkey releases.
 SetWorkingDir %A_ScriptDir%  ; Ensures a consistent starting directory.
 #singleinstance force
+
+setVariables()
 previousVersion := CheckForUpdates("http://www.users.on.net/~jb10/macroTrainerCurrentVersion.ini")
 
 gui, add, radio, y+25 vMajor gRadio section checked, Major Update 
@@ -63,7 +65,12 @@ if (VersionNumber <= previousVersion && !(VersionNumber = previousVersion && Cur
   		return 
   	}
 }
-setVariables()
+if fileOpen(mainScriptSource, "r").Encoding != "UTF-8"
+{
+	msgbox File not saved as UTF-BOM`n`nProbably Forgot BOM!
+	return
+}
+;setVariables()
 cleanUp() ; Get rid of any old files. Allows FileExist() to somewhat validate ahk2exe compiled files
 if filesNotExist() 
 	return 

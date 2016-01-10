@@ -288,6 +288,7 @@ If !errorlevel
 		run, % switcherExePath(), % StarcraftInstallPath(), UseErrorLevel
 }
 else MT_CurrentInstance.SCWasRunning := True
+
 loop 
 {
 	Process, wait, %GameExe%, .5 ; wait half a second
@@ -303,7 +304,19 @@ loop
 		return	
 	}	
 }
-
+; Place this here, as switcher can launcher either 64 or 32 bit depending on the user setting (have to below the bitness check)
+if !MT_CurrentInstance.SCWasRunning && LauncherMode = "Starcraft" && switcherExePath()
+{
+	; in lotv the switcher now brings up a launcher popup (streaming module/server thing)
+	; this will result in macro trainer exiting 
+	; so wait for this popup to close before continuing
+	; The pid also changes - i think the program reloads or something
+	WinWait, %GameIdentifier%
+	winID := WinExist(GameIdentifier)
+	; WS_EX_CONTROLPARENT 0x00010000L | WS_EX_WINDOWEDGE 0x00000100L | WS_EX_DLGMODALFRAME 0x00000001L  
+	if WinGet("EXStyle", "ahk_id " winID) = 0x00010101 ; hopefully this style is the same for other OS ?
+		WinWaitClose, ahk_id %winID%,, 5
+}
 
 ; 	waits for starcraft to exist
 ; 	give time for SC2 to fully launch. This may be required on slower or stressed computers
@@ -311,9 +324,9 @@ loop
 ; 	WinGet("EXStyle") style checks to work properly
 ;  	Placed here, as it will also give extra time before trying to get 
 ;	base address (though it shouldn't be required for this)
-if !MT_CurrentInstance.SCWasRunning
-	sleep 2000 
 WinWait, %GameIdentifier%
+if !MT_CurrentInstance.SCWasRunning
+	sleep 2000
 
 while (!(B_SC2Process := getProcessBaseAddress(GameIdentifier)) || B_SC2Process < 0)		;using just the window title could cause problems if a folder had the same name e.g. sc2 folder
 	sleep 400				; required to prevent memory read error - Handle closed: error 		
@@ -2321,7 +2334,7 @@ pre_startup:
 
 if FileExist(config_file) ; the file exists lets read the ini settings
 {
-	readConfigFile()
+	readConfigFile(thisThreadTitle)
 	program.Info.hasReadConfig := True
 	if (ProgramVersion > read_version) ; its an update and the file exists - better backup the users settings
 	{
@@ -2350,7 +2363,7 @@ if FileExist(config_file) ; the file exists lets read the ini settings
 			Gosub, ini_settings_write ;to write back users old settings
 		;Gosub, pre_startup ; Read the ini settings again - this updates the 'read version' and also helps with Control group 'ERROR' variable 
 		program.Info.IsUpdating := 0
-		readConfigFile()
+		readConfigFile(thisThreadTitle)
 		If newVersionFirstRunGUI(ProgramVersion, old_backup_DIR) = "Options"
 			gosub options_menu
 	}
@@ -2359,6 +2372,7 @@ if FileExist(config_file) ; the file exists lets read the ini settings
 Else If A_IsCompiled  ; config file doesn't exist
 {
 	FileInstall, MT_Config.ini, %config_file%, 0 ; includes and install the ini to the working directory - 0 prevents file being overwritten
+	IniDelete, %config_file%, Volume, TTSVoice ; This deletes my set value and allows for the system default voice to be used as default.
 	firstRunGUI(ProgramVersion)
 	Gosub pre_startup
 	gosub options_menu
@@ -2632,6 +2646,8 @@ ini_settings_write:
 	IniWrite, %programVolume%, %config_file%, %section%, program
 	SetProgramWaveVolume(programVolume)
 	; theres an iniwrite volume in the exit routine
+	IniWrite, %TTSVoice%, %config_file%, %section%, TTSVoice
+	
 
 	;[Warnings]-----sets the audio warning
 	IniWrite, %w_supply%, %config_file%, Warnings, supply
@@ -3017,6 +3033,7 @@ ini_settings_write:
 	}
 	IF (Tmp_GuiControl = "save" or Tmp_GuiControl = "Apply")
 	{
+		aThreads.Speech.ahkPostFunction("changeVoice", TTSVoice)
 		initialiseBrushColours(aHexColours, a_pBrushes) ; So Changes to brushes are updated for autoBuild GUI
 		if aThreads.MiniMap.ahkReady()
 		{
@@ -3026,7 +3043,6 @@ ini_settings_write:
 		}
 		if aThreads.Overlays.ahkReady()
 			aThreads.Overlays.ahkFunction("updateUserSettings")
-
 		Tmp_GuiControl := ""
 		CreateHotkeys()	; to reactivate the hotkeys that were disabled by disableAllHotkeys()
 		UserSavedAppliedSettings := 1
@@ -3696,7 +3712,7 @@ try
 			Gui, Add, Checkbox, xs+10 yp+25 VMaxWindowOnStart Checked%MaxWindowOnStart%, Maximise Starcraft on match start		
 		
 
-	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vSettings_TAB, Settings				
+	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vSettings_TAB, Settings|Audio				
 		Gui, Add, GroupBox, w161 h110 section, Misc
 
 		Gui, Add, GroupBox, xs ys+115 w161 h85, Launcher 
@@ -3722,8 +3738,9 @@ try
 			Gui, Add, Edit, Number Right x+25 yp-2 w45 vTT_DeselectSleepTime
 				Gui, Add, UpDown,  Range0-300 vDeselectSleepTime, %DeselectSleepTime%,
 	*/
-
-		Gui, Add, GroupBox, Xs+171 ys w245 h110, Volume
+	Gui, Add, GroupBox, xs+171 ys w245 h110
+/*
+		Gui, Add, GroupBox, xs+171 ys w245 h110, Volume
 			Gui, Add, Text, xp+10 yp+30 w45, Speech:
 				Gui, Add, Slider, ToolTip  NoTicks w140 x+2 yp-2  Vspeech_volume, %speech_volume%
 					Gui, Add, Button, x+5 yp w30 h23 vTest_VOL_Speech gTest_VOL, Test
@@ -3731,7 +3748,9 @@ try
 			Gui, Add, Text, xs+181 y+15 w45, Overall:
 				Gui, Add, Slider, ToolTip  NoTicks w140 x+2 yp-2  VprogramVolume, %programVolume%
 					Gui, Add, Button, x+5 yp w30 h23 vTest_VOL_All gTest_VOL, Test
+			Gui, Add, DropDownList, xs+181 y+15 w150, % installedVoices()
 
+*/
 		Gui, Add, GroupBox, Xs+171 ys+116 w245 h170, Debugging
 			Gui, Add, Button, % "xp+10 yp+20 GdebugListVars w75 h25 disabled" round(A_IsCompiled),  List Variables
 			Gui, Add, Button, xp+90 yp gDrawSCUIOverlay  w75 h25, SC UI Pos
@@ -3766,6 +3785,20 @@ try
 				Gui, Add, Button, x+30 yp+10 vMTChageIconButton Gg_MTChageIcon, Change 
 				Gui, Add, Button, x+10 vMTChageIconDefaultButton Gg_MTChageIconDefault, Default 
 				;Gui, Add, Edit, Readonly yp-2 xp-90 w80 Hidden vMTCustomIcon , %MTCustomIcon% ; invis and used to store the name
+
+	Gui, Tab, Audio
+		Gui, Add, GroupBox, y+25 w245 h110 section, Volume
+		Gui, Add, Text, xp+10 yp+30 w45, Speech:
+			Gui, Add, Slider, ToolTip  NoTicks w140 x+2 yp-2  Vspeech_volume, %speech_volume%
+				Gui, Add, Button, x+5 yp w30 h23 vTest_VOL_Speech gTest_VOL, Test
+
+		Gui, Add, Text, xs+10 y+15 w45, Overall:
+			Gui, Add, Slider, ToolTip  NoTicks w140 x+2 yp-2  VprogramVolume, %programVolume%
+				Gui, Add, Button, x+5 yp w30 h23 vTest_VOL_All gTest_VOL, Test
+
+		Gui, Add, Text, xs y+45, TTS Voice:
+		Gui, Add, DropDownList, vTTSVoice x+10 yp-2 w350, % installedVoices(TTSVoice)
+
 
 	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vBug_TAB, Bug Report
 		Gui, Add, Text, x+60 y+20 section, Your Email Address:%A_Space%%A_Space%%A_Space%%A_Space%%A_Space%(optional) 
@@ -6443,62 +6476,63 @@ sapiMenuVolumeTester(message)
 {
 	; Don't have to specify the GUIs name/ID as this is launched in response to clicking the 'test' button
 	; in the options GUI
-	GuiControlGet, prevSpeechVol,, speech_volume
+
 	; The GUI was closed. Since some of the jokes are 2 parts and have sleeps (could probably use xml or something to insert pauses into the text)
 	; allowing the gui to be closed between them. So just return rather than speaking at 0 volume
-	if ErrorLevel
-		return
-	prevSpeechVol := Round(prevSpeechVol, 0)
-	GuiControlGet, prevTotalVol,, programVolume
-	if ErrorLevel
-		return
-	prevTotalVol := Round(prevTotalVol, 0)	
 	; The sliders for these controls limit value between 0 - 100. Don't think rounder is necessary either
-	try 
-	{
-		SAPI := ComObjCreate("SAPI.SpVoice")
-		SAPI.volume := prevSpeechVol
-		; use asynchronous so doesn't freeze this script - i.e. cant move the mouse etc
-		SAPI.Speak(message, 1) 
-		; waits infinite until done. Can't use this as it will freeze like above - could cause hooks to be removed! and it looks crappy.
-		;SAPI.WaitUntilDone(-1) 
-	}
-	; can't encase everything in a try as GuiControlGet will cause it to exit out of the try
-	; if the control doesn't exist any more (gui closes) - though it's not prompt type error (if try isn't used)
-	; cant use try with while, as braces will cause try to be in effect for GuiControlGet
 
+	try SAPI := ComObjCreate("SAPI.SpVoice")
+	catch 
+		return 
 	loop, 1000 ; with a sleep of 50+5, this will loop for ~55 seconds if something goes wrong with the break/WaitUntilDone 
-	{
-		; If something were to go wrong with the com, the catch should break the loop
-		; but just in case, set break to true prior to call.
-		break := True 
-		try break := SAPI.WaitUntilDone(5) ; AHK is obviously unresponsive during this call
-		catch 
-			break
-		if break
-			break
-
-		sleep 50	
+	{	
 		GuiControlGet, speechVol,, speech_volume
+		GuiControlGet, totalVol,, programVolume
+		GuiControlGet, selectedVoiceName,, TTSVoice
 		; the GUI was probably closed - speechVol should not be changed from it's previous value 
 		; but lets just continue the loop anyway
-		if ErrorLevel
-			continue 
-		speechVol := Round(speechVol, 0)
-		if (prevSpeechVol != speechVol)
+		if (ErrorLevel && A_index = 1)
+			return
+		else if !ErrorLevel ; GUI exists check vol and TTS voice
 		{
-			prevSpeechVol := speechVol
-			try SAPI.volume := speechVol
+			speechVol := Round(speechVol, 0)
+			if (prevSpeechVol != speechVol)
+			{
+				prevSpeechVol := speechVol
+				try SAPI.volume := speechVol
+			}
+			totalVol := Round(totalVol, 0)	
+			if (prevTotalVol != totalVol)
+			{
+				prevTotalVol := totalVol
+				SetProgramWaveVolume(totalVol)
+			}
+			try currentVoiceName := SAPI.voice.GetAttribute("Name")
+			if (currentVoiceName != selectedVoiceName && selectedVoiceName != "")
+				try SAPI.Voice := SAPI.GetVoices("Name=" selectedVoiceName).Item(0)
+			if (A_index = 1)
+			{								
+				try SAPI.Speak(message, 1)  ; use asynchronous so doesn't freeze this script - i.e. cant move the mouse etc
+				catch 
+					return 
+			}
 		}
-		GuiControlGet, totalVol,, programVolume
-		if ErrorLevel
-			continue
-		totalVol := Round(totalVol, 0)	
-		if (prevTotalVol != totalVol)
-		{
-			prevTotalVol := totalVol
-			SetProgramWaveVolume(totalVol)
-		}
+		; waits infinite until done. Can't use this as it will freeze like above - could cause hooks to be removed! and it looks crappy.
+		;SAPI.WaitUntilDone(-1) 
+
+		; can't encase everything in a try as GuiControlGet will cause it to exit out of the try
+		; if the control doesn't exist any more (gui closes) - though it's not prompt type error (if try isn't used)
+		; cant use try with while, as braces will cause try to be in effect for GuiControlGet
+
+		; If something were to go wrong with the com, the catch should break the loop
+		; but just in case, set break to true prior to call.
+		finished := True 
+		try finished := SAPI.WaitUntilDone(5) ; AHK is obviously unresponsive during this call
+		catch 
+			break
+		if finished
+			break
+		sleep 50		
 	}
 	return
 }
@@ -7590,7 +7624,7 @@ autoWorkerProductionCheck()
 	, EnableAutoWorkerTerran, EnableAutoWorkerProtoss, AutomationTerranCtrlGroup, AutomationProtossCtrlGroup
 	, automationAPMThreshold
 
-	static TickCountRandomSet := 0, randPercent,  UninterruptedWorkersMade, waitForOribtal := 0, lastMadeWorkerTime := -50
+	static TickCountRandomSet := 0, randPercent,  UninterruptedWorkersMade, waitForOribtal := 0
 
 	if (aLocalPlayer["Race"] = "Terran") 
 	{
@@ -7647,7 +7681,7 @@ autoWorkerProductionCheck()
 	time := getTime()
 	; Prevent queuing during small lag events
 	; Note that the hooks may still be installed & removed, as lastMadeWorkerTime is only set when a worker is actually made.
-	if (Abs(time - lastMadeWorkerTime) < 1) 
+	if MT_CurrentGame.lastMadeWorkerTime + 0 != "" && Abs(time - MT_CurrentGame.lastMadeWorkerTime) < 1
 		return
 	; This will change the random percent every 12 seconds - otherwise
 	; 200ms timer kind of negates the +/- variance on the progress meter
@@ -8039,7 +8073,7 @@ autoWorkerProductionCheck()
 		{
 			SetTimer, g_autoWorkerProductionCheck, Off
 			SetTimer, resumeAutoWorker, -800 ; this will prevent the timer running again otherwise sc2 slower to update 'isin production' 
-			lastMadeWorkerTime := time ; so will send another build event and queueing more workers ; 400 worked find for stable connection, but on Kr sever needed more. 800 seems to work well
+			MT_CurrentGame.lastMadeWorkerTime := time ; so will send another build event and queueing more workers ; 400 worked find for stable connection, but on Kr sever needed more. 800 seems to work well
 		}		 					
 	}
 	return
@@ -13737,10 +13771,7 @@ findClosestNexus(mothershipIndex, byRef minimapX, byRef minimapY)
 
 
 
-f1::
-uberLocalResources()
-msgbox done
-return 
+
 
 
 ; Look around SC2.AssertAndCrash+3C7471
@@ -13787,18 +13818,18 @@ godMode(Enable := True)
  	WriteMemory(address, GameIdentifier, Enable ? 2 : 0, "UInt")
 }
 
+
+
 /*
-9F2A3C49
-2068108B
+f1::
+unit := getSelectedUnitIndex()
+a := getUnitPosition(unit)
+objtree(a)
+objtree(getPlayerCameraPosition(1), "bbb")
+objtree(minimap)
+msgbox % getCameraboundsTop() "`n" getMapPlayableTop()
+return 
 
 
-
-
-
-
-
-SC2.AssertAndCrash+455CAA - A1 28708102           - mov eax,[SC2.exe+1947028]
-SC2.AssertAndCrash+455CAF - 33 05 C0DEFE0W2        - xor eax,[SC2.exe+211DEC0]
-SC2.AssertAndCrash+455CB7 - 35 65D1E690           - xor eax,90E6D165
-SC2.AssertAndCrash+455CBC - 8D 04 B0              - lea eax,[eax+esi*4] ; ESI = 7 for got mode. An array of cheat addresses?
-SC2.AssertAndCrash+455CC0 - 31 10                 - xor [eax],edx ; write 2/0 to god mode address EAX
+/*
+12th  10:15
