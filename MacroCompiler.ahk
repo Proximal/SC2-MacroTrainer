@@ -70,7 +70,7 @@ if fileOpen(mainScriptSource, "r").Encoding != "UTF-8"
 	msgbox File not saved as UTF-BOM`n`nProbably Forgot BOM!
 	return
 }
-;setVariables()
+setVariables()
 cleanUp() ; Get rid of any old files. Allows FileExist() to somewhat validate ahk2exe compiled files
 if filesNotExist() 
 	return 

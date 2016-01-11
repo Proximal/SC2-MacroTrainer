@@ -3713,7 +3713,7 @@ try
 		
 
 	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vSettings_TAB, Settings|Audio				
-		Gui, Add, GroupBox, w161 h110 section, Misc
+		Gui, Add, GroupBox, w161 h110 section,
 
 		Gui, Add, GroupBox, xs ys+115 w161 h85, Launcher 
 			Gui, Add, Radio, % "xp+10 yp+25 vLauncherRadioBattleNet checked" (LauncherMode = "Battle.net"), Battle.net 
@@ -3787,18 +3787,20 @@ try
 				;Gui, Add, Edit, Readonly yp-2 xp-90 w80 Hidden vMTCustomIcon , %MTCustomIcon% ; invis and used to store the name
 
 	Gui, Tab, Audio
-		Gui, Add, GroupBox, y+25 w245 h110 section, Volume
+		Gui, Add, GroupBox, y+20 w260 h105 section, Volume
 		Gui, Add, Text, xp+10 yp+30 w45, Speech:
-			Gui, Add, Slider, ToolTip  NoTicks w140 x+2 yp-2  Vspeech_volume, %speech_volume%
-				Gui, Add, Button, x+5 yp w30 h23 vTest_VOL_Speech gTest_VOL, Test
+			Gui, Add, Slider, ToolTip  NoTicks w145 x+2 yp-2  Vspeech_volume, %speech_volume%
+				Gui, Add, Button, x+10 yp w35 h23 vTest_VOL_Speech gTest_VOL, Test
 
 		Gui, Add, Text, xs+10 y+15 w45, Overall:
-			Gui, Add, Slider, ToolTip  NoTicks w140 x+2 yp-2  VprogramVolume, %programVolume%
-				Gui, Add, Button, x+5 yp w30 h23 vTest_VOL_All gTest_VOL, Test
+			Gui, Add, Slider, ToolTip  NoTicks w145 x+2 yp-2  VprogramVolume, %programVolume%
+				Gui, Add, Button, x+10 yp w35 h23 vTest_VOL_All gTest_VOL, Test
 
 		Gui, Add, Text, xs y+45, TTS Voice:
-		Gui, Add, DropDownList, vTTSVoice x+10 yp-2 w350, % installedVoices(TTSVoice)
+		Gui, Add, DropDownList, vTTSVoice x+10 yp-2 w335, % installedVoices(TTSVoice)
 
+		Gui, Add, GroupBox, xs y+25 w395 h75, Notes
+		Gui, Add, Text, xp+10 yp+25 wp-20, Some of the listed voices may not be compatible with this program.`nPlease use the volume 'Test' buttons above to ensure they work.
 
 	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vBug_TAB, Bug Report
 		Gui, Add, Text, x+60 y+20 section, Your Email Address:%A_Space%%A_Space%%A_Space%%A_Space%%A_Space%(optional) 
@@ -6440,7 +6442,7 @@ Test_VOL:
 	}
 	Else If ( Rand_joke = 5 )
 	{
-		sapiMenuVolumeTester("Why did the Cullosus fall over ?")
+		sapiMenuVolumeTester("Why did the Colossus fall over ?")
 		sleep 500
 		sapiMenuVolumeTester("because it was imbalanced")
 	}
@@ -13820,16 +13822,9 @@ godMode(Enable := True)
 
 
 
-/*
 f1::
-unit := getSelectedUnitIndex()
-a := getUnitPosition(unit)
-objtree(a)
-objtree(getPlayerCameraPosition(1), "bbb")
-objtree(minimap)
-msgbox % getCameraboundsTop() "`n" getMapPlayableTop()
-return 
-
+		tspeak("Why did the Colossus fall over ?")
+		return
 
 /*
 12th  10:15
