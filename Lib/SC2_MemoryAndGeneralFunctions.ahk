@@ -5354,7 +5354,7 @@ readConfigFile(threadTitle := "")
 	iniReadAutoBuildQuota()
 
 	section := "AutomationCommon"
-	IniRead, automationAPMThreshold, %config_file%, %section%, automationAPMThreshold, 200
+	IniRead, automationAPMThreshold, %config_file%, %section%, automationAPMThreshold, 280
 	IniRead, AutomationTerranCtrlGroup, %config_file%, %section%, AutomationTerranCtrlGroup, 9
 	IniRead, AutomationProtossCtrlGroup, %config_file%, %section%, AutomationProtossCtrlGroup, 9
 	IniRead, AutomationZergCtrlGroup, %config_file%, %section%, AutomationZergCtrlGroup, 9

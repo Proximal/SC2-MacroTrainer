@@ -2354,6 +2354,10 @@ if FileExist(config_file) ; the file exists lets read the ini settings
 
 		if read_version < 3.10 ; multi-injects was accidentally disabled over a year ago. Lots of people will have it enabled as its checked in the included config
 			CanQueenMultiInject := 0 ; disable this option for safety in case it does cause issues. It will get written in iniwrite
+		
+		if (read_version < 3.21 && automationAPMThreshold <= 200) ; patch 3.1 increased apm
+			automationAPMThreshold += round(0.4 * automationAPMThreshold)
+
 		program.Info.IsUpdating := 1 ; used in iniWrite
 		FileCreateDir, %old_backup_DIR%
 		FileCopy, %config_file%, %old_backup_DIR%\v%read_version%_%config_file%, 1 ;ie 1 = overwrite
@@ -13913,7 +13917,7 @@ SC2.AssertAndCrash+1D2291 - 81 C1 C4040000        - add ecx,000004C4
 /*
 ****REMOVE****
 unitUnderCursor()
+3.21
 
-
-
+16.3K
 
