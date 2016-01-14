@@ -15,33 +15,29 @@ SC2.AssertAndCrash+378320 - 0FB7 49 02            - movzx ecx,word ptr [ecx+02]
 
 ExampleInput =
 (
-SC2.AssertAndCrash+4E81E4 - 8B 53 54              - mov edx,[ebx+54]
-SC2.AssertAndCrash+4E81E7 - 56                    - push esi
-SC2.AssertAndCrash+4E81E8 - 8B 73 50              - mov esi,[ebx+50]
-SC2.AssertAndCrash+4E81EB - 57                    - push edi
-SC2.AssertAndCrash+4E81EC - 8B FE                 - mov edi,esi
-SC2.AssertAndCrash+4E81EE - 8B C6                 - mov eax,esi
-SC2.AssertAndCrash+4E81F0 - F7 D0                 - not eax
-SC2.AssertAndCrash+4E81F2 - C1 EF 0C              - shr edi,0C
-SC2.AssertAndCrash+4E81F5 - 2B C7                 - sub eax,edi
-SC2.AssertAndCrash+4E81F7 - 25 FF0F0000           - and eax,00000FFF
-SC2.AssertAndCrash+4E81FC - 2B 14 85 E8369801     - sub edx,[eax*4+SC2.exe+19436E8]
-SC2.AssertAndCrash+4E8203 - 8B C2                 - mov eax,edx
-SC2.AssertAndCrash+4E8205 - C1 E8 0C              - shr eax,0C
-SC2.AssertAndCrash+4E8208 - 8B FA                 - mov edi,edx
-SC2.AssertAndCrash+4E820A - F7 D7                 - not edi
-SC2.AssertAndCrash+4E820C - 03 C7                 - add eax,edi
-SC2.AssertAndCrash+4E820E - 25 FF0F0000           - and eax,00000FFF
-SC2.AssertAndCrash+4E8213 - 8B 04 85 E8369801     - mov eax,[eax*4+SC2.exe+19436E8]
-SC2.AssertAndCrash+4E821A - 03 C6                 - add eax,esi
-SC2.AssertAndCrash+4E821C - 8B F0                 - mov esi,eax
-SC2.AssertAndCrash+4E821E - 33 F2                 - xor esi,edx
-SC2.AssertAndCrash+4E8220 - 81 E6 55555555        - and esi,55555555
-SC2.AssertAndCrash+4E8226 - 33 F0                 - xor esi,eax
-SC2.AssertAndCrash+4E8228 - 33 C2                 - xor eax,edx
-SC2.AssertAndCrash+4E822A - 25 55555555           - and eax,55555555
-SC2.AssertAndCrash+4E822F - 33 C2                 - xor eax,edx
-
+SC2.AssertAndCrash+141E07 - 8B 38                 - mov edi,unitIndex
+SC2.AssertAndCrash+141E19 - 8B CF                 - mov ecx,edi
+SC2.AssertAndCrash+141E1B - C1 E9 12              - shr ecx,12
+SC2.AssertAndCrash+141E1E - 3B 0D 8467CF02        - cmp ecx,[SC2.exe+1FE6784]
+;SC2.AssertAndCrash+141E24 - 73 EC                 - jae SC2.AssertAndCrash+141E12
+SC2.AssertAndCrash+141E26 - 8B C1                 - mov eax,ecx
+SC2.AssertAndCrash+141E28 - C1 E9 04              - shr ecx,04
+SC2.AssertAndCrash+141E2B - 8D 14 8D 8867CF02     - lea edx,[ecx*4+SC2.exe+1FE6788]
+SC2.AssertAndCrash+141E32 - 0FB7 0A               - movzx ecx,word ptr [edx]
+SC2.AssertAndCrash+141E35 - 0FB7 52 02            - movzx edx,word ptr [edx+02]
+SC2.AssertAndCrash+141E3A - 8B F1                 - mov esi,ecx
+SC2.AssertAndCrash+141E3C - 81 E6 FF0F0000        - and esi,00000FFF
+SC2.AssertAndCrash+141E42 - 0FB7 34 B5 E8466502   - movzx esi,word ptr [esi*4+SC2.exe+19446E8]
+SC2.AssertAndCrash+141E4A - 33 D6                 - xor edx,esi
+SC2.AssertAndCrash+141E4C - 83 E0 0F              - and eax,0F
+SC2.AssertAndCrash+141E4F - 69 C0 E8010000        - imul eax,eax,000001E8
+SC2.AssertAndCrash+141E55 - 8B F2                 - mov esi,edx
+SC2.AssertAndCrash+141E57 - 81 E6 FF0F0000        - and esi,00000FFF
+SC2.AssertAndCrash+141E5D - 0FB7 34 B5 E8466502   - movzx esi,word ptr [esi*4+SC2.exe+19446E8]
+SC2.AssertAndCrash+141E65 - 2B CE                 - sub ecx,esi
+SC2.AssertAndCrash+141E67 - 66 89 4D 08           - mov [ebp+08],cx ; least sig bit
+SC2.AssertAndCrash+141E6B - 66 89 55 0A           - mov [ebp+0A],dx
+SC2.AssertAndCrash+141E6F - 03 45 08              - add eax,[ebp+08]
 )
 
 gui, add, text, xm ym, Cheat Engine Code:

@@ -190,8 +190,8 @@ loadMemoryAddresses(base, version := "")
 		;if (version = "2.1.11.36281") 
 		;	versionMatch := "2.1.11.36281"		
 		;else if (version = "2.1.12.36657" || !version) 
-		if (version = "3.1.0.39576" || !version) 
-			versionMatch := "3.1.0.39576"		
+		if (version = "3.1.1.39948" || !version) 
+			versionMatch := "3.1.1.39948"		
 		;else if version in 2.1.9.34644
 		;	 versionMatch := version
 		else versionMatch := false
@@ -248,7 +248,8 @@ loadMemoryAddresses(base, version := "")
 			 Offsets_Player_ArmyGasCost := 0xB90 ; ** care dont use max army gas/mineral value! 
 
 		; Be very careful of pointers which are invalid for a split second!
-		Offsets_IdleWorkerCountPointer := [base + 0x018FE340, 0x8, 0x40, 0x140] ; [base + 0x0181C360, 0x8, 0x48, 0x134]
+		; + 0x1000 base	
+		Offsets_IdleWorkerCountPointer := [base + 0x018FF340, 0x8, 0x40, 0x140] ; [base + 0x018FE340, 0x8, 0x40, 0x140] 
 
 		; 	This can be found via three methods, pattern scan:
 		;	C1 EA 0A B9 00 01 00 00 01 0D ?? ?? ?? ?? F6 D2 A3 ?? ?? ?? ?? F6 C2 01 74 06 01 0D ?? ?? ?? ?? 83 3D ?? ?? ?? ?? 00 56 BE FF FF FF 7F
@@ -269,7 +270,8 @@ loadMemoryAddresses(base, version := "")
 		 ; tends to end with the same offset after patches
 		 ; **** In lotv there was only 1 real valid pointer - the other ones (which appeared valid) sometimes failed during a match!
 		 ;Just when chat box is in focus ; value = True if open. There will be 2 of these.
-		 Offsets_ChatFocusPointer := [base + 0x025A0654, 0x1DC, 0xF4] ; [base + 0x024E0CF4, 0x1DC, 0xE8] 
+		 ; + 0x1000 base	
+		 Offsets_ChatFocusPointer := [base + 0x025A1654, 0x1DC, 0xF4] ; [base + 0x025A0654, 0x1DC, 0xF4] [base + 0x024E0CF4, 0x1DC, 0xE8] 
 	
 
 		 ; Removed this - using a similar (possibly the same value), but it represents menu depth
@@ -286,7 +288,8 @@ loadMemoryAddresses(base, version := "")
 		 								; There are two of these values and they only differ the instant a unit dies esp with missle fire (ive used the higher value) - perhaps one updates slightly quicker - dont think i use this offset anymore other than as a value in debugData()
 		 								; Theres another one which excludes structures
 
-		 Offsets_UnitHighestAliveIndex := base + 0x1FE5780 ;	; This is actually the highest currently alive unit (includes missiles while alive) and starts at 1 NOT 0! i.e. 1 unit alive at index 0 = 1, 1 alive at index 7 = 8 
+		 ; + 0x1000 base	
+		 Offsets_UnitHighestAliveIndex := base + 0x1FE6780 ;0x1FE5780 ;	; This is actually the highest currently alive unit (includes missiles while alive) and starts at 1 NOT 0! i.e. 1 unit alive at index 0 = 1, 1 alive at index 7 = 8 
 
 		; B_uStructure := base + 0x36AA840 ; Offsets_UnitHighestAliveIndex+0x40    			
 		 Offsets_Unit_StructSize := 0x1E8 ; patch 3.3 = 488d
@@ -357,9 +360,10 @@ loadMemoryAddresses(base, version := "")
 		Offsets_UnitModel_SubgroupPriority := 0x3CC 
 		Offsets_UnitModel_MinimapRadius := 0x3D0 
 
-		Offsets_Selection_Base := base + 0x1FA57A8 ;0x1EEBC08 ;0x1EE9BB8 
+		; + 0x1000 base	
+		Offsets_Selection_Base := base + 0x1FA67A8 ; 0x1FA57A8 ;0x1EEBC08 ;0x1EE9BB8 
 		; The structure begins with ctrl group 0
-		Offsets_Group_ControlGroup0 := base + 0x1FA8E68 ;0x1EEF2C8 ;0x1EED278
+		Offsets_Group_ControlGroup0 := base + 0x1FA9E68 ;0x1FA8E68 ;0x1EEF2C8 ;0x1EED278
 		Offsets_Group_ControlGroupSize := 0x1B60
 	; Unit Selection & Ctrl Group Structures use same offsets
 			Offsets_Group_TypeCount := 0x2
@@ -370,18 +374,21 @@ loadMemoryAddresses(base, version := "")
 		; dont confuse with similar value which includes army unit counts in production - or if in map editor unit count/index.
 		; Shares a common base with Offsets_IsUserPerformingAction, SelectionPtr, IdleWorkerPtr, ChatFocusPtr, B_UnitCursor, Offsets_CameraMovingViaMouseAtScreenEdge (never realised it was so many derp)
 
-		Offsets_localArmyUnitCountPointer := [base + 0x018FE340, 0x8, 0x144] ; ended with these two offsets last two patches 3.0.5. 3.0.5->3.1 0x8,0x138->0x8,0x144
+		; ended with these two offsets last two patches 3.0.5. 3.0.5->3.1 0x8,0x138->0x8,0x144
+		; + 0x1000 base	
+		Offsets_localArmyUnitCountPointer := [base + 0x018FF340, 0x8, 0x144] ; [base + 0x018FE340, 0x8, 0x144]
 
-
-		Offsets_TeamColoursEnabled := base + 0x1C35CFC ; 2 when team colours is on, else 0 (There are two valid addresses for this)
+		; + 0x1000 base	
+		Offsets_TeamColoursEnabled := base + 0x1C36CFC ;0x1C35CFC ; 2 when team colours is on, else 0 (There are two valid addresses for this)
 		 
-		
-		Offsets_SelectionPage := [base + 0x018FF124, 0x8, 0xE4, 0xD4]  	; Tends to end with these offsets. ***theres one other 3 lvl pointer but for a split second (every few second or so) it points to 
+		; + 0x1000 base		
+		Offsets_SelectionPage := [base + 0x01900124, 0x8, 0xE4, 0xD4]  	; Tends to end with these offsets. ***theres one other 3 lvl pointer but for a split second (every few second or so) it points to 
 			 				; the wrong address! You need to increase CE timer resolution to see this happening! Or better yet use the 'continually perform the pointer scan until stopped' option.
 			 				;this is for the currently selected unit portrait page ie 1-6 in game (really starts at 0-5)
 							;might actually be a 2 or 1 byte value....but works fine as 4
 
-		Offsets_Map_NamePointer := [base + 0x01FD74D8, 0x2A0] ; The string offset tends to end with this value
+		; + 0x1000 base						
+		Offsets_Map_NamePointer := [base + 0x01FD84D8, 0x2A0] ; The string offset tends to end with this value
 
 		/* Not updated dont use.
 		; at B_MapStruct -0x5C is a pointer which list map file name, map name, description and other stuff
@@ -392,7 +399,8 @@ loadMemoryAddresses(base, version := "")
 			 O_mTop := B_MapStruct + 0xE8	   	; MapTop: 622591 (akilon wastes) before dividing 4096  
 		*/ 
 		
-		Offsets_Camera_BorderLeft 	:= 	base + 0x1C36404 ;0x1B7C84C        
+		; + 0x1000 base	
+		Offsets_Camera_BorderLeft 	:= 	base + 0x1C37404 ;0x1C36404 ;0x1B7C84C        
 		Offsets_Camera_BorderBottom := 	Offsets_Camera_BorderLeft + 0x4
 		Offsets_Camera_BorderRight 	:= 	Offsets_Camera_BorderLeft + 0x8
 		Offsets_Camera_BorderTop 	:= 	Offsets_Camera_BorderLeft + 0xC
@@ -408,7 +416,8 @@ loadMemoryAddresses(base, version := "")
 			
 		; Ended with same offset last patch
 	 	; This base can be the same as B_UnitCursor				; If used as 4byte value, will return 256 	there are 2 of these memory addresses
-		 Offsets_IsUserPerformingAction := [base + 0x025A0654, 0x9C]	; This is a 1byte value and return 1  when user is casting or in is rallying a hatch via gather/rally or is in middle of issuing Amove/patrol command but
+		; + 0x1000 base	
+		 Offsets_IsUserPerformingAction := [base + 0x025A1654, 0x9C]	; This is a 1byte value and return 1  when user is casting or in is rallying a hatch via gather/rally or is in middle of issuing Amove/patrol command but
 												 				; if youre searching for a 4byte value in CE offset will be at 0x254 (but really if using it as 1 byte it is 0x255) - but im lazy and use it as a 4byte with my pointer command
 																; also 1 when placing a structure (after structure is selected) or trying to land rax to make a addon Also gives 1 when trying to burrow spore/spine
 																; When searching for 4 byte value this offset will be 0x254 
@@ -424,7 +433,8 @@ loadMemoryAddresses(base, version := "")
 
 	*/
 		; This tends to have the same offsets (though there are a few to choose from)
-		 Offsets_IsBuildCardDisplayed := [base + 0x018FF128, 0x8, 0x100, 0x298]	
+		 ; + 0x1000 base	
+		 Offsets_IsBuildCardDisplayed := [base + 0x1900128, 0x8, 0x100, 0x298]	
 		 	; this displays 1 (swarm host) or 0 with units selected - displays 7 when targeting reticle displayed/or placing a building (same thing)
 			; **but when either build card is displayed it displays 6 (even when all advanced structures are greyed out)!!!!
 			; also displays 6 when the toss hallucination card is displayed
@@ -459,12 +469,12 @@ loadMemoryAddresses(base, version := "")
 												; it will remain 1 even when back in and shift isn't down as moving a unit wont be shift-commanded! so dont use that one
 											  	;shift = 1, ctrl = 2, alt = 4 (and add them together)
 
-														
-		 B_CameraDragScroll := base + 0x1943354   			; 1 byte Returns 1 when user is moving camera via DragScroll i.e. mmouse button the main map But not when on the minimap (or if mbutton is held down on the unit panel)
+		; + 0x1000 base												
+		 B_CameraDragScroll := base + 0x1944354   			; 1 byte Returns 1 when user is moving camera via DragScroll i.e. mmouse button the main map But not when on the minimap (or if mbutton is held down on the unit panel)
 		 ; SImilar value - 1byte, 1 when holding mbutton on main map, but also 1 for mbutton move on minimap, or left hold move on the minimap.
 		 ; probable better to use this one in the future
-		
-		 Offsets_InputStructure := base + 0x1943664  		
+		; + 0x1000 base	
+		 Offsets_InputStructure := base + 0x1944664 ;0x1943664  		
 			 B_iMouseButtons := Offsets_InputStructure + 0x0 		; 1 Byte 	MouseButton state 1 for Lbutton,  2 for middle mouse, 4 for rbutton, 8 xbutton1, 16 xbutton2
 			 B_iSpace := B_iMouseButtons + 0x8 				; 1 Bytes
 			 B_iNums := B_iSpace + 0x2  					; 2 Bytes
@@ -475,30 +485,32 @@ loadMemoryAddresses(base, version := "")
 			 B_iFkeys := B_iNonCharKeys + 0x2 				; 2 bytes		
 			 B_iModifiers := B_iFkeys + 0x6 				; 1 Byte
 
-
+		; + 0x1000 base	
 		; ends with these offsets		
-		Offsets_CameraMovingViaMouseAtScreenEdge := [base + 0x0191AF5C, 0x0, 0x2E4, 0x8, 0x688]  		; Really a 1 byte value value indicates which direction screen will scroll due to mouse at edge of screen
+		Offsets_CameraMovingViaMouseAtScreenEdge := [base + 0x0191BF5C, 0x0, 0x2E4, 0x8, 0x688]  		; Really a 1 byte value value indicates which direction screen will scroll due to mouse at edge of screen
 			 				; 1 = Diagonal Left/Top 		4 = Left Edge
 			 				; 2 = Top 						5 = Right Edge			
 			 				; 3 = Diagonal Right/Top 	  	6 = Diagonal Left/ Bot	
 							; 7 = Bottom Edge 			 	8 = Diagonal Right/Bot 
 							; Note need to do a pointer scan with max offset > 1200d! Tends to have the same offsets
-		Offsets_IsGamePaused := base + 0x56A3510 						
+		; + 0x1000 base	
+		Offsets_IsGamePaused := base + 0x56A4510 ;0x56A3510 						
 
 		B_FramesPerSecond := base + 0x5008BC4
-		Offsets_GameSpeed  := base + 0x56A34F0
+		; + 0x1000 base	
+		Offsets_GameSpeed  := base + 0x56A44F0 ;0x56A34F0
 		;To do
 		; example: D:\My Computer\My Documents\StarCraft II\Accounts\56025555\6-S2-1-34555\Replays\
 		; this works for En, Fr, and Kr languages 
-		B_ReplayFolder := base + 0x258A720 ; p3.0.3
+		B_ReplayFolder := base + 0x258B720 ; 0x258A720 ; p3.0.3
 
 		; Horizontal resolution ; 4 bytes
 		; vertical resolution ; The next 4 bytes immediately after the Horizontal resolution 
 		; cheat and search for 8 bytes 4638564681600 (1920 1080)
 		; There will be 3 green static addresses (+many non-statics) One of them will change depending on resolution
 		; Can resize in window mode and it will change too
-
-		 Offsets_HorizontalResolution := base + 0x2433A68 
+		; + 0x1000 base
+		 Offsets_HorizontalResolution := base + 0x2434A68 
 		 Offsets_VerticalResolution := Offsets_HorizontalResolution + 0x4
 
 		; 4 byte ints listed in memory: 808 28 1066 290  (at 1920x1080)
@@ -506,7 +518,8 @@ loadMemoryAddresses(base, version := "")
 		; after 1 minute of scanning. It took 2 goes before it removed it!
 		; There was another one that failed after ~5 min in my scanner
 		; The pointer below was didn't fail even after 1 hour
-		Offsets_MinimapPosition := [base + 0x02435E54, 0x30, 0x0, 0x184, 0xC]
+		; + 0x1000 base
+		Offsets_MinimapPosition := [base + 0x02436E54, 0x30, 0x0, 0x184, 0xC]
 
 	}
 	return versionMatch
@@ -585,26 +598,40 @@ SC2.AssertAndCrash+3B3561 - 8B 45 FC              - mov eax,[ebp-04]
 SC2.AssertAndCrash+3B3564 - 8B E5                 - mov esp,ebp
 SC2.AssertAndCrash+3B3566 - 5D                    - pop ebp
 SC2.AssertAndCrash+3B3567 - C3                    - ret 
+
+3.1.1
+SC2.AssertAndCrash+3B3606 - 8B 15 EC486502        - mov edx,[SC2.exe+19448EC]
+SC2.AssertAndCrash+3B360C - 33 15 D09FCE02        - xor edx,[SC2.exe+1FD9FD0]
+SC2.AssertAndCrash+3B3612 - 81 F2 CB6C9A04        - xor edx,SC2.exe+3C96CCB
+SC2.AssertAndCrash+3B3618 - 8B 0A                 - mov ecx,[edx]
+SC2.AssertAndCrash+3B361A - 8D 0C 81              - lea ecx,[ecx+eax*4] ; eax = player
+SC2.AssertAndCrash+3B361D - 0FB7 01               - movzx eax,word ptr [ecx]
+SC2.AssertAndCrash+3B3620 - 0FB7 49 02            - movzx ecx,word ptr [ecx+02]
+SC2.AssertAndCrash+3B3624 - 8B D0                 - mov edx,eax
+SC2.AssertAndCrash+3B3626 - 81 E2 FF0F0000        - and edx,00000FFF
+SC2.AssertAndCrash+3B362C - 0FB7 14 95 E8466502   - movzx edx,word ptr [edx*4+SC2.exe+19446E8]
+SC2.AssertAndCrash+3B3634 - 03 CA                 - add ecx,edx
+SC2.AssertAndCrash+3B3636 - 8B D1                 - mov edx,ecx
+SC2.AssertAndCrash+3B3638 - 81 E2 FF0F0000        - and edx,00000FFF
+SC2.AssertAndCrash+3B363E - 0FB7 14 95 E8466502   - movzx edx,word ptr [edx*4+SC2.exe+19446E8]
+SC2.AssertAndCrash+3B3646 - 2B C2                 - sub eax,edx
+SC2.AssertAndCrash+3B3648 - 66 89 45 FC           - mov [ebp-04],ax
+SC2.AssertAndCrash+3B364C - 66 89 4D FE           - mov [ebp-02],cx
+SC2.AssertAndCrash+3B3650 - 8B 45 FC              - mov eax,[ebp-04] ; eax = address
+
 */
 
 playerAddress(player := 1)
 {
 	if aSCOffsets["playerAddress"].HasKey(player) ; need to check hasKe,y as this func is called internally when it doesnt --> loop
 		return aSCOffsets["playerAddress", player]	
-	edx := readMemory(OffsetsSC2Base + 0x19442A8, GameIdentifier) 
-		^ readMemory(OffsetsSC2Base + 0x1FD8FD0, GameIdentifier) ^ 0xC71932F2
-	, ecx := readMemory(edx, GameIdentifier)
-	, edx := (dword := readMemory(ecx + player * 0x4, GameIdentifier)) & 0xFFFF
-	, eax := dword >> 16
-	, ecx := edx
-	, ecx &= 0xFFF
-	, ecx := readMemory(ecx * 0x4 + OffsetsSC2Base + 0x19436E8, GameIdentifier, 2)
-	, eax += ecx
-	, ecx := eax
-	, ecx &= 0xFFF
-	, ecx := readMemory(ecx * 0x4 + OffsetsSC2Base + 0x19436E8, GameIdentifier, 2)
-	, ecx ^= edx
-	return aSCOffsets["playerAddress", player] := (eax & 0xFFFF) << 16 | ecx & 0xFFFF
+	edx := 0x049A6CCB ^ readMemory(OffsetsSC2Base + 0x19448EC, GameIdentifier) ^ readMemory(OffsetsSC2Base + 0x1FD9FD0, GameIdentifier)
+	, DWORD := readMemory(player * 0x4 + readMemory(edx, GameIdentifier), GameIdentifier)
+	, eax := DWORD & 0xFFFF
+	, ecx := (DWORD >> 16) + readMemory((eax & 0xFFF) * 0x4 + OffsetsSC2Base + 0x19446E8, GameIdentifier, 2)
+	, edx := readMemory((ecx & 0xFFF) * 0x4 + OffsetsSC2Base + 0x19446E8, GameIdentifier, 2)
+	, eax -= edx
+	return aSCOffsets["playerAddress", player] := (ecx & 0xFFFF) << 16 | eax & 0xFFFF	
 }
 
 /*
@@ -661,7 +688,7 @@ SC2.AssertAndCrash+3C0946 - 03 F0                 - add esi,eax
 3.1 - tracked what accessed shield damage
 
 SC2.AssertAndCrash+141CF9 - 8B CF                 - mov ecx,edi ; edi = FingerPrint
-SC2.AssertAndCrash+141CFB - C1 E9 12              - shr ecx,12
+SC2.AssertAndCrash+141CFB - C1 E9 12              - shr ecx,12 ; ecx = unit index - start func here
 SC2.AssertAndCrash+141CFE - 3B 0D 84571E02        - cmp ecx,[SC2.exe+1FE5784] ; compare to 4
 SC2.AssertAndCrash+141D04 - 73 EC                 - jae SC2.AssertAndCrash+141CF2
 SC2.AssertAndCrash+141D06 - 8B C1                 - mov eax,ecx
@@ -687,19 +714,44 @@ SC2.AssertAndCrash+141D51 - 03 45 08              - add eax,[ebp+08] ;eax = addr
 SC2.AssertAndCrash+141D54 - 33 C9                 - xor ecx,ecx
 SC2.AssertAndCrash+141D56 - 3B 38                 - cmp edi,[eax]
 
+
+3.1.1
+SC2.AssertAndCrash+141E07 - 8B 38                 - mov edi, edi = finger print ***
+SC2.AssertAndCrash+141E19 - 8B CF                 - mov ecx,edi
+SC2.AssertAndCrash+141E1B - C1 E9 12              - shr ecx,12 ; ecx = unit index - start func here
+SC2.AssertAndCrash+141E1E - 3B 0D 8467CF02        - cmp ecx,[SC2.exe+1FE6784]
+;SC2.AssertAndCrash+141E24 - 73 EC                 - jae SC2.AssertAndCrash+141E12
+SC2.AssertAndCrash+141E26 - 8B C1                 - mov eax,ecx
+SC2.AssertAndCrash+141E28 - C1 E9 04              - shr ecx,04
+SC2.AssertAndCrash+141E2B - 8D 14 8D 8867CF02     - lea edx,[ecx*4+SC2.exe+1FE6788]
+SC2.AssertAndCrash+141E32 - 0FB7 0A               - movzx ecx,word ptr [edx]
+SC2.AssertAndCrash+141E35 - 0FB7 52 02            - movzx edx,word ptr [edx+02]
+SC2.AssertAndCrash+141E3A - 8B F1                 - mov esi,ecx
+SC2.AssertAndCrash+141E3C - 81 E6 FF0F0000        - and esi,00000FFF
+SC2.AssertAndCrash+141E42 - 0FB7 34 B5 E8466502   - movzx esi,word ptr [esi*4+SC2.exe+19446E8]
+SC2.AssertAndCrash+141E4A - 33 D6                 - xor edx,esi
+SC2.AssertAndCrash+141E4C - 83 E0 0F              - and eax,0F
+SC2.AssertAndCrash+141E4F - 69 C0 E8010000        - imul eax,eax,000001E8
+SC2.AssertAndCrash+141E55 - 8B F2                 - mov esi,edx
+SC2.AssertAndCrash+141E57 - 81 E6 FF0F0000        - and esi,00000FFF
+SC2.AssertAndCrash+141E5D - 0FB7 34 B5 E8466502   - movzx esi,word ptr [esi*4+SC2.exe+19446E8]
+SC2.AssertAndCrash+141E65 - 2B CE                 - sub ecx,esi
+SC2.AssertAndCrash+141E67 - 66 89 4D 08           - mov [ebp+08],cx ; least sig bit
+SC2.AssertAndCrash+141E6B - 66 89 55 0A           - mov [ebp+0A],dx
+SC2.AssertAndCrash+141E6F - 03 45 08              - add eax,[ebp+08]
+
 */
 
 getunitAddress(unitIndex)
 {
 	if aSCOffsets["unitAddress"].HasKey(unitIndex)
-		return aSCOffsets["unitAddress", unitIndex]	
-	eax := ecx := unitIndex
- 	, esi := ecx := (dword := readMemory((ecx >> 4) * 0x4 + OffsetsSC2Base + 0x1FE5788, GameIdentifier, 4)) & 0xFFFF
- 	, edx := dword >> 16
-	, esi := edx -= readMemory((esi & 0xFFF) * 0x4 + OffsetsSC2Base + 0x19436E8, GameIdentifier, 2)
-	, ecx := ~(ecx - readMemory((esi & 0xFFF) * 0x4 + OffsetsSC2Base + 0x19436E8, GameIdentifier, 2))
-	, eax := (eax & 0x0F) * 0x1E8 + (((edx & 0xFFFF) << 16) | (ecx & 0xFFFF))
-	return aSCOffsets["unitAddress", unitIndex]	:= eax
+		return aSCOffsets["unitAddress", unitIndex]		
+ 	 eax := ecx := unitIndex
+ 	, DWORD := readMemory((ecx >> 4) * 0x4 + OffsetsSC2Base + 0x1FE6788, GameIdentifier)
+ 	, esi := ecx := DWORD & 0xFFFF
+ 	, esi := edx := (DWORD >> 16) ^ readMemory((esi & 0xFFF) * 0x4 + OffsetsSC2Base + 0x19446E8, GameIdentifier, 2)
+ 	, ecx -= readMemory((esi & 0xFFF) * 0x4 + OffsetsSC2Base + 0x19446E8, GameIdentifier, 2)
+	return aSCOffsets["unitAddress", unitIndex] := (eax & 0xF) * 0x1E8 +  (((edx & 0xFFFF) << 16) | (ecx & 0xFFFF))
 }
 
 
@@ -916,12 +968,8 @@ getGameTickCount()
 {	 
 	static p 
 	if !p 
-	{
-		p := readMemory(OffsetsSC2Base + 0x1945E20, GameIdentifier)
-		, p ^= readMemory(OffsetsSC2Base + 0x1FD7514, GameIdentifier)
-		, p ^= 0x29671A66
-		, p += 0x50 ; gameMissionTimer() is actually + 0x54, but these two are identical
-	}
+		p := (readMemory(OffsetsSC2Base + 0x1946460, GameIdentifier) ^ readMemory(OffsetsSC2Base + 0x1FD8514, GameIdentifier) ^ 0x23914C43) + 0x54
+		; theres one at +0x50 and appears to be identical i used that in the past, but gameMissionTimer() uses +0x54
 	Return readMemory(p, GameIdentifier)
 }
 
@@ -992,8 +1040,8 @@ getIdleWorkers()
 	return pointer(GameIdentifier, Offsets_IdleWorkerCountPointer*)
 }
 
-decryptPlayerValue(propertyAddress)
-{
+/*
+patch 3.1.0
 	; ecx := propertyAddress
 	; ; // skipped stuff  Attention!
 	; This is repeated below
@@ -1023,6 +1071,56 @@ decryptPlayerValue(propertyAddress)
 	, esi := eax
 	return esi ^= edx ; Current mineral count 0xESI
  ;esi &= 0x55555555 ; this changes the value
+ ; esi ^= register
+ ; ** these last two steps are required otherwise the mineral count is wrong
+ ; Note the final step is missing
+ ; this can be tested by changing the mineral count to a massive number without the last two steps, the number is wrong
+ 
+patch 3.1.1
+SC2.AssertAndCrash+3C75D5 - 8B 11                 - mov edx,[ecx]
+SC2.AssertAndCrash+3C75D7 - 8B 71 04              - mov esi,[ecx+04]
+SC2.AssertAndCrash+3C75DA - 8B C2                 - mov eax,edx
+SC2.AssertAndCrash+3C75DC - C1 E8 0C              - shr eax,0C
+SC2.AssertAndCrash+3C75DF - 03 C2                 - add eax,edx
+SC2.AssertAndCrash+3C75E1 - F7 D0                 - not eax
+SC2.AssertAndCrash+3C75E3 - 25 FF0F0000           - and eax,00000FFF
+SC2.AssertAndCrash+3C75E8 - 2B 34 85 E8468402     - sub esi,[eax*4+SC2.exe+19446E8]
+SC2.AssertAndCrash+3C75EF - F7 D6                 - not esi
+SC2.AssertAndCrash+3C75F1 - 8B CE                 - mov ecx,esi
+SC2.AssertAndCrash+3C75F3 - C1 E9 0C              - shr ecx,0C
+SC2.AssertAndCrash+3C75F6 - 8B C6                 - mov eax,esi
+SC2.AssertAndCrash+3C75F8 - 2B C1                 - sub eax,ecx
+SC2.AssertAndCrash+3C75FA - 25 FF0F0000           - and eax,00000FFF
+SC2.AssertAndCrash+3C75FF - 2B 14 85 E8468402     - sub edx,[eax*4+SC2.exe+19446E8]
+SC2.AssertAndCrash+3C7606 - 8B C2                 - mov eax,edx
+SC2.AssertAndCrash+3C7608 - 33 D6                 - xor edx,esi
+SC2.AssertAndCrash+3C760A - 81 E2 55555555        - and edx,55555555
+SC2.AssertAndCrash+3C7610 - 33 D0                 - xor edx,eax
+ */
+
+decryptPlayerValue(propertyAddress)
+{
+	ReadRawMemory(propertyAddress, GameIdentifier, buffer, 0x8)
+	, edx := numget(buffer, 0, "UInt") ; Get value from player struc (min enc)
+	, esi := numget(buffer, 4, "UInt")
+	, eax := edx
+	, eax >>= 0x0C
+	, eax += edx
+	, eax &= 0xFFFFFFFF ; added to prevent overflow past 32 bit. Probably not req. in this case
+	, eax := ~eax
+	, eax &= 0xFFF
+	, esi -= readMemory(eax * 0x4 + OffsetsSC2Base + 0x19446E8, GameIdentifier)
+	, esi := ~esi
+	, ecx := esi
+	, ecx >>= 0x0C
+	, eax := esi
+	, eax -= ecx
+	, eax &= 0xFFF
+	, edx -= readMemory(eax * 0x4 + OffsetsSC2Base + 0x19446E8, GameIdentifier)
+	, eax := edx
+	, edx ^= esi 
+	, edx &= 0x55555555 ;** these last two steps are required otherwise the number is wrong at extreme values (randomly changed the enc value to give a large value - MT read it wrong)
+	return edx ^= eax ;** 
 }
 
 getPlayerSupply(player="")
@@ -1174,7 +1272,7 @@ getPlayerName(player) ; start at 0
 	;return "Player " player
 	; This is probably just the slot number field in the player object
 	;index := ReadMemory(aSCOffsets["playerAddress", player] + 0x22, GameIdentifier, 1) ; str address = OffsetsSC2Base + 0x1FE0690 + index * 0x58 + 0x8
-	Return ReadMemory_Str(OffsetsSC2Base + 0x1FE0690 + player * 0x58 + 0x8, GameIdentifier)  
+	Return ReadMemory_Str(OffsetsSC2Base + 0x1FE1690 + player * 0x58 + 0x8, GameIdentifier)  	
 	; OffsetsSC2Base + 0x1FE0690 + offset * 0x58 gives the address of SC2 player name (its in static memory!!) - but there are random/null bytes at the start, so +0x8
 }
 
@@ -1285,12 +1383,21 @@ SC2.AssertAndCrash+164B18 - 88 46 0B              - mov [esi+0B],al  ; Writes to
 ;SC2.AssertAndCrash+16471E - 35 DA034845           - xor eax,454803DA
 
 /*
-
+patch 3.1
 SC2.AssertAndCrash+16AAE6 - 8B 0D 84715B02        - mov ecx,[SC2.exe+1947184]
 SC2.AssertAndCrash+16AAEC - 33 0D 78658A02        - xor ecx,[SC2.exe+1C36578]
 SC2.AssertAndCrash+16AAF2 - 8A 55 08              - mov dl,[ebp+08]
 SC2.AssertAndCrash+16AAF5 - 81 F1 7EE83F84        - xor ecx,843FE87E
 SC2.AssertAndCrash+16AAFB - 88 51 0E              - mov [ecx+0E],dl ; Replay watching person byte
+
+patch 3.1.1
+SC2.AssertAndCrash+16AB26 - 8B 0D F45B5902        - mov ecx,[SC2.exe+1945BF4]
+SC2.AssertAndCrash+16AB2C - 33 0D 78758802        - xor ecx,[SC2.exe+1C37578]
+SC2.AssertAndCrash+16AB32 - 8A 55 08              - mov dl,[ebp+08]
+SC2.AssertAndCrash+16AB35 - 81 F1 9F3E9AEC        - xor ecx,EC9A3E9F : [C1269CFF]
+SC2.AssertAndCrash+16AB3B - 88 51 0E              - mov [ecx+0E],dl ; Replay watching person byte
+
+
 */
 
 getLocalPlayerNumber()
@@ -1298,9 +1405,9 @@ getLocalPlayerNumber()
 	static address 
 	if !address
 	{
-		eax := readMemory(OffsetsSC2Base + 0x1947184, GameIdentifier)
-		eax ^= readMemory(OffsetsSC2Base + 0x1C36578, GameIdentifier)
-		eax ^= 0x843FE87E
+		eax := readMemory(OffsetsSC2Base + 0x1945BF4, GameIdentifier)
+		eax ^= readMemory(OffsetsSC2Base + 0x1C37578, GameIdentifier)
+		eax ^= 0xEC9A3E9F
 		address := eax + 0xB
 	}
 	return readMemory(address, GameIdentifier, 1)
@@ -1454,17 +1561,53 @@ getUnitShieldDamage(unit)
 }
 
 /*
-	aSCOffsets["unitPoint", unit, "encX"] := ecx
-	, aSCOffsets["unitPoint", unit, "encY"]	:= ebx		
-	, edx := ecx + 0x338EE103 
-	, eax := ((ecx >> 0x0C) ^ edx) & 0xFFF
-	, eax := ~(edx := ebx := ~(ebx - readMemory(eax * 4 + OffsetsSC2Base + 0x188A6A8, GameIdentifier))) 
-	, eax := (eax - (edx >>= 0x0C)) & 0xFFF
-	, ecx -= readMemory(eax * 4 + OffsetsSC2Base + 0x188A6A8, GameIdentifier)
-	, edx := ((ebx ^ ecx) & 0x55555555) ^ ecx
-	, aSCOffsets["unitPoint", unit, "x"] := edx / 4096 
-	, edi := ((ebx ^ ecx) & 0x55555555) ^ ebx
-	, aSCOffsets["unitPoint", unit, "y"] := edi / 4096
+patch 3.1.1
+SC2.AssertAndCrash+40CA5D - 8B 48 50              - mov ecx,[eax+50]
+SC2.AssertAndCrash+40CA60 - 8B 50 54              - mov edx,[eax+54]
+SC2.AssertAndCrash+40CA63 - 8B C1                 - mov eax,ecx
+SC2.AssertAndCrash+40CA65 - C1 E8 0C              - shr eax,0C
+SC2.AssertAndCrash+40CA68 - 03 C1                 - add eax,ecx
+SC2.AssertAndCrash+40CA6A - 25 FF0F0000           - and eax,00000FFF
+SC2.AssertAndCrash+40CA6F - 33 14 85 E8468402     - xor edx,[eax*4+SC2.exe+19446E8]
+SC2.AssertAndCrash+40CA76 - 57                    - push edi
+SC2.AssertAndCrash+40CA77 - 8B C2                 - mov eax,edx
+SC2.AssertAndCrash+40CA79 - C1 E8 0C              - shr eax,0C
+SC2.AssertAndCrash+40CA7C - 03 C2                 - add eax,edx
+SC2.AssertAndCrash+40CA7E - F7 D0                 - not eax
+SC2.AssertAndCrash+40CA80 - 25 FF0F0000           - and eax,00000FFF
+SC2.AssertAndCrash+40CA85 - 2B 0C 85 E8468402     - sub ecx,[eax*4+SC2.exe+19446E8]
+SC2.AssertAndCrash+40CA8C - F7 D1                 - not ecx
+SC2.AssertAndCrash+40CA8E - 8B C1                 - mov eax,ecx
+SC2.AssertAndCrash+40CA90 - 33 CA                 - xor ecx,edx
+SC2.AssertAndCrash+40CA92 - 81 E1 55555555        - and ecx,55555555
+SC2.AssertAndCrash+40CA98 - 33 C8                 - xor ecx,eax
+SC2.AssertAndCrash+40CA9A - 33 C2                 - xor eax,edx
+SC2.AssertAndCrash+40CA9C - 25 55555555           - and eax,55555555
+SC2.AssertAndCrash+40CAA1 - 33 C2                 - xor eax,edx
+
+ecx := readMemory(eax + 0x50, GameIdentifier)
+ edx := readMemory(eax + 0x54, GameIdentifier)
+ eax := ecx
+ eax >>= 0x0C
+ eax += ecx
+ eax &= 0x00000FFF
+ edx ^= readMemory(eax * 0x4 + OffsetsSC2Base + 0x19446E8, GameIdentifier)
+ stack_0 :=  edi
+ eax := edx
+ eax >>= 0x0C
+ eax += edx
+ eax := ~eax
+ eax &= 0x00000FFF
+ ecx -= readMemory(eax * 0x4 + OffsetsSC2Base + 0x19446E8, GameIdentifier)
+ ecx := ~ecx
+ eax := ecx
+ ecx ^= edx
+ ecx &= 0x55555555
+ ecx ^= eax ; x pos
+ eax ^= edx
+ eax &= 0x55555555
+ eax ^= edx ; y pos
+
 */
 
 ; I think there is an array of map cells containing the data, but I cant be bothered optimising/chaching this any more
@@ -1477,7 +1620,7 @@ getUnitShieldDamage(unit)
 getUnitPosition(unit)
 {
 	ReadRawMemory(aSCOffsets["unitAddress", unit] + Offsets_Unit_PositionX, GameIdentifier, buffer, 0xC)
-	, esi := NumGet(buffer, 0, "UInt") ; xpos value
+	, ecx := NumGet(buffer, 0, "UInt") ; xpos value
 	, edx := NumGet(buffer, 4, "UInt") ; ypos value 
 	, aSCOffsets["unitPoint", unit, "z"] := NumGet(buffer, 8, "UInt") / 4096
 	; Have to update Z position on every call, otherwise if say a floating CC lands, it could be stuck with
@@ -1486,43 +1629,27 @@ getUnitPosition(unit)
 	; I could try it the other way (probably more efficient), have to test performance of AHK arrays with many keys
 	; e.g. aSCOffsets["Point"].HasKey(encrpted X Value) && aSCOffsets["Point", encrpted X Value].HasKey(encrpted y Value)
 	if aSCOffsets["unitPoint"].HasKey(unit)
-	&& esi = aSCOffsets["unitPoint", unit, "encX"]
+	&& ecx = aSCOffsets["unitPoint", unit, "encX"]
 	&& edx = aSCOffsets["unitPoint", unit, "encY"]
 		return aSCOffsets["unitPoint", unit] ; unit hasnt moved
 	
-	aSCOffsets["unitPoint", unit, "encX"] := esi
+	aSCOffsets["unitPoint", unit, "encX"] := ecx
 	, aSCOffsets["unitPoint", unit, "encY"]	:= edx	
-	, edi := esi
-	, eax := esi
-	, eax := ~eax
-	, edi >>= 0x0C
-	, eax -= edi
-	, eax &= 0x00000FFF
-	, edx -= readMemory(eax * 0x4 + OffsetsSC2Base + 0x19436E8, GameIdentifier)
-	, eax := edx
-	, eax >>= 0x0C
-	, edi := edx
-	, edi := ~edi
-	, eax += edi
-	, eax &= 0x00000FFF
-	, eax := readMemory(eax * 0x4 + OffsetsSC2Base + 0x19436E8, GameIdentifier)
-	, eax += esi ; ESI is so large it exceeds the dword and wraps - but AHK uses int64
-	, eax &= 0xFFFFFFFF ; added this line.
-	, esi := eax
-	, esi ^= edx
-	, esi &= 0x55555555
-	, esi ^= eax
-	, eax ^= edx
-	, eax &= 0x55555555
-	, eax ^= edx
-	, aSCOffsets["unitPoint", unit, "x"] := esi / 4096 
-	, aSCOffsets["unitPoint", unit, "y"] := eax / 4096
+	, eax := ((ecx >> 0x0C) + ecx) & 0x00000FFF
+	, edx ^= readMemory(eax * 0x4 + OffsetsSC2Base + 0x19446E8, GameIdentifier)
+	, eax := (~((edx >> 0x0C) + edx)) & 0x00000FFF
+	, ecx -= readMemory(eax * 0x4 + OffsetsSC2Base + 0x19446E8, GameIdentifier)
+	, ecx &= 0xFFFFFFFF ; Prob. not req. here. But previously when adding, it was possible for the value to exceed the dword reg (so should rap) but ahk doest as vars are int64
+	, ecx := ~ecx
+	, eax := ecx
+	, aSCOffsets["unitPoint", unit, "x"] := (((ecx ^ edx) & 0x55555555) ^ eax) / 4096 
+	, aSCOffsets["unitPoint", unit, "y"] := (((eax ^ edx) & 0x55555555) ^ edx) / 4096 
 	return aSCOffsets["unitPoint", unit]
 }
 
 numgetUnitPosition(byRef unitDump, unit)
 {
-	esi := numget(unitDump, unit * Offsets_Unit_StructSize + Offsets_Unit_PositionX, "UInt") 
+	ecx := numget(unitDump, unit * Offsets_Unit_StructSize + Offsets_Unit_PositionX, "UInt") 
 	, edx := numget(unitDump, unit * Offsets_Unit_StructSize + Offsets_Unit_PositionY, "UInt") 
 	, aSCOffsets["unitPoint", unit, "z"] := numget(unitDump, unit * Offsets_Unit_StructSize + Offsets_Unit_PositionZ, "UInt")  / 4096
 	; Have to update Z position on every call, otherwise if say a floating CC lands, it could be stuck with
@@ -1531,37 +1658,21 @@ numgetUnitPosition(byRef unitDump, unit)
 	; I could try it the other way (probably more efficient), have to test performance of AHK arrays with many keys
 	; e.g. aSCOffsets["Point"].HasKey(encrpted X Value) && aSCOffsets["Point", encrpted X Value].HasKey(encrpted y Value)
 	if aSCOffsets["unitPoint"].HasKey(unit)
-	&& esi = aSCOffsets["unitPoint", unit, "encX"]
+	&& ecx = aSCOffsets["unitPoint", unit, "encX"]
 	&& edx = aSCOffsets["unitPoint", unit, "encY"]
 		return aSCOffsets["unitPoint", unit] ; unit hasnt moved
 	
-	aSCOffsets["unitPoint", unit, "encX"] := esi
+	aSCOffsets["unitPoint", unit, "encX"] := ecx
 	, aSCOffsets["unitPoint", unit, "encY"]	:= edx	
-	, edi := esi
-	, eax := esi
-	, eax := ~eax
-	, edi >>= 0x0C
-	, eax -= edi
-	, eax &= 0x00000FFF
-	, edx -= readMemory(eax * 0x4 + OffsetsSC2Base + 0x19436E8, GameIdentifier)
-	, eax := edx
-	, eax >>= 0x0C
-	, edi := edx
-	, edi := ~edi
-	, eax += edi
-	, eax &= 0x00000FFF
-	, eax := readMemory(eax * 0x4 + OffsetsSC2Base + 0x19436E8, GameIdentifier)
-	, eax += esi ; ESI is so large it exceeds the dword and wraps - but AHK uses int64
-	, eax &= 0xFFFFFFFF ; added this line.
-	, esi := eax
-	, esi ^= edx
-	, esi &= 0x55555555
-	, esi ^= eax
-	, eax ^= edx
-	, eax &= 0x55555555
-	, eax ^= edx
-	, aSCOffsets["unitPoint", unit, "x"] := esi / 4096 
-	, aSCOffsets["unitPoint", unit, "y"] := eax / 4096
+	, eax := ((ecx >> 0x0C) + ecx) & 0x00000FFF
+	, edx ^= readMemory(eax * 0x4 + OffsetsSC2Base + 0x19446E8, GameIdentifier)
+	, eax := (~((edx >> 0x0C) + edx)) & 0x00000FFF
+	, ecx -= readMemory(eax * 0x4 + OffsetsSC2Base + 0x19446E8, GameIdentifier)
+	, ecx &= 0xFFFFFFFF ; Prob. not req. here. But previously when adding, it was possible for the value to exceed the dword reg (so should rap) but ahk doest as vars are int64
+	, ecx := ~ecx
+	, eax := ecx
+	, aSCOffsets["unitPoint", unit, "x"] := (((ecx ^ edx) & 0x55555555) ^ eax) / 4096 
+	, aSCOffsets["unitPoint", unit, "y"] := (((eax ^ edx) & 0x55555555) ^ edx) / 4096 
 	return aSCOffsets["unitPoint", unit]
 }
 
@@ -1626,15 +1737,48 @@ SC2.GetBattlenetAllocator+2742F6 - 5E                    - pop esi
 SC2.GetBattlenetAllocator+2742F7 - 8B E5                 - mov esp,ebp
 SC2.GetBattlenetAllocator+2742F9 - 5D                    - pop ebp
 SC2.GetBattlenetAllocator+2742FA - C2 0400               - ret 0004
-*/
+
+patch 3.1.1
+SC2.GetBattlenetAllocator+2741B1 - 8B 46 08              - mov eax,[esi+08]
+SC2.GetBattlenetAllocator+2741B4 - 8B 56 10              - mov edx,[esi+10]
+SC2.GetBattlenetAllocator+2741B7 - 8B 4E 0C              - mov ecx,[esi+0C]
+SC2.GetBattlenetAllocator+2741BA - 8B F0                 - mov esi,eax
+SC2.GetBattlenetAllocator+2741BC - F7 D0                 - not eax
+SC2.GetBattlenetAllocator+2741BE - C1 EE 0C              - shr esi,0C
+SC2.GetBattlenetAllocator+2741C1 - 2B C6                 - sub eax,esi
+SC2.GetBattlenetAllocator+2741C3 - 25 FF0F0000           - and eax,00000FFF
+SC2.GetBattlenetAllocator+2741C8 - 2B 0C 85 E8468402     - sub ecx,[eax*4+SC2.exe+19446E8]
+SC2.GetBattlenetAllocator+2741CF - F7 D1                 - not ecx
+SC2.GetBattlenetAllocator+2741D1 - 8B F1                 - mov esi,ecx
+SC2.GetBattlenetAllocator+2741D3 - C1 EE 0C              - shr esi,0C
+SC2.GetBattlenetAllocator+2741D6 - 8D 81 D2851EA0        - lea eax,[ecx-5FE17A2E]
+SC2.GetBattlenetAllocator+2741DC - 33 C6                 - xor eax,esi
+SC2.GetBattlenetAllocator+2741DE - 25 FF0F0000           - and eax,00000FFF
+SC2.GetBattlenetAllocator+2741E3 - 2B 14 85 E8468402     - sub edx,[eax*4+SC2.exe+19446E8]
+SC2.GetBattlenetAllocator+2741EA - 89 4D FC              - mov [ebp-04],ecx ; y pos
+SC2.GetBattlenetAllocator+2741ED - 89 55 F8              - mov [ebp-08],edx ; x pos
+SC2.GetBattlenetAllocator+2741F0 - 8B 45 08              - mov eax,[ebp+08] 
+SC2.GetBattlenetAllocator+2741F3 - 8D 4D F8              - lea ecx,[ebp-08]
+SC2.GetBattlenetAllocator+2741F6 - 8B 11                 - mov edx,[ecx]
+SC2.GetBattlenetAllocator+2741F8 - 8B 49 04              - mov ecx,[ecx+04]
+SC2.GetBattlenetAllocator+2741FB - 89 10                 - mov [eax],edx
+SC2.GetBattlenetAllocator+2741FD - 89 48 04              - mov [eax+04],ecx
+SC2.GetBattlenetAllocator+274200 - 5E                    - pop esi
+SC2.GetBattlenetAllocator+274201 - 8B E5                 - mov esp,ebp
+SC2.GetBattlenetAllocator+274203 - 5D                    - pop ebp
+SC2.GetBattlenetAllocator+274204 - C2 0400               - ret 0004
+
+
+*/ 
 ; ecx := x - edx := y -  esi := z (at least what the offsets used to contain)
 ; This isnt perfect i noticed it stuffed up on 1 map a few times. Units with 0 target, which should have had something
 convertQueuedPoint(byRef x, byRef y, byRef z)
 {
-	ecx := edx := y - readMemory((eax := ((x >> 0x0C) + ~x) & 0xFFF) * 0x4 + OffsetsSC2Base + 0x19436E8, GameIdentifier)
-	, esi := z - readMemory((((edx + 0x3E06999D) ^ (ecx >> 0x0C)) & 0xFFF) * 0x4 + OffsetsSC2Base + 0x19436E8, GameIdentifier)
-	, x := esi/4096
-	, y := edx/4096
+	ecx := ~(0xFFFFFFFF & (y - readMemory((((~x) - (x >> 0x0C)) & 0xFFF) * 0x4 + OffsetsSC2Base + 0x19446E8, GameIdentifier)))
+	, eax := ((((ecx - 0x5FE17A2E) & 0xFFFFFFFF) ^ (ecx >> 0x0C)) & 0xFFF)
+	, edx := 0xFFFFFFFF & (z - readMemory(eax * 0x4 + OffsetsSC2Base + 0x19446E8, GameIdentifier))
+	, x := edx/4096
+	, y := ecx/4096
 	return 
 }
 
@@ -1643,48 +1787,47 @@ getPlayerCameraPosition(player := "")
 {
 	return aCamera := []
 	, ReadRawMemory(aSCOffsets["playerAddress", player = "" ? aLocalPlayer["slot"] : player], GameIdentifier, buffer, Offsets_Player_CameraRotation + 4)
-	, edx := NumGet(buffer, Offsets_Player_CameraPositionX, "UInt")
-	, ecx := NumGet(buffer, Offsets_Player_CameraPositionY, "UInt")
+	, ecx := NumGet(buffer, Offsets_Player_CameraPositionX, "UInt")
+	, esi := NumGet(buffer, Offsets_Player_CameraPositionY, "UInt")
 	, aCamera["angle"] := NumGet(buffer, Offsets_Player_CameraAngle, "UInt") / 4096	
-	, esi := edx
-	, esi >>= 0x0C
-	, eax := edx
-	, eax -= esi
-	, eax := ~eax
-	, eax &= 0x00000FFF
-	, ecx -= readMemory(eax * 0x4 + OffsetsSC2Base + 0x19436E8, GameIdentifier)
-	, ecx := ~ecx
 	, eax := ecx
 	, eax >>= 0x0C
 	, eax += ecx
+	, eax &= 0x00000FFF
+	, esi += readMemory(eax * 0x4 + OffsetsSC2Base + 0x19446E8, GameIdentifier)
+	, esi &= 0xFFFFFFFF ; added this line
+	, eax := esi
+	, eax >>= 0x0C
+	, eax += esi
 	, eax := ~eax
 	, eax &= 0x00000FFF
-	, eax := readMemory(eax * 0x4 + OffsetsSC2Base + 0x19436E8, GameIdentifier)
-	, eax += edx
-	, edx := eax
-	, esi := eax
-	, esi := ~esi
-	, edx >>= 0x0C
-	, edx += esi
-	, edx &= 0x00000FFF
-	, ecx -= readMemory(edx * 0x4 + OffsetsSC2Base + 0x19436E8, GameIdentifier)
+	, ecx -= readMemory(eax * 0x4 + OffsetsSC2Base + 0x19446E8, GameIdentifier) ; this causes large number
+	, ecx &= 0xFFFFFFFF ; added this line
+	, edx := eax := ecx
 	, ecx := ~ecx
-	, esi := ecx
-	, esi >>= 0x0C
-	, edx := ecx + 0x33BEE69F
+	, edx >>= 0x0C
+	, ecx -= edx
+	, ecx &= 0x00000FFF
+	, edx := readMemory(ecx * 0x4 + OffsetsSC2Base + 0x19446E8, GameIdentifier)
 	, edx ^= esi
-	, edx &= 0x00000FFF
-	, eax -= readMemory(edx * 0x4 + OffsetsSC2Base + 0x19436E8, GameIdentifier)
+	, esi := edx
+	, esi >>= 0x0C
+	, ecx := edx
+	, ecx -= esi
+	, ecx := ~ecx
+	, ecx &= 0x00000FFF
+	, eax -= readMemory(ecx * 0x4 + OffsetsSC2Base + 0x19446E8, GameIdentifier)
+	, eax &= 0xFFFFFFFF ; added this line
 	, eax := ~eax
 	, esi := eax
-	, esi ^= ecx
+	, esi ^= edx
 	, esi &= 0x55555555
-	, esi ^= eax ; esi = y cam pos
-	, eax ^= ecx 
+	, esi ^= eax
+	, eax ^= edx
 	, eax &= 0x55555555
-	, eax ^= ecx 
- 	, aCamera["x"] := esi / 4096
- 	, aCamera["y"] := eax / 4096
+	, eax ^= edx
+	, aCamera["x"] := esi / 4096
+	, aCamera["y"] := eax / 4096	
 }
 
 
@@ -1811,6 +1954,7 @@ getUnitQueuedCommands(unit, byRef aQueuedMovements)
 			;OrderFlags := numget(cmdDump, 0x3C, "UInt") ; OrderFlags 
 			if !objHasKey(aStringTable, pString := numget(cmdDump, Offsets_QueuedCommand_StringPointer, "UInt")) 
 				aStringTable[pString] := ReadMemory_Str(readMemory(pString + 0x4, GameIdentifier), GameIdentifier)
+
 			convertQueuedPoint(x := numget(cmdDump, Offsets_QueuedCommand_TargetX, "UInt") 
 			, y := numget(cmdDump, Offsets_QueuedCommand_TargetY, "UInt")
 			, z := numget(cmdDump, Offsets_QueuedCommand_TargetZ, "UInt")  )
@@ -1984,29 +2128,53 @@ SC2.AssertAndCrash+666006 - E8 65F5FFFF           - call SC2.AssertAndCrash+6655
 	....
 	SC2.AssertAndCrash+665574 - 8B F1                 - mov esi,ecx
 	SC2.AssertAndCrash+665596 - 89 46 1C              - mov [esi+1C],eax
+
+patch 3.1.1
+SC2.AssertAndCrash+1D2247 - 0FB7 0D 241B2F03      - movzx ecx,word ptr [SC2.exe+2431B24]
+SC2.AssertAndCrash+1D224E - 0FB7 05 261B2F03      - movzx eax,word ptr [SC2.exe+2431B26]
+SC2.AssertAndCrash+1D2255 - 66 89 45 FC           - mov [ebp-04],ax
+SC2.AssertAndCrash+1D2259 - 8B 45 FC              - mov eax,[ebp-04]
+SC2.AssertAndCrash+1D225C - 8B D1                 - mov edx,ecx
+SC2.AssertAndCrash+1D225E - 81 E2 FF0F0000        - and edx,00000FFF
+SC2.AssertAndCrash+1D2264 - 0FB7 14 95 E8468002   - movzx edx,word ptr [edx*4+SC2.exe+19446E8]
+SC2.AssertAndCrash+1D226C - 2B C2                 - sub eax,edx
+SC2.AssertAndCrash+1D226E - 89 45 FC              - mov [ebp-04],eax
+SC2.AssertAndCrash+1D2271 - 25 FF0F0000           - and eax,00000FFF
+SC2.AssertAndCrash+1D2276 - 0FB7 04 85 E8468002   - movzx eax,word ptr [eax*4+SC2.exe+19446E8]
+SC2.AssertAndCrash+1D227E - 03 C1                 - add eax,ecx
+SC2.AssertAndCrash+1D2280 - 66 89 45 F8           - mov [ebp-08],ax
+SC2.AssertAndCrash+1D2284 - 0FB7 45 FC            - movzx eax,word ptr [ebp-04]
+SC2.AssertAndCrash+1D2288 - 66 89 45 FA           - mov [ebp-06],ax
+SC2.AssertAndCrash+1D228C - 8B 4D F8              - mov ecx,[ebp-08]
+
+SC2.AssertAndCrash+1D2291 - 81 C1 C4040000        - add ecx,000004C4
+	SC2.AssertAndCrash+665D54 - 8B F1                 - mov esi,ecx
+	SC2.AssertAndCrash+665D76 - 89 46 1C              - mov [esi+1C],eax
+
+
+
 */
 
-
+; BOOL sub_483940()
  ; Check if the address changes
 isMenuOpen()
 { 	
 	; ebpP8 := 1
-	 eax := readMemory(OffsetsSC2Base + 0x2430B24, GameIdentifier)
-	 , edx := eax >> 16
-	 , eax &= 0xFFFF
-	 , ecx := eax
-	 , ecx &= 0x00000FFF
-	 , ebpP8 := edx & 0xFFFF
-	 , edx := readMemory(ecx * 0x4 + OffsetsSC2Base + 0x19436E8, GameIdentifier, 2)
-	 , ecx := ebpP8
-	 , ecx ^= edx
-	 , edx := ecx & 0xFFFF
-	 , ecx &= 0x00000FFF
-	 , ecx := readMemory(ecx * 0x4 + OffsetsSC2Base + 0x19436E8, GameIdentifier, 2)
-	 , eax -= ecx
-	 , eax := ~eax
-	 , ecx := ((edx & 0xFFFF) << 16) | (eax & 0xFFFF)
-	 , ecx += 0x000004C4
+	ecx := readMemory(OffsetsSC2Base + 0x2431B24, GameIdentifier)
+	, eax := ecx >> 16
+	, ecx &= 0xFFFF
+	, eax := eax & 0xFFFF
+	, edx := ecx
+	, edx &= 0x00000FFF
+	, edx := readMemory(edx * 0x4 + OffsetsSC2Base + 0x19446E8, GameIdentifier, 2)
+	, eax -= edx
+	, eax &= 0xFFFFFFFF
+	, ebpM4 := eax
+	, eax &= 0x00000FFF
+	, eax := readMemory(eax * 0x4 + OffsetsSC2Base + 0x19446E8, GameIdentifier, 2)
+	, eax += ecx
+	, eax &= 0xFFFFFFFF
+	, ecx := ((ebpM4 & 0xFFFF) << 16) | (eax & 0xFFFF) + 0x000004C4
 	return readMemory(ecx + 0x1C, GameIdentifier)
 	;Return  pointer(GameIdentifier, P_MenuFocus, O1_MenuFocus)
 }
@@ -5506,10 +5674,12 @@ SC2.GetBattlenetAllocator+275894 - 8B 57 08              - mov edx,[edi+08]
 ; This returns -1 when no unit is under the cursor
 getCursorUnit()
 {
+	return -1
+
 	eax := readmemory(OffsetsSC2Base + 0x1C34C38, GameIdentifier)
 	, ecx := readmemory(eax + 0x0AA0, GameIdentifier) + 0xACD4 ; added the 8
-	if (index := readMemory(ecx, GameIdentifier))
-		return index >> 18
+	if (fingerPrint := readMemory(ecx, GameIdentifier))
+		return fingerPrint >> 18
 	return -1
 }
 

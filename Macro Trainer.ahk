@@ -13821,10 +13821,99 @@ godMode(Enable := True)
 }
 
 
-
+/*
 f1::
-		tspeak("Why did the Colossus fall over ?")
-		return
+msgbox % chex(playeraddress(2))
+msgbox % getTime()
+. "`n" getPlayerName(1)
+. "`n" getPlayerColour(1)
+. "`n" getPlayerColour(2)
+return 
+
+unit := getSelectedUnitIndex()
+msgbox % clipboard := getUnitFingerPrint(unit)
+return 
+
+a := getUnitPosition(unit)
+objtree(a)
+
 
 /*
-12th  10:15
+; 41680897
+; 41418753
+; 41156609
+
+SC2.AssertAndCrash+1AD5EC - 8B 0D 7C41B202        - mov ecx,[SC2.exe+1C6417C]
+
+
+SC2.AssertAndCrash+63FD8D - 8B CF                 - mov ecx,edi
+SC2.AssertAndCrash+1AD6FC - 8B F1                 - mov esi,ecx
+
+SC2.AssertAndCrash+1AD49D - 8B F9                 - mov edi,ecx
+
+SC2.AssertAndCrash+1AD6B7 - 8B CF                 - mov ecx,edi ***
+
+SC2.AssertAndCrash+1A856A - 8D 8E CCAC0000        - lea ecx,[esi+0000ACCC]
+
+SC2.GetBattlenetAllocator+2759EA - 8B F1                 - mov esi,ecx
+SC2.GetBattlenetAllocator+275A2F - 89 5E 08              - mov [esi+08],ebx
+
+
+
+
+SC2.AssertAndCrash+1AD694 - 8B 0D 385CAF02        - mov ecx,[SC2.exe+1C35C38]
+SC2.AssertAndCrash+1AD6A1 - 81 C1 08090000        - add ecx,00000908
+
+SC2.AssertAndCrash+1ACE78 - 8D 9F CCAC0000        - lea ebx,[edi+0000ACCC]
+SC2.GetBattlenetAllocator+2755F7 - 8D 4E 08        - lea ecx,[esi+08]
+SC2.GetBattlenetAllocator+275600 - 89 11            - mov [ecx],edx
+
+SC2.AssertAndCrash+1ACEBD - 8B CB                 - mov ecx,ebx
+
+
+
+
+
+
+-----------
+SC2.AssertAndCrash+1D2247 - 0FB7 0D 241B2F03      - movzx ecx,word ptr [SC2.exe+2431B24]
+SC2.AssertAndCrash+1D224E - 0FB7 05 261B2F03      - movzx eax,word ptr [SC2.exe+2431B26]
+SC2.AssertAndCrash+1D2255 - 66 89 45 FC           - mov [ebp-04],ax
+SC2.AssertAndCrash+1D2259 - 8B 45 FC              - mov eax,[ebp-04]
+SC2.AssertAndCrash+1D225C - 8B D1                 - mov edx,ecx
+SC2.AssertAndCrash+1D225E - 81 E2 FF0F0000        - and edx,00000FFF
+SC2.AssertAndCrash+1D2264 - 0FB7 14 95 E8468002   - movzx edx,word ptr [edx*4+SC2.exe+19446E8]
+SC2.AssertAndCrash+1D226C - 2B C2                 - sub eax,edx
+SC2.AssertAndCrash+1D226E - 89 45 FC              - mov [ebp-04],eax
+SC2.AssertAndCrash+1D2271 - 25 FF0F0000           - and eax,00000FFF
+SC2.AssertAndCrash+1D2276 - 0FB7 04 85 E8468002   - movzx eax,word ptr [eax*4+SC2.exe+19446E8]
+SC2.AssertAndCrash+1D227E - 03 C1                 - add eax,ecx
+SC2.AssertAndCrash+1D2280 - 66 89 45 F8           - mov [ebp-08],ax
+SC2.AssertAndCrash+1D2284 - 0FB7 45 FC            - movzx eax,word ptr [ebp-04]
+SC2.AssertAndCrash+1D2288 - 66 89 45 FA           - mov [ebp-06],ax
+SC2.AssertAndCrash+1D228C - 8B 4D F8              - mov ecx,[ebp-08]
+
+SC2.AssertAndCrash+1D2291 - 81 C1 C4040000        - add ecx,000004C4
+	SC2.AssertAndCrash+665D54 - 8B F1                 - mov esi,ecx
+	SC2.AssertAndCrash+665D76 - 89 46 1C              - mov [esi+1C],eax
+
+*/
+
+
+
+
+
+
+
+
+
+
+
+
+/*
+****REMOVE****
+unitUnderCursor()
+
+
+
+
