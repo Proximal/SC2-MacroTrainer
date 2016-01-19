@@ -1301,6 +1301,8 @@ getPlayerType(player := "")
 	Return oPlayerType[ReadMemory(aSCOffsets["playerAddress", player] + Offsets_Player_Type, GameIdentifier, 1)]
 }
 
+/*
+This is wrong. 
 getPlayerVictoryStatus(player)
 {	global
 	static oPlayerStatus := {	  0: "Playing"
@@ -1309,7 +1311,7 @@ getPlayerVictoryStatus(player)
 								, 3: "Tied" }
 	Return oPlayerStatus[ReadMemory(aSCOffsets["playerAddress", player] + O_pVictoryStatus, GameIdentifier, 1)]
 }
-
+*/
 /*
 Nuke's Enum
 oPlayerStatus := {	  0: "Unused"
@@ -1330,6 +1332,41 @@ oPlayerStatus := {	  0: "Unused"
 isPlayerActive(player)
 {
 	Return ReadMemory(aSCOffsets["playerAddress", player] + Offsets_Player_Status, GameIdentifier, 1) & 1
+}
+
+/*
+c_allianceId:
+0 (c_allianceIdPassive) Passive
+1 (c_allianceIdVision) SharedVision
+2 (c_allianceIdControl) SharedControl
+3 (c_allianceIdSpend) SpendResources
+4 (c_allianceIdTrade) TradeResources
+5 (c_allianceIdSeekHelp) SeekHelp
+6 (c_allianceIdGiveHelp) GiveHelp
+7 (c_allianceIdChat) AlliedChat
+8 (c_allianceIdDefeat) SharedDefeat
+9 (c_allianceIdPushable) Pushable
+10  c_allianceIdPower SharedPower
+*/
+; Not used 
+; patch 3.1.1
+playerGetAlliance(sourcePlayer, targetPlayer, allianceID := "Passive")
+{
+	static allianceIndex :=	{	Passive: 0
+							, Vision: 1
+							, Control: 2
+							, Spend: 3
+							, Trade: 4
+							, SeekHelp: 5
+							, GiveHelp: 6
+							, Chat: 7
+							, Defeat: 8
+							, Pushable: 9
+							, Power: 10 }
+
+	dwordArrayIndex := sourcePlayer + 16 * allianceIndex[allianceID]
+	, v := readMemory(dwordArrayIndex * 4 + OffsetsSC2Base + 0x1FDDE60, GameIdentifier)
+  	return ((1 << targetPlayer) & v) != 0
 }
 
 getPlayerTeam(player="") ;team begins at 0
@@ -2713,42 +2750,47 @@ SetPlayerMinerals(amount := 99999, player := "")
 { 	global
 	If (player = "")
 		player := getLocalPlayerNumber()
-	Return writePlayerResource(aSCOffsets["playerAddress", player] + Offsets_Player_Minerals)     	 	 
+	Return writePlayerResource(aSCOffsets["playerAddress", player] + Offsets_Player_Minerals, amount)     	 	 
 }
 SetPlayerGas(amount := 99999, player := "")
 { 	global
 	If (player = "")
 		player := getLocalPlayerNumber()
-	Return writePlayerResource(aSCOffsets["playerAddress", player] + Offsets_Player_Gas)   
+	Return writePlayerResource(aSCOffsets["playerAddress", player] + Offsets_Player_Gas, amount)   
 }
 
 ; eg player minerals / gas
-; Look around SC2.AssertAndCrash+3C7471
-writePlayerResource(propertyAddress)
+; Look around SC2.AssertAndCrash+3C7677 (check what writes to player minerals)
+
+writePlayerResource(propertyAddress, amount)
 {
-	 eax := edi := 99999 ; resources
-	 eax ^= ebx := 0
-	 eax &= 0x55555555
-	 eax ^= ebx
-	 ecx := eax
-	 ecx >>= 0x0C
-	 esi := eax
-	 esi -= ecx
-	 edx := edi
-	 edx ^= ebx
-	 esi := ~esi
-	 esi &= 0x00000FFF
-	 edx &= 0x55555555
-	 edx ^= edi
-	 edx ^= readMemory(esi * 0x4 + OffsetsSC2Base + 0x19436E8, GameIdentifier)
-	 ecx := edx
-	 ecx >>= 0x0C
-	 esi := edx + 0x455E48F5
-	 esi ^= ecx
-	 esi &= 0x00000FFF
-	 eax -= readMemory(esi * 0x4 + OffsetsSC2Base + 0x19436E8, GameIdentifier)
-	 WriteMemory(propertyAddress, GameIdentifier, edx, "UInt")
-	 WriteMemory(propertyAddress + 4, GameIdentifier, eax, "UInt")
+	ebx := 0
+	eax := edi := amount ; resources
+	eax ^= ebx 
+	eax &= 0x55555555
+	eax ^= ebx
+	ecx := eax
+	edx := edi
+	edx ^= ebx
+	ecx >>= 0x0C
+	esi := eax
+	esi -= ecx
+	esi &= 0xFFFFFFFF ; prob not req.
+	esi &= 0x00000FFF
+	edx &= 0x55555555
+	edx ^= edi
+	edx += readMemory(esi * 0x4 + OffsetsSC2Base + 0x19446E8, GameIdentifier)
+	eax := ~eax
+	esi := edx
+	esi >>= 0x0C
+	esi += edx
+	esi &= 0xFFFFFFFF ; prob not req.
+	esi := ~esi
+	esi &= 0x00000FFF
+	esi := readMemory(esi * 0x4 + OffsetsSC2Base + 0x19446E8, GameIdentifier)
+	eax += esi
+	WriteMemory(propertyAddress, GameIdentifier, edx, "UInt")
+	WriteMemory(propertyAddress + 4, GameIdentifier, eax, "UInt")
 }
 
 
@@ -5669,14 +5711,14 @@ SC2.AssertAndCrash+1F5759 - A1 384CC302           - mov eax,[SC2.exe+1C34C38]
 SC2.AssertAndCrash+1F575E - 8B 88 A00A0000        - mov ecx,[eax+00000AA0]
 SC2.AssertAndCrash+1F5764 - 81 C1 CCAC0000        - add ecx,0000ACCC
 SC2.GetBattlenetAllocator+275894 - 8B 57 08              - mov edx,[edi+08]
+
+Can just use CE pointer scan for this, but the maximum offset must be > 0xAE5C 
 */
 
 ; This returns -1 when no unit is under the cursor
 getCursorUnit()
 {
-	return -1
-
-	eax := readmemory(OffsetsSC2Base + 0x1C34C38, GameIdentifier)
+	eax := readmemory(OffsetsSC2Base + 0x1C35C38, GameIdentifier) ; patch 3.1.1 0x1C34C38 + 0x1000
 	, ecx := readmemory(eax + 0x0AA0, GameIdentifier) + 0xACD4 ; added the 8
 	if (fingerPrint := readMemory(ecx, GameIdentifier))
 		return fingerPrint >> 18

@@ -33,7 +33,7 @@ aUnitTargetFilter := {Outer:	0x0001000000000000
 	, ResourcesHarvestable: 	0x0000000000100000
 	, ResourcesRaw: 			0x0000000000080000
 	, Worker: 					0x0000000000040000
-	, "patch3.0Unknown": 		0x0000000000020000
+	, User1: 					0x0000000000020000 		; Added in patch 3.0.0 lotv
 	, Heroic: 					0x0000000000010000
 	, Hover: 					0x0000000000008000
 	, Structure:				0x0000000000004000

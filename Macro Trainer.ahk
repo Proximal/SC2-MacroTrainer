@@ -157,10 +157,11 @@ start:
 global config_file := "MT_Config.ini"
 old_backup_DIR := "Old Macro Trainers"
 url := []
-url.CurrentVersionInfo := "http://www.users.on.net/~jb10/macroTrainerCurrentVersion.ini"
+url.aCurrentVersionInfo := ["http://www.users.on.net/~jb10/macroTrainerCurrentVersion.ini", "https://drive.google.com/uc?export=download&id=0B5bhpIr1kFswaUFzV1pHd3RKLXc"]
 url.changelog := "http://www.users.on.net/~jb10/MT_ChangeLog.html"
 url.HelpFile := "http://www.users.on.net/~jb10/MTSite/helpfulAdvice.html"
 url.Downloads := "http://www.users.on.net/~jb10/MTSite/downloads.html"
+url.DownloadsAlternative := "https://drive.google.com/file/d/0B5bhpIr1kFswcmk5WWRnSEhvUUk/view?usp=sharing"
 url.ChronoRules := "http://www.users.on.net/~jb10/MTSite/chronoBoost.html"
 url.Overlays := "http://www.users.on.net/~jb10/MTSite/miniMapOverlays.html"
 url.Homepage := "http://www.users.on.net/~jb10/MTSite/overview.html"
@@ -224,7 +225,7 @@ SetProgramWaveVolume(programVolume)
 ;-----------------------
 ; use the below expression, as this allows me to check what happens when the program is slow to check for an update i.e. delay execution
 ; Also ensures macroTrainerAnnouncements are updated regardless of auto-update settings
-If url.UpdateZip := CheckForUpdates(url.CurrentVersionInfo, ProgramVersion, latestVersion, macroTrainerAnnouncements)
+If CheckForUpdates(url.aCurrentVersionInfo, ProgramVersion, latestVersion, aUpdateZipURL, macroTrainerAnnouncements) = 1
 {
 	if (auto_update && A_IsCompiled)
 	{
@@ -2147,7 +2148,7 @@ TrayUpdate:
 		Return 					
 	}
 	if (A_ThisLabel = "autoUpdateFound")
-	|| (A_ThisLabel = "TrayUpdate" && (url.UpdateZip := CheckForUpdates(url.CurrentVersionInfo, ProgramVersion, latestVersion, macroTrainerAnnouncements)))
+	|| (A_ThisLabel = "TrayUpdate" && 1 = (versionCheckResult := CheckForUpdates(url.aCurrentVersionInfo, ProgramVersion, latestVersion, aUpdateZipURL, macroTrainerAnnouncements)))
 	{
 		; Very minor bug - for some reason &Canecel does not underline the 'C' in the button
 		; for the trayupdate - but it does for the autoupdate
@@ -2204,77 +2205,98 @@ TrayUpdate:
 	}
 	Else if (A_ThisLabel = "TrayUpdate") 
 	{
-		Gui, New
-		Gui +Toolwindow +AlwaysOnTop	
-		Gui, Add, Picture, x12 y10 w60 h60, %A_Temp%\Starcraft-2.ico
-		Gui, Font, S10 CDefault, Verdana
-		Gui, Add, Text, x92 y15, You already have the latest version.
-		Gui, Add, Text, xp yp+20, Version:
-		Gui, Font, S10 CDefault Bold, Verdana
-		Gui, Add, Text, xp+60 yp, %ProgramVersion%
-		Gui, Font, Norm 
-		Gui, Font, S8 CDefault Bold, Verdana
-		Gui, Font, Norm 
-		Gui, Add, Button, Default x130 yp+40  w100 h30 gGuiReturn, &OK
-		Gui, Show,, Macro Trainer Update
+		if (versionCheckResult < 0) ; error
+			gosub, UpdateError
+		else ; versionCheckResult = 0
+		{
+			Gui, New
+			Gui +Toolwindow +AlwaysOnTop	
+			Gui, Add, Picture, x12 y10 w60 h60, %A_Temp%\Starcraft-2.ico
+			Gui, Font, S10 CDefault, Verdana
+			Gui, Add, Text, x92 y15, You already have the latest version.
+			Gui, Add, Text, xp yp+20, Version:
+			Gui, Font, S10 CDefault Bold, Verdana
+			Gui, Add, Text, xp+60 yp, %ProgramVersion%
+			Gui, Font, Norm 
+			Gui, Font, S8 CDefault Bold, Verdana
+			Gui, Font, Norm 
+			Gui, Add, Button, Default x130 yp+40  w100 h30 gGuiReturn, &OK
+			Gui, Show,, Macro Trainer Update
+		}
 		Return
 	}
 return 
 
+UpdateError:
+Gui, New
+Gui +Toolwindow +AlwaysOnTop	
+Gui, Add, Picture, x12 y10 w60 h60, %A_Temp%\Starcraft-2.ico
+Gui, Font, S10 CDefault, Verdana
+Gui, Add, Text, x92 y15, An error occurred while checking for updates!
+Gui, Add, Text, xp yp+25, Press ok to open the download and alternate download pages in your browser.
+Gui, Add, Text, xp yp+25, You will be able to manually update the program from these links.
+Gui, Font, Norm 
+Gui, Font, S8 CDefault, Verdana
+Gui, Add, Button, Default x130 yp+40  w100 h30 gLaunchDownloadpagesAndDestroyGUI, &OK
+Gui, Add, Button, x+50 yp  w100 h30 gGuiReturn, Cancel
+Gui, Show,, Macro Trainer Update Error
+return
+
+LaunchDownloadpagesAndDestroyGUI:
+Gui Destroy
+LaunchDownloadpages:
+run % url.Downloads
+run % url.DownloadsAlternative
+return
+
 Update:
-	updateSave := "MacroTrainer" latestVersion ".zip"
-	If ( InternetFileRead( binData, url.UpdateZip) > 0 && !ErrorLevel )
+updateSave := "MacroTrainer" latestVersion ".zip"
+If ( InternetFileRead(binData, aUpdateZipURL[1]) > 0 && !ErrorLevel )
+{
+	If VarZ_Save(binData, updateSave) 
 	{
-		If VarZ_Save(binData, updateSave) 
+		Sleep 200
+		DLP(1, 1, "Download Complete - Extracting") ; 1 file of 1 with message on complete
+		if !FileExist(updateSave)
+			goto UpdateError
+
+		FileRemoveDir, % extractDir := A_ScriptDir "\MTUpdateFiles", 1
+		SmartZip(updateSave, extractDir, 4|16) ; no dialogue and yes to all
+		; find the name of the included exe
+		; normally just trainer exe and dll in zip file
+		launchExe := launchSize := ""
+		loop, % extractDir "\Macro*.exe "
 		{
-			Sleep 200
-			DLP(1, 1, "Download Complete - Extracting") ; 1 file of 1 with message on complete
-			if !FileExist(updateSave)
-				goto updateErrorExit
-
-			FileRemoveDir, % extractDir := A_ScriptDir "\MTUpdateFiles", 1
-			SmartZip(updateSave, extractDir, 4|16) ; no dialogue and yes to all
-			; find the name of the included exe
-			; normally just trainer exe and dll in zip file
-			launchExe := launchSize := ""
-			loop, % extractDir "\Macro*.exe "
-			{
-				launchExe := A_LoopFileName 
-				launchSize := A_LoopFileSizeMB
-			}
-			FileDelete, %updateSave%
-			if (!launchExe || !launchSize) ; trainer will always be => 1MB
-			{
-				FileRemoveDir, %extractDir%, 1 ; recursive
-				goto updateErrorExit
-			}
-			; Due to this file move and files must be in root directory of the unzipped folder
-			FileMove, %extractDir%\*.*, %A_ScriptDir%\*.*, 1
-			FileRemoveDir, %extractDir%, 1 ; recursive
-			if !FileExist(launchExe)
-				goto updateErrorExit
-
-			MsgBox, 262145, Update, Download complete.`n`nClick OK to run the latest version (Vr %latestVersion%)`nClick cancel to continue running this version.
-			IfMsgBox Ok ;msgbox 1 = ok/cancel buttons
-			{	
-				FileCreateDir, %old_backup_DIR%
-				FileMove, %A_ScriptName%, %old_backup_DIR%\%A_ScriptName%, 1 ;ie 1 = overwrite	
-				Run %launchExe%	
-				ExitApp
-			}
-			Else	
-				DLP(False) ;removes the progress
-			FileCopy, %A_ScriptName%, %old_backup_DIR%\%A_ScriptName%, 1
+			launchExe := A_LoopFileName 
+			launchSize := A_LoopFileSizeMB
 		}
-	}
-	else goto updateErrorExit
-	Return
+		FileDelete, %updateSave%
+		if (!launchExe || !launchSize) ; trainer will always be => 1MB
+		{
+			FileRemoveDir, %extractDir%, 1 ; recursive
+			goto UpdateError
+		}
+		; Due to this file move and files must be in root directory of the unzipped folder
+		FileMove, %extractDir%\*.*, %A_ScriptDir%\*.*, 1
+		FileRemoveDir, %extractDir%, 1 ; recursive
+		if !FileExist(launchExe)
+			goto UpdateError
 
-updateErrorExit:
-	msgbox, 262145, Update Error, An error has occured.`n`nPress OK to launch the trainer website in your browser to manually download the update. 
-	IfMsgBox Ok
-		run % url.Downloads
-return 
+		MsgBox, 262145, Update, Download complete.`n`nClick OK to run the latest version (Vr %latestVersion%)`nClick cancel to continue running this version.
+		IfMsgBox Ok ;msgbox 1 = ok/cancel buttons
+		{	
+			FileCreateDir, %old_backup_DIR%
+			FileMove, %A_ScriptName%, %old_backup_DIR%\%A_ScriptName%, 1 ;ie 1 = overwrite	
+			Run %launchExe%	
+			ExitApp
+		}
+		Else	
+			DLP(False) ;removes the progress
+		FileCopy, %A_ScriptName%, %old_backup_DIR%\%A_ScriptName%, 1
+	}
+}
+else goto UpdateError
+Return
 
 ; Not used anymore. I think I fixed the bug (sapi) which was preventing the program from exiting cleanly
 SingleInstanceCheck:
@@ -13780,40 +13802,6 @@ findClosestNexus(mothershipIndex, byRef minimapX, byRef minimapY)
 
 
 
-; Look around SC2.AssertAndCrash+3C7471
-uberLocalResources()
-{
- eax := edi := 99999 ; resources
- eax ^= ebx := 0
- eax &= 0x55555555
- eax ^= ebx
- ecx := eax
- ecx >>= 0x0C
- esi := eax
- esi -= ecx
- edx := edi
- edx ^= ebx
- esi := ~esi
- esi &= 0x00000FFF
- edx &= 0x55555555
- edx ^= edi
- edx ^= readMemory(esi * 0x4 + OffsetsSC2Base + 0x19436E8, GameIdentifier)
- ecx := edx
- ecx >>= 0x0C
- esi := edx + 0x455E48F5
- esi ^= ecx
- esi &= 0x00000FFF
- eax -= readMemory(esi * 0x4 + OffsetsSC2Base + 0x19436E8, GameIdentifier)
- ecx := playeraddress(1)  
- ; mins
- WriteMemory(ecx + 0x800, GameIdentifier, edx, "UInt")
- WriteMemory(ecx + 0x800 + 4, GameIdentifier, eax, "UInt")
-; gas
- WriteMemory(ecx + 0x808, GameIdentifier, edx, "UInt")
- WriteMemory(ecx + 0x808 + 4, GameIdentifier, eax, "UInt")
-}
-
-
 godMode(Enable := True)
 {
 	address := (readMemory(OffsetsSC2Base + 0x1947028, GameIdentifier) ^ readMemory(OffsetsSC2Base + 0x211DEC0, GameIdentifier) ^ 0x90E6D165) 
@@ -13825,90 +13813,220 @@ godMode(Enable := True)
 }
 
 
+  lib87E28FFF_gf_InitScreenProjection()
+  return 
+
+
+lib87E28FFF_gf_InitScreenProjection() ;point lp_target, fixed lp_distance, fixed lp_yaw, fixed lp_pitch, fixed lp_roll, fixed lp_height, fixed lp_foV, int lp_screenSizeX, int lp_screenSizeY, int lp_flag) 
+{
+    lib87E28FFF_gv_M := []
+    lib87E28FFF_gv_MI := []
+    lib87E28FFF_gv_camPos := []
+    lib87E28FFF_gv_halfScreenSize := []
+    lp_yaw := 90
+    lp_pitch := 56
+    lp_roll := 0
+    lp_foV := 27.7998
+    lp_screenSizeX := A_ScreenWidth
+    lp_screenSizey := A_ScreenHeight * 0.75
+    lp_distance := 34 ; changes when zooming in
+    lp_height := 0 ; this cant be right? - getCameraInfo - height offset
+
+    lp_target := getPlayerCameraPosition(1)
+
+    worldHeight := 8 ; 
+    ca := Cos(lp_yaw)
+    cb := Cos(lp_pitch)
+    cy := Cos(lp_roll)
+    sa := Sin(lp_yaw)
+    sb := Sin(lp_pitch)
+    sy := Sin(lp_roll)
+    lib87E28FFF_gv_halfScreenSize[0] := lp_screenSizeX / 2
+    lib87E28FFF_gv_halfScreenSize[1] := lp_screenSizeY / 2
+    lib87E28FFF_gv_length := -100 * Tan(lp_foV/2) / lib87E28FFF_gv_halfScreenSize[1]
+    lib87E28FFF_gv_camPos[0] := -1 * lp_distance * cb * ca + lp_target["x"]
+    lib87E28FFF_gv_camPos[1] := -1 * lp_distance * cb * sa + lp_target["y"]
+    lib87E28FFF_gv_camPos[2] := lp_distance * sb + lp_height + worldHeight ;WorldHeight(c_heightMapGround, lp_target);
+   ; if (1 || lp_flag == 0 || lp_flag == 1) {
+      lib87E28FFF_gv_M[0] := ca * cb ;
+      lib87E28FFF_gv_M[1] := -1 * ca * sb * sy - sa * cy ;
+      lib87E28FFF_gv_M[2] := ca * sb * cy - sa * sy ;
+      lib87E28FFF_gv_M[3] := sa * cb ;
+      lib87E28FFF_gv_M[4] := ca * cy - sa * sb * sy ;
+      lib87E28FFF_gv_M[5] := sa * sb * cy + ca * sy ;
+      lib87E28FFF_gv_M[6] := -1 * sb ;
+      lib87E28FFF_gv_M[7] := -1 * cb * sy ;
+      lib87E28FFF_gv_M[8] := cb * cy ;
+;    }
+ ;   if (1 || lp_flag == 0 || lp_flag == 2) {
+      lib87E28FFF_gv_MI[0] := ca * cb ;
+      lib87E28FFF_gv_MI[1] := sa * cb ;
+      lib87E28FFF_gv_MI[2] := -1 * sb ;
+      lib87E28FFF_gv_MI[3] := -1 * sa * cy - ca * sb * sy ;
+      lib87E28FFF_gv_MI[4] := ca * cy - sa * sb * sy ;
+      lib87E28FFF_gv_MI[5] := -1 * cb * sy ;
+      lib87E28FFF_gv_MI[6] := ca * sb * cy - sa * sy ;
+      lib87E28FFF_gv_MI[7] := sa * sb * cy + ca * sy ;
+      lib87E28FFF_gv_MI[8] := cb * cy ;
+  ;  }
+
+  	unit := getSelectedUnitIndex()
+  	worldpoint := getUnitPosition(unit)
+  	if 1 ;getScreenPointFromWorld
+  	{
+	    camVecWorld := []
+	    camVec := []
+
+	    camVecWorld[0] := worldpoint.x - lib87E28FFF_gv_camPos[0] ;
+	    camVecWorld[1] := worldpoint.y - lib87E28FFF_gv_camPos[1] ;
+	    camVecWorld[2] := worldHeight -  lib87E28FFF_gv_camPos[2]		;WorldHeight(c_heightMapGround, lp_world) - lib87E28FFF_gv_camPos[2];
+	    camVec[0] := (lib87E28FFF_gv_MI[0] * camVecWorld[0]) + (lib87E28FFF_gv_MI[1] * camVecWorld[1]) + (lib87E28FFF_gv_MI[2] * camVecWorld[2]) ;
+	    camVec[1] := (lib87E28FFF_gv_MI[3] * camVecWorld[0]) + (lib87E28FFF_gv_MI[4] * camVecWorld[1]) + (lib87E28FFF_gv_MI[5] * camVecWorld[2]) ;
+	    camVec[2] := (lib87E28FFF_gv_MI[6] * camVecWorld[0]) + (lib87E28FFF_gv_MI[7] * camVecWorld[1]) + (lib87E28FFF_gv_MI[8] * camVecWorld[2]) ;
+	    radius := 100 / (lib87E28FFF_gv_length * camVec[0]) ;
+
+	    point := []
+	    point.x := camVec[1] * radius + lib87E28FFF_gv_halfScreenSize[0]
+	    point.y := camVec[2] * radius + lib87E28FFF_gv_halfScreenSize[1]
+
+	    delta := lib87E28FFF_gv_halfScreenSize[0] - point.x
+
+	   	point.x := point.x + ((point.x - lib87E28FFF_gv_halfScreenSize[0])/lib87E28FFF_gv_halfScreenSize[0]) * 10000
+	    point.y := camVec[2] * radius + lib87E28FFF_gv_halfScreenSize[1]
+
+	}
+	MouseMove, point.x, point.y 
+
+}
+
+
+
+
+
 /*
-f1::
-msgbox % chex(playeraddress(2))
-msgbox % getTime()
-. "`n" getPlayerName(1)
-. "`n" getPlayerColour(1)
-. "`n" getPlayerColour(2)
-return 
 
-unit := getSelectedUnitIndex()
-msgbox % clipboard := getUnitFingerPrint(unit)
-return 
+ int v0; // esi@1
+  int result; // eax@2
+  int v2; // edi@3
+  unsigned int v3; // ecx@3
+  int v4; // edx@3
+  double v5; // st6@4
 
-a := getUnitPosition(unit)
-objtree(a)
-
-
-/*
-; 41680897
-; 41418753
-; 41156609
-
-SC2.AssertAndCrash+1AD5EC - 8B 0D 7C41B202        - mov ecx,[SC2.exe+1C6417C]
-
-
-SC2.AssertAndCrash+63FD8D - 8B CF                 - mov ecx,edi
-SC2.AssertAndCrash+1AD6FC - 8B F1                 - mov esi,ecx
-
-SC2.AssertAndCrash+1AD49D - 8B F9                 - mov edi,ecx
-
-SC2.AssertAndCrash+1AD6B7 - 8B CF                 - mov ecx,edi ***
-
-SC2.AssertAndCrash+1A856A - 8D 8E CCAC0000        - lea ecx,[esi+0000ACCC]
-
-SC2.GetBattlenetAllocator+2759EA - 8B F1                 - mov esi,ecx
-SC2.GetBattlenetAllocator+275A2F - 89 5E 08              - mov [esi+08],ebx
-
-
-
-
-SC2.AssertAndCrash+1AD694 - 8B 0D 385CAF02        - mov ecx,[SC2.exe+1C35C38]
-SC2.AssertAndCrash+1AD6A1 - 81 C1 08090000        - add ecx,00000908
-
-SC2.AssertAndCrash+1ACE78 - 8D 9F CCAC0000        - lea ebx,[edi+0000ACCC]
-SC2.GetBattlenetAllocator+2755F7 - 8D 4E 08        - lea ecx,[esi+08]
-SC2.GetBattlenetAllocator+275600 - 89 11            - mov [ecx],edx
-
-SC2.AssertAndCrash+1ACEBD - 8B CB                 - mov ecx,ebx
+  v0 = sub_3DABE0();
+  if ( *(_DWORD *)v0 & 0x7FFFFFF )
+  {
+    v2 = sub_4061D0();
+    v3 = 0;
+    v4 = v2 + 28;
+    do
+    {
+      v5 = *(float *)(4 * (v3++ + 8 * *(_DWORD *)v0) + 0x54) * 4096.0;
+      v4 += 4;
+      *(_DWORD *)(v4 - 4) = (signed __int64)v5;
+    }
+    while ( v3 < 0x12 );
+    *(_DWORD *)(v2 + 12) = 1;
+    result = *(_DWORD *)(v2 + 4);
+  }
+  else
+  {
+    result = 0;
+  }
+  return result;
 
 
 
 
 
 
------------
-SC2.AssertAndCrash+1D2247 - 0FB7 0D 241B2F03      - movzx ecx,word ptr [SC2.exe+2431B24]
-SC2.AssertAndCrash+1D224E - 0FB7 05 261B2F03      - movzx eax,word ptr [SC2.exe+2431B26]
-SC2.AssertAndCrash+1D2255 - 66 89 45 FC           - mov [ebp-04],ax
-SC2.AssertAndCrash+1D2259 - 8B 45 FC              - mov eax,[ebp-04]
-SC2.AssertAndCrash+1D225C - 8B D1                 - mov edx,ecx
-SC2.AssertAndCrash+1D225E - 81 E2 FF0F0000        - and edx,00000FFF
-SC2.AssertAndCrash+1D2264 - 0FB7 14 95 E8468002   - movzx edx,word ptr [edx*4+SC2.exe+19446E8]
-SC2.AssertAndCrash+1D226C - 2B C2                 - sub eax,edx
-SC2.AssertAndCrash+1D226E - 89 45 FC              - mov [ebp-04],eax
-SC2.AssertAndCrash+1D2271 - 25 FF0F0000           - and eax,00000FFF
-SC2.AssertAndCrash+1D2276 - 0FB7 04 85 E8468002   - movzx eax,word ptr [eax*4+SC2.exe+19446E8]
-SC2.AssertAndCrash+1D227E - 03 C1                 - add eax,ecx
-SC2.AssertAndCrash+1D2280 - 66 89 45 F8           - mov [ebp-08],ax
-SC2.AssertAndCrash+1D2284 - 0FB7 45 FC            - movzx eax,word ptr [ebp-04]
-SC2.AssertAndCrash+1D2288 - 66 89 45 FA           - mov [ebp-06],ax
-SC2.AssertAndCrash+1D228C - 8B 4D F8              - mov ecx,[ebp-08]
 
-SC2.AssertAndCrash+1D2291 - 81 C1 C4040000        - add ecx,000004C4
-	SC2.AssertAndCrash+665D54 - 8B F1                 - mov esi,ecx
-	SC2.AssertAndCrash+665D76 - 89 46 1C              - mov [esi+1C],eax
+
+
+
+
+
+
+
+
+
+
+/* 11 items 0 based enum
+0	Passive
+1	
+2	
+	
+	
+
+	
+	
+	
+	
+	
+		
+	
+	
+
+	
+
 
 */
 
 
 
+/*
+0x1FDDEE8 - 0x1FDDE60
+= 0x88 
+0x88-2
+= 0x86 
+AlliedChat
+	p0
+	p1
+	...
+	..
+	p16
 
 
 
 
+
+/*
+InitScreenProjection(targetPoint, distance, yaw, pitch, roll, height, FOV, screenSizeX,ScreenSizeY, Flag)
+{
+fixed ca = Cos(lp_yaw);
+fixed cb = Cos(lp_pitch);
+fixed cy = Cos(lp_roll);
+fixed sa = Sin(lp_yaw);
+fixed sb = Sin(lp_pitch);
+fixed sy = Sin(lp_roll);
+lib87E28FFF_gv_halfScreenSize[0] = IntToFixed(lp_screenSizeX / 2);
+lib87E28FFF_gv_halfScreenSize[1] = IntToFixed(lp_screenSizeY / 2);
+lib87E28FFF_gv_length = -100 * Tan(lp_foV/2) / lib87E28FFF_gv_halfScreenSize[1];
+lib87E28FFF_gv_camPos[0] = -1 * lp_distance * cb * ca + PointGetX(lp_target);
+lib87E28FFF_gv_camPos[1] = -1 * lp_distance * cb * sa + PointGetY(lp_target);
+lib87E28FFF_gv_camPos[2] = lp_distance * sb + lp_height + WorldHeight(c_heightMapGround, lp_target);
+if (lp_flag == 0 || lp_flag == 1) {
+  lib87E28FFF_gv_M[0] = ca * cb;
+  lib87E28FFF_gv_M[1] = -1 * ca * sb * sy - sa * cy;
+  lib87E28FFF_gv_M[2] = ca * sb * cy - sa * sy;
+  lib87E28FFF_gv_M[3] = sa * cb;
+  lib87E28FFF_gv_M[4] = ca * cy - sa * sb * sy;
+  lib87E28FFF_gv_M[5] = sa * sb * cy + ca * sy;
+  lib87E28FFF_gv_M[6] = -1 * sb;
+  lib87E28FFF_gv_M[7] = -1 * cb * sy;
+  lib87E28FFF_gv_M[8] = cb * cy;
+}
+if (lp_flag == 0 || lp_flag == 2) {
+  lib87E28FFF_gv_MI[0] = ca * cb;
+  lib87E28FFF_gv_MI[1] = sa * cb;
+  lib87E28FFF_gv_MI[2] = -1 * sb;
+  lib87E28FFF_gv_MI[3] = -1 * sa * cy - ca * sb * sy;
+  lib87E28FFF_gv_MI[4] = ca * cy - sa * sb * sy;
+  lib87E28FFF_gv_MI[5] = -1 * cb * sy;
+  lib87E28FFF_gv_MI[6] = ca * sb * cy - sa * sy;
+  lib87E28FFF_gv_MI[7] = sa * sb * cy + ca * sy;
+  lib87E28FFF_gv_MI[8] = cb * cy;
+}
+}
 
 
 
@@ -13921,3 +14039,19 @@ unitUnderCursor()
 
 16.3K
 
+0x1C34C38 + 0x400000   = 2034C38
+
+char __fastcall sub_D13650(int a1, int a2, int a3)
+
+SC2.AssertAndCrash+1A750E - 8B 8E D4AC0000        - mov ecx,[esi+0000ACD4]
+
+
+***signed int __thiscall sub_1D5740(unsigned int *this)
+****int __thiscall sub_1F28A0(void *this)
+
+
+
+int __stdcall sub_26E620(int a1)
+{
+  return sub_1F2920(*(void **)(dword_1C35C38 + 0xAA0), a1);
+}
