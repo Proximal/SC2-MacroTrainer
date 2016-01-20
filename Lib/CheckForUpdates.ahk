@@ -23,11 +23,13 @@ CheckForUpdates(aVersionURLS, installed_version, byRef latestVersion, byRef aUpd
 		IniRead, announcements, %A_Temp%\version_checker_temp_file.ini, info, announcements, %A_Space%
 		FileDelete %A_Temp%\version_checker_temp_file.ini
 		updateURLList := Trim(updateURLList, " `t,")
+		; If the page doesn't exist, then the website will probably return some 404 screen. 
+		; That wont have the keys above - so continue the versionURL loop
 		if !updateURLList
-			return 0			
+			continue			
 		aupdateURLList := StrSplit(updateURLList, ",")
 		if !aupdateURLList.MaxIndex()
-			return 0
+			continue
 		; A small subset of users can not access my main host
 		; This compares the download URLS with the working host that the version file came from
 		; It will insert URLS from this working host at the start of the returned URL array

@@ -5310,6 +5310,10 @@ readConfigFile(threadTitle := "")
 	
 	IniRead, LauncherMode, %config_file%, %section%, LauncherMode, Battle.net
 	IniRead, auto_update, %config_file%, %section%, auto_check_updates, 1
+	IniRead, updateFromHost, %config_file%, %section%, updateFromHost, Fallback
+	if (threadTitle = "main" && IsFunc(FunctionName := "setUpdateHost"))
+		%FunctionName%()
+
 	IniRead, launch_settings, %config_file%, %section%, launch_settings, 0
 	IniRead, MaxWindowOnStart, %config_file%, %section%, MaxWindowOnStart, 1
 

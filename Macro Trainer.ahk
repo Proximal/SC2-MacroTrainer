@@ -157,7 +157,10 @@ start:
 global config_file := "MT_Config.ini"
 old_backup_DIR := "Old Macro Trainers"
 url := []
-url.aCurrentVersionInfo := ["http://www.users.on.net/~jb10/macroTrainerCurrentVersion.ini", "https://drive.google.com/uc?export=download&id=0B5bhpIr1kFswaUFzV1pHd3RKLXc"]
+url.aCurrentVersionInfoMain := "http://www.users.on.net/~jb10/macroTrainerCurrentVersion.ini"
+url.aCurrentVersionInfoAlternate1 := "https://drive.google.com/uc?export=download&id=0B5bhpIr1kFswaUFzV1pHd3RKLXc"
+url.aCurrentVersionInfo := [url.aCurrentVersionInfoMain, url.aCurrentVersionInfoAlternate1]  
+
 url.changelog := "http://www.users.on.net/~jb10/MT_ChangeLog.html"
 url.HelpFile := "http://www.users.on.net/~jb10/MTSite/helpfulAdvice.html"
 url.Downloads := "http://www.users.on.net/~jb10/MTSite/downloads.html"
@@ -2857,11 +2860,27 @@ ini_settings_write:
 		else if LauncherRadioStarCraft
 			LauncherMode := "Starcraft"
 		else LauncherMode := "Off"
+
+		if FileHostRadioMainHost
+			updateFromHost := "Main"
+		else if FileHostRadioAlternate1Host
+			updateFromHost := "Alternate1"
+		else ; if FileHostRadioBoth 
+			updateFromHost := "Fallback"
 	}
-	else if !LauncherMode ; Shouldn't be required
-		LauncherMode := "Off"
+	else 
+	{
+		; Shouldn't be required
+		if !LauncherMode 
+			LauncherMode := "Off"
+		if !updateFromHost
+			updateFromHost := "Fallback"
+	}
+ 
+	setUpdateHost()
 	IniWrite, %LauncherMode%, %config_file%, %section%, LauncherMode
 	IniWrite, %auto_update%, %config_file%, %section%, auto_check_updates
+	IniWrite, %updateFromHost%, %config_file%, %section%, updateFromHost
 	Iniwrite, %launch_settings%, %config_file%, %section%, launch_settings
 	Iniwrite, %MaxWindowOnStart%, %config_file%, %section%, MaxWindowOnStart
 	;Iniwrite, %UnitDetectionTimer_ms%, %config_file%, %section%, UnitDetectionTimer_ms
@@ -3739,24 +3758,26 @@ try
 		
 
 	Gui, Add, Tab2, hidden w440 h%guiMenuHeight% X%MenuTabX%  Y%MenuTabY% vSettings_TAB, Settings|Audio				
-		Gui, Add, GroupBox, w161 h110 section,
-
-		Gui, Add, GroupBox, xs ys+115 w161 h85, Launcher 
+		Gui, Add, GroupBox, w161 h110 section, Launcher
 			Gui, Add, Radio, % "xp+10 yp+25 vLauncherRadioBattleNet checked" (LauncherMode = "Battle.net"), Battle.net 
 			Gui, Add, Radio, % "vLauncherRadioStarCraft checked" (LauncherMode = "Starcraft"), Starcraft 
 			Gui, Add, Radio, % "vLauncherRadioDisabled checked" (LauncherMode = "Off" || (LauncherMode != "Battle.net" && LauncherMode != "Starcraft")), Disabled 
 
-		Gui, Add, GroupBox, xs ys+205 w161 h80, Key Blocking
+		Gui, Add, GroupBox, xs ys+115 w161 h170, Updates
+			Gui, Add, Checkbox,xp+10 yp+25 Vauto_update checked%auto_update%, Auto Check For Updates
+			Gui, Add, Text, xp y+15, Update Host:
+			Gui, Add, Radio, % "xp y+10 vFileHostRadioBoth checked" (updateFromHost = "Fallback" || (updateFromHost != "Main" && updateFromHost != "Alternate1")) , Both 
+			Gui, Add, Radio, % "vMainHost vFileHostRadioMainHost checked" (updateFromHost = "Main"), Main Host  
+			Gui, Add, Radio, % "vMainHost vFileHostRadioAlternate1Host checked" (updateFromHost = "Alternate1"), Google Drive
+		
+
+		Gui, Add, GroupBox, xs ys+290 w161 h60, Key Blocking
 			Gui, Add, Checkbox, xp+10 yp+25 vLwinDisable checked%LwinDisable%, Disable Left Windows Key
 		;	Gui, Add, Checkbox,xp+10 yp+25 vBlockingStandard checked%BlockingStandard%, Standard Keys	
 		;	Gui, Add, Checkbox, y+10 vBlockingFunctional checked%BlockingFunctional%, Functional F-Keys 	
 		;	Gui, Add, Checkbox, y+10 vBlockingNumpad checked%BlockingNumpad%, Numpad Keys	
 		;	Gui, Add, Checkbox, y+10 vBlockingMouseKeys checked%BlockingMouseKeys%, Mouse Buttons	
-		;	Gui, Add, Checkbox, y+10 vBlockingMultimedia checked%BlockingMultimedia%, Mutimedia Buttons	
-			
-
-		Gui, Add, GroupBox, xs ys+290 w161 h60, Updates
-			Gui, Add, Checkbox,xs+10 yp+25 Vauto_update checked%auto_update%, Auto Check For Updates
+		;	Gui, Add, Checkbox, y+10 vBlockingMultimedia checked%BlockingMultimedia%, Mutimedia Buttons				
 
 	/*
 		Gui, Add, GroupBox, xs yp+35 w161 h60, Unit Deselection
@@ -3764,7 +3785,9 @@ try
 			Gui, Add, Edit, Number Right x+25 yp-2 w45 vTT_DeselectSleepTime
 				Gui, Add, UpDown,  Range0-300 vDeselectSleepTime, %DeselectSleepTime%,
 	*/
-	Gui, Add, GroupBox, xs+171 ys w245 h110
+	Gui, Add, GroupBox, xs+171 ys w245 h110 
+
+
 /*
 		Gui, Add, GroupBox, xs+171 ys w245 h110, Volume
 			Gui, Add, Text, xp+10 yp+30 w45, Speech:
@@ -3777,7 +3800,7 @@ try
 			Gui, Add, DropDownList, xs+181 y+15 w150, % installedVoices()
 
 */
-		Gui, Add, GroupBox, Xs+171 ys+116 w245 h170, Debugging
+		Gui, Add, GroupBox, Xs+171 ys+115 w245 h170, Debugging
 			Gui, Add, Button, % "xp+10 yp+20 GdebugListVars w75 h25 disabled" round(A_IsCompiled),  List Variables
 			Gui, Add, Button, xp+90 yp gDrawSCUIOverlay  w75 h25, SC UI Pos
 			Gui, Add, Button, xp yp+30 gPerformPatternScan  w75 h25, Pattern Scan
@@ -5249,6 +5272,7 @@ AutomationTerranCameraGroup_TT := AutomationProtossCameraGroup_TT := AutomationZ
 		
 		LauncherRadioBattleNet_TT := LauncherRadioStarCraft_TT := LauncherRadioDisabled_TT := "During startup MacroTrainer will attempt to launch either the Battle.net app or Starcraft."
 
+		FileHostRadioBoth_TT := FileHostRadioMainHost_TT := FileHostRadioAlternate1Host_TT := "Sets the file host used to check for and download updates.`nThis is useful if the main host is inaccessible or provides extremely slow download speeds.`n`nBoth`t`t- The alternate (google) host is used when the main host fails.`nMain host`t- Only the main host is used.`nGoogle Drive`t- Only the alternate Google Drive host is used."
 
 		LwinDisable_TT := "Disables the Left Windows Key while in a SC2 match.`n`nMacro Trainer left windows hotkeys (and non-overridden windows keybinds) will still function."
 		Key_EmergencyRestart_TT := #Key_EmergencyRestart_TT := "If pressed three times, this hotkey will restart the program.`n"
@@ -13898,10 +13922,6 @@ lib87E28FFF_gf_InitScreenProjection() ;point lp_target, fixed lp_distance, fixed
 	MouseMove, point.x, point.y 
 
 }
-
-
-
-
 
 /*
 
